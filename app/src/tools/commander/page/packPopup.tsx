@@ -79,32 +79,72 @@ function PackForm({
         (row) => row.key === names[0] && row.entry?.folder === true,
       ) === true,
   );
-  const { pack, cancelPack } = useCommanderActions();
+  const kept = useCommander((state) => state.packing?.form);
+  const { pack, cancelPack, keepPackForm } = useCommanderActions();
   const { commander } = strings;
   const ids = useId();
   const field = useRef<HTMLInputElement>(null);
-  const [format, setFormat] = useState<PackFormat>(choices.format);
-  const [archive, setArchive] = useState(() =>
-    archiveFor(names, folder, target, choices.format, platform, onlyIsFolder),
+  const [format, setFormat] = useState<PackFormat>(
+    kept?.format ?? choices.format,
   );
-  const [level, setLevel] = useState<PackLevel>(choices.level);
-  const [password, setPassword] = useState('');
-  const [shown, setShown] = useState(false);
-  const [encryptNames, setEncryptNames] = useState(false);
-  const [zipCipher, setZipCipher] = useState<ZipCipher>(choices.zipCipher);
-  const [splitting, setSplitting] = useState(choices.volume !== undefined);
-  const [testing, setTesting] = useState(choices.test);
+  const [archive, setArchive] = useState(
+    () =>
+      kept?.archive ??
+      archiveFor(names, folder, target, choices.format, platform, onlyIsFolder),
+  );
+  const [level, setLevel] = useState<PackLevel>(kept?.level ?? choices.level);
+  const [password, setPassword] = useState(kept?.password ?? '');
+  const [shown, setShown] = useState(kept?.shown ?? false);
+  const [encryptNames, setEncryptNames] = useState(kept?.encryptNames ?? false);
+  const [zipCipher, setZipCipher] = useState<ZipCipher>(
+    kept?.zipCipher ?? choices.zipCipher,
+  );
+  const [splitting, setSplitting] = useState(
+    kept?.splitting ?? choices.volume !== undefined,
+  );
+  const [testing, setTesting] = useState(kept?.testing ?? choices.test);
   const [volume, setVolume] = useState(
-    choices.volume ?? volumeSizes[0]?.size ?? '',
+    kept?.volume ?? choices.volume ?? volumeSizes[0]?.size ?? '',
   );
+  const [keptForm] = useState(kept);
   useEffect(() => {
     const typed = field.current;
-    if (typed !== null) {
+    if (typed !== null && keptForm === undefined) {
       typed.focus();
       const { start, end } = namedPart(typed.value, platform);
       typed.setSelectionRange(start, end);
+    } else {
+      typed?.focus();
     }
-  }, [platform]);
+  }, [platform, keptForm]);
+  useEffect(
+    () =>
+      keepPackForm({
+        format,
+        archive,
+        level,
+        password,
+        shown,
+        encryptNames,
+        zipCipher,
+        splitting,
+        testing,
+        volume,
+      }),
+    [
+      keepPackForm,
+      format,
+      archive,
+      level,
+      password,
+      shown,
+      encryptNames,
+      zipCipher,
+      splitting,
+      testing,
+      volume,
+    ],
+  );
   const problem = packProblem({
     archive,
     format,

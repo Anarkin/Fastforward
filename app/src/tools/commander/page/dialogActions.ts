@@ -39,6 +39,10 @@ export type DialogActions = Pick<
   | 'hideTransfer'
   | 'elevate'
   | 'closeNoAccess'
+  | 'keepTyped'
+  | 'keepPasswordTyped'
+  | 'keepPackForm'
+  | 'keepClashAll'
 >;
 
 export interface StoreParts {
@@ -142,7 +146,8 @@ export function dialogActions({
       const { makingFolder } = get();
       if (makingFolder !== undefined) {
         set({ makingFolder: undefined });
-        post({ type: 'newFolder', ...makingFolder, name });
+        const { tab, side, folder } = makingFolder;
+        post({ type: 'newFolder', tab, side, folder, name });
       }
     },
     cancelNewFolder: () => set({ makingFolder: undefined }),
@@ -152,7 +157,8 @@ export function dialogActions({
       const { makingFile } = get();
       if (makingFile !== undefined) {
         set({ makingFile: undefined });
-        post({ type: 'newFile', ...makingFile, name });
+        const { tab, side, folder } = makingFile;
+        post({ type: 'newFile', tab, side, folder, name });
       }
     },
     cancelNewFile: () => set({ makingFile: undefined }),
@@ -167,7 +173,8 @@ export function dialogActions({
       }
       set({ renaming: undefined });
       if (to !== baseNameOf(renaming.name, view.platform)) {
-        post({ type: 'rename', ...renaming, to });
+        const { tab, side, folder, name } = renaming;
+        post({ type: 'rename', tab, side, folder, name, to });
       }
     },
     cancelRename: () => set({ renaming: undefined }),
@@ -177,7 +184,8 @@ export function dialogActions({
       const { goingTo } = get();
       if (goingTo !== undefined) {
         set({ goingTo: undefined });
-        post({ type: 'goTo', ...goingTo, to });
+        const { tab, side, folder } = goingTo;
+        post({ type: 'goTo', tab, side, folder, to });
       }
     },
     cancelGoTo: () => set({ goingTo: undefined }),
@@ -294,6 +302,58 @@ export function dialogActions({
         post({ type: 'elevate', tab: noAccess.tab, side: noAccess.side });
       }
     },
+    keepTyped: (dialog, typed) =>
+      set((state) => {
+        switch (dialog) {
+          case 'makingFolder':
+            return state.makingFolder === undefined
+              ? state
+              : { makingFolder: { ...state.makingFolder, typed } };
+          case 'makingFile':
+            return state.makingFile === undefined
+              ? state
+              : { makingFile: { ...state.makingFile, typed } };
+          case 'renaming':
+            return state.renaming === undefined
+              ? state
+              : { renaming: { ...state.renaming, typed } };
+          case 'goingTo':
+            return state.goingTo === undefined
+              ? state
+              : { goingTo: { ...state.goingTo, typed } };
+          case 'markingPattern':
+            return state.markingPattern === undefined
+              ? state
+              : { markingPattern: { ...state.markingPattern, typed } };
+          default:
+            return dialog satisfies never;
+        }
+      }),
+    keepPasswordTyped: (typed) =>
+      set((state) =>
+        state.askingPassword === undefined
+          ? state
+          : { askingPassword: { ...state.askingPassword, typed } },
+      ),
+    keepPackForm: (form) =>
+      set((state) =>
+        state.packing === undefined
+          ? state
+          : { packing: { ...state.packing, form } },
+      ),
+    keepClashAll: (all) =>
+      set((state) => {
+        const clash = state.transfer?.clash;
+        return state.transfer === undefined || clash === undefined
+          ? state
+          : {
+              clashAll: {
+                transfer: state.transfer.id,
+                asked: clash.asked,
+                all,
+              },
+            };
+      }),
     closeNoAccess: () =>
       set((state) => ({
         noAccess: withoutNoAccess(state.noAccess, state.view.tab),

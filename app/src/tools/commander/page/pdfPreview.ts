@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { KeptPdfFind } from './viewerKept';
 import type { PdfPlace } from '../shared/pdf';
 import type { MatchesFound } from '../../../lib/shared/textMatches';
 import {
@@ -17,6 +18,32 @@ export function pdfFound(found: PdfFound | undefined): MatchesFound {
   };
 }
 
+export function stepToKept(
+  found: PdfFound,
+  wanted: number | undefined,
+): -1 | 1 | undefined {
+  if (
+    wanted === undefined ||
+    found.current === 0 ||
+    found.current === wanted ||
+    wanted > found.total
+  ) {
+    return undefined;
+  }
+  return wanted > found.current ? 1 : -1;
+}
+
+export function keptPdfFound(
+  found: PdfFound,
+  wanted: number | undefined,
+): number | undefined {
+  return wanted === undefined ||
+    found.current === wanted ||
+    (found.done && wanted > found.total)
+    ? undefined
+    : wanted;
+}
+
 export interface PdfControls {
   readonly query: string;
   readonly options: SearchOptions;
@@ -28,12 +55,29 @@ export interface PdfControls {
 
 export function usePdfPreview(tab: string | undefined) {
   const shown = useRef<ShownPdf>(undefined);
-  const [{ query, options }, setSearch] = useState(noSearch);
+  const { readPdfPlace, keepPdfPlace, flushPdfPlace, keptViewer, keepViewer } =
+    useCommanderActions();
+  const [kept] = useState<KeptPdfFind | undefined>(() =>
+    tab === undefined ? undefined : keptViewer(tab).pdfFind,
+  );
+  const [{ query, options }, setSearch] = useState(kept?.search ?? noSearch);
   const [found, setFound] = useState<PdfFound>();
-  const { readPdfPlace, keepPdfPlace, flushPdfPlace } = useCommanderActions();
+  const wanted = useRef(kept?.current);
   useEffect(() => flushPdfPlace, [flushPdfPlace]);
+  const current = found?.current ?? 0;
+  useEffect(() => {
+    if (tab !== undefined) {
+      keepViewer(tab, {
+        pdfFind: {
+          search: { query, options },
+          current: wanted.current ?? current,
+        },
+      });
+    }
+  }, [tab, keepViewer, query, options, current]);
 
   const searchFor = (next: Search) => {
+    wanted.current = undefined;
     setSearch(next);
     setFound(undefined);
     if (next.query === '') {
@@ -55,7 +99,14 @@ export function usePdfPreview(tab: string | undefined) {
         keepPdfPlace(tab, fingerprint, place);
       }
     },
-    onFound: setFound,
+    onFound: (next) => {
+      setFound(next);
+      const step = stepToKept(next, wanted.current);
+      wanted.current = keptPdfFound(next, wanted.current);
+      if (step !== undefined) {
+        shown.current?.find(query, options, step);
+      }
+    },
     onShown: (opened) => {
       shown.current = opened;
       if (opened === undefined) {

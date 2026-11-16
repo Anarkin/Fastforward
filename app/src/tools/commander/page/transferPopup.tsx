@@ -40,8 +40,16 @@ function ClashBody({
   move: boolean;
   target: string;
 }) {
-  const { answerClash, stopTransfer } = useCommanderActions();
-  const [all, setAll] = useState(false);
+  const { answerClash, stopTransfer, keepClashAll } = useCommanderActions();
+  const keptAll = useCommander(
+    ({ clashAll, transfer }) =>
+      clashAll !== undefined &&
+      clashAll.transfer === transfer?.id &&
+      clashAll.asked === clash.asked &&
+      clashAll.all,
+  );
+  const [all, setAll] = useState(keptAll);
+  useEffect(() => keepClashAll(all), [keepClashAll, all]);
   const id = useId();
   const skip = useRef<HTMLButtonElement>(null);
   useEffect(() => skip.current?.focus(), []);

@@ -65,7 +65,9 @@ export function useEditorView(language: string | undefined) {
   const [status, setStatus] = useState<string>();
   const [findCount, setFindCount] = useState<ReturnType<typeof countOf>>();
   const [findAsk, setFindAsk] = useState<FindAsk>();
-  const [goingToLine, setGoingToLine] = useState(false);
+  const [goingToLine, setGoingToLine] = useState(
+    () => tab !== undefined && keptEditing(tab).goingToLine !== undefined,
+  );
   const [lineCount, setLineCount] = useState(0);
   const [mounts, setMounts] = useState(0);
   const table = useCellTable();
@@ -188,6 +190,7 @@ export function useEditorView(language: string | undefined) {
       });
       view.current = made.view;
       setMounts((count) => count + 1);
+      setLineCount(made.view.state.doc.lines);
       return made.view;
     };
     const remount = (state: EditorState, back: EditorPlace) => {

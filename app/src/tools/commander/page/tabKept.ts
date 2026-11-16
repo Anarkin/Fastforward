@@ -9,6 +9,7 @@ import {
   fieldsOf,
   flagOf,
   keptFocusOf,
+  keptTypedOf,
   listOf,
   oneOf,
   optionsOf,
@@ -18,6 +19,8 @@ import {
 } from './keptFields';
 import { defaultLayouts, layouts, type Layout } from './layouts';
 import type { KeptMarks, PaneView } from './paneView';
+import { dialogsDecoded, dialogsOf } from './keptDialogs';
+import type { Dialogs } from './parkedDialogs';
 import type { ScrollPlaces } from './scrollPlaces';
 import { filterKey } from './sideFilters';
 import type { KeptTab, ViewerChoices } from './view';
@@ -34,12 +37,19 @@ export interface SidesKept {
   readonly panes?: Partial<Record<Side, KeptMarks>>;
   readonly filters?: Partial<Record<Side, PaneFilter>>;
   readonly scrolls?: readonly (readonly [string, number])[];
+  readonly dialogs?: Dialogs;
 }
 
 export type ViewerKept = Partial<
   Pick<
     KeptViewer,
-    'finding' | 'search' | 'current' | 'focus' | 'sideways' | 'preview'
+    | 'finding'
+    | 'search'
+    | 'current'
+    | 'focus'
+    | 'sideways'
+    | 'preview'
+    | 'pdfFind'
   >
 > & {
   readonly choices?: ViewerChoices;
@@ -61,10 +71,11 @@ const marksOf = (pane: PaneView): KeptMarks => ({
 });
 
 export function sidesKeptOf(
-  { view, filters }: CommanderSource,
+  state: CommanderSource,
   tab: string,
   scrolls: ScrollPlaces,
 ): SidesKept | undefined {
+  const { view, filters } = state;
   const kept: KeptTab | undefined =
     view.tab === tab && view.viewing === undefined && view.editing === undefined
       ? view
@@ -97,6 +108,7 @@ export function sidesKeptOf(
     scrolls: scrolls
       .under(`${tab} `)
       .filter(([key]) => folders.some((start) => key.startsWith(start))),
+    dialogs: dialogsOf(state, tab),
   };
 }
 
@@ -155,7 +167,7 @@ const shareDecoded = (value: unknown) => {
   return share !== undefined && share > 0 && share < 1 ? share : undefined;
 };
 
-function sidesDecoded(fields: Fields): SidesKept {
+function sidesDecoded(fields: Fields, tab: string): SidesKept {
   return {
     active: oneOf(sides, fields('active')),
     share: shareDecoded(fields('share')),
@@ -164,6 +176,7 @@ function sidesDecoded(fields: Fields): SidesKept {
     panes: sideKeys(fields('panes'), marksDecoded),
     filters: sideKeys(fields('filters'), filterDecoded),
     scrolls: listOf(fields('scrolls'), scrollDecoded) ?? [],
+    dialogs: dialogsDecoded(tab, fields('dialogs')),
   };
 }
 
@@ -217,6 +230,15 @@ function previewDecoded(value: unknown): ViewerKept['preview'] {
     : { top, left, block: countOf(fields?.('block')), offset };
 }
 
+function pdfFindDecoded(value: unknown): ViewerKept['pdfFind'] {
+  const fields = fieldsOf(value);
+  const search = searchOf(fields?.('search'));
+  const current = countOf(fields?.('current'));
+  return search === undefined || current === undefined
+    ? undefined
+    : { search, current };
+}
+
 function viewerDecoded(fields: Fields): ViewerKept {
   return {
     choices: choicesDecoded(fields('choices')),
@@ -227,8 +249,12 @@ function viewerDecoded(fields: Fields): ViewerKept {
     focus: keptFocusOf(fields('focus')),
     sideways: sidewaysDecoded(fields('sideways')),
     preview: previewDecoded(fields('preview')),
+    pdfFind: pdfFindDecoded(fields('pdfFind')),
   };
 }
+
+const encodingToReopen = (value: unknown) =>
+  value === 'auto' || isTextEncoding(value) ? value : undefined;
 
 function editorDecoded(fields: Fields): EditorKept {
   const query = searchOf({
@@ -241,17 +267,19 @@ function editorDecoded(fields: Fields): EditorKept {
     query: query && { text: query.query, options: query.options },
     replacement: textOf(fields('replacement')),
     focus: keptFocusOf(fields('focus')),
+    goingToLine: keptTypedOf(fields('goingToLine')),
+    reopening: encodingToReopen(fields('reopening')),
   };
 }
 
-export function tabKeptOf(value: unknown): TabKept {
+export function tabKeptOf(value: unknown, tab: string): TabKept {
   const fields = fieldsOf(value);
   const part = (name: string) => fieldsOf(fields?.(name));
   const sidesPart = part('sides');
   const viewerPart = part('viewer');
   const editorPart = part('editor');
   return {
-    sides: sidesPart && sidesDecoded(sidesPart),
+    sides: sidesPart && sidesDecoded(sidesPart, tab),
     viewer: viewerPart && viewerDecoded(viewerPart),
     editor: editorPart && editorDecoded(editorPart),
   };

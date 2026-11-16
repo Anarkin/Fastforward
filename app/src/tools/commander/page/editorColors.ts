@@ -74,19 +74,30 @@ export function lineEdit(
 
 const uncolored: EditedColors = { edit: () => {}, stop: () => {} };
 
+type ColoredLines = (readonly SyntaxRange[] | undefined)[];
+
+const coloredTexts = new WeakMap<
+  Text,
+  { readonly language: string; readonly lines: ColoredLines }
+>();
+
 class Colors implements PluginValue {
-  private lines: (readonly SyntaxRange[] | undefined)[];
+  private lines: ColoredLines;
   private readonly session: EditedColors;
   decorations: DecorationSet;
 
   constructor(
-    view: EditorView,
+    private readonly view: EditorView,
     colorer: Colorer,
-    language: string,
+    private readonly language: string,
     limit: number,
   ) {
     const { doc } = view.state;
-    this.lines = Array.from({ length: doc.lines }, () => undefined);
+    const kept = coloredTexts.get(doc);
+    this.lines =
+      kept?.language === language && kept.lines.length === doc.lines
+        ? [...kept.lines]
+        : Array.from({ length: doc.lines }, () => undefined);
     this.session =
       doc.length > limit ? uncolored : this.colored(view, colorer, language);
     this.decorations = this.build(view);
@@ -139,6 +150,10 @@ class Colors implements PluginValue {
 
   destroy(): void {
     this.session.stop();
+    coloredTexts.set(this.view.state.doc, {
+      language: this.language,
+      lines: this.lines,
+    });
   }
 
   private build(view: EditorView): DecorationSet {

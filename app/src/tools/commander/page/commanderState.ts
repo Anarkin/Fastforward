@@ -20,6 +20,7 @@ import type { ClashAnswer, TransferView } from '../shared/transfers';
 import type { EditorPlace } from './editorPlace';
 import type { EditedTab, ToEditor } from './editorState';
 import type { KeptViewer } from './viewerKept';
+import type { KeptTyped } from '../../../lib/page/keptFocus';
 import type { EditorAsk, KeptEditing } from './editorKept';
 import {
   emptyView,
@@ -49,7 +50,7 @@ type ViewerRequest = Extract<
   }
 >;
 
-export interface Deleting {
+interface Deleting {
   readonly tab: string;
   readonly side: Side;
   readonly folder: string;
@@ -59,7 +60,7 @@ export interface Deleting {
   readonly archive?: string;
 }
 
-export interface Transferring {
+interface Transferring {
   readonly tab: string;
   readonly side: Side;
   readonly folder: string;
@@ -69,12 +70,26 @@ export interface Transferring {
   readonly existing?: readonly string[];
 }
 
+export interface PackForm {
+  readonly format: PackFormat;
+  readonly archive: string;
+  readonly level: PackLevel;
+  readonly password: string;
+  readonly shown: boolean;
+  readonly encryptNames: boolean;
+  readonly zipCipher: ZipCipher;
+  readonly splitting: boolean;
+  readonly testing: boolean;
+  readonly volume: string;
+}
+
 interface Packing {
   readonly tab: string;
   readonly side: Side;
   readonly folder: string;
   readonly names: readonly string[];
   readonly target: string;
+  readonly form?: PackForm;
 }
 
 interface PackChoices {
@@ -103,13 +118,18 @@ interface Renaming {
   readonly side: Side;
   readonly folder: string;
   readonly name: string;
+  readonly typed?: KeptTyped;
 }
 
 interface MakingFolder {
   readonly tab: string;
   readonly side: Side;
   readonly folder: string;
+  readonly typed?: KeptTyped;
 }
+
+type TypedDialog =
+  'makingFolder' | 'makingFile' | 'renaming' | 'goingTo' | 'markingPattern';
 
 type GoingTo = MakingFolder;
 
@@ -137,7 +157,12 @@ export interface CommanderSource {
   readonly transfer: TransferView | undefined;
   readonly readingSides: ReadonlyMap<string, number>;
   readonly askingPassword:
-    | { readonly ask: number; readonly name: string; readonly wrong: boolean }
+    | {
+        readonly ask: number;
+        readonly name: string;
+        readonly wrong: boolean;
+        readonly typed?: KeptTyped;
+      }
     | undefined;
   readonly askingUpdate:
     | { readonly ask: number; readonly name: string; readonly archive: string }
@@ -149,6 +174,14 @@ export interface CommanderSource {
   readonly markingPattern: MarkingPattern | undefined;
   readonly lastPattern: string | undefined;
   readonly packing: Packing | undefined;
+  readonly parked: ReadonlyMap<string, ParkedDialogs>;
+  readonly clashAll:
+    | {
+        readonly transfer: number;
+        readonly asked: number;
+        readonly all: boolean;
+      }
+    | undefined;
   readonly packChoices: PackChoices;
   readonly noAccess: ReadonlyMap<string, NoAccess>;
   readonly resized:
@@ -161,6 +194,20 @@ export interface PaneFilter {
   readonly query: string;
   readonly options: SearchOptions;
 }
+
+export type ParkedDialogs = Partial<
+  Pick<
+    CommanderSource,
+    | 'deleting'
+    | 'transferring'
+    | 'makingFolder'
+    | 'makingFile'
+    | 'renaming'
+    | 'goingTo'
+    | 'markingPattern'
+    | 'packing'
+  >
+>;
 
 export interface CommanderActions {
   readonly receive: (message: CommanderToWebview) => void;
@@ -304,6 +351,10 @@ export interface CommanderActions {
   readonly askPack: (side: Side, names: readonly string[]) => void;
   readonly pack: (answer: PackAnswer) => void;
   readonly cancelPack: () => void;
+  readonly keepTyped: (dialog: TypedDialog, typed: KeptTyped) => void;
+  readonly keepPasswordTyped: (typed: KeptTyped) => void;
+  readonly keepPackForm: (form: PackForm) => void;
+  readonly keepClashAll: (all: boolean) => void;
   readonly testArchives: (side: Side, names: readonly string[]) => void;
   readonly stopTransfer: () => void;
   readonly hideTransfer: () => void;
@@ -367,6 +418,8 @@ export const commanderDefaults: CommanderSource = {
   markingPattern: undefined,
   lastPattern: undefined,
   packing: undefined,
+  parked: new Map(),
+  clashAll: undefined,
   packChoices: {
     format: 'zip',
     level: 'normal',

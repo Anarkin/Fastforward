@@ -1,4 +1,5 @@
-import type { KeptFocus } from '../../../lib/page/keptFocus';
+import type { KeptFocus, KeptTyped } from '../../../lib/page/keptFocus';
+import type { TextEncoding } from '../shared/textEncodings';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import type { FindQuery } from './editorFind';
 
@@ -10,6 +11,8 @@ export interface KeptEditing {
   readonly query: FindQuery;
   readonly replacement: string;
   readonly focus: KeptFocus | undefined;
+  readonly goingToLine?: KeptTyped;
+  readonly reopening?: TextEncoding | 'auto';
 }
 
 export const noKeptEditing: KeptEditing = {

@@ -68,6 +68,70 @@ suite('Prompt popup', () => {
     assert.doesNotMatch(html, /prompt-message/);
   });
 
+  test('comes back with what was typed in it and its caret where it was, telling what is typed as it changes', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const told: unknown[] = [];
+      await act(async () => {
+        renderIn(
+          root,
+          <PromptPopup
+            title="Rename"
+            label="Name"
+            confirm="Rename"
+            problemOf={() => undefined}
+            initial="report.pdf"
+            selectedUpTo={6}
+            typed={{ value: 'notes.pdf', selection: [2, 4, 'backward'] }}
+            onTyped={(typed) => told.push(typed)}
+            onConfirm={noop}
+            onCancel={noop}
+          />,
+        );
+      });
+      const field = dom.window.document.querySelector('input');
+      assert.ok(field !== null);
+      assert.deepStrictEqual(
+        [
+          field.value,
+          field.selectionStart,
+          field.selectionEnd,
+          field.selectionDirection,
+        ],
+        ['notes.pdf', 2, 4, 'backward'],
+      );
+      field.setSelectionRange(1, 1);
+      await act(async () => {
+        field.dispatchEvent(
+          new dom.window.KeyboardEvent('keyup', { bubbles: true }),
+        );
+      });
+      assert.deepStrictEqual(told.at(-1), {
+        value: 'notes.pdf',
+        selection: [1, 1, 'none'],
+      });
+      await act(async () => {
+        root.unmount();
+      });
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('starts from the value it is given, with the part of it asked for selected, as a name to rename before its extension', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {

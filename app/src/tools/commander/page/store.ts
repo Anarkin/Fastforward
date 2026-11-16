@@ -13,13 +13,7 @@ import {
   type CommanderSource,
   type CommanderState,
 } from './commanderState';
-import {
-  isEditorStream,
-  isViewerStream,
-  received,
-  stillShown,
-  stillTargeted,
-} from './commanderReceived';
+import { isEditorStream, isViewerStream, received } from './commanderReceived';
 import { filesToCompare } from './comparing';
 import { dialogActions, type StoreParts } from './dialogActions';
 import { editorActions } from './editorActions';
@@ -31,6 +25,7 @@ import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
 import { viewerActions } from './viewerActions';
+import { settledDialogs, withoutParked } from './parkedDialogs';
 import { keptTabActions } from './keptTabActions';
 
 const maxCameIcons = 5000;
@@ -59,39 +54,9 @@ export function createCommanderStore(
       if (filters !== get().filters) {
         set({ filters });
       }
-      const { deleting, transferring, makingFolder, makingFile, renaming } =
-        get();
-      if (makingFolder !== undefined && !stillShown(get().view, makingFolder)) {
-        set({ makingFolder: undefined });
-      }
-      if (makingFile !== undefined && !stillShown(get().view, makingFile)) {
-        set({ makingFile: undefined });
-      }
-      if (renaming !== undefined && !stillShown(get().view, renaming)) {
-        set({ renaming: undefined });
-      }
-      const { goingTo, markingPattern } = get();
-      if (goingTo !== undefined && !stillShown(get().view, goingTo)) {
-        set({ goingTo: undefined });
-      }
-      if (
-        markingPattern !== undefined &&
-        !stillShown(get().view, markingPattern)
-      ) {
-        set({ markingPattern: undefined });
-      }
-      const { packing } = get();
-      if (packing !== undefined && !stillShown(get().view, packing)) {
-        set({ packing: undefined });
-      }
-      if (deleting !== undefined && !stillShown(get().view, deleting)) {
-        set({ deleting: undefined });
-      }
-      if (
-        transferring !== undefined &&
-        !stillTargeted(get().view, transferring)
-      ) {
-        set({ transferring: undefined });
+      const dialogs = settledDialogs(get());
+      if (dialogs !== undefined) {
+        set(dialogs);
       }
       for (const side of sides) {
         const pane = get().view.panes[side];
@@ -220,7 +185,10 @@ export function createCommanderStore(
         if (message.type === 'closed' || message.type === 'left') {
           viewer.forget(message.tab);
           editor.forget(message.tab);
-          set((state) => ({ filters: withoutTab(state.filters, message.tab) }));
+          set((state) => ({
+            filters: withoutTab(state.filters, message.tab),
+            parked: withoutParked(state.parked, message.tab),
+          }));
         }
       },
       ...viewer.actions,

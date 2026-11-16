@@ -51,8 +51,14 @@ interface KeptPreview {
   readonly offset: number;
 }
 
+export interface KeptPdfFind {
+  readonly search: Search;
+  readonly current: number;
+}
+
 export interface KeptViewer {
   readonly finding: boolean;
+  readonly pdfFind: KeptPdfFind | undefined;
   readonly search: Search;
   readonly current: number;
   readonly found: ViewerFound | undefined;
@@ -83,6 +89,7 @@ export const withoutCaches = (
 
 export const noKeptViewer: KeptViewer = {
   finding: false,
+  pdfFind: undefined,
   search: noSearch,
   current: 0,
   found: undefined,

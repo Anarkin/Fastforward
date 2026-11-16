@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useEffect, useState, type RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
@@ -18,7 +18,16 @@ export function EditorAsks({
 }) {
   const file = useCommander((state) => state.view.editing) ?? '';
   const tab = useCommander((state) => state.view.tab);
-  const { saveText, reloadEdited, answerEditorAsk } = useCommanderActions();
+  const { saveText, reloadEdited, answerEditorAsk, keptEditing, keepEditing } =
+    useCommanderActions();
+  const [typedLine] = useState(() =>
+    tab === undefined ? undefined : keptEditing(tab).goingToLine,
+  );
+  useEffect(() => {
+    if (tab !== undefined && !goingToLine) {
+      keepEditing(tab, { goingToLine: undefined });
+    }
+  }, [tab, goingToLine, keepEditing]);
   const asking = useCommander((state) =>
     tab === undefined ? undefined : state.editorAsks.get(tab),
   );
@@ -37,6 +46,12 @@ export function EditorAsks({
           title={strings.editor.goToLineTitle}
           label={strings.editor.lineNumber(lineCount)}
           confirm={strings.editor.goToLine}
+          typed={typedLine}
+          onTyped={(typed) => {
+            if (tab !== undefined) {
+              keepEditing(tab, { goingToLine: typed });
+            }
+          }}
           problemOf={(typed) =>
             /^\d+$/.test(typed) &&
             Number(typed) >= 1 &&

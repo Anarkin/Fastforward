@@ -1,14 +1,8 @@
 import { type CommanderToWebview } from '../shared/protocol';
-import { otherSide, type Side } from '../shared/sides';
-import type {
-  CommanderSource,
-  Deleting,
-  ToViewer,
-  Transferring,
-  Viewing,
-} from './commanderState';
+import type { Side } from '../shared/sides';
+import type { CommanderSource, ToViewer, Viewing } from './commanderState';
 import type { ToEditor } from './editorState';
-import { reduceView, type CommanderView } from './view';
+import { reduceView } from './view';
 
 const viewerStreams: ReadonlySet<CommanderToWebview['type']> = new Set<
   ToViewer['type']
@@ -200,18 +194,4 @@ export function withoutNoAccess(
   const left = new Map(noAccess);
   left.delete(tab);
   return left;
-}
-
-export function stillShown(
-  view: CommanderView,
-  { tab, side, folder }: Pick<Deleting, 'tab' | 'side' | 'folder'>,
-) {
-  return view.tab === tab && view.panes[side]?.folder === folder;
-}
-
-export function stillTargeted(view: CommanderView, transferring: Transferring) {
-  return (
-    stillShown(view, transferring) &&
-    view.panes[otherSide(transferring.side)]?.folder === transferring.target
-  );
 }

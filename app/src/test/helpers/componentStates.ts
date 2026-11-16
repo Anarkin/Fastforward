@@ -1,4 +1,44 @@
 export const keptStates: Readonly<Record<string, string>> = {
+  'shell/page/promptPopup.tsx value':
+    'the text typed in a prompt, seeded from what its dialog kept (typed) and told to it by onTyped as typed',
+  'shell/page/promptPopup.tsx keptSelection':
+    'where the caret of a prompt was, read once from what its dialog kept (typed) and put back as it mounts',
+  'tools/commander/page/editorToolbar.tsx reopening':
+    'the question to reopen in another encoding, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
+  'tools/commander/page/editorView.ts goingToLine':
+    'whether the go-to-line prompt is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
+  'tools/commander/page/editorAsks.tsx typedLine':
+    'the line typed in the go-to-line prompt, read once from keptEditings (editorActions.ts) as the prompt mounts',
+  'tools/commander/page/packPopup.tsx archive':
+    'the name of the archive of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx encryptNames':
+    'the choice to encrypt the names of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx format':
+    'the format of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx level':
+    'the compression of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx password':
+    'the password typed, never sent to the main process, of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx shown':
+    'the choice to show the password of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx splitting':
+    'the choice to cut it into volumes of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx testing':
+    'the choice to test it once packed of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx volume':
+    'the size of volumes of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx zipCipher':
+    'the zip cipher of the pack dialog, seeded from the form kept with the dialog of its tab (packing.form) and kept by keepPackForm',
+  'tools/commander/page/packPopup.tsx keptForm':
+    'the form of the pack dialog as it was kept, read once to leave its caret alone rather than select the name anew',
+  'tools/commander/page/pdfPreview.ts found':
+    'the matches of the pdf find, counted anew by PDF.js as it searches again, stepped to the match kept per tab',
+  'tools/commander/page/pdfPreview.ts search':
+    'the query and toggles of the pdf find, kept per tab in the kept viewers (pdfFind) and read back as mounted',
+  'tools/commander/page/pdfPreview.ts kept':
+    'the pdf find of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
+  'tools/commander/page/transferPopup.tsx all':
+    'whether a clash answer is for the rest, seeded from clashAll of the store for the transfer and question asked',
   'tools/commander/page/editorFinding.ts finding':
     'whether the find is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
   'tools/commander/page/editorFinding.ts kept':
@@ -281,38 +321,4 @@ export const passingStates: Readonly<Record<string, string>> = {
     'whether a block of marks is near the view, observed anew by an intersection observer once mounted',
   'tools/terminal/page/tool.tsx store':
     'the terminal store, made once for the page; each screen is kept by the main process',
-};
-export const lostStates: Readonly<Record<string, string>> = {
-  'shell/page/promptPopup.tsx value':
-    'the text typed in a prompt, dropped or emptied with it as the main process switches tabs, as on ff',
-  'tools/commander/page/editorToolbar.tsx reopening':
-    'the question to reopen in another encoding, dropped with the editor as the main process switches tabs',
-  'tools/commander/page/editorView.ts goingToLine':
-    'the go-to-line prompt, dropped with the editor as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx archive':
-    'the name of the archive typed, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx encryptNames':
-    'whether the names are encrypted, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx format':
-    'the format chosen, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx level':
-    'the compression chosen, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx password':
-    'the password typed, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx shown':
-    'whether the password shows, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx splitting':
-    'whether it is cut into volumes, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx testing':
-    'whether it is tested once packed, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx volume':
-    'the size of volumes typed, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/packPopup.tsx zipCipher':
-    'the zip cipher chosen, dropped with the pack dialog as the main process switches tabs, as on ff',
-  'tools/commander/page/pdfPreview.ts found':
-    'the matches of the pdf find and the one shown, not kept, so none is counted or marked',
-  'tools/commander/page/pdfPreview.ts search':
-    'the query and toggles of the pdf find, not kept, so the find comes back open but empty',
-  'tools/commander/page/transferPopup.tsx all':
-    'whether a clash answer is for the rest, unchecked again as the question shows anew after ff',
 };

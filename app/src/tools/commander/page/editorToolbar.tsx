@@ -1,4 +1,4 @@
-import { useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useState, type ReactNode, type RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
@@ -42,8 +42,16 @@ export function EditorToolbar({
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const scrolling = useShell((state) => state.scrolling);
   const { changeTextView, openSettings } = useShellActions();
-  const { saveIn, reopenIn, editSource } = useCommanderActions();
-  const [reopening, setReopening] = useState<TextEncoding | 'auto'>();
+  const { saveIn, reopenIn, editSource, keptEditing, keepEditing } =
+    useCommanderActions();
+  const [reopening, setReopening] = useState<TextEncoding | 'auto' | undefined>(
+    () => (tab === undefined ? undefined : keptEditing(tab).reopening),
+  );
+  useEffect(() => {
+    if (tab !== undefined) {
+      keepEditing(tab, { reopening });
+    }
+  }, [tab, reopening, keepEditing]);
   const readOnly = edited?.readOnly === true;
   const encoding = edited?.encoding;
   const reopen = (chosen: TextEncoding | 'auto') => {

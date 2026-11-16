@@ -15,6 +15,7 @@ import {
   type ViewerKept,
 } from './tabKept';
 import { reduceView } from './view';
+import { withoutParked } from './parkedDialogs';
 
 type TabKind = 'sides' | 'viewer' | 'editor';
 
@@ -70,7 +71,7 @@ export function keptTabActions(
     () => get().view.tab,
   );
   const restore = (tab: string, kind: TabKind, value: unknown) => {
-    const kept = tabKeptOf(value);
+    const kept = tabKeptOf(value, tab);
     if (kind === 'sides' && kept.sides !== undefined) {
       const restored = kept.sides;
       set((state) => ({
@@ -80,6 +81,11 @@ export function keptTabActions(
           kept: keptTabOf(restored),
         }),
         filters: withFilters(state.filters, tab, restored.filters),
+        parked:
+          restored.dialogs === undefined ||
+          Object.keys(restored.dialogs).length === 0
+            ? withoutParked(state.parked, tab)
+            : new Map(state.parked).set(tab, restored.dialogs),
       }));
       scrolls.forget(`${tab} `);
       for (const [key, offset] of restored.scrolls ?? []) {

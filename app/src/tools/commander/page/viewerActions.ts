@@ -116,6 +116,7 @@ export function viewerActions({ post: sent }: StoreParts): {
         focus: kept.focus,
         sideways: kept.sideways,
         preview: kept.preview,
+        pdfFind: kept.pdfFind,
       };
     },
     restore: (tab, kept) => {
@@ -132,6 +133,7 @@ export function viewerActions({ post: sent }: StoreParts): {
         focus: kept.focus,
         sideways: kept.sideways,
         preview: kept.preview,
+        pdfFind: kept.pdfFind,
       });
     },
     awaitViewing: (tab) => {

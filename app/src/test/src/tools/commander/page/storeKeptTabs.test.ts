@@ -210,7 +210,9 @@ suite('Commander store keeping its tabs', () => {
       query: { text: 'adam', options: wholeWord },
       replacement: 'eve',
       focus: { name: 'replace' },
-    };
+      goingToLine: { value: '12', selection: [2, 2, 'none'] },
+      reopening: 'utf-16le',
+    } as const;
     store.getState().keepEditing('3', editing);
     receive({ type: 'show', tab: '1' });
     const kept = keptOf(posted, '3');
@@ -299,5 +301,26 @@ suite('Commander store keeping its tabs', () => {
     store.getState().keepViewer('1', { text });
     assert.deepStrictEqual(store.getState().keptViewer('1').text, text);
     assert.strictEqual(store.getState().keptViewer('2').text, undefined);
+  });
+
+  test('brings the find of a PDF back from what another page kept of it, its query, toggles and the match it was on', () => {
+    const posted: CommanderToHost[] = [];
+    const store = createCommanderStore((message) => posted.push(message));
+    const { receive } = store.getState();
+    const file = `${folder}/a.pdf`;
+    receive({ type: 'show', tab: '2', file });
+    const pdfFind = {
+      search: { query: 'adam', options: wholeWord },
+      current: 3,
+    };
+    store.getState().keepViewer('2', { pdfFind });
+    receive({ type: 'show', tab: '1' });
+
+    const other = createCommanderStore(noop);
+    other
+      .getState()
+      .receive({ type: 'show', tab: '2', file, kept: keptOf(posted, '2') });
+
+    assert.deepStrictEqual(other.getState().keptViewer('2').pdfFind, pdfFind);
   });
 });

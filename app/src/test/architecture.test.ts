@@ -6,11 +6,7 @@ import { toolSections, tools } from '../shell/shared/tools';
 import { shortcutEntries } from '../shell/page/toolShortcuts';
 import { defaultSettings } from './helpers/fixtures';
 import { programsOfSuffixes } from './helpers/programs';
-import {
-  keptStates,
-  lostStates,
-  passingStates,
-} from './helpers/componentStates';
+import { keptStates, passingStates } from './helpers/componentStates';
 
 const source = path.join(__dirname, '..');
 const appFolder = path.join(source, '..');
@@ -168,7 +164,7 @@ suite('Architecture', () => {
         /^(?:lib|shell|tools\/[^/]+)\/page\/.+\.tsx?$/.test(file),
       )
       .flatMap((file) => statesIn(read(file)).map((name) => `${file} ${name}`));
-    const listed = [keptStates, passingStates, lostStates].flatMap((states) =>
+    const listed = [keptStates, passingStates].flatMap((states) =>
       Object.keys(states),
     );
     assert.deepStrictEqual(held.toSorted(), listed.toSorted());

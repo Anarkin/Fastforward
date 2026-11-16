@@ -7,6 +7,19 @@ import { moveBetweenButtons } from '../../lib/page/dialogButtons';
 import { useModalDialog } from '../../lib/page/modalDialog';
 import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { NameLines, Words } from '../../lib/page/name';
+import type { KeptTyped } from '../../lib/page/keptFocus';
+
+const typedIn = (field: HTMLInputElement): KeptTyped =>
+  field.selectionStart === null || field.selectionEnd === null
+    ? { value: field.value }
+    : {
+        value: field.value,
+        selection: [
+          field.selectionStart,
+          field.selectionEnd,
+          field.selectionDirection ?? 'none',
+        ],
+      };
 
 export function PromptPopup({
   title,
@@ -19,6 +32,8 @@ export function PromptPopup({
   secret = false,
   initial = '',
   selectedUpTo,
+  typed: kept,
+  onTyped,
   onConfirm,
   onCancel,
 }: {
@@ -32,21 +47,26 @@ export function PromptPopup({
   secret?: boolean;
   initial?: string;
   selectedUpTo?: number;
+  typed?: KeptTyped;
+  onTyped?: (typed: KeptTyped) => void;
   onConfirm: (value: string) => void;
   onCancel: () => void;
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const field = useRef<HTMLInputElement>(null);
-  const [value, setValue] = useState(initial);
+  const [value, setValue] = useState(kept?.value ?? initial);
+  const [keptSelection] = useState(kept?.selection);
   useDismiss(popup, onCancel, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
   useLayoutEffect(() => {
     field.current?.focus();
-    if (selectedUpTo !== undefined) {
+    if (keptSelection !== undefined) {
+      field.current?.setSelectionRange(...keptSelection);
+    } else if (selectedUpTo !== undefined) {
       field.current?.setSelectionRange(0, selectedUpTo);
     }
-  }, [selectedUpTo]);
+  }, [selectedUpTo, keptSelection]);
   const typed = secret ? value : value.trim();
   const problem = problemOf(typed);
   const note = noteOf?.(typed);
@@ -97,7 +117,11 @@ export function PromptPopup({
             value={value}
             spellCheck={false}
             autoComplete="off"
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => {
+              setValue(event.target.value);
+              onTyped?.(typedIn(event.target));
+            }}
+            onSelect={(event) => onTyped?.(typedIn(event.currentTarget))}
           />
           {typed !== '' && problem !== undefined && (
             <div className="prompt-problem" role="alert">

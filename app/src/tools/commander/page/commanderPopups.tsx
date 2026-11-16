@@ -71,6 +71,8 @@ export function CommanderPopups() {
     cancelGoTo,
     markPattern,
     cancelMarkPattern,
+    keepTyped,
+    keepPasswordTyped,
   } = useCommanderActions();
   const renamed =
     renaming === undefined ? undefined : baseNameOf(renaming.name, platform);
@@ -109,6 +111,8 @@ export function CommanderPopups() {
             password === '' ? strings.commander.noPassword : undefined
           }
           secret
+          typed={askingPassword.typed}
+          onTyped={keepPasswordTyped}
           onConfirm={answerPassword}
           onCancel={() => answerPassword(undefined)}
         />
@@ -120,6 +124,8 @@ export function CommanderPopups() {
           label={strings.commander.newFolderName}
           confirm={strings.commander.makeFolder}
           problemOf={(name) => newFolderProblem(name, listed, platform)}
+          typed={makingFolder.typed}
+          onTyped={(typed) => keepTyped('makingFolder', typed)}
           onConfirm={makeFolder}
           onCancel={cancelNewFolder}
         />
@@ -131,6 +137,8 @@ export function CommanderPopups() {
           label={strings.commander.newFolderName}
           confirm={strings.commander.editNewFile}
           problemOf={(name) => newFileProblem(name, listedForFile, platform)}
+          typed={makingFile.typed}
+          onTyped={(typed) => keepTyped('makingFile', typed)}
           onConfirm={makeFile}
           onCancel={cancelNewFile}
         />
@@ -151,6 +159,8 @@ export function CommanderPopups() {
             ) === true,
           )}
           problemOf={(to) => renameProblem(to, renamed, renamedIn, platform)}
+          typed={renaming.typed}
+          onTyped={(typed) => keepTyped('renaming', typed)}
           onConfirm={rename}
           onCancel={cancelRename}
         />
@@ -178,6 +188,8 @@ export function CommanderPopups() {
               keysMatching(patternRows ?? [], pattern, platform).length,
             )
           }
+          typed={markingPattern.typed}
+          onTyped={(typed) => keepTyped('markingPattern', typed)}
           onConfirm={markPattern}
           onCancel={cancelMarkPattern}
         />
@@ -190,6 +202,8 @@ export function CommanderPopups() {
           initial={goingTo.folder}
           selectedUpTo={goingTo.folder.length}
           problemOf={(to) => (to === '' ? strings.commander.noPath : undefined)}
+          typed={goingTo.typed}
+          onTyped={(typed) => keepTyped('goingTo', typed)}
           onConfirm={goTo}
           onCancel={cancelGoTo}
         />

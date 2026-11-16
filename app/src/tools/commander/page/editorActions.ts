@@ -96,6 +96,8 @@ export function editorActions({ set, post, onPane }: StoreParts): {
         query: kept.query ?? noKeptEditing.query,
         replacement: kept.replacement ?? noKeptEditing.replacement,
         focus: kept.focus,
+        goingToLine: kept.goingToLine,
+        reopening: kept.reopening,
       });
     },
     actions: {

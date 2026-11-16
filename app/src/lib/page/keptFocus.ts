@@ -11,6 +11,11 @@ export interface KeptFocus {
   ];
 }
 
+export interface KeptTyped {
+  readonly value: string;
+  readonly selection?: KeptFocus['selection'];
+}
+
 interface TextField {
   readonly selectionStart: number | null;
   readonly selectionEnd: number | null;
