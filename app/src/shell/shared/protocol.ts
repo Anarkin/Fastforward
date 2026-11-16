@@ -4,6 +4,8 @@ import type { PathLooks } from '../../lib/shared/partLooks';
 import type { ImageView, TextView } from './views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
+export const maxViewChars = 1024 * 1024;
+
 export interface TabInfo {
   readonly id: string;
   readonly tool: ToolId;

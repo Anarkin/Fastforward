@@ -1,6 +1,5 @@
+import { maxViewChars } from '../shared/protocol';
 import type { Page } from './toolContract';
-
-const maxViewChars = 1024 * 1024;
 
 export const releaseWait = 200;
 

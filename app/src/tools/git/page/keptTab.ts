@@ -11,6 +11,7 @@ import type { Highlighted } from './locationHighlight';
 import { withEntry, withKey } from './tabKeyed';
 import type { FilterFolds, ViewFolders } from './viewFolders';
 import { mostWorktrees } from './tabWorktrees';
+import { maxViewChars } from '../../../shell/shared/protocol';
 import {
   aBoolean,
   aNumber,
@@ -150,7 +151,7 @@ function keptPlace({
     ...given('anchor', anchor),
     sideways,
     left,
-    toggled: [...toggled],
+    toggled: [...toggled].slice(-mostNamed),
     current,
     ...given('currentFor', currentFor),
   };
@@ -244,16 +245,20 @@ export function tabViewOf(
   worktrees: readonly string[],
   compare: string | undefined,
 ): string {
-  return JSON.stringify(
-    compare === undefined
-      ? {
-          worktrees: worktrees.map((root) => [
-            root,
-            keptWorktreeOf(source, places, root),
-          ]),
-        }
-      : { compare: keptCompareOf(source, places, compare) },
+  if (compare !== undefined) {
+    return JSON.stringify({ compare: keptCompareOf(source, places, compare) });
+  }
+  const kept = worktrees.map((root) =>
+    JSON.stringify([root, keptWorktreeOf(source, places, root)]),
   );
+  const fits = (from: number) =>
+    kept.slice(from).reduce((chars, each) => chars + each.length + 1, 16) <=
+    maxViewChars;
+  let from = 0;
+  while (from < kept.length && !fits(from)) {
+    from += 1;
+  }
+  return `{"worktrees":[${kept.slice(from).join(',')}]}`;
 }
 
 export function placeScopeOf(key: string): string | undefined {

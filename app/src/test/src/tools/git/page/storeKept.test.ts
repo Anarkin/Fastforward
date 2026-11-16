@@ -21,7 +21,10 @@ import {
   tabScopeOf,
 } from '../../../../../tools/git/page/gitSelectors';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
-import type { ToHost } from '../../../../../shell/shared/protocol';
+import {
+  maxViewChars,
+  type ToHost,
+} from '../../../../../shell/shared/protocol';
 import { at, compare, posting, shown } from './storeFixtures';
 
 const elsewhere = {
@@ -445,5 +448,41 @@ suite('Git store, keeping the view of each tab', () => {
     const toggled = locationsOf(back.store.getState())?.toggled;
     assert.strictEqual(toggled?.size, 1000);
     assert.ok(toggled.has('branch:1499') && !toggled.has('branch:0'));
+  });
+
+  test('leaves out the worktrees of a tab shown longest ago until its view fits the bound the shell keeps, and keeps the last folds of a diff, so a tab of many worktrees still comes back as it was left', () => {
+    const { shell, store } = posting();
+    const state = () => store.getState();
+    const long = 'a folder with a long name '.repeat(5);
+    for (let worktree = 0; worktree < 12; worktree++) {
+      state().receive(shown([], `/w${worktree}`));
+      state().receive(filesOf(at));
+      for (let index = 0; index < 1000; index++) {
+        state().toggleFolder('closed', `${long}${index}`);
+      }
+    }
+    state().keepDiffPlace(tabScopeOf(undefined, '/w11'), at, {
+      toggled: new Map(
+        Array.from({ length: 3000 }, (_, index) => [`${long}${index}`, true]),
+      ),
+    });
+    state().toggleCommits();
+    state().flushKept();
+    const sent = viewOf(shell);
+    assert.ok(sent !== undefined);
+    assert.ok(sent.length <= maxViewChars, `${sent.length} characters`);
+    const parsed: unknown = JSON.parse(sent);
+    assert.ok(
+      typeof parsed === 'object' &&
+        parsed !== null &&
+        'worktrees' in parsed &&
+        Array.isArray(parsed.worktrees),
+    );
+    const roots = parsed.worktrees.map((entry: unknown) =>
+      Array.isArray(entry) ? (entry[0] as unknown) : entry,
+    );
+    assert.ok(roots.length > 1 && roots.length < 12);
+    assert.strictEqual(roots.at(-1), '/w11');
+    assert.ok(!sent.includes(`${long}1999`) && sent.includes(`${long}2999`));
   });
 });
