@@ -131,6 +131,7 @@ function terminal(
     pages: () => pages,
     current: (shownIn) => shownIn,
     tabs: () => [work, other],
+    tabsOf: () => [work, other],
     active: () => undefined,
     holds: () => true,
     shown: () => [],

@@ -22,6 +22,7 @@ export function fakeShell<P extends Page>(page: P) {
     pages: () => pages,
     current: (shownIn) => shownIn,
     tabs: () => tabs,
+    tabsOf: () => tabs,
     active: () => undefined,
     holds: () => true,
     shown: () => [],

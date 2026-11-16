@@ -7,6 +7,8 @@ import { strings } from '../../../../lib/shared/strings';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
 import { attach, closeViews } from '../../../helpers/harness';
 import { Pages } from '../../../../shell/main/pages';
+import type { ShellAccess } from '../../../../shell/main/toolContract';
+import type { GitTool } from '../../../../tools/git/main/tool';
 import { tabsKey, windowsKey } from '../../../../shell/main/storage';
 import { noticesOf, shownIn, twoWindows } from './shellFixtures';
 import { FakeHost } from '../../../helpers/fakeHost';
@@ -19,6 +21,17 @@ const savedIds = (saved: unknown) =>
         typeof tab === 'object' && tab !== null && 'id' in tab ? [tab.id] : [],
       )
     : [];
+
+const isAccess = (value: unknown): value is ShellAccess =>
+  typeof value === 'object' &&
+  value !== null &&
+  ['pages', 'active', 'tabsOf'].every((name) => name in value);
+
+const accessOf = (tool: GitTool): ShellAccess => {
+  const access: unknown = Reflect.get(tool, 'shell');
+  assert.ok(isAccess(access));
+  return access;
+};
 
 const windowsListed = (page: FakePage) =>
   page.messages.flatMap((message) =>
@@ -37,6 +50,26 @@ suite('Shell with several windows', () => {
     const { first, second } = await twoWindows(log, noGit);
     assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
     assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4'], '4']);
+  });
+
+  test('tells a tool every tab of the window of a page, not only the one it shows, so a tool can hold a page to the tabs of its own window', async () => {
+    const { first } = await twoWindows(log, noGit);
+    const access = accessOf(first.view);
+    const tabsByActive = new Map(
+      access
+        .pages()
+        .map((page) => [
+          access.active(page)?.id,
+          access.tabsOf(page).map((tab) => tab.id),
+        ]),
+    );
+    assert.deepStrictEqual(
+      tabsByActive,
+      new Map([
+        ['1', ['1', '5']],
+        ['4', ['2', '3', '4']],
+      ]),
+    );
   });
 
   test('opens a new tab in the window whose page asked for it', async () => {

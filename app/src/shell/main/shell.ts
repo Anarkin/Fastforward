@@ -129,6 +129,7 @@ export class Shell {
       pages: () => this.pages.all(),
       current: (page) => this.pages.current(page),
       tabs: () => this.storage.savedTabs,
+      tabsOf: (page) => this.pages.windowOf(page).tabs,
       active: (page) => this.pages.activeTab(page),
       holds: (page, tab) =>
         this.pages.windowOf(page).tabs.some((each) => each.id === tab),
