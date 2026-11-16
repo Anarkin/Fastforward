@@ -486,10 +486,9 @@ suite('App commander', () => {
     fs.renameSync(junk, wide);
     await page.reload();
     await waitFor(
-      async () => (await rowNames()).includes('wide.png'),
-      'the files of the folder, as details once the page starts again',
+      async () => (await right().locator('.commander-tile').count()) > 0,
+      'the files of the folder, as thumbnails still once the page starts again, as its tab keeps its layout',
     );
-    await page.keyboard.press('ControlOrMeta+2');
     await waitFor(
       async () => (await shownThumbnailOf('wide.png')) > 0,
       'the thumbnail kept, as the image no longer decodes',
