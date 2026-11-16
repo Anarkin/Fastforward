@@ -18,6 +18,7 @@ export interface EditorSource {
   readonly asks: ReadonlyMap<string, EditorAsk>;
   readonly closeBrackets: boolean;
   readonly languages: ReadonlyMap<string, string>;
+  readonly editings: ReadonlyMap<string, KeptEditing>;
 }
 
 export interface EditorActions {
@@ -61,6 +62,7 @@ export const editorDefaults: EditorSource = {
   asks: new Map(),
   closeBrackets: false,
   languages: new Map(),
+  editings: new Map(),
 };
 
 export const editedShown = (state: EditorSource): EditedTab | undefined =>

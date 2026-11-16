@@ -1,4 +1,10 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+} from 'react';
 import {
   Compartment,
   EditorSelection,
@@ -55,14 +61,28 @@ export function useEditorView(language: string | undefined) {
     keptEditor,
     editorKeeper,
     keptEditing,
+    keepEditing,
   } = useEditorActions();
   const { closeTab } = useShellActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
   const [status, setStatus] = useState<string>();
   const [findCount, setFindCount] = useState<ReturnType<typeof countOf>>();
   const [findAsk, setFindAsk] = useState<FindAsk>();
-  const [goingToLine, setGoingToLine] = useState(
-    () => tab !== undefined && keptEditing(tab).goingToLine !== undefined,
+  const goingToLine = useEditor(
+    (state) =>
+      tab !== undefined && state.editings.get(tab)?.goingToLine !== undefined,
+  );
+  const setGoingToLine = useCallback(
+    (going: boolean) => {
+      if (tab !== undefined) {
+        keepEditing(tab, {
+          goingToLine: going
+            ? (keptEditing(tab).goingToLine ?? { value: '' })
+            : undefined,
+        });
+      }
+    },
+    [tab, keptEditing, keepEditing],
   );
   const [lineCount, setLineCount] = useState(0);
   const [mounts, setMounts] = useState(0);
@@ -301,6 +321,7 @@ export function useEditorView(language: string | undefined) {
     readEdited,
     saveText,
     closeTab,
+    setGoingToLine,
   ]);
 
   useEffect(() => {

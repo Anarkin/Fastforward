@@ -169,13 +169,18 @@ export function useFocusKeeper(
     if (element === null) {
       return undefined;
     }
-    const onMove = () => kept();
+    const page = element.ownerDocument;
+    const onMove = (event: Event) => {
+      if (event.composedPath().includes(element)) {
+        kept();
+      }
+    };
     for (const move of caretMoves) {
-      element.addEventListener(move, onMove);
+      page.addEventListener(move, onMove);
     }
     return () => {
       for (const move of caretMoves) {
-        element.removeEventListener(move, onMove);
+        page.removeEventListener(move, onMove);
       }
     };
   }, [root]);

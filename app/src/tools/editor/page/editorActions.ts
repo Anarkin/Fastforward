@@ -1,21 +1,16 @@
 import type { StoreApi } from 'zustand';
 import type { EditorToHost } from '../shared/protocol';
 import type { ToEditor } from './editorState';
-import { noKeptEditing, type KeptEditing } from './editorKept';
 import type {
   EditorActions,
   EditorStoreState,
   KeptEditor,
 } from './editorShown';
 
-type EditorKept = Partial<KeptEditing>;
-
 type StreamActions = Pick<
   EditorActions,
   | 'listenEditor'
   | 'keptEditor'
-  | 'keptEditing'
-  | 'keepEditing'
   | 'answerEditorAsk'
   | 'editorKeeper'
   | 'readEdited'
@@ -40,12 +35,10 @@ export function editorActions(
   readonly actions: StreamActions;
   readonly heard: (message: ToEditor) => void;
   readonly forget: (tab: string) => void;
-  readonly kept: (tab: string) => EditorKept;
-  readonly restore: (tab: string, kept: EditorKept) => void;
+  readonly restore: (tab: string) => void;
 } {
   const editorListeners = new Set<(message: ToEditor) => void>();
   const keptEditors = new Map<string, KeptEditor>();
-  const keptEditings = new Map<string, KeptEditing>();
   const openTabs = new Map<string, object>();
   const openTabOf = (tab: string) => {
     const known = openTabs.get(tab);
@@ -87,34 +80,14 @@ export function editorActions(
     },
     forget: (tab) => {
       keptEditors.delete(tab);
-      keptEditings.delete(tab);
       openTabs.delete(tab);
       answered(tab);
     },
-    kept: (tab) => keptEditings.get(tab) ?? noKeptEditing,
-    restore: (tab, kept) => {
-      keptEditors.delete(tab);
-      keptEditings.set(tab, {
-        finding: kept.finding ?? noKeptEditing.finding,
-        replacing: kept.replacing ?? noKeptEditing.replacing,
-        query: kept.query ?? noKeptEditing.query,
-        replacement: kept.replacement ?? noKeptEditing.replacement,
-        focus: kept.focus,
-        goingToLine: kept.goingToLine,
-        reopening: kept.reopening,
-      });
-    },
+    restore: (tab) => keptEditors.delete(tab),
     actions: {
       listenEditor,
       keptEditor: (tab) => keptEditors.get(tab),
-      keptEditing: (tab) => keptEditings.get(tab) ?? noKeptEditing,
       answerEditorAsk: answered,
-      keepEditing: (tab, change) => {
-        keptEditings.set(tab, {
-          ...(keptEditings.get(tab) ?? noKeptEditing),
-          ...change,
-        });
-      },
       editorKeeper: (tab) => {
         const open = openTabOf(tab);
         return (kept) => {

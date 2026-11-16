@@ -5,6 +5,7 @@ import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { EditorToHost, EditorToWebview } from '../shared/protocol';
 import { editorActions } from './editorActions';
+import { noKeptEditing } from './editorKept';
 import { editorViewSchema } from './tabView';
 import {
   editorDefaults,
@@ -43,21 +44,33 @@ export function createEditorStore(
       editorViewSchema,
       {
         viewOf: (tab) => ({
-          ...editor.kept(tab),
+          ...(get().editings.get(tab) ?? noKeptEditing),
           language: get().languages.get(tab),
         }),
-        restore: (tab, { language, ...rest }) => {
+        restore: (tab, { language, ...kept }) => {
+          editor.restore(tab);
           set((state) => ({
             languages:
               language === undefined
                 ? without(state.languages, tab)
                 : new Map(state.languages).set(tab, language),
+            editings: new Map(state.editings).set(tab, {
+              finding: kept.finding ?? noKeptEditing.finding,
+              replacing: kept.replacing ?? noKeptEditing.replacing,
+              query: kept.query ?? noKeptEditing.query,
+              replacement: kept.replacement ?? noKeptEditing.replacement,
+              focus: kept.focus,
+              goingToLine: kept.goingToLine,
+              reopening: kept.reopening,
+            }),
           }));
-          editor.restore(tab, rest);
         },
         forget: (tab) => {
           editor.forget(tab);
-          set((state) => ({ languages: without(state.languages, tab) }));
+          set((state) => ({
+            languages: without(state.languages, tab),
+            editings: without(state.editings, tab),
+          }));
         },
       },
       () => get().tab,
@@ -130,8 +143,14 @@ export function createEditorStore(
           tabs.settled(leaving, get().tab);
         }
       },
+      keptEditing: (tab) => get().editings.get(tab) ?? noKeptEditing,
       keepEditing: (tab, change) => {
-        editor.actions.keepEditing(tab, change);
+        set((state) => ({
+          editings: new Map(state.editings).set(tab, {
+            ...(state.editings.get(tab) ?? noKeptEditing),
+            ...change,
+          }),
+        }));
         changed(tab);
       },
       chooseLanguage: (language) => {

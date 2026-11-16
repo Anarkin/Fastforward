@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
@@ -20,14 +20,9 @@ export function EditorAsks({
   const tab = useEditor((state) => state.tab);
   const { saveText, reloadEdited, answerEditorAsk, keptEditing, keepEditing } =
     useEditorActions();
-  const [typedLine] = useState(() =>
-    tab === undefined ? undefined : keptEditing(tab).goingToLine,
+  const typedLine = useEditor((state) =>
+    tab === undefined ? undefined : state.editings.get(tab)?.goingToLine,
   );
-  useEffect(() => {
-    if (tab !== undefined && !goingToLine) {
-      keepEditing(tab, { goingToLine: undefined });
-    }
-  }, [tab, goingToLine, keepEditing]);
   const asking = useEditor((state) =>
     tab === undefined ? undefined : state.asks.get(tab),
   );
@@ -48,7 +43,10 @@ export function EditorAsks({
           confirm={strings.editor.goToLine}
           typed={typedLine}
           onTyped={(typed) => {
-            if (tab !== undefined) {
+            if (
+              tab !== undefined &&
+              keptEditing(tab).goingToLine !== undefined
+            ) {
               keepEditing(tab, { goingToLine: typed });
             }
           }}

@@ -3,24 +3,8 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the text typed in a prompt, seeded from what its dialog kept (typed) and told to it by onTyped as typed',
   'shell/page/promptPopup.tsx keptSelection':
     'where the caret of a prompt was, read once from what its dialog kept (typed) and put back as it mounts',
-  'tools/editor/page/editorToolbar.tsx reopening':
-    'the question to reopen in another encoding, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/editor/page/editorView.ts goingToLine':
-    'whether the go-to-line prompt is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/editor/page/editorAsks.tsx typedLine':
-    'the line typed in the go-to-line prompt, read once from keptEditings (editorActions.ts) as the prompt mounts',
   'tools/viewer/page/pdfPreview.ts found':
     'the matches of the pdf find, counted anew by PDF.js as it searches again, stepped to the match kept per tab',
-  'tools/editor/page/editorFinding.ts finding':
-    'whether the find is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/editor/page/editorFinding.ts kept':
-    'the find and replace of the tab, read once from keptEditings (editorActions.ts) as the editor mounts',
-  'tools/editor/page/editorFinding.ts query':
-    'the text and toggles of the find, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/editor/page/editorFinding.ts replacement':
-    'the text of the replace, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
-  'tools/editor/page/editorFinding.ts replacing':
-    'whether the replace is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
   'tools/editor/page/editorView.ts endingsShown':
     'the line endings of the text, read from the editor state kept per tab in keptEditors as it mounts',
   'tools/editor/page/editorView.ts findCount':

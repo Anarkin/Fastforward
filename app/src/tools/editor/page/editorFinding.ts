@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { find, findNearest, type FindAsk } from './editorFind';
 import { lineBreak } from './editorState';
-import { noKeptEditing } from './editorKept';
-import { useEditorActions } from './store';
+import { noKeptEditing, type KeptEditing } from './editorKept';
+import { useEditor, useEditorActions } from './store';
+import type { EditorStoreState } from './editorShown';
+
+type Changing<T> = T | ((was: T) => T);
 
 export function useEditorFinding(
   view: RefObject<EditorView | undefined>,
@@ -12,21 +15,34 @@ export function useEditorFinding(
   mounts: number,
 ) {
   const { keptEditing, keepEditing } = useEditorActions();
-  const [kept] = useState(() =>
-    tab === undefined ? noKeptEditing : keptEditing(tab),
-  );
-  const [finding, setFinding] = useState(kept.finding);
-  const [replacing, setReplacing] = useState(kept.replacing);
-  const [query, setQuery] = useState(kept.query);
-  const [replacement, setReplacement] = useState(kept.replacement);
+  const editing = (state: EditorStoreState) =>
+    (tab === undefined ? undefined : state.editings.get(tab)) ?? noKeptEditing;
+  const finding = useEditor((state) => editing(state).finding);
+  const replacing = useEditor((state) => editing(state).replacing);
+  const query = useEditor((state) => editing(state).query);
+  const replacement = useEditor((state) => editing(state).replacement);
+  const { setFinding, setReplacing, setQuery, setReplacement } = useMemo(() => {
+    const change =
+      <K extends 'finding' | 'replacing' | 'query' | 'replacement'>(key: K) =>
+      (next: Changing<KeptEditing[K]>) => {
+        if (tab === undefined) {
+          return;
+        }
+        const was = keptEditing(tab)[key];
+        keepEditing(tab, {
+          [key]: typeof next === 'function' ? next(was) : next,
+        });
+      };
+    return {
+      setFinding: change('finding'),
+      setReplacing: change('replacing'),
+      setQuery: change('query'),
+      setReplacement: change('replacement'),
+    };
+  }, [tab, keptEditing, keepEditing]);
   const [focusAsks, setFocusAsks] = useState(0);
   const findInput = useRef<HTMLInputElement>(null);
-  const applied = useRef({ finding: kept.finding, query: kept.query });
-  useEffect(() => {
-    if (tab !== undefined) {
-      keepEditing(tab, { finding, replacing, query, replacement });
-    }
-  }, [tab, keepEditing, finding, replacing, query, replacement]);
+  const applied = useRef({ finding, query });
   useEffect(() => {
     if (findAsk === undefined) {
       return;
@@ -38,7 +54,7 @@ export function useEditorFinding(
     setFinding(true);
     setReplacing((was) => was || findAsk.replace);
     setFocusAsks((asks) => asks + 1);
-  }, [findAsk]);
+  }, [findAsk, setFinding, setReplacing, setQuery]);
   useEffect(() => {
     const shown = view.current;
     if (shown === undefined || mounts === 0) {
