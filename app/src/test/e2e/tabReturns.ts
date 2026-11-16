@@ -17,7 +17,7 @@ const tabLooks = (page: Page): Promise<TabLooks> =>
     const root = document.querySelector('.app');
     const shown = (element: Element) =>
       root?.contains(element) === true &&
-      element.closest('nav, .notices, [role="tooltip"]') === null;
+      element.closest('nav.tabs, .notices, [role="tooltip"]') === null;
     const seen = (box: DOMRect, from: Element | null) => {
       if (from === null || getComputedStyle(from).visibility !== 'visible') {
         return false;
@@ -219,7 +219,7 @@ export async function scrolledAround(page: Page): Promise<void> {
       const across =
         ['auto', 'scroll'].includes(style.overflowX) &&
         element.scrollWidth > element.clientWidth + 1;
-      if (element.closest('nav, .notices') === null && (down || across)) {
+      if (element.closest('nav.tabs, .notices') === null && (down || across)) {
         element.scrollTo({
           top: down ? (element.scrollHeight - element.clientHeight) / 2 : 0,
           left: across ? (element.scrollWidth - element.clientWidth) / 2 : 0,
@@ -229,7 +229,7 @@ export async function scrolledAround(page: Page): Promise<void> {
   });
 }
 
-export const tabs = (page: Page) => page.locator('nav [role="tab"]');
+export const tabs = (page: Page) => page.locator('nav.tabs [role="tab"]');
 
 export async function showTab(page: Page, index: number): Promise<void> {
   const tab = tabs(page).nth(index);
@@ -237,6 +237,33 @@ export async function showTab(page: Page, index: number): Promise<void> {
   await waitFor(
     async () => (await tab.getAttribute('aria-selected')) === 'true',
     `tab ${index} shown`,
+  );
+}
+
+export async function comesBackAfter(
+  page: Page,
+  change: () => Promise<Page>,
+  what: string,
+): Promise<void> {
+  const left = await settledLooks(page);
+  const shown = await change();
+  let back = await tabLooks(shown);
+  try {
+    await waitFor(
+      async () => {
+        back = await tabLooks(shown);
+        return looksAlike(back, left);
+      },
+      what,
+      10_000,
+    );
+  } catch {
+    assert.deepStrictEqual(back, left, `${what} comes back as it was left`);
+  }
+  assert.deepStrictEqual(
+    await settledLooks(shown),
+    left,
+    `${what} stays as it was left once settled`,
   );
 }
 
@@ -248,26 +275,14 @@ export async function comesBackAsLeft(
   const index = await tabs(page).evaluateAll((all) =>
     all.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'),
   );
-  const left = await settledLooks(page);
-  await showTab(page, away);
-  await settledLooks(page);
-  await showTab(page, index);
-  let back = await tabLooks(page);
-  try {
-    await waitFor(
-      async () => {
-        back = await tabLooks(page);
-        return looksAlike(back, left);
-      },
-      what,
-      10_000,
-    );
-  } catch {
-    assert.deepStrictEqual(back, left, `${what} comes back as it was left`);
-  }
-  assert.deepStrictEqual(
-    await settledLooks(page),
-    left,
-    `${what} stays as it was left once settled`,
+  await comesBackAfter(
+    page,
+    async () => {
+      await showTab(page, away);
+      await settledLooks(page);
+      await showTab(page, index);
+      return page;
+    },
+    what,
   );
 }
