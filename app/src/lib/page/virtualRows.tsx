@@ -32,6 +32,7 @@ import {
 } from './listRows';
 import { activeDescendant, rowId } from './rowIds';
 import { pinnedRows } from './pinnedRows';
+import { restoreWhen, type Restoring } from './restore';
 
 const exactHeight = (element: Element) =>
   element.getBoundingClientRect().height;
@@ -157,6 +158,7 @@ export function VirtualRows({
   const placed = useRef(placeKey);
   const reveal = { key: scrollTarget(selectedKey, rows), rows: revealWith };
   const revealed = useRef<Reveal>(revealAtStart ? undefined : reveal);
+  const holding = useRef<Restoring>(undefined);
   useLayoutEffect(() => {
     if (placed.current !== placeKey) {
       placed.current = placeKey;
@@ -175,7 +177,16 @@ export function VirtualRows({
     }
     restored.current = true;
     element.scrollTop = initialOffset;
+    if (!revealAtStart) {
+      holding.current?.stop();
+      holding.current = restoreWhen(
+        undefined,
+        () => false,
+        () => undefined,
+      );
+    }
   });
+  useEffect(() => () => holding.current?.stop(), []);
 
   const heightOf = (index: number) => {
     const row = virtualizer.measurementsCache[index];
@@ -208,7 +219,10 @@ export function VirtualRows({
     }
   });
   useEffect(() => {
-    if (revealAgain(revealed.current, reveal)) {
+    if (
+      revealAgain(revealed.current, reveal) &&
+      holding.current?.pending() !== true
+    ) {
       scrollToSelected();
     }
     revealed.current = reveal;

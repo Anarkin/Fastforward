@@ -103,7 +103,9 @@ suite('App git tabs shown again', () => {
         activeTab: '1',
       }),
     );
-    app = await launchApp(profile);
+    app = await launchApp(profile, {
+      before: ['--force-device-scale-factor=1'],
+    });
     page = await app.firstWindow();
     await sizedWindow(app);
     await waitFor(async () => (await tabs(page).count()) === 4, 'every tab');
