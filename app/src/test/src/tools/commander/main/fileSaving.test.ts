@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
+  KeptBeside,
   NoRoomToSave,
   ReadOnlyFile,
   saveFile,
@@ -157,6 +158,68 @@ suite('Saving a file', () => {
     assert.strictEqual(fs.readFileSync(file, 'utf8'), 'new');
     assert.deepStrictEqual(fs.readdirSync(folder), ['notes.txt']);
   });
+
+  test('puts its own file in the place of the file once the system failed to replace it but moved it away, deleted or under another name, as ReplaceFile does when it cannot move the new one in', async () => {
+    fs.writeFileSync(file, 'old text');
+    assert.strictEqual(
+      await saveFile(file, bytes('new'), {
+        replaceFile: (replaced) => {
+          fs.rmSync(replaced);
+          return Promise.resolve(false);
+        },
+      }),
+      'replaced',
+    );
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), 'new');
+    assert.deepStrictEqual(fs.readdirSync(folder), ['notes.txt']);
+
+    const away = path.join(folder, 'moved away.txt');
+    assert.strictEqual(
+      await saveFile(file, bytes('newer'), {
+        replaceFile: (replaced) => {
+          fs.renameSync(replaced, away);
+          return Promise.resolve(false);
+        },
+      }),
+      'replaced',
+    );
+    assert.strictEqual(fs.readFileSync(file, 'utf8'), 'newer');
+    assert.deepStrictEqual(fs.readdirSync(folder).toSorted(), [
+      'moved away.txt',
+      'notes.txt',
+    ]);
+  });
+
+  test.skipIf(windows || superUser)(
+    'keeps its own file beside the file moved away, a read-only one too, saying where, once it cannot take its place either',
+    async () => {
+      for (const mode of [0o644, 0o444]) {
+        fs.writeFileSync(file, 'old');
+        fs.chmodSync(file, mode);
+        try {
+          await assert.rejects(
+            saveFile(file, bytes('new'), {
+              overwriteReadOnly: true,
+              replaceFile: (replaced) => {
+                fs.rmSync(replaced);
+                fs.chmodSync(folder, 0o555);
+                return Promise.resolve(false);
+              },
+            }),
+            (error: unknown) =>
+              error instanceof KeptBeside &&
+              fs.readFileSync(error.beside, 'utf8') === 'new' &&
+              fs.readdirSync(folder).join() === path.basename(error.beside),
+          );
+        } finally {
+          fs.chmodSync(folder, 0o755);
+        }
+        for (const name of fs.readdirSync(folder)) {
+          fs.rmSync(path.join(folder, name));
+        }
+      }
+    },
+  );
 
   test.skipIf(!windows)(
     'keeps the attributes and the streams of a file on Windows, its Mark of the Web too, as ReplaceFile carries them over to the new one',

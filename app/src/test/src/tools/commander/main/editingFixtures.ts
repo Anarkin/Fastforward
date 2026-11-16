@@ -6,7 +6,10 @@ import {
   type EditingAccess,
   type EditingMessage,
 } from '../../../../../tools/commander/main/editing';
-import { ReadOnlyFile } from '../../../../../tools/commander/main/fileSaving';
+import {
+  KeptBeside,
+  ReadOnlyFile,
+} from '../../../../../tools/commander/main/fileSaving';
 import type {
   CommanderToWebview,
   CommanderToWebviewOf,
@@ -76,6 +79,11 @@ export function editing(
     saveFile: (file, bytes, overwrite) => {
       if (file.includes('read-only') && !overwrite) {
         return Promise.reject(new ReadOnlyFile(file));
+      }
+      if (file.includes('kept-beside')) {
+        return Promise.reject(
+          new KeptBeside(`.${file}.saving-1`, new Error('It is busy.')),
+        );
       }
       saved.push({
         file,

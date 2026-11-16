@@ -140,6 +140,20 @@ suite('Editing a file', () => {
     assert.strictEqual(edits.unsaved('1'), true);
   });
 
+  test('says where what was saved is kept once it could not take the place of the file, keeping the text unsaved', async () => {
+    const { edits, saved, notices } = editing({ 'kept-beside.txt': 'a\n' });
+    const page = new EditorPage();
+    await edits.show(page, '1', 'kept-beside.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'b' }));
+    await edits.receive(page, { type: 'saveText', tab: '1' });
+    assert.deepStrictEqual(saved, []);
+    assert.deepStrictEqual(notices, [
+      'Couldn\'t save "kept-beside.txt" in its place, so what was saved is kept beside it in ".kept-beside.txt.saving-1".',
+    ]);
+    assert.strictEqual(edits.unsaved('1'), true);
+  });
+
   test('opens a file read-only where the app keeps one, saving nothing of it', async () => {
     const { edits, saved, notices } = editing({
       'settings.defaults.json': '{}\n',

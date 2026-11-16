@@ -19,6 +19,15 @@ export class ReadOnlyFile extends Error {}
 
 export class NoRoomToSave extends Error {}
 
+export class KeptBeside extends Error {
+  constructor(
+    readonly beside: string,
+    cause: unknown,
+  ) {
+    super(beside, { cause });
+  }
+}
+
 const codeOf = (error: unknown) =>
   error instanceof Error && 'code' in error ? error.code : undefined;
 
@@ -144,6 +153,21 @@ async function writtenInPlace(
   return 'inPlace';
 }
 
+const stillThere = (file: string) =>
+  fs.promises.stat(file).then(
+    () => true,
+    () => false,
+  );
+
+async function inPlaceOfMoved(target: string, beside: string): Promise<Saved> {
+  try {
+    await fs.promises.rename(beside, target);
+  } catch (error) {
+    throw new KeptBeside(beside, error);
+  }
+  return 'replaced';
+}
+
 async function replaced(
   target: string,
   stat: fs.Stats,
@@ -162,6 +186,9 @@ async function replaced(
       if (await saving.replaceFile(target, beside)) {
         return 'replaced';
       }
+      if (!(await stillThere(target))) {
+        return await inPlaceOfMoved(target, beside);
+      }
       await fs.promises.rm(beside, { force: true });
       return await writtenInPlace(target, stat, bytes, saving);
     }
@@ -169,7 +196,9 @@ async function replaced(
     await fs.promises.rename(beside, target);
     return 'replaced';
   } catch (error) {
-    await fs.promises.rm(beside, { force: true });
+    if (!(error instanceof KeptBeside)) {
+      await fs.promises.rm(beside, { force: true });
+    }
     throw error;
   }
 }
@@ -207,9 +236,15 @@ export async function saveFile(
     return replaced(target, stat, bytes, saving);
   }
   await fs.promises.chmod(target, (stat.mode | 0o200) & 0o7777);
+  let saved: Saved;
   try {
-    return await replaced(target, stat, bytes, saving);
-  } finally {
-    await fs.promises.chmod(target, stat.mode & 0o7777);
+    saved = await replaced(target, stat, bytes, saving);
+  } catch (error) {
+    if (!(error instanceof KeptBeside)) {
+      await fs.promises.chmod(target, stat.mode & 0o7777);
+    }
+    throw error;
   }
+  await fs.promises.chmod(target, stat.mode & 0o7777);
+  return saved;
 }

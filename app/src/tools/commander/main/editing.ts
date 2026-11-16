@@ -10,7 +10,12 @@ import {
 } from '../shared/protocol';
 import { isTextEncoding, type TextEncoding } from '../shared/textEncodings';
 import { EditedText } from './editedText';
-import { NoRoomToSave, ReadOnlyFile, type Saved } from './fileSaving';
+import {
+  KeptBeside,
+  NoRoomToSave,
+  ReadOnlyFile,
+  type Saved,
+} from './fileSaving';
 import { reasonOf } from './reasons';
 import { rulesOf, type TextDefaults, type TextRules } from './textDefaults';
 import { decodedText } from './textCodec';
@@ -581,7 +586,9 @@ export class Editing {
           message:
             error instanceof NoRoomToSave
               ? strings.editor.noRoom(file)
-              : strings.editor.couldNotSave(file, reasonOf(error)),
+              : error instanceof KeptBeside
+                ? strings.editor.keptBeside(file, error.beside)
+                : strings.editor.couldNotSave(file, reasonOf(error)),
         });
       }
       return false;

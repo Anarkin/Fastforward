@@ -1126,6 +1126,8 @@ export const strings = {
       sentence`Couldn't save ${namedFile(file)}. ${reason}`,
     noRoom: (file: string) =>
       sentence`Couldn't save ${namedFile(file)}, as its drive hasn't room for it.`,
+    keptBeside: (file: string, beside: string) =>
+      sentence`Couldn't save ${namedFile(file)} in its place, so what was saved is kept beside it in ${namedFile(beside)}.`,
     unencodable: (
       file: string,
       encoding: string,
