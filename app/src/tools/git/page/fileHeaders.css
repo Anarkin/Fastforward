@@ -24,6 +24,8 @@
 .file-header .path {
   flex: 1;
   min-width: 0;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

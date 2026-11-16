@@ -26,7 +26,12 @@ import {
   FileHeader,
   HunkDivider,
 } from '../../../../tools/git/page/diffRowParts';
-import { allWithClass, rendered, withClass } from '../../../helpers/markup';
+import {
+  allWithClass,
+  rendered,
+  withClass,
+  type MarkupElement,
+} from '../../../helpers/markup';
 import {
   DiffRow,
   DiffViewShown,
@@ -35,6 +40,11 @@ import {
   MinimapShown,
   SplitLine,
 } from '../../../helpers/styleDiffFixtures';
+
+const fontOf = (element: MarkupElement) => [
+  cascaded(element, 'font-family'),
+  cascaded(element, 'font-size'),
+];
 
 suite('Style', () => {
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {
@@ -499,6 +509,47 @@ suite('Style', () => {
       ),
       { width: 'var(--diff-number-width)' },
     );
+  });
+
+  test('sets the paths of git in monospace, as every path of the app, the header of a file of the diff and the names of the files tree, and not the headings of the changes', () => {
+    const monospace = [
+      'var(--monospace-font-family)',
+      'var(--monospace-font-size)',
+    ];
+    const header = withClass(
+      diffView(
+        <DiffViewShown />,
+        <DiffRow>
+          <FileHeader
+            path="src/a.ts"
+            open
+            whole={false}
+            collapsible
+            onClick={noop}
+          />
+        </DiffRow>,
+      ),
+      'file-header',
+    );
+    assert.deepStrictEqual(fontOf(withClass(header, 'path')), monospace);
+    const files = rendered(
+      <div>
+        <div className="row group">
+          <span className="path">All Changes</span>
+        </div>
+        <div className="row tree-row folder">
+          <span className="path">src</span>
+        </div>
+        <div className="row tree-row file">
+          <span className="path">a.ts</span>
+        </div>
+      </div>,
+    );
+    assert.deepStrictEqual(allWithClass(files, 'path').map(fontOf), [
+      [undefined, undefined],
+      monospace,
+      monospace,
+    ]);
   });
 
   test('keeps the button of a file header clear of the minimap, within the header, and in view however wide the lines make the header', () => {

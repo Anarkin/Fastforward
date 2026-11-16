@@ -601,7 +601,7 @@ suite('Files search', () => {
     const open = filesOf(filesStore({ filter: 'view' }));
     assert.ok(isValidElement<{ searching: React.ReactNode }>(open));
     const html = renderToStaticMarkup(<>{open.props.searching}</>);
-    assert.match(html, /class="search-bar"/);
+    assert.match(html, /class="search-bar monospace"/);
     assert.doesNotMatch(html, /autofocus/i);
     assert.match(html, /<input[^>]*placeholder="Search…"[^>]*value="view"/);
   });

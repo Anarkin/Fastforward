@@ -226,6 +226,7 @@ mark.match,
 
 .find-match,
 .commander-row mark.match,
+.tree-row .path mark.match,
 .name mark.match {
   --mark-text-height: var(--monospace-text-height, 1lh);
 }

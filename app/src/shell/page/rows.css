@@ -35,6 +35,11 @@
   text-decoration: line-through;
 }
 
+.tree-row .path {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+}
+
 .row .change-icon {
   margin-right: 4px;
   flex-shrink: 0;
