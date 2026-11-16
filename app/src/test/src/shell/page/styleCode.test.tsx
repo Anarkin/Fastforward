@@ -95,7 +95,7 @@ suite('Style', () => {
     );
   });
 
-  test('shows the sign of each tab and other blank of an indented wrapped line on that blank, as the indentation hanging its rows moved the signs aside, squeezing them together', () => {
+  test('shows the sign of each tab and other blank of an indented wrapped line on that blank, drawn after its text and placed back over it, as the indentation hanging its rows moved the signs aside, squeezing them together, and a sign drawn before a tab carried a tab right after a space hanging at the end of a row onto the next row', () => {
     const tab = rendered(
       <span className="blank" data-glyph="→">
         {'\t'}
@@ -105,7 +105,17 @@ suite('Style', () => {
         'lead',
       ),
     );
-    looks(tab, { 'text-indent': '0' }, { pseudoElement: '::before' });
+    looks(
+      tab,
+      {
+        position: 'absolute',
+        left: '0',
+        'text-indent': '0',
+        content: 'attr(data-glyph)',
+      },
+      { pseudoElement: '::after' },
+    );
+    looks(tab, { content: undefined }, { pseudoElement: '::before' });
   });
 
   test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, and wraps the text of the diff, the viewer and the editor inside one right padding, two columns for a blank hanging at the end of a row and the sign of its break, then what covers the edge, the minimap or the scrollbar, and a gap, so no text runs under either and both sides wrap alike', () => {

@@ -5,6 +5,7 @@ import { diffLineNumbered, page, sharedApp } from './appFixtures';
 import { gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
 import { editorInPage, mountEditor, type PageEditor } from './editorProbe';
+import { wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
 
 const editorLines = [
   `    ${'indented line with some words to wrap around the edge '.repeat(6)}`,
@@ -425,6 +426,40 @@ suite('App', () => {
       }
     }
     assert.deepStrictEqual(wrong, []);
+  });
+
+  test('wraps a tab right after a space hanging at the end of a row onto that row, where the app expects it, whether whitespace is shown or not, as the sign drawn before the tab carried it onto the next row, unlike a tab drawn plain', async () => {
+    const text = '	indented	with	tabs and words 	indented	with	tabs and words ';
+    const columns = 38;
+    assert.strictEqual(text.indexOf(' 	indented', 1), 29);
+    const editor = await editorInPage();
+    await mountEditor(editor, text, 400, true);
+    const advance = await page
+      .locator('.editor-probe .cm-scroller')
+      .evaluate((scroller) => {
+        const cell = document.createElement('span');
+        cell.style.cssText =
+          'display: inline-block; position: absolute; width: var(--text-advance)';
+        scroller.append(cell);
+        const width = cell.getBoundingClientRect().width;
+        cell.remove();
+        return width;
+      });
+    const expected = wrapStarts(text, columns, wrapIndent(text, columns));
+    assert.strictEqual(expected[1], 31);
+    for (const blanks of [false, true]) {
+      const { places } = await editorLine(
+        editor,
+        text,
+        columns * advance + 0.5,
+        true,
+        blanks,
+      );
+      const starts = places.flatMap(([at, , y], index) =>
+        index === 0 || y !== places[index - 1][2] ? [at] : [],
+      );
+      assert.deepStrictEqual(starts, expected, `whitespace shown: ${blanks}`);
+    }
   });
 
   test('numbers the lines in the editor as the diff numbers them, in the same color and font, the number ending and the text starting as far from the left edge', async () => {

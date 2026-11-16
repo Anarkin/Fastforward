@@ -109,67 +109,76 @@ suite('App', () => {
     );
   });
 
-  test('draws the lines of a diff on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up, each line a row tall when wrapped too, as a shrunk emoji made its line two, colored by its syntax, with whitespace shown, and while a match found ends inside a character of several code points', async () => {
+  test('draws the lines of a diff on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up, each line a row tall when wrapped too, the commits hidden to give its lines of 41 columns room in a small window, as a shrunk emoji made its line two, colored by its syntax, with whitespace shown, and while a match found ends inside a character of several code points', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'grid.js' }).click();
-    const code = page.locator('.diff-view .virtual-row .diff-line .code');
-    await page.locator('.diff-view [class^="syntax-"]').first().waitFor();
-    await waitFor(
-      async () => (await code.count()) === gridLines.length,
-      'every line',
-    );
-    assert.deepStrictEqual(
-      await code.evaluateAll(barsOffGrid),
-      gridLines.slice(1).map(() => 0),
-    );
-    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    await page.locator('.diff-view.wrap').waitFor();
-    await waitFor(
-      async () => (await lineHeights()).length === gridLines.length,
-      'every line wrapped',
-    );
-    const tall = await lineHeights();
-    assert.deepStrictEqual(
-      tall,
-      tall.map(() => tall[0]),
-    );
-    assert.deepStrictEqual(
-      await code.evaluateAll(barsOffGrid),
-      gridLines.slice(1).map(() => 0),
-    );
-    const showWhitespace = page.getByRole('button', {
-      name: 'Show Whitespace',
-      exact: true,
-    });
-    await showWhitespace.click();
-    await page
-      .locator('.diff-view.show-whitespace')
-      .waitFor({ state: 'detached' });
-    assert.deepStrictEqual(
-      await code.evaluateAll(barsOffGrid),
-      gridLines.slice(1).map(() => 0),
-    );
-    await showWhitespace.click();
-    await page.locator('.diff-view.show-whitespace').waitFor();
-    assert.deepStrictEqual(
-      await code.evaluateAll(barsOffGrid),
-      gridLines.slice(1).map(() => 0),
-    );
-    await page.locator('.diff-view .virtual-rows').focus();
-    await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.search-box-input');
-    await waitForFocus(field, 'the find field');
-    await field.fill('Cafe');
-    await page.locator('.diff-line .find-match').first().waitFor();
-    assert.deepStrictEqual(
-      await code.evaluateAll(barsOffGrid),
-      gridLines.slice(1).map(() => 0),
-    );
-    await field.press('Escape');
-    await waitFor(
-      () => wrapsSaved() && whitespaceShownSaved(),
-      'the choices to be saved',
-    );
+    await page.keyboard.press('c');
+    await page.locator('.columns.commits-hidden').waitFor();
+    try {
+      const code = page.locator('.diff-view .virtual-row .diff-line .code');
+      await page.locator('.diff-view [class^="syntax-"]').first().waitFor();
+      await waitFor(
+        async () => (await code.count()) === gridLines.length,
+        'every line',
+      );
+      assert.deepStrictEqual(
+        await code.evaluateAll(barsOffGrid),
+        gridLines.slice(1).map(() => 0),
+      );
+      await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+      await page.locator('.diff-view.wrap').waitFor();
+      await waitFor(
+        async () => (await lineHeights()).length === gridLines.length,
+        'every line wrapped',
+      );
+      const tall = await lineHeights();
+      assert.deepStrictEqual(
+        tall,
+        tall.map(() => tall[0]),
+      );
+      assert.deepStrictEqual(
+        await code.evaluateAll(barsOffGrid),
+        gridLines.slice(1).map(() => 0),
+      );
+      const showWhitespace = page.getByRole('button', {
+        name: 'Show Whitespace',
+        exact: true,
+      });
+      await showWhitespace.click();
+      await page
+        .locator('.diff-view.show-whitespace')
+        .waitFor({ state: 'detached' });
+      assert.deepStrictEqual(
+        await code.evaluateAll(barsOffGrid),
+        gridLines.slice(1).map(() => 0),
+      );
+      await showWhitespace.click();
+      await page.locator('.diff-view.show-whitespace').waitFor();
+      assert.deepStrictEqual(
+        await code.evaluateAll(barsOffGrid),
+        gridLines.slice(1).map(() => 0),
+      );
+      await page.locator('.diff-view .virtual-rows').focus();
+      await page.keyboard.press('ControlOrMeta+F');
+      const field = page.locator('.search-box-input');
+      await waitForFocus(field, 'the find field');
+      await field.fill('Cafe');
+      await page.locator('.diff-line .find-match').first().waitFor();
+      assert.deepStrictEqual(
+        await code.evaluateAll(barsOffGrid),
+        gridLines.slice(1).map(() => 0),
+      );
+      await field.press('Escape');
+      await waitFor(
+        () => wrapsSaved() && whitespaceShownSaved(),
+        'the choices to be saved',
+      );
+    } finally {
+      await page.keyboard.press('c');
+      await page
+        .locator('.columns.commits-hidden')
+        .waitFor({ state: 'detached' });
+    }
   });
 
   test('moves the marks of a wrapped line along once the browser breaks it elsewhere, as it does when it gets a few pixels narrower, though the app estimates as many characters to a row', async () => {

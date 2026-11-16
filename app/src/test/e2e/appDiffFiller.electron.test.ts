@@ -135,7 +135,9 @@ suite('App diff filler', () => {
       const scrolled = await page.evaluate(async (wanted) => {
         const list = document.querySelector('.diff-view .virtual-rows');
         const filler = document.querySelector('.split-side.filler');
-        const height = filler?.getBoundingClientRect().height ?? 0;
+        const height = filler
+          ? parseFloat(getComputedStyle(filler).lineHeight)
+          : 0;
         if (list) {
           list.scrollTop = wanted * height;
         }
@@ -158,7 +160,7 @@ suite('App diff filler', () => {
       const numbers = filler?.nextElementSibling
         ?.querySelector('.number')
         ?.getBoundingClientRect();
-      const line = side?.height ?? 0;
+      const line = filler ? parseFloat(getComputedStyle(filler).lineHeight) : 0;
       const top = Math.ceil(((view?.top ?? 0) + 4 * line) * devicePixelRatio);
       const bottom = Math.floor(
         ((view?.bottom ?? 0) - line) * devicePixelRatio,
@@ -260,7 +262,7 @@ suite('App diff filler', () => {
     return last;
   }
 
-  test('leaves the stripes of the empty side of a change where they were once the diff scrolls a line, at 100%, 125%, 150%, 175% and 200%, as stripes moved by a line and part of their spacing seemed to step back and forth', async () => {
+  test('leaves the stripes of the empty side of a change where they were once the diff scrolls a line, at 100%, 125%, 150%, 175% and 200%, a line a row of the diff tall though its sides grow narrow enough to wrap it, as stripes moved by a line and part of their spacing seemed to step back and forth', async () => {
     const moved: Record<string, number> = {};
     for (const ratio of ratios) {
       await zoomTo(ratio);
