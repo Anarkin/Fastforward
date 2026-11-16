@@ -134,7 +134,7 @@ suite('Commander tool keeping its tabs', () => {
     assert.deepStrictEqual(keptOf(there), { sides: { share: 0.3 } });
   });
 
-  test("refuses what a page sends of a tab of another window, of another tool's tab, of a tab closed or not named, and what is too large", async () => {
+  test("refuses what a page sends of a tab of another window, of another tool's tab, of a tab closed or not named, and forgets what it kept of a tab once what it sends of it is too large", async () => {
     const { tool, page, send, tabs, windows } = commander({ [root]: [] });
     const elsewhere: Tab = { id: '2', tool: 'commander' };
     const git: Tab = { id: '3', tool: 'git' };
@@ -167,17 +167,22 @@ suite('Commander tool keeping its tabs', () => {
       kept: JSON.stringify({ sides: { share: 0.4 } }),
     });
     await send(forged('{"type":"keepTab","tab":1,"kept":{}}'));
+    tool.hide(page);
+    await tool.show(other, elsewhere);
+    assert.strictEqual(keptOf(other), undefined);
+    await tool.show(other, tab);
+    assert.deepStrictEqual(keptOf(other), { sides: { share: 0.3 } });
+
+    tool.hide(other);
+    await tool.show(page, tab);
     await send({
       type: 'keepTab',
       tab: '1',
       kept: 'x'.repeat(2 * 1024 * 1024),
     });
     tool.hide(page);
-    await tool.show(other, elsewhere);
-    assert.strictEqual(keptOf(other), undefined);
     await tool.show(other, tab);
-
-    assert.deepStrictEqual(keptOf(other), { sides: { share: 0.3 } });
+    assert.strictEqual(keptOf(other), undefined);
   });
 
   test('tells the page a tab moved out of its window to forget what it keeps of the tab, and hands it back to that page once the tab comes back', async () => {

@@ -341,4 +341,37 @@ suite('Git store, keeping each tab with the main process', () => {
       },
     );
   });
+
+  test('keeps at most the last thousand folders and locations toggled of a worktree, so what it keeps stays small', () => {
+    const left = posting();
+    const state = () => left.store.getState();
+    state().receive(shown());
+    state().receive(filesOf(at));
+    for (let index = 0; index < 1500; index++) {
+      state().toggleFolder('closed', `folder ${index}`);
+    }
+    state().keepLocations({
+      highlight: undefined,
+      toggled: new Set(
+        Array.from({ length: 1500 }, (_, index) => `branch:${index}`),
+      ),
+    });
+    state().flushKept();
+    const sent = keptSent(left.posted).at(-1);
+    assert.ok(sent?.type === 'keepTab');
+    const back = posting().store;
+    back.getState().receive(shown());
+    back.getState().receive({
+      type: 'keptTab',
+      root: '/repo',
+      kept: JSON.stringify(sent.kept),
+    });
+    back.getState().receive(filesOf(at));
+
+    const folders = shownFoldersOf(back.getState());
+    assert.strictEqual(folders.open.size + folders.closed.size, 1000);
+    const toggled = locationsOf(back.getState())?.toggled;
+    assert.strictEqual(toggled?.size, 1000);
+    assert.ok(toggled.has('branch:1499') && !toggled.has('branch:0'));
+  });
 });

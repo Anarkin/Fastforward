@@ -23,6 +23,28 @@ const withoutSecrets = (dialogs: Dialogs): Dialogs =>
         },
       };
 
+const dialogsLength = 256 * 1024;
+
+function whole(dialogs: Dialogs): Dialogs {
+  const sized = dialogSlots
+    .flatMap((slot) => {
+      const dialog = dialogs[slot];
+      return dialog === undefined
+        ? []
+        : [{ slot, dialog, length: JSON.stringify(dialog).length }];
+    })
+    .toSorted((one, other) => one.length - other.length);
+  const kept: Dialogs = {};
+  let length = 0;
+  for (const { slot, dialog, length: size } of sized) {
+    if (length + size <= dialogsLength) {
+      length += size;
+      Object.assign(kept, { [slot]: dialog });
+    }
+  }
+  return kept;
+}
+
 export function dialogsOf(state: CommanderSource, tab: string): Dialogs {
   const dialogs: Dialogs = { ...state.parked.get(tab) };
   for (const slot of dialogSlots) {
@@ -30,7 +52,7 @@ export function dialogsOf(state: CommanderSource, tab: string): Dialogs {
       Object.assign(dialogs, { [slot]: state[slot] });
     }
   }
-  return withoutSecrets(dialogs);
+  return whole(withoutSecrets(dialogs));
 }
 
 function formOf(value: unknown): PackForm | undefined {

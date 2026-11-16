@@ -28,6 +28,14 @@ import type { KeptViewer } from './viewerKept';
 
 const maxMarksKept = 5000;
 
+const marksLength = 128 * 1024;
+
+const wholeMarks = (marked: readonly string[]): readonly string[] =>
+  marked.length > maxMarksKept ||
+  marked.reduce((length, name) => length + name.length, 0) > marksLength
+    ? []
+    : marked;
+
 export interface SidesKept {
   readonly active?: Side;
   readonly share?: number;
@@ -66,7 +74,7 @@ export interface TabKept {
 const marksOf = (pane: PaneView): KeptMarks => ({
   folder: pane.folder,
   selected: pane.selected,
-  marked: [...pane.marked].slice(0, maxMarksKept),
+  marked: wholeMarks([...pane.marked]),
 });
 
 export function sidesKeptOf(
@@ -134,10 +142,7 @@ function marksDecoded(value: unknown): KeptMarks | undefined {
     : {
         folder,
         selected: textOf(fields?.('selected')),
-        marked: (listOf(fields?.('marked'), textOf) ?? []).slice(
-          0,
-          maxMarksKept,
-        ),
+        marked: wholeMarks(listOf(fields?.('marked'), textOf) ?? []),
       };
 }
 

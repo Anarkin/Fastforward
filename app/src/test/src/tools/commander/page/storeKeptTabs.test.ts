@@ -323,4 +323,22 @@ suite('Commander store keeping its tabs', () => {
 
     assert.deepStrictEqual(other.getState().keptViewer('2').pdfFind, pdfFind);
   });
+
+  test('keeps the marks of a side whole or not at all, none once they are too many to keep', () => {
+    const posted: CommanderToHost[] = [];
+    const store = createCommanderStore((message) => posted.push(message));
+    const { receive } = store.getState();
+    const names = Array.from({ length: 6000 }, (_, index) => `${index}.txt`);
+    receive({ type: 'show', tab: '1' });
+    receive(withFiles(folder, ...names));
+    store.getState().mark('left', names, true);
+    store.getState().keepTabs();
+
+    const other = createCommanderStore(noop);
+    other
+      .getState()
+      .receive({ type: 'show', tab: '1', kept: keptOf(posted, '1') });
+    other.getState().receive(withFiles(folder, ...names));
+    assert.strictEqual(other.getState().view.panes.left?.marked.size, 0);
+  });
 });

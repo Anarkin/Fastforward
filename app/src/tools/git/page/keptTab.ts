@@ -25,6 +25,11 @@ import {
 
 const mostPlaces = 20;
 
+const mostNamed = 1000;
+
+const lastNamed = (names: Iterable<string>): string[] =>
+  [...names].slice(-mostNamed);
+
 export interface TabPlaces {
   readonly diffPlaces: KeptPlaces<DiffPlace>;
   readonly focuses: KeptPlaces<KeptFocus>;
@@ -194,8 +199,8 @@ function keptWorktreeOf(
         (folders.open.size > 0 || folders.closed.size > 0)
         ? {
             ...given('view', folders.view),
-            open: [...folders.open],
-            closed: [...folders.closed],
+            open: lastNamed(folders.open),
+            closed: lastNamed(folders.closed),
           }
         : undefined,
     ),
@@ -204,7 +209,7 @@ function keptWorktreeOf(
       folds && {
         view: folds.view,
         searched: folds.searched,
-        closed: [...folds.closed],
+        closed: lastNamed(folds.closed),
       },
     ),
     ...given('cursor', source.fileCursors.get(root)),
@@ -213,7 +218,7 @@ function keptWorktreeOf(
       'locations',
       locations && {
         ...given('highlight', locations.highlight),
-        toggled: [...locations.toggled],
+        toggled: lastNamed(locations.toggled),
       },
     ),
     ...given('locationsScroll', places.locationScrolls.of(root)),
@@ -328,8 +333,8 @@ const aFolders: Decode<ViewFolders> = (value) => {
     return undefined;
   }
   const view = aString(value.view);
-  const open = someStrings(value.open);
-  const closed = someStrings(value.closed);
+  const open = someStrings(value.open)?.slice(-mostNamed);
+  const closed = someStrings(value.closed)?.slice(-mostNamed);
   return open === undefined ||
     closed === undefined ||
     (value.view !== undefined && view === undefined)
@@ -343,7 +348,7 @@ const aFolds: Decode<FilterFolds> = (value) => {
   }
   const view = aString(value.view);
   const searched = aString(value.searched);
-  const closed = someStrings(value.closed);
+  const closed = someStrings(value.closed)?.slice(-mostNamed);
   return view === undefined || searched === undefined || closed === undefined
     ? undefined
     : { view, searched, closed: new Set(closed) };
@@ -388,7 +393,7 @@ const someLocations: Decode<KeptLocations> = (value) => {
     return undefined;
   }
   const highlight = aHighlight(value.highlight);
-  const toggled = someStrings(value.toggled);
+  const toggled = someStrings(value.toggled)?.slice(-mostNamed);
   return toggled === undefined ||
     (value.highlight !== undefined && highlight === undefined)
     ? undefined

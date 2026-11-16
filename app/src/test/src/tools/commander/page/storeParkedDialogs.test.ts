@@ -144,4 +144,28 @@ suite('Commander store keeping the dialogs of its tabs', () => {
       value: 'b.txt',
     });
   });
+
+  test('leaves out whole a dialog naming so many items that keeping it would be too large, never a part of its names, keeping the others', () => {
+    const posted: CommanderToHost[] = [];
+    const store = sidesOf('1', (message) => posted.push(message));
+    const many = Array.from(
+      { length: 20_000 },
+      (_, index) => `a file with a long name of its own, the ${index}th.txt`,
+    );
+    store.getState().askDelete('left', many, false);
+    store.getState().askGoTo('right');
+    store.getState().keepTabs();
+
+    const kept = posted.findLast(
+      (message): message is Extract<CommanderToHost, { type: 'keepTab' }> =>
+        message.type === 'keepTab',
+    )?.kept;
+    assert.ok(kept !== undefined);
+    const other = createCommanderStore(noop);
+    other.getState().receive({ type: 'show', tab: '1', kept });
+    other.getState().receive(withFiles(folder, 'a.txt', 'b.txt'));
+    other.getState().receive({ ...listing('C:/other', '1'), side: 'right' });
+    assert.strictEqual(other.getState().deleting, undefined);
+    assert.strictEqual(other.getState().goingTo?.folder, 'C:/other');
+  });
 });

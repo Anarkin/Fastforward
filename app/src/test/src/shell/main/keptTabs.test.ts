@@ -62,7 +62,7 @@ suite('Kept tabs', () => {
     assert.deepStrictEqual(kept.handedTo(one, '2'), 'b');
   });
 
-  test('refuses what is not a string, or a string longer than its bound, before making anything of it, keeping what it had, as the page sends what it keeps as JSON and a Map or a sparse array would pass any length measured as JSON', () => {
+  test('refuses what is not a string, or a string longer than its bound, before making anything of it, forgetting what it had, so the tab comes back as new rather than as it was before, as the page sends what it keeps as JSON and a Map or a sparse array would pass any length measured as JSON', () => {
     const kept = new KeptTabs(20);
     const page = readied(kept);
     kept.keep('1', '{"small":1}', page);
@@ -84,7 +84,7 @@ suite('Kept tabs', () => {
       stringify.mockRestore();
     }
 
-    assert.deepStrictEqual(kept.of('1'), { kept: '{"small":1}', from: page });
+    assert.strictEqual(kept.of('1'), undefined);
   });
 
   test('forgets a tab dropped', () => {

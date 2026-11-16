@@ -17,6 +17,7 @@ export class KeptTabs {
 
   keep(tab: string, kept: unknown, from: Page | undefined): boolean {
     if (typeof kept !== 'string' || kept.length > this.max) {
+      this.kept.delete(tab);
       return false;
     }
     this.kept.set(tab, {
