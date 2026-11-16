@@ -243,7 +243,7 @@
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Worktrees | List a repository's worktrees | `git worktree list` | Common | ✅ Yes | A second row of tabs; missing ones marked |
-| Switch worktrees | Move between worktrees | — | Common | ✅ Yes | Ctrl+PgUp and Ctrl+PgDn |
+| Switch worktrees | Move between worktrees | — | Common | ✅ Yes | Ctrl+PgUp and Ctrl+PgDn, the commit search of the tab carried into the worktree switched to, open or closed, with what was typed and the keyboard and caret in it |
 | Branches in other worktrees | Know where a branch is checked out | — | Common | ✅ Yes | Pull says to pull it there |
 | Add | Make a worktree | `git worktree add` | Common | ❌ No |  |
 | Remove | Delete a worktree, or prune missing ones | `git worktree remove`, `prune` | Common | ❌ No |  |

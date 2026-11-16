@@ -45,6 +45,7 @@ import {
   enterTarget,
 } from './locationQuery';
 import { usePopupHeight } from './popupHeight';
+import { searchFocusName } from './worktreeSearch';
 import {
   BookmarksSection,
   CommitResultsSection,
@@ -285,7 +286,7 @@ export function LocationsPopup({
           }}
           placeholder={strings.search.placeholder}
           input={input}
-          focusName="commit-search"
+          focusName={searchFocusName}
           combobox={{
             autoFocus: true,
             role: 'combobox',

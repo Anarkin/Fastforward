@@ -58,6 +58,11 @@ import {
   type TabPlaces,
 } from './keptTab';
 import { KeptSends } from './keptSends';
+import {
+  searchFocusName,
+  withSearchCarried,
+  worktreeSwitched,
+} from './worktreeSearch';
 
 function foldersIn(state: GitState, root: string): ViewFolders {
   return state.folders.get(root) ?? noFolders;
@@ -259,7 +264,26 @@ export function createGitStore(
           forget(message);
           return;
         }
-        apply((state) => received(state, message));
+        const from = get().tab.root;
+        const switched =
+          message.type === 'worktrees' &&
+          worktreeSwitched(from, message) &&
+          from !== undefined &&
+          message.worktree !== undefined
+            ? { from, to: message.worktree }
+            : undefined;
+        if (switched !== undefined && get().searching.has(switched.from)) {
+          const focus = focuses.of(worktreeScope(switched.from));
+          if (focus?.name === searchFocusName) {
+            focuses.keep(worktreeScope(switched.to), focus);
+          }
+        }
+        apply((state) => {
+          const next = received(state, message);
+          return switched === undefined
+            ? next
+            : withSearchCarried(next, switched.from, switched.to);
+        });
         readAhead(message);
       },
       flushKept: () => sends.flush(),

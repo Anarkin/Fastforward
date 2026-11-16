@@ -12,13 +12,14 @@ import {
   locationsOf,
   pickedFor,
   tabScopeOf,
+  searchOf,
   searchingOf,
   shownFoldersOf,
 } from '../../../../../tools/git/page/gitSelectors';
 import { emptyTabView } from '../../../../../tools/git/page/tabView';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { noop } from '../../../../helpers/fixtures';
-import { at, shown } from './storeFixtures';
+import { at, shown, worktree as worktreeInfo } from './storeFixtures';
 
 const showing = (worktree: string | undefined) => ({
   type: 'worktrees' as const,
@@ -52,6 +53,42 @@ suite('Git store, for each tab', () => {
     store.getState().search(false);
     store.getState().toggleCommits();
     assert.deepStrictEqual(looks(), [true, false]);
+  });
+
+  test('carries the commit search, open or closed, with what was typed and the keyboard in it, into the worktree switched to within a git tab, as the search belongs to the git tab, and into no other git tab', () => {
+    const store = createGitStore(noop);
+    const state = () => store.getState();
+    const listed = [
+      worktreeInfo('/repo', 'main'),
+      worktreeInfo('/other', 'other'),
+    ];
+    const within = (root: string) => ({
+      type: 'worktrees' as const,
+      worktree: root,
+      worktrees: listed,
+    });
+    const looks = () => [
+      searchingOf(state()),
+      searchOf(state()).query,
+      state().keptFocusOf(tabScopeOf(undefined, state().tab.root)),
+    ];
+    const typing = {
+      name: 'commit-search',
+      selection: [4, 4, 'none'],
+    } as const;
+    state().receive(within('/repo'));
+    state().search(true);
+    state().searchFor('second');
+    state().keepFocus(tabScopeOf(undefined, '/repo'), typing);
+    state().receive(within('/other'));
+    assert.deepStrictEqual(looks(), [true, 'second', typing]);
+    state().search(false);
+    state().keepFocus(tabScopeOf(undefined, '/other'), { name: 'commits' });
+    state().receive(within('/repo'));
+    assert.deepStrictEqual(looks(), [false, 'second', typing]);
+    state().search(true);
+    state().receive(showing('/elsewhere'));
+    assert.deepStrictEqual(looks().slice(0, 2), [false, '']);
   });
 
   test('keeps the column that has the keyboard in each worktree, the commits in one never shown yet', () => {

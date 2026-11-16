@@ -186,7 +186,7 @@ suite('App', () => {
     await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
   });
 
-  test('keeps the search popup open in the worktree it was left open in, its field keeping the keyboard and the caret once that worktree is shown again, while the worktree switched to shows its own search', async () => {
+  test('keeps the search popup open in the worktree switched to with it open, its field keeping the keyboard and the caret, as the search is the git tab one, closed in both once closed in one', async () => {
     const worktree = path.join(folder, 'other');
     const worktrees = page.locator('.worktrees .tab');
     const popup = page.locator('.locations-popup');
@@ -219,9 +219,13 @@ suite('App', () => {
     assert.deepStrictEqual(await typed(), ['second', 4, 4]);
     await page.keyboard.press('Control+PageDown');
     await page
-      .locator('.commit .badge.branch.checked-out', { hasText: 'other' })
+      .locator('.virtual-rows.list .commit .badge.branch.checked-out', {
+        hasText: 'other',
+      })
       .waitFor();
-    await popup.waitFor({ state: 'detached' });
+    assert.strictEqual(await popup.count(), 1);
+    await waitForFocus(field, 'the search field');
+    assert.deepStrictEqual(await typed(), ['second', 4, 4]);
     await page.keyboard.press('Control+PageUp');
     await page.locator('.worktrees .tab.active', { hasText: 'main' }).waitFor();
     await waitForFocus(field, 'the search field');
@@ -235,6 +239,10 @@ suite('App', () => {
     await page
       .locator('.worktrees .tab.active', { hasText: 'other' })
       .waitFor();
+    await page
+      .locator('.commit .badge.branch.checked-out', { hasText: 'other' })
+      .waitFor();
+    assert.strictEqual(await popup.count(), 0);
   });
 
   test('keeps the place a worktree was scrolled to when another is shown right after the scroll, rather than its top', async () => {
