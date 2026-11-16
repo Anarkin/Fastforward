@@ -81,6 +81,7 @@ export function Files() {
   const selected = useGit((state) => state.tab.path);
   const area = useGit((state) => state.tab.area);
   const view = useGit((state) => folderViewOf(state.tab));
+  const root = useGit((state) => state.tab.root);
   const filter = useGit(fileFilterOf);
   const filtersHere = useGit((state) => activeColumnOf(state) === 'files');
   const {
@@ -346,7 +347,8 @@ export function Files() {
     >
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
-        key={
+        key={root}
+        placeKey={
           treeAwaited
             ? `${view}
 tree`

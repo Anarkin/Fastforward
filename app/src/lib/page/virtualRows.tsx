@@ -63,6 +63,7 @@ export function VirtualRows({
   wholeRows = false,
   initialOffset = 0,
   revealAtStart = true,
+  placeKey,
   onScrolled,
   wheelStep,
   notchRows,
@@ -81,6 +82,7 @@ export function VirtualRows({
   wholeRows?: boolean;
   initialOffset?: number;
   revealAtStart?: boolean;
+  placeKey?: string;
   onScrolled?: (offset: number) => void;
   wheelStep?: () => number;
   notchRows?: number;
@@ -152,6 +154,16 @@ export function VirtualRows({
   }, [wholeRows]);
 
   const restored = useRef(initialOffset === 0);
+  const placed = useRef(placeKey);
+  const reveal = { key: scrollTarget(selectedKey, rows), rows: revealWith };
+  const revealed = useRef<Reveal>(revealAtStart ? undefined : reveal);
+  useLayoutEffect(() => {
+    if (placed.current !== placeKey) {
+      placed.current = placeKey;
+      restored.current = false;
+      revealed.current = revealAtStart ? undefined : reveal;
+    }
+  });
   useLayoutEffect(() => {
     const element = list.current;
     if (
@@ -195,8 +207,6 @@ export function VirtualRows({
       virtualizer.scrollToOffset(offset);
     }
   });
-  const reveal = { key: scrollTarget(selectedKey, rows), rows: revealWith };
-  const revealed = useRef<Reveal>(revealAtStart ? undefined : reveal);
   useEffect(() => {
     if (revealAgain(revealed.current, reveal)) {
       scrollToSelected();

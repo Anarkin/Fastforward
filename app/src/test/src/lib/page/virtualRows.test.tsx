@@ -101,6 +101,65 @@ suite('Virtual rows', () => {
     }
   });
 
+  test('goes to the place kept for what it lists once that changes, the top for one with none kept, staying mounted, so a list of the files of each commit is not drawn anew from nothing as the commits are stepped through', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>', {
+      pretendToBeVisual: true,
+    });
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      Element: dom.window.Element,
+      HTMLElement: dom.window.HTMLElement,
+      requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+      cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { act } = await import('react');
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const keys = Array.from({ length: 1000 }, (_, index) => `row:${index}`);
+      const list = (place: string, kept: number | undefined) => (
+        <VirtualRows
+          scrolling={defaultScrolling}
+          rows={{
+            count: keys.length,
+            keyOf: (index: number) => keys[index],
+            indexOf: (key: string) => keys.indexOf(key),
+          }}
+          renderRow={(index) => keys[index]}
+          selectedKey={undefined}
+          initialRect={{ width: 400, height: 240 }}
+          placeKey={place}
+          initialOffset={kept}
+          revealAtStart={kept === undefined}
+        />
+      );
+      await act(async () => root.render(list('one', undefined)));
+      const scroller = main.querySelector('.virtual-rows');
+      assert.ok(scroller);
+      scroller.scrollTop = 300;
+      await act(async () => root.render(list('two', 120)));
+      const placed = [scroller.scrollTop];
+      await act(async () => root.render(list('three', undefined)));
+      placed.push(scroller.scrollTop);
+      assert.ok(
+        main.querySelector('.virtual-rows') === scroller,
+        'the list kept',
+      );
+      assert.deepStrictEqual(placed, [120, 0]);
+      await act(async () => root.unmount());
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
   test('sizes the rows not drawn yet at the fixed height of a row, so the list is as long as it will be', () => {
     const html = renderToStaticMarkup(
       <VirtualRows
