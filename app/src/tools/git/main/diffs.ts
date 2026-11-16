@@ -10,7 +10,7 @@ import {
   pathspecs,
   showPatchArgs,
   type PatchScope,
-} from './diffArgs';
+} from '../../../lib/main/diffArgs';
 import { leftOutOf, readPatch, type ReadPatch } from './patchBudget';
 import {
   newSideUnchanged,
@@ -29,15 +29,18 @@ import {
   comparedOf,
   shownCommit,
   workingTreeSide,
-} from '../shared/comparisons';
-import { isFullHash } from '../shared/hashes';
+} from '../../../lib/shared/comparisons';
+import { isFullHash } from '../../../lib/shared/hashes';
 import {
   workingTreeHash,
   type FileChange,
   type LeftOut,
   type ChangeArea,
 } from '../shared/protocol';
-import { includedChanges, leftOutChanges } from '../shared/patchBudget';
+import {
+  includedChanges,
+  leftOutChanges,
+} from '../../../lib/shared/patchBudget';
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import type { GitStorage } from './storage';
 import { changesOf, pickable, stillThere } from './tabState';

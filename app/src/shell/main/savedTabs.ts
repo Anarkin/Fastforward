@@ -33,6 +33,9 @@ function isSavedTab(value: unknown): value is SavedTab {
 }
 
 export function savedTabOf(value: unknown): SavedTab | undefined {
+  if (isObject(value) && value.tool === 'git' && value.compare !== undefined) {
+    return savedTabOf({ ...value, tool: 'diff' });
+  }
   if (isObject(value) && value.tool === 'commander') {
     const { view, edit, ...rest } = value;
     if (view === true && edit === undefined) {

@@ -149,17 +149,39 @@ suite('Storage', () => {
       old: path.resolve('old.txt'),
       new: path.resolve('new.txt'),
     };
-    const tab = { id: '1', tool: 'git', compare } as const;
+    const tab = { id: '1', tool: 'diff', compare } as const;
     await store.update(tabsKey, [
       tab,
-      { id: '2', tool: 'git', compare: { old: 'a' } },
-      { id: '3', tool: 'git', compare: 'a' },
+      { id: '2', tool: 'diff', compare: { old: 'a' } },
+      { id: '3', tool: 'diff', compare: 'a' },
     ]);
     assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
 
     const written = new FakeStore();
     await storageOf(written).setLayout([{ id: '1', tabs: [tab], active: '1' }]);
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
+  });
+
+  test('reads a tab of git that compared two files, saved before the diff was a tool of its own, as a tab of the diff with the same id, leaving the tabs of repositories to git', async () => {
+    const store = new FakeStore();
+    const compare = {
+      old: path.resolve('old.txt'),
+      new: path.resolve('new.txt'),
+    };
+    const repository = {
+      id: '2',
+      tool: 'git',
+      root: path.resolve('r'),
+    } as const;
+    await store.update(tabsKey, [
+      { id: '1', tool: 'git', compare },
+      repository,
+      { id: '3', tool: 'git', compare: 'a' },
+    ]);
+    assert.deepStrictEqual(storageOf(store).savedTabs, [
+      { id: '1', tool: 'diff', compare },
+      repository,
+    ]);
   });
 
   test("keeps each tool's state apart under tools, by the tool's id, forgetting a value set to nothing", async () => {

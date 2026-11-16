@@ -3,14 +3,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { showFiles, commitPatch } from '../../../../../tools/git/main/diff';
-import type { PatchScope } from '../../../../../tools/git/main/diffArgs';
+import type { PatchScope } from '../../../../../lib/main/diffArgs';
 import { keptFirstParent } from '../../../../../tools/git/main/objects';
 import {
   keepGitRunningWhile,
   keptGits,
   runGit,
 } from '../../../../../tools/git/main/run';
-import { patchByteBudget } from '../../../../../tools/git/shared/patchBudget';
+import { patchByteBudget } from '../../../../../lib/shared/patchBudget';
 import {
   gitsStarted,
   tempRepository,

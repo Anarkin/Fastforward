@@ -172,6 +172,7 @@ export const strings = {
     git: 'Git',
     viewer: 'Viewer',
     editor: 'Editor',
+    diff: 'Diff',
   },
   openWith: {
     title: 'Open With',

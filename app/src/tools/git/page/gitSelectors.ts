@@ -10,19 +10,16 @@ import type { MovedCursor } from './filesCursor';
 import { treeOf, type TabView } from './tabView';
 import { listsNothing } from './filesSides';
 import type { GitData, GitSource, GitState, KeptLocations } from './gitState';
-import type { KeptFind } from './diffFind';
+import type { KeptFind } from '../../../lib/page/diffFind';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import type { ColumnName } from './activeColumn';
 
-export function languageKeyOf(
-  comparing: string | undefined,
-  { root, hash, path }: TabView,
-): string | undefined {
-  return comparing !== undefined
-    ? compareLanguageKey(comparing)
-    : path === undefined
-      ? undefined
-      : fileLanguageKey(root, hash, path);
+export function languageKeyOf({
+  root,
+  hash,
+  path,
+}: TabView): string | undefined {
+  return path === undefined ? undefined : fileLanguageKey(root, hash, path);
 }
 
 export function openingOf({ tab }: GitSource): boolean {
@@ -107,13 +104,8 @@ export function fileFilterOf({
   return tab.root === undefined ? undefined : fileFilters.get(tab.root);
 }
 
-export function tabScopeOf(
-  comparing: string | undefined,
-  root: string | undefined,
-): string {
-  return comparing !== undefined
-    ? compareLanguageKey(comparing)
-    : JSON.stringify(['worktree', root ?? '']);
+export function tabScopeOf(root: string | undefined): string {
+  return JSON.stringify(['worktree', root ?? '']);
 }
 
 const closedFind: KeptFind = {
@@ -126,10 +118,6 @@ export const diffFindOf =
   ({ diffFinds }: GitSource): KeptFind =>
     diffFinds.get(scope) ?? closedFind;
 
-export function compareLanguageKey(comparing: string): string {
-  return JSON.stringify(['compare', comparing]);
-}
-
 function fileLanguageKey(
   root: string | undefined,
   hash: string | undefined,
@@ -140,7 +128,7 @@ function fileLanguageKey(
 
 export function languageScopeOf(key: string): string {
   const [scope]: unknown[] = JSON.parse(key);
-  return scope === 'compare' || typeof scope !== 'string' ? key : scope;
+  return typeof scope !== 'string' ? key : scope;
 }
 
 export const pickedFor =

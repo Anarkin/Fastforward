@@ -1,4 +1,4 @@
-import { shortHash } from '../shared/hashes';
+import { shortHash } from '../../../lib/shared/hashes';
 import type { BookmarkRef, Tracking } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import { commitBookmarkTarget, refMenuTarget, useContextMenu } from './menus';

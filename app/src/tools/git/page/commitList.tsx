@@ -10,8 +10,9 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { sidesOf } from '../shared/comparisons';
-import { Column } from './column';
+import { sidesOf } from '../../../lib/shared/comparisons';
+import { Column } from '../../../lib/page/column';
+import { ColumnResizer } from './columnResizer';
 import { useOpenMenu } from './menus';
 import { graphWidth, rowLanes, withoutWorkingTreeLink } from './graphLanes';
 import { GraphCell } from './graph';
@@ -26,7 +27,7 @@ import { listError } from './columnsShown';
 import { MenuButton } from '../../../lib/page/menu';
 import { MessagePeek } from './messagePeek';
 import { MessageBody } from './messagePanel';
-import { useSkeleton } from './skeletonDelay';
+import { useSkeleton } from '../../../lib/page/skeletonDelay';
 import { menuFromKeyboard } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
@@ -68,8 +69,8 @@ import {
 import { commitOption, commitListbox } from './commitListItems';
 import { CommitRow, ListedCommitRow, WorkingTreeRow } from './commitRow';
 import { SoloButton } from './soloButton';
-import { ColumnStatus } from './columnStatusLine';
-import { commitsCounted } from './columnStatus';
+import { ColumnStatus } from '../../../lib/page/columnStatusLine';
+import { commitsCounted } from '../../../lib/page/columnStatus';
 
 const loadDelay = 80;
 
@@ -268,10 +269,7 @@ export function Commits({
     }
   });
   const takeKeyboard = useEffectEvent(() => {
-    if (
-      !searching &&
-      keptFocusOf(tabScopeOf(undefined, worktree)) === undefined
-    ) {
+    if (!searching && keptFocusOf(tabScopeOf(worktree)) === undefined) {
       list.current?.focus({ preventScroll: true });
     }
   });
@@ -408,7 +406,7 @@ export function Commits({
           onClick={() => openSearch(true)}
         />
       }
-      index={0}
+      resizer={<ColumnResizer index={0} />}
       start={navigation}
       actions={
         <>

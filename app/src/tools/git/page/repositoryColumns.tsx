@@ -20,7 +20,7 @@ import {
   searchingOf,
 } from './gitSelectors';
 import { useGit, useGitActions } from './store';
-import { usePrefetchedColors } from './syntax';
+import { usePrefetchedColors } from '../../../lib/page/diffSyntax';
 import { changesShown } from './tabView';
 import { templateOf } from './columns';
 import { columnsClass } from './columnsShown';
@@ -35,6 +35,7 @@ import {
   type ColumnName,
 } from './activeColumn';
 import { NavButtons } from './navBar';
+import { gitImageRoute } from '../shared/images';
 import { AddressBar } from './addressBar';
 import { focusBack, type KeptFocus } from '../../../lib/page/keptFocus';
 import { useTabFocus } from './tabFocus';
@@ -60,7 +61,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
   const fileContent = useGit((state) => state.tab.fileContent);
   const error = useGit((state) => state.tab.error);
   const filter = useGit(fileFilterOf);
-  const languageKey = useGit((state) => languageKeyOf(undefined, state.tab));
+  const languageKey = useGit((state) => languageKeyOf(state.tab));
   const entire = useGit((state) => state.showEntireFile);
   const findsHere = useGit((state) => activeColumnOf(state) === 'diff');
   const prefetchedPatch = useGit((state) => state.tab.prefetched?.patch);
@@ -81,6 +82,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
       root === undefined || hash === undefined
         ? undefined
         : {
+            route: gitImageRoute,
             root,
             hash,
             ...(area === undefined ? {} : { area }),
@@ -90,7 +92,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
   );
   return (
     <GitDiff
-      scope={tabScopeOf(undefined, root)}
+      scope={tabScopeOf(root)}
       selection={diffSelection(root, hash, path, area)}
       path={path}
       loading={loading}
@@ -113,9 +115,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
       languageKey={languageKey}
       changeMarks={path !== undefined && entire}
       entire={entire}
-      options={
-        <DiffOptions language={<DiffLanguage comparing={undefined} />} />
-      }
+      options={<DiffOptions language={<DiffLanguage />} />}
     />
   );
 });
@@ -174,7 +174,7 @@ export function RepositoryColumns() {
   };
   const pendingFocus = useTabFocus({
     container: columnsContainer,
-    scope: root === undefined ? undefined : tabScopeOf(undefined, root),
+    scope: root === undefined ? undefined : tabScopeOf(root),
     focusPart,
     fallback: () => {
       const [first] = shown;

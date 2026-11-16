@@ -1,4 +1,8 @@
-import { comparedOf, comparisonLabel, sideLabel } from '../shared/comparisons';
+import {
+  comparedOf,
+  comparisonLabel,
+  sideLabel,
+} from '../../../lib/shared/comparisons';
 
 export function historyButtonClick(
   held: boolean,

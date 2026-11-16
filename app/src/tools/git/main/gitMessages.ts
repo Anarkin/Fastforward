@@ -13,7 +13,6 @@ import type { Inits } from './inits';
 import type { Clones } from './clones';
 import type { TabLoads } from './tabLoads';
 import type { ViewSettings } from './viewSettings';
-import type { CompareTabs } from './compareTabs';
 import type { RepositoryChoices } from './repositoryChoices';
 import type { CommitSearch } from './commitSearch';
 import type { HistoryPages } from './historyPages';
@@ -35,7 +34,6 @@ export class GitMessages {
     private readonly clones: Clones,
     private readonly tabLoads: TabLoads,
     private readonly viewSettings: ViewSettings,
-    private readonly compareTabs: CompareTabs,
     private readonly choices: RepositoryChoices,
     private readonly commitSearch: CommitSearch,
     private readonly historyPages: HistoryPages,
@@ -136,9 +134,6 @@ export class GitMessages {
       case 'setDiffLayout':
       case 'setIgnoreWhitespace':
         await this.viewSettings.receive(session, message);
-        return;
-      case 'loadCompareTexts':
-        await this.compareTabs.sendCompareTexts(session, message.requests);
         return;
       case 'setSolo':
       case 'setBookmarks':

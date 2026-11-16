@@ -8,7 +8,7 @@ import {
   type Shown as ShownHistory,
 } from './merges';
 import { noNavigation, type Navigation } from './navigation';
-import { shownSide, sidesOf } from '../shared/comparisons';
+import { shownSide, sidesOf } from '../../../lib/shared/comparisons';
 import {
   workingTreeHash,
   workingTreeIndex,

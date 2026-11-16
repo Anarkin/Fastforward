@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../../tools/git/page/activeColumn';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
-import { Column } from '../../../../tools/git/page/column';
+import { Column } from '../../../../lib/page/column';
 import { StatusLine } from '../../../../lib/page/statusLine';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { cascaded } from '../../../helpers/cascade';

@@ -1,12 +1,11 @@
+import { gitImageRoute } from '../shared/images';
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';
 import type { ShellAccess } from '../../../shell/main/toolContract';
-import { imageSourceOf, imageType } from '../shared/images';
-import { comparedImage } from './compare';
-import type { CompareTabs } from './compareTabs';
-import { gitErrorText } from './errorText';
+import { imageSourceOf, imageType } from '../../../lib/shared/imageSources';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { readImage } from './files';
-import { ImageReads } from './imageReads';
+import { ImageReads } from '../../../lib/main/imageReads';
 import type { TabWork } from './tabContext';
 
 export class DiffImages {
@@ -17,7 +16,6 @@ export class DiffImages {
     private readonly gitPath: () => string,
     private readonly shell: () => ShellAccess,
     private readonly tabStates: ReadonlyMap<string, TabWork>,
-    private readonly compareTabs: CompareTabs,
   ) {}
 
   image(url: URL): Promise<Response> {
@@ -25,23 +23,15 @@ export class DiffImages {
   }
 
   private async readImage(url: URL): Promise<Response> {
-    const source = imageSourceOf(url);
+    const source = imageSourceOf(url, gitImageRoute);
     const type = source && imageType(source.path);
     const tab = source && this.tabStates.get(source.root);
-    const compared =
-      source && this.compareTabs.comparisons.get(source.root)?.compared;
-    if (
-      !source ||
-      !type ||
-      (tab?.isRepository !== true && compared === undefined)
-    ) {
+    if (!source || !type || tab?.isRepository !== true) {
       return new Response(null, { status: 404 });
     }
     try {
       const read = await this.imageReads.read(source, (limit) =>
-        compared === undefined
-          ? readImage(this.gitPath(), source.root, source, limit)
-          : comparedImage(compared, source.path, source.id, limit),
+        readImage(this.gitPath(), source.root, source, limit),
       );
       if (read.kind !== 'image') {
         return new Response(null, {

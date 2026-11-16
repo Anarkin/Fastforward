@@ -9,6 +9,7 @@ const stylesheets = [
   'tools/git/page',
   'tools/viewer/page',
   'tools/editor/page',
+  'tools/diff/page',
 ].map((folder) => `${folder}/style.css`);
 
 export function stylesheet(): string {

@@ -1,4 +1,4 @@
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { extendedHistory } from './history';
 import type { Commits } from './commits';
 import type { Refs } from './refReads';
@@ -10,7 +10,7 @@ import {
 } from './workingTree';
 import type { Log } from '../../../shell/main/log';
 import { fingerprint } from './refs';
-import { shownCommit, workingTreeSide } from '../shared/comparisons';
+import { shownCommit, workingTreeSide } from '../../../lib/shared/comparisons';
 import { workingTreeHash } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import type { GitStorage } from './storage';

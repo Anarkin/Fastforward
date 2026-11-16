@@ -258,8 +258,8 @@ suite('Commander tool', () => {
     );
 
     assert.deepStrictEqual(compared, [
-      { tool: 'git', old: at('notes.txt'), new: at('other.txt') },
-      { tool: 'git', old: at('other.txt'), new: at('notes.txt') },
+      { old: at('notes.txt'), new: at('other.txt') },
+      { old: at('other.txt'), new: at('notes.txt') },
     ]);
   });
   test('says how to pick the files to compare when the page has none to compare, opening nothing, and says nothing for a list the page forged', async () => {

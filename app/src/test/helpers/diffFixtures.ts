@@ -1,5 +1,5 @@
-import type { DiffLook } from '../../tools/git/page/diffLook';
-import type { DiffMeasuring } from '../../tools/git/page/diffMeasures';
+import type { DiffLook } from '../../lib/page/diffLook';
+import type { DiffMeasuring } from '../../lib/page/diffMeasures';
 import { defaultScrolling } from '../../lib/page/scrollSettings';
 import { noop } from './fixtures';
 

@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { listMoveOf } from '../../../../../lib/page/listMoves';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import {
   workingTreeHash,
   workingTreeIndex,

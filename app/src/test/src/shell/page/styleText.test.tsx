@@ -6,8 +6,8 @@ import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { compact, looks, noop } from './stylesheetFixtures';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
 import { createElement } from 'react';
-import { Code } from '../../../../tools/git/page/codeMarks';
-import { BreakMarks } from '../../../../tools/git/page/wrapMarks';
+import { Code } from '../../../../lib/page/codeMarks';
+import { BreakMarks } from '../../../../lib/page/wrapMarks';
 import {
   rendered,
   withClass,

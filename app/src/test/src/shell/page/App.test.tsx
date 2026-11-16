@@ -367,8 +367,21 @@ suite('Window', () => {
       await act(async () => {
         send({
           type: 'tabs',
-          tabs: [{ id: 'c', tool: 'git', name: 'a.txt', compare: true }],
+          tabs: [{ id: 'c', tool: 'diff', name: 'a.txt' }],
           active: 'c',
+        });
+        send({
+          type: 'tool',
+          tool: 'diff',
+          message: {
+            type: 'show',
+            tab: 'c',
+            settings: {
+              showEntireFile: false,
+              ignoreWhitespace: true,
+              diffLayout: 'sideBySide',
+            },
+          },
         });
         send({ type: 'notice', level: 'error', message: 'kept' });
       });

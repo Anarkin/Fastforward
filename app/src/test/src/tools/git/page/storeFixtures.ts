@@ -48,16 +48,6 @@ export const layout = (
 export const labelled = (items: readonly ContextMenuItem[] | undefined) =>
   (items ?? []).map((item) => ('separator' in item ? '-' : item.label));
 
-export const compare = (tab: string, version = 1) => ({
-  tab,
-  old: '/a.txt',
-  new: '/b.txt',
-  name: 'b.txt',
-  patch: '',
-  version,
-  entire: true,
-});
-
 export function posting() {
   const posted: GitToHost[] = [];
   const shell: ToHost[] = [];

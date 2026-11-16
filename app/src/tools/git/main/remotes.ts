@@ -7,7 +7,7 @@ import type { Fetched, Fetches } from './fetches';
 import { foundUpstream } from './operations';
 import { canPull, fastForwardToUpstream } from './pull';
 import { pushToUpstream, type Pushed } from './push';
-import { isFullHash } from '../shared/hashes';
+import { isFullHash } from '../../../lib/shared/hashes';
 import { hasRef } from '../shared/refNames';
 import type { CheckoutTarget, TabMessage } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';

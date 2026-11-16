@@ -1,5 +1,9 @@
 import { type VirtualItem } from '@tanstack/react-virtual';
-import { comparedOf, shownSide, sidesOf } from '../shared/comparisons';
+import {
+  comparedOf,
+  shownSide,
+  sidesOf,
+} from '../../../lib/shared/comparisons';
 import { type RefInfo } from '../shared/protocol';
 import { clicked, type Click } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';

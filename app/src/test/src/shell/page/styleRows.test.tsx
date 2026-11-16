@@ -1,12 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { listedFilesRows } from '../../../../tools/git/page/filesRows';
-import { Column } from '../../../../tools/git/page/column';
+import { Column } from '../../../../lib/page/column';
 import { VirtualRows } from '../../../../lib/page/virtualRows';
 import { cascaded } from '../../../helpers/cascade';
 import { defaultSettings } from '../../../helpers/fixtures';
 import { noop, looks, hovered } from './stylesheetFixtures';
-import { SkeletonRows } from '../../../../tools/git/page/skeleton';
+import { SkeletonRows } from '../../../../lib/page/skeleton';
 import { defaultScrolling } from '../../../../lib/page/scrollSettings';
 import { fileChange } from '../../../helpers/gitValues';
 import { renderedBy } from '../../../helpers/componentFixtures';

@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { keptGits } from './run';
 import { listWorktrees, type Worktree } from './repositoryLocation';
 import type { Log } from '../../../shell/main/log';
-import { shortHash } from '../shared/hashes';
+import { shortHash } from '../../../lib/shared/hashes';
 import type { WorktreeInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';

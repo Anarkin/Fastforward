@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { FolderRow } from '../../../../../tools/git/page/tree';
+import { FolderRow } from '../../../../../lib/page/tree';
 import { buildTree } from '../../../../../tools/git/page/refIndex';
 import { renderToStaticMarkup, branchNamed } from './locationsFixtures';
 import {

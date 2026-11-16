@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
-import { isFullHash } from '../shared/hashes';
+import { isFullHash } from '../../../lib/shared/hashes';
 import {
   forbiddenCharacters,
   forbiddenEnd,

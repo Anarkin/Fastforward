@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { isFolder, sameFolder } from './folders';
 import { runGit } from './run';
 

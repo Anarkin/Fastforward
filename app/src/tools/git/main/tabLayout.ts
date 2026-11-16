@@ -6,7 +6,7 @@ import {
   type IsExpanded,
 } from './merges';
 import { decorations } from './refs';
-import { shownSide } from '../shared/comparisons';
+import { shownSide } from '../../../lib/shared/comparisons';
 import {
   pageStart,
   workingTreeHash,

@@ -30,7 +30,6 @@ import type { RemoteTags } from './remoteTags';
 import type { RemoteWork } from './remoteWork';
 import type { Remotes } from './remotes';
 import type { Watching } from './watching';
-import type { CompareTabs } from './compareTabs';
 import { wellFormed } from './messageChecks';
 import type { Worktrees } from './worktrees';
 import type { RepositoryOpening } from './repositoryOpening';
@@ -94,7 +93,6 @@ export class GitTool implements Tool<'git'> {
   private readonly fetches: Fetches;
   private readonly remotes: Remotes;
   private readonly watching: Watching;
-  private readonly compareTabs: CompareTabs;
   private readonly worktrees: Worktrees;
   private readonly repositoryOpening: RepositoryOpening;
   private readonly tabLoads: TabLoads;
@@ -144,7 +142,6 @@ export class GitTool implements Tool<'git'> {
     this.fetches = parts.fetches;
     this.remotes = parts.remotes;
     this.watching = parts.watching;
-    this.compareTabs = parts.compareTabs;
     this.worktrees = parts.worktrees;
     this.repositoryOpening = parts.repositoryOpening;
     this.tabLoads = parts.tabLoads;
@@ -183,14 +180,6 @@ export class GitTool implements Tool<'git'> {
 
   async show(page: Page, tab: Tab): Promise<void> {
     const session = this.sessions.of(page);
-    if (tab.compare !== undefined) {
-      if (this.locator.path === undefined) {
-        await this.missingGit(page);
-      }
-      await this.compareTabs.showCompare(session, tab.id, tab.compare);
-      return;
-    }
-    this.compareTabs.stopComparing(session);
     const { root } = tab;
     if (root === undefined) {
       return;
@@ -217,7 +206,6 @@ export class GitTool implements Tool<'git'> {
 
   hide(page: Page): void {
     const session = this.sessions.of(page);
-    this.compareTabs.stopComparing(session);
     this.watching.stopWatching(session);
     this.posts.postTabs(session);
   }

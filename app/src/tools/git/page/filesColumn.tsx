@@ -20,7 +20,8 @@ import {
   treeRowOf,
 } from './filesRows';
 import { ChangesTreeItem } from './changesTree';
-import { Column } from './column';
+import { Column } from '../../../lib/page/column';
+import { ColumnResizer } from './columnResizer';
 import { narrows, searchFilter } from '../../../lib/shared/filter';
 import { noSearch } from '../../../lib/shared/searchOptions';
 import { SearchButton } from '../../../lib/page/search';
@@ -30,13 +31,13 @@ import {
   CollapseAllIcon,
   ExpandAllIcon,
 } from '../../../lib/page/icons';
-import { useSkeleton } from './skeletonDelay';
-import { SkeletonRows } from './skeleton';
+import { useSkeleton } from '../../../lib/page/skeletonDelay';
+import { SkeletonRows } from '../../../lib/page/skeleton';
 import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import { listMoveOf, type VisibleRows } from '../../../lib/page/listMoves';
 import { keyPressed, useBinding } from '../../../lib/page/shortcuts';
-import { fileRowKey } from './treeLayout';
+import { fileRowKey } from '../../../lib/page/treeLayout';
 import { VirtualRows } from '../../../lib/page/virtualRows';
 import { useShell } from '../../../shell/page/store';
 import {
@@ -60,8 +61,8 @@ import { filesTitle, noChangesText, headerTitle } from './filesTitles';
 import { filesCursor, filesReveal } from './filesCursor';
 import { FileFilterField } from './filesFilterField';
 import { noneClosed, useFilesFilter } from './filesFilter';
-import { ColumnStatus } from './columnStatusLine';
-import { filesCounted } from './columnStatus';
+import { ColumnStatus } from '../../../lib/page/columnStatusLine';
+import { filesCounted } from '../../../lib/page/columnStatus';
 
 const settlingPaths = 20_000;
 
@@ -314,7 +315,7 @@ export function Files() {
     <Column
       focusName="files"
       title={title}
-      index={1}
+      resizer={<ColumnResizer index={1} />}
       start={start}
       status={
         <ColumnStatus loading={loading} font="proportional">

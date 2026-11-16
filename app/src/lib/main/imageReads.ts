@@ -1,0 +1,29 @@
+import { maxImageSize, type ImageSource } from '../shared/imageSources';
+import { Slots } from './slots';
+
+export type ImageRead =
+  | { readonly kind: 'image'; readonly bytes: Buffer }
+  | { readonly kind: 'missing' | 'tooLarge' };
+
+export const smallImageSize = 8 * 1024 * 1024;
+export const smallImagesReadAtOnce = 8;
+const largeImagesReadAtOnce = 2;
+
+const readOf = ({ root, path, id, disk }: ImageSource) =>
+  JSON.stringify([root, path, disk, disk ? '' : id]);
+
+export class ImageReads {
+  private readonly small = new Slots<ImageRead>(smallImagesReadAtOnce);
+  private readonly large = new Slots<ImageRead>(largeImagesReadAtOnce);
+
+  async read(
+    source: ImageSource,
+    read: (limit: number) => Promise<ImageRead>,
+  ): Promise<ImageRead> {
+    const key = readOf(source);
+    const image = await this.small.run(key, () => read(smallImageSize));
+    return image.kind === 'tooLarge'
+      ? this.large.run(key, () => read(maxImageSize))
+      : image;
+  }
+}

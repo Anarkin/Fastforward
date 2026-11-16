@@ -7,6 +7,7 @@ import {
   DiffLanguage,
   DiffOptions,
 } from '../../../../../tools/git/page/diffOptions';
+import { DiffToggles } from '../../../../../lib/page/diffToggles';
 import { createGitStore } from '../../../../../tools/git/page/store';
 import {
   languageKeyOf,
@@ -33,7 +34,10 @@ type OptionElement = React.ReactElement<{
 function diffOptionButtons(shown: ShownOptions = {}, posted: unknown[] = []) {
   let element: React.ReactNode;
   function Probe() {
-    element = DiffOptions({ language });
+    const options = DiffOptions({ language });
+    element = isValidElement<React.ComponentProps<typeof DiffToggles>>(options)
+      ? DiffToggles(options.props)
+      : options;
     return null;
   }
   renderToStaticMarkup(
@@ -93,12 +97,10 @@ suite('Diff options', () => {
       const show = (path: string) =>
         act(async () => {
           git.setState({ tab: { ...tab, path } });
-          root.render(
-            inStores({ git, shell }, <DiffLanguage comparing={undefined} />),
-          );
+          root.render(inStores({ git, shell }, <DiffLanguage />));
         });
       await show('a.txt');
-      const key = languageKeyOf(undefined, tab);
+      const key = languageKeyOf(tab);
       git.getState().pickLanguage(key, 'python');
       await show('a.txt');
       assert.strictEqual(pickedFor(key)(git.getState()), 'python');

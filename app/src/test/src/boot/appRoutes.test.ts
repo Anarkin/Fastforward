@@ -5,7 +5,7 @@ import { appRoutes } from '../../../boot/appRoutes';
 import { viewedFileRoute } from '../../../tools/viewer/shared/files';
 import { iconRoute } from '../../../tools/commander/shared/icons';
 import { thumbnailRoute } from '../../../tools/commander/shared/thumbnails';
-import { imageRoute } from '../../../tools/git/shared/images';
+import { gitImageRoute } from '../../../tools/git/shared/images';
 import { defaultSettings } from '../../helpers/fixtures';
 
 const drawing = '<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>';
@@ -37,6 +37,7 @@ const respond = appRoutes(
       file: (_url, range) => servedDrawing(range),
     },
     editor: { icon: () => servedDrawing() },
+    diff: { image: () => servedDrawing() },
   }),
   () =>
     Promise.resolve(
@@ -54,7 +55,7 @@ const headersOf = (response: Response) => ({
 suite('The routes of the app', () => {
   test('serves the files of the tools by a policy that loads and runs nothing and sniffs no other type, as an SVG of a repository or a folder opened as a page would run its scripts as the app', async () => {
     for (const route of [
-      imageRoute,
+      gitImageRoute,
       iconRoute,
       thumbnailRoute,
       viewedFileRoute,

@@ -15,6 +15,8 @@ import { isRepository } from '../../tools/commander/main/repositories';
 import { CommanderTool } from '../../tools/commander/main/tool';
 import { ViewerTool } from '../../tools/viewer/main/tool';
 import { EditorTool } from '../../tools/editor/main/tool';
+import { diffToolOf } from '../../boot/diffHost';
+import type { DiffTool } from '../../tools/diff/main/tool';
 import { TerminalTool } from '../../tools/terminal/main/tool';
 import type { HostListener } from '../../tools/terminal/main/hostLink';
 import {
@@ -124,6 +126,13 @@ export async function saveTabs(
 }
 
 const shells = new WeakMap<GitTool, Shell>();
+const diffTools = new WeakMap<GitTool, DiffTool>();
+
+export function diffOf(view: GitTool): DiffTool {
+  const diff = diffTools.get(view);
+  assert.ok(diff, 'the diff tool of the view');
+  return diff;
+}
 const terminalHosts = new WeakMap<GitTool, HostListener[]>();
 
 function locatorOf(git: string | GitLocator): GitLocator {
@@ -144,9 +153,10 @@ export function newView(
   timer?: Timer,
   delays = quickerRefreshDelays,
 ): GitTool {
+  const locator = locatorOf(git);
   const view = new GitTool(
     log,
-    locatorOf(git),
+    locator,
     new GitStorage(settings, gitState(store)),
     host,
     timer,
@@ -154,6 +164,8 @@ export function newView(
   );
   const hosts: HostListener[] = [];
   terminalHosts.set(view, hosts);
+  const diff = diffToolOf({ log, userSettings: settings, git: locator });
+  diffTools.set(view, diff);
   shells.set(
     view,
     new Shell(log, new Storage(settings, store), host, {
@@ -199,6 +211,7 @@ export function newView(
         root: commanderRoot(),
       }),
       git: view,
+      diff,
       viewer: new ViewerTool({
         codePage: () => Promise.resolve('windows-1252'),
         watch: () => () => {},

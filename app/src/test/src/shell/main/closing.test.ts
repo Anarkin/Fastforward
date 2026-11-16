@@ -27,6 +27,7 @@ suite('Quitting and closing windows', () => {
         git: saying(),
         viewer: saying(),
         editor: saying(),
+        diff: saying(),
       }),
       undefined,
     );
@@ -37,6 +38,7 @@ suite('Quitting and closing windows', () => {
         git: saying('A clone runs.'),
         viewer: saying(),
         editor: saying(),
+        diff: saying(),
       }),
       'A copy runs. A clone runs.',
     );

@@ -29,18 +29,3 @@
   content: '';
   width: calc(4px + 3 * var(--button-size) + 2 * var(--button-gap));
 }
-
-.nav-button-space {
-  flex: none;
-  width: var(--button-size);
-}
-
-.nav-buttons {
-  display: flex;
-  align-items: center;
-  gap: var(--button-gap);
-}
-
-.column-actions .menu-button {
-  padding: 0;
-}

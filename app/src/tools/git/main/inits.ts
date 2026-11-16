@@ -1,7 +1,7 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';
 import { sameRoot } from '../../../lib/main/paths';
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { isFolder } from './folders';
 import { initRepository } from './repository';
 import { locateRepository, type Location } from './repositoryLocation';

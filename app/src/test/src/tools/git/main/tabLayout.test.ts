@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import {
   commitPageSize,
   workingTreeHash,

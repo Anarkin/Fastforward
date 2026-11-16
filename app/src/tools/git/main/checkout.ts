@@ -2,7 +2,7 @@ import { aheadBehind, fastForward, onNoRef } from './branches';
 import { readHead, readRefs } from './refReads';
 import { checkoutNewBranch, switchToBranch, switchToCommit } from './switches';
 import type { CheckoutTarget } from '../shared/protocol';
-import { shortHash } from '../shared/hashes';
+import { shortHash } from '../../../lib/shared/hashes';
 import { hasRef, localBranchOf } from '../shared/refNames';
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';

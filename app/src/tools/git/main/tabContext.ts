@@ -8,7 +8,6 @@ import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import type { Page } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
-import type { Compared } from '../../../shell/main/savedTabs';
 import type { TabState } from './tabState';
 import type { Changed } from './watch';
 import type { Watcher } from './watchFolders';
@@ -60,15 +59,6 @@ export interface Session {
   readonly disposed: boolean;
   watcher: Watcher | undefined;
   watching: AbortController | undefined;
-  comparing?: Comparing;
-}
-
-export interface Comparing {
-  readonly tab: string;
-  readonly compared: Compared;
-  running: AbortController | undefined;
-  readonly stop: () => void;
-  version: number;
 }
 
 export interface Fetching {

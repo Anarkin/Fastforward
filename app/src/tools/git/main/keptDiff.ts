@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import type { FileChange } from '../shared/protocol';
-import { isFullHash } from '../shared/hashes';
+import { isFullHash } from '../../../lib/shared/hashes';
 import { keptFirstParent } from './objects';
 import { strings } from '../../../lib/shared/strings';
 import { StoppedReading, type GitOutput } from './gitOutput';
@@ -10,7 +10,7 @@ import {
   diffOptionArgs,
   listArgs,
   type PatchScope,
-} from './diffArgs';
+} from '../../../lib/main/diffArgs';
 import { PatchBudget, type ReadPatch } from './patchBudget';
 import { parseChanges } from './rawChanges';
 

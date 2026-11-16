@@ -3,14 +3,14 @@ import { DiffOptions } from '../../tools/git/page/diffOptions';
 import { SearchBar } from '../../lib/page/searchBar';
 import { plainSearch } from '../../lib/shared/searchOptions';
 import type { FindRange } from '../../lib/shared/textMatches';
-import { Minimap } from '../../tools/git/page/minimap';
-import { Code, MarkedCode } from '../../tools/git/page/codeMarks';
-import { diffRowClass } from '../../tools/git/page/diffRowClasses';
-import { DiffView } from '../../tools/git/page/diffView';
-import { FileHeader } from '../../tools/git/page/diffRowParts';
+import { Minimap } from '../../lib/page/minimap';
+import { Code, MarkedCode } from '../../lib/page/codeMarks';
+import { diffRowClass } from '../../lib/page/diffRowClasses';
+import { DiffView } from '../../lib/page/diffView';
+import { FileHeader } from '../../lib/page/diffRowParts';
 import { noop } from './fixtures';
 import { diffLookOf, diffMeasuring } from './diffFixtures';
-import { unmeasuredDiff } from '../../tools/git/page/diffMeasures';
+import { unmeasuredDiff } from '../../lib/page/diffMeasures';
 
 export function DiffOptionsShown(shown: ShownOptions) {
   return inStores(optionStores(shown), <DiffOptions language={undefined} />);

@@ -2,16 +2,16 @@ import { createContext, useContext } from 'react';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
-import { compareWith } from '../shared/comparisons';
+import { compareWith } from '../../../lib/shared/comparisons';
 import type { GitToHost, GitToWebview, TabMessage } from '../shared/protocol';
 import { toggleBookmark } from './bookmarks';
 import { areaKey } from './changesRows';
 import { resetWidth } from './columns';
-import { parsePatch } from './diff';
+import { parsePatch } from '../../../lib/page/diff';
 import { foldersOf } from './fileTree';
 import { settling } from './outbox';
 import { startAfter } from './startAfter';
-import { textsToLoad } from './textsToLoad';
+import { textsToLoad } from '../../../lib/page/textsToLoad';
 import {
   noFolders,
   openFolders,
@@ -20,7 +20,11 @@ import {
   toggleFolder,
   type ViewFolders,
 } from './viewFolders';
-import { withSnap, withText, withWrapColumns } from './diffMeasures';
+import {
+  withSnap,
+  withText,
+  withWrapColumns,
+} from '../../../lib/page/diffMeasures';
 import {
   gitDefaults,
   type GitActions,
@@ -36,18 +40,20 @@ import {
 } from './gitSelectors';
 import { KeptPlaces } from './keptPlaces';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
-import { diffPlaceKey, unplaced, type DiffPlace } from './diffPlace';
+import {
+  diffPlaceKey,
+  unplaced,
+  type DiffPlace,
+} from '../../../lib/page/diffPlace';
 import { withEntry, withKey } from './tabKeyed';
 import { collected } from './collections';
 import { menuItemsOf } from './commitMenuItems';
 import { checking, received, withTab } from './receivedMessages';
 import {
   changedScopes,
-  handedCompare,
   handedWorktrees,
   parsedKept,
   placeScopeOf,
-  restoredCompare,
   restoredWorktree,
   tabViewOf,
   targetOf,
@@ -132,32 +138,21 @@ export function createGitStore(
   const worktreesOfTabs = new TabWorktrees();
   const tabOfScope = (scope: string | undefined) => {
     const target = scope === undefined ? undefined : targetOf(scope);
-    if (target?.kind === 'worktree') {
-      return worktreesOfTabs.tabOf(target.root);
-    }
-    return target !== undefined && worktreesOfTabs.isCompare(target.tab)
-      ? target.tab
-      : undefined;
+    return target === undefined
+      ? undefined
+      : worktreesOfTabs.tabOf(target.root);
   };
   const shownTab = () => {
     const state = made?.getState();
     const root = state?.tab.root;
-    return (
-      state?.compare?.tab ??
-      (root === undefined ? undefined : worktreesOfTabs.tabOf(root))
-    );
+    return root === undefined ? undefined : worktreesOfTabs.tabOf(root);
   };
   const keeper = new ViewKeeper(
     views,
     (tab) =>
       made === undefined || !worktreesOfTabs.knows(tab)
         ? undefined
-        : tabViewOf(
-            made.getState(),
-            places,
-            worktreesOfTabs.of(tab),
-            worktreesOfTabs.isCompare(tab) ? tab : undefined,
-          ),
+        : tabViewOf(made.getState(), places, worktreesOfTabs.of(tab)),
     shownTab,
   );
   const owe = (scope: string | undefined) => keeper.changed(tabOfScope(scope));
@@ -263,14 +258,6 @@ export function createGitStore(
           worktreesOfTabs.shown(tab, root);
         }
       }
-      const compared = handedCompare(kept);
-      const restored =
-        compared === undefined
-          ? undefined
-          : restoredCompare(get(), places, tab, compared);
-      if (restored !== undefined) {
-        set(restored);
-      }
     };
     const shown = (message: GitToWebview) => {
       if (
@@ -280,9 +267,6 @@ export function createGitStore(
       ) {
         restore(message.tab);
         worktreesOfTabs.shown(message.tab, message.worktree);
-      } else if (message.type === 'compare' && message.compare !== undefined) {
-        worktreesOfTabs.compared(message.compare.tab);
-        restore(message.compare.tab);
       }
     };
     return {
@@ -318,13 +302,9 @@ export function createGitStore(
         }
         const view = keeper.release(tab);
         const roots = worktreesOfTabs.of(tab);
-        const compared = worktreesOfTabs.isCompare(tab);
         worktreesOfTabs.forget(tab);
         for (const root of roots) {
           set(restoredWorktree(get(), places, root, {}) ?? {});
-        }
-        if (compared) {
-          set(restoredCompare(get(), places, tab, {}) ?? {});
         }
         return view;
       },
@@ -529,8 +509,6 @@ export function createGitStore(
         set({ columnWidths: widths });
         post({ type: 'setColumnWidths', widths });
       },
-      loadCompareTexts: (requests) =>
-        post({ type: 'loadCompareTexts', requests }),
       forgetRecent: (root) => {
         set((state) => ({
           recent: state.recent.filter((other) => other.root !== root),
@@ -677,10 +655,6 @@ export function createGitStore(
     }
     if (prev.tab.root !== next.tab.root && prev.tab.root !== undefined) {
       keeper.left(worktreesOfTabs.tabOf(prev.tab.root));
-    }
-    const left = prev.compare?.tab;
-    if (left !== next.compare?.tab && left !== undefined) {
-      keeper.left(left);
     }
   });
   return store;

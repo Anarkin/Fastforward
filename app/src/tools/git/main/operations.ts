@@ -1,5 +1,5 @@
 import type { Upstream } from './branches';
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { plainOf, type Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { Log } from '../../../shell/main/log';

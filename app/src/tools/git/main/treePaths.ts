@@ -1,7 +1,7 @@
 import { listIndex, listTree, uniquePaths } from './fileLists';
 import type { WorkingTree } from './workingTree';
 import type { Context } from './tabContext';
-import { shownCommit } from '../shared/comparisons';
+import { shownCommit } from '../../../lib/shared/comparisons';
 
 export class TreePaths {
   async inWorkingTree(context: Context, file: string): Promise<boolean> {

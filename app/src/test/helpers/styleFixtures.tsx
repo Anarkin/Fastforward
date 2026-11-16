@@ -2,7 +2,8 @@ import type { ColumnName } from '../../tools/git/page/activeColumn';
 import { PathLooksContext } from '../../lib/page/pathLooks';
 import { fileColorsOf } from '../../lib/page/fileColors';
 import { fileLooks } from '../../tools/viewer/page/fileLooks';
-import { Column } from '../../tools/git/page/column';
+import { Column } from '../../lib/page/column';
+import { ColumnResizer } from '../../tools/git/page/columnResizer';
 import { ContextMenu } from '../../shell/page/contextMenu';
 import { tabsStore } from './componentFixtures';
 import { SearchButton } from '../../lib/page/search';
@@ -31,7 +32,10 @@ export function Columns({
   return (
     <div className={className} data-active-column={active}>
       {[0, 1, 2].map((index) => (
-        <Column key={index} index={index < 2 ? index : undefined}>
+        <Column
+          key={index}
+          resizer={index < 2 && <ColumnResizer index={index} />}
+        >
           {null}
         </Column>
       ))}

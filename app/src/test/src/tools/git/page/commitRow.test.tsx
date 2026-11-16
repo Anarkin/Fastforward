@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { plainFilter } from '../../../../helpers/filters';
 import { isValidElement } from 'react';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import {
   workingTreeHash,
   type RefInfo,

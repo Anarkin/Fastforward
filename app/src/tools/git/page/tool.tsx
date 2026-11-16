@@ -1,8 +1,5 @@
 import { gitKeymap } from './keymap';
-import { compareKeymap } from './compareKeymap';
-import { CompareView } from './compareView';
-import { comparingOf } from '../../../shell/page/shellSelectors';
-import { useShell, useShellActions } from '../../../shell/page/store';
+import { useShellActions } from '../../../shell/page/store';
 import './style.css';
 import { useEffect, useRef, useState } from 'react';
 import { type GitToHost, type GitToWebview } from '../shared/protocol';
@@ -50,7 +47,7 @@ function GitPopups() {
   );
 }
 
-function GitTitleAndMenus({ comparing }: { comparing: string | undefined }) {
+function GitTitleAndMenus() {
   const activeTab = useGit((state) => state.tab.root);
   const recent = useGit((state) => state.recent);
   const treeNeeded = useGit((state) =>
@@ -87,10 +84,7 @@ function GitTitleAndMenus({ comparing }: { comparing: string | undefined }) {
       initRepository,
     ],
   );
-  useEffect(
-    () => setToolTitle('git', comparing === undefined ? activeTab : undefined),
-    [activeTab, comparing, setToolTitle],
-  );
+  useEffect(() => setToolTitle('git', activeTab), [activeTab, setToolTitle]);
   const menuWorktree = useRef(activeTab);
   useEffect(() => {
     if (menuWorktree.current !== activeTab) {
@@ -112,8 +106,7 @@ export function GitTool({
   listen,
   views = noViews,
 }: GitToolProps) {
-  const comparing = useShell(comparingOf);
-  const { closeTab: onClose, toggleTextView } = useShellActions();
+  const { toggleTextView } = useShellActions();
   const [store] = useState(() => createGitStore(postToHost, {}, views));
   const { navigate, jump, showUpstream, showParent, toggleCommits } =
     store.getState();
@@ -129,16 +122,7 @@ export function GitTool({
       startColorer();
     }
   }, [active]);
-  const repositoryShown = active && comparing === undefined;
-  useBinding(
-    compareKeymap.closeCompare,
-    () => {
-      if (comparing !== undefined) {
-        onClose(comparing);
-      }
-    },
-    active && comparing !== undefined,
-  );
+  const repositoryShown = active;
   useBinding(gitKeymap.commits, toggleCommits, repositoryShown);
   useEffect(() => {
     if (!repositoryShown) {
@@ -176,10 +160,8 @@ export function GitTool({
   return (
     <GitStore value={store}>
       <GitPopups />
-      <GitTitleAndMenus comparing={comparing} />
-      {!active ? null : comparing !== undefined ? (
-        <CompareView comparing={comparing} />
-      ) : (
+      <GitTitleAndMenus />
+      {!active ? null : (
         <div className="repository">
           <WorktreeBar />
           <RepositoryColumns />

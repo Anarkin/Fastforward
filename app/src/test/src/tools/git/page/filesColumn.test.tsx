@@ -29,7 +29,7 @@ import {
 import type { VisibleRows } from '../../../../../lib/page/listMoves';
 import type { Folders } from '../../../../../tools/git/page/viewFolders';
 import { revealAgain, type ListedRows } from '../../../../../lib/page/listRows';
-import { FileRow } from '../../../../../tools/git/page/tree';
+import { FileRow } from '../../../../../lib/page/tree';
 import {
   clickRow,
   renderIn,

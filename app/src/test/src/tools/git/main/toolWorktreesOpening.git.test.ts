@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { shortHash } from '../../../../../tools/git/shared/hashes';
+import { shortHash } from '../../../../../lib/shared/hashes';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { worktreesKey } from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';

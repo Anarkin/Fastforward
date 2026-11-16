@@ -9,7 +9,7 @@ import {
   pushRef,
   remotesNotFetched,
 } from '../../../../../tools/git/main/transfers';
-import { gitErrorText } from '../../../../../tools/git/main/errorText';
+import { gitErrorText } from '../../../../../lib/main/errorText';
 import { waitFor } from '../../../../helpers/fixtures';
 import { renamingRepository } from '../../../../helpers/gitFixtures';
 import {

@@ -1,4 +1,4 @@
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { isFolder } from './folders';
 import { fetchAllRemotes, remotesNotFetched } from './transfers';
 import type { Log } from '../../../shell/main/log';

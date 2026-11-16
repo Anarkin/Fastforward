@@ -1,7 +1,7 @@
 import type { ChangeArea } from '../shared/protocol';
 import { HighlightWords } from '../../../lib/page/highlight';
 import { noFilter, type Filter } from '../../../lib/shared/filter';
-import { FileRow, FolderRow } from './tree';
+import { FileRow, FolderRow } from '../../../lib/page/tree';
 import { areaKey, treeRowKey, type ChangesTreeRow } from './changesRows';
 
 export function ChangesTreeItem({

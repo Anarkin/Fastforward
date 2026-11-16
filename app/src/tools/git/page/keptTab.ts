@@ -1,11 +1,11 @@
 import { focusSchema, type KeptFocus } from '../../../lib/page/keptFocus';
 import type { Search } from '../../../lib/shared/searchOptions';
 import { columnOrder, type ColumnName } from './activeColumn';
-import { diffPlaceKey, type DiffPlace } from './diffPlace';
-import type { ScrollAnchor } from './diffScrollAnchor';
+import { diffPlaceKey, type DiffPlace } from '../../../lib/page/diffPlace';
+import type { ScrollAnchor } from '../../../lib/page/diffScrollAnchor';
 import type { MovedCursor } from './filesCursor';
 import type { GitSource, KeptLocations, KeptPin } from './gitState';
-import type { KeptFind } from './diffFind';
+import type { KeptFind } from '../../../lib/page/diffFind';
 import { tabScopeOf } from './gitSelectors';
 import type { KeptPlaces } from './keptPlaces';
 import type { Highlighted } from './locationHighlight';
@@ -87,16 +87,13 @@ interface KeptWorktree extends KeptScope {
   readonly filesScrolls?: readonly (readonly [string, number])[];
 }
 
-type KeptTarget =
-  | { readonly kind: 'worktree'; readonly root: string }
-  | { readonly kind: 'compare'; readonly tab: string };
-
-export function worktreeScope(root: string): string {
-  return tabScopeOf(undefined, root);
+interface KeptTarget {
+  readonly kind: 'worktree';
+  readonly root: string;
 }
 
-function compareScope(tab: string): string {
-  return tabScopeOf(tab, undefined);
+export function worktreeScope(root: string): string {
+  return tabScopeOf(root);
 }
 
 export function targetOf(scope: string): KeptTarget | undefined {
@@ -104,10 +101,7 @@ export function targetOf(scope: string): KeptTarget | undefined {
   if (typeof id !== 'string') {
     return undefined;
   }
-  if (kind === 'worktree') {
-    return { kind, root: id };
-  }
-  return kind === 'compare' ? { kind, tab: id } : undefined;
+  return kind === 'worktree' ? { kind, root: id } : undefined;
 }
 
 function rootOfView(view: string): string | undefined {
@@ -124,7 +118,7 @@ function selectionIn(scope: string, key: string): string | undefined {
 
 function languageScopeOfKey(key: string): string {
   const [scope] = partsOf(key) ?? [];
-  return scope === 'compare' || typeof scope !== 'string' ? key : scope;
+  return typeof scope !== 'string' ? key : scope;
 }
 
 function given<K extends string, T>(
@@ -231,24 +225,11 @@ function keptWorktreeOf(
   };
 }
 
-function keptCompareOf(
-  source: GitSource,
-  places: TabPlaces,
-  tab: string,
-): KeptScope {
-  const scope = compareScope(tab);
-  return scopeKept(source, places, scope, scope);
-}
-
 export function tabViewOf(
   source: GitSource,
   places: TabPlaces,
   worktrees: readonly string[],
-  compare: string | undefined,
 ): string {
-  if (compare !== undefined) {
-    return JSON.stringify({ compare: keptCompareOf(source, places, compare) });
-  }
   const kept = worktrees.map((root) =>
     JSON.stringify([root, keptWorktreeOf(source, places, root)]),
   );
@@ -464,10 +445,6 @@ export function handedWorktrees(kept: unknown): [string, unknown][] {
     : [];
 }
 
-export function handedCompare(kept: unknown): unknown {
-  return isRecord(kept) ? kept.compare : undefined;
-}
-
 export function restoredWorktree(
   source: GitSource,
   places: TabPlaces,
@@ -515,19 +492,6 @@ export function restoredWorktree(
   };
 }
 
-export function restoredCompare(
-  source: GitSource,
-  places: TabPlaces,
-  tab: string,
-  kept: unknown,
-): Partial<GitSource> | undefined {
-  if (!isRecord(kept)) {
-    return undefined;
-  }
-  const scope = compareScope(tab);
-  return restoreScope(source, places, scope, scope, kept);
-}
-
 function changedKeys(
   next: ReadonlyMap<string, unknown>,
   prev: ReadonlyMap<string, unknown>,
@@ -573,7 +537,7 @@ export function changedScopes(next: GitSource, prev: GitSource): string[] {
       ),
       ...changedKeys(next.diffFinds, prev.diffFinds),
       ...changedKeys(next.pickedLanguages, prev.pickedLanguages).map((key) =>
-        targetOf(key)?.kind === 'compare' ? key : worktreeScope(key),
+        worktreeScope(key),
       ),
     ]),
   ];

@@ -10,7 +10,9 @@ import { iconRoute } from '../tools/commander/shared/icons';
 import { thumbnailRoute } from '../tools/commander/shared/thumbnails';
 import type { CommanderTool } from '../tools/commander/main/tool';
 import type { GitTool } from '../tools/git/main/tool';
-import { imageRoute } from '../tools/git/shared/images';
+import { gitImageRoute } from '../tools/git/shared/images';
+import { comparedImageRoute } from '../tools/diff/shared/images';
+import type { DiffTool } from '../tools/diff/main/tool';
 import { appFile } from './files';
 
 export interface RoutedTools {
@@ -18,6 +20,7 @@ export interface RoutedTools {
   readonly commander: Pick<CommanderTool, 'icon' | 'thumbnail'>;
   readonly viewer: Pick<ViewerTool, 'icon' | 'file'>;
   readonly editor: Pick<EditorTool, 'icon'>;
+  readonly diff: Pick<DiffTool, 'image'>;
 }
 
 const fileHeaders = {
@@ -51,8 +54,11 @@ export function appRoutes(
         headers: { 'content-type': 'text/css', 'cache-control': 'no-store' },
       });
     }
-    if (url.pathname === imageRoute) {
+    if (url.pathname === gitImageRoute) {
       return tools.then(({ git }) => git.image(url)).then(servedFile);
+    }
+    if (url.pathname === comparedImageRoute) {
+      return tools.then(({ diff }) => diff.image(url)).then(servedFile);
     }
     if (url.pathname === iconRoute) {
       return tools

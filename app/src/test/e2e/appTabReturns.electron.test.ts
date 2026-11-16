@@ -51,6 +51,16 @@ const shownTabs = (opened: string, repository: string) =>
         view: true,
       },
     },
+    {
+      kind: 'diff',
+      tab: {
+        tool: 'diff',
+        compare: {
+          old: path.join(opened, 'long.txt'),
+          new: path.join(opened, 'compared.txt'),
+        },
+      },
+    },
   ] as const;
 
 const everyTab = 600_000;
@@ -79,6 +89,10 @@ suite('App tabs shown again', () => {
     }
     fs.writeFileSync(path.join(opened, 'long.txt'), longText);
     fs.writeFileSync(path.join(opened, 'edited.txt'), longText);
+    fs.writeFileSync(
+      path.join(opened, 'compared.txt'),
+      longText.replaceAll('adam', 'eve'),
+    );
     fs.writeFileSync(
       path.join(opened, 'readme.md'),
       lines(200, (index) => `Paragraph ${index}, adam.\n`),

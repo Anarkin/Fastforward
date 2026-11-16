@@ -1,4 +1,4 @@
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { listRemotes } from './refReads';
 import { listRemoteTags } from './transfers';
 import { pickTagRemote, pushTag } from './push';

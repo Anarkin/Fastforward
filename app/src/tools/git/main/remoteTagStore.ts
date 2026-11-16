@@ -1,4 +1,4 @@
-import { isFullHash } from '../shared/hashes';
+import { isFullHash } from '../../../lib/shared/hashes';
 import { isObject } from '../../../lib/main/json';
 import type { Store } from '../../../shell/main/stateFile';
 import { keyOf, recordOf, withoutRoots } from './rootRecords';

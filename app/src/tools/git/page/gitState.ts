@@ -6,7 +6,6 @@ import type {
   ChangeArea,
   CheckoutTarget,
   Direction,
-  CompareView,
   DiffLayout,
   GitToWebview,
   GitToWebviewOf,
@@ -18,26 +17,23 @@ import type {
 } from '../shared/protocol';
 import type { ColumnName } from './activeColumn';
 import type { ChosenFolder, CloneTarget } from './cloneForm';
-import type { LoadedText } from './sideTexts';
-import type { ViewedSource } from './viewedSource';
+import type { ViewedSource } from '../../../lib/page/viewedSource';
 import type { MenuTarget } from './menus';
 import type { RefGroup } from './refIndex';
 import type { FilterFolds, Folders, ViewFolders } from './viewFolders';
 import type { MovedCursor } from './filesCursor';
 import { emptyTabView, type TabAction, type TabView } from './tabView';
-import type { WrapColumns } from './rowMeasures';
-import type { TextMeasures } from './textLayout';
-import type { CodeSnap } from './codeSnap';
-import { unmeasuredDiff, type DiffMeasures } from './diffMeasures';
-import type { KeptFind } from './diffFind';
-import type { DiffPlace } from './diffPlace';
+import type { WrapColumns } from '../../../lib/page/rowMeasures';
+import type { TextMeasures } from '../../../lib/page/textLayout';
+import type { CodeSnap } from '../../../lib/page/codeSnap';
+import {
+  unmeasuredDiff,
+  type DiffMeasures,
+} from '../../../lib/page/diffMeasures';
+import type { KeptFind } from '../../../lib/page/diffFind';
+import type { DiffPlace } from '../../../lib/page/diffPlace';
 import type { Highlighted } from './locationHighlight';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
-
-export interface ComparedTexts {
-  readonly tab: string | undefined;
-  readonly texts: ReadonlyMap<string, LoadedText>;
-}
 
 type FoundCommits = Pick<TabView, 'commitSearch' | 'hashLookup'>;
 
@@ -73,8 +69,6 @@ export interface GitSource {
   readonly autoFetch: boolean;
   readonly autoFetchMinutes: number;
   readonly solo: boolean;
-  readonly compare: CompareView | undefined;
-  readonly compareTexts: ComparedTexts;
   readonly recent: readonly RepositoryInfo[];
   readonly initAsked: GitToWebviewOf<'confirmInit'> | undefined;
   readonly clone: Cloning;
@@ -127,7 +121,6 @@ export interface GitActions {
   readonly changeSolo: (solo: boolean) => void;
   readonly resizeColumns: (widths: readonly number[]) => void;
   readonly resetColumn: (index: number) => void;
-  readonly loadCompareTexts: (requests: readonly TextRequest[]) => void;
   readonly forgetRecent: (root: string) => void;
   readonly answerInit: (confirmed: boolean) => void;
   readonly closeClone: () => void;
@@ -215,11 +208,6 @@ export interface GitActions {
   readonly keepWrapColumns: (columns: WrapColumns) => void;
 }
 
-export const noComparedTexts: ComparedTexts = {
-  tab: undefined,
-  texts: new Map(),
-};
-
 export const gitDefaults: GitSource = {
   tab: emptyTabView,
   worktrees: undefined,
@@ -235,8 +223,6 @@ export const gitDefaults: GitSource = {
   autoFetch: false,
   autoFetchMinutes: 0,
   solo: false,
-  compare: undefined,
-  compareTexts: noComparedTexts,
   recent: [],
   initAsked: undefined,
   clone: { view: undefined, form: 0, folder: undefined, target: undefined },

@@ -1,5 +1,5 @@
 import { logCommits } from './commitLog';
-import { isHashPrefix } from '../shared/hashes';
+import { isHashPrefix } from '../../../lib/shared/hashes';
 import type { CommitResults } from '../shared/protocol';
 import { runGit } from './run';
 

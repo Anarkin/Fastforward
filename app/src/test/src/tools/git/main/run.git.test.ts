@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import { gitErrorText } from '../../../../../tools/git/main/errorText';
+import { gitErrorText } from '../../../../../lib/main/errorText';
 import { fastForward } from '../../../../../tools/git/main/branches';
 import {
   checkoutNewBranch,

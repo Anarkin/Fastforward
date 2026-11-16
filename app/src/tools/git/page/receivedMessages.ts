@@ -1,35 +1,15 @@
 import type { CloneView } from '../shared/clone';
-import type { GitToWebview, GitToWebviewOf } from '../shared/protocol';
+import type { GitToWebview } from '../shared/protocol';
 import type { CloneTarget } from './cloneForm';
 import { widthsToLoad } from './columns';
-import { textKey } from './sideTexts';
 import { reduceTabView, type TabAction, type TabView } from './tabView';
 import { withEntry } from './tabKeyed';
 
-import {
-  noComparedTexts,
-  type Cloning,
-  type ComparedTexts,
-  type GitState,
-} from './gitState';
+import type { Cloning, GitState } from './gitState';
 
 export function withTab(state: GitState, action: TabAction): GitState {
   const tab = reduceTabView(state.tab, action);
   return tab === state.tab ? state : { ...state, tab };
-}
-
-function withTexts(
-  compared: ComparedTexts,
-  { tab, texts }: GitToWebviewOf<'compareTexts'>,
-): ComparedTexts {
-  const known = new Map(compared.tab === tab ? compared.texts : []);
-  for (const loaded of texts) {
-    known.set(textKey(loaded.path, loaded.side), {
-      blob: loaded.blob,
-      text: loaded.text,
-    });
-  }
-  return { tab, texts: known };
 }
 
 function isTarget(
@@ -98,17 +78,6 @@ export function received(state: GitState, message: GitToWebview): GitState {
       };
     case 'solo':
       return { ...state, solo: message.solo };
-    case 'compare':
-      return {
-        ...state,
-        compare: message.compare,
-        compareTexts:
-          message.compare?.tab === state.compareTexts.tab
-            ? state.compareTexts
-            : noComparedTexts,
-      };
-    case 'compareTexts':
-      return { ...state, compareTexts: withTexts(state.compareTexts, message) };
     case 'recent':
       return { ...state, recent: message.recent };
     case 'confirmInit':

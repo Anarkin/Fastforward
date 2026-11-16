@@ -5,7 +5,8 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { tabsKey } from '../../../../../shell/main/storage';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { strings } from '../../../../../lib/shared/strings';
-import { imageUrl, maxImageSize } from '../../../../../tools/git/shared/images';
+import { imageUrl, maxImageSize } from '../../../../../lib/shared/imageSources';
+import { gitImageRoute } from '../../../../../tools/git/shared/images';
 import { soloKey } from '../../../../../tools/git/main/storage';
 import {
   tempRepository,
@@ -22,7 +23,10 @@ import { FakeHost } from '../../../../helpers/fakeHost';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 const url = (root: string, file: string, id: string, disk = false) =>
-  new URL(imageUrl({ root, path: file, id, disk }), 'fastforward://app');
+  new URL(
+    imageUrl(gitImageRoute, { root, path: file, id, disk }),
+    'fastforward://app',
+  );
 
 suite('Git tool viewing files', () => {
   let folder: string;

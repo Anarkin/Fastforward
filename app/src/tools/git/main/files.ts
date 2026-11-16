@@ -1,6 +1,10 @@
+import type { ImageRead } from '../../../lib/main/imageReads';
 import * as fs from 'node:fs/promises';
 import { isAbsolute, join, relative, sep } from 'node:path';
-import { maxImageSize, type ImageSource } from '../shared/images';
+import {
+  maxImageSize,
+  type ImageSource,
+} from '../../../lib/shared/imageSources';
 import { linkMode } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import { headCommit } from './commitLookup';
@@ -166,10 +170,6 @@ export function repositoryFile(cwd: string, path: string): string {
   }
   return file;
 }
-
-export type ImageRead =
-  | { readonly kind: 'image'; readonly bytes: Buffer }
-  | { readonly kind: 'missing' | 'tooLarge' };
 
 export async function readImage(
   gitPath: string,

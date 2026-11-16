@@ -5,7 +5,7 @@ import {
   type GitToWebview,
 } from '../../tools/git/shared/protocol';
 import type { GitSettings } from '../../tools/git/shared/settings';
-import type { DiffSettings } from '../../tools/git/shared/diffSettings';
+import type { DiffSettings } from '../../lib/shared/diffSettings';
 import {
   editorCharsets,
   editorEndings,
@@ -26,6 +26,10 @@ import type {
   EditorToWebview,
 } from '../../tools/editor/shared/protocol';
 import type {
+  DiffToHost,
+  DiffToWebview,
+} from '../../tools/diff/shared/protocol';
+import type {
   ViewerToHost,
   ViewerToWebview,
 } from '../../tools/viewer/shared/protocol';
@@ -44,6 +48,7 @@ export const tools = [
   'git',
   'viewer',
   'editor',
+  'diff',
 ] as const;
 
 export type ToolId = (typeof tools)[number];
@@ -71,6 +76,7 @@ export const confirmsClose: Readonly<Record<ToolId, boolean>> = {
   git: false,
   viewer: false,
   editor: false,
+  diff: false,
 };
 
 export function isTool(value: unknown): value is ToolId {
@@ -97,6 +103,10 @@ interface ToolMessages {
   readonly editor: {
     readonly toHost: EditorToHost;
     readonly toWebview: EditorToWebview;
+  };
+  readonly diff: {
+    readonly toHost: DiffToHost;
+    readonly toWebview: DiffToWebview;
   };
 }
 

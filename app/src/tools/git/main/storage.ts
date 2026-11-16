@@ -4,8 +4,8 @@ import {
   type ChangeArea,
   isBookmark,
 } from '../shared/protocol';
-import { sidesOf } from '../shared/comparisons';
-import { isFullHash } from '../shared/hashes';
+import { sidesOf } from '../../../lib/shared/comparisons';
+import { isFullHash } from '../../../lib/shared/hashes';
 import type { GitSettings } from '../shared/settings';
 import { isObject } from '../../../lib/main/json';
 import type { UserSettings } from '../../../shell/main/userSettings';

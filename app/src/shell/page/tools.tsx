@@ -3,6 +3,7 @@ import { TerminalTool } from '../../tools/terminal/page/tool';
 import { GitTool } from '../../tools/git/page/tool';
 import { ViewerTool } from '../../tools/viewer/page/tool';
 import { EditorTool } from '../../tools/editor/page/tool';
+import { DiffTool } from '../../tools/diff/page/tool';
 import { activeTabOf } from './shellSelectors';
 import { useShell, useShellActions } from './store';
 
@@ -40,6 +41,12 @@ export function ToolViews() {
         post={channels.editor.post}
         listen={channels.editor.listen}
         views={channels.editor.views}
+      />
+      <DiffTool
+        active={active === 'diff'}
+        post={channels.diff.post}
+        listen={channels.diff.listen}
+        views={channels.diff.views}
       />
     </>
   );

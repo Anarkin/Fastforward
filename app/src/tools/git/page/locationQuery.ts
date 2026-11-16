@@ -1,4 +1,4 @@
-import { isHashPrefix } from '../shared/hashes';
+import { isHashPrefix } from '../../../lib/shared/hashes';
 import type { CommitInfo, CommitResults } from '../shared/protocol';
 import { ResultItem } from './locationResults';
 

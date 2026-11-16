@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import { createServer } from 'node:http';
 import * as path from 'node:path';
-import { collapseThreshold } from '../../tools/git/shared/patchBudget';
+import { collapseThreshold } from '../../lib/shared/patchBudget';
 import { tempRepository, type TempRepository } from './repositories';
 import { tempFolder } from './tempFolders';
 

@@ -15,7 +15,7 @@ export function fakeShell<P extends Page>(page: P) {
   const viewed: string[] = [];
   const edited: string[] = [];
   const turned: string[] = [];
-  const compared: (Compared & { readonly tool: string })[] = [];
+  const compared: Compared[] = [];
   const tabs: Tab[] = [];
   const windows = new Map<Page, Tab[]>();
   const shell: ShellAccess = {
@@ -40,8 +40,8 @@ export function fakeShell<P extends Page>(page: P) {
       turned.push(turnedTab);
       return Promise.resolve();
     },
-    openCompare: (_page, toolOpened, files) => {
-      compared.push({ ...files, tool: toolOpened });
+    openCompare: (_page, files) => {
+      compared.push(files);
       return Promise.resolve();
     },
     openFolders: (_page, toolOpened, folders) => {

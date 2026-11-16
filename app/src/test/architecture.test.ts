@@ -339,6 +339,7 @@ suite('Architecture', () => {
         'lib/page/pathLooks.ts',
         'shell/page/store.ts',
         'tools/commander/page/store.ts',
+        'tools/diff/page/store.ts',
         'tools/editor/page/store.ts',
         'tools/git/page/store.ts',
         'tools/viewer/page/store.ts',
@@ -546,7 +547,7 @@ suite('Architecture', () => {
     const matchers = ['lib/shared/filter.ts', 'lib/shared/textMatches.ts'];
     const finds = [
       ...matchers,
-      'tools/git/page/find.ts',
+      'lib/page/find.ts',
       'tools/editor/page/editorFind.ts',
       'tools/viewer/main/textFind.ts',
       'tools/viewer/page/markPieces.ts',
@@ -596,17 +597,17 @@ suite('Architecture', () => {
     assert.deepStrictEqual(
       code.filter((file) => /<mark\b/.test(read(file))),
       [
+        'lib/page/codeMarks.tsx',
         'lib/page/highlight.tsx',
-        'tools/git/page/codeMarks.tsx',
         'tools/viewer/page/findMarks.tsx',
       ],
     );
     assert.deepStrictEqual(
       code.filter((file) => /\bfind-match\b/.test(read(file))),
       [
+        'lib/page/codeMarks.tsx',
+        'lib/page/diffFound.ts',
         'tools/editor/page/editorFind.ts',
-        'tools/git/page/codeMarks.tsx',
-        'tools/git/page/diffFound.ts',
         'tools/viewer/page/findMarks.tsx',
       ],
     );

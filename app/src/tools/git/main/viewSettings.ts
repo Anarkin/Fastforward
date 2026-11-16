@@ -1,6 +1,5 @@
 import type { GitToHost } from '../shared/protocol';
 import type { AutoFetch } from './autoFetch';
-import type { CompareTabs } from './compareTabs';
 import type { Contexts } from './contexts';
 import type { Diffs } from './diffs';
 import type { HistoryPages } from './historyPages';
@@ -31,7 +30,6 @@ export class ViewSettings {
     private readonly storage: GitStorage,
     private readonly tabStates: ReadonlyMap<string, TabWork>,
     private readonly autoFetch: () => AutoFetch,
-    private readonly compareTabs: CompareTabs,
     private readonly diffs: Diffs,
     private readonly historyPages: HistoryPages,
     private readonly contexts: Contexts,
@@ -84,7 +82,6 @@ export class ViewSettings {
       }
       case 'setShowEntireFile': {
         this.save(storage.preferences.setShowEntireFile(message.show));
-        await this.compareTabs.sendCompare(session);
         const context = await this.contexts.context(session);
         this.staleDiffs(context, (tab) => tab.path !== undefined);
         if (context?.tab.hash !== undefined && context.tab.path !== undefined) {
@@ -101,7 +98,6 @@ export class ViewSettings {
         return;
       case 'setIgnoreWhitespace': {
         this.save(storage.preferences.setIgnoreWhitespace(message.ignore));
-        await this.compareTabs.sendCompare(session);
         const context = await this.contexts.context(session);
         this.staleDiffs(context, () => true);
         if (context?.tab.hash !== undefined) {

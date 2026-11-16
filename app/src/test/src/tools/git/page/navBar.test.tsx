@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import {
   historyButtonClick,

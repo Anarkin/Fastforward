@@ -19,7 +19,7 @@ import {
   MessagePanel,
 } from '../../tools/git/page/messagePanel';
 import { HistoryMenu, NavButtons } from '../../tools/git/page/navBar';
-import { FileRow } from '../../tools/git/page/tree';
+import { FileRow } from '../../lib/page/tree';
 import { WorktreeBar } from '../../tools/git/page/worktreeBar';
 import { commitInfo } from './gitValues';
 import { repository } from './styleMarkup';

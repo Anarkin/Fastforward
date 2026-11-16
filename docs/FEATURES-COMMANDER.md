@@ -88,7 +88,7 @@
 | View a file | Show a file without its app | F3 | Common | ✅ Yes | F3 in a viewer tab of its own; FEATURES-VIEWER says what it does |
 | Quick view | Show the selected file on the other side as it is selected | Ctrl+Q | Common | ❌ No |  |
 | Edit | Edit a file | F4 | Core | ✅ Yes | In an editor tab of its own, drawn as the viewer draws text, inside an archive too, each save putting it back; FEATURES-EDITOR says what it does |
-| Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3, the two files marked on a side or the file of each side, in a git tab of their own that follows their changes, two images side by side; a notice says how to pick them when none are |
+| Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3, the two files marked on a side or the file of each side, in a diff tab of their own that follows their changes, two images side by side; a notice says how to pick them when none are |
 
 ## Archives
 

@@ -1,5 +1,6 @@
 import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
+import { diffKeymap } from '../../../lib/page/diffKeymap';
 
 export const gitGroups = [
   'Moving',
@@ -53,19 +54,9 @@ export const gitKeymap = {
     { repeats: true },
   ),
   commits: bind('Moving', strings.actions.commits, { C: true }),
-  find: bind('Searching', strings.actions.find, { 'Mod+F': true }),
-  match: bind(
-    'Searching',
-    strings.actions.match,
-    { Enter: 1, 'Shift+Enter': -1 },
-    { repeats: true, fields: true },
-  ),
-  stopFinding: bind(
-    'Searching',
-    strings.actions.stopFinding,
-    { Escape: true },
-    { fields: true },
-  ),
+  find: diffKeymap.find,
+  match: diffKeymap.match,
+  stopFinding: diffKeymap.stopFinding,
   folder: bind('Files', strings.actions.folder, { Space: true }),
   viewFile: bind('Files', strings.actions.viewDiffFile, { F3: true }),
   toFiles: bind(
@@ -74,22 +65,10 @@ export const gitKeymap = {
     { Enter: true, ArrowDown: true },
     { fields: true },
   ),
-  change: bind(
-    'Diff',
-    strings.actions.change,
-    { J: 1, K: -1 },
-    { repeats: true },
-  ),
-  sideways: bind(
-    'Diff',
-    strings.actions.sideways,
-    { ArrowRight: 1, ArrowLeft: -1 },
-    { repeats: true },
-  ),
-  wheelSideways: bind('Diff', strings.actions.wheelSideways, {
-    'Shift+Wheel': true,
-  }),
-  wrap: bind('Diff', strings.actions.wrap, { W: true }),
-  showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
-  language: bind('Diff', strings.actions.chooseLanguage, { L: true }),
+  change: diffKeymap.change,
+  sideways: diffKeymap.sideways,
+  wheelSideways: diffKeymap.wheelSideways,
+  wrap: diffKeymap.wrap,
+  showWhitespace: diffKeymap.showWhitespace,
+  language: diffKeymap.language,
 };

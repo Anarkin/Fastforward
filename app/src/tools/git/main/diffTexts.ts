@@ -1,7 +1,8 @@
-import { BlobTexts, uniqueTexts } from './blobTexts';
+import { BlobTexts } from './blobTexts';
+import { uniqueTexts } from '../../../lib/main/textRequests';
 import { readBlobs, readFile } from './files';
-import { workingTreeSide } from '../shared/comparisons';
-import { isFullHash } from '../shared/hashes';
+import { workingTreeSide } from '../../../lib/shared/comparisons';
+import { isFullHash } from '../../../lib/shared/hashes';
 import type { TabMessage, TextRequest } from '../shared/protocol';
 import { changesOf } from './tabState';
 import type { Context } from './tabContext';

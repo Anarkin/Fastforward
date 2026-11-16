@@ -17,6 +17,8 @@ import {
   ShortcutsPopup,
 } from '../../../../shell/page/shortcutsPopup';
 import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
+import { tools, toolSections } from '../../../../shell/shared/tools';
+import { strings } from '../../../../lib/shared/strings';
 import {
   shortcutsStore,
   shortcutsMarkup,
@@ -46,11 +48,23 @@ suite('Shortcuts popup', () => {
     assert.strictEqual(entryFor('commander'), 'commander');
     assert.strictEqual(entryFor('viewer'), 'viewer');
     assert.strictEqual(entryFor('git'), 'git');
-    assert.strictEqual(entryFor('git', { compare: true }), 'diff');
-    assert.strictEqual(entryFor('git', {}, 'diff'), 'diff');
+    assert.strictEqual(entryFor('diff'), 'diff');
+    assert.strictEqual(entryFor('git', 'diff'), 'diff');
     assert.strictEqual(entryFor('editor'), 'editor');
     assert.strictEqual(entryFor('terminal'), 'terminal');
     assert.strictEqual(entryFor(undefined), 'everywhere');
+  });
+
+  test('lists the shortcuts of every tab first, then those of every tool of the app once, under its name, in the order of the sections of the settings', () => {
+    assert.deepStrictEqual(
+      shortcutEntries.map((each) => each.id),
+      ['everywhere', ...toolSections],
+    );
+    assert.deepStrictEqual([...toolSections].toSorted(), [...tools].toSorted());
+    assert.deepStrictEqual(
+      shortcutEntries.slice(1).map((each) => each.title),
+      toolSections.map((tool) => strings.tools[tool]),
+    );
   });
 
   test('lists every tool beside the shortcuts, the one of the tab open with its groups under it, the first marked as in view, and only its shortcuts in the pane', () => {
@@ -103,10 +117,7 @@ suite('Shortcuts popup', () => {
       entry('editor').groups.map((group) => group.title),
     );
     assert.deepStrictEqual(
-      textsOf(
-        shortcutsMarkup(<ShortcutsPopup />, 'git', { compare: true }),
-        'shortcuts-heading',
-      ),
+      textsOf(shortcutsMarkup(<ShortcutsPopup />, 'diff'), 'shortcuts-heading'),
       entry('diff').groups.map((group) => group.title),
     );
   });

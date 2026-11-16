@@ -4,7 +4,7 @@ import {
   collapseThreshold,
   patchByteBudget,
   patchLineBudget,
-} from '../shared/patchBudget';
+} from '../../../lib/shared/patchBudget';
 import { headerOf } from './patchText';
 import { runGitBytes } from './run';
 

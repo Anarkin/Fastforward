@@ -1,4 +1,4 @@
-import { shortHash } from '../shared/hashes';
+import { shortHash } from '../../../lib/shared/hashes';
 import type { CheckoutTarget, RefInfo, BookmarkRef } from '../shared/protocol';
 import { findRef, localBranchOf } from '../shared/refNames';
 import { byName } from './byName';

@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { Column } from '../../../../tools/git/page/column';
+import { Column } from '../../../../lib/page/column';
 import { cascaded } from '../../../helpers/cascade';
 import {
   AboutPopupShown,
@@ -21,7 +21,7 @@ import {
   deviceRounded,
   hovered,
 } from './stylesheetFixtures';
-import { FileHeader } from '../../../../tools/git/page/diffRowParts';
+import { FileHeader } from '../../../../lib/page/diffRowParts';
 import { emptyTabView } from '../../../../tools/git/page/tabView';
 import { SoloButton } from '../../../../tools/git/page/soloButton';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';

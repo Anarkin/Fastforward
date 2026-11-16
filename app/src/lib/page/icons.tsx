@@ -111,6 +111,13 @@ const toolSigns = {
       <path d="M9 4l3 3" />
     </>
   ),
+  diff: (
+    <>
+      <rect x="1.5" y="2.5" width="5" height="11" rx="1" />
+      <rect x="9.5" y="2.5" width="5" height="11" rx="1" />
+      <path d="M3 7.5h2M10 7.5h3M11.5 6v3" />
+    </>
+  ),
 };
 
 export function ShieldIcon() {

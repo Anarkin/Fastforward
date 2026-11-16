@@ -12,7 +12,7 @@ import {
   worktreesKey,
 } from '../../../../../tools/git/main/storage';
 import { lastFetchesKey } from '../../../../../tools/git/main/lastFetches';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import { FakeStore } from '../../../../helpers/fakeStore';
 import { defaultSettings } from '../../../../helpers/fixtures';

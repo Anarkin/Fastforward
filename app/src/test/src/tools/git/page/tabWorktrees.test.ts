@@ -27,24 +27,18 @@ suite('Worktrees of the tabs a page showed', () => {
     );
   });
 
-  test('knows the compare tabs apart, and forgets a tab let go', () => {
+  test('knows only the tabs it was shown a worktree of, and forgets a tab let go', () => {
     const worktrees = new TabWorktrees();
-    worktrees.compared('7');
     worktrees.shown('1', '/repo');
 
     assert.deepStrictEqual(
-      [
-        worktrees.isCompare('7'),
-        worktrees.isCompare('1'),
-        worktrees.knows('7'),
-      ],
-      [true, false, true],
+      [worktrees.knows('1'), worktrees.knows('7')],
+      [true, false],
     );
-    worktrees.forget('7');
     worktrees.forget('1');
     assert.deepStrictEqual(
-      [worktrees.knows('7'), worktrees.knows('1'), worktrees.tabOf('/repo')],
-      [false, false, undefined],
+      [worktrees.knows('1'), worktrees.tabOf('/repo')],
+      [false, undefined],
     );
   });
 });

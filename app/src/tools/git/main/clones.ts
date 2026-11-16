@@ -14,7 +14,7 @@ import type { Log } from '../../../shell/main/log';
 import { strings } from '../../../lib/shared/strings';
 import { cloneRepository, cloneTargetProblem, removeClone } from './clone';
 import { withoutCredentials } from './credentials';
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { isFolder } from './folders';
 
 export type CloneMessage = Extract<

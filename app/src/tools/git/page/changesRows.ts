@@ -1,7 +1,7 @@
 import type { ChangeArea, FileChange } from '../shared/protocol';
 import { buildFileTree, type FolderNode } from './fileTree';
 import { byName } from './byName';
-import { fileRowKey } from './treeLayout';
+import { fileRowKey } from '../../../lib/page/treeLayout';
 
 export type ChangesTreeRow =
   | {

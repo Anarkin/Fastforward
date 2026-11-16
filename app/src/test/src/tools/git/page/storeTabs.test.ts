@@ -70,7 +70,7 @@ suite('Git store, for each tab', () => {
     const looks = () => [
       searchingOf(state()),
       searchOf(state()).query,
-      state().keptFocusOf(tabScopeOf(undefined, state().tab.root)),
+      state().keptFocusOf(tabScopeOf(state().tab.root)),
     ];
     const typing = {
       name: 'commit-search',
@@ -79,11 +79,11 @@ suite('Git store, for each tab', () => {
     state().receive(within('/repo'));
     state().search(true);
     state().searchFor('second');
-    state().keepFocus(tabScopeOf(undefined, '/repo'), typing);
+    state().keepFocus(tabScopeOf('/repo'), typing);
     state().receive(within('/other'));
     assert.deepStrictEqual(looks(), [true, 'second', typing]);
     state().search(false);
-    state().keepFocus(tabScopeOf(undefined, '/other'), { name: 'commits' });
+    state().keepFocus(tabScopeOf('/other'), { name: 'commits' });
     state().receive(within('/repo'));
     assert.deepStrictEqual(looks(), [false, 'second', typing]);
     state().search(true);
@@ -106,10 +106,10 @@ suite('Git store, for each tab', () => {
     assert.strictEqual(activeColumnOf(store.getState()), 'files');
   });
 
-  test('keeps the find of the diff of each tab open with its query and options through another tab shown, a compare tab apart from the worktree, until it is closed, keeping its options then', () => {
+  test('keeps the find of the diff of each worktree open with its query and options through another worktree shown, each apart from the others, until it is closed, keeping its options then', () => {
     const store = createGitStore(noop);
-    const repository = tabScopeOf(undefined, '/repo');
-    const compared = tabScopeOf('7', '/repo');
+    const repository = tabScopeOf('/repo');
+    const compared = tabScopeOf('/third');
     assert.notStrictEqual(repository, compared);
     const regex = { ...plainSearch, regex: true };
     store.getState().keepDiffFind(repository, {
@@ -162,9 +162,9 @@ suite('Git store, for each tab', () => {
   test('keeps the language picked for the file shown in each tab while other tabs, files and none are shown, until another file is shown in that tab', () => {
     const store = createGitStore(noop);
     const tab = { ...emptyTabView, hash: 'a'.repeat(40), path: 'a.txt' };
-    const repository = languageKeyOf(undefined, { ...tab, root: '/repo' });
-    const other = languageKeyOf(undefined, { ...tab, root: '/other' });
-    const compared = languageKeyOf('7', tab);
+    const repository = languageKeyOf({ ...tab, root: '/repo' });
+    const other = languageKeyOf({ ...tab, root: '/other' });
+    const compared = languageKeyOf({ ...tab, root: '/third' });
     const { pickLanguage, seeLanguageKey } = store.getState();
     pickLanguage(repository, 'python');
     pickLanguage(compared, 'rust');
@@ -177,9 +177,7 @@ suite('Git store, for each tab', () => {
       ),
       ['python', undefined, 'rust'],
     );
-    seeLanguageKey(
-      languageKeyOf(undefined, { ...tab, root: '/repo', path: 'b.txt' }),
-    );
+    seeLanguageKey(languageKeyOf({ ...tab, root: '/repo', path: 'b.txt' }));
     seeLanguageKey(repository);
     assert.strictEqual(pickedFor(repository)(store.getState()), undefined);
   });

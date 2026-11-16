@@ -4,8 +4,8 @@ import { findCommit, headCommit } from './commitLookup';
 import { step, visit } from './navigation';
 import type { Log } from '../../../shell/main/log';
 import { foundUpstream } from './operations';
-import { comparedOf } from '../shared/comparisons';
-import { isFullHash } from '../shared/hashes';
+import { comparedOf } from '../../../lib/shared/comparisons';
+import { isFullHash } from '../../../lib/shared/hashes';
 import {
   workingTreeHash,
   type Direction,

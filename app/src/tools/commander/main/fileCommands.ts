@@ -314,7 +314,7 @@ export class FileCommands {
     }
     const [old, changed] = paths;
     if (old !== undefined && changed !== undefined) {
-      await this.host.shell().openCompare(page, 'git', { old, new: changed });
+      await this.host.shell().openCompare(page, { old, new: changed });
     }
   }
 }

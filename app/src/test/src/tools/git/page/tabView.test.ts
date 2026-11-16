@@ -6,7 +6,7 @@ import {
   reduceTabView,
   type TabView,
 } from '../../../../../tools/git/page/tabView';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import {
   commitPageSize,
   workingTreeHash,

@@ -1,6 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
 import type { ShellAccess } from '../../../shell/main/toolContract';
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { viewedFile } from './viewedFiles';
 import type { GitSessions } from './sessions';
 import type { Context } from './tabContext';

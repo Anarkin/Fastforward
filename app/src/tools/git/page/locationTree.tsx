@@ -1,6 +1,6 @@
 import type { RefKind } from '../shared/protocol';
 import { useOpenMenu, refMenuTarget } from './menus';
-import { FolderRow } from './tree';
+import { FolderRow } from '../../../lib/page/tree';
 import { strings } from '../../../lib/shared/strings';
 import type { TreeNode } from './refIndex';
 import { refKey, folderKey } from './locationResults';

@@ -6,7 +6,6 @@ import type { GitState } from '../../../../../tools/git/page/gitState';
 import {
   activeColumnOf,
   commitsShownOf,
-  compareLanguageKey,
   diffFindOf,
   fileCursorOf,
   fileFilterOf,
@@ -25,7 +24,7 @@ import {
   maxViewChars,
   type ToHost,
 } from '../../../../../shell/shared/protocol';
-import { at, compare, posting, shown } from './storeFixtures';
+import { at, posting, shown } from './storeFixtures';
 
 const elsewhere = {
   type: 'worktrees',
@@ -56,11 +55,11 @@ const worktreesOf = (...worktrees: (readonly [string, unknown])[]) => ({
   worktrees,
 });
 
-const scope = tabScopeOf(undefined, '/repo');
+const scope = tabScopeOf('/repo');
 
 const view = folderViewOf({ ...emptyTabView, root: '/repo', hash: at });
 
-const languageKey = languageKeyOf(undefined, {
+const languageKey = languageKeyOf({
   ...emptyTabView,
   root: '/repo',
   hash: at,
@@ -222,44 +221,9 @@ suite('Git store, keeping the view of each tab', () => {
     assert.strictEqual(activeColumnOf(back.store.getState()), 'diff');
   });
 
-  test('brings a compare tab back from the view handed to the page, its find, focus, place and language', () => {
-    const left = posting();
-    const compared = tabScopeOf('7', undefined);
-    const selection = '/a.txt\n/b.txt';
-    const state = () => left.store.getState();
-    state().receive({ type: 'compare', compare: compare('7') });
-    state().keepDiffFind(compared, {
-      finding: true,
-      search: { query: 'eve', options: plainSearch },
-    });
-    state().keepFocus(compared, { name: 'diff' });
-    state().keepDiffPlace(compared, selection, { top: 30, current: 1 });
-    state().pickLanguage(compareLanguageKey('7'), 'rust');
-    state().receive({ type: 'compare', compare: undefined });
-    const sent = viewOf(left.shell, '7');
-    assert.ok(sent !== undefined);
-    const back = posting();
-    back.views.handed('7', sent);
-    back.store.getState().receive({ type: 'compare', compare: compare('7') });
-    const compareLooks = (store: StoreApi<GitState>) => [
-      diffFindOf(compared)(store.getState()),
-      store.getState().keptFocusOf(compared),
-      store.getState().diffPlaceOf(compared, selection),
-      pickedFor(compareLanguageKey('7'))(store.getState()),
-    ];
-    assert.deepStrictEqual(compareLooks(back.store), compareLooks(left.store));
-  });
-
   test('lets go of a tab released, giving its view as it is at once, the changes not sent yet too, and sends nothing more of it until it shows it again', () => {
     const { shell, store, views } = posting();
     const state = () => store.getState();
-    const compared = tabScopeOf('7', undefined);
-    state().receive({ type: 'compare', compare: compare('7') });
-    state().keepDiffFind(compared, {
-      finding: true,
-      search: { query: 'eve', options: plainSearch },
-    });
-    state().receive({ type: 'compare', compare: undefined });
     state().receive(shown());
     state().receive(filesOf(at));
     state().toggleCommits();
@@ -286,14 +250,7 @@ suite('Git store, keeping the view of each tab', () => {
             focus: { name: 'files' },
           },
         ]),
-        {
-          compare: {
-            find: {
-              finding: true,
-              search: { query: 'eve', options: plainSearch },
-            },
-          },
-        },
+        '',
         '',
       ],
     );
@@ -302,9 +259,8 @@ suite('Git store, keeping the view of each tab', () => {
         commitsShownOf(state()),
         state().keptFocusOf(scope),
         state().filesScrollOf(view),
-        diffFindOf(compared)(state()).finding,
       ],
-      [true, undefined, undefined, false],
+      [true, undefined, undefined],
     );
     state().activateColumn('diff');
     vi.advanceTimersByTime(1000);
@@ -461,7 +417,7 @@ suite('Git store, keeping the view of each tab', () => {
         state().toggleFolder('closed', `${long}${index}`);
       }
     }
-    state().keepDiffPlace(tabScopeOf(undefined, '/w11'), at, {
+    state().keepDiffPlace(tabScopeOf('/w11'), at, {
       toggled: new Map(
         Array.from({ length: 3000 }, (_, index) => [`${long}${index}`, true]),
       ),

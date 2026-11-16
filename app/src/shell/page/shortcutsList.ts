@@ -1,6 +1,5 @@
 import { keyLabels } from '../../lib/page/keyLabels';
 import type { Binding } from '../../lib/shared/keymap';
-import type { TabInfo } from '../shared/protocol';
 import type { ToolId } from '../shared/tools';
 import {
   shortcutEntries,
@@ -119,7 +118,6 @@ export function shownEntries(
 
 export function entryFor(
   tool: ToolId | undefined,
-  kind: Pick<TabInfo, 'compare'> = {},
   focused?: string,
 ): ShortcutEntryId {
   if (tool === undefined) {
@@ -128,9 +126,6 @@ export function entryFor(
   const focusedEntry = shortcutEntries.find((each) => each.id === focused);
   if (focusedEntry !== undefined) {
     return focusedEntry.id;
-  }
-  if (tool === 'git' && kind.compare === true) {
-    return 'diff';
   }
   return tool;
 }

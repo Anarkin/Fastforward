@@ -10,8 +10,8 @@ import {
   type ChangesTreeRow,
 } from '../../../../../tools/git/page/changesRows';
 import { ChangesTreeItem } from '../../../../../tools/git/page/changesTree';
-import { fileRowKey } from '../../../../../tools/git/page/treeLayout';
-import { FileRow } from '../../../../../tools/git/page/tree';
+import { fileRowKey } from '../../../../../lib/page/treeLayout';
+import { FileRow } from '../../../../../lib/page/tree';
 import { clickRow } from '../../../../helpers/componentFixtures';
 import { noop } from '../../../../helpers/fixtures';
 import { classesOf, tagsWith, tagWith } from '../../../../helpers/markup';

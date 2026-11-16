@@ -1,5 +1,5 @@
 import { matchesFilter, type Filter } from '../../../lib/shared/filter';
-import { shortHash } from '../shared/hashes';
+import { shortHash } from '../../../lib/shared/hashes';
 import type { RefInfo, Bookmark, BookmarkRef } from '../shared/protocol';
 import {
   findRef,

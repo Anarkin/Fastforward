@@ -153,8 +153,8 @@ export class Shell {
       openView: (page, file) => this.tabs.open(page, 'viewer', [file], false),
       openEdit: (page, file) => this.tabs.open(page, 'editor', [file], true),
       editViewed: (page, tab) => this.tabs.editViewed(page, tab),
-      openCompare: (page, tool, compare) =>
-        this.tabs.open(page, tool, [undefined], false, { compare }),
+      openCompare: (page, compare) =>
+        this.tabs.open(page, 'diff', [undefined], false, { compare }),
       openFolders: (page, tool, folders) =>
         this.tools[tool].open(page, folders),
       setRoot: (tab, root) => this.tabs.setRoot(tab, root),

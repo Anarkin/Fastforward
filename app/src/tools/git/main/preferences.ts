@@ -1,6 +1,6 @@
 import type { DiffLayout, GitToWebviewOf } from '../shared/protocol';
 import type { GitSettings } from '../shared/settings';
-import type { DiffSettings } from '../shared/diffSettings';
+import type { DiffSettings } from '../../../lib/shared/diffSettings';
 import type { UserSettings } from '../../../shell/main/userSettings';
 
 const maxAutoFetchMinutes = Math.floor((2 ** 31 - 1) / 60_000);

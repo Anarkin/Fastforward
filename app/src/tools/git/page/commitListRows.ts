@@ -1,7 +1,7 @@
 import { type VirtualItem, type Virtualizer } from '@tanstack/react-virtual';
 import { workingTreeHash } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
-import { measureInLines, useLineHeight } from './lineHeight';
+import { measureInLines, useLineHeight } from '../../../lib/page/lineHeight';
 import type { RefObject } from 'react';
 
 const defaultRowLineHeight = 18;

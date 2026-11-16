@@ -3,48 +3,19 @@ import { isSearchOptions } from '../../../lib/shared/searchOptions';
 import {
   diffLayouts,
   type TabMessage,
-  type TextRequest,
   type GitToHost,
   commitPageSize,
   commitPagesAsked,
   isBookmark,
 } from '../shared/protocol';
 import { isColumnWidths } from '../shared/settings';
+import { areTextRequests, isPathAsked } from '../../../lib/main/textRequests';
 
 const maxBookmarks = 1000;
 
 const maxBookmarkName = 4096;
 
 const maxCommitsAsked = commitPagesAsked * commitPageSize;
-
-const maxTextsAsked = 10_000;
-
-function isPathAsked(value: unknown): value is string {
-  return (
-    typeof value === 'string' && !value.includes('\0') && !value.includes('\n')
-  );
-}
-
-function isTextRequest(value: unknown): value is TextRequest {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'path' in value &&
-    isPathAsked(value.path) &&
-    'blob' in value &&
-    typeof value.blob === 'string' &&
-    'side' in value &&
-    (value.side === 'old' || value.side === 'new')
-  );
-}
-
-function areTextRequests(value: unknown): boolean {
-  return (
-    Array.isArray(value) &&
-    value.length <= maxTextsAsked &&
-    value.every(isTextRequest)
-  );
-}
 
 function isCheckoutTarget(value: unknown): boolean {
   if (typeof value !== 'object' || value === null || !('kind' in value)) {
@@ -110,8 +81,6 @@ export function wellFormed(message: GitToHost): boolean {
       return isBoolean(message.on);
     case 'setDiffLayout':
       return diffLayouts.includes(message.layout);
-    case 'loadCompareTexts':
-      return areTextRequests(message.requests);
     default:
       return isString(message.root) && wellFormedInTab(message);
   }

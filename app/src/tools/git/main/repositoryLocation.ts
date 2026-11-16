@@ -1,6 +1,6 @@
 import { lstat } from 'node:fs/promises';
 import * as path from 'node:path';
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { isFolder, sameFolder, spelledFrom, spellingOf } from './folders';
 import { repositoryRoot } from './repository';
 import { runGit } from './run';

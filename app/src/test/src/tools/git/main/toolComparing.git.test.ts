@@ -11,7 +11,7 @@ import {
   test,
 } from 'vitest';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import type { Connection } from '../../../../helpers/harness';
 import {
   tempRepository,

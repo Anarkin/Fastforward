@@ -28,9 +28,9 @@ import {
   css,
   currentMatchOutline,
 } from './stylesheetFixtures';
-import { HunkDivider } from '../../../../tools/git/page/diffRowParts';
+import { HunkDivider } from '../../../../lib/page/diffRowParts';
 import { Crash } from '../../../../shell/page/errorBoundary';
-import { SkeletonRows } from '../../../../tools/git/page/skeleton';
+import { SkeletonRows } from '../../../../lib/page/skeleton';
 import { fileChange } from '../../../helpers/gitValues';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {

@@ -1,5 +1,5 @@
-import { comparedOf, comparisonLabel } from '../shared/comparisons';
-import { shortHash } from '../shared/hashes';
+import { comparedOf, comparisonLabel } from '../../../lib/shared/comparisons';
+import { shortHash } from '../../../lib/shared/hashes';
 import { workingTreeHash, type ChangeArea } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';

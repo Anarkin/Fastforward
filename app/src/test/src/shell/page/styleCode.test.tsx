@@ -4,7 +4,7 @@ import { tabSize } from '../../../../lib/page/tabStops';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { cascaded } from '../../../helpers/cascade';
 import { bodyVariable, compact, looks } from './stylesheetFixtures';
-import { layoutVariables } from '../../../../tools/git/page/textLayout';
+import { layoutVariables } from '../../../../lib/page/textLayout';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {
   DiffViewShown,

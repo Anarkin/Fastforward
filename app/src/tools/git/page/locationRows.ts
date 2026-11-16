@@ -1,5 +1,5 @@
 import type { RefKind, StashInfo } from '../shared/protocol';
-import { treeIndent, twistyWidth } from './treeLayout';
+import { treeIndent, twistyWidth } from '../../../lib/page/treeLayout';
 import type { TreeNode } from './refIndex';
 import {
   maxResults,

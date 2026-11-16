@@ -7,7 +7,7 @@ import {
   suite,
   test,
 } from 'vitest';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { TempRepository } from '../../../../helpers/repositories';

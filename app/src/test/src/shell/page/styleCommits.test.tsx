@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { GraphCell } from '../../../../tools/git/page/graph';
-import { Column } from '../../../../tools/git/page/column';
+import { Column } from '../../../../lib/page/column';
 import { cascaded } from '../../../helpers/cascade';
 import { ColumnShown } from '../../../helpers/styleFixtures';
 import { columnTitle, repository } from '../../../helpers/styleMarkup';

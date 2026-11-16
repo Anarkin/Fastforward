@@ -14,7 +14,6 @@ import {
   worktree,
   shown,
   layout,
-  compare,
   posting,
   labelled,
 } from './storeFixtures';
@@ -267,66 +266,6 @@ suite('Git store', () => {
     assert.deepStrictEqual(posted, [
       { type: 'setColumnWidths', widths: [320, 220] },
       { type: 'setColumnWidths', widths: [320, 200] },
-    ]);
-  });
-
-  test('lets go of the texts of a comparison once it closes or another is shown, keeping them while the files compared change', () => {
-    const store = createGitStore(noop);
-    const texts = () => store.getState().compareTexts.texts.size;
-    store.getState().receive({ type: 'compare', compare: compare('c1') });
-    store.getState().receive({
-      type: 'compareTexts',
-      tab: 'c1',
-      texts: [{ path: 'a.txt', side: 'new', blob: 'b', text: 'text' }],
-    });
-    store.getState().receive({ type: 'compare', compare: compare('c1', 2) });
-    assert.strictEqual(texts(), 1);
-    store.getState().receive({ type: 'compare', compare: compare('c2') });
-    assert.strictEqual(texts(), 0);
-    store.getState().receive({
-      type: 'compareTexts',
-      tab: 'c2',
-      texts: [{ path: 'a.txt', side: 'new', blob: 'b', text: 'text' }],
-    });
-    store.getState().receive({ type: 'compare', compare: undefined });
-    assert.strictEqual(texts(), 0);
-    assert.strictEqual(store.getState().compareTexts.tab, undefined);
-  });
-
-  test('keeps the comparison shown and the texts loaded for it, starting the texts anew for another comparison', () => {
-    const { posted, store } = posting();
-    const compared = {
-      tab: 'c1',
-      old: '/a.txt',
-      new: '/b.txt',
-      name: 'b.txt',
-      patch: '',
-      version: 1,
-      entire: true,
-    };
-    store.getState().receive({ type: 'compare', compare: compared });
-    assert.strictEqual(store.getState().compare, compared);
-    const loaded = (tab: string, path: string) =>
-      store.getState().receive({
-        type: 'compareTexts',
-        tab,
-        texts: [{ path, side: 'new', blob: 'b', text: 'text' }],
-      });
-    loaded('c1', 'a.txt');
-    loaded('c1', 'b.txt');
-    assert.strictEqual(store.getState().compareTexts.tab, 'c1');
-    assert.strictEqual(store.getState().compareTexts.texts.size, 2);
-    loaded('c2', 'a.txt');
-    assert.strictEqual(store.getState().compareTexts.tab, 'c2');
-    assert.strictEqual(store.getState().compareTexts.texts.size, 1);
-    store
-      .getState()
-      .loadCompareTexts([{ path: 'a.txt', side: 'old', blob: 'a' }]);
-    assert.deepStrictEqual(posted, [
-      {
-        type: 'loadCompareTexts',
-        requests: [{ path: 'a.txt', side: 'old', blob: 'a' }],
-      },
     ]);
   });
 

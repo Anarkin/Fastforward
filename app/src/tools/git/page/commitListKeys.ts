@@ -1,4 +1,4 @@
-import { shownSide } from '../shared/comparisons';
+import { shownSide } from '../../../lib/shared/comparisons';
 import { workingTreeHash, workingTreeIndex } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { commitMenuTarget, type MenuTarget } from './menus';

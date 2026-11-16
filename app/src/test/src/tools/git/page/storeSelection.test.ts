@@ -6,7 +6,7 @@ import {
   shownFoldersOf,
 } from '../../../../../tools/git/page/gitSelectors';
 import { areaKey } from '../../../../../tools/git/page/changesRows';
-import { compareWith } from '../../../../../tools/git/shared/comparisons';
+import { compareWith } from '../../../../../lib/shared/comparisons';
 import { noop } from '../../../../helpers/fixtures';
 import { at, shown, posting } from './storeFixtures';
 import { commitInfo } from '../../../../helpers/gitValues';

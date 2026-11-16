@@ -58,7 +58,7 @@ suite('Git tool and the views of its tabs', () => {
     const first = await openView(log, [], false);
     await first.store.update(tabsKey, [
       { id: '1', tool: 'git', root: repository.root },
-      { id: '2', tool: 'git', compare },
+      { id: '2', tool: 'diff', compare },
       { id: '3', tool: 'git', root: other },
     ]);
     await first.store.update(windowsKey, [
@@ -78,7 +78,7 @@ suite('Git tool and the views of its tabs', () => {
     assert.strictEqual(second.page.last('worktrees')?.tab, '3');
   });
 
-  test('has the view of a worktree tab and of a compare tab handed to the page of its window once reloaded, before what it needs to draw them', async () => {
+  test('has the view of a worktree tab and of a tab of the diff handed to the page of its window once reloaded, before what it needs to draw them', async () => {
     const { first } = await twoWindows();
     await first.connection.receive({
       type: 'keepView',
@@ -97,11 +97,18 @@ suite('Git tool and the views of its tabs', () => {
     assert.ok(sentBefore(reloaded.page, 'view', 'worktrees'));
     reloaded.page.clear();
     await reloaded.connection.receive({ type: 'selectTab', tab: '2' });
-    await waitFor(
-      () => reloaded.page.last('compare')?.compare !== undefined,
-      'the compare tab shown',
-    );
+    const diffShown = () =>
+      reloaded.page.sent.findIndex(
+        (sent) =>
+          sent.type === 'tool' &&
+          sent.tool === 'diff' &&
+          sent.message.type === 'show',
+      );
+    await waitFor(() => diffShown() !== -1, 'the tab of the diff shown');
     assert.deepStrictEqual(handed(reloaded.page), ['2 {"compare":{}}']);
-    assert.ok(sentBefore(reloaded.page, 'view', 'compare'));
+    assert.ok(
+      reloaded.page.sent.findIndex((sent) => sent.type === 'view') <
+        diffShown(),
+    );
   });
 });

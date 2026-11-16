@@ -1,4 +1,4 @@
-import { gitErrorText } from './errorText';
+import { gitErrorText } from '../../../lib/main/errorText';
 import { isFolder, spellingOf } from './folders';
 import {
   locateRepository,

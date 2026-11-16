@@ -1,5 +1,5 @@
 import { plainOf, type Sentence } from '../../../lib/shared/sentences';
-import { shownSide, workingTreeSide } from '../shared/comparisons';
+import { shownSide, workingTreeSide } from '../../../lib/shared/comparisons';
 import type {
   ChangeArea,
   FileChange,
@@ -11,9 +11,9 @@ import type {
   GitToWebviewOf,
 } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
-import { parseFilePatch, type DiffFile } from './diff';
-import { textKey, type LoadedText } from './sideTexts';
-import type { WholeFile } from './diffRows';
+import { parseFilePatch, type DiffFile } from '../../../lib/page/diff';
+import { textKey, type LoadedText } from '../../../lib/page/sideTexts';
+import type { WholeFile } from '../../../lib/page/diffRows';
 
 export interface TabView {
   readonly root: string | undefined;

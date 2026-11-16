@@ -10,7 +10,7 @@ import {
   test,
 } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
-import { comparisonOf } from '../../../../../tools/git/shared/comparisons';
+import { comparisonOf } from '../../../../../lib/shared/comparisons';
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import { waitFor } from '../../../../helpers/fixtures';

@@ -1,8 +1,28 @@
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { CloneAsk, CloneView } from './clone';
+import {
+  diffLayouts,
+  linkMode,
+  workingTreeHash,
+  type ChangeArea,
+  type DiffLayout,
+  type FileChange,
+  type LeftOut,
+  type TextRequest,
+} from '../../../lib/shared/changes';
 
-export const workingTreeHash = 'working-tree';
+export {
+  diffLayouts,
+  linkMode,
+  workingTreeHash,
+  type ChangeArea,
+  type DiffLayout,
+  type FileChange,
+  type LeftOut,
+  type TextRequest,
+};
+
 export const workingTreeIndex = -1;
 
 export type RefKind = 'branch' | 'remote' | 'tag' | 'remote-tag';
@@ -17,18 +37,9 @@ export interface CommitSearch {
   readonly capped: boolean;
 }
 
-export const diffLayouts = ['inline', 'sideBySide'] as const;
-
-export type DiffLayout = (typeof diffLayouts)[number];
-
 export interface NavigationEntry {
   readonly hash: string;
   readonly subject: string | undefined;
-}
-
-export interface LeftOut {
-  readonly path: string;
-  readonly lines: number | undefined;
 }
 
 export const commitPageSize = 100;
@@ -125,22 +136,6 @@ export interface GraphRow {
   readonly stash?: boolean;
 }
 
-export type ChangeArea = 'staged' | 'unstaged';
-
-export const linkMode = '120000';
-
-export interface FileChange {
-  readonly path: string;
-  readonly oldPath: string | undefined;
-  readonly status: 'A' | 'M' | 'D' | 'R' | 'C' | 'T' | 'U' | '?';
-  readonly insertions: number;
-  readonly deletions: number;
-  readonly bytes?: number;
-  readonly uncounted?: boolean;
-  readonly id?: string;
-  readonly link?: true;
-}
-
 export interface RepositoryInfo {
   readonly root: string;
   readonly name: string;
@@ -176,12 +171,6 @@ export interface ScrollTarget {
   readonly report?: number;
 }
 
-export interface TextRequest {
-  readonly path: string;
-  readonly side: 'old' | 'new';
-  readonly blob: string;
-}
-
 export type GitToHost =
   | { readonly type: 'openRepository'; readonly root: string }
   | { readonly type: 'browseRepositories' }
@@ -204,10 +193,6 @@ export type GitToHost =
   | { readonly type: 'setCollapseMerges'; readonly collapse: boolean }
   | { readonly type: 'setShowEntireFile'; readonly show: boolean }
   | { readonly type: 'setIgnoreWhitespace'; readonly ignore: boolean }
-  | {
-      readonly type: 'loadCompareTexts';
-      readonly requests: readonly TextRequest[];
-    }
   | { readonly type: 'setDiffLayout'; readonly layout: DiffLayout }
   | { readonly type: 'setShowAllFiles'; readonly show: boolean }
   | { readonly type: 'setAutoFetch'; readonly on: boolean }
@@ -290,30 +275,7 @@ export type TabMessage =
       readonly area?: ChangeArea;
     };
 
-export interface CompareView {
-  readonly tab: string;
-  readonly name: string;
-  readonly old: string;
-  readonly new: string;
-  readonly patch: string;
-  readonly entire: boolean;
-  readonly version: number;
-  readonly same?: 'identical' | 'whitespace';
-  readonly error?: Sentence;
-}
-
 export type GitToWebview =
-  | {
-      readonly type: 'compare';
-      readonly compare: CompareView | undefined;
-    }
-  | {
-      readonly type: 'compareTexts';
-      readonly tab: string;
-      readonly texts: readonly (TextRequest & {
-        readonly text: string | undefined;
-      })[];
-    }
   | {
       readonly type: 'layout';
       readonly columnWidths: readonly number[];

@@ -1,5 +1,5 @@
 import { reachable } from './navigation';
-import { sidesOf } from '../shared/comparisons';
+import { sidesOf } from '../../../lib/shared/comparisons';
 import {
   workingTreeHash,
   type CommitInfo,

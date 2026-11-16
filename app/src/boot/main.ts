@@ -51,6 +51,8 @@ import { gitLocator } from './gitSearch';
 import { needsGit } from '../tools/git/main/gitLocator';
 import type { GitSearch } from '../tools/git/main/locate';
 import { gitToolOf } from './gitHost';
+import { diffToolOf } from './diffHost';
+import type { DiffTool } from '../tools/diff/main/tool';
 import { terminalToolOf } from './terminalHost';
 import { commanderToolOf } from './commanderHost';
 import { viewerToolOf } from './viewerHost';
@@ -159,6 +161,7 @@ async function start(asked: readonly string[]): Promise<void> {
     commander: CommanderTool;
     viewer: ViewerTool;
     editor: EditorTool;
+    diff: DiffTool;
   }>();
   serveApp(dist, () => userSettings.settings, views.promise);
   setMenu();
@@ -323,12 +326,14 @@ async function start(asked: readonly string[]): Promise<void> {
     windows,
   });
   const viewerTool = viewerToolOf({ pdfPlaces, commanderTool, editorTool });
+  const diffTool = diffToolOf({ log, userSettings, git });
   const view = new Shell(log, storage, shellHost, {
     terminal: terminalTool,
     commander: commanderTool,
     git: gitTool,
     viewer: viewerTool,
     editor: editorTool,
+    diff: diffTool,
   });
   git.whenFound((found) => {
     logGit(log, found);
@@ -343,6 +348,7 @@ async function start(asked: readonly string[]): Promise<void> {
     commander: commanderTool,
     viewer: viewerTool,
     editor: editorTool,
+    diff: diffTool,
   });
   asking = view;
   const applySettings = () => {

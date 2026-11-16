@@ -19,7 +19,6 @@ import { RemoteTags } from './remoteTags';
 import { RemoteWork } from './remoteWork';
 import { Remotes } from './remotes';
 import { Watching } from './watching';
-import { CompareTabs } from './compareTabs';
 import { Worktrees } from './worktrees';
 import { RepositoryOpening } from './repositoryOpening';
 import { GitSessions } from './sessions';
@@ -59,7 +58,6 @@ export interface GitParts {
   readonly fetches: Fetches;
   readonly remotes: Remotes;
   readonly watching: Watching;
-  readonly compareTabs: CompareTabs;
   readonly worktrees: Worktrees;
   readonly repositoryOpening: RepositoryOpening;
   readonly tabLoads: TabLoads;
@@ -195,7 +193,6 @@ export function buildParts(
         worktrees.loadWorktrees(session, repository),
     },
   );
-  const compareTabs = new CompareTabs(log, gitPath, storage, watching);
   const worktrees = new Worktrees(
     log,
     gitPath,
@@ -233,13 +230,7 @@ export function buildParts(
     },
   );
   const fileViews = new FileViews(gitPath, host.viewedFiles, shell, sessions);
-  const diffImages = new DiffImages(
-    log,
-    gitPath,
-    shell,
-    tabStates,
-    compareTabs,
-  );
+  const diffImages = new DiffImages(log, gitPath, shell, tabStates);
   const inits = new Inits(log, gitPath, repositoryOpening);
   const autoFetch = new AutoFetch(
     () => storage.preferences.autoFetchMinutes,
@@ -255,7 +246,6 @@ export function buildParts(
     storage,
     tabStates,
     () => autoFetch,
-    compareTabs,
     diffs,
     historyPages,
     contexts,
@@ -294,7 +284,6 @@ export function buildParts(
     clones,
     tabLoads,
     viewSettings,
-    compareTabs,
     choices,
     commitSearch,
     historyPages,
@@ -326,7 +315,6 @@ export function buildParts(
     fetches,
     remotes,
     watching,
-    compareTabs,
     worktrees,
     repositoryOpening,
     tabLoads,
