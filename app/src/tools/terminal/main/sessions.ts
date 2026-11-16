@@ -55,6 +55,8 @@ class Session {
   private readonly toMirror: Backlog;
   private readonly toPage: Backlog;
   private pending = '';
+  private undrawn: string[] = [];
+  private drawnChars = 0;
   private readonly pageMissed: boolean[] = [];
   private cancelFlush: (() => void) | undefined;
   private cancelExit: (() => void) | undefined;
@@ -152,6 +154,7 @@ class Session {
 
   attach(columns: number, rows: number, scrollback: number): void {
     this.attached = false;
+    this.copyUndrawn();
     this.flush();
     const attachment = ++this.attachment;
     this.holding = true;
@@ -182,6 +185,7 @@ class Session {
     this.attachment++;
     this.attached = false;
     this.holding = false;
+    this.copyUndrawn();
     this.toPage.reset();
     this.flush();
     this.balance();
@@ -189,6 +193,16 @@ class Session {
 
   acked(chars: number): void {
     this.toPage.taken(chars);
+    this.drawnChars += chars;
+    for (
+      let [drawn] = this.undrawn;
+      drawn !== undefined && drawn.length <= this.drawnChars;
+      [drawn] = this.undrawn
+    ) {
+      this.undrawn.shift();
+      this.drawnChars -= drawn.length;
+      this.copy(drawn, false);
+    }
     this.balance();
   }
 
@@ -248,18 +262,33 @@ class Session {
     }
     const data = this.pending;
     this.pending = '';
+    if (this.attached) {
+      this.undrawn.push(data);
+      this.toPage.sent(data.length);
+      this.post({ type: 'output', id: this.id, data });
+    } else {
+      this.copy(data, true);
+    }
+    this.balance();
+  }
+
+  private copyUndrawn(): void {
+    const undrawn = this.undrawn;
+    this.undrawn = [];
+    this.drawnChars = 0;
+    for (const data of undrawn) {
+      this.copy(data, false);
+    }
+  }
+
+  private copy(data: string, missed: boolean): void {
     this.toMirror.sent(data.length);
-    this.pageMissed.push(!this.attached);
+    this.pageMissed.push(missed);
     this.mirror.terminal.write(data, () => {
       this.pageMissed.shift();
       this.toMirror.taken(data.length);
       this.balance();
     });
-    if (this.attached) {
-      this.toPage.sent(data.length);
-      this.post({ type: 'output', id: this.id, data });
-    }
-    this.balance();
   }
 
   private end(): void {

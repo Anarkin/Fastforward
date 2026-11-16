@@ -8,6 +8,7 @@ import type {
   HostEvent,
   ShellLaunch,
 } from '../../../../../tools/terminal/main/hostProtocol';
+import { Terminal } from '@xterm/headless';
 import { PtyHost } from '../../../../../tools/terminal/main/sessions';
 import { strings } from '../../../../../lib/shared/strings';
 import type { WindowsPty } from '../../../../../tools/terminal/shared/protocol';
@@ -21,6 +22,9 @@ const launch: ShellLaunch = {
   cwd: '/work',
   env: { TERM: 'xterm-256color' },
 };
+
+const textAt = (terminal: Terminal, line: number) =>
+  terminal.buffer.active.getLine(line)?.translateToString(true);
 
 function host(limits: Partial<FlowLimits> = {}, windowsPty?: WindowsPty) {
   const ptys = fakePtys();
@@ -153,7 +157,7 @@ suite('Terminal sessions', () => {
   });
 
   test('sends a page attaching again the line the page before it was scrolled back to and the text selected there, followed through what the shell printed meanwhile, and neither once the page is at the end and selects nothing', async () => {
-    const { ptyHost, ptys, clock, start, attach } = host();
+    const { ptyHost, ptys, clock, start, attach, outputs } = host();
     start(80, 5);
     await attach(80, 5);
     ptys
@@ -162,6 +166,9 @@ suite('Terminal sessions', () => {
         Array.from({ length: 30 }, (_, index) => `line ${index}`).join('\r\n'),
       );
     await clock.fire();
+    for (const drawn of outputs()) {
+      ptyHost.receive({ type: 'ack', id: '1', chars: drawn.length });
+    }
     ptyHost.receive({ type: 'scrolled', id: '1', top: 10 });
     ptyHost.receive({
       type: 'selected',
@@ -182,6 +189,71 @@ suite('Terminal sessions', () => {
     const end = await attach(80, 5);
     assert.ok(end?.type === 'screen');
     assert.deepStrictEqual(['top' in end, 'selection' in end], [false, false]);
+  });
+
+  test('keeps the line a page was scrolled back to and the text it selected where the page drew them, though the shell printed more the page had not drawn yet once the history was full, as each line the copy of the screen took past the page dropped one from the top, and the place came back that many lines away', async () => {
+    const { ptyHost, ptys, clock, events, start, attach } = host();
+    start(80, 5);
+    const screen = await attach(80, 5);
+    assert.ok(screen?.type === 'screen');
+    const page = new Terminal({
+      cols: 80,
+      rows: 5,
+      scrollback: 1000,
+      allowProposedApi: true,
+    });
+    const drawn = (data: string) =>
+      new Promise<void>((resolve) => page.write(data, resolve));
+    await drawn(screen.data);
+    const printed = (from: number, count: number) =>
+      ptys
+        .last()
+        .print(
+          Array.from(
+            { length: count },
+            (_, index) => `\r\nline ${from + index}`,
+          ).join(''),
+        );
+    const outputs = () =>
+      events.flatMap((event) => (event.type === 'output' ? [event.data] : []));
+    printed(0, 1100);
+    await clock.fire();
+    const [first] = outputs();
+    assert.ok(first !== undefined);
+    await drawn(first);
+    ptyHost.receive({ type: 'ack', id: '1', chars: first.length });
+    printed(1100, 300);
+    await clock.fire();
+    assert.strictEqual(outputs().length, 2);
+    const read = textAt(page, 500);
+    const selected = [textAt(page, 600), textAt(page, 601)];
+    ptyHost.receive({ type: 'scrolled', id: '1', top: 500 });
+    ptyHost.receive({
+      type: 'selected',
+      id: '1',
+      selection: { start: { x: 0, y: 600 }, end: { x: 8, y: 601 } },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    ptyHost.receive({ type: 'detach', id: '1' });
+    const back = await attach(80, 5);
+    assert.ok(back?.type === 'screen' && back.top !== undefined);
+    const shown = new Terminal({
+      cols: 80,
+      rows: 5,
+      scrollback: 1000,
+      allowProposedApi: true,
+    });
+    await new Promise<void>((resolve) => shown.write(back.data, resolve));
+    assert.strictEqual(textAt(shown, back.top), read);
+    assert.deepStrictEqual(
+      [
+        textAt(shown, back.selection?.start.y ?? -1),
+        textAt(shown, back.selection?.end.y ?? -1),
+      ],
+      selected,
+    );
+    page.dispose();
+    shown.dispose();
   });
 
   test('pauses the shell once the page falls behind by more than the high watermark, and resumes it once the page catches up below the low one', async () => {
@@ -228,7 +300,7 @@ suite('Terminal sessions', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     assert.strictEqual(pty.paused, true);
     ptyHost.receive({ type: 'detach', id: '1' });
-    assert.strictEqual(pty.paused, false);
+    await until(() => !pty.paused);
   });
 
   test('writes what a page types to the shell, and resizes the shell and its screen copy only when the size changes', async () => {
