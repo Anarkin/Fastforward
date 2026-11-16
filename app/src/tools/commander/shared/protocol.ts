@@ -452,7 +452,8 @@ export type CommanderToHost =
       readonly side: Side;
       readonly duplicates: boolean;
     }
-  | { readonly type: 'dropIcons'; readonly tickets: readonly string[] };
+  | { readonly type: 'dropIcons'; readonly tickets: readonly string[] }
+  | { readonly type: 'keepTab'; readonly tab: string; readonly kept: unknown };
 
 export interface CommanderDrop {
   readonly type: 'drop';
@@ -506,6 +507,7 @@ export type CommanderToWebview =
       readonly tab: string;
       readonly file?: string;
       readonly edit?: true;
+      readonly kept?: unknown;
     }
   | {
       readonly type: 'editing';

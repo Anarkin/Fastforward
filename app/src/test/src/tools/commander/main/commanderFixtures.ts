@@ -352,6 +352,7 @@ export function commander(
     turned,
     compared,
     tabs,
+    windows,
     openedIn,
     settled,
   } = fakeShell(page);
@@ -431,6 +432,7 @@ export function commander(
     turned,
     compared,
     tabs,
+    windows,
     menus,
     opened,
     trashed,

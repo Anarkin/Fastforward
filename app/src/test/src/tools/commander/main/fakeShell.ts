@@ -17,12 +17,13 @@ export function fakeShell<P extends Page>(page: P) {
   const turned: string[] = [];
   const compared: (Compared & { readonly tool: string })[] = [];
   const tabs: Tab[] = [];
+  const windows = new Map<Page, Tab[]>();
   const shell: ShellAccess = {
     page: () => focused,
     pages: () => pages,
     current: (shownIn) => shownIn,
     tabs: () => tabs,
-    tabsOf: () => tabs,
+    tabsOf: (of) => windows.get(of) ?? tabs,
     active: () => undefined,
     holds: () => true,
     shown: () => [],
@@ -75,6 +76,7 @@ export function fakeShell<P extends Page>(page: P) {
     turned,
     compared,
     tabs,
+    windows,
     openedIn,
     settled,
   };

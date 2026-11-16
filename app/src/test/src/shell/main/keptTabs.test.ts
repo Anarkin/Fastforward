@@ -1,0 +1,77 @@
+import * as assert from 'node:assert';
+import { suite, test } from 'vitest';
+import { KeptTabs } from '../../../../shell/main/keptTabs';
+import type { Page } from '../../../../shell/main/toolContract';
+
+const pageOf = (): Page => ({ post: () => undefined, disposed: false });
+
+const readied = (kept: KeptTabs): Page => {
+  const page = pageOf();
+  kept.ready(page);
+  return page;
+};
+
+suite('Kept tabs', () => {
+  test('hands back what a page kept of a tab with the page that kept it, the last kept winning', () => {
+    const kept = new KeptTabs();
+    const one = readied(kept);
+    const other = readied(kept);
+
+    assert.strictEqual(kept.keep('1', { left: 'a' }, one), true);
+    assert.strictEqual(kept.keep('1', { left: 'b' }, other), true);
+
+    assert.deepStrictEqual(kept.of('1'), { kept: { left: 'b' }, from: other });
+    assert.strictEqual(kept.of('2'), undefined);
+  });
+
+  test('hands a tab kept to every page but the one that kept it last, which holds it already', () => {
+    const kept = new KeptTabs();
+    const one = readied(kept);
+    const other = readied(kept);
+    kept.keep('1', { left: 'a' }, one);
+
+    assert.strictEqual(kept.handedTo(one, '1'), undefined);
+    assert.deepStrictEqual(kept.handedTo(other, '1'), { left: 'a' });
+    assert.strictEqual(kept.handedTo(other, '2'), undefined);
+  });
+
+  test('takes what a page sends before it is ready as kept by no page, as a reloading window sends what its old page kept through its new one', () => {
+    const kept = new KeptTabs();
+    const reloaded = pageOf();
+    kept.keep('1', { left: 'a' }, reloaded);
+    kept.ready(reloaded);
+
+    assert.deepStrictEqual(kept.of('1'), {
+      kept: { left: 'a' },
+      from: undefined,
+    });
+    assert.deepStrictEqual(kept.handedTo(reloaded, '1'), { left: 'a' });
+  });
+
+  test('refuses a value larger than its bound, or one JSON cannot hold, keeping what it had', () => {
+    const kept = new KeptTabs(20);
+    const page = readied(kept);
+    kept.keep('1', { small: 1 }, page);
+    const cycle: Record<string, unknown> = {};
+    cycle.self = cycle;
+
+    assert.strictEqual(kept.keep('1', { large: 'x'.repeat(20) }, page), false);
+    assert.strictEqual(kept.keep('1', undefined, page), false);
+    assert.strictEqual(
+      kept.keep('1', () => undefined, page),
+      false,
+    );
+    assert.strictEqual(kept.keep('1', cycle, page), false);
+
+    assert.deepStrictEqual(kept.of('1'), { kept: { small: 1 }, from: page });
+  });
+
+  test('forgets a tab dropped', () => {
+    const kept = new KeptTabs();
+    kept.keep('1', { left: 'a' }, readied(kept));
+
+    kept.drop('1');
+
+    assert.strictEqual(kept.of('1'), undefined);
+  });
+});
