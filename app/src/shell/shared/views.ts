@@ -1,31 +1,21 @@
-export interface TextView {
-  readonly wordWrap: boolean;
-  readonly showWhitespace: boolean;
-  readonly highlightSyntax: boolean;
-}
+import { flag, record, type Infer } from '../../lib/shared/schema';
+
+const textViewSchema = record({
+  wordWrap: flag(),
+  showWhitespace: flag(),
+  highlightSyntax: flag(),
+});
+
+export type TextView = Infer<typeof textViewSchema>;
 
 export function isTextView(value: unknown): value is TextView {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'wordWrap' in value &&
-    typeof value.wordWrap === 'boolean' &&
-    'showWhitespace' in value &&
-    typeof value.showWhitespace === 'boolean' &&
-    'highlightSyntax' in value &&
-    typeof value.highlightSyntax === 'boolean'
-  );
+  return textViewSchema.decode(value) !== undefined;
 }
 
-export interface ImageView {
-  readonly realSize: boolean;
-}
+const imageViewSchema = record({ realSize: flag() });
+
+export type ImageView = Infer<typeof imageViewSchema>;
 
 export function isImageView(value: unknown): value is ImageView {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'realSize' in value &&
-    typeof value.realSize === 'boolean'
-  );
+  return imageViewSchema.decode(value) !== undefined;
 }

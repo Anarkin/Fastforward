@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import {
   focusBack,
   focusOf,
-  keptFocusFrom,
+  focusSchema,
   useFocusKeeper,
   type KeptFocus,
 } from '../../../../lib/page/keptFocus';
@@ -90,25 +90,40 @@ suite('The focus kept for a tab', () => {
 
   test('reads back a focus kept as data, its name, caret and scroll, leaving out what is not of their shape', () => {
     assert.deepStrictEqual(
-      keptFocusFrom({
+      focusSchema.decode({
         name: 'find',
         selection: [3, 9, 'backward'],
         scroll: 18,
       }),
       { name: 'find', selection: [3, 9, 'backward'], scroll: 18 },
     );
-    assert.deepStrictEqual(keptFocusFrom({ name: 'body' }), { name: 'body' });
+    assert.deepStrictEqual(focusSchema.decode({ name: 'body' }), {
+      name: 'body',
+    });
     assert.deepStrictEqual(
-      keptFocusFrom({ name: 'find', selection: [3, 'x', 'none'], scroll: -1 }),
+      focusSchema.decode({
+        name: 'find',
+        selection: [3, 'x', 'none'],
+        scroll: -1,
+      }),
       { name: 'find' },
     );
     assert.deepStrictEqual(
-      keptFocusFrom({ name: 'find', selection: [3, 9, 'sideways'] }),
+      focusSchema.decode({ name: 'find', selection: [3, 9, 'sideways'] }),
       { name: 'find' },
     );
     for (const value of [undefined, null, 'find', [], { name: 3 }]) {
-      assert.strictEqual(keptFocusFrom(value), undefined);
+      assert.strictEqual(focusSchema.decode(value), undefined);
     }
+    const kept = {
+      name: 'find',
+      selection: [3, 9, 'forward'],
+      scroll: 4,
+    } as const;
+    assert.deepStrictEqual(
+      focusSchema.decode(JSON.parse(JSON.stringify(focusSchema.encode(kept)))),
+      kept,
+    );
   });
 
   test('names the part of a tool that has the focus, with the caret and the selection of a box, and nothing for a part without a name or outside the tool', () => {

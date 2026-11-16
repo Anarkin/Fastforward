@@ -1,4 +1,4 @@
-import { keptFocusFrom, type KeptFocus } from '../../../lib/page/keptFocus';
+import { focusSchema, type KeptFocus } from '../../../lib/page/keptFocus';
 import type { Search } from '../../../lib/shared/searchOptions';
 import { columnOrder, type ColumnName } from './activeColumn';
 import { diffPlaceKey, type DiffPlace } from './diffPlace';
@@ -275,7 +275,7 @@ const aFind: Decode<KeptFind> = (value) => {
     : { finding, search };
 };
 
-const aFocus: Decode<KeptFocus> = keptFocusFrom;
+const aFocus: Decode<KeptFocus> = focusSchema.decode;
 
 const anAnchor: Decode<ScrollAnchor> = (value) => {
   if (!isRecord(value)) {

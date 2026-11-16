@@ -1,4 +1,4 @@
-import { keptFocusFrom, type KeptTyped } from '../../../lib/page/keptFocus';
+import { caretSchema, type KeptTyped } from '../../../lib/page/keptFocus';
 import {
   isSearchOptions,
   type Search,
@@ -66,10 +66,7 @@ export function keptTypedOf(value: unknown): KeptTyped | undefined {
   if (typed === undefined) {
     return undefined;
   }
-  const selection = keptFocusFrom({
-    name: '',
-    selection: fields?.('selection'),
-  })?.selection;
+  const selection = caretSchema.decode(fields?.('selection'));
   return selection === undefined
     ? { value: typed }
     : { value: typed, selection };

@@ -87,6 +87,13 @@ export const withoutCaches = (
   return cheap;
 };
 
+const cacheNames = ['found', 'rows', 'text', 'colors', 'bytes'] as const;
+
+export const cachesOf = (kept: Partial<KeptViewer>): Partial<KeptViewer> =>
+  Object.fromEntries(
+    cacheNames.flatMap((name) => (name in kept ? [[name, kept[name]]] : [])),
+  );
+
 export const noKeptViewer: KeptViewer = {
   finding: false,
   pdfFind: undefined,

@@ -4,9 +4,11 @@ import type { CommanderActions, ToViewer } from './commanderState';
 import type { StoreParts } from './dialogActions';
 import { noSearch } from '../../../lib/shared/searchOptions';
 import type { ViewerKept } from './tabKept';
+import { RecentCache } from './recentCache';
 import {
   maxCachedViewers,
   noKeptViewer,
+  cachesOf,
   withoutCaches,
   type KeptViewer,
 } from './viewerKept';
@@ -52,21 +54,7 @@ export function viewerActions({ post: sent }: StoreParts): {
   };
   const places = new Map<string, number>();
   const keptViewers = new Map<string, KeptViewer>();
-  const cached: string[] = [];
-  const cache = (tab: string) => {
-    cached.splice(
-      0,
-      cached.length,
-      tab,
-      ...cached.filter((each) => each !== tab),
-    );
-    for (const old of cached.splice(maxCachedViewers)) {
-      const kept = keptViewers.get(old);
-      if (kept !== undefined) {
-        keptViewers.set(old, { ...noKeptViewer, ...withoutCaches(kept) });
-      }
-    }
-  };
+  const caches = new RecentCache<Partial<KeptViewer>>(maxCachedViewers);
   const viewerListeners = new Set<(message: ToViewer) => void>();
   const listenViewer = (handler: (message: ToViewer) => void) => {
     viewerListeners.add(handler);
@@ -101,10 +89,7 @@ export function viewerActions({ post: sent }: StoreParts): {
     forget: (tab) => {
       places.delete(tab);
       keptViewers.delete(tab);
-      const at = cached.indexOf(tab);
-      if (at !== -1) {
-        cached.splice(at, 1);
-      }
+      caches.forget(tab);
     },
     kept: (tab) => {
       const kept = keptViewers.get(tab) ?? noKeptViewer;
@@ -125,6 +110,7 @@ export function viewerActions({ post: sent }: StoreParts): {
       } else {
         places.set(tab, kept.place);
       }
+      caches.keep(tab, {});
       keptViewers.set(tab, {
         ...noKeptViewer,
         finding: kept.finding ?? false,
@@ -140,7 +126,7 @@ export function viewerActions({ post: sent }: StoreParts): {
       awaited = tab;
       held = [];
       if (tab !== undefined) {
-        cache(tab);
+        caches.shown(tab);
       }
     },
     viewingCame: (tab) => {
@@ -216,12 +202,16 @@ export function viewerActions({ post: sent }: StoreParts): {
       keepPlace: (tab, byte) => {
         places.set(tab, byte);
       },
-      keptViewer: (tab) => keptViewers.get(tab) ?? noKeptViewer,
+      keptViewer: (tab) => ({
+        ...(keptViewers.get(tab) ?? noKeptViewer),
+        ...caches.of(tab),
+      }),
       keepViewer: (tab, change) => {
         keptViewers.set(tab, {
           ...(keptViewers.get(tab) ?? noKeptViewer),
-          ...(cached.includes(tab) ? change : withoutCaches(change)),
+          ...withoutCaches(change),
         });
+        caches.keep(tab, { ...caches.of(tab), ...cachesOf(change) });
       },
     },
   };

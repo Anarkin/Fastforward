@@ -1,5 +1,13 @@
 import { useEffect, useEffectEvent, type RefObject } from 'react';
 import { restoreWhen } from './restore';
+import {
+  count,
+  oneOf,
+  optional,
+  record,
+  text,
+  type Schema,
+} from '../shared/schema';
 
 export const focusNameAttribute = 'data-focus-name';
 
@@ -70,36 +78,31 @@ export function focusOf(
 
 const directions = ['forward', 'backward', 'none'] as const;
 
-function countFrom(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
-    ? value
-    : undefined;
-}
+const place = count({ min: 0, integer: true });
 
-export function keptFocusFrom(value: unknown): KeptFocus | undefined {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return undefined;
-  }
-  const name: unknown = Reflect.get(value, 'name');
-  if (typeof name !== 'string') {
-    return undefined;
-  }
-  const kept: unknown = Reflect.get(value, 'selection');
-  const [start, end, way]: readonly unknown[] = Array.isArray(kept) ? kept : [];
-  const from = countFrom(start);
-  const to = countFrom(end);
-  const direction = directions.find((each) => each === way);
-  const scroll = countFrom(Reflect.get(value, 'scroll'));
-  return {
-    name,
-    ...(Array.isArray(kept) &&
-      kept.length === 3 &&
-      from !== undefined &&
-      to !== undefined &&
-      direction !== undefined && { selection: [from, to, direction] }),
-    ...(scroll !== undefined && scroll > 0 && { scroll }),
-  };
-}
+const direction = oneOf(directions);
+
+export const caretSchema: Schema<NonNullable<KeptFocus['selection']>> = {
+  decode: (value) => {
+    if (!Array.isArray(value) || value.length !== 3) {
+      return undefined;
+    }
+    const [start, end, way]: unknown[] = value;
+    const from = place.decode(start);
+    const to = place.decode(end);
+    const toward = direction.decode(way);
+    return from === undefined || to === undefined || toward === undefined
+      ? undefined
+      : [from, to, toward];
+  },
+  encode: ([start, end, way]) => [start, end, way],
+};
+
+export const focusSchema: Schema<KeptFocus> = record({
+  name: text(),
+  selection: optional(caretSchema),
+  scroll: optional(count({ min: 1, integer: true })),
+});
 
 export function focusBack(root: Element, kept: KeptFocus | undefined): boolean {
   if (kept === undefined) {
