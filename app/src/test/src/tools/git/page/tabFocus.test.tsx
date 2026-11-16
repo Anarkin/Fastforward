@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
-import { act, useRef, useState } from 'react';
+import { act, useEffect, useRef, useState } from 'react';
 import { suite, test } from 'vitest';
 import { focusBack } from '../../../../../lib/page/keptFocus';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
@@ -70,7 +70,56 @@ function Waiting() {
   );
 }
 
+function Grabbing({ scope }: { readonly scope: string }) {
+  const box = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (scope === 'two') {
+      box.current?.focus();
+    }
+  }, [scope]);
+  return <input ref={box} data-focus-name="box" />;
+}
+
+function Switching() {
+  const [scope, setScope] = useState('one');
+  const container = useRef<HTMLDivElement>(null);
+  useTabFocus({
+    container,
+    scope,
+    focusPart: (kept) =>
+      container.current !== null && focusBack(container.current, kept),
+    fallback: noop,
+  });
+  return (
+    <div ref={container}>
+      <div data-focus-name="list" tabIndex={0} />
+      <Grabbing scope={scope} />
+      <button data-switch="" onClick={() => setScope('two')} />
+    </div>
+  );
+}
+
 suite('The focus of a git tab', () => {
+  test('keeps none of the focus a part of the tab takes as the tab switches worktrees, giving the keyboard back to where it was in the worktree shown', async () => {
+    const store = createGitStore(noop);
+    store.getState().keepFocus('two', { name: 'list' });
+    await mounted(
+      <GitStore value={store}>
+        <Switching />
+      </GitStore>,
+      (main, window) => {
+        act(() => main.querySelector<HTMLElement>('[data-switch]')?.click());
+        assert.strictEqual(
+          window.document.activeElement,
+          main.querySelector('[data-focus-name="list"]'),
+        );
+        assert.deepStrictEqual(store.getState().keptFocusOf('two'), {
+          name: 'list',
+        });
+      },
+    );
+  });
+
   test('gives the keyboard back to the part that had it once that part is drawn, though only a part inside the tab draws anew, so the tab need not draw anew each time its content does', async () => {
     const store = createGitStore(noop);
     store

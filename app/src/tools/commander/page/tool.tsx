@@ -118,7 +118,7 @@ export function CommanderTool({
       )?.focus();
       return true;
     },
-    { key: panesShown ? tab : undefined },
+    { key: panesShown ? tab : undefined, within: Infinity },
   );
   useEffect(() => {
     if (!panesShown) {

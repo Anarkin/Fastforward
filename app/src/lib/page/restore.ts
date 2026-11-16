@@ -55,12 +55,14 @@ export function restoreWhen<T>(
       stop();
     }
   };
-  const timer = setTimeout(() => {
-    if (pending) {
-      stop();
-      late?.();
-    }
-  }, within);
+  const timer = Number.isFinite(within)
+    ? setTimeout(() => {
+        if (pending) {
+          stop();
+          late?.();
+        }
+      }, within)
+    : undefined;
   for (const hand of handsOn) {
     on.addEventListener(hand, stop, { capture: true, passive: true });
   }
@@ -107,6 +109,7 @@ export function useRestore<T>(
 ): RefObject<T | undefined> {
   const pending = useRef<T>(undefined);
   const restoring = useRef<Restoring>(undefined);
+  const armed = useRef(beforePaint);
   const wantedNow = useEffectEvent(() => wanted);
   const isReady = useEffectEvent((value: T) => ready(value));
   const applied = useEffectEvent((value: T) => apply(value));
@@ -118,17 +121,23 @@ export function useRestore<T>(
     if (by === undefined || now === undefined) {
       return undefined;
     }
-    const made = restoreWhen(now, isReady, applied, {
-      within,
-      late: gaveUp,
-      on: on?.current ?? window,
-      watch: watchedChanges(watch?.current),
-      ended: () => {
-        if (pending.current === now) {
-          pending.current = undefined;
-        }
+    armed.current = beforePaint;
+    const made = restoreWhen(
+      now,
+      (value) => armed.current && isReady(value),
+      applied,
+      {
+        within,
+        late: gaveUp,
+        on: on?.current ?? window,
+        watch: watchedChanges(watch?.current),
+        ended: () => {
+          if (pending.current === now) {
+            pending.current = undefined;
+          }
+        },
       },
-    });
+    );
     restoring.current = made;
     return () => {
       made.stop();
@@ -137,20 +146,14 @@ export function useRestore<T>(
       }
     };
   });
-  useLayoutEffect(
-    () => (beforePaint ? start(started) : undefined),
-    [started, beforePaint],
-  );
-  useEffect(
-    () => (beforePaint ? undefined : start(started)),
-    [started, beforePaint],
-  );
+  useLayoutEffect(() => start(started), [started]);
   useLayoutEffect(() => {
     if (beforePaint) {
       restoring.current?.check();
     }
   });
   useEffect(() => {
+    armed.current = true;
     restoring.current?.check();
   });
   return pending;
