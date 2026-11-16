@@ -42,34 +42,52 @@ function windows() {
   return { first, second, kept, move };
 }
 
+const handed = (value: string | undefined): unknown =>
+  value === undefined ? undefined : JSON.parse(value);
+
 suite('What git pages keep of their tabs', () => {
   test('keeps what a page sends of a worktree of any git tab of its window, not only the one shown, handing it to a page that did not keep it last', () => {
     const { first, second, kept } = windows();
-    kept.keepWorktree(first, '/other', '/other-worktree', { column: 'diff' });
-    kept.keepCompare(first, '3', { find: 1 });
+    kept.keepWorktree(
+      first,
+      '/other',
+      '/other-worktree',
+      JSON.stringify({ column: 'diff' }),
+    );
+    kept.keepCompare(first, '3', JSON.stringify({ find: 1 }));
     assert.strictEqual(
-      kept.worktreeHandedTo(first, '/other-worktree'),
+      handed(kept.worktreeHandedTo(first, '/other-worktree')),
       undefined,
     );
-    assert.deepStrictEqual(kept.worktreeHandedTo(second, '/other-worktree'), {
-      column: 'diff',
+    assert.deepStrictEqual(
+      handed(kept.worktreeHandedTo(second, '/other-worktree')),
+      {
+        column: 'diff',
+      },
+    );
+    assert.deepStrictEqual(handed(kept.compareHandedTo(second, '3')), {
+      find: 1,
     });
-    assert.deepStrictEqual(kept.compareHandedTo(second, '3'), { find: 1 });
-    assert.strictEqual(kept.compareHandedTo(first, '3'), undefined);
+    assert.strictEqual(handed(kept.compareHandedTo(first, '3')), undefined);
   });
 
   test('refuses what a page sends of a repository no git tab of its window holds, and of a compare tab of another window or of another tool, as the page is not trusted', () => {
     const { first, second, kept } = windows();
-    kept.keepWorktree(second, '/repo', '/repo', { column: 'diff' });
-    kept.keepCompare(first, '5', { find: 1 });
-    kept.keepCompare(second, '4', { find: 1 });
-    kept.keepCompare(first, '1', { find: 1 });
+    kept.keepWorktree(
+      second,
+      '/repo',
+      '/repo',
+      JSON.stringify({ column: 'diff' }),
+    );
+    kept.keepCompare(first, '5', JSON.stringify({ find: 1 }));
+    kept.keepCompare(second, '4', JSON.stringify({ find: 1 }));
+    kept.keepCompare(first, '1', JSON.stringify({ find: 1 }));
     assert.deepStrictEqual(
       [
-        kept.worktreeHandedTo(first, '/repo'),
-        kept.compareHandedTo(second, '5'),
-        kept.compareHandedTo(first, '4'),
-        kept.compareHandedTo(second, '1'),
+        handed(kept.worktreeHandedTo(first, '/repo')),
+        handed(kept.compareHandedTo(second, '5')),
+        handed(kept.compareHandedTo(first, '4')),
+        handed(kept.compareHandedTo(second, '1')),
       ],
       [undefined, undefined, undefined, undefined],
     );
@@ -80,25 +98,38 @@ suite('What git pages keep of their tabs', () => {
     kept.showing(first, '1');
     move('1', second);
     kept.showing(first, '2');
-    kept.keepWorktree(first, '/repo', '/repo', { column: 'files' });
+    kept.keepWorktree(
+      first,
+      '/repo',
+      '/repo',
+      JSON.stringify({ column: 'files' }),
+    );
     move('3', second);
-    kept.keepCompare(first, '3', { find: 1 });
-    assert.deepStrictEqual(kept.worktreeHandedTo(second, '/repo'), {
+    kept.keepCompare(first, '3', JSON.stringify({ find: 1 }));
+    assert.deepStrictEqual(handed(kept.worktreeHandedTo(second, '/repo')), {
       column: 'files',
     });
-    assert.strictEqual(kept.compareHandedTo(second, '3'), undefined);
+    assert.strictEqual(handed(kept.compareHandedTo(second, '3')), undefined);
   });
 
   test('hands a tab back to the page of the window it moved out of should it come back, as that page let go of what it kept of it', () => {
     const { first, second, kept, move } = windows();
-    kept.keepWorktree(first, '/repo', '/repo', { column: 'diff' });
-    kept.keepCompare(first, '3', { find: 1 });
+    kept.keepWorktree(
+      first,
+      '/repo',
+      '/repo',
+      JSON.stringify({ column: 'diff' }),
+    );
+    kept.keepCompare(first, '3', JSON.stringify({ find: 1 }));
     kept.showing(first, '3');
     move('3', second);
-    kept.keepCompare(first, '3', { find: 2 });
+    kept.keepCompare(first, '3', JSON.stringify({ find: 2 }));
     kept.leftWorktree(first, '/repo');
     assert.deepStrictEqual(
-      [kept.worktreeHandedTo(first, '/repo'), kept.compareHandedTo(first, '3')],
+      [
+        handed(kept.worktreeHandedTo(first, '/repo')),
+        handed(kept.compareHandedTo(first, '3')),
+      ],
       [{ column: 'diff' }, { find: 2 }],
     );
   });
@@ -106,15 +137,23 @@ suite('What git pages keep of their tabs', () => {
   test('refuses what is too large to keep, and forgets what a closed tab kept', () => {
     const { first, second, kept } = windows();
     kept.keepWorktree(first, '/repo', '/repo', 'x'.repeat(2 * 1024 * 1024));
-    assert.strictEqual(kept.worktreeHandedTo(second, '/repo'), undefined);
-    kept.keepWorktree(first, '/repo', '/repo', { column: 'diff' });
-    kept.keepCompare(first, '3', { find: 1 });
+    assert.strictEqual(
+      handed(kept.worktreeHandedTo(second, '/repo')),
+      undefined,
+    );
+    kept.keepWorktree(
+      first,
+      '/repo',
+      '/repo',
+      JSON.stringify({ column: 'diff' }),
+    );
+    kept.keepCompare(first, '3', JSON.stringify({ find: 1 }));
     kept.forgetWorktree('/repo');
     kept.forgetCompare('3');
     assert.deepStrictEqual(
       [
-        kept.worktreeHandedTo(second, '/repo'),
-        kept.compareHandedTo(second, '3'),
+        handed(kept.worktreeHandedTo(second, '/repo')),
+        handed(kept.compareHandedTo(second, '3')),
       ],
       [undefined, undefined],
     );

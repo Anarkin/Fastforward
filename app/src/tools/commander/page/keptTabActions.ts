@@ -42,6 +42,14 @@ function withFilters(
   return next;
 }
 
+function parsedOf(kept: string): unknown {
+  try {
+    return JSON.parse(kept);
+  } catch {
+    return undefined;
+  }
+}
+
 export function keptTabActions(
   { set, get, post }: StoreParts,
   scrolls: ScrollPlaces,
@@ -70,8 +78,8 @@ export function keptTabActions(
     (tab, kept) => post({ type: 'keepTab', tab, kept }),
     () => get().view.tab,
   );
-  const restore = (tab: string, kind: TabKind, value: unknown) => {
-    const kept = tabKeptOf(value, tab);
+  const restore = (tab: string, kind: TabKind, value: string) => {
+    const kept = tabKeptOf(parsedOf(value), tab);
     if (kind === 'sides' && kept.sides !== undefined) {
       const restored = kept.sides;
       set((state) => ({

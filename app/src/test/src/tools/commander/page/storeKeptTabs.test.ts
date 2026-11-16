@@ -235,7 +235,7 @@ suite('Commander store keeping its tabs', () => {
     store.getState().receive({
       type: 'show',
       tab: '1',
-      kept: {
+      kept: JSON.stringify({
         sides: {
           active: 'up',
           share: 7,
@@ -253,7 +253,7 @@ suite('Commander store keeping its tabs', () => {
           ],
         },
         viewer: 'not for a commander tab',
-      },
+      }),
     });
     store.getState().receive({ ...withFiles(folder, 'a', 'b'), side: 'right' });
 

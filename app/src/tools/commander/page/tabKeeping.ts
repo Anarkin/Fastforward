@@ -8,7 +8,7 @@ export class TabKeeping {
 
   constructor(
     private readonly keptOf: (tab: string) => unknown,
-    private readonly send: (tab: string, kept: unknown) => void,
+    private readonly send: (tab: string, kept: string) => void,
     private readonly shown: () => string | undefined,
     private readonly wait = keepingWait,
   ) {}
@@ -44,7 +44,7 @@ export class TabKeeping {
       const json = kept === undefined ? undefined : JSON.stringify(kept);
       if (json !== undefined && this.sent.get(tab) !== json) {
         this.sent.set(tab, json);
-        this.send(tab, kept);
+        this.send(tab, json);
       }
     }
   }

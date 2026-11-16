@@ -70,7 +70,7 @@ suite('A commander tab shown again', () => {
     }));
 
   test('gives the focus back to the filter with its caret in a page that never showed the tab, as a window reloaded, once the folders of its sides are listed', async () => {
-    let kept: unknown;
+    let kept: string | undefined;
     await inCommanderTool(CommanderTool, async (tool) => {
       await tool.send(commanderSettings);
       await sidesShown(tool, 'A');

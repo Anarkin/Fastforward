@@ -51,6 +51,7 @@ import {
   changedScopes,
   compareScope,
   keepingOf,
+  parsedKept,
   restoredCompare,
   restoredWorktree,
   viewScope,
@@ -222,9 +223,19 @@ export function createGitStore(
     const restore = (message: GitToWebview) => {
       const restored =
         message.type === 'keptTab'
-          ? restoredWorktree(get(), places, message.root, message.kept)
+          ? restoredWorktree(
+              get(),
+              places,
+              message.root,
+              parsedKept(message.kept),
+            )
           : message.type === 'keptCompare'
-            ? restoredCompare(get(), places, message.tab, message.kept)
+            ? restoredCompare(
+                get(),
+                places,
+                message.tab,
+                parsedKept(message.kept),
+              )
             : undefined;
       if (restored !== undefined) {
         set(restored);

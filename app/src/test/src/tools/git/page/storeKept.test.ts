@@ -39,7 +39,7 @@ const filesOf = (hash: string) => ({
 const keptSent = (posted: readonly GitToHost[]) =>
   posted.flatMap((message) =>
     message.type === 'keepTab' || message.type === 'keepCompare'
-      ? [message]
+      ? [{ ...message, kept: JSON.parse(message.kept) as unknown }]
       : [],
   );
 
@@ -169,9 +169,11 @@ suite('Git store, keeping each tab with the main process', () => {
     back.store.getState().activateColumn('files');
     back.store.getState().receive(showing(undefined));
     const before = keptSent(back.posted).length;
-    back.store
-      .getState()
-      .receive({ type: 'keptTab', root: '/repo', kept: sent.kept });
+    back.store.getState().receive({
+      type: 'keptTab',
+      root: '/repo',
+      kept: JSON.stringify(sent.kept),
+    });
     assert.deepStrictEqual(keptSent(back.posted).slice(before), [sent]);
     back.store.getState().receive(shown());
     back.store.getState().receive(filesOf(at));
@@ -196,7 +198,11 @@ suite('Git store, keeping each tab with the main process', () => {
     assert.ok(sent?.type === 'keepCompare');
     assert.strictEqual(sent.tab, '7');
     const back = posting().store;
-    back.getState().receive({ type: 'keptCompare', tab: '7', kept: sent.kept });
+    back.getState().receive({
+      type: 'keptCompare',
+      tab: '7',
+      kept: JSON.stringify(sent.kept),
+    });
     const compareLooks = (store: StoreApi<GitState>) => [
       diffFindOf(compared)(store.getState()),
       store.getState().keptFocusOf(compared),
@@ -267,7 +273,7 @@ suite('Git store, keeping each tab with the main process', () => {
     store.getState().receive({
       type: 'keptTab',
       root: '/repo',
-      kept: {
+      kept: JSON.stringify({
         commitsHidden: 'yes',
         searching: true,
         column: 'nowhere',
@@ -293,7 +299,7 @@ suite('Git store, keeping each tab with the main process', () => {
           ],
         ],
         focus: { name: 'diff', selection: [1, 'x', 'forward'] },
-      },
+      }),
     });
     store
       .getState()
@@ -331,7 +337,7 @@ suite('Git store, keeping each tab with the main process', () => {
           toggled: new Map([['a.txt', true]]),
           current: 1,
         },
-        focus: undefined,
+        focus: { name: 'diff' },
       },
     );
   });

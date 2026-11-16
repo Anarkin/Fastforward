@@ -5,7 +5,10 @@ import { commander, forged, tab } from './commanderFixtures';
 import { CommanderPage } from './fakePage';
 import { root } from './entryFixtures';
 
-const keptOf = (page: CommanderPage) => page.of('show').at(-1)?.kept;
+const keptOf = (page: CommanderPage): unknown => {
+  const kept = page.of('show').at(-1)?.kept;
+  return kept === undefined ? undefined : JSON.parse(kept);
+};
 
 const opened = (tabs: Tab[], ...more: Tab[]) => {
   tabs.push(tab, ...more);
@@ -20,7 +23,11 @@ suite('Commander tool keeping its tabs', () => {
     tool.ready(other);
     await tool.show(page, tab);
 
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
     tool.hide(page);
     await tool.show(other, tab);
 
@@ -32,7 +39,11 @@ suite('Commander tool keeping its tabs', () => {
     opened(tabs);
     tool.ready(page);
     await tool.show(page, tab);
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
     tool.hide(page);
 
     await tool.show(page, tab);
@@ -59,12 +70,16 @@ suite('Commander tool keeping its tabs', () => {
     tool.ready(page);
     tool.ready(other);
     await tool.show(page, viewed);
-    await send({ type: 'keepTab', tab: '2', kept: { viewer: { place: 7 } } });
+    await send({
+      type: 'keepTab',
+      tab: '2',
+      kept: JSON.stringify({ viewer: { place: 7 } }),
+    });
     await tool.show(page, edited);
     await send({
       type: 'keepTab',
       tab: '3',
-      kept: { editor: { finding: true } },
+      kept: JSON.stringify({ editor: { finding: true } }),
     });
 
     await tool.show(other, viewed);
@@ -85,7 +100,11 @@ suite('Commander tool keeping its tabs', () => {
     await tool.show(page, tab);
     await tool.show(page, next);
 
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
     await tool.show(moved, tab);
 
     assert.deepStrictEqual(keptOf(moved), { sides: { share: 0.3 } });
@@ -104,7 +123,11 @@ suite('Commander tool keeping its tabs', () => {
     await tool.show(there, tab);
     await tool.show(page, next);
 
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
     tool.hide(there);
     await tool.show(there, tab);
 
@@ -122,11 +145,27 @@ suite('Commander tool keeping its tabs', () => {
     windows.set(page, [tab, git]);
     windows.set(other, [elsewhere]);
     await tool.show(page, tab);
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
 
-    await send({ type: 'keepTab', tab: '2', kept: { sides: { share: 0.4 } } });
-    await send({ type: 'keepTab', tab: '3', kept: { sides: { share: 0.4 } } });
-    await send({ type: 'keepTab', tab: '4', kept: { sides: { share: 0.4 } } });
+    await send({
+      type: 'keepTab',
+      tab: '2',
+      kept: JSON.stringify({ sides: { share: 0.4 } }),
+    });
+    await send({
+      type: 'keepTab',
+      tab: '3',
+      kept: JSON.stringify({ sides: { share: 0.4 } }),
+    });
+    await send({
+      type: 'keepTab',
+      tab: '4',
+      kept: JSON.stringify({ sides: { share: 0.4 } }),
+    });
     await send(forged('{"type":"keepTab","tab":1,"kept":{}}'));
     await send({
       type: 'keepTab',
@@ -146,7 +185,11 @@ suite('Commander tool keeping its tabs', () => {
     opened(tabs);
     tool.ready(page);
     await tool.show(page, tab);
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
     tool.hide(page);
 
     tool.left(page, tab);
@@ -165,7 +208,11 @@ suite('Commander tool keeping its tabs', () => {
     windows.set(page, [next]);
     await tool.show(page, next);
 
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
     windows.set(page, [next, tab]);
     await tool.show(page, tab);
 
@@ -179,7 +226,11 @@ suite('Commander tool keeping its tabs', () => {
     tool.ready(page);
     tool.ready(other);
     await tool.show(page, tab);
-    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    await send({
+      type: 'keepTab',
+      tab: '1',
+      kept: JSON.stringify({ sides: { share: 0.3 } }),
+    });
 
     tool.closed(page, tab);
     await tool.show(other, tab);

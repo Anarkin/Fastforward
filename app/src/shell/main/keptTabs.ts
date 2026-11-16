@@ -1,17 +1,9 @@
 import type { Page } from './toolContract';
 
 interface Kept {
-  readonly kept: unknown;
+  readonly kept: string;
   readonly from: Page | undefined;
 }
-
-const lengthOf = (value: unknown): number | undefined => {
-  try {
-    return JSON.stringify(value)?.length;
-  } catch {
-    return undefined;
-  }
-};
 
 export class KeptTabs {
   private readonly kept = new Map<string, Kept>();
@@ -24,8 +16,7 @@ export class KeptTabs {
   }
 
   keep(tab: string, kept: unknown, from: Page | undefined): boolean {
-    const length = lengthOf(kept);
-    if (length === undefined || length > this.max) {
+    if (typeof kept !== 'string' || kept.length > this.max) {
       return false;
     }
     this.kept.set(tab, {
@@ -46,7 +37,7 @@ export class KeptTabs {
     return this.kept.get(tab);
   }
 
-  handedTo(page: Page, tab: string): unknown {
+  handedTo(page: Page, tab: string): string | undefined {
     const kept = this.kept.get(tab);
     return kept === undefined || kept.from === page ? undefined : kept.kept;
   }

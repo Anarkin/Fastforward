@@ -59,11 +59,11 @@ export class KeptGitTabs {
     this.compares.leftBy(page, tab);
   }
 
-  worktreeHandedTo(page: Page, root: string): unknown {
+  worktreeHandedTo(page: Page, root: string): string | undefined {
     return this.worktrees.handedTo(page, root);
   }
 
-  compareHandedTo(page: Page, tab: string): unknown {
+  compareHandedTo(page: Page, tab: string): string | undefined {
     return this.compares.handedTo(page, tab);
   }
 

@@ -34,7 +34,7 @@ export class KeptCommanderTabs {
     this.kept.leftBy(page, tab);
   }
 
-  handedTo(page: Page, tab: string): { readonly kept?: unknown } {
+  handedTo(page: Page, tab: string): { readonly kept?: string } {
     const kept = this.kept.handedTo(page, tab);
     return kept === undefined ? {} : { kept };
   }

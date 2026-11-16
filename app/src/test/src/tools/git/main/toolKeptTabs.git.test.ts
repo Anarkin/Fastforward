@@ -84,12 +84,12 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     await first.connection.receive({
       type: 'keepTab',
       root: repository.root,
-      kept: { column: 'diff' },
+      kept: JSON.stringify({ column: 'diff' }),
     });
     await first.connection.receive({
       type: 'keepCompare',
       tab: '2',
-      kept: { find: { finding: true } },
+      kept: JSON.stringify({ find: { finding: true } }),
     });
     await first.connection.receive({ type: 'selectTab', tab: '2' });
     await first.connection.receive({ type: 'selectTab', tab: '1' });
@@ -99,7 +99,11 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     await reloaded.connection.receive({ type: 'ready' });
     await first.view.idle();
     assert.deepStrictEqual(keptOf(reloaded.page), [
-      { type: 'keptTab', root: repository.root, kept: { column: 'diff' } },
+      {
+        type: 'keptTab',
+        root: repository.root,
+        kept: JSON.stringify({ column: 'diff' }),
+      },
     ]);
     assert.ok(sentBefore(reloaded.page, 'keptTab', 'worktrees'));
     await reloaded.connection.receive({ type: 'selectTab', tab: '2' });
@@ -110,7 +114,7 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     assert.deepStrictEqual(keptOf(reloaded.page).at(-1), {
       type: 'keptCompare',
       tab: '2',
-      kept: { find: { finding: true } },
+      kept: JSON.stringify({ find: { finding: true } }),
     });
     assert.ok(sentBefore(reloaded.page, 'keptCompare', 'compare'));
   });
@@ -121,12 +125,16 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     await reloaded.connection.receive({
       type: 'keepTab',
       root: repository.root,
-      kept: { column: 'files' },
+      kept: JSON.stringify({ column: 'files' }),
     });
     await reloaded.connection.receive({ type: 'ready' });
     await first.view.idle();
     assert.deepStrictEqual(keptOf(reloaded.page), [
-      { type: 'keptTab', root: repository.root, kept: { column: 'files' } },
+      {
+        type: 'keptTab',
+        root: repository.root,
+        kept: JSON.stringify({ column: 'files' }),
+      },
     ]);
   });
 
@@ -135,17 +143,17 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     await second.connection.receive({
       type: 'keepTab',
       root: repository.root,
-      kept: { column: 'diff' },
+      kept: JSON.stringify({ column: 'diff' }),
     });
     await second.connection.receive({
       type: 'keepCompare',
       tab: '2',
-      kept: { find: { finding: true } },
+      kept: JSON.stringify({ find: { finding: true } }),
     });
     await first.connection.receive({
       type: 'keepTab',
       root: other,
-      kept: { column: 'diff' },
+      kept: JSON.stringify({ column: 'diff' }),
     });
     const reloaded = attach(first.view, '1');
     await reloaded.connection.receive({ type: 'ready' });
@@ -161,7 +169,7 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     await reloadedSecond.connection.receive({
       type: 'keepTab',
       root: other,
-      kept: { column: 'diff' },
+      kept: JSON.stringify({ column: 'diff' }),
     });
     await reloadedSecond.connection.receive({ type: 'closeTab', tab: '3' });
     await reloaded.connection.receive({ type: 'openRepository', root: other });
@@ -174,7 +182,7 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     await first.connection.receive({
       type: 'keepTab',
       root: repository.root,
-      kept: { column: 'diff' },
+      kept: JSON.stringify({ column: 'diff' }),
     });
     await first.connection.receive({ type: 'moveTabToWindow', tab: '1' });
     await first.view.idle();
@@ -195,7 +203,7 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     assert.deepStrictEqual(keptOf(first.page).at(-1), {
       type: 'keptTab',
       root: repository.root,
-      kept: { column: 'diff' },
+      kept: JSON.stringify({ column: 'diff' }),
     });
     await first.connection.receive({ type: 'moveTabToWindow', tab: '2' });
     await first.view.idle();
@@ -225,13 +233,17 @@ suite('Git tool keeping what its pages keep of their tabs', () => {
     await first.connection.receive({
       type: 'keepTab',
       root: repository.root,
-      kept: { column: 'diff' },
+      kept: JSON.stringify({ column: 'diff' }),
     });
     const moved = attach(first.view, '3');
     await moved.connection.receive({ type: 'ready' });
     await first.view.idle();
     assert.deepStrictEqual(keptOf(moved.page), [
-      { type: 'keptTab', root: repository.root, kept: { column: 'diff' } },
+      {
+        type: 'keptTab',
+        root: repository.root,
+        kept: JSON.stringify({ column: 'diff' }),
+      },
     ]);
   });
 });

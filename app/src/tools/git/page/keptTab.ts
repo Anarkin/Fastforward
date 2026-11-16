@@ -1,4 +1,4 @@
-import type { KeptFocus } from '../../../lib/page/keptFocus';
+import { keptFocusFrom, type KeptFocus } from '../../../lib/page/keptFocus';
 import type { Search } from '../../../lib/shared/searchOptions';
 import type { GitToHost } from '../shared/protocol';
 import { columnOrder, type ColumnName } from './activeColumn';
@@ -243,7 +243,7 @@ export function keepingOf(
     return {
       type: 'keepTab',
       root: target.root,
-      kept: keptWorktreeOf(source, places, target.root),
+      kept: JSON.stringify(keptWorktreeOf(source, places, target.root)),
     };
   }
   return target === undefined
@@ -251,15 +251,14 @@ export function keepingOf(
     : {
         type: 'keepCompare',
         tab: target.tab,
-        kept: keptCompareOf(source, places, target.tab),
+        kept: JSON.stringify(keptCompareOf(source, places, target.tab)),
       };
 }
 
 export function blankKeeping(message: GitToHost): boolean {
   return (
     (message.type === 'keepTab' || message.type === 'keepCompare') &&
-    isRecord(message.kept) &&
-    Object.keys(message.kept).length === 0
+    message.kept === '{}'
   );
 }
 
@@ -277,30 +276,7 @@ const aFind: Decode<KeptFind> = (value) => {
     : { finding, search };
 };
 
-const directions = ['forward', 'backward', 'none'] as const;
-
-const aFocus: Decode<KeptFocus> = (value) => {
-  if (!isRecord(value)) {
-    return undefined;
-  }
-  const name = aString(value.name);
-  if (name === undefined) {
-    return undefined;
-  }
-  if (value.selection === undefined) {
-    return { name };
-  }
-  if (!Array.isArray(value.selection) || value.selection.length !== 3) {
-    return undefined;
-  }
-  const [start, end, way]: unknown[] = value.selection;
-  const from = aNumber(start);
-  const to = aNumber(end);
-  const direction = directions.find((each) => each === way);
-  return from === undefined || to === undefined || direction === undefined
-    ? undefined
-    : { name, selection: [from, to, direction] };
-};
+const aFocus: Decode<KeptFocus> = keptFocusFrom;
 
 const anAnchor: Decode<ScrollAnchor> = (value) => {
   if (!isRecord(value)) {
@@ -465,6 +441,14 @@ function restoreScope(
       pickedIn(languageScope)(kept.language),
     ),
   };
+}
+
+export function parsedKept(kept: string): unknown {
+  try {
+    return JSON.parse(kept);
+  } catch {
+    return undefined;
+  }
 }
 
 export function restoredWorktree(
