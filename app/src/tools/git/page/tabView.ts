@@ -152,7 +152,7 @@ function isLate(
   state: TabView,
   hash: string,
   path: string | undefined,
-  area = state.area,
+  area: ChangeArea | undefined,
 ): boolean {
   return (
     state.selectionKnown &&
@@ -260,7 +260,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         ? state
         : { ...state, workingTree: action.files };
     case 'files':
-      if (isLate(state, action.hash, state.path)) {
+      if (isLate(state, action.hash, state.path, state.area)) {
         return state;
       }
       return {
@@ -349,7 +349,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         fileContent: action,
       };
     case 'tree':
-      return isLate(state, action.hash, state.path)
+      return isLate(state, action.hash, state.path, state.area)
         ? state
         : { ...state, tree: action };
     case 'requestTree':
