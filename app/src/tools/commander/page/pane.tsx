@@ -163,6 +163,7 @@ export function Pane({
   };
 
   const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
+  const keptScroll = actions.scrollOf(scrollKey);
   const { tiled, across, shownList, tileTextRow, fillScrolledTo, tileRows } =
     useTiles(body, side, rows, scrollKey);
   const scrolledTo = (offset: number) => {
@@ -329,7 +330,9 @@ export function Pane({
         {shownList !== undefined && (
           <VirtualRows
             key={`${shownList} ${tab ?? ''}`}
-            initialOffset={actions.scrollOf(scrollKey)}
+            placeKey={scrollKey}
+            initialOffset={keptScroll}
+            revealAtStart={pane?.restored !== true || keptScroll === 0}
             onScrolled={scrolledTo}
             rows={tiled ? tileRows : listed}
             renderRow={tiled ? renderTiles : renderRow}

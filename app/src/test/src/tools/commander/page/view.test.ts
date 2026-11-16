@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { reduceView } from '../../../../../tools/commander/page/view';
+import {
+  emptyView,
+  reduceView,
+} from '../../../../../tools/commander/page/view';
 import {
   entry,
   listing,
@@ -14,6 +17,44 @@ import {
 } from './viewFixtures';
 
 suite('Commander view', () => {
+  test('marks a side brought back as its tab kept it, from a listing after a reload or from a tab shown again, and as no longer so once it goes to another folder, so its list starts where it was rather than at its selected row', () => {
+    const restoring = run(
+      {
+        type: 'restore',
+        tab: '1',
+        kept: {
+          active: 'left',
+          share: 0.5,
+          focus: undefined,
+          layouts: emptyView.layouts,
+          panes: { left: undefined, right: undefined },
+          awaiting: {
+            left: { folder: '/code', selected: 'b.txt', marked: [] },
+            right: undefined,
+          },
+        },
+      },
+      { type: 'show', tab: '1' },
+      listing('/code', [entry('a.txt'), entry('b.txt')]),
+    );
+    assert.strictEqual(restoring.panes.left?.selected, 'b.txt');
+    assert.strictEqual(restoring.panes.left?.restored, true);
+    const listedAgain = reduceView(
+      restoring,
+      listing('/code', [entry('a.txt'), entry('b.txt'), entry('c.txt')]),
+    );
+    assert.strictEqual(listedAgain.panes.left?.restored, true);
+    const away = reduceView(listedAgain, listing('/other', [entry('d.txt')]));
+    assert.strictEqual(away.panes.left?.restored, undefined);
+    const back = run(
+      { type: 'show', tab: '1' },
+      listing('/code', [entry('a.txt')]),
+      { type: 'show', tab: '2' },
+      { type: 'show', tab: '1' },
+    );
+    assert.strictEqual(back.panes.left?.restored, true);
+  });
+
   test('marks the folders that are repositories without sorting the rows again, and leaves a side alone when they are the ones it marks already', () => {
     const listed = run(
       { type: 'show', tab: '1' },

@@ -63,6 +63,7 @@ export interface PaneView extends Listed {
   readonly flat?: FlatView;
   readonly duplicates?: DuplicatesView;
   readonly counting: number;
+  readonly restored?: true;
 }
 
 export const noMarks: ReadonlySet<string> = new Set();

@@ -242,20 +242,23 @@ function settledPanes(
 ): Readonly<Record<Side, PaneView | undefined>> {
   const settled = (side: Side) => {
     const pane = panes[side];
-    if (pane?.flat !== undefined) {
-      return { ...pane, sort: view.sorts[side] };
+    if (pane === undefined) {
+      return undefined;
     }
-    return (
-      pane &&
-      relisted(
+    if (pane.flat !== undefined) {
+      return { ...pane, sort: view.sorts[side], restored: true as const };
+    }
+    return {
+      ...relisted(
         pane,
         view.sorts[side],
         pane,
         view.showHidden,
         view.fileColors,
         undefined,
-      )
-    );
+      ),
+      restored: true as const,
+    };
   };
   return { left: settled('left'), right: settled('right') };
 }
@@ -418,11 +421,18 @@ export function reduceView(
         pane?.folder === action.folder ? pane.duplicates : undefined,
         action.duplicates,
       );
-      const { duplicates: _left, ...withoutDuplicates } = listed;
+      const {
+        duplicates: _left,
+        restored: _wasRestored,
+        ...withoutDuplicates
+      } = listed;
       const marked =
         restoring === undefined
           ? listed.marked
           : marksAmong(listed.rows, restoring.marked);
+      const restored =
+        restoring !== undefined ||
+        (pane?.restored === true && pane.folder === action.folder);
       return withPane(
         awaited === undefined
           ? view
@@ -431,9 +441,12 @@ export function reduceView(
               awaiting: { ...view.awaiting, [action.side]: undefined },
             },
         action.side,
-        duplicates === undefined
-          ? { ...withoutDuplicates, marked }
-          : { ...withoutDuplicates, marked, duplicates },
+        {
+          ...withoutDuplicates,
+          marked,
+          ...(duplicates !== undefined && { duplicates }),
+          ...(restored && { restored: true as const }),
+        },
       );
     }
     case 'duplicateGroups': {
