@@ -15,6 +15,7 @@ import {
   scrolledAround,
   settledLooks,
   showTab,
+  sizedWindow,
   tabs,
 } from './tabReturns';
 
@@ -79,6 +80,11 @@ suite('App tabs shown again', () => {
     for (let index = 0; index < 80; index++) {
       fs.writeFileSync(path.join(opened, `file ${index}.txt`), String(index));
     }
+    const listed = path.join(folder, 'listed');
+    fs.mkdirSync(listed);
+    for (let index = 0; index < 80; index++) {
+      fs.writeFileSync(path.join(listed, `entry ${index}.txt`), String(index));
+    }
     fs.writeFileSync(path.join(opened, 'long.txt'), longText);
     fs.writeFileSync(path.join(opened, 'edited.txt'), longText);
     fs.writeFileSync(
@@ -103,9 +109,23 @@ suite('App tabs shown again', () => {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
+    await sizedWindow(app);
     await waitFor(
       async () => (await tabs(page).count()) === kinds.length,
       'every tab',
+    );
+    const left = page.locator('.commander-pane').first();
+    await left.locator('.commander-row').first().click();
+    await page.keyboard.press('Control+Shift+F6');
+    await page.locator('.prompt-input').waitFor();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.type(listed);
+    await page.keyboard.press('Enter');
+    await waitFor(
+      async () =>
+        (await left.locator('.commander-row', { hasText: 'entry 0' }).count()) >
+        0,
+      'the left side in a folder of the test',
     );
   });
 
@@ -244,6 +264,7 @@ suite('App tabs shown again', () => {
               async () => (await tabs(moved).count()) === 1,
               'the tab in its window',
             );
+            await sizedWindow(app);
             return moved;
           },
           `The ${kind} tab moved to a window of its own`,

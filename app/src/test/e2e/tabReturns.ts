@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import type { Page } from 'playwright-core';
+import type { ElectronApplication, Page } from 'playwright-core';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 
@@ -119,7 +119,9 @@ const tabLooks = (page: Page): Promise<TabLooks> =>
       ]),
       scrolls: inside
         .filter(
-          (element) => element.scrollTop !== 0 || element.scrollLeft !== 0,
+          (element) =>
+            !fields.some((each) => each === element) &&
+            (element.scrollTop !== 0 || element.scrollLeft !== 0),
         )
         .map((element) => {
           const box = element.getBoundingClientRect();
@@ -241,6 +243,13 @@ export async function scrolledAround(page: Page): Promise<void> {
     }
   });
 }
+
+export const sizedWindow = (app: ElectronApplication): Promise<void> =>
+  app.evaluate(({ BrowserWindow }) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.setSize(1000, 700);
+    }
+  });
 
 export const tabs = (page: Page) => page.locator('nav.tabs [role="tab"]');
 
