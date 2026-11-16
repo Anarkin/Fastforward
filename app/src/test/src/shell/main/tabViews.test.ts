@@ -228,4 +228,58 @@ suite('Tab views', () => {
     assert.deepStrictEqual([released(one), released(other)], [['1'], ['1']]);
     assert.deepStrictEqual(handed(other), []);
   });
+
+  test('lets the view a page releases lose to the one the page now holding the tab wrote meanwhile, so what was done there last is what is kept', async () => {
+    const { views, page, hold } = viewsWith();
+    const left = page('1');
+    const there = page();
+    const third = page();
+    views.keep(left, '1', 'left');
+    hold(left);
+    hold(there, '1');
+
+    const releasing = views.release(left, '1');
+    assert.strictEqual(views.keep(there, '1', 'there'), true);
+    assert.strictEqual(views.keep(left, '1', 'late'), false);
+    views.released(left, '1', 'released');
+    await releasing;
+
+    views.handTo(third, '1');
+    assert.deepStrictEqual(handed(third), ['1 there']);
+  });
+
+  test('tells while a tab is being released, until its last release is done', async () => {
+    const { views, page } = viewsWith();
+    const one = page('1');
+    assert.strictEqual(views.settled('1'), undefined);
+    const releasing = views.release(one, '1');
+    const settled = views.settled('1');
+    assert.ok(settled !== undefined);
+    views.released(one, '1', '');
+    await releasing;
+    await settled;
+    await Promise.resolve();
+    assert.strictEqual(views.settled('1'), undefined);
+  });
+
+  test('lets go of the releases of a tab dropped, those still waiting for their turn too, so a tab closed while it moves keeps nothing and asks no page more', async () => {
+    const { views, page } = viewsWith();
+    const first = page('1');
+    const second = page('1');
+    const releasing = views.release(first, '1');
+    const queued = views.release(second, '1');
+
+    views.drop('1');
+    await Promise.all([releasing, queued]);
+    views.released(second, '1', 'closed');
+
+    assert.deepStrictEqual(released(second), ['1']);
+    assert.strictEqual(views.settled('1'), undefined);
+    views.handTo(page(), '1');
+    assert.deepStrictEqual(handed(first).concat(handed(second)), []);
+    const reused = page('1');
+    views.keep(reused, '1', 'new');
+    views.handTo(second, '1');
+    assert.deepStrictEqual(handed(second), ['1 new']);
+  });
 });

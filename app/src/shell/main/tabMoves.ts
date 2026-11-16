@@ -24,11 +24,7 @@ export type TabMove = Extract<
 >;
 
 export interface TabMovesHost {
-  show(
-    page: Page,
-    tab: string | undefined,
-    released?: Promise<void>,
-  ): Promise<void>;
+  show(page: Page, tab: string | undefined): Promise<void>;
   release(page: Page, tab: string): Promise<void>;
   save(saving: Promise<void>): void;
 }
@@ -278,8 +274,7 @@ export class TabMoves {
     const releasing =
       page === undefined ? Promise.resolve() : this.host.release(page, tab);
     const there = this.pages.live(into);
-    const shown =
-      there === undefined ? undefined : this.host.show(there, tab, releasing);
+    const shown = there === undefined ? undefined : this.host.show(there, tab);
     const left = layout.find((window) => window.id === from);
     const showing =
       left === undefined || page === undefined

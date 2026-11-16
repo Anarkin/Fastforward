@@ -117,7 +117,7 @@ export class Shell {
     });
     this.closing = new Closing(storage, tools, this.pages);
     this.moves = new TabMoves(storage, host, this.pages, this.history, {
-      show: (page, tab, released) => this.tabs.show(page, tab, released),
+      show: (page, tab) => this.tabs.show(page, tab),
       release: (page, tab) => this.views.release(page, tab),
       save: (saving) => this.save(saving),
     });

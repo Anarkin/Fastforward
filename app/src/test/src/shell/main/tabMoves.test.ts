@@ -94,6 +94,37 @@ suite('Moving tabs between windows', () => {
     assert.deepStrictEqual(shownIn(second.page), [['2', '3', '4'], '4']);
   });
 
+  test('shows a tab moved in its tool once only and with the view released, though the window it moved to shows it again before the page it left released it', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(log, noGit, host);
+    first.page.releases = false;
+    second.page.sent.length = 0;
+    const moving = first.connection.receive({
+      type: 'moveTabToWindow',
+      tab: '1',
+      window: '2',
+    });
+    const selected = second.connection.receive({
+      type: 'selectTab',
+      tab: '1',
+    });
+    second.connection.dispose();
+    const reloaded = attach(first.view, '2');
+    const ready = reloaded.connection.receive({ type: 'ready' });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.deepStrictEqual(movesIn(second.page), []);
+    await first.connection.receive({
+      type: 'released',
+      tab: '1',
+      view: '{"left":1}',
+    });
+    await Promise.all([moving, selected, ready]);
+    assert.deepStrictEqual(
+      [...movesIn(second.page), ...movesIn(reloaded.page)],
+      ['view 1 {"left":1}', 'show 1'],
+    );
+  });
+
   test('shows a tab where it moved after a while when the page it leaves never releases it, keeping what that page sent of it before', async () => {
     const host = new FakeHost();
     const { first, second } = await twoWindows(log, noGit, host);

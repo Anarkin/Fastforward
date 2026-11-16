@@ -12,6 +12,7 @@ interface Kept {
 interface Releasing {
   readonly page: Page;
   readonly done: () => void;
+  overtaken: boolean;
 }
 
 export class TabViews {
@@ -19,6 +20,7 @@ export class TabViews {
   private readonly readied = new WeakSet<Page>();
   private readonly releasing = new Map<string, Releasing>();
   private readonly settling = new Map<string, Promise<void>>();
+  private readonly drops = new Map<string, number>();
 
   constructor(
     private readonly holds: (page: Page, tab: string) => boolean,
@@ -34,9 +36,13 @@ export class TabViews {
     if (typeof tab !== 'string') {
       return false;
     }
-    const releasing = this.releasing.get(tab)?.page === page;
-    if (!releasing && !this.holds(page, tab)) {
+    const pending = this.releasing.get(tab);
+    const releasing = pending?.page === page;
+    if (releasing ? pending.overtaken : !this.holds(page, tab)) {
       return false;
+    }
+    if (pending !== undefined && !releasing) {
+      pending.overtaken = true;
     }
     if (typeof view !== 'string' || view.length > this.max) {
       this.views.delete(tab);
@@ -70,12 +76,18 @@ export class TabViews {
     }
   }
 
+  settled(tab: string): Promise<void> | undefined {
+    return this.settling.get(tab);
+  }
+
   release(page: Page, tab: string): Promise<void> {
     const before = this.settling.get(tab);
-    const next =
-      before === undefined
+    const dropped = this.drops.get(tab) ?? 0;
+    const now = () =>
+      (this.drops.get(tab) ?? 0) === dropped
         ? this.releaseNow(page, tab)
-        : before.then(() => this.releaseNow(page, tab));
+        : Promise.resolve();
+    const next = before === undefined ? now() : before.then(now);
     this.settling.set(tab, next);
     void next.then(() => {
       if (this.settling.get(tab) === next) {
@@ -100,7 +112,7 @@ export class TabViews {
       this.lettingGo(page, tab);
       resolve();
     };
-    this.releasing.set(tab, { page, done });
+    this.releasing.set(tab, { page, done, overtaken: false });
     page.post({ type: 'release', tab });
     return promise;
   }
@@ -114,6 +126,8 @@ export class TabViews {
   }
 
   drop(tab: string): void {
+    this.drops.set(tab, (this.drops.get(tab) ?? 0) + 1);
+    this.settling.delete(tab);
     this.releasing.get(tab)?.done();
     this.views.delete(tab);
     for (const page of this.pages()) {

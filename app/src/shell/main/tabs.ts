@@ -22,6 +22,7 @@ export interface TabsHost {
 
 export class Tabs {
   private readonly shownTools = new WeakMap<Page, ToolId>();
+  private readonly showings = new Map<string, number>();
   private lastTabId = 0;
 
   constructor(
@@ -37,13 +38,11 @@ export class Tabs {
     this.shownTools.delete(page);
   }
 
-  async show(
-    page: Page,
-    id: string | undefined,
-    released?: Promise<void>,
-  ): Promise<void> {
+  async show(page: Page, id: string | undefined): Promise<void> {
     const { storage } = this;
     const window = this.pages.windowOf(page);
+    const showing = (this.showings.get(window.id) ?? 0) + 1;
+    this.showings.set(window.id, showing);
     const active =
       window.tabs.find((tab) => tab.id === id) ?? window.tabs.at(0);
     this.host.save(
@@ -70,9 +69,14 @@ export class Tabs {
     if (active === undefined) {
       return;
     }
+    const released = this.views.settled(active.id);
     if (released !== undefined) {
       await released;
-      if (page.disposed || this.pages.windowOf(page).active !== active.id) {
+      if (
+        page.disposed ||
+        this.showings.get(window.id) !== showing ||
+        this.pages.windowOf(page).active !== active.id
+      ) {
         return;
       }
     }
