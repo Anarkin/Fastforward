@@ -1,7 +1,9 @@
 import * as assert from 'node:assert';
-import { EditorState, type TransactionSpec } from '@codemirror/state';
+import { EditorState, Text, type TransactionSpec } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import {
+  coloredLinesOf,
+  keepColoredLines,
   lineEdit,
   tokensIn,
 } from '../../../../../tools/commander/page/editorColors';
@@ -57,6 +59,23 @@ suite('Lines of the editor to color again', () => {
         ],
       }),
       { from: 0, removed: 3, lines: ['>a', 'b', '>c'] },
+    );
+  });
+});
+
+suite('Colors of a text edited shown again', () => {
+  test('gives the lines colored back for the very text and language they were colored for, as a copy, and none for another text or language', () => {
+    const doc = Text.of(['one', 'two']);
+    const lines = [[{ start: 0, end: 3, kind: 'keyword' as const }], undefined];
+    keepColoredLines(doc, 'ts', lines);
+
+    const back = coloredLinesOf(doc, 'ts');
+    assert.deepStrictEqual(back, lines);
+    assert.notStrictEqual(back, lines);
+    assert.strictEqual(coloredLinesOf(doc, 'js'), undefined);
+    assert.strictEqual(
+      coloredLinesOf(Text.of(['one', 'two']), 'ts'),
+      undefined,
     );
   });
 });
