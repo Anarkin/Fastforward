@@ -166,6 +166,7 @@ export function TextBody({
       wrapped={!whole}
       onSideways={onAcross}
       keptLeft={keptSideways?.left}
+      settled={text !== undefined && widths !== undefined}
       onLeft={onLeft}
       reveal={
         matched === undefined || matchStart === undefined

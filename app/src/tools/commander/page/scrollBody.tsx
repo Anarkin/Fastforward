@@ -41,6 +41,7 @@ export function ScrollBody({
   numbered = false,
   onSideways,
   keptLeft = 0,
+  settled = false,
   onLeft,
   reveal,
   rowText,
@@ -61,6 +62,7 @@ export function ScrollBody({
   numbered?: boolean;
   onSideways?: (column: number) => void;
   keptLeft?: number;
+  settled?: boolean;
   onLeft?: (left: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
   rowText?: (row: Element) => RowText | undefined;
@@ -83,8 +85,12 @@ export function ScrollBody({
     if (area === null || leftBack.current === 0) {
       return;
     }
-    if (area.scrollWidth - area.clientWidth >= leftBack.current - 1) {
+    if (wrapped) {
+      leftBack.current = 0;
+    } else if (area.scrollWidth - area.clientWidth >= leftBack.current - 1) {
       area.scrollLeft = leftBack.current;
+      leftBack.current = 0;
+    } else if (settled) {
       leftBack.current = 0;
     }
   });

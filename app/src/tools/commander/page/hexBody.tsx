@@ -205,6 +205,7 @@ export function ByteBody({
       jump={jump}
       error={viewing.error}
       keptLeft={keptLeft}
+      settled={bytes !== undefined}
       onLeft={onLeft}
     >
       {rows.map(({ offset, data }) => {

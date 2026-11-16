@@ -7,6 +7,7 @@ import {
   maxFindLength,
   type CommanderToHost,
 } from '../../../../../tools/commander/shared/protocol';
+import { noAccessShown } from '../../../../../tools/commander/page/commanderReceived';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { noop } from '../../../../helpers/fixtures';
 import { shown, place } from './storeFixtures';
@@ -174,7 +175,7 @@ suite('Commander store', () => {
     assert.strictEqual(state.view.tab, '1');
     assert.deepStrictEqual(state.drives, ['C:', 'D:']);
     assert.deepStrictEqual(state.viewed, { tab: '1', size: 10, binary: true });
-    assert.deepStrictEqual(state.noAccess, {
+    assert.deepStrictEqual(noAccessShown(state), {
       tab: '1',
       side: 'left',
       folder: 'C:\\System Volume Information',

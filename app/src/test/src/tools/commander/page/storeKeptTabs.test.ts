@@ -274,4 +274,30 @@ suite('Commander store keeping its tabs', () => {
       5,
     );
   });
+
+  test('keeps what a viewer tab read, its text, colors, rows, bytes and matches, only for the three viewer tabs shown last, and its find, place and focus for every one', () => {
+    const store = createCommanderStore(noop);
+    const { receive } = store.getState();
+    const text = {
+      encoding: 'utf-8',
+      version: '1',
+      text: { text: 'x', marked: false },
+    } as const;
+    for (const tab of ['1', '2', '3', '4']) {
+      receive({ type: 'show', tab, file: `${folder}/${tab}.txt` });
+      store.getState().keepViewer(tab, { finding: true, text });
+      store.getState().keepPlace(tab, 7);
+    }
+
+    assert.strictEqual(store.getState().keptViewer('1').text, undefined);
+    assert.strictEqual(store.getState().keptViewer('1').finding, true);
+    assert.strictEqual(store.getState().placeOf('1'), 7);
+    assert.deepStrictEqual(store.getState().keptViewer('2').text, text);
+    store.getState().keepViewer('1', { text });
+    assert.strictEqual(store.getState().keptViewer('1').text, undefined);
+    receive({ type: 'show', tab: '1', file: `${folder}/1.txt` });
+    store.getState().keepViewer('1', { text });
+    assert.deepStrictEqual(store.getState().keptViewer('1').text, text);
+    assert.strictEqual(store.getState().keptViewer('2').text, undefined);
+  });
 });

@@ -6,6 +6,15 @@ import { noop } from '../../../../helpers/fixtures';
 import { left, shown, listing } from './storeFixtures';
 import { noAccessShown } from '../../../../../tools/commander/page/commanderReceived';
 
+const askedAbout = (tab: string, folder: string) =>
+  ({
+    type: 'noAccess',
+    tab,
+    side: 'right',
+    folder,
+    asAdministrator: false,
+  }) as const;
+
 suite('Commander store', () => {
   test('asks before deleting, deleting once confirmed and nothing once cancelled', () => {
     const { posted, store } = shown();
@@ -455,13 +464,28 @@ suite('Commander store', () => {
     } as const;
     store.getState().receive(noAccess);
     store.getState().closeNoAccess();
-    assert.strictEqual(store.getState().noAccess, undefined);
+    assert.strictEqual(noAccessShown(store.getState()), undefined);
     store.getState().receive(noAccess);
     store.getState().elevate();
-    assert.strictEqual(store.getState().noAccess, undefined);
+    assert.strictEqual(noAccessShown(store.getState()), undefined);
     assert.deepStrictEqual(posted, [
       { type: 'elevate', tab: '1', side: 'left' },
     ]);
+  });
+
+  test('keeps the question about a folder it may not read of each tab, the question of another tab leaving it as it was, and forgets it once its tab closes', () => {
+    const { store } = shown();
+    store.getState().receive(askedAbout('1', 'C:\\one'));
+    store.getState().receive({ type: 'show', tab: '2' });
+    store.getState().receive(askedAbout('2', 'C:\\two'));
+    store.getState().closeNoAccess();
+    store.getState().receive({ type: 'show', tab: '1' });
+    assert.strictEqual(noAccessShown(store.getState())?.folder, 'C:\\one');
+    store.getState().receive({ type: 'show', tab: '2' });
+    assert.strictEqual(noAccessShown(store.getState()), undefined);
+    store.getState().receive({ type: 'closed', tab: '1' });
+    store.getState().receive({ type: 'show', tab: '1' });
+    assert.strictEqual(noAccessShown(store.getState()), undefined);
   });
 
   test('asks about a folder it may not read in the tab it was opened in alone, keeping the question there while another tab is shown, and reads it as administrator for that tab', () => {

@@ -65,6 +65,22 @@ export interface KeptViewer {
   readonly preview: KeptPreview | undefined;
 }
 
+export const maxCachedViewers = 3;
+
+export const withoutCaches = (
+  kept: Partial<KeptViewer>,
+): Partial<KeptViewer> => {
+  const {
+    found: _found,
+    rows: _rows,
+    text: _text,
+    colors: _colors,
+    bytes: _bytes,
+    ...cheap
+  } = kept;
+  return cheap;
+};
+
 export const noKeptViewer: KeptViewer = {
   finding: false,
   search: noSearch,

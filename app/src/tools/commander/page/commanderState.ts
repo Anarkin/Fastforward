@@ -150,7 +150,7 @@ export interface CommanderSource {
   readonly lastPattern: string | undefined;
   readonly packing: Packing | undefined;
   readonly packChoices: PackChoices;
-  readonly noAccess: NoAccess | undefined;
+  readonly noAccess: ReadonlyMap<string, NoAccess>;
   readonly resized:
     { readonly from: ColumnWidths; readonly widths: ColumnWidths } | undefined;
   readonly filters: ReadonlyMap<string, PaneFilter>;
@@ -374,7 +374,7 @@ export const commanderDefaults: CommanderSource = {
     volume: undefined,
     test: true,
   },
-  noAccess: undefined,
+  noAccess: new Map(),
   resized: undefined,
   filters: new Map(),
 };

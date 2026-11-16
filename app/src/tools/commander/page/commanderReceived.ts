@@ -165,16 +165,20 @@ export function received(
       const view = reduceView(state.view, message);
       const keptViewed = new Map(state.keptViewed);
       keptViewed.delete(message.tab);
-      return { view, keptViewed };
+      return {
+        view,
+        keptViewed,
+        noAccess: withoutNoAccess(state.noAccess, message.tab),
+      };
     }
     case 'noAccess':
       return {
-        noAccess: {
+        noAccess: new Map(state.noAccess).set(message.tab, {
           tab: message.tab,
           side: message.side,
           folder: message.folder,
           asAdministrator: message.asAdministrator,
-        },
+        }),
       };
     default: {
       const view = reduceView(state.view, message);
@@ -184,7 +188,19 @@ export function received(
 }
 
 export const noAccessShown = ({ noAccess, view }: CommanderSource) =>
-  noAccess?.tab === view.tab ? noAccess : undefined;
+  view.tab === undefined ? undefined : noAccess.get(view.tab);
+
+export function withoutNoAccess(
+  noAccess: CommanderSource['noAccess'],
+  tab: string | undefined,
+): CommanderSource['noAccess'] {
+  if (tab === undefined || !noAccess.has(tab)) {
+    return noAccess;
+  }
+  const left = new Map(noAccess);
+  left.delete(tab);
+  return left;
+}
 
 export function stillShown(
   view: CommanderView,

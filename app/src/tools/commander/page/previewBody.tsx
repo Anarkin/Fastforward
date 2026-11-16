@@ -23,7 +23,13 @@ import { imageScrolled } from './imageScroll';
 import type { PdfControls } from './pdfPreview';
 import type { Viewing } from './commanderState';
 import { useCommanderActions } from './store';
-import { blockAtTop, topOfBlock } from './previewPlace';
+import { blockAtTop, holdBlockAtTop } from './previewPlace';
+
+const watchSize = (element: Element, changed: () => void) => {
+  const observer = new ResizeObserver(changed);
+  observer.observe(element);
+  return () => observer.disconnect();
+};
 
 function MarkdownPreview({
   file,
@@ -84,19 +90,34 @@ export function PreviewBody({
       scroller.scrollTop = (scroller.scrollHeight - scroller.clientHeight) / 2;
     }
   }, []);
+  const holding = useRef<() => void>(undefined);
+  useEffect(() => () => holding.current?.(), []);
   useLayoutEffect(() => {
     const scroller = body.current;
     const left = back.current;
-    if (preview !== 'markdown' || scroller === null || left === undefined) {
+    if (
+      preview !== 'markdown' ||
+      scroller === null ||
+      left === undefined ||
+      holding.current !== undefined
+    ) {
       return;
     }
-    const top =
-      left.block === undefined ? left.top : topOfBlock(scroller, left);
-    if (top !== undefined) {
+    if (left.block === undefined) {
       back.current = undefined;
-      scroller.scrollTop = top;
+      scroller.scrollTop = left.top;
+    } else if (scroller.querySelector('.markdown')?.firstElementChild) {
+      holding.current = holdBlockAtTop(
+        scroller,
+        left,
+        () => {
+          back.current = undefined;
+        },
+        watchSize,
+      );
     }
   });
+  const keeping = useRef(0);
   useLayoutEffect(() => {
     if (preview === 'image' && !realSize) {
       back.current = undefined;
@@ -136,16 +157,22 @@ export function PreviewBody({
       tabIndex={0}
       data-column-focus=""
       onScroll={(event) => {
-        if (back.current === undefined) {
-          const scroller = event.currentTarget;
-          keepViewer(tab, {
-            preview: {
-              top: scroller.scrollTop,
-              left: scroller.scrollLeft,
-              ...blockAtTop(scroller),
-            },
-          });
+        const scroller = event.currentTarget;
+        if (back.current !== undefined || keeping.current !== 0) {
+          return;
         }
+        keeping.current = requestAnimationFrame(() => {
+          keeping.current = 0;
+          if (back.current === undefined) {
+            keepViewer(tab, {
+              preview: {
+                top: scroller.scrollTop,
+                left: scroller.scrollLeft,
+                ...blockAtTop(scroller),
+              },
+            });
+          }
+        });
       }}
       onKeyDown={(event) => {
         const scroller = body.current;

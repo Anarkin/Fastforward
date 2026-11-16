@@ -6,6 +6,7 @@ import type { CommanderActions, CommanderState } from './commanderState';
 import { keysMatching } from './markPattern';
 import { baseNameOf } from './naming';
 import { shownRowsOf } from './shownRows';
+import { noAccessShown, withoutNoAccess } from './commanderReceived';
 
 export type DialogActions = Pick<
   CommanderActions,
@@ -285,12 +286,17 @@ export function dialogActions({
       }
     },
     elevate: () => {
-      const { noAccess } = get();
-      set({ noAccess: undefined });
+      const noAccess = noAccessShown(get());
+      set((state) => ({
+        noAccess: withoutNoAccess(state.noAccess, state.view.tab),
+      }));
       if (noAccess !== undefined) {
         post({ type: 'elevate', tab: noAccess.tab, side: noAccess.side });
       }
     },
-    closeNoAccess: () => set({ noAccess: undefined }),
+    closeNoAccess: () =>
+      set((state) => ({
+        noAccess: withoutNoAccess(state.noAccess, state.view.tab),
+      })),
   };
 }

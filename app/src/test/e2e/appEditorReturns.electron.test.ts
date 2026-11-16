@@ -207,11 +207,20 @@ suite('App editor tabs shown again', () => {
     const left = await settledLooks(page);
     await showTab(page, commanderTab);
     await settledLooks(page);
+    const listed = () =>
+      page
+        .locator('.commander-pane .commander-line', { hasText: 'other' })
+        .first()
+        .textContent();
+    const before = await listed();
     fs.appendFileSync(
       path.join(folder, 'opened', 'other.txt'),
       `${String.fromCharCode(10)}added`,
     );
-    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await waitFor(
+      async () => (await listed()) !== before,
+      'the main process to see the file change, as the commander lists it anew',
+    );
     await showTab(page, otherTab);
     assert.deepStrictEqual(await settledLooks(page), left);
     assert.strictEqual(await cursorLine(), '5');
