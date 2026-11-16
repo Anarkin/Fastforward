@@ -194,7 +194,10 @@ export function createCommanderStore(
         if (message.type === 'viewing') {
           viewer.viewingCame(message.tab);
         }
-        if (message.type === 'closed') {
+        if (message.type === 'left') {
+          scrolls.forget(`${message.tab} `);
+        }
+        if (message.type === 'closed' || message.type === 'left') {
           viewer.forget(message.tab);
           editor.forget(message.tab);
           set((state) => ({ filters: withoutTab(state.filters, message.tab) }));

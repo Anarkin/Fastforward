@@ -219,6 +219,11 @@ export class CommanderTool implements Tool<'commander'> {
     }
   }
 
+  left(page: Page, tab: Tab): void {
+    this.kept.movedOut(page, tab.id);
+    post(page, { type: 'left', tab: tab.id });
+  }
+
   receive(page: Page, message: CommanderToHost): Promise<void> {
     if (message.type === 'keepTab') {
       this.kept.keep(page, message.tab, message.kept);

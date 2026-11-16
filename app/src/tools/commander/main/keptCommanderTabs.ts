@@ -23,12 +23,15 @@ export class KeptCommanderTabs {
     }
     const ours = (each: Tab) => each.id === tab && each.tool === 'commander';
     const shell = this.shell();
-    if (
-      shell.tabsOf(page).some(ours) ||
-      (this.left.get(page) === tab && shell.tabs().some(ours))
-    ) {
+    if (shell.tabsOf(page).some(ours)) {
       this.kept.keep(tab, kept, page);
+    } else if (this.left.get(page) === tab && shell.tabs().some(ours)) {
+      this.kept.keep(tab, kept, undefined);
     }
+  }
+
+  movedOut(page: Page, tab: string): void {
+    this.kept.leftBy(page, tab);
   }
 
   handedTo(page: Page, tab: string): { readonly kept?: unknown } {

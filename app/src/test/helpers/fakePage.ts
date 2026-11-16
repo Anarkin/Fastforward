@@ -12,11 +12,13 @@ export type PageMessageOf<T extends PageMessage['type']> = Extract<
 
 export class FakePage {
   readonly messages: PageMessage[] = [];
+  readonly otherTools: Extract<ToWebview, { readonly type: 'tool' }>[] = [];
   readonly listeners = new Set<(message: PageMessage) => void>();
   tabs: PageMessageOf<'tabs'> | undefined;
 
   receive(sent: ToWebview): void {
     if (sent.type === 'tool' && sent.tool !== 'git') {
+      this.otherTools.push(sent);
       return;
     }
     const message = sent.type === 'tool' ? sent.message : sent;

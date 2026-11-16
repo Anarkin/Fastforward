@@ -48,6 +48,20 @@ suite('Kept tabs', () => {
     assert.deepStrictEqual(kept.handedTo(reloaded, '1'), { left: 'a' });
   });
 
+  test('hands a tab to every page once the page that kept it last let it go, or when no page is named as keeping it', () => {
+    const kept = new KeptTabs();
+    const one = readied(kept);
+    kept.keep('1', { left: 'a' }, one);
+    kept.keep('2', { left: 'b' }, undefined);
+
+    kept.leftBy(readied(kept), '1');
+    assert.strictEqual(kept.handedTo(one, '1'), undefined);
+    kept.leftBy(one, '1');
+
+    assert.deepStrictEqual(kept.handedTo(one, '1'), { left: 'a' });
+    assert.deepStrictEqual(kept.handedTo(one, '2'), { left: 'b' });
+  });
+
   test('refuses a value larger than its bound, or one JSON cannot hold, keeping what it had', () => {
     const kept = new KeptTabs(20);
     const page = readied(kept);

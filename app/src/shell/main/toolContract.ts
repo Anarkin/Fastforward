@@ -64,6 +64,7 @@ export interface Tool<K extends ToolId> {
   hide(page: Page): void;
   preload(page: Page, tab: Tab): Promise<void>;
   closed(page: Page, tab: Tab): void;
+  left?(page: Page, tab: Tab): void;
   receive(page: Page, message: ToHostOf<K>): Promise<void>;
   dropped?(page: Page, files: unknown, message: unknown): Promise<void>;
   refreshShown(page: Page): Promise<void>;

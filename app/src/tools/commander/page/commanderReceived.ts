@@ -160,7 +160,8 @@ export function received(
         ...(state.edited !== undefined && { edited: undefined }),
       };
     }
-    case 'closed': {
+    case 'closed':
+    case 'left': {
       const view = reduceView(state.view, message);
       const keptViewed = new Map(state.keptViewed);
       keptViewed.delete(message.tab);

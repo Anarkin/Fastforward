@@ -140,6 +140,7 @@ export type ViewAction =
     }
   | { readonly type: 'hide' }
   | CommanderToWebviewOf<'closed'>
+  | CommanderToWebviewOf<'left'>
   | { readonly type: 'choose'; readonly choices: Partial<ViewerChoices> }
   | (Omit<CommanderToWebviewOf<'settings'>, 'type'> & {
       readonly type: 'settings';
@@ -277,6 +278,14 @@ export function reduceView(
         kept: without(view.kept, action.tab),
         viewers: without(view.viewers, action.tab),
       };
+    case 'left':
+      return view.tab === action.tab
+        ? view
+        : {
+            ...view,
+            kept: without(view.kept, action.tab),
+            viewers: without(view.viewers, action.tab),
+          };
     case 'choose':
       return view.tab === undefined ||
         (view.viewing === undefined && view.editing === undefined)

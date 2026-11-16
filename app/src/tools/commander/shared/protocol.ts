@@ -544,6 +544,7 @@ export type CommanderToWebview =
   | { readonly type: 'askChangedOnDisk'; readonly tab: string }
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }
+  | { readonly type: 'left'; readonly tab: string }
   | {
       readonly type: 'viewing';
       readonly tab: string;

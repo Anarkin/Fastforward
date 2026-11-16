@@ -43,6 +43,28 @@ suite('Moving tabs between windows', () => {
     ]);
   });
 
+  test('tells the tool of a tab moved out of a window that the page of that window may forget what it keeps of the tab, once that page is told to show another', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(log, noGit, host);
+    first.page.otherTools.length = 0;
+    await first.connection.receive({
+      type: 'moveTabToWindow',
+      tab: '1',
+      window: '2',
+    });
+    assert.deepStrictEqual(
+      first.page.otherTools.flatMap(({ message }) =>
+        message.type === 'show' || message.type === 'left'
+          ? [`${message.type} ${message.tab}`]
+          : [],
+      ),
+      ['show 5', 'left 1'],
+    );
+    assert.ok(
+      !second.page.otherTools.some(({ message }) => message.type === 'left'),
+    );
+  });
+
   test('moves a tab into another window at its end, showing it there and bringing that window to the front', async () => {
     const host = new FakeHost();
     const { first, second } = await twoWindows(log, noGit, host);

@@ -7,6 +7,14 @@ export class ScrollPlaces {
     return this.offsets.get(key) ?? 0;
   }
 
+  forget(start: string): void {
+    for (const key of this.offsets.keys()) {
+      if (key.startsWith(start)) {
+        this.offsets.delete(key);
+      }
+    }
+  }
+
   keep(key: string, offset: number): void {
     this.offsets.delete(key);
     this.offsets.set(key, offset);

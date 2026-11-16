@@ -141,6 +141,37 @@ suite('Commander tool keeping its tabs', () => {
     assert.deepStrictEqual(keptOf(other), { sides: { share: 0.3 } });
   });
 
+  test('tells the page a tab moved out of its window to forget what it keeps of the tab, and hands it back to that page once the tab comes back', async () => {
+    const { tool, page, send, tabs } = commander({ [root]: [] });
+    opened(tabs);
+    tool.ready(page);
+    await tool.show(page, tab);
+    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    tool.hide(page);
+
+    tool.left(page, tab);
+    await tool.show(page, tab);
+
+    assert.deepStrictEqual(page.of('left'), [{ type: 'left', tab: '1' }]);
+    assert.deepStrictEqual(keptOf(page), { sides: { share: 0.3 } });
+  });
+
+  test('hands what a page sent of a tab no longer in its window back to that page too, as it sent the tab once it had moved and forgot it', async () => {
+    const { tool, page, send, tabs, windows } = commander({ [root]: [] });
+    const next: Tab = { id: '2', tool: 'commander' };
+    opened(tabs, next);
+    tool.ready(page);
+    await tool.show(page, tab);
+    windows.set(page, [next]);
+    await tool.show(page, next);
+
+    await send({ type: 'keepTab', tab: '1', kept: { sides: { share: 0.3 } } });
+    windows.set(page, [next, tab]);
+    await tool.show(page, tab);
+
+    assert.deepStrictEqual(keptOf(page), { sides: { share: 0.3 } });
+  });
+
   test('forgets what was kept of a tab once it is closed', async () => {
     const { tool, page, send, tabs } = commander({ [root]: [] });
     opened(tabs);

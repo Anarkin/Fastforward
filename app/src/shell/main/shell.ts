@@ -111,6 +111,12 @@ export class Shell {
     this.closing = new Closing(storage, tools, this.pages);
     this.moves = new TabMoves(storage, host, this.pages, this.history, {
       show: (page, tab) => this.tabs.show(page, tab),
+      left: (page, tab) => {
+        const moved = storage.savedTabs.find((each) => each.id === tab);
+        if (moved !== undefined) {
+          this.tools[moved.tool].left?.(page, moved);
+        }
+      },
       save: (saving) => this.save(saving),
     });
     this.choosing = new ToolChoosing(tools, {

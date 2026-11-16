@@ -23,16 +23,23 @@ export class KeptTabs {
     this.readied.add(page);
   }
 
-  keep(tab: string, kept: unknown, from: Page): boolean {
+  keep(tab: string, kept: unknown, from: Page | undefined): boolean {
     const length = lengthOf(kept);
     if (length === undefined || length > this.max) {
       return false;
     }
     this.kept.set(tab, {
       kept,
-      from: this.readied.has(from) ? from : undefined,
+      from: from !== undefined && this.readied.has(from) ? from : undefined,
     });
     return true;
+  }
+
+  leftBy(page: Page, tab: string): void {
+    const kept = this.kept.get(tab);
+    if (kept?.from === page) {
+      this.kept.set(tab, { kept: kept.kept, from: undefined });
+    }
   }
 
   of(tab: string): Kept | undefined {
