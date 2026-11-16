@@ -9,13 +9,8 @@ import {
 import type { MovedCursor } from './filesCursor';
 import { treeOf, type TabView } from './tabView';
 import { listsNothing } from './filesSides';
-import type {
-  GitData,
-  GitSource,
-  GitState,
-  KeptFind,
-  KeptLocations,
-} from './gitState';
+import type { GitData, GitSource, GitState, KeptLocations } from './gitState';
+import type { KeptFind } from './diffFind';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import type { ColumnName } from './activeColumn';
 

@@ -28,6 +28,8 @@ import { emptyTabView, type TabAction, type TabView } from './tabView';
 import type { WrapColumns } from './rowMeasures';
 import type { TextMeasures } from './textLayout';
 import type { CodeSnap } from './codeSnap';
+import { unmeasuredDiff, type DiffMeasures } from './diffMeasures';
+import type { KeptFind } from './diffFind';
 import type { DiffPlace } from './diffPlace';
 import type { Highlighted } from './locationHighlight';
 import type { KeptFocus } from '../../../lib/page/keptFocus';
@@ -35,11 +37,6 @@ import type { KeptFocus } from '../../../lib/page/keptFocus';
 export interface ComparedTexts {
   readonly tab: string | undefined;
   readonly texts: ReadonlyMap<string, LoadedText>;
-}
-
-export interface KeptFind {
-  readonly finding: boolean;
-  readonly search: Search;
 }
 
 type FoundCommits = Pick<TabView, 'commitSearch' | 'hashLookup'>;
@@ -98,9 +95,7 @@ export interface GitSource {
   readonly fileCursors: ReadonlyMap<string, MovedCursor>;
   readonly pinnedMessages: ReadonlyMap<string, KeptPin>;
   readonly locations: ReadonlyMap<string, KeptLocations>;
-  readonly diffText: TextMeasures | undefined;
-  readonly diffSnap: CodeSnap;
-  readonly wrapColumns: WrapColumns | undefined;
+  readonly diffMeasures: DiffMeasures;
 }
 
 export interface GitCollections {
@@ -259,9 +254,7 @@ export const gitDefaults: GitSource = {
   fileCursors: new Map(),
   pinnedMessages: new Map(),
   locations: new Map(),
-  diffText: undefined,
-  diffSnap: { inline: 0, left: 0, right: 0 },
-  wrapColumns: undefined,
+  diffMeasures: unmeasuredDiff,
 };
 
 export type GitData = GitSource & GitCollections;

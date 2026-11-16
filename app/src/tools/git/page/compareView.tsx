@@ -9,7 +9,7 @@ import type {
 import { strings } from '../../../lib/shared/strings';
 import type { DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
-import { Diff } from './diffColumn';
+import { GitDiff } from './gitDiff';
 import { DiffLanguage, DiffOptions } from './diffOptions';
 import { compareLanguageKey, tabScopeOf } from './gitSelectors';
 import { useTabFocus } from './tabFocus';
@@ -79,7 +79,7 @@ export function CompareView({ comparing }: { comparing: string }) {
   return (
     <div className="repository compare-view" ref={view}>
       <div className="columns compare-columns">
-        <Diff
+        <GitDiff
           scope={scope}
           selection={`${compare?.old}\n${compare?.new}`}
           path={compare?.name}

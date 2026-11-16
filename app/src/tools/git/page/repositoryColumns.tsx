@@ -4,7 +4,7 @@ import { useBinding } from '../../../lib/page/shortcuts';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { gitKeymap } from './keymap';
 import { diffSelection } from './diffSelection';
-import { Diff } from './diffColumn';
+import { GitDiff } from './gitDiff';
 import { DiffLanguage, DiffOptions } from './diffOptions';
 import { Commits } from './commitList';
 import { Files } from './filesColumn';
@@ -89,7 +89,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
     [root, hash, area, diffs, refreshes],
   );
   return (
-    <Diff
+    <GitDiff
       scope={tabScopeOf(undefined, root)}
       selection={diffSelection(root, hash, path, area)}
       path={path}

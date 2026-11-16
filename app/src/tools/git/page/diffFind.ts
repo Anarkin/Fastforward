@@ -11,20 +11,31 @@ import type { DiffFile } from './diff';
 import type { WholeFile } from './diffRows';
 import { findMatches, type FindMatch } from './find';
 import { stepMatch } from '../../../lib/shared/textMatches';
-import type { SearchOptions } from '../../../lib/shared/searchOptions';
-import { diffFindOf } from './gitSelectors';
-import { currentOf } from './diffPlace';
-import { useGit, useGitActions } from './store';
+import type { Search, SearchOptions } from '../../../lib/shared/searchOptions';
+import { currentOf, type DiffPlace } from './diffPlace';
+
+export interface KeptFind {
+  readonly finding: boolean;
+  readonly search: Search;
+}
+
+export interface DiffTab {
+  readonly find: KeptFind;
+  readonly keepFind: (find: KeptFind) => void;
+  readonly closeFind: () => void;
+  readonly place: DiffPlace | undefined;
+  readonly keepPlace: (change: Partial<DiffPlace>) => void;
+}
 
 export function useDiffFind({
-  scope,
-  selection,
+  shownAt,
+  tab,
   diffFiles,
   fileContent,
   findAsked,
 }: {
-  readonly scope: string;
-  readonly selection: string;
+  readonly shownAt: string;
+  readonly tab: DiffTab;
   readonly diffFiles: readonly DiffFile[];
   readonly fileContent: WholeFile | undefined;
   readonly findAsked: number;
@@ -44,17 +55,13 @@ export function useDiffFind({
   readonly openFind: () => void;
   readonly closeFind: () => void;
 } {
-  const kept = useGit(diffFindOf(scope));
-  const { keepDiffFind, closeDiffFind, diffPlaceOf, keepDiffPlace } =
-    useGitActions();
+  const { find: kept, keepFind, closeFind: closeKept, place, keepPlace } = tab;
   const { finding } = kept;
   const { query, options } = kept.search;
   const setQuery = (next: string) =>
-    keepDiffFind(scope, { finding, search: { query: next, options } });
+    keepFind({ finding, search: { query: next, options } });
   const setOptions = (next: SearchOptions) =>
-    keepDiffFind(scope, { finding, search: { query, options: next } });
-  const shownAt = JSON.stringify([scope, selection]);
-  const place = diffPlaceOf(scope, selection);
+    keepFind({ finding, search: { query, options: next } });
   const [at, setAt] = useState({
     shownAt,
     current: currentOf(place, kept.search),
@@ -79,18 +86,18 @@ export function useDiffFind({
   const shown = Math.min(at.current, Math.max(0, matches.length - 1));
   const goTo = (index: number) => {
     setAt({ shownAt, current: index, placed: at.placed });
-    keepDiffPlace(scope, selection, { current: index });
+    keepPlace({ current: index });
     setJump((count) => count + 1);
   };
   const step = (by: 1 | -1) => goTo(stepMatch(shown, matches.length, by));
   const [focusAsks, setFocusAsks] = useState(0);
   const openFind = () => {
-    keepDiffFind(scope, { finding: true, search: kept.search });
+    keepFind({ finding: true, search: kept.search });
     setFocusAsks((count) => count + 1);
   };
   const closeFind = () => {
     columnFocusOf(input.current)?.focus();
-    closeDiffFind(scope);
+    closeKept();
   };
   const asked = useEffectEvent(openFind);
   const findSeen = useRef(findAsked);

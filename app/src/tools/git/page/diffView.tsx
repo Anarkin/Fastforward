@@ -29,9 +29,8 @@ import { useSkeleton } from './skeletonDelay';
 import { wrapIndent } from '../../../lib/page/wordWrap';
 import { snapOffset } from '../../../lib/page/devicePixels';
 import { snappedTop, type RowFollower } from '../../../lib/page/rowScroll';
-import { useShell } from '../../../shell/page/store';
-import { pickedFor } from './gitSelectors';
-import { useGit, useGitActions } from './store';
+import type { DiffLook } from './diffLook';
+import type { DiffMeasures, DiffMeasuring } from './diffMeasures';
 import {
   shownSideways,
   widestColumns,
@@ -93,7 +92,9 @@ export function DiffView({
   finding = false,
   origin,
   viewOf,
-  languageKey,
+  look,
+  measures,
+  measuring,
   keptPlace,
   onPlace,
 }: {
@@ -115,18 +116,24 @@ export function DiffView({
   firstChange: number | undefined;
   finding?: boolean;
   viewOf?: (file: number) => (() => void) | undefined;
-  languageKey?: string;
+  look: DiffLook;
+  measures: DiffMeasures;
+  measuring: DiffMeasuring;
 }) {
-  const sideBySide = useGit((state) => state.diffLayout === 'sideBySide');
-  const root = useGit((state) => state.tab.root);
-  const chosenLanguage = useGit(pickedFor(languageKey));
-  const wordWrap = useShell((state) => state.textView.wordWrap);
-  const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const {
+    sideBySide,
+    wordWrap,
+    showWhitespace,
+    highlightSyntax,
+    scrolling,
+    root,
+    language: chosenLanguage,
+  } = look;
   const list = useRef<HTMLDivElement>(null);
   const split = showsSideBySide(sideBySide, whole);
   const scrollsSides = split && !wordWrap;
-  const columns = useGit((state) => state.wrapColumns);
-  const { keepWrapColumns } = useGitActions();
+  const columns = measures.wrapColumns;
+  const { keepWrapColumns } = measuring;
   const {
     table,
     charWidth,
@@ -137,7 +144,7 @@ export function DiffView({
     lineHeight,
     measureText,
     snap,
-  } = useDiffText(list);
+  } = useDiffText(list, measures, measuring);
   const { sideways, setSideways, measured, measureSideways } = useSideways(
     list,
     scrollsSides,
@@ -188,7 +195,6 @@ export function DiffView({
   });
   const scrollTarget = useRef<number>(undefined);
   const scrollFrame = useRef<number>(undefined);
-  const scrolling = useShell((state) => state.scrolling);
   const follower = useRef<RowFollower>(undefined);
   const scrollToTop = useCallback(
     (top: number) => {
@@ -256,7 +262,6 @@ export function DiffView({
       ),
     [rows],
   );
-  const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
   const syntaxInput = useDeferredValue(
     useMemo(() => ({ files, whole, texts, open }), [files, whole, texts, open]),
     noSyntaxInput,

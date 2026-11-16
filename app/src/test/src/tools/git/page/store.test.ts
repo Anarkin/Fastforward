@@ -634,31 +634,31 @@ suite('Measures of the diff kept for the next diff shown', () => {
   test('keeps the text a diff measured for the diff shown next, as each diff shown measured its text anew and styled every row it drew again once it had, and keeps them as they were when measured alike, so nothing draws again', () => {
     const store = createGitStore(noop);
     store.getState().measureDiffText(measures);
-    const kept = store.getState().diffText;
+    const kept = store.getState().diffMeasures.text;
     assert.deepStrictEqual(kept, measures);
 
     store.getState().measureDiffText({
       ...measures,
       padding: { ...measures.padding },
     });
-    assert.strictEqual(store.getState().diffText, kept);
+    assert.strictEqual(store.getState().diffMeasures.text, kept);
 
     store.getState().measureDiffText({ ...measures, scale: 1.5 });
-    assert.strictEqual(store.getState().diffText?.scale, 1.5);
+    assert.strictEqual(store.getState().diffMeasures.text?.scale, 1.5);
   });
 
   test('keeps the snap of the code and the columns lines wrap at, as they were when measured alike', () => {
     const store = createGitStore(noop);
     const snap = { inline: 0.2, left: 0, right: -0.2 };
     store.getState().snapDiffCode(() => snap);
-    assert.strictEqual(store.getState().diffSnap, snap);
+    assert.strictEqual(store.getState().diffMeasures.snap, snap);
     store.getState().snapDiffCode((last) => last);
-    assert.strictEqual(store.getState().diffSnap, snap);
+    assert.strictEqual(store.getState().diffMeasures.snap, snap);
 
     store.getState().keepWrapColumns({ left: 80, right: 79 });
-    const columns = store.getState().wrapColumns;
+    const columns = store.getState().diffMeasures.wrapColumns;
     store.getState().keepWrapColumns({ left: 80, right: 79 });
-    assert.strictEqual(store.getState().wrapColumns, columns);
+    assert.strictEqual(store.getState().diffMeasures.wrapColumns, columns);
     assert.deepStrictEqual(columns, { left: 80, right: 79 });
   });
 });

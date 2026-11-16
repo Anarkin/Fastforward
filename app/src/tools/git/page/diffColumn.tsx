@@ -26,12 +26,43 @@ import { SearchButton } from '../../../lib/page/search';
 import type { WholeFile } from './diffRows';
 import { DiffView } from './diffView';
 import { shownFiles, filteredDiffFiles } from './diffFiles';
-import { useDiffFind } from './diffFind';
+import { useDiffFind, type DiffTab } from './diffFind';
 import { DiffFindBar } from './diffFindBar';
 import { ColumnStatus } from './columnStatusLine';
 import { linesCounted } from './columnStatus';
-import { useGitActions } from './store';
-import type { DiffPlace } from './diffPlace';
+import type { DiffLook } from './diffLook';
+import type { DiffMeasures, DiffMeasuring } from './diffMeasures';
+
+export interface DiffProps {
+  readonly scope: string;
+  readonly selection: string;
+  readonly path: string | undefined;
+  readonly loading: boolean;
+  readonly files: readonly FileChange[];
+  readonly patch: string;
+  readonly leftOut: readonly LeftOut[];
+  readonly whitespaceOnly: readonly string[];
+  readonly diffs: number;
+  readonly largeFiles: ReadonlyMap<string, DiffFile>;
+  readonly onLoadFile: (path: string) => void;
+  readonly texts: ReadonlyMap<string, LoadedText>;
+  readonly onLoadTexts: (texts: TextRequest[]) => void;
+  readonly fileContent: WholeFile | undefined;
+  readonly error: Sentence | undefined;
+  readonly options: React.ReactNode;
+  readonly changeMarks: boolean;
+  readonly entire: boolean;
+  readonly origin: ImageOrigin | undefined;
+  readonly findAsked: number;
+  readonly filter: Search | undefined;
+  readonly note?: string;
+  readonly onViewFile?: (source: ViewedSource) => void;
+  readonly viewAsked?: number;
+  readonly look: DiffLook;
+  readonly measures: DiffMeasures;
+  readonly measuring: DiffMeasuring;
+  readonly tab: DiffTab;
+}
 
 export function Diff({
   scope,
@@ -58,34 +89,11 @@ export function Diff({
   note,
   onViewFile,
   viewAsked = 0,
-  languageKey,
-}: {
-  scope: string;
-  selection: string;
-  path: string | undefined;
-  loading: boolean;
-  files: readonly FileChange[];
-  patch: string;
-  leftOut: readonly LeftOut[];
-  whitespaceOnly: readonly string[];
-  diffs: number;
-  largeFiles: ReadonlyMap<string, DiffFile>;
-  onLoadFile: (path: string) => void;
-  texts: ReadonlyMap<string, LoadedText>;
-  onLoadTexts: (texts: TextRequest[]) => void;
-  fileContent: WholeFile | undefined;
-  error: Sentence | undefined;
-  options: React.ReactNode;
-  changeMarks: boolean;
-  entire: boolean;
-  origin: ImageOrigin | undefined;
-  findAsked: number;
-  filter: Search | undefined;
-  note?: string;
-  onViewFile?: (source: ViewedSource) => void;
-  viewAsked?: number;
-  languageKey?: string;
-}) {
+  look,
+  measures,
+  measuring,
+  tab,
+}: DiffProps) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
     () =>
@@ -141,23 +149,18 @@ export function Diff({
       viewShown();
     }
   }, [viewAsked]);
+  const shownAt = JSON.stringify([scope, selection]);
   const find = useDiffFind({
-    scope,
-    selection,
+    shownAt,
+    tab,
     diffFiles,
     fileContent,
     findAsked,
   });
   const { jump, matches, shown, finding, openFind } = find;
-  const { diffPlaceOf, keepDiffPlace } = useGitActions();
-  const keepPlace = useCallback(
-    (change: Partial<DiffPlace>) => keepDiffPlace(scope, selection, change),
-    [keepDiffPlace, scope, selection],
-  );
   const [firstChange, setFirstChange] = useState(0);
   const [entireSeen, setEntireSeen] = useState(entire);
   const [awaitedDiff, setAwaitedDiff] = useState<number>();
-  const shownAt = JSON.stringify([scope, selection]);
   const [seen, setSeen] = useState(shownAt);
   if (seen !== shownAt) {
     setSeen(shownAt);
@@ -193,8 +196,8 @@ export function Diff({
       <DiffView
         viewOf={viewOf}
         key={shownAt}
-        keptPlace={diffPlaceOf(scope, selection)}
-        onPlace={keepPlace}
+        keptPlace={tab.place}
+        onPlace={tab.keepPlace}
         error={errorRow}
         files={diffFiles}
         whole={fileContent}
@@ -210,7 +213,9 @@ export function Diff({
         current={shown}
         jump={jump}
         firstChange={path === undefined ? undefined : firstChange}
-        languageKey={languageKey}
+        look={look}
+        measures={measures}
+        measuring={measuring}
       />
     </Column>
   );

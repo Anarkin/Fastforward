@@ -9,6 +9,8 @@ import { diffRowClass } from '../../tools/git/page/diffRowClasses';
 import { DiffView } from '../../tools/git/page/diffView';
 import { FileHeader } from '../../tools/git/page/diffRowParts';
 import { noop } from './fixtures';
+import { diffLookOf, diffMeasuring } from './diffFixtures';
+import { unmeasuredDiff } from '../../tools/git/page/diffMeasures';
 
 export function DiffOptionsShown(shown: ShownOptions) {
   return inStores(optionStores(shown), <DiffOptions language={undefined} />);
@@ -159,12 +161,7 @@ export function DiffViewShown({
   readonly wordWrap?: boolean;
   readonly showWhitespace?: boolean;
 }) {
-  return inStores(
-    optionStores({
-      layout: sideBySide ? 'sideBySide' : 'inline',
-      wordWrap,
-      showWhitespace,
-    }),
+  return (
     <DiffView
       error={null}
       files={[]}
@@ -180,6 +177,9 @@ export function DiffViewShown({
       current={0}
       jump={0}
       firstChange={undefined}
-    />,
+      look={diffLookOf({ sideBySide, wordWrap, showWhitespace })}
+      measures={unmeasuredDiff}
+      measuring={diffMeasuring}
+    />
   );
 }

@@ -13,12 +13,16 @@ import {
   useCellTable,
   type CellTable,
 } from '../../../lib/page/cellTable';
-import { useGit, useGitActions } from './store';
+import type { DiffMeasures, DiffMeasuring } from './diffMeasures';
 import { uniformHeight } from './rowMeasures';
 import { unpadded, type Edges } from './textLayout';
 import { codeSnapOf, codeStarts, sameSnap, type CodeSnap } from './codeSnap';
 
-export function useDiffText(listRef: RefObject<HTMLDivElement | null>): {
+export function useDiffText(
+  listRef: RefObject<HTMLDivElement | null>,
+  measures: DiffMeasures,
+  measuring: DiffMeasuring,
+): {
   readonly table: CellTable | undefined;
   readonly charWidth: number;
   readonly widths: TextWidths;
@@ -36,8 +40,8 @@ export function useDiffText(listRef: RefObject<HTMLDivElement | null>): {
   ) => void;
   readonly snap: CodeSnap;
 } {
-  const measuredText = useGit((state) => state.diffText);
-  const { measureDiffText, snapDiffCode } = useGitActions();
+  const measuredText = measures.text;
+  const { measureText: measureDiffText, snapCode: snapDiffCode } = measuring;
   const charWidth = measuredText?.charWidth ?? 0;
   const font = measuredText?.font ?? '';
   const spacing = measuredText?.spacing ?? 0;
@@ -73,7 +77,7 @@ export function useDiffText(listRef: RefObject<HTMLDivElement | null>): {
       }),
     [measureDiffText],
   );
-  const snap = useGit((state) => state.diffSnap);
+  const { snap } = measures;
   const snapCode = useCallback(() => {
     const element = listRef.current;
     if (!element) {

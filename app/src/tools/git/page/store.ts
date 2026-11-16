@@ -20,7 +20,7 @@ import {
   toggleFolder,
   type ViewFolders,
 } from './viewFolders';
-import { sameTextMeasures } from './textLayout';
+import { withSnap, withText, withWrapColumns } from './diffMeasures';
 import {
   gitDefaults,
   type GitActions,
@@ -659,23 +659,15 @@ export function createGitStore(
           ),
         })),
       measureDiffText: (measures) =>
-        set((state) =>
-          sameTextMeasures(state.diffText, measures)
-            ? state
-            : { diffText: measures },
-        ),
+        set((state) => ({
+          diffMeasures: withText(state.diffMeasures, measures),
+        })),
       snapDiffCode: (snap) =>
-        set((state) => {
-          const next = snap(state.diffSnap);
-          return next === state.diffSnap ? state : { diffSnap: next };
-        }),
+        set((state) => ({ diffMeasures: withSnap(state.diffMeasures, snap) })),
       keepWrapColumns: (columns) =>
-        set((state) =>
-          state.wrapColumns?.left === columns.left &&
-          state.wrapColumns.right === columns.right
-            ? state
-            : { wrapColumns: columns },
-        ),
+        set((state) => ({
+          diffMeasures: withWrapColumns(state.diffMeasures, columns),
+        })),
     };
   });
   made = store;
