@@ -7,9 +7,10 @@ export async function presentIn(
   folder: string,
   platform: NodeJS.Platform,
 ): Promise<ReadonlySet<string>> {
-  const found = await fs.promises
-    .readdir(folder, { recursive: true, encoding: 'utf8' })
-    .catch(() => []);
+  const found = await fs.promises.readdir(folder, {
+    recursive: true,
+    encoding: 'utf8',
+  });
   return new Set(found.map((each) => folderKey(each, platform)));
 }
 

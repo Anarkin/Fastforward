@@ -260,6 +260,32 @@ suite('Copying from one archive into another', () => {
     );
   });
 
+  test('deletes nothing of a move from the one archive when what was taken out of it cannot be read once added to the other, saying why it is kept in it too', async () => {
+    const work = path.join(folder, 'work');
+    let reason = '';
+    const done = await copied(
+      archivesWith({
+        added: async () => {
+          fs.rmSync(work, { recursive: true });
+          fs.writeFileSync(work, '');
+          reason = await fs.promises.readdir(work, { recursive: true }).then(
+            () => '',
+            (error: unknown) => (error instanceof Error ? error.message : ''),
+          );
+          return { kind: 'packed' };
+        },
+      }),
+      { move: true },
+    ).done;
+
+    assert.notStrictEqual(reason, '');
+    assert.deepStrictEqual(done, {
+      kind: 'packed',
+      warning: strings.commander.movedOutKept(source.file, reason),
+    });
+    assert.ok(calls.every(([kind]) => kind !== 'remove'));
+  });
+
   test('keeps in the one archive what 7-Zip took out under another name or not at all, saying so, as Makefile and makefile land as one file where names have no case', async () => {
     assert.deepStrictEqual(
       await copied(archivesWith({ staged: ['src/Makefile', 'top.txt'] }), {

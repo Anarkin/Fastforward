@@ -4,6 +4,7 @@ import { sentencesOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { movedOut, presentIn } from './movedOut';
 import { itemsAt } from './archiveFiles';
+import { reasonOf } from './reasons';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { Packing, PackOptions } from './archiveReader';
 import type { ArchiveBranch } from './archiveTree';
@@ -73,9 +74,18 @@ export async function copiedBetween(
       };
     }
     const name = from.archive.file;
+    let present: ReadonlySet<string>;
+    try {
+      present = await presentIn(extracted.folder, from.platform);
+    } catch (error) {
+      return {
+        kind: 'packed',
+        warning: strings.commander.movedOutKept(name, reasonOf(error)),
+      };
+    }
     const { paths: moved, unmatched } = movedOut(
       from.roots,
-      await presentIn(extracted.folder, from.platform),
+      present,
       new Set(),
       from.withoutFolders,
       from.platform,

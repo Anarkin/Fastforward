@@ -38,6 +38,12 @@ const plan: TransferPlan = {
   move: false,
 };
 
+const whyUnreadable = (folder: string) =>
+  fs.promises.readdir(folder, { recursive: true }).then(
+    () => '',
+    (error: unknown) => (error instanceof Error ? error.message : ''),
+  );
+
 const archivesExtracting = (
   extract: (
     signal: AbortSignal | undefined,
@@ -230,6 +236,37 @@ suite('Unpacking before a transfer', () => {
 
     assert.deepStrictEqual(events, [
       { type: 'failed', name: 'a.zip', reason: 'Data Error' },
+      { type: 'done', stopped: false },
+    ]);
+    assert.deepStrictEqual(inner, []);
+  });
+
+  test('moves nothing when what was taken out of the archive cannot be read before the move, saying why as the failure of the copy', async () => {
+    const taken = path.join(folder, 'work');
+    fs.writeFileSync(taken, '');
+    const reason = await whyUnreadable(taken);
+    const connection = unpackingFirst(
+      {
+        archives: archivesExtracting(() =>
+          Promise.resolve({ kind: 'extracted', folder: taken }),
+        ),
+        archive,
+        paths: ['top.txt'],
+        depth: 0,
+        withoutFolders: false,
+        files: 1,
+        bytes: 1,
+        moving: { roots: [], platform: 'linux' },
+      },
+      connect,
+    )(listener);
+
+    connection.send({ type: 'start', plan: { ...plan, move: true } });
+    await waitFor(() => events.length === 2, 'the move to end');
+
+    assert.notStrictEqual(reason, '');
+    assert.deepStrictEqual(events, [
+      { type: 'failed', name: 'a.zip', reason },
       { type: 'done', stopped: false },
     ]);
     assert.deepStrictEqual(inner, []);
@@ -491,6 +528,29 @@ suite('Moving out of an archive', () => {
     assert.deepStrictEqual(stopped.events, [{ type: 'done', stopped: true }]);
     assert.deepStrictEqual(broke.events, [
       { type: 'done', stopped: false, error: 'Something broke' },
+    ]);
+  });
+
+  test('deletes nothing from the archive when what is left in the folder it was taken into cannot be read, saying why it is kept in the archive too', async () => {
+    const { events, removing, inner, work, moved, ended } = movingOut({
+      files: ['docs/a.txt', 'top.txt'],
+      roots: ['docs', 'top.txt'],
+    });
+    await waitFor(() => inner.length === 1, 'the transfer to start');
+    fs.rmSync(work, { recursive: true });
+    fs.writeFileSync(work, '');
+    const reason = await whyUnreadable(work);
+    await moved([]);
+    await ended();
+
+    assert.notStrictEqual(reason, '');
+    assert.deepStrictEqual(removing, []);
+    assert.deepStrictEqual(events, [
+      {
+        type: 'warned',
+        reason: strings.commander.movedOutKept(archive.file, reason),
+      },
+      { type: 'done', stopped: false },
     ]);
   });
 
