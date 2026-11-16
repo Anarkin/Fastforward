@@ -22,6 +22,8 @@ import { sideToFocus } from './sideFocus';
 import { focusBack, type KeptFocus } from '../../../lib/page/keptFocus';
 import { shareOf } from './sideShare';
 
+const ownMoves = ['pointerdown', 'keydown'] as const;
+
 export function CommanderTool({
   active,
   post,
@@ -92,6 +94,22 @@ export function CommanderTool({
   );
   const focusedTab = useRef<string>(undefined);
   const focusAwaited = useRef<KeptFocus>(undefined);
+  useEffect(() => {
+    if (!panesShown) {
+      return undefined;
+    }
+    const moved = () => {
+      focusAwaited.current = undefined;
+    };
+    for (const move of ownMoves) {
+      window.addEventListener(move, moved, { capture: true });
+    }
+    return () => {
+      for (const move of ownMoves) {
+        window.removeEventListener(move, moved, { capture: true });
+      }
+    };
+  }, [panesShown]);
   useEffect(() => {
     if (!panesShown) {
       focusedTab.current = undefined;
