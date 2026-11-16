@@ -113,6 +113,19 @@ export class GitSessions {
     return this.repositoryTabs.some((open) => sameRoot(open, root));
   }
 
+  hasRepositoryIn(session: Session, root: string): boolean {
+    const shell = this.shell();
+    return shell
+      .tabs()
+      .some(
+        (tab) =>
+          tab.tool === 'git' &&
+          tab.root !== undefined &&
+          sameRoot(tab.root, root) &&
+          shell.holds(session.page, tab.id),
+      );
+  }
+
   isActive(root: string): boolean {
     return this.showing(root) !== undefined;
   }

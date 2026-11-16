@@ -4,7 +4,11 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { sameRoot } from '../../../../../lib/main/paths';
 import { tabsKey, windowsKey } from '../../../../../shell/main/storage';
-import { recentKey } from '../../../../../tools/git/main/storage';
+import {
+  bookmarksKey,
+  recentKey,
+  soloKey,
+} from '../../../../../tools/git/main/storage';
 import { waitFor } from '../../../../helpers/fixtures';
 import type { TempRepository } from '../../../../helpers/repositories';
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
@@ -90,6 +94,28 @@ suite('Git tool in several windows', () => {
     await first.view.idle();
     assert.strictEqual(first.page.last('commitSearch'), undefined);
     assert.strictEqual(second.page.last('commitSearch'), undefined);
+  });
+
+  test('turns Solo on and sets the bookmarks of no repository whose tab is in another window, as the page is not trusted', async () => {
+    const { first, second } = await twoWindows();
+    await first.view.idle();
+    const solo = gitState(first.store).get(soloKey);
+    const bookmarks = gitState(first.store).get(bookmarksKey);
+    second.page.clear();
+    await first.connection.receive({
+      type: 'setSolo',
+      root: other,
+      solo: true,
+    });
+    await first.connection.receive({
+      type: 'setBookmarks',
+      root: other,
+      bookmarks: [],
+    });
+    await first.view.idle();
+    assert.deepStrictEqual(gitState(first.store).get(soloKey), solo);
+    assert.deepStrictEqual(gitState(first.store).get(bookmarksKey), bookmarks);
+    assert.strictEqual(second.page.last('solo'), undefined);
   });
 
   test('shows a repository opened again in the window that has its tab, leaving the window that asked as it was', async () => {

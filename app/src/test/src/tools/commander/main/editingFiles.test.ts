@@ -109,6 +109,7 @@ const editingOnDisk = () => {
       notice: (_page, notice) => notices.push(JSON.stringify(notice)),
       namesChanged: () => {},
       pagesShowing: () => [page],
+      holds: (shownIn) => shownIn === page,
       openEdit: () => Promise.resolve(),
     },
   );

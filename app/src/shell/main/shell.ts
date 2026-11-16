@@ -130,6 +130,8 @@ export class Shell {
       current: (page) => this.pages.current(page),
       tabs: () => this.storage.savedTabs,
       active: (page) => this.pages.activeTab(page),
+      holds: (page, tab) =>
+        this.pages.windowOf(page).tabs.some((each) => each.id === tab),
       shown: () =>
         this.storage.layout.flatMap((window) => {
           const tab = activeTabOf(window);
@@ -412,9 +414,9 @@ export class Shell {
         return;
       }
       case 'closeTab': {
-        const closing = storage.savedTabs.filter(
-          (tab) => tab.id === message.tab,
-        );
+        const closing = this.pages
+          .windowOf(page)
+          .tabs.filter((tab) => tab.id === message.tab);
         if (
           message.save === true &&
           !(await this.closing.savedAll(page, closing))

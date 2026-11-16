@@ -132,6 +132,7 @@ function terminal(
     current: (shownIn) => shownIn,
     tabs: () => [work, other],
     active: () => undefined,
+    holds: () => true,
     shown: () => [],
     open: (_page, _tool, roots) => {
       opened.push(roots);

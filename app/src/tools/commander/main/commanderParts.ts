@@ -104,6 +104,7 @@ export function buildParts(
         [...sides.shown]
           .filter(([, showing]) => showing.tab === tab)
           .map(([page]) => page),
+      holds: (page, tab) => shell().holds(page, tab),
       openEdit: (page, file) => shell().openEdit(page, 'commander', file),
     },
   );

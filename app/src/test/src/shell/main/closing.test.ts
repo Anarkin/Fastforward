@@ -184,6 +184,45 @@ suite('Quitting and closing windows', () => {
     }
   });
 
+  test('saves and closes no tab of another window a page asks to close, as the page is not trusted', async () => {
+    const host = new FakeHost();
+    const folder = tempFolder('unsaved');
+    const file = path.join(folder, 'notes.txt');
+    fs.writeFileSync(file, 'one\n');
+    host.userSettingsFile = () => Promise.resolve(file);
+    try {
+      const { first, second } = await twoWindows(log, noGit, host);
+      await second.connection.receive({ type: 'openSettings' });
+      const tab =
+        second.page.tabs?.tabs.find((each) => each.root === file)?.id ?? '';
+      await second.connection.receive({
+        type: 'tool',
+        tool: 'commander',
+        message: { type: 'readEdited', tab },
+      });
+      await second.connection.receive({
+        type: 'tool',
+        tool: 'commander',
+        message: {
+          type: 'editText',
+          tab,
+          update: {
+            version: 0,
+            changes: ChangeSet.of({ from: 0, insert: 'x' }, 4).toJSON(),
+          },
+        },
+      });
+      await first.connection.receive({ type: 'closeTab', tab, save: true });
+      assert.strictEqual(fs.readFileSync(file, 'utf8'), 'one\n');
+      assert.strictEqual(
+        second.page.tabs?.tabs.find((each) => each.id === tab)?.unsaved,
+        true,
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('asks the page of a window before closing it while it holds a tab of a tool that confirms closing, as closing a Terminal ends its shell, and leaves closing it to the app once the page confirms', async () => {
     const host = new FakeHost();
     const { first, second } = await twoWindows(log, noGit, host);

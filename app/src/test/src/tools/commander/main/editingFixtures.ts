@@ -51,6 +51,7 @@ export function editing(
   const editedSources: string[] = [];
   const named: Page[] = [];
   const showing: Page[] = [];
+  const windows = new Map<string, Page>();
   const stamps = new Map<string, number>();
   const watchers: { file: string; onChange: () => void }[] = [];
   let stamped = 0;
@@ -116,6 +117,7 @@ export function editing(
     notice: (_page, notice) => notices.push(plainOf(notice.message)),
     namesChanged: (page) => named.push(page),
     pagesShowing: () => showing,
+    holds: (page, tab) => (windows.get(tab) ?? page) === page,
     openEdit: (_page, file) => {
       editedSources.push(file);
       return Promise.resolve();
@@ -139,6 +141,7 @@ export function editing(
     editedSources,
     named,
     showing,
+    windows,
     changeOnDisk,
     touched,
     watchers,

@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { EditorPage, settled, editing } from './editingFixtures';
+import type { EditingMessage } from '../../../../../tools/commander/main/editing';
+import { EditorPage, settled, editing, editFrom } from './editingFixtures';
 
 suite('Editing a file in a tab', () => {
   test('shows a tab opened under the id of a closed one the file it opens, never the one the closed tab had', async () => {
@@ -64,5 +65,45 @@ suite('Editing a file in a tab', () => {
     assert.strictEqual(page.last('editing')?.file, 'second.txt');
     await edits.receive(page, { type: 'readEdited', tab: '1' });
     assert.strictEqual(page.last('editedText')?.shown.text, 'second\n');
+  });
+
+  test('reads, edits, keeps, saves and reads again no tab of another window for its page, nor edits the .editorconfig its line ending comes from, as the page is not trusted', async () => {
+    const config = 'work/.editorconfig';
+    const { edits, saved, showing, windows, editedSources } = editing(
+      { 'a.txt': 'one\n' },
+      undefined,
+      () =>
+        Promise.resolve([{ kind: 'editorConfig', ending: 'lf', file: config }]),
+    );
+    const page = new EditorPage();
+    const stranger = new EditorPage();
+    showing.push(page);
+    windows.set('1', page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    await settled();
+    const told = page.messages.length;
+    const forged: EditingMessage[] = [
+      { type: 'readEdited', tab: '1' },
+      editFrom(page, '1', { from: 0, insert: 'x' }),
+      { type: 'editState', tab: '1', version: 0, state: { selection: 3 } },
+      { type: 'saveText', tab: '1' },
+      { type: 'saveIn', tab: '1', encoding: 'utf-16le', bom: true },
+      { type: 'reloadEdited', tab: '1' },
+      { type: 'reopenIn', tab: '1', encoding: 'windows-1252' },
+      { type: 'editSource', tab: '1', file: config },
+    ];
+    for (const message of forged) {
+      await edits.receive(stranger, message);
+    }
+    await settled();
+    assert.deepStrictEqual(stranger.messages, []);
+    assert.strictEqual(page.messages.length, told);
+    assert.deepStrictEqual(saved, []);
+    assert.deepStrictEqual(editedSources, []);
+    assert.strictEqual(edits.unsaved('1'), false);
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.shown.text, 'one\n');
+    assert.strictEqual(page.last('editedText')?.state, undefined);
   });
 });

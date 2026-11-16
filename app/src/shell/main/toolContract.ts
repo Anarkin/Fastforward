@@ -29,6 +29,7 @@ export interface ShellAccess {
   current(page: Page): Page | undefined;
   tabs(): readonly Tab[];
   active(page: Page): Tab | undefined;
+  holds(page: Page, tab: string): boolean;
   shown(): readonly ShownTab[];
   open(
     page: Page,
@@ -86,6 +87,7 @@ export const unattachedShell: ShellAccess = {
   current: () => undefined,
   tabs: () => [],
   active: () => undefined,
+  holds: () => false,
   shown: () => [],
   open: () => Promise.resolve(),
   openView: () => Promise.resolve(),

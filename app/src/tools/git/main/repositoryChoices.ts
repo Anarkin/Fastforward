@@ -33,7 +33,7 @@ export class RepositoryChoices {
     switch (message.type) {
       case 'setSolo': {
         const root = sessions.knownRoot(message.root);
-        if (!sessions.hasRepository(sessions.repositoryOf(root))) {
+        if (!sessions.hasRepositoryIn(session, sessions.repositoryOf(root))) {
           return;
         }
         const context = await this.contexts.context(session, root);
@@ -64,7 +64,7 @@ export class RepositoryChoices {
         const repository = sessions.repositoryOf(
           sessions.knownRoot(message.root),
         );
-        if (!sessions.hasRepository(repository)) {
+        if (!sessions.hasRepositoryIn(session, repository)) {
           return;
         }
         const before = this.bookmarkedOf(repository);

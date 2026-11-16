@@ -60,6 +60,7 @@ export interface EditingShell {
   notice(page: Page, notice: Notice): void;
   namesChanged(page: Page): void;
   pagesShowing(tab: string): readonly Page[];
+  holds(page: Page, tab: string): boolean;
   openEdit(page: Page, file: string): Promise<void>;
 }
 
@@ -377,7 +378,11 @@ export class Editing {
   async receive(page: Page, message: EditingMessage): Promise<void> {
     const opened = this.opened.get(message.tab);
     const text = opened?.read.text;
-    if (opened === undefined || text === undefined) {
+    if (
+      opened === undefined ||
+      text === undefined ||
+      !this.shell.holds(page, message.tab)
+    ) {
       return;
     }
     switch (message.type) {
