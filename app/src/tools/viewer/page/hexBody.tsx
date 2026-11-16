@@ -21,7 +21,7 @@ import {
   type LoadedBytes,
 } from './hex';
 import type { Viewing } from './viewing';
-import { useViewerActions } from './store';
+import { useViewer, useViewerActions } from './store';
 import type { KeptBytes } from './viewerKept';
 
 type Bytes = KeptBytes;
@@ -35,14 +35,12 @@ export function ByteBody({
   viewing,
   find,
   finding = false,
-  place,
   onPlace,
 }: {
   layout: ByteLayout;
   viewing: Viewing;
   find?: ViewerFind;
   finding?: boolean;
-  place: React.RefObject<number>;
   onPlace: (byte: number) => void;
 }) {
   const {
@@ -50,17 +48,21 @@ export function ByteBody({
     listenViewer: listen,
     keptViewer,
     keepViewer,
+    placeOf,
+    keepPlace,
   } = useViewerActions();
   const { tab, version } = viewing;
   const size = viewing.size ?? 0;
   const [screen, setScreen] = useState(1);
   const [columns, setColumns] = useState(minTextColumns);
-  const [topByte, setTopByte] = useState(() => place.current);
+  const topByte = useViewer((state) => state.places.get(tab) ?? 0);
+  const setTopByte = useCallback(
+    (byte: number) => keepPlace(tab, byte),
+    [keepPlace, tab],
+  );
   const body = layout === 'hex' ? 'hex' : 'bytes';
-  const [keptLeft] = useState(() => {
-    const kept = keptViewer(tab).sideways;
-    return kept?.body === body ? kept.left : undefined;
-  });
+  const keptSideways = keptViewer(tab).sideways;
+  const keptLeft = keptSideways?.body === body ? keptSideways.left : undefined;
   const onLeft = useCallback(
     (left: number) => keepViewer(tab, { sideways: { body, left, column: 0 } }),
     [keepViewer, tab, body],
@@ -137,15 +139,16 @@ export function ByteBody({
   const move = useCallback(
     (by: number) =>
       setTopByte(
-        (byte) =>
-          Math.max(0, Math.min(Math.floor(byte / rowBytes) + by, lastTop)) *
-          rowBytes,
+        Math.max(
+          0,
+          Math.min(Math.floor(placeOf(tab) / rowBytes) + by, lastTop),
+        ) * rowBytes,
       ),
-    [lastTop, rowBytes],
+    [lastTop, rowBytes, placeOf, tab, setTopByte],
   );
   const jump = useCallback(
     (share: number) => setTopByte(Math.round(share * lastTop) * rowBytes),
-    [lastTop, rowBytes],
+    [lastTop, rowBytes, setTopByte],
   );
 
   const goToMatch = useEffectEvent(() => {

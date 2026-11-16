@@ -4,7 +4,7 @@ import type { EncodingChoice } from '../../../components/encodings/page/encoding
 import type { ByteRange, ViewerToWebview } from '../shared/protocol';
 import type { PdfPlace } from '../shared/pdf';
 import type { ViewMode } from './viewerKeymap';
-import type { KeptViewer } from './viewerKept';
+import type { KeptViewer, ViewerTabView } from './viewerKept';
 import type { ToViewer, ViewerRequest, Viewing } from './viewing';
 
 export interface ViewerChoices {
@@ -19,6 +19,8 @@ export interface ViewerSource {
   readonly viewed: Viewing | undefined;
   readonly keptViewed: ReadonlyMap<string, Viewing>;
   readonly choices: ReadonlyMap<string, ViewerChoices>;
+  readonly tabViews: ReadonlyMap<string, ViewerTabView>;
+  readonly places: ReadonlyMap<string, number>;
 }
 
 export interface ViewerActions {
@@ -72,6 +74,8 @@ export const viewerDefaults: ViewerSource = {
   viewed: undefined,
   keptViewed: new Map(),
   choices: new Map(),
+  tabViews: new Map(),
+  places: new Map(),
 };
 
 const noChoices: ViewerChoices = {};

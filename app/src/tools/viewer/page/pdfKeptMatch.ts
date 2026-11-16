@@ -19,6 +19,11 @@ export class KeptMatch {
     this.wanted = undefined;
   }
 
+  seek(wanted: number | undefined): void {
+    this.wanted = wanted;
+    this.steps = 0;
+  }
+
   found(
     { current, total, settled }: PdfFound,
     step: (by: 1 | -1) => void,

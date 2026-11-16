@@ -5,6 +5,8 @@ import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { ViewerToHost } from '../shared/protocol';
 import { viewerActions } from './viewerActions';
+import { noSearch } from '../../../lib/shared/searchOptions';
+import { noKeptViewer, withoutCaches } from './viewerKept';
 import { viewerViewSchema } from './tabView';
 import {
   choicesOf,
@@ -39,24 +41,50 @@ export function createViewerStore(
       views,
       viewerViewSchema,
       {
-        viewOf: (tab) => ({
-          ...viewer.kept(tab),
-          choices: get().choices.get(tab),
-        }),
-        restore: (tab, { choices, ...rest }) => {
+        viewOf: (tab) => {
+          const { choices, tabViews, places } = get();
+          const view = tabViews.get(tab) ?? noKeptViewer;
+          return {
+            place: places.get(tab),
+            finding: view.finding,
+            search: view.search,
+            current: view.current,
+            focus: view.focus,
+            sideways: view.sideways,
+            preview: view.preview,
+            pdfFind: view.pdfFind,
+            choices: choices.get(tab),
+          };
+        },
+        restore: (tab, { choices, place, ...view }) => {
+          viewer.freshCache(tab);
           set((state) => ({
             choices:
               choices === undefined
                 ? without(state.choices, tab)
                 : new Map(state.choices).set(tab, choices),
+            places:
+              place === undefined
+                ? without(state.places, tab)
+                : new Map(state.places).set(tab, place),
+            tabViews: new Map(state.tabViews).set(tab, {
+              finding: view.finding ?? false,
+              search: view.search ?? noSearch,
+              current: view.current ?? 0,
+              focus: view.focus,
+              sideways: view.sideways,
+              preview: view.preview,
+              pdfFind: view.pdfFind,
+            }),
           }));
-          viewer.restore(tab, rest);
         },
         forget: (tab) => {
           viewer.forget(tab);
           set((state) => ({
             keptViewed: without(state.keptViewed, tab),
             choices: without(state.choices, tab),
+            tabViews: without(state.tabViews, tab),
+            places: without(state.places, tab),
           }));
         },
       },
@@ -131,12 +159,30 @@ export function createViewerStore(
           at,
           ...(encoding !== undefined && { encoding }),
         }),
+      placeOf: (tab) => get().places.get(tab) ?? 0,
       keepPlace: (tab, byte) => {
-        viewer.actions.keepPlace(tab, byte);
+        if (get().places.get(tab) !== byte) {
+          set((state) => ({ places: new Map(state.places).set(tab, byte) }));
+        }
         changed(tab);
       },
+      keptViewer: (tab) => ({
+        ...noKeptViewer,
+        ...get().tabViews.get(tab),
+        ...viewer.cacheOf(tab),
+      }),
       keepViewer: (tab, change) => {
-        viewer.actions.keepViewer(tab, change);
+        const view = withoutCaches(change);
+        if (Object.keys(view).length > 0) {
+          set((state) => ({
+            tabViews: new Map(state.tabViews).set(tab, {
+              ...noKeptViewer,
+              ...state.tabViews.get(tab),
+              ...view,
+            }),
+          }));
+        }
+        viewer.keepCache(tab, change);
         changed(tab);
       },
       keepTabs: () => tabs.flush(),

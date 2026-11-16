@@ -87,9 +87,6 @@ export function Viewer() {
   const tab = useViewer((state) => state.tab);
   const { placeOf, keepPlace, editViewed, keptViewer, keepViewer } =
     useViewerActions();
-  const [kept] = useState(() =>
-    tab === undefined ? undefined : keptViewer(tab),
-  );
   const place = useRef(tab === undefined ? 0 : placeOf(tab));
   const onPlace = useCallback(
     (byte: number) => {
@@ -126,13 +123,15 @@ export function Viewer() {
   const pdf = usePdfPreview(viewing?.tab);
   const inPdf = mode === 'preview' && preview === 'pdf';
   const searched = inPdf ? pdf.find : finder;
-  const [finding, setFinding] = useState(kept?.finding === true);
-  const [focusAsks, setFocusAsks] = useState(0);
-  useEffect(() => {
+  const finding = useViewer(
+    (state) => tab !== undefined && state.tabViews.get(tab)?.finding === true,
+  );
+  const setFinding = (open: boolean) => {
     if (tab !== undefined) {
-      keepViewer(tab, { finding });
+      keepViewer(tab, { finding: open });
     }
-  }, [tab, keepViewer, finding]);
+  };
+  const [focusAsks, setFocusAsks] = useState(0);
   const findInput = useRef<HTMLInputElement>(null);
   const openFind = () => {
     if (mode === 'preview' && preview !== 'pdf') {
@@ -149,9 +148,10 @@ export function Viewer() {
   });
   const bodyShown = viewing !== undefined;
   useRestore(
-    kept?.focus,
+    tab === undefined ? undefined : keptViewer(tab).focus,
     () => bodyShown && viewer.current !== null,
     (focus) => viewer.current !== null && focusBack(viewer.current, focus),
+    { key: tab },
   );
   const focusBody = () => columnFocusOf(viewer.current)?.focus();
   const closeFind = () => {
@@ -331,7 +331,6 @@ export function Viewer() {
           viewing={viewing}
           find={finder.find}
           finding={finding}
-          place={place}
           onPlace={onPlace}
         />
       ) : (

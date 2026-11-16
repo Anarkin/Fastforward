@@ -51,7 +51,7 @@ interface KeptPreview {
   readonly offset: number;
 }
 
-export interface KeptPdfFind {
+interface KeptPdfFind {
   readonly search: Search;
   readonly current: number;
 }
@@ -70,6 +70,11 @@ export interface KeptViewer {
   readonly sideways: KeptSideways | undefined;
   readonly preview: KeptPreview | undefined;
 }
+
+export type ViewerTabView = Omit<
+  KeptViewer,
+  'found' | 'rows' | 'text' | 'colors' | 'bytes'
+>;
 
 export const maxCachedViewers = 3;
 

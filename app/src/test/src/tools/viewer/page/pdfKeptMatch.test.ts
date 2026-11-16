@@ -155,4 +155,22 @@ suite('Coming back to the match of a PDF it was left on', () => {
     assert.strictEqual(found.at(-1)?.current, 1);
     assert.strictEqual(steps(), 0);
   });
+
+  test('steps to a match handed to it after it was made, as a tab hands it the match it kept once mounted, and to none once it was dropped', () => {
+    const steps: number[] = [];
+    const kept = new KeptMatch(undefined, (run) => run());
+    const found = (current: number) =>
+      kept.found({ current, total: 6, done: true, settled: true }, (by) =>
+        steps.push(by),
+      );
+    found(1);
+    assert.deepStrictEqual(steps, []);
+    kept.seek(3);
+    assert.strictEqual(kept.kept, 3);
+    found(1);
+    assert.deepStrictEqual(steps, [1]);
+    kept.drop();
+    found(2);
+    assert.deepStrictEqual(steps, [1]);
+  });
 });

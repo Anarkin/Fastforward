@@ -4,7 +4,6 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 import { maxPreviewBytes } from '../shared/protocol';
 import { viewedFileUrl } from '../shared/files';
@@ -77,8 +76,7 @@ export function PreviewBody({
   useEffect(() => body.current?.focus(), []);
   const { tab } = viewing;
   const { keptViewer, keepViewer } = useViewerActions();
-  const [kept] = useState(() => keptViewer(tab).preview);
-  const back = useRef(kept);
+  const back = useRef(keptViewer(tab).preview);
   const centerImage = useCallback(() => {
     const scroller = body.current;
     const left = back.current;

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import type { KeptPdfFind } from './viewerKept';
 import type { PdfPlace } from '../shared/pdf';
 import type { MatchesFound } from '../../../lib/shared/textMatches';
 import {
@@ -10,7 +9,7 @@ import {
 import type { ShownPdf } from './pdfDocument';
 import type { PdfFound } from './pdfFinds';
 import { KeptMatch } from './pdfKeptMatch';
-import { useViewerActions } from './store';
+import { useViewer, useViewerActions } from './store';
 
 export function pdfFound(found: PdfFound | undefined): MatchesFound {
   return {
@@ -33,14 +32,20 @@ export function usePdfPreview(tab: string | undefined) {
   const shown = useRef<ShownPdf>(undefined);
   const { readPdfPlace, keepPdfPlace, flushPdfPlace, keptViewer, keepViewer } =
     useViewerActions();
-  const [kept] = useState<KeptPdfFind | undefined>(() =>
-    tab === undefined ? undefined : keptViewer(tab).pdfFind,
+  const { query, options } = useViewer((state) =>
+    tab === undefined
+      ? noSearch
+      : (state.tabViews.get(tab)?.pdfFind?.search ?? noSearch),
   );
-  const [{ query, options }, setSearch] = useState(kept?.search ?? noSearch);
   const [found, setFound] = useState<PdfFound>();
-  const [match] = useState(() => new KeptMatch(kept?.current));
+  const [match] = useState(() => new KeptMatch(undefined));
   useEffect(() => flushPdfPlace, [flushPdfPlace]);
   const current = found?.current ?? 0;
+  useEffect(() => {
+    if (tab !== undefined) {
+      match.seek(keptViewer(tab).pdfFind?.current);
+    }
+  }, [match, tab, keptViewer]);
   useEffect(() => {
     if (tab !== undefined) {
       keepViewer(tab, {
@@ -54,7 +59,9 @@ export function usePdfPreview(tab: string | undefined) {
 
   const searchFor = (next: Search) => {
     match.drop();
-    setSearch(next);
+    if (tab !== undefined) {
+      keepViewer(tab, { pdfFind: { search: next, current: 0 } });
+    }
     setFound(undefined);
     if (next.query === '') {
       shown.current?.closeFind();

@@ -57,7 +57,6 @@ async function showingBytes(
     const root = createRoot(main);
     const posted: ViewerToHost[] = [];
     const store = createViewerStore((message) => posted.push(message));
-    const place = { current: 0 };
     const show = (version: string) =>
       act(async () => {
         renderIn(
@@ -66,7 +65,6 @@ async function showingBytes(
             <ByteBody
               layout="hex"
               viewing={{ tab: '3', size, version }}
-              place={place}
               onPlace={noop}
             />
           </ViewerStore>,

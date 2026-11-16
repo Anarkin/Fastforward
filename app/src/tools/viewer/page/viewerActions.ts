@@ -3,22 +3,12 @@ import { maxFindLength } from '../shared/protocol';
 import type { ViewerToHost } from '../shared/protocol';
 import type { ViewerActions } from './viewerState';
 import type { ToViewer } from './viewing';
-import { noSearch } from '../../../lib/shared/searchOptions';
-import type { ViewerView } from './tabView';
 import { RecentCache } from './recentCache';
-import {
-  maxCachedViewers,
-  noKeptViewer,
-  cachesOf,
-  withoutCaches,
-  type KeptViewer,
-} from './viewerKept';
+import { maxCachedViewers, cachesOf, type KeptViewer } from './viewerKept';
 
 const pdfPlaceWait = 2000;
 
 const pdfPlaceEvery = 1000;
-
-type ViewerKept = Omit<ViewerView, 'choices'>;
 
 type StreamActions = Pick<
   ViewerActions,
@@ -29,10 +19,6 @@ type StreamActions = Pick<
   | 'readPdfPlace'
   | 'keepPdfPlace'
   | 'flushPdfPlace'
-  | 'placeOf'
-  | 'keepPlace'
-  | 'keptViewer'
-  | 'keepViewer'
 >;
 
 type Asked = ViewerToHost;
@@ -43,8 +29,9 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
   readonly forget: (tab: string) => void;
   readonly awaitViewing: (tab: string | undefined) => void;
   readonly viewingCame: (tab: string) => void;
-  readonly kept: (tab: string) => ViewerKept;
-  readonly restore: (tab: string, kept: ViewerKept) => void;
+  readonly cacheOf: (tab: string) => Partial<KeptViewer>;
+  readonly keepCache: (tab: string, change: Partial<KeptViewer>) => void;
+  readonly freshCache: (tab: string) => void;
 } {
   let awaited: string | undefined;
   let held: Asked[] = [];
@@ -55,8 +42,6 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
       sent(message);
     }
   };
-  const places = new Map<string, number>();
-  const keptViewers = new Map<string, KeptViewer>();
   const caches = new RecentCache<Partial<KeptViewer>>(maxCachedViewers);
   const viewerListeners = new Set<(message: ToViewer) => void>();
   const listenViewer = (handler: (message: ToViewer) => void) => {
@@ -89,42 +74,11 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
         handler(message);
       }
     },
-    forget: (tab) => {
-      places.delete(tab);
-      keptViewers.delete(tab);
-      caches.forget(tab);
-    },
-    kept: (tab) => {
-      const kept = keptViewers.get(tab) ?? noKeptViewer;
-      return {
-        place: places.get(tab),
-        finding: kept.finding,
-        search: kept.search,
-        current: kept.current,
-        focus: kept.focus,
-        sideways: kept.sideways,
-        preview: kept.preview,
-        pdfFind: kept.pdfFind,
-      };
-    },
-    restore: (tab, kept) => {
-      if (kept.place === undefined) {
-        places.delete(tab);
-      } else {
-        places.set(tab, kept.place);
-      }
-      caches.keep(tab, {});
-      keptViewers.set(tab, {
-        ...noKeptViewer,
-        finding: kept.finding ?? false,
-        search: kept.search ?? noSearch,
-        current: kept.current ?? 0,
-        focus: kept.focus,
-        sideways: kept.sideways,
-        preview: kept.preview,
-        pdfFind: kept.pdfFind,
-      });
-    },
+    forget: (tab) => caches.forget(tab),
+    cacheOf: (tab) => caches.of(tab) ?? {},
+    keepCache: (tab, change) =>
+      caches.keep(tab, { ...caches.of(tab), ...cachesOf(change) }),
+    freshCache: (tab) => caches.keep(tab, {}),
     awaitViewing: (tab) => {
       awaited = tab;
       held = [];
@@ -201,21 +155,6 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
         pdfPlaceTimer ??= setTimeout(flushPdfPlace, pdfPlaceEvery);
       },
       flushPdfPlace,
-      placeOf: (tab) => places.get(tab) ?? 0,
-      keepPlace: (tab, byte) => {
-        places.set(tab, byte);
-      },
-      keptViewer: (tab) => ({
-        ...(keptViewers.get(tab) ?? noKeptViewer),
-        ...caches.of(tab),
-      }),
-      keepViewer: (tab, change) => {
-        keptViewers.set(tab, {
-          ...(keptViewers.get(tab) ?? noKeptViewer),
-          ...withoutCaches(change),
-        });
-        caches.keep(tab, { ...caches.of(tab), ...cachesOf(change) });
-      },
     },
   };
 }

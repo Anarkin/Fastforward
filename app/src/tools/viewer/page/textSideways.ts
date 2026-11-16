@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { wholeLineBytes } from '../shared/protocol';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { TextWidths } from '../../../lib/page/textWidths';
@@ -11,6 +11,9 @@ const sidewaysStep = 32;
 
 const sidewaysMargin = 64;
 
+export const steppedColumn = (column: number): number =>
+  Math.floor(column / sidewaysStep) * sidewaysStep;
+
 export function useSideways({
   whole,
   text,
@@ -20,7 +23,7 @@ export function useSideways({
   encoding,
   counting,
   columns,
-  keptColumn = 0,
+  across,
 }: {
   readonly whole: boolean;
   readonly text: WholeText | undefined;
@@ -30,7 +33,7 @@ export function useSideways({
   readonly encoding: TextEncoding;
   readonly counting: TextWidths;
   readonly columns: number | undefined;
-  readonly keptColumn?: number;
+  readonly across: number;
 }) {
   const widestLine = useMemo(
     () =>
@@ -64,14 +67,6 @@ export function useSideways({
       columns: wide.key === widthKey ? Math.max(wide.columns, widest) : widest,
     });
   }
-  const [across, setAcross] = useState(
-    Math.floor(keptColumn / sidewaysStep) * sidewaysStep,
-  );
-  const onSideways = useCallback(
-    (column: number) =>
-      setAcross(Math.floor(column / sidewaysStep) * sidewaysStep),
-    [],
-  );
   const shownColumns =
     columns !== undefined && Number.isFinite(columns) ? columns : 0;
   const parts = shown.map((row) =>
@@ -88,7 +83,6 @@ export function useSideways({
   );
   return {
     width: whole && wide.key === widthKey ? wide.columns : undefined,
-    onSideways,
     parts,
   };
 }

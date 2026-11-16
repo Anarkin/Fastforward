@@ -8,11 +8,12 @@ import { useShell } from '../../../shell/page/store';
 import { columnAt } from './columns';
 import { cellWidthsOf, textWidths } from '../../../lib/page/textWidths';
 import { plainCells, useCellTable } from '../../../lib/page/cellTable';
-import { useViewerActions } from './store';
+import { useViewer, useViewerActions } from './store';
+import type { ViewerTabView } from './viewerKept';
 import { textThumb } from './textScroll';
 import { TextRow } from './textRow';
 import { useTextRows } from './textRows';
-import { useSideways } from './textSideways';
+import { steppedColumn, useSideways } from './textSideways';
 import { useColors, useWholeText } from './wholeText';
 
 export function TextBody({
@@ -38,11 +39,19 @@ export function TextBody({
     keptViewer,
     keepViewer,
   } = useViewerActions();
-  const [keptSideways] = useState(() => {
-    const kept = keptViewer(viewing.tab).sideways;
-    return kept?.body === `text ${encoding}` ? kept : undefined;
-  });
+  const sidewaysBody = `text ${encoding}`;
+  const sidewaysOf = (
+    sideways: ViewerTabView['sideways'],
+  ): ViewerTabView['sideways'] =>
+    sideways?.body === sidewaysBody ? sideways : undefined;
+  const keptSideways = sidewaysOf(keptViewer(viewing.tab).sideways);
+  const across = useViewer((state) =>
+    steppedColumn(
+      sidewaysOf(state.tabViews.get(viewing.tab)?.sideways)?.column ?? 0,
+    ),
+  );
   const sidewaysColumn = useRef(keptSideways?.column ?? 0);
+  const sidewaysLeft = useRef(keptSideways?.left ?? 0);
   const [measured, setMeasured] = useState<number>();
   const screen = measured ?? 1;
   const [columns, setColumns] = useState<number>();
@@ -91,7 +100,7 @@ export function TextBody({
   const text = useWholeText(viewing, language !== undefined || whole, encoding);
   const colored = useColors(tab, language, encoding, text);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
-  const { width, onSideways, parts } = useSideways({
+  const { width, parts } = useSideways({
     whole,
     text,
     rows,
@@ -100,25 +109,34 @@ export function TextBody({
     encoding,
     counting,
     columns,
-    keptColumn: keptSideways?.column,
+    across,
   });
-  const onAcross = useCallback(
-    (column: number) => {
-      sidewaysColumn.current = column;
-      onSideways(column);
-    },
-    [onSideways],
-  );
-  const onLeft = useCallback(
-    (left: number) =>
+  const keepSideways = useCallback(
+    () =>
       keepViewer(tab, {
         sideways: {
-          body: `text ${encoding}`,
-          left,
+          body: sidewaysBody,
+          left: sidewaysLeft.current,
           column: sidewaysColumn.current,
         },
       }),
-    [keepViewer, tab, encoding],
+    [keepViewer, tab, sidewaysBody],
+  );
+  const onAcross = useCallback(
+    (column: number) => {
+      sidewaysColumn.current = column;
+      if (steppedColumn(column) !== across) {
+        keepSideways();
+      }
+    },
+    [across, keepSideways],
+  );
+  const onLeft = useCallback(
+    (left: number) => {
+      sidewaysLeft.current = left;
+      keepSideways();
+    },
+    [keepSideways],
   );
   const texts = new Map(
     shown.map((row, index) => [

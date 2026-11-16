@@ -5,7 +5,6 @@ import {
   optional,
   record,
   text,
-  type Infer,
 } from '../../../lib/shared/schema';
 import { focusSchema } from '../../../lib/page/keptFocus';
 import { textEncodings } from '../../../components/encodings/shared/textEncodings';
@@ -42,5 +41,3 @@ export const viewerViewSchema = record({
     }),
   ),
 });
-
-export type ViewerView = Infer<typeof viewerViewSchema>;

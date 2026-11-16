@@ -2,9 +2,13 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { ByteRange } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { stepMatch, type MatchesFound } from '../../../lib/shared/textMatches';
-import type { Search, SearchOptions } from '../../../lib/shared/searchOptions';
+import {
+  noSearch,
+  type Search,
+  type SearchOptions,
+} from '../../../lib/shared/searchOptions';
 import type { Viewing } from './viewing';
-import { useViewerActions } from './store';
+import { useViewer, useViewerActions } from './store';
 import { noKeptViewer, type ViewerFound } from './viewerKept';
 
 export interface ViewerFind {
@@ -46,9 +50,15 @@ export function useViewerFind(
   const [kept] = useState(() =>
     tab === undefined ? noKeptViewer : keptViewer(tab),
   );
-  const [{ query, options }, setSearch] = useState(kept.search);
+  const { query, options } = useViewer((state) =>
+    tab === undefined
+      ? noSearch
+      : (state.tabViews.get(tab)?.search ?? noSearch),
+  );
+  const current = useViewer((state) =>
+    tab === undefined ? 0 : (state.tabViews.get(tab)?.current ?? 0),
+  );
   const [found, setFound] = useState(kept.found);
-  const [current, setCurrent] = useState(kept.current);
   const [jump, setJump] = useState(0);
   const awaitingFirst = useRef(false);
   const version = viewing?.version;
@@ -85,20 +95,23 @@ export function useViewerFind(
 
   useEffect(() => {
     if (tab !== undefined) {
-      keepViewer(tab, { search: { query, options }, current, found });
+      keepViewer(tab, { found });
     }
-  }, [tab, keepViewer, query, options, current, found]);
+  }, [tab, keepViewer, found]);
 
   const ours = foundFor(found, { query, options }, encoding, version);
   const matches = ours ? found.matches : [];
   const shown = Math.min(current, Math.max(0, matches.length - 1));
   const goTo = (index: number) => {
-    setCurrent(index);
+    if (tab !== undefined) {
+      keepViewer(tab, { current: index });
+    }
     setJump((count) => count + 1);
   };
   const searchFor = (next: Search) => {
-    setSearch(next);
-    setCurrent(0);
+    if (tab !== undefined) {
+      keepViewer(tab, { search: next, current: 0 });
+    }
     awaitingFirst.current = true;
   };
 

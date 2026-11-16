@@ -1,6 +1,4 @@
 export const keptStates: Readonly<Record<string, string>> = {
-  'tools/viewer/page/pdfPreview.ts match':
-    'the match the pdf find steps back to, read once from the kept viewers of viewerActions.ts as it mounts and dropped once reached',
   'shell/page/promptPopup.tsx value':
     'the text typed in a prompt, seeded from what its dialog kept (typed) and told to it by onTyped as typed',
   'shell/page/promptPopup.tsx keptSelection':
@@ -13,10 +11,6 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the line typed in the go-to-line prompt, read once from keptEditings (editorActions.ts) as the prompt mounts',
   'tools/viewer/page/pdfPreview.ts found':
     'the matches of the pdf find, counted anew by PDF.js as it searches again, stepped to the match kept per tab',
-  'tools/viewer/page/pdfPreview.ts search':
-    'the query and toggles of the pdf find, kept per tab in the kept viewers (pdfFind) and read back as mounted',
-  'tools/viewer/page/pdfPreview.ts kept':
-    'the pdf find of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
   'tools/editor/page/editorFinding.ts finding':
     'whether the find is open, kept per tab in keptEditings (editorActions.ts) and read back as mounted',
   'tools/editor/page/editorFinding.ts kept':
@@ -35,30 +29,12 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the line, column and selection, read from the editor state kept per tab in keptEditors as it mounts',
   'tools/viewer/page/hexBody.tsx bytes':
     'the bytes read, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
-  'tools/viewer/page/hexBody.tsx keptLeft':
-    'the sideways scroll of the bytes, read once from the viewer kept per tab (viewerKept.ts), kept by onLeft',
-  'tools/viewer/page/hexBody.tsx topByte':
-    'the byte at the top, kept per tab in the places of viewerActions.ts and read back through the viewer',
-  'tools/viewer/page/previewBody.tsx kept':
-    'where the preview was scrolled, read once from the viewer kept per tab (viewerKept.ts) and scrolled back to',
-  'tools/viewer/page/textBody.tsx keptSideways':
-    'the sideways place of the text, read once from the viewer kept per tab (viewerKept.ts), kept by onLeft',
   'tools/viewer/page/textRows.ts read':
     'the rows read and the top row, kept per tab in the kept viewers of viewerActions.ts until the file changes',
-  'tools/viewer/page/textSideways.ts across':
-    'the column scrolled across to, seeded from the sideways kept per tab (viewerKept.ts) and kept by onLeft',
-  'tools/viewer/page/viewer.tsx finding':
-    'whether the find is open, kept per tab in the kept viewers of viewerActions.ts and read back as mounted',
-  'tools/viewer/page/viewer.tsx kept':
-    'the viewer of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
-  'tools/viewer/page/viewerFind.ts current':
-    'the match shown, kept per tab in the kept viewers of viewerActions.ts and read back as mounted',
   'tools/viewer/page/viewerFind.ts found':
     'the matches found, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
   'tools/viewer/page/viewerFind.ts kept':
     'the find of the tab as left, read once from the kept viewers of viewerActions.ts as it mounts',
-  'tools/viewer/page/viewerFind.ts search':
-    'the query and toggles of the find, kept per tab in the kept viewers of viewerActions.ts',
   'tools/viewer/page/wholeText.ts colored':
     'the colors of the text, kept per tab in the kept viewers of viewerActions.ts for its language and text',
   'tools/viewer/page/wholeText.ts text':
@@ -75,6 +51,8 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the pin, kept per worktree with whether its keys made it in pinnedMessages, pinned again as its row is drawn',
 };
 export const passingStates: Readonly<Record<string, string>> = {
+  'tools/viewer/page/pdfPreview.ts match':
+    'made once: the helper that steps back to the match a tab kept, handed that match from the store once mounted',
   'lib/page/cellTable.ts table':
     'the table of cell widths, loaded once for the page and read from the module as mounted',
   'lib/page/dialogDrag.ts place':
