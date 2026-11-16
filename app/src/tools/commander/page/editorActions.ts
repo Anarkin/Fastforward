@@ -126,7 +126,7 @@ export function editorActions({ set, post, onPane }: StoreParts): {
       readEdited: (tab) => post({ type: 'readEdited', tab }),
       editText: (tab, update) => post({ type: 'editText', tab, update }),
       keepEditState: (tab, version, state) =>
-        post({ type: 'editState', tab, version, state }),
+        post({ type: 'editState', tab, version, state: JSON.stringify(state) }),
       saveText: (tab, overwrite) =>
         post({
           type: 'saveText',

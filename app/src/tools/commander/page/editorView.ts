@@ -37,6 +37,7 @@ import {
   type EditedTab,
 } from './editorState';
 import { statusOf } from './editorStatus';
+import { parsedOf } from './keptTabActions';
 
 export const editedShown = (state: CommanderSource): EditedTab | undefined =>
   state.edited?.tab === state.view.tab ? state.edited : undefined;
@@ -221,12 +222,14 @@ export function useEditorView(language: string | undefined) {
       }
       const head = shown.state.selection.main.head;
       version = message.shown.version;
+      const keptState =
+        message.state === undefined ? undefined : parsedOf(message.state);
       const next = settingsKept(
-        stateOf(message.shown, message.state, extensions),
+        stateOf(message.shown, keptState, extensions),
         shown.state,
         [wrapping.current, blanking.current, closing.current, coloring.current],
       );
-      const keptPlace = placeIn(message.state);
+      const keptPlace = placeIn(keptState);
       if (message.reloaded === true) {
         shown.setState(next);
         shown.dispatch({

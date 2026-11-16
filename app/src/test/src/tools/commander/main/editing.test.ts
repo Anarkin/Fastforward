@@ -1,11 +1,12 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import { plainOf, type Sentence } from '../../../../../lib/shared/sentences';
 import {
   EditorPage,
   settled,
   editing,
   forgedSource,
+  forgedState,
   editFrom,
 } from './editingFixtures';
 
@@ -206,15 +207,43 @@ suite('Editing a file', () => {
       type: 'editState',
       tab: '1',
       version: 0,
-      state: { selection: 3 },
+      state: '{"selection":3}',
     });
     const other = new EditorPage();
     await edits.show(other, '1', 'a.txt');
     await edits.receive(other, { type: 'readEdited', tab: '1' });
-    assert.deepStrictEqual(other.last('editedText')?.state, { selection: 3 });
+    assert.strictEqual(other.last('editedText')?.state, '{"selection":3}');
     await edits.receive(other, editFrom(other, '1', { from: 0, insert: 'x' }));
     await edits.receive(other, { type: 'readEdited', tab: '1' });
     assert.strictEqual(other.last('editedText')?.state, undefined);
+  });
+
+  test('keeps the state a page sends of a tab only as a string within its bound, refusing anything else before turning it into JSON, and hands it back as it came, as a Map or a sparse array passed any length measured as JSON', async () => {
+    const { edits } = editing({ 'a.txt': 'one' + String.fromCharCode(10) });
+    const page = new EditorPage();
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    const sparse: unknown[] = [];
+    sparse.length = 2 ** 28;
+    const stringify = vi.spyOn(JSON, 'stringify');
+    try {
+      for (const refused of [
+        { selection: 3 },
+        new Map([['selection', 3]]),
+        sparse,
+        'x'.repeat(16 * 1024 * 1024 + 1),
+      ]) {
+        await edits.receive(page, forgedState('1', refused));
+      }
+      assert.strictEqual(stringify.mock.calls.length, 0);
+    } finally {
+      stringify.mockRestore();
+    }
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.state, undefined);
+    await edits.receive(page, forgedState('1', '{"selection":3}'));
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    assert.strictEqual(page.last('editedText')?.state, '{"selection":3}');
   });
 
   test('forgets the text of a tab once closed, reading the file afresh when opened again', async () => {
@@ -428,7 +457,9 @@ suite('Editing a file', () => {
       type: 'editState',
       tab: '1',
       version: 0,
-      state: { selection: { ranges: [{ anchor: 2, head: 2 }], main: 0 } },
+      state: JSON.stringify({
+        selection: { ranges: [{ anchor: 2, head: 2 }], main: 0 },
+      }),
     });
     await edits.receive(page, { type: 'readEdited', tab: '1' });
     assert.strictEqual(page.last('editedText')?.at, undefined);

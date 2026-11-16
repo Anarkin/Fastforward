@@ -114,7 +114,7 @@ interface Opened {
   outside: boolean;
   untold: boolean;
   saving: boolean;
-  kept?: { readonly version: number; readonly state: unknown };
+  kept?: { readonly version: number; readonly state: string };
   stop: () => void;
 }
 
@@ -407,7 +407,8 @@ export class Editing {
       case 'editState':
         if (
           message.version === text.version &&
-          (JSON.stringify(message.state)?.length ?? 0) <= maxKeptState
+          typeof message.state === 'string' &&
+          message.state.length <= maxKeptState
         ) {
           opened.kept = { version: message.version, state: message.state };
         }

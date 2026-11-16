@@ -42,7 +42,7 @@ function withFilters(
   return next;
 }
 
-function parsedOf(kept: string): unknown {
+export function parsedOf(kept: string): unknown {
   try {
     return JSON.parse(kept);
   } catch {

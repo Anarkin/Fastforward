@@ -142,7 +142,7 @@ export type CommanderToHost =
       readonly type: 'editState';
       readonly tab: string;
       readonly version: number;
-      readonly state: unknown;
+      readonly state: string;
     }
   | {
       readonly type: 'saveText';
@@ -531,7 +531,7 @@ export type CommanderToWebview =
       readonly type: 'editedText';
       readonly tab: string;
       readonly shown: TextShown;
-      readonly state?: unknown;
+      readonly state?: string;
       readonly reloaded?: true;
       readonly at?: number;
     }

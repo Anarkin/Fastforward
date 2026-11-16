@@ -13,7 +13,7 @@ suite('Editing a file in a tab', () => {
       type: 'editState',
       tab: '1',
       version: 0,
-      state: { selection: 3 },
+      state: '{"selection":3}',
     });
     edits.closed('1');
     await edits.show(page, '1', 'second.txt');
@@ -86,7 +86,7 @@ suite('Editing a file in a tab', () => {
     const forged: EditingMessage[] = [
       { type: 'readEdited', tab: '1' },
       editFrom(page, '1', { from: 0, insert: 'x' }),
-      { type: 'editState', tab: '1', version: 0, state: { selection: 3 } },
+      { type: 'editState', tab: '1', version: 0, state: '{"selection":3}' },
       { type: 'saveText', tab: '1' },
       { type: 'saveIn', tab: '1', encoding: 'utf-16le', bom: true },
       { type: 'reloadEdited', tab: '1' },

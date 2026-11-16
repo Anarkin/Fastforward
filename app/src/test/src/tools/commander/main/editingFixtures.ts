@@ -151,6 +151,12 @@ export function editing(
 
 export const forgedSource = (json: string): EditingMessage => JSON.parse(json);
 
+export const forgedState = (tab: string, state: unknown): EditingMessage =>
+  Object.assign(JSON.parse('{"type":"editState","version":0}'), {
+    tab,
+    state,
+  });
+
 export function editFrom(
   page: EditorPage,
   tab: string,
