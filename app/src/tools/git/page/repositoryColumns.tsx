@@ -131,9 +131,6 @@ export function RepositoryColumns() {
   const layoutSelection = useGit(layoutSelectionOf);
   const diffShown = useGit(diffShownOf);
   const root = useGit((state) => state.tab.root);
-  useGit((state) => state.tab.diffs);
-  useGit((state) => state.tab.path);
-  useGit((state) => state.tab.history !== undefined);
   const { activateColumn } = useGitActions();
   const commitColumnShown = commitsShown || searching;
   const columnsContainer = useRef<HTMLDivElement>(null);

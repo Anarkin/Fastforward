@@ -63,11 +63,34 @@ export function useTabFocus({
       }
     };
   }, [scope, keptFocusOf]);
-  useEffect(() => {
+  const given = useEffectEvent(() => {
     const kept = pending.current;
     if (kept !== undefined && focusPart(kept)) {
       pending.current = undefined;
     }
+    return pending.current === undefined;
   });
+  useEffect(() => {
+    const element = container.current;
+    const Observer = element?.ownerDocument.defaultView?.MutationObserver;
+    if (
+      scope === undefined ||
+      element === null ||
+      Observer === undefined ||
+      given()
+    ) {
+      return undefined;
+    }
+    const observer = new Observer(() => {
+      if (given()) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(element, {
+      childList: true,
+      subtree: true,
+    });
+    return () => observer.disconnect();
+  }, [scope, container]);
   return pending;
 }
