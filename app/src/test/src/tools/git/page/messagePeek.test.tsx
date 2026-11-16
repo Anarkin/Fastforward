@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
-import { act, useRef } from 'react';
+import { act, useRef, useState } from 'react';
 import { suite, test } from 'vitest';
 import type { CommitInfo } from '../../../../../tools/git/shared/protocol';
 import { MessagePeek } from '../../../../../tools/git/page/messagePeek';
@@ -55,6 +55,7 @@ async function inList(
     const clicked: string[] = [];
     function List() {
       const list = useRef<HTMLDivElement>(null);
+      const [pin, setPin] = useState(kept.pin);
       return (
         <>
           <div
@@ -86,8 +87,11 @@ async function inList(
             ))}
           </div>
           <MessagePeek
-            keptPin={kept.pin}
-            onPin={kept.pinned}
+            keptPin={pin}
+            onPin={(next) => {
+              setPin(next);
+              kept.pinned?.(next);
+            }}
             list={list}
             commitAt={(index) => commits[index]}
             indent={8}

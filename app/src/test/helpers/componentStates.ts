@@ -19,8 +19,6 @@ export const keptStates: Readonly<Record<string, string>> = {
     'the colors of the text, kept per tab in the kept viewers of viewerActions.ts for its language and text',
   'tools/viewer/page/wholeText.ts text':
     'the whole text read, kept per tab in the kept viewers of viewerActions.ts while the file is unchanged',
-  'tools/git/page/messagePeek.tsx pinned':
-    'the pin, kept per worktree with whether its keys made it in pinnedMessages, pinned again as its row is drawn',
 };
 export const passingStates: Readonly<Record<string, string>> = {
   'tools/viewer/page/pdfPreview.ts match':
@@ -228,6 +226,8 @@ export const passingStates: Readonly<Record<string, string>> = {
     'the lines of a message cut off, measured anew from its body',
   'tools/git/page/messagePanel.tsx lifted':
     'how far a message panel is lifted to fit, measured anew from its box',
+  'tools/git/page/messagePeek.tsx placed':
+    'a measure: where the row of the pinned commit was drawn as it was pinned or found again, the pin itself kept per worktree in pinnedMessages',
   'tools/git/page/messagePeek.tsx peek':
     'the message peeked at, shown only while alt is held over a row',
   'components/diff/page/minimap.tsx dragging':

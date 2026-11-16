@@ -117,64 +117,67 @@ export function MessagePeek({
   const pointer = useRef<{ readonly x: number; readonly y: number }>(undefined);
   const byKeys = useRef(false);
   const [peek, setPeek] = useState<Peek>();
-  const [pinned, setShownPin] = useState<{
+  const [placed, setPlaced] = useState<{
     readonly commit: CommitInfo;
     readonly anchor: PeekAnchor;
-    readonly byKey?: boolean;
     readonly restored?: boolean;
   }>();
-  const restoring = useRef(keptPin);
+  const pinned =
+    keptPin !== undefined && placed?.commit.hash === keptPin.hash
+      ? { ...placed, byKey: keptPin.byKey }
+      : undefined;
+  const restoring = keptPin !== undefined && pinned === undefined;
+  const restoringNow = useRef(restoring);
+  useLayoutEffect(() => {
+    restoringNow.current = restoring;
+  });
   const setPinned = useCallback(
-    (next: typeof pinned) => {
-      restoring.current = undefined;
-      setShownPin(next);
+    (
+      next:
+        | {
+            readonly commit: CommitInfo;
+            readonly anchor: PeekAnchor;
+            readonly byKey?: boolean;
+          }
+        | undefined,
+    ) => {
+      restoringNow.current = false;
+      setPlaced(next && { commit: next.commit, anchor: next.anchor });
       onPin?.(next && { hash: next.commit.hash, byKey: next.byKey === true });
     },
     [onPin],
   );
   const unpin = useCallback(() => {
-    if (restoring.current === undefined) {
+    if (!restoringNow.current) {
       setPinned(undefined);
     }
   }, [setPinned]);
   useLayoutEffect(() => {
-    const kept = restoring.current;
     const element = list.current;
+    const hash = restoring ? keptPin?.hash : undefined;
     const row =
-      kept === undefined || !element
+      hash === undefined || !element
         ? undefined
-        : rowOf(element, commitAt, kept.hash);
+        : rowOf(element, commitAt, hash);
     if (!element || !row) {
       return undefined;
     }
     const frame = requestAnimationFrame(() => {
       const at = peekOf(element, row);
       const commit = at && commitAt(at.index);
-      const pin = restoring.current;
-      if (at && commit && pin?.hash === commit.hash) {
-        restoring.current = undefined;
-        setShownPin({
-          commit,
-          anchor: at.anchor,
-          byKey: pin.byKey,
-          restored: true,
-        });
+      if (at && commit && commit.hash === hash) {
+        setPlaced({ commit, anchor: at.anchor, restored: true });
       }
     });
     return () => cancelAnimationFrame(frame);
   });
   useEffect(() => {
-    if (restoring.current === undefined) {
+    if (!restoring) {
       return undefined;
     }
-    const timer = setTimeout(() => {
-      if (restoring.current !== undefined) {
-        restoring.current = undefined;
-        onPin?.(undefined);
-      }
-    }, keptPinWaits);
+    const timer = setTimeout(() => onPin?.(undefined), keptPinWaits);
     return () => clearTimeout(timer);
-  }, [onPin]);
+  }, [restoring, onPin]);
 
   useBinding(gitKeymap.pin, () => {
     const element = list.current;
@@ -319,7 +322,7 @@ export function MessagePeek({
           anchor={pinned.anchor}
           indent={indent}
           onUnpin={unpin}
-          takesKeyboard={pinned.byKey === true && pinned.restored !== true}
+          takesKeyboard={pinned.byKey && pinned.restored !== true}
         >
           {renderRow(
             pinned.commit,
