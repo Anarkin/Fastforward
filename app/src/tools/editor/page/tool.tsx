@@ -28,14 +28,18 @@ export function EditorTool({
     return () => window.removeEventListener('pagehide', flush);
   }, [store]);
 
-  if (!active || tab === undefined) {
+  if (!active) {
     return null;
   }
   return (
     <EditorStore value={store}>
       <div className="repository">
         <div className="columns viewer-columns">
-          <Editor key={tab} />
+          {tab === undefined ? (
+            <section className="column viewer editor" />
+          ) : (
+            <Editor key={tab} />
+          )}
         </div>
       </div>
     </EditorStore>

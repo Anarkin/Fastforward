@@ -56,12 +56,20 @@ export function DiffTool({
     shown,
   );
 
-  if (!shown) {
+  if (!active) {
     return null;
   }
   return (
     <DiffStore value={store}>
-      <CompareView key={tab} tab={tab} />
+      {tab === undefined ? (
+        <div className="repository compare-view">
+          <div className="columns compare-columns">
+            <section className="column" />
+          </div>
+        </div>
+      ) : (
+        <CompareView key={tab} tab={tab} />
+      )}
     </DiffStore>
   );
 }

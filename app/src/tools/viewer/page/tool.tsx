@@ -43,14 +43,18 @@ export function ViewerTool({
     shown,
   );
 
-  if (!shown) {
+  if (!active) {
     return null;
   }
   return (
     <ViewerStore value={store}>
       <div className="repository">
         <div className="columns viewer-columns">
-          <Viewer key={tab} />
+          {tab === undefined ? (
+            <section className="column viewer" />
+          ) : (
+            <Viewer key={tab} />
+          )}
         </div>
       </div>
     </ViewerStore>
