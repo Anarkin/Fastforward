@@ -119,4 +119,29 @@ suite('Commander store keeping the dialogs of its tabs', () => {
       value: 'pass',
     });
   });
+
+  test('sends what was typed in a dialog of the tab shown as the page goes, with no other tab shown meanwhile, as a reload while it is open', () => {
+    const posted: CommanderToHost[] = [];
+    const store = sidesOf('1', (message) => posted.push(message));
+    store.getState().keepTabs();
+    posted.length = 0;
+
+    store.getState().askRename('left', 'a.txt');
+    store.getState().keepTyped('renaming', { value: 'b.txt' });
+    store.getState().keepTabs();
+
+    const other = createCommanderStore(noop);
+    other.getState().receive({
+      type: 'show',
+      tab: '1',
+      kept: posted.findLast(
+        (message): message is Extract<CommanderToHost, { type: 'keepTab' }> =>
+          message.type === 'keepTab',
+      )?.kept,
+    });
+    other.getState().receive(withFiles(folder, 'a.txt', 'b.txt'));
+    assert.deepStrictEqual(other.getState().renaming?.typed, {
+      value: 'b.txt',
+    });
+  });
 });

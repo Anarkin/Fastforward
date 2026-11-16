@@ -25,7 +25,7 @@ import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
 import { viewerActions } from './viewerActions';
-import { settledDialogs, withoutParked } from './parkedDialogs';
+import { dialogSlots, settledDialogs, withoutParked } from './parkedDialogs';
 import { keptTabActions } from './keptTabActions';
 
 const maxCameIcons = 5000;
@@ -128,7 +128,12 @@ export function createCommanderStore(
     const flat = flatActions(parts, flatOptions);
     const kept = keptTabActions(parts, scrolls, viewer, editor);
     api.subscribe((state, before) => {
-      if (state.view !== before.view || state.filters !== before.filters) {
+      if (
+        state.view !== before.view ||
+        state.filters !== before.filters ||
+        state.parked !== before.parked ||
+        dialogSlots.some((slot) => state[slot] !== before[slot])
+      ) {
         kept.changed(state.view.tab);
       }
     });
