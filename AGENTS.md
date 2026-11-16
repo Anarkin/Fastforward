@@ -3,12 +3,12 @@
 - @CONTRIBUTING.md
 - @README.md
 - @docs/ARCHITECTURE.md
+- @docs/FEATURES-COMMANDER.md
+- @docs/FEATURES-DIFF.md
+- @docs/FEATURES-EDITOR.md
 - @docs/FEATURES-GIT.md
 - @docs/FEATURES-TERMINAL.md
-- @docs/FEATURES-COMMANDER.md
 - @docs/FEATURES-VIEWER.md
-- @docs/FEATURES-EDITOR.md
-- @docs/FEATURES-DIFF.md
 
 ## Protected files
 
