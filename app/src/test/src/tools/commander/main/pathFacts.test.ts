@@ -28,7 +28,7 @@ const facts = (file: string, gitMissing = false) =>
   );
 
 suite('Path facts', () => {
-  test('tells a folder from a file on disk, and whether a folder is in a repository, for the menu of a part of a path', async () => {
+  test('tells a folder from a file on disk, and whether a folder or a file is in a repository, for the menu of a part of a path', async () => {
     assert.deepStrictEqual(await facts('C:\\Code\\repo'), {
       kind: 'folder',
       inRepository: true,
@@ -40,6 +40,11 @@ suite('Path facts', () => {
       gitMissing: true,
     });
     assert.deepStrictEqual(await facts('C:\\Code\\repo\\a.txt'), {
+      kind: 'file',
+      inRepository: true,
+      gitMissing: false,
+    });
+    assert.deepStrictEqual(await facts('C:\\Code\\photos.zip'), {
       kind: 'file',
       inRepository: false,
       gitMissing: false,

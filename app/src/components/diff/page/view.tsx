@@ -129,6 +129,7 @@ export function DiffView({
     scrolling,
     root,
     language: chosenLanguage,
+    wholePaths,
   } = look;
   const list = useRef<HTMLDivElement>(null);
   const split = showsSideBySide(sideBySide, whole);
@@ -309,9 +310,15 @@ export function DiffView({
 
   const header = (row: FileHeaderRow, stuck = false) => (
     <FileHeader
-      path={row.path}
-      root={root}
-      oldPath={row.oldPath}
+      path={wholePaths?.new ?? row.path}
+      root={wholePaths === undefined ? root : undefined}
+      oldPath={
+        wholePaths === undefined
+          ? row.oldPath
+          : wholePaths.old === wholePaths.new
+            ? undefined
+            : wholePaths.old
+      }
       open={row.open}
       whole={whole !== undefined}
       collapsible={row.collapsible}

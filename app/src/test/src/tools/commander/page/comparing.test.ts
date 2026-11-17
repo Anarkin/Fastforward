@@ -93,7 +93,7 @@ suite('The files to compare', () => {
     assert.deepStrictEqual(
       filesToCompare(
         'right',
-        { left: pane(['d.txt'], 'd.txt'), right },
+        { left: pane(['d.txt'], 'd.txt', ['d.txt']), right },
         { right: shownOnly(right, 'a.txt') },
       ),
       [
@@ -103,16 +103,35 @@ suite('The files to compare', () => {
     );
   });
 
-  test('compares the file under the cursor of each side, the left the old one', () => {
+  test('compares the file under the cursor of the active side with the one file marked on the other, the left the old one', () => {
     assert.deepStrictEqual(
       filesToCompare('right', {
-        left: pane(['a.txt', 'b.txt'], 'a.txt'),
+        left: pane(['a.txt', 'b.txt'], 'a.txt', ['b.txt']),
         right: pane(['c.txt'], 'c.txt'),
       }),
       [
-        { side: 'left', folder: '/f', name: 'a.txt' },
+        { side: 'left', folder: '/f', name: 'b.txt' },
         { side: 'right', folder: '/f', name: 'c.txt' },
       ],
+    );
+  });
+
+  test('compares nothing against the cursor of the other side, which it does not show, while that side marks no file or more than one, but the one file of the active side with its history', () => {
+    for (const marked of [[], ['a.txt', 'b.txt']]) {
+      assert.deepStrictEqual(
+        filesToCompare('right', {
+          left: pane(['a.txt', 'b.txt'], 'a.txt', marked),
+          right: pane(['c.txt'], 'c.txt'),
+        }),
+        [{ side: 'right', folder: '/f', name: 'c.txt' }],
+      );
+    }
+    assert.deepStrictEqual(
+      filesToCompare('right', {
+        left: pane(['a.txt'], 'a.txt'),
+        right: pane(['c.txt', 'd.txt'], 'c.txt', ['d.txt']),
+      }),
+      [{ side: 'right', folder: '/f', name: 'd.txt' }],
     );
   });
 
@@ -120,7 +139,7 @@ suite('The files to compare', () => {
     assert.deepStrictEqual(
       filesToCompare('left', {
         left: pane(['a.txt', 'b.txt'], 'a.txt', ['b.txt']),
-        right: pane(['c.txt', 'd.txt'], 'c.txt', ['c.txt', 'd.txt']),
+        right: pane(['c.txt', 'd.txt'], 'd.txt', ['c.txt']),
       }),
       [
         { side: 'left', folder: '/f', name: 'b.txt' },

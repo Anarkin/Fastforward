@@ -6,7 +6,7 @@ import {
   showsCommit,
   versionLabel,
   versionMenu,
-} from '../../../../../tools/viewer/page/versionMenu';
+} from '../../../../../components/versions/page/versionMenu';
 
 const a = 'a'.repeat(40);
 const b = 'b'.repeat(40);
@@ -46,7 +46,7 @@ suite('Version menu', () => {
       shown(versionMenu(listed, b, 'YYYY-MM-DD', () => {})),
       [
         [strings.commits.uncommitted, false, false],
-        [strings.viewer.staged, false, false],
+        [strings.versions.staged, false, false],
         '-',
         ['aaaaaaa | 2026-11-17 | gone', false, true],
         ['bbbbbbb | 2026-11-17 | two', true, false],
@@ -139,7 +139,7 @@ suite('Version menu', () => {
       ],
       [
         strings.commits.uncommitted,
-        strings.viewer.staged,
+        strings.versions.staged,
         'bbbbbbb',
         'bbbbbbb',
         'ccccccc',

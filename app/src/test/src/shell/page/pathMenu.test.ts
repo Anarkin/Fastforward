@@ -112,6 +112,26 @@ suite('The menu of a part of a path', () => {
     ]);
   });
 
+  test('offers a file in a repository to open with the diff, which shows the history of its versions, while git is there', () => {
+    const file = { path: 'C:\\Code\\repo\\a.txt', file: true };
+    const menu = menuOf(file, facts('file', true));
+    assert.deepStrictEqual(menu.offered, [
+      commander.openWithSevenZip,
+      commander.openWithViewer,
+      commander.openWithDiff,
+      commander.openWithEditor,
+      commander.copyPath,
+      commander.showMoreOptions,
+    ]);
+    assert.ok(menu.chooseAll().includes('compare'));
+    assert.ok(
+      !menuOf(file, {
+        ...facts('file', true),
+        gitMissing: true,
+      }).offered.includes(commander.openWithDiff),
+    );
+  });
+
   test('offers a part inside an archive or on no disk only to copy its path', () => {
     assert.deepStrictEqual(
       menuOf({ path: 'C:\\a.zip\\docs\\b.zip', file: true }, facts('inArchive'))

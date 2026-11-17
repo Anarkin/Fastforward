@@ -12,16 +12,16 @@ const button = (className: string) =>
   );
 
 suite('Style of the versions', () => {
-  test('keeps the menu of the versions of a file viewed no wider than a dialog and the window, cutting a long subject short rather than widening the menu', () => {
+  test('keeps the menu of the versions of a file as wide as 1000 pixels, so a long subject reads, but no wider than the window, cutting a longer one short rather than widening the menu', () => {
     const menu = rendered(
-      <div className="viewer-version">
+      <div className="version-button">
         <div className="menu filtered-menu">
           <button className="menu-item">a subject long enough</button>
         </div>
       </div>,
     );
     looks(withClass(menu, 'menu'), {
-      'max-width': 'min(600px, calc(100vw - 32px))',
+      'max-width': 'min(1000px, calc(100vw - 32px))',
     });
     looks(withClass(menu, 'menu-item'), {
       overflow: 'hidden',
@@ -46,13 +46,13 @@ suite('Style of the versions', () => {
 
   test('draws the hash on the button of the versions in the font of names, as the menu draws hashes, and its other names in the font of the buttons', () => {
     looks(
-      withClass(button('viewer-version version-hash'), 'menu-button-label'),
+      withClass(button('version-button version-hash'), 'menu-button-label'),
       {
         'font-family': 'var(--monospace-font-family)',
         'font-size': 'var(--monospace-font-size)',
       },
     );
-    looks(withClass(button('viewer-version'), 'menu-button-label'), {
+    looks(withClass(button('version-button'), 'menu-button-label'), {
       'font-family': undefined,
     });
   });

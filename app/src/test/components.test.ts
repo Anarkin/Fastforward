@@ -45,6 +45,10 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/syntax/page/parts.ts',
     'components/syntax/shared/colorLimit.ts',
   ],
+  versions: [
+    'components/versions/page/versionButton.tsx',
+    'components/versions/shared/versions.ts',
+  ],
 };
 
 suite('Components', () => {

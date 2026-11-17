@@ -12,6 +12,7 @@ import {
   type PlaceChange,
 } from './slice';
 import { DiffToggles } from './toggles';
+import type { WholePaths } from './look';
 
 export type DiffStore = StoreApi<DiffSource & DiffActions>;
 
@@ -90,12 +91,14 @@ export function SlicedDiff({
   textView,
   languageKey,
   root,
+  wholePaths,
   ...shown
 }: Omit<DiffProps, 'look' | 'measures' | 'measuring' | 'tab' | 'options'> & {
   readonly store: DiffStore;
   readonly textView: DiffTextView;
   readonly languageKey: string | undefined;
   readonly root: string | undefined;
+  readonly wholePaths?: WholePaths;
 }) {
   const { scope, selection } = shown;
   const sideBySide = useStore(
@@ -136,6 +139,7 @@ export function SlicedDiff({
         scrolling,
         root,
         language,
+        ...(wholePaths && { wholePaths }),
       }}
       measures={measures}
       measuring={{

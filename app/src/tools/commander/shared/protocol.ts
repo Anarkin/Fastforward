@@ -66,7 +66,10 @@ export type CommanderToHost =
   | {
       readonly type: 'compare';
       readonly tab: string;
-      readonly files: readonly [ComparedFile, ComparedFile] | readonly [];
+      readonly files:
+        | readonly [ComparedFile, ComparedFile]
+        | readonly [ComparedFile]
+        | readonly [];
     }
   | {
       readonly type: 'view';

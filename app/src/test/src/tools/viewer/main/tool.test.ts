@@ -248,6 +248,35 @@ suite('Viewer tool', () => {
     ]);
   });
 
+  test('opens the diff of the version shown, or of the file on disk, with its history, but of no tab the page does not show', async () => {
+    const notes = path.join(opened, 'notes.txt');
+    const old = path.join(opened, 'old.txt');
+    const { tool, page, send, tabs, comparedHistories } = viewer();
+    tabs.push(
+      { id: '3', tool: 'viewer', root: notes },
+      {
+        id: '4',
+        tool: 'viewer',
+        root: old,
+        version: { rev: otherHash, file: notes },
+      },
+    );
+    await tool.show(page, { id: '3', tool: 'viewer', root: notes });
+    await send({ type: 'compareVersions', tab: '3' });
+    await send({ type: 'compareVersions', tab: '4' });
+    await tool.show(page, {
+      id: '4',
+      tool: 'viewer',
+      root: old,
+      version: { rev: otherHash, file: notes },
+    });
+    await send({ type: 'compareVersions', tab: '4' });
+    assert.deepStrictEqual(comparedHistories, [
+      [notes, undefined],
+      [notes, otherHash],
+    ]);
+  });
+
   test('names a tab of a version after its file and that version, by its short hash or as the version of the index, to tell it from the tab of the file on disk', () => {
     const notes = path.join(opened, 'notes.txt');
     const { tool } = viewer();
@@ -265,7 +294,7 @@ suite('Viewer tool', () => {
         },
         {
           name: 'notes.txt',
-          folder: strings.viewer.staged,
+          folder: strings.versions.staged,
           icon: viewerIconUrl('4', notes),
         },
       ],

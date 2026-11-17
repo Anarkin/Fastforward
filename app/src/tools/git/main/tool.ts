@@ -48,7 +48,8 @@ import { buildParts } from './parts';
 import { needsGit, type GitLocator } from './gitLocator';
 import { inFolderWithGit } from './repository';
 import { versionCopy, type ViewedFile } from './viewedFiles';
-import { fileHistory, type FileHistory } from './fileHistory';
+import { fileHistory } from './fileHistory';
+import type { FileHistoryListed } from '../../../components/versions/shared/versions';
 
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 export type FolderPurpose = 'init' | 'clone';
@@ -353,7 +354,7 @@ export class GitTool implements Tool<'git'> {
       : versionCopy(gitPath, file, rev, this.host.viewedFiles);
   }
 
-  fileHistory(file: string): Promise<FileHistory | undefined> {
+  fileHistory(file: string): Promise<FileHistoryListed | undefined> {
     const gitPath = this.locator.path;
     return gitPath === undefined
       ? Promise.resolve(undefined)

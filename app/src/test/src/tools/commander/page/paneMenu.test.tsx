@@ -182,7 +182,7 @@ suite('Commander menu on a side', () => {
     });
   });
 
-  test('opens the menu of a folder or file clicked, selecting it, a repository offered to open in git, a folder in the commander too, the diff comparing files as Shift+F3 does', async () => {
+  test('opens the menu of a folder or file clicked, selecting it, a repository offered to open in git, a folder in the commander too, the diff comparing files as Shift+F3 does, a file alone with its history', async () => {
     await inPane(
       async ({ main, rightClick, menu, choose, posted, selected }) => {
         rightClick(rowNamed(main, 'app'));
@@ -226,7 +226,11 @@ suite('Commander menu on a side', () => {
             name: 'app',
             command: 'openInCommander',
           },
-          { type: 'compare', tab: '1', files: [] },
+          {
+            type: 'compare',
+            tab: '1',
+            files: [{ side: 'left', folder: '/work', name: 'notes.txt' }],
+          },
         ]);
       },
     );

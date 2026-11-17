@@ -227,20 +227,6 @@
   max-width: none;
 }
 
-.viewer-version.version-hash .menu-button-label {
-  font-family: var(--monospace-font-family);
-  font-size: var(--monospace-font-size);
-}
-
-.viewer-version .menu {
-  max-width: min(600px, calc(100vw - 32px));
-}
-
-.viewer-version .menu-item {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .viewer-actions .language-button .menu-button-trigger {
   max-width: var(--widest-language-button);
 }

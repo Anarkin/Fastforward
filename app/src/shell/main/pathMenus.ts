@@ -43,7 +43,7 @@ export async function runPathCommand(
   page: Page,
   { path, command, x, y, extended }: Extract<ToHost, { type: 'pathCommand' }>,
   host: PathMenuHost,
-  tools: Pick<Tools, 'terminal' | 'git' | 'commander'>,
+  tools: Pick<Tools, 'terminal' | 'git' | 'commander' | 'diff'>,
   opening: PathOpening,
 ): Promise<void> {
   if (!isPath(path)) {
@@ -72,6 +72,11 @@ export async function runPathCommand(
       return;
     }
     return opening.edit(page, path);
+  }
+  if (command === 'compare') {
+    return facts.kind === 'file'
+      ? tools.diff.open(page, [path])
+      : Promise.resolve();
   }
   if (command === 'enterArchive') {
     return facts.kind === 'file'

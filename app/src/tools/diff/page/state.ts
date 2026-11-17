@@ -6,18 +6,27 @@ import {
 } from '../../../components/diff/page/slice';
 import type { KeptFocus } from '../../../lib/page/viewFocus';
 import type { LoadedText } from '../../../components/diff/page/sideTexts';
-import type { CompareView, DiffToWebview } from '../shared/protocol';
+import type {
+  CompareView,
+  ComparedSide,
+  DiffToWebview,
+} from '../shared/protocol';
+import type { ListedVersions } from '../../../components/versions/shared/versions';
+
+export type ComparedVersions = Partial<Record<ComparedSide, ListedVersions>>;
 
 export interface CompareSource extends DiffSource {
   readonly tab: string | undefined;
   readonly compare: CompareView | undefined;
   readonly texts: ReadonlyMap<string, LoadedText>;
+  readonly versions: ComparedVersions;
   readonly focuses: ReadonlyMap<string, KeptFocus>;
 }
 
 export interface CompareActions extends DiffActions {
   readonly receive: (message: DiffToWebview) => void;
   readonly loadTexts: (requests: readonly TextRequest[]) => void;
+  readonly chooseVersion: (side: ComparedSide, rev: string | undefined) => void;
   readonly focusOf: (tab: string) => KeptFocus | undefined;
   readonly keepFocus: (tab: string, focus: KeptFocus | undefined) => void;
   readonly keepTabs: () => void;
@@ -31,5 +40,6 @@ export const compareDefaults: CompareSource = {
   tab: undefined,
   compare: undefined,
   texts: new Map(),
+  versions: {},
   focuses: new Map(),
 };

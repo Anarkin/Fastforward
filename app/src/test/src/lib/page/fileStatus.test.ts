@@ -88,6 +88,16 @@ suite('File status', () => {
     ]);
   });
 
+  test('keeps what two whole paths of Windows share outside the braces too, as it does for those of git', () => {
+    assert.deepStrictEqual(
+      [
+        ['C:\\work\\after.txt', 'C:\\work\\before.txt'],
+        ['C:\\a\\x.txt', 'C:\\b\\x.txt'],
+      ].map(([from, to]) => textOf(renamedPath(from ?? '', to ?? ''))),
+      ['C:\\work\\{after.txt → before.txt}', 'C:\\{a → b}\\x.txt'],
+    );
+  });
+
   test('names the status and both paths of a rename in the tooltip', () => {
     assert.strictEqual(
       changeTitle(change('new.ts', { status: 'R', oldPath: 'old.ts' })),

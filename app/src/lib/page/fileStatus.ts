@@ -37,10 +37,13 @@ const piece = (
 const within = (root: string | undefined, folder: string) =>
   folder === '' ? root : wholePath(root, folder);
 
+const isSeparator = (character: string | undefined) =>
+  character === '/' || character === '\\';
+
 export function renamedPath(from: string, to: string, root?: string): Sentence {
   let start = 0;
   for (let i = 0; i < from.length && from[i] === to[i]; i++) {
-    if (from[i] === '/') {
+    if (isSeparator(from[i])) {
       start = i + 1;
     }
   }
@@ -51,7 +54,7 @@ export function renamedPath(from: string, to: string, root?: string): Sentence {
     a >= floor && b >= floor && from[a] === to[b];
     a--, b--
   ) {
-    if (from[a] === '/') {
+    if (isSeparator(from[a])) {
       end = from.length - a;
     }
   }

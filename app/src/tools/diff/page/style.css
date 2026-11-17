@@ -1,3 +1,44 @@
 .columns.compare-columns {
   grid-template-columns: minmax(0, 1fr);
 }
+
+.compare-versions {
+  position: absolute;
+  inset: var(--column-line, 0px) 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.compare-versions > * {
+  pointer-events: auto;
+}
+
+.compare-versions.side-by-side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.compare-versions.side-by-side > .old {
+  justify-self: end;
+}
+
+.compare-versions.side-by-side > .new {
+  justify-self: start;
+}
+
+.compare-arrow {
+  display: flex;
+  color: var(--muted-foreground);
+}
+
+.compare-versions .menu-button {
+  position: static;
+}
+
+.compare-versions .menu {
+  left: 50%;
+  right: auto;
+  translate: -50%;
+}

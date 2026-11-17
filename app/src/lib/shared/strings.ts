@@ -362,6 +362,7 @@ export const strings = {
       'Compare the marked files, or the selected file of each side, in a git tab',
     editViewed: 'Edit the file being viewed in this tab',
     chooseVersion: 'Choose the version of the file to show, as git keeps them',
+    compareVersions: 'Compare the version shown with the one before it',
     closeViewer: 'Close the file being viewed',
     closeCompare: 'Close the files being compared',
     viewAs: 'View the file as hex, text or a preview',
@@ -582,6 +583,8 @@ export const strings = {
       `+${added.toLocaleString()} −${removed.toLocaleString()}, ${left === 1 ? '1 file' : `${left.toLocaleString()} files`} not counted`,
     viewMissing: (file: string) =>
       sentence`${namedFile(file)} isn't there to view.`,
+    noEarlierVersion: (file: string) =>
+      sentence`git keeps no earlier version of ${namedFile(file)} to compare it with.`,
     viewTooLarge: (file: string) =>
       sentence`${namedFile(file)} is too large to view.`,
     couldNotView: (file: string, reason: Sentence) =>
@@ -1020,7 +1023,13 @@ export const strings = {
         ? "1 folder in it couldn't be read, so it may be larger"
         : `${count.toLocaleString()} folders in it couldn't be read, so it may be larger`,
     nothingToCompare:
-      'Mark two files on a side, or select a file on each side, to compare them.',
+      'Select a file to compare its versions, or mark two files on a side, or select a file and mark one on the other side, to compare them.',
+  },
+  versions: {
+    version: 'Version',
+    staged: 'Staged',
+    find: 'Filter by words, hash or date',
+    deletedHere: 'The file was deleted in this commit',
   },
   viewer: {
     viewAs: 'View as',
@@ -1030,10 +1039,6 @@ export const strings = {
     realSize: 'Real Size',
     previewTooLarge: (megabytes: number) =>
       `Documents over ${megabytes} MB are not previewed.`,
-    version: 'Version',
-    staged: 'Staged',
-    findVersion: 'Filter by words, hash or date',
-    deletedHere: 'The file was deleted in this commit',
     versionNotEdited: (file: string) =>
       sentence`${namedFile(file)} is shown as git keeps a version of it, not as it is on disk, so it can't be edited.`,
   },

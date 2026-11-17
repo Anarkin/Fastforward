@@ -6,12 +6,14 @@ import type { EditorTool } from '../tools/editor/main/tool';
 import type { PdfPlaces } from '../tools/viewer/main/pdfPlaces';
 import { ViewerTool } from '../tools/viewer/main/tool';
 import type { GitTool } from '../tools/git/main/tool';
+import type { DiffTool } from '../tools/diff/main/tool';
 
 export interface ViewerHostDeps {
   readonly pdfPlaces: PdfPlaces;
   readonly commanderTool: CommanderTool;
   readonly editorTool: EditorTool;
   readonly gitTool: Pick<GitTool, 'versionCopy' | 'fileHistory'>;
+  readonly diffTool: Pick<DiffTool, 'openHistory'>;
 }
 
 export function viewerToolOf({
@@ -19,6 +21,7 @@ export function viewerToolOf({
   commanderTool,
   editorTool,
   gitTool,
+  diffTool,
 }: ViewerHostDeps): ViewerTool {
   return new ViewerTool({
     codePage: () => systemCodePage(process.platform),
@@ -32,5 +35,6 @@ export function viewerToolOf({
     closed: (file) => commanderTool.viewClosed(file),
     versionCopy: (file, rev) => gitTool.versionCopy(file, rev),
     fileHistory: (file) => gitTool.fileHistory(file),
+    compareHistory: (page, file, rev) => diffTool.openHistory(page, file, rev),
   });
 }

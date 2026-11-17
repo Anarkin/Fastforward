@@ -14,6 +14,12 @@ import {
 } from '../../../shell/main/toolContract';
 import type { DiffToHost } from '../shared/protocol';
 import { comparedNames, type GitRun } from './compare';
+import type { CopyOf } from './readableSides';
+import { withChosen } from './versionChoice';
+import type { ComparedSide } from '../shared/protocol';
+import type { FileHistoryListed } from '../../../components/versions/shared/versions';
+import type { Compared, FileVersion } from '../../../shell/main/savedTabs';
+import { shortHash } from '../../../lib/shared/hashes';
 import { ComparedImages } from './comparedImages';
 import { Comparisons } from './comparisons';
 import { isWellFormed } from './messageChecks';
@@ -24,6 +30,37 @@ export interface DiffAccess {
   readonly userSettings: UserSettings;
   readonly run: GitRun;
   readonly missingGit: () => Promise<Sentence | undefined>;
+  readonly versionCopy: CopyOf;
+  readonly fileHistory: (
+    file: string,
+  ) => Promise<FileHistoryListed | undefined>;
+}
+
+const versionLabel = (version: FileVersion | undefined): string => {
+  if (version === undefined) {
+    return strings.commits.uncommittedSide;
+  }
+  return version.rev === 'index'
+    ? strings.versions.staged
+    : shortHash(version.rev);
+};
+
+function comparedTabName(compared: Compared): TabName {
+  const [oldName, newName] = comparedNames(compared);
+  const versioned =
+    compared.oldVersion !== undefined || compared.newVersion !== undefined;
+  return {
+    name:
+      oldName === newName
+        ? newName
+        : strings.messages.compareTab(oldName, newName),
+    ...(versioned && {
+      folder: strings.common.fromTo(
+        versionLabel(compared.oldVersion),
+        versionLabel(compared.newVersion),
+      ),
+    }),
+  };
 }
 
 export class DiffTool implements Tool<'diff'> {
@@ -38,10 +75,13 @@ export class DiffTool implements Tool<'diff'> {
       access.run,
       () => this.settings,
       () => this.shell,
+      (file, rev) => access.versionCopy(file, rev),
+      (file) => access.fileHistory(file),
     );
     this.images = new ComparedImages(
       access.log,
       (tab) => this.comparisons.of(tab)?.compared,
+      (compared) => this.comparisons.readable(compared),
     );
   }
 
@@ -110,9 +150,27 @@ export class DiffTool implements Tool<'diff'> {
       case 'setDiffLayout':
         this.save(this.setting('diffLayout', message.layout));
         return;
+      case 'chooseVersion':
+        await this.chooseVersion(page, message.side, message.rev);
+        return;
       default:
         message satisfies never;
     }
+  }
+
+  private async chooseVersion(
+    page: Page,
+    side: ComparedSide,
+    rev: string | undefined,
+  ): Promise<void> {
+    const comparing = this.comparisons.shown.get(page);
+    const next =
+      comparing && withChosen(comparing.compared, side, rev, comparing.listed);
+    if (comparing === undefined || next === undefined) {
+      return;
+    }
+    this.shell.setCompare(comparing.tab, next);
+    await this.comparisons.show(page, comparing.tab, next);
   }
 
   refreshShown(page: Page): Promise<void> {
@@ -124,16 +182,7 @@ export class DiffTool implements Tool<'diff'> {
       tabs.flatMap((tab): [string, TabName][] =>
         tab.compare === undefined
           ? []
-          : [
-              [
-                tab.id,
-                {
-                  name: strings.messages.compareTab(
-                    ...comparedNames(tab.compare),
-                  ),
-                },
-              ],
-            ],
+          : [[tab.id, comparedTabName(tab.compare)]],
       ),
     );
   }
@@ -148,8 +197,26 @@ export class DiffTool implements Tool<'diff'> {
 
   visited(): void {}
 
-  open(): Promise<void> {
-    return Promise.resolve();
+  open(page: Page, roots: readonly string[]): Promise<void> {
+    const [file] = roots;
+    return file === undefined
+      ? Promise.resolve()
+      : this.openHistory(page, file);
+  }
+
+  async openHistory(page: Page, file: string, rev?: string): Promise<void> {
+    const listed = await this.comparisons.listed(file);
+    const compared =
+      listed &&
+      withChosen({ old: file, new: file }, 'new', rev, { new: listed });
+    if (compared?.oldVersion === undefined) {
+      this.shell.notice(page, {
+        level: 'info',
+        message: strings.diff.noEarlierVersion(file),
+      });
+      return;
+    }
+    await this.shell.openCompare(page, compared);
   }
 
   newTab(): Promise<void> {

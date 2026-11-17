@@ -165,7 +165,7 @@ suite('Shortcuts popup', () => {
       ['terminal', 0],
       ['commander', 2],
       ['git', 1],
-      ['viewer', 0],
+      ['viewer', 1],
       ['diff', 0],
       ['editor', 1],
       ['paint', 0],
@@ -339,7 +339,7 @@ suite('Shortcuts popup', () => {
     );
     assert.strictEqual(
       steppedGroup(f3, 'diff', view(undefined, whole), -1),
-      'git/Files',
+      'viewer/Showing the file',
     );
     assert.strictEqual(
       steppedGroup(f3, 'diff', view(undefined, whole), 1),
@@ -380,11 +380,11 @@ suite('Shortcuts popup', () => {
           [
             ...document.querySelectorAll('.shortcuts-tool .shortcuts-count'),
           ].map((count) => count.textContent),
-          ['0', '0', '2', '1', '0', '0', '1', '0'],
+          ['0', '0', '2', '1', '1', '0', '1', '0'],
         );
         assert.strictEqual(
           document.querySelectorAll('.shortcuts-tool.empty').length,
-          5,
+          4,
         );
         assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
         await press('ArrowDown');
@@ -480,12 +480,14 @@ suite('Shortcuts popup', () => {
           null,
         );
         await type('f3');
-        assert.match(count() ?? '', /^\d+ of 3$/);
+        assert.match(count() ?? '', /^\d+ of 4$/);
         const [, next] = document.querySelectorAll(
           '.shortcuts-filter .search-steps button',
         );
         await clickOn(next);
         assert.strictEqual(openTool(document), 'Git');
+        await clickOn(next);
+        assert.strictEqual(openTool(document), 'Viewer');
         await clickOn(next);
         assert.strictEqual(openTool(document), 'Editor');
         await clickOn(next);

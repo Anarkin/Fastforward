@@ -2,14 +2,16 @@ import { isObject } from '../../lib/main/json';
 import { isTool, type ToolId } from '../shared/tools';
 import type { Layout, TabWindow } from './windows';
 
-export interface Compared {
-  readonly old: string;
-  readonly new: string;
-}
-
 export interface FileVersion {
   readonly rev: string;
   readonly file: string;
+}
+
+export interface Compared {
+  readonly old: string;
+  readonly new: string;
+  readonly oldVersion?: FileVersion;
+  readonly newVersion?: FileVersion;
 }
 
 export interface SavedTab {
@@ -20,14 +22,6 @@ export interface SavedTab {
   readonly version?: FileVersion;
 }
 
-function isCompared(value: unknown): value is Compared {
-  return (
-    isObject(value) &&
-    typeof value.old === 'string' &&
-    typeof value.new === 'string'
-  );
-}
-
 function isFileVersion(value: unknown): value is FileVersion {
   return (
     isObject(value) &&
@@ -35,6 +29,21 @@ function isFileVersion(value: unknown): value is FileVersion {
     typeof value.file === 'string'
   );
 }
+
+function isCompared(value: unknown): value is Compared {
+  return (
+    isObject(value) &&
+    typeof value.old === 'string' &&
+    typeof value.new === 'string' &&
+    (value.oldVersion === undefined || isFileVersion(value.oldVersion)) &&
+    (value.newVersion === undefined || isFileVersion(value.newVersion))
+  );
+}
+
+const sameVersion = (
+  a: FileVersion | undefined,
+  b: FileVersion | undefined,
+): boolean => a?.rev === b?.rev && a?.file === b?.file;
 
 function isSavedTab(value: unknown): value is SavedTab {
   return (
@@ -129,7 +138,8 @@ export function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {
     a.root === b.root &&
     a.compare?.old === b.compare?.old &&
     a.compare?.new === b.compare?.new &&
-    a.version?.rev === b.version?.rev &&
-    a.version?.file === b.version?.file
+    sameVersion(a.compare?.oldVersion, b.compare?.oldVersion) &&
+    sameVersion(a.compare?.newVersion, b.compare?.newVersion) &&
+    sameVersion(a.version, b.version)
   );
 }

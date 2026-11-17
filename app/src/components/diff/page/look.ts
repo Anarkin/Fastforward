@@ -1,5 +1,10 @@
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 
+export interface WholePaths {
+  readonly old: string;
+  readonly new: string;
+}
+
 export interface DiffLook {
   readonly sideBySide: boolean;
   readonly wordWrap: boolean;
@@ -8,4 +13,5 @@ export interface DiffLook {
   readonly scrolling: ScrollSettings;
   readonly root: string | undefined;
   readonly language: string | undefined;
+  readonly wholePaths?: WholePaths;
 }

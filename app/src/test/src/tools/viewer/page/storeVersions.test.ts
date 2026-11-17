@@ -57,4 +57,12 @@ suite('Viewer store versions', () => {
       { type: 'chooseVersion', tab: '1' },
     ]);
   });
+
+  test('asks the main process to compare the version of the tab shown with the one before it, and nothing while no tab shows', () => {
+    const { posted, store } = viewerStore();
+    store.getState().compareVersions();
+    store.getState().receive({ type: 'show', tab: '1', file: '/work/a.txt' });
+    store.getState().compareVersions();
+    assert.deepStrictEqual(posted, [{ type: 'compareVersions', tab: '1' }]);
+  });
 });

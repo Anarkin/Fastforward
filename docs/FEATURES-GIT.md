@@ -116,7 +116,7 @@
 | Browse a revision | List every file of a commit | `git ls-tree -r` | Common | ✅ Yes | Show All Files, the unchanged with the changed |
 | A file at a revision | Show a file as a commit has it | `git show <rev>:<path>` | Common | ✅ Yes | Show the Entire File for a changed file, Show All Files for the rest; read with `git cat-file` |
 | Filter the files | Narrow the files to those matching a search | — | Common | ✅ Yes | Every word must be in the path or the old path; Aa matches the case and W whole words of each, .* takes the search as one regular expression; counts the file selected of those kept, ↑ and ↓ stepping among them, and the line under the files how many of the files changed it keeps |
-| File history | List the commits that changed a file | `git log --follow -- <path>` | Core | 🟡 Partial | In the viewer, the Version button of a file git tracks, following renames, showing the file as each commit has it; no list in git, and no diff of a version against the one before it yet |
+| File history | List the commits that changed a file | `git log --follow -- <path>` | Core | 🟡 Partial | In the viewer, the Version button of a file git tracks, following renames, showing the file as each commit has it, and a diff of any two of its versions, FEATURES-DIFF says how; no list in git |
 | Blame | Show who last changed each line | `git blame` | Core | ❌ No |  |
 | Line history | List the commits that changed some lines | `git log -L` | Advanced | ❌ No |  |
 | Restore a file | Put back a file as a revision has it | `git restore --source=<rev> -- <path>` | Common | ❌ No |  |

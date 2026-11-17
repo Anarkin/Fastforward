@@ -50,6 +50,7 @@ export interface ShellAccess {
   ): Promise<void>;
   setRoot(tab: string, root: string): void;
   setVersion(tab: string, root: string, version: FileVersion | undefined): void;
+  setCompare(tab: string, compare: Compared): void;
   visited(folder: string): void;
   recentFolders(): number;
   postTabs(page: Page): void;
@@ -103,6 +104,7 @@ export const unattachedShell: ShellAccess = {
   openFolders: () => Promise.resolve(),
   setRoot: () => undefined,
   setVersion: () => undefined,
+  setCompare: () => undefined,
   visited: () => undefined,
   recentFolders: () => 0,
   postTabs: () => undefined,

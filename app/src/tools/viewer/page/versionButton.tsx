@@ -1,8 +1,6 @@
-import { MenuButton } from '../../../lib/page/menu';
-import { strings } from '../../../lib/shared/strings';
+import { VersionButton as VersionMenuButton } from '../../../components/versions/page/versionButton';
 import { useShell } from '../../../shell/page/store';
 import { useViewer, useViewerActions } from './store';
-import { showsCommit, versionLabel, versionMenu } from './versionMenu';
 
 export function VersionButton({
   trigger,
@@ -22,22 +20,14 @@ export function VersionButton({
     return null;
   }
   return (
-    <div
-      className={
-        showsCommit(version, listed)
-          ? 'viewer-version version-hash'
-          : 'viewer-version'
-      }
-    >
-      <MenuButton
-        scrolling={scrolling}
-        title={strings.viewer.version}
-        trigger={trigger}
-        label={versionLabel(version, listed)}
-        onChosen={onChosen}
-        filter={strings.viewer.findVersion}
-        items={versionMenu(listed, version, dateFormat, chooseVersion)}
-      />
-    </div>
+    <VersionMenuButton
+      listed={listed}
+      version={version}
+      choose={chooseVersion}
+      dateFormat={dateFormat}
+      scrolling={scrolling}
+      trigger={trigger}
+      onChosen={onChosen}
+    />
   );
 }

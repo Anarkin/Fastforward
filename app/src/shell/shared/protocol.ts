@@ -7,7 +7,7 @@ import type { ImageView, TextView } from './views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
 export type PathCommand =
-  FolderCommand | 'view' | 'edit' | 'enterArchive' | 'systemMenu';
+  FolderCommand | 'view' | 'edit' | 'compare' | 'enterArchive' | 'systemMenu';
 
 export const maxViewChars = 1024 * 1024;
 

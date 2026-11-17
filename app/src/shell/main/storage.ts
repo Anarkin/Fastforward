@@ -100,7 +100,22 @@ export class Storage {
               tool,
               ...(root !== undefined && { root }),
               ...(compare !== undefined && {
-                compare: { old: compare.old, new: compare.new },
+                compare: {
+                  old: compare.old,
+                  new: compare.new,
+                  ...(compare.oldVersion !== undefined && {
+                    oldVersion: {
+                      rev: compare.oldVersion.rev,
+                      file: compare.oldVersion.file,
+                    },
+                  }),
+                  ...(compare.newVersion !== undefined && {
+                    newVersion: {
+                      rev: compare.newVersion.rev,
+                      file: compare.newVersion.file,
+                    },
+                  }),
+                },
               }),
               ...(version !== undefined && {
                 version: { rev: version.rev, file: version.file },

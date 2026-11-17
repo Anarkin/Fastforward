@@ -55,6 +55,9 @@ export function pathMenuItems(
       onEnterArchive: () => acts.command('enterArchive'),
       onView: () => acts.command('view'),
       onEdit: () => acts.command('edit'),
+      ...(facts.kind === 'file' &&
+        facts.inRepository &&
+        !facts.gitMissing && { onCompare: () => acts.command('compare') }),
       onCopy: () => acts.copy(path),
       onSystemMenu:
         platform === 'win32' && onDisk

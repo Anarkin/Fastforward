@@ -25,6 +25,10 @@ export class ViewerMessages {
       tab: string,
       rev: string | undefined,
     ) => Promise<void>,
+    private readonly compareVersions: (
+      page: Page,
+      tab: string,
+    ) => Promise<void>,
   ) {}
 
   receive(page: Page, message: ViewerToHost): Promise<void> {
@@ -66,6 +70,10 @@ export class ViewerMessages {
           ? Promise.resolve()
           : this.chooseVersion(page, tab, rev);
       }
+      case 'compareVersions':
+        return this.pages.shown.get(page)?.tab === message.tab
+          ? this.compareVersions(page, message.tab)
+          : Promise.resolve();
       default:
         return message satisfies never;
     }

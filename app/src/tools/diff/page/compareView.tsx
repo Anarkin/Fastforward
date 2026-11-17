@@ -19,6 +19,7 @@ import type { CompareView as Compared } from '../shared/protocol';
 import { comparedImageRoute } from '../shared/images';
 import { useDiff, useDiffActions, useDiffStore } from './store';
 import { languageKeyOf } from './tabView';
+import { CompareVersions } from './compareVersions';
 
 const noFiles: readonly FileChange[] = [];
 const noLeftOut: readonly LeftOut[] = [];
@@ -99,11 +100,13 @@ export function CompareView({ tab }: { tab: string }) {
           store={store}
           textView={textView}
           root={undefined}
+          wholePaths={compare && { old: compare.old, new: compare.new }}
           languageKey={languageKeyOf(tab)}
           scope={tab}
           selection={tab}
           path={compare?.name}
           note={noteOf(compare)}
+          heading={<CompareVersions />}
           loading={compare === undefined}
           files={noFiles}
           patch={compare?.patch ?? ''}

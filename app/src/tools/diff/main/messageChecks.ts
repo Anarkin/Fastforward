@@ -15,6 +15,11 @@ export function isWellFormed(message: DiffToHost): boolean {
       return typeof message.ignore === 'boolean';
     case 'setDiffLayout':
       return diffLayouts.includes(message.layout);
+    case 'chooseVersion':
+      return (
+        (message.side === 'old' || message.side === 'new') &&
+        (message.rev === undefined || typeof message.rev === 'string')
+      );
     default:
       message satisfies never;
       return false;

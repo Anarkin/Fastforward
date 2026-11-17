@@ -61,6 +61,7 @@ export function fakeShell<P extends Page>(page: P) {
     setVersion: (tab, root, version) => {
       versionsSet.push([tab, root, version]);
     },
+    setCompare: () => {},
     visited: () => {},
     recentFolders: () => 10,
     postTabs: () => {},

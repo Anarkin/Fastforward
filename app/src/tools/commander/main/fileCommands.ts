@@ -260,7 +260,7 @@ export class FileCommands {
       });
       return Promise.resolve();
     }
-    if (!Array.isArray(files) || files.length !== 2) {
+    if (!Array.isArray(files) || files.length < 1 || files.length > 2) {
       return Promise.resolve();
     }
     const named = files.map((file: unknown) => {
@@ -282,10 +282,26 @@ export class FileCommands {
     if (named.some((each) => each === undefined)) {
       return Promise.resolve();
     }
-    return this.compareFiles(
-      page,
-      named.flatMap((each) => (each === undefined ? [] : [each])),
-    );
+    const found = named.flatMap((each) => (each === undefined ? [] : [each]));
+    const [lone] = found;
+    return found.length === 1 && lone !== undefined
+      ? this.compareHistory(page, lone)
+      : this.compareFiles(page, found);
+  }
+
+  private compareHistory(
+    page: Page,
+    { pane, name }: { readonly pane: Pane; readonly name: string },
+  ): Promise<void> {
+    const file = path.join(pane.folder, name);
+    if (pane.archive !== undefined) {
+      this.host.shell().notice(page, {
+        level: 'info',
+        message: strings.diff.noEarlierVersion(file),
+      });
+      return Promise.resolve();
+    }
+    return this.host.shell().openFolders(page, 'diff', [file]);
   }
 
   private async compareFiles(

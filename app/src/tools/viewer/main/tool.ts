@@ -9,7 +9,8 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/toolContract';
-import type { ViewedVersion, ViewerToHost } from '../shared/protocol';
+import type { ViewerToHost } from '../shared/protocol';
+import type { FileHistoryListed } from '../../../components/versions/shared/versions';
 import { viewerIconUrl } from './icons';
 import type { WatchFolder } from '../../../lib/main/watch';
 import { post } from './post';
@@ -24,12 +25,6 @@ import { strings } from '../../../lib/shared/strings';
 import { shortHash } from '../../../lib/shared/hashes';
 import type { FileVersion } from '../../../shell/main/savedTabs';
 import * as fs from 'node:fs';
-
-interface Versions {
-  readonly versions: readonly ViewedVersion[];
-  readonly staged: boolean;
-  readonly changed: boolean;
-}
 
 type VersionCopy =
   | { readonly kind: 'file'; readonly file: string }
@@ -49,7 +44,14 @@ export interface ViewerAccess {
   ) => Promise<void>;
   readonly closed: (file: string) => void;
   readonly versionCopy: (file: string, rev: string) => Promise<VersionCopy>;
-  readonly fileHistory: (file: string) => Promise<Versions | undefined>;
+  readonly fileHistory: (
+    file: string,
+  ) => Promise<FileHistoryListed | undefined>;
+  readonly compareHistory: (
+    page: Page,
+    file: string,
+    rev: string | undefined,
+  ) => Promise<void>;
 }
 
 export class ViewerTool implements Tool<'viewer'> {
@@ -60,7 +62,7 @@ export class ViewerTool implements Tool<'viewer'> {
   private readonly messages: ViewerMessages;
   private readonly serving: Serving;
   private readonly copies = new Map<string, string>();
-  private readonly listed = new Map<string, Versions>();
+  private readonly listed = new Map<string, FileHistoryListed>();
   private readonly starts = new Map<
     string,
     { readonly byte: number; readonly encoding?: TextEncoding }
@@ -81,6 +83,7 @@ export class ViewerTool implements Tool<'viewer'> {
       pdfPlaces,
       (page, tab, at) => this.editViewed(page, tab, at),
       (page, tab, rev) => this.chooseVersion(page, tab, rev),
+      (page, tab) => this.compareVersions(page, tab),
     );
     this.serving = new Serving(
       access,
@@ -163,6 +166,17 @@ export class ViewerTool implements Tool<'viewer'> {
         onDisk,
       });
     }
+  }
+
+  private compareVersions(page: Page, id: string): Promise<void> {
+    const tab = this.shell.tabs().find((each) => each.id === id);
+    return tab?.root === undefined
+      ? Promise.resolve()
+      : this.access.compareHistory(
+          page,
+          tab.version?.file ?? tab.root,
+          tab.version?.rev,
+        );
   }
 
   private async chooseVersion(
@@ -276,7 +290,7 @@ export class ViewerTool implements Tool<'viewer'> {
                   ...(tab.version !== undefined && {
                     folder:
                       tab.version.rev === 'index'
-                        ? strings.viewer.staged
+                        ? strings.versions.staged
                         : shortHash(tab.version.rev),
                   }),
                   icon: viewerIconUrl(tab.id, tab.root),

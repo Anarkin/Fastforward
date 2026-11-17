@@ -1,3 +1,4 @@
+import type { ListedVersions } from '../../../components/versions/shared/versions';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
@@ -26,15 +27,8 @@ export const maxPreviewBytes = 1024 * 1024;
 
 export const maxBytesAsked = 64 * 1024;
 
-export interface ViewedVersion {
-  readonly rev: string;
-  readonly path: string;
-  readonly date: number;
-  readonly subject: string;
-  readonly gone: boolean;
-}
-
 export type ViewerToHost =
+  | { readonly type: 'compareVersions'; readonly tab: string }
   | {
       readonly type: 'readBytes';
       readonly tab: string;
@@ -105,14 +99,10 @@ export type ViewerToWebview =
       readonly at?: number;
       readonly encoding?: TextEncoding;
     }
-  | {
+  | ({
       readonly type: 'versions';
       readonly tab: string;
-      readonly versions: readonly ViewedVersion[];
-      readonly staged: boolean;
-      readonly changed: boolean;
-      readonly onDisk: boolean;
-    }
+    } & ListedVersions)
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }
   | {

@@ -4,10 +4,15 @@ import type {
   TextRequest,
 } from '../../../components/diff/shared/protocol';
 import type { DiffSettings } from '../../../components/diff/shared/settings';
+import type { ListedVersions } from '../../../components/versions/shared/versions';
 
 export const viewVersion = 1;
 
+export type ComparedSide = 'old' | 'new';
+
 export interface CompareView {
+  readonly oldVersion?: string;
+  readonly newVersion?: string;
   readonly tab: string;
   readonly name: string;
   readonly old: string;
@@ -23,6 +28,11 @@ export type ComparedText = TextRequest & { readonly text: string | undefined };
 
 export type DiffToHost =
   | { readonly type: 'loadTexts'; readonly requests: readonly TextRequest[] }
+  | {
+      readonly type: 'chooseVersion';
+      readonly side: ComparedSide;
+      readonly rev?: string;
+    }
   | DiffSettingMessage;
 
 export type DiffToWebview =
@@ -38,4 +48,9 @@ export type DiffToWebview =
       readonly type: 'texts';
       readonly tab: string;
       readonly texts: readonly ComparedText[];
-    };
+    }
+  | ({
+      readonly type: 'versions';
+      readonly tab: string;
+      readonly side: ComparedSide;
+    } & ListedVersions);

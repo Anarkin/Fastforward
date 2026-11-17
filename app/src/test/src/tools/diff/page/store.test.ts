@@ -90,6 +90,36 @@ suite('Diff store', () => {
     ]);
   });
 
+  test('keeps the versions git lists for each side of the tab shown, starting anew for another tab, and asks the main process for the version chosen', () => {
+    const posted: DiffToHost[] = [];
+    const store = createDiffStore((message) => posted.push(message));
+    const state = () => store.getState();
+    const rev = 'a'.repeat(40);
+    const listed = {
+      versions: [{ rev, path: '/a.txt', date: 1, subject: 'a', gone: false }],
+      staged: false,
+      changed: true,
+      onDisk: true,
+    };
+    state().receive({ type: 'show', tab: 'c1', settings });
+    state().receive({ type: 'versions', tab: 'c1', side: 'new', ...listed });
+    state().receive({ type: 'versions', tab: 'c2', side: 'old', ...listed });
+    assert.deepStrictEqual(state().versions, { new: listed });
+    state().chooseVersion('old', rev);
+    state().chooseVersion('new', undefined);
+    assert.deepStrictEqual(posted, [
+      { type: 'chooseVersion', side: 'old', rev },
+      { type: 'chooseVersion', side: 'new' },
+    ]);
+    state().receive({ type: 'show', tab: 'c1', settings });
+    assert.deepStrictEqual(state().versions, { new: listed });
+    state().receive({ type: 'show', tab: 'c2', settings });
+    assert.deepStrictEqual(state().versions, {});
+    state().receive({ type: 'versions', tab: 'c2', side: 'old', ...listed });
+    state().receive({ type: 'hide' });
+    assert.deepStrictEqual(state().versions, {});
+  });
+
   test('keeps the find of each tab, closing it with its query cleared and its options kept, as git keeps the find of each worktree', () => {
     const store = createDiffStore(noop);
     const state = () => store.getState();

@@ -232,6 +232,12 @@ export function createViewerStore(
           });
         }
       },
+      compareVersions: () => {
+        const { tab } = get();
+        if (tab !== undefined) {
+          post({ type: 'compareVersions', tab });
+        }
+      },
       editViewed: (tab, at, encoding) =>
         post({
           type: 'editViewed',

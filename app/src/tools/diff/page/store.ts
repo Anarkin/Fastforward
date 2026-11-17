@@ -22,6 +22,7 @@ import {
   type CompareActions,
   type CompareSource,
   type CompareState,
+  type ComparedVersions,
 } from './state';
 
 function withTexts(
@@ -50,6 +51,13 @@ function changedKeys(
 }
 
 const noTexts: ReadonlyMap<string, LoadedText> = new Map();
+const noVersions: ComparedVersions = {};
+const hidden = {
+  tab: undefined,
+  compare: undefined,
+  texts: noTexts,
+  versions: noVersions,
+};
 
 export function createDiffStore(
   post: (message: DiffToHost) => void,
@@ -118,21 +126,30 @@ export function createDiffStore(
               ...(state.tab !== message.tab && {
                 compare: undefined,
                 texts: noTexts,
+                versions: noVersions,
               }),
             }));
             break;
           case 'hide':
-            set({ tab: undefined, compare: undefined, texts: noTexts });
+            set(hidden);
             break;
           case 'closed':
             if (get().tab === message.tab) {
-              set({ tab: undefined, compare: undefined, texts: noTexts });
+              set(hidden);
             }
             tabs.closed(message.tab);
             break;
           case 'compare':
             if (message.compare.tab === get().tab) {
               set({ compare: message.compare });
+            }
+            break;
+          case 'versions':
+            if (message.tab === get().tab) {
+              const { type: _type, tab: _tab, side, ...listed } = message;
+              set((state) => ({
+                versions: { ...state.versions, [side]: listed },
+              }));
             }
             break;
           case 'texts':
@@ -148,6 +165,12 @@ export function createDiffStore(
         }
       },
       loadTexts: (requests) => post({ type: 'loadTexts', requests }),
+      chooseVersion: (side, rev) =>
+        post({
+          type: 'chooseVersion',
+          side,
+          ...(rev !== undefined && { rev }),
+        }),
       focusOf: (tab) => get().focuses.get(tab),
       keepFocus: (tab, focus) =>
         set((state) => ({ focuses: withRecent(state.focuses, tab, focus) })),

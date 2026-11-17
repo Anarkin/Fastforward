@@ -1,0 +1,13 @@
+.version-button.version-hash .menu-button-label {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+}
+
+.version-button .menu {
+  max-width: min(1000px, calc(100vw - 32px));
+}
+
+.version-button .menu-item {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

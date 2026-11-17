@@ -40,8 +40,10 @@ export async function pathFactsOf(
   return {
     kind,
     inRepository:
-      kind === 'folder' &&
-      (await finding.inRepository(file).catch(() => false)),
+      (kind === 'folder' || kind === 'file') &&
+      (await finding
+        .inRepository(kind === 'file' ? paths.dirname(file) : file)
+        .catch(() => false)),
     gitMissing: finding.gitMissing(),
   };
 }

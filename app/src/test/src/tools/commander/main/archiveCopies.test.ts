@@ -436,6 +436,25 @@ suite('Commander tool in archives', () => {
       assert.strictEqual(comparing.new, at('notes.txt'));
     });
 
+    test('says git keeps no earlier version of a file of an archive compared alone, opening nothing', async () => {
+      const { send, openedIn, notices } = await inArchive();
+      await send({
+        type: 'compare',
+        tab: '1',
+        files: [{ side: 'right', folder: at('a.zip'), name: 'top.txt' }],
+      });
+
+      assert.deepStrictEqual(openedIn, []);
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'info',
+          message: strings.diff.noEarlierVersion(
+            path.join(at('a.zip'), 'top.txt'),
+          ),
+        },
+      ]);
+    });
+
     test('puts copies of the files and folders of an archive asked for on the clipboard, the folders whole', async () => {
       const { send, clipboard } = await inArchive();
       await send({

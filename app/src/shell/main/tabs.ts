@@ -5,7 +5,7 @@ import type { Storage } from './storage';
 import type { TabHistory } from './tabHistory';
 import type { TabViews } from './tabViews';
 import type { Page, Tab, Tools } from './toolContract';
-import type { FileVersion } from './savedTabs';
+import type { Compared, FileVersion } from './savedTabs';
 import {
   nextTabId,
   windowOf,
@@ -238,6 +238,21 @@ export class Tabs {
           ...(version !== undefined && { version }),
         }),
       ),
+    );
+    const page = this.pages.live(windowOf(storage.layout, id)?.id);
+    if (page !== undefined) {
+      this.pages.postTabs(page);
+    }
+  }
+
+  setCompare(id: string, compare: Compared): void {
+    const { storage } = this;
+    const tab = storage.savedTabs.find((each) => each.id === id);
+    if (tab === undefined) {
+      return;
+    }
+    this.host.save(
+      storage.setLayout(withChanged(storage.layout, { ...tab, compare })),
     );
     const page = this.pages.live(windowOf(storage.layout, id)?.id);
     if (page !== undefined) {

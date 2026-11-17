@@ -9,6 +9,32 @@ import { waitFor } from '../helpers/fixtures';
 const focused = () =>
   page.evaluate(() => document.activeElement?.textContent ?? '');
 
+const placed = () =>
+  page.evaluate(() => {
+    const view = document.querySelector('.compare-view .diff-view');
+    const title = document.querySelector('.compare-view .column-title');
+    const arrow = document.querySelector('.compare-view .compare-arrow');
+    const [old, changed] = [
+      ...document.querySelectorAll(
+        '.compare-view .compare-version .menu-button-trigger',
+      ),
+    ].map((trigger) => trigger.getBoundingClientRect());
+    const box = view?.getBoundingClientRect();
+    const header = title?.getBoundingClientRect();
+    return old === undefined ||
+      changed === undefined ||
+      box === undefined ||
+      header === undefined
+      ? undefined
+      : {
+          line: box.left + box.width / 2,
+          middle: header.left + header.width / 2,
+          old: [old.left, old.right],
+          new: [changed.left, changed.right],
+          arrow: arrow?.getBoundingClientRect().left,
+        };
+  });
+
 suite('App', () => {
   sharedApp({});
 
@@ -158,7 +184,9 @@ suite('App', () => {
       })
       .click();
     const viewer = page.locator('.viewer');
-    const trigger = page.locator('.viewer-version .menu-button-trigger');
+    const trigger = page.locator(
+      '.viewer .version-button .menu-button-trigger',
+    );
     const tabFolder = page.locator(
       '[role="tab"][aria-selected="true"] .tab-folder',
     );
@@ -193,6 +221,81 @@ suite('App', () => {
         'the button to name the newest commit and the tab the file on disk',
       );
     } finally {
+      await page.locator('.viewer .column-body').first().focus();
+      await page.keyboard.press('Escape');
+      await viewer.waitFor({ state: 'detached' });
+    }
+  });
+
+  test('opens the version of a file viewed against the one before it in a diff tab on Shift+F3, under the whole path of the file, the version of each side on a button in its header, side by side the old ending and the new starting at the line between the sides, inline both in the middle with an arrow between them', async () => {
+    const [first, second] = await repository.resolve('HEAD~1', 'HEAD');
+    await page.locator('.commit', { hasText: 'second' }).click();
+    await page
+      .locator('.row.file', { hasText: 'changed.txt' })
+      .locator('.path-part')
+      .last()
+      .click({ button: 'right' });
+    await page
+      .locator('.context-menu.path-menu .menu-item', {
+        hasText: strings.commander.openWithViewer,
+      })
+      .click();
+    const viewer = page.locator('.viewer');
+    await viewer.getByText('2', { exact: true }).waitFor();
+    await page.locator('.viewer .column-body').first().focus();
+    await page.keyboard.press('Shift+F3');
+    const triggers = page.locator(
+      '.compare-view .compare-version .menu-button-trigger',
+    );
+    const layout = page.locator('.compare-view .segmented button');
+    let wasInline = false;
+    try {
+      await waitFor(
+        async () =>
+          (await triggers.allTextContents()).join() ===
+          [first?.slice(0, 7), second?.slice(0, 7)].join(),
+        'the buttons to name the commit before and the one viewed',
+      );
+      assert.strictEqual(
+        await page.locator('.compare-view .file-header .path').textContent(),
+        path.join(repository.root, 'changed.txt'),
+      );
+      wasInline =
+        (await layout.first().getAttribute('class'))?.includes('active') ===
+        true;
+      await layout.last().click();
+      await page
+        .locator('.compare-view .compare-arrow')
+        .waitFor({ state: 'detached' });
+      const sideBySide = await placed();
+      assert.ok(sideBySide !== undefined);
+      const [, oldEnd = 0] = sideBySide.old;
+      const [newStart = 0] = sideBySide.new;
+      assert.ok(
+        oldEnd <= sideBySide.line &&
+          sideBySide.line - oldEnd < 12 &&
+          newStart >= sideBySide.line &&
+          newStart - sideBySide.line < 12,
+        JSON.stringify(sideBySide),
+      );
+
+      await layout.first().click();
+      await page.locator('.compare-view .compare-arrow').waitFor();
+      const inline = await placed();
+      assert.ok(inline?.arrow !== undefined);
+      const [oldStart = 0, oldRight = 0] = inline.old;
+      const [newLeft = 0, newEnd = 0] = inline.new;
+      assert.ok(
+        Math.abs((oldStart + newEnd) / 2 - inline.middle) < 2 &&
+          oldRight <= inline.arrow &&
+          inline.arrow < newLeft,
+        JSON.stringify(inline),
+      );
+    } finally {
+      await (wasInline ? layout.first() : layout.last()).click();
+      await page.locator('.compare-view .column-body').first().focus();
+      await page.keyboard.press('Escape');
+      await page.locator('.compare-view').waitFor({ state: 'detached' });
       await page.locator('.viewer .column-body').first().focus();
       await page.keyboard.press('Escape');
       await viewer.waitFor({ state: 'detached' });

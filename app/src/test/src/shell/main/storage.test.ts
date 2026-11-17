@@ -162,6 +162,31 @@ suite('Storage', () => {
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
+  test('keeps a tab that compares versions of files as one, read and written, the version of each side and the file whose history it is with it, dropping a version not of two strings', async () => {
+    const store = new FakeStore();
+    const file = path.resolve('notes.txt');
+    const compare = {
+      old: file,
+      new: file,
+      oldVersion: { rev: 'a'.repeat(40), file },
+      newVersion: { rev: 'index', file },
+    };
+    const tab = { id: '1', tool: 'diff', compare } as const;
+    await store.update(tabsKey, [
+      tab,
+      {
+        id: '2',
+        tool: 'diff',
+        compare: { ...compare, oldVersion: { rev: 'HEAD' } },
+      },
+    ]);
+    assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
+
+    const written = new FakeStore();
+    await storageOf(written).setLayout([{ id: '1', tabs: [tab], active: '1' }]);
+    assert.deepStrictEqual(written.get(tabsKey), [tab]);
+  });
+
   test('keeps a tab that views a version of a file as one, read and written, the file whose history it is with it, dropping a version not of two strings', async () => {
     const store = new FakeStore();
     const version = {

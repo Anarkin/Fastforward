@@ -16,6 +16,7 @@ export class ComparedImages {
   constructor(
     private readonly log: Log,
     private readonly comparedOf: (tab: string) => Compared | undefined,
+    private readonly readable: (compared: Compared) => Promise<Compared>,
   ) {}
 
   async image(url: URL): Promise<Response> {
@@ -26,8 +27,12 @@ export class ComparedImages {
       return new Response(null, { status: 404 });
     }
     try {
+      const sides = await this.readable(compared).catch(() => undefined);
+      if (sides === undefined) {
+        return new Response(null, { status: 404 });
+      }
       const read = await this.imageReads.read(source, (limit) =>
-        comparedImage(compared, source.path, source.id, limit),
+        comparedImage(compared, source.path, source.id, limit, sides),
       );
       if (read.kind !== 'image') {
         return new Response(null, {

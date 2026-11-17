@@ -1,12 +1,9 @@
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { EncodingChoice } from '../../../components/encodings/page/encodings';
-import type {
-  ByteRange,
-  ViewedVersion,
-  ViewerToWebview,
-} from '../shared/protocol';
+import type { ByteRange, ViewerToWebview } from '../shared/protocol';
 import type { PdfPlace } from '../shared/pdf';
+import type { ListedVersions } from '../../../components/versions/shared/versions';
 import type { ViewMode } from './keymap';
 import type { KeptViewer, ViewerTabView } from './tabParts';
 import type { ToViewer, ViewerRequest, Viewing } from './viewing';
@@ -15,13 +12,6 @@ export interface ViewerChoices {
   readonly mode?: ViewMode;
   readonly encoding?: EncodingChoice;
   readonly language?: string;
-}
-
-export interface ListedVersions {
-  readonly versions: readonly ViewedVersion[];
-  readonly staged: boolean;
-  readonly changed: boolean;
-  readonly onDisk: boolean;
 }
 
 export interface ViewerSource {
@@ -68,6 +58,7 @@ export interface ViewerActions {
   readonly flushPdfPlace: () => void;
   readonly choose: (choices: Partial<ViewerChoices>) => void;
   readonly chooseVersion: (rev: string | undefined) => void;
+  readonly compareVersions: () => void;
   readonly editViewed: (
     tab: string,
     at: number,

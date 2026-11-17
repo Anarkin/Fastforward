@@ -264,6 +264,27 @@ suite('Commander tool', () => {
       { old: at('other.txt'), new: at('notes.txt') },
     ]);
   });
+  test('opens the history of one file the side lists in the diff, and nothing for a folder or a name it doesn’t list', async () => {
+    const { tool, page, send, openedIn } = commander({
+      [root]: [folder('Users'), file('notes.txt')],
+    });
+    await tool.show(page, tab);
+    const compare = (name: string) =>
+      send({
+        type: 'compare',
+        tab: '1',
+        files: [{ side: 'left', folder: root, name }],
+      });
+
+    await compare('notes.txt');
+    await compare('Users');
+    await compare('secret.txt');
+
+    assert.deepStrictEqual(openedIn, [
+      { tool: 'diff', folders: [at('notes.txt')] },
+    ]);
+  });
+
   test('says how to pick the files to compare when the page has none to compare, opening nothing, and says nothing for a list the page forged', async () => {
     const { tool, page, send, compared, notices } = commander({
       [root]: [file('notes.txt')],

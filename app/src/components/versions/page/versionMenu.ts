@@ -2,7 +2,7 @@ import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { formatDate } from '../../../lib/page/dates';
 import { shortHash } from '../../../lib/shared/hashes';
 import { strings } from '../../../lib/shared/strings';
-import type { ListedVersions } from './state';
+import type { ListedVersions } from '../shared/versions';
 
 const indexRev = 'index';
 
@@ -33,7 +33,7 @@ export function versionLabel(
   if (shown === undefined) {
     return strings.commits.uncommitted;
   }
-  return shown === indexRev ? strings.viewer.staged : shortHash(shown);
+  return shown === indexRev ? strings.versions.staged : shortHash(shown);
 }
 
 export function versionMenu(
@@ -62,7 +62,7 @@ export function versionMenu(
     ...(staged
       ? [
           {
-            label: strings.viewer.staged,
+            label: strings.versions.staged,
             details: blank,
             checked: shown === indexRev,
             onClick: () => choose(indexRev),
@@ -77,7 +77,7 @@ export function versionMenu(
       keywords: rev,
       checked: shown === rev || (rev === diskRev && shown === undefined),
       ...(gone
-        ? { disabled: true, title: strings.viewer.deletedHere }
+        ? { disabled: true, title: strings.versions.deletedHere }
         : {
             title: subject,
             onClick: () => choose(rev === diskRev ? undefined : rev),

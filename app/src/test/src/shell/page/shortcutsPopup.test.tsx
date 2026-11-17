@@ -218,6 +218,7 @@ suite('Shortcuts popup', () => {
           'Zoom a PDF in or out',
           'Show an image at its real size, or fit it to the viewer',
           'Choose the version of the file to show, as git keeps them',
+          'Compare the version shown with the one before it',
           'Edit the file being viewed in this tab',
           'Close the file being viewed',
         ],

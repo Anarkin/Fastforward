@@ -2,24 +2,14 @@ import * as path from 'node:path';
 import { fileInRepository } from './repository';
 import { runGit } from './run';
 import { blobAt } from './objects';
-
-interface FileHistoryVersion {
-  readonly rev: string;
-  readonly path: string;
-  readonly date: number;
-  readonly subject: string;
-  readonly gone: boolean;
-}
-
-export interface FileHistory {
-  readonly versions: readonly FileHistoryVersion[];
-  readonly staged: boolean;
-  readonly changed: boolean;
-}
+import type {
+  FileHistoryListed,
+  ListedVersion,
+} from '../../../components/versions/shared/versions';
 
 const recordStart = '\u0001';
 
-function versionsOf(log: string, root: string): FileHistoryVersion[] {
+function versionsOf(log: string, root: string): ListedVersion[] {
   return log.split(recordStart).flatMap((record) => {
     const [hash = '', time = '', subject = '', change = '', ...paths] =
       record.split('\0');
@@ -53,7 +43,7 @@ function diskId(
 export async function fileHistory(
   gitPath: string,
   file: string,
-): Promise<FileHistory | undefined> {
+): Promise<FileHistoryListed | undefined> {
   const at = await fileInRepository(gitPath, file);
   if (at === undefined) {
     return undefined;

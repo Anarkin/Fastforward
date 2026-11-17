@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 const stylesheets = [
   'shell/page',
   'components/diff/page',
+  'components/versions/page',
   'tools/commander/page',
   'tools/terminal/page',
   'tools/git/page',

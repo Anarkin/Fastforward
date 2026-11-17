@@ -5,11 +5,11 @@ import { pathParts } from '../../../../../lib/shared/pathParts';
 import { ViewerTool } from '../../../../../tools/viewer/main/tool';
 import type { PdfPlace } from '../../../../../tools/viewer/shared/pdf';
 import type {
-  ViewedVersion,
   ViewerToHost,
   ViewerToWebview,
 } from '../../../../../tools/viewer/shared/protocol';
 import type { TextEncoding } from '../../../../../components/encodings/shared/textEncodings';
+import type { FileHistoryListed } from '../../../../../components/versions/shared/versions';
 import { fakeShell } from '../../commander/main/fakeShell';
 
 export class ViewerPage implements Page {
@@ -42,10 +42,8 @@ export function viewer() {
   }[] = [];
   const closed: string[] = [];
   const versions = new Map<string, string>();
-  const histories = new Map<
-    string,
-    { versions: readonly ViewedVersion[]; staged: boolean; changed: boolean }
-  >();
+  const histories = new Map<string, FileHistoryListed>();
+  const comparedHistories: (readonly [string, string | undefined])[] = [];
   const tool = new ViewerTool({
     codePage: () => Promise.resolve('windows-1250'),
     watch: (file, changed) => {
@@ -74,6 +72,10 @@ export function viewer() {
       closed.push(file);
     },
     fileHistory: (file) => Promise.resolve(histories.get(file)),
+    compareHistory: (_page, file, rev) => {
+      comparedHistories.push([file, rev]);
+      return Promise.resolve();
+    },
     versionCopy: (file, rev) => {
       const copy = versions.get(`${rev} ${file}`);
       return Promise.resolve(
@@ -108,6 +110,7 @@ export function viewer() {
     closed,
     versions,
     histories,
+    comparedHistories,
     versionsSet,
     turnedToView,
   };

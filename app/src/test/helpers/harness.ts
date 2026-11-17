@@ -164,7 +164,12 @@ export function newView(
   );
   const hosts: HostListener[] = [];
   terminalHosts.set(view, hosts);
-  const diff = diffToolOf({ log, userSettings: settings, git: locator });
+  const diff = diffToolOf({
+    log,
+    userSettings: settings,
+    git: locator,
+    gitTool: view,
+  });
   diffTools.set(view, diff);
   shells.set(
     view,
@@ -225,6 +230,7 @@ export function newView(
         closed: () => undefined,
         versionCopy: (file, rev) => view.versionCopy(file, rev),
         fileHistory: (file) => view.fileHistory(file),
+        compareHistory: (page, file, rev) => diff.openHistory(page, file, rev),
       }),
       editor: new EditorTool({
         watch: () => () => {},

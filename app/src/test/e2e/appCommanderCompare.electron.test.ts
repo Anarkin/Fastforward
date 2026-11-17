@@ -19,7 +19,7 @@ import { grayPng } from './images';
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('compares the two files marked on a side with Shift+F3 in a git tab of their own, showing their diff, with every language in its menu on L, as it shows one file', async () => {
+  test('compares the two files marked on a side with Shift+F3 in a git tab of their own, showing their diff under their whole paths, with every language in its menu on L, as it shows one file', async () => {
     fs.writeFileSync(path.join(opened, 'before.txt'), threeLines('two'));
     fs.writeFileSync(path.join(opened, 'after.txt'), threeLines('2'));
     await select('before');
@@ -60,6 +60,10 @@ suite('App commander', () => {
           await page.locator('.compare-view .diff-line.added').allTextContents()
         ).some((line) => line.includes('two')),
       'the diff of the two files',
+    );
+    assert.strictEqual(
+      await page.locator('.compare-view .file-header .path').textContent(),
+      `${opened}${path.sep}{after.txt → before.txt}`,
     );
     await waitForFocus(
       page.locator('.compare-view [data-column-focus]').first(),

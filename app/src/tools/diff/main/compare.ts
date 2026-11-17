@@ -50,7 +50,7 @@ export function comparedNames({
 }: Compared): readonly [string, string] {
   const oldName = basename(old);
   const newName = basename(changed);
-  return oldName === newName
+  return oldName === newName && old !== changed
     ? [
         `${basename(dirname(old))}/${oldName}`,
         `${basename(dirname(changed))}/${newName}`,
@@ -80,11 +80,11 @@ async function regularFiles(
 }
 
 export async function comparedText(
-  compared: Compared,
+  read: Compared,
   side: 'old' | 'new',
 ): Promise<string | undefined> {
   try {
-    const [old, changed] = await regularFiles(compared);
+    const [old, changed] = await regularFiles(read);
     return await readFile(side === 'old' ? old : changed, 'utf8');
   } catch {
     return undefined;
@@ -103,11 +103,10 @@ export async function comparedImage(
   path: string,
   id: string,
   limit = maxImageSize,
+  read: Compared = compared,
 ): Promise<ImageRead> {
   const names = comparedNames(compared);
-  const sides = [compared.old, compared.new].filter(
-    (_, side) => names[side] === path,
-  );
+  const sides = [read.old, read.new].filter((_, side) => names[side] === path);
   for (const side of sides) {
     const file = await realpath(side).catch(() => undefined);
     const stats = file === undefined ? undefined : await stat(file);
@@ -126,9 +125,9 @@ export async function comparedImage(
 }
 
 export async function filesAlike(
-  compared: Compared,
+  read: Compared,
 ): Promise<'identical' | 'whitespace'> {
-  const [old, changed] = await regularFiles(compared);
+  const [old, changed] = await regularFiles(read);
   const [oldBytes, newBytes] = await Promise.all([
     readFile(old),
     readFile(changed),
@@ -172,8 +171,9 @@ export async function comparedFilesPatch(
   compared: Compared,
   scope: Pick<PatchScope, 'entireFile' | 'ignoreWhitespace'> = {},
   signal?: AbortSignal,
+  read: Compared = compared,
 ): Promise<string> {
-  const [old, changed] = await regularFiles(compared);
+  const [old, changed] = await regularFiles(read);
   const errors: Buffer[] = [];
   const outside = tmpdir();
   const patch = await run(

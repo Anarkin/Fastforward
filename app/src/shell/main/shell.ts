@@ -191,6 +191,7 @@ export class Shell {
       setRoot: (tab, root) => this.tabs.setRoot(tab, root),
       setVersion: (tab, root, version) =>
         this.tabs.setVersion(tab, root, version),
+      setCompare: (tab, compare) => this.tabs.setCompare(tab, compare),
       visited: (folder) => {
         for (const tool of toolIds) {
           this.tools[tool].visited(folder);

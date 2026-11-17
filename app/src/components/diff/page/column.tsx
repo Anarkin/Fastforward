@@ -58,6 +58,7 @@ export interface DiffProps {
   readonly findAsked: number;
   readonly filter: Search | undefined;
   readonly note?: string;
+  readonly heading?: React.ReactNode;
   readonly onViewFile?: (source: ViewedSource) => void;
   readonly viewAsked?: number;
   readonly look: DiffLook;
@@ -89,6 +90,7 @@ export function Diff({
   findAsked,
   filter,
   note,
+  heading,
   onViewFile,
   viewAsked = 0,
   look,
@@ -180,6 +182,7 @@ export function Diff({
     <Column
       focusName="diff"
       start={options}
+      title={heading}
       search={<SearchButton title={strings.find.title} onClick={openFind} />}
       status={
         <ColumnStatus loading={loading} font="monospace">

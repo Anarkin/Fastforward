@@ -54,6 +54,15 @@ suite('Viewer keys', () => {
     }
   });
 
+  test('compares the version shown with the one before it on Shift+F3, as the commander compares on it, whatever it shows', () => {
+    for (const shown of [text, hex, image]) {
+      assert.deepStrictEqual(
+        viewerKey(keyPress('F3', { shiftKey: true }), shown),
+        { kind: 'compareVersions' },
+      );
+    }
+  });
+
   test('edits the file on F4, whatever it shows', () => {
     for (const shown of [text, hex, image]) {
       assert.deepStrictEqual(viewerKey(keyPress('F4'), shown), {

@@ -147,6 +147,7 @@ export function terminal(
     openFolders: () => Promise.resolve(),
     setRoot: (tab, root) => moved.push([tab, root]),
     setVersion: () => {},
+    setCompare: () => {},
     viewEdited: () => Promise.resolve(),
     visited: () => {},
     recentFolders: () => recent.items,

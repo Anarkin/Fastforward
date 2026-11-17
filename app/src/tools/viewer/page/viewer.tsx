@@ -86,8 +86,14 @@ export function Viewer() {
     },
   );
   const tab = useViewer((state) => state.tab);
-  const { placeOf, keepPlace, editViewed, keptViewer, keepViewer } =
-    useViewerActions();
+  const {
+    placeOf,
+    keepPlace,
+    editViewed,
+    keptViewer,
+    keepViewer,
+    compareVersions,
+  } = useViewerActions();
   const place = useCallback(
     () => (tab === undefined ? 0 : placeOf(tab)),
     [tab, placeOf],
@@ -207,6 +213,9 @@ export function Viewer() {
             return;
           case 'version':
             versionTrigger.current?.click();
+            return;
+          case 'compareVersions':
+            compareVersions();
             return;
           case 'wrap':
             changeTextView({ wordWrap: !wordWrap });

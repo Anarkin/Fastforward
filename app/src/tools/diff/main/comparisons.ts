@@ -18,6 +18,17 @@ import {
 } from './compare';
 import { watchFiles } from './compareWatch';
 import { post } from './post';
+import { readableSides, VersionMissing, type CopyOf } from './readableSides';
+import type { SideListed } from './versionChoice';
+import type { ComparedSide } from '../shared/protocol';
+import type { FileHistoryListed } from '../../../components/versions/shared/versions';
+import * as fs from 'node:fs';
+
+const sameCompared = (a: Compared, b: Compared): boolean =>
+  a.old === b.old &&
+  a.new === b.new &&
+  a.oldVersion?.rev === b.oldVersion?.rev &&
+  a.newVersion?.rev === b.newVersion?.rev;
 
 export interface Comparing {
   readonly tab: string;
@@ -25,6 +36,7 @@ export interface Comparing {
   running: AbortController | undefined;
   readonly stop: () => void;
   version: number;
+  readonly listed: Partial<Record<ComparedSide, SideListed>>;
 }
 
 export class Comparisons {
@@ -35,7 +47,15 @@ export class Comparisons {
     private readonly run: GitRun,
     private readonly settings: () => DiffSettings,
     private readonly shell: () => ShellAccess,
+    private readonly copyOf: CopyOf,
+    private readonly historyOf: (
+      file: string,
+    ) => Promise<FileHistoryListed | undefined>,
   ) {}
+
+  readable(compared: Compared): Promise<Compared> {
+    return readableSides(compared, this.copyOf);
+  }
 
   of(tab: string): Comparing | undefined {
     for (const comparing of this.shown.values()) {
@@ -48,11 +68,7 @@ export class Comparisons {
 
   async show(page: Page, tab: string, compared: Compared): Promise<void> {
     const shown = this.shown.get(page);
-    if (
-      shown?.tab === tab &&
-      shown.compared.old === compared.old &&
-      shown.compared.new === compared.new
-    ) {
+    if (shown?.tab === tab && sameCompared(shown.compared, compared)) {
       await this.send(page);
       return;
     }
@@ -62,8 +78,12 @@ export class Comparisons {
       compared,
       running: undefined,
       version: 0,
+      listed: {},
       stop: watchFiles(
-        [compared.old, compared.new],
+        [
+          ...(compared.oldVersion === undefined ? [compared.old] : []),
+          ...(compared.newVersion === undefined ? [compared.new] : []),
+        ],
         () => {
           if (this.shown.get(page) === comparing) {
             void this.send(page);
@@ -84,6 +104,39 @@ export class Comparisons {
     };
     this.shown.set(page, comparing);
     await this.send(page);
+    await this.listVersions(page, comparing);
+  }
+
+  private async listVersions(page: Page, comparing: Comparing): Promise<void> {
+    const { compared } = comparing;
+    const sides: readonly [ComparedSide, string][] = [
+      ['old', compared.oldVersion?.file ?? compared.old],
+      ['new', compared.newVersion?.file ?? compared.new],
+    ];
+    for (const [side, file] of sides) {
+      const listed = await this.listed(file);
+      if (listed === undefined) {
+        continue;
+      }
+      comparing.listed[side] = listed;
+      if (this.shown.get(page) === comparing) {
+        const { file: _file, ...versions } = listed;
+        post(page, { type: 'versions', tab: comparing.tab, side, ...versions });
+      }
+    }
+  }
+
+  async listed(file: string): Promise<SideListed | undefined> {
+    const [history, onDisk] = await Promise.all([
+      this.historyOf(file).catch(() => undefined),
+      fs.promises.stat(file).then(
+        (stats) => stats.isFile(),
+        () => false,
+      ),
+    ]);
+    return history === undefined || history.versions.length === 0
+      ? undefined
+      : { ...history, file, onDisk };
   }
 
   stop(page: Page): void {
@@ -106,7 +159,10 @@ export class Comparisons {
       if (known !== undefined) {
         return known;
       }
-      const reading = comparedText(comparing.compared, side);
+      const reading = this.readable(comparing.compared).then(
+        (read) => comparedText(read, side),
+        () => undefined,
+      );
       sides.set(side, reading);
       return reading;
     };
@@ -138,14 +194,16 @@ export class Comparisons {
     let same: 'identical' | 'whitespace' | undefined;
     let error: Sentence | undefined;
     try {
+      const read = await this.readable(compared);
       patch = await comparedFilesPatch(
         this.run,
         compared,
         { entireFile: entire, ignoreWhitespace },
         running.signal,
+        read,
       );
       if (patch === '') {
-        same = await filesAlike(compared);
+        same = await filesAlike(read);
       }
     } catch (failure) {
       if (running.signal.aborted) {
@@ -154,11 +212,13 @@ export class Comparisons {
       error =
         failure instanceof CompareTooLarge
           ? strings.messages.compareTooLarge(compareMaxBytes / 1024 / 1024)
-          : strings.messages.couldNotCompare(
-              compared.old,
-              compared.new,
-              gitErrorText(failure),
-            );
+          : failure instanceof VersionMissing
+            ? strings.diff.viewMissing(failure.file)
+            : strings.messages.couldNotCompare(
+                compared.old,
+                compared.new,
+                gitErrorText(failure),
+              );
     }
     if (this.shown.get(page) !== comparing || comparing.version !== version) {
       return;
@@ -170,6 +230,12 @@ export class Comparisons {
         name: comparedNames(compared)[1],
         old: compared.old,
         new: compared.new,
+        ...(compared.oldVersion !== undefined && {
+          oldVersion: compared.oldVersion.rev,
+        }),
+        ...(compared.newVersion !== undefined && {
+          newVersion: compared.newVersion.rev,
+        }),
         patch,
         entire,
         version,

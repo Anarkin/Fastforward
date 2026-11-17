@@ -10,7 +10,8 @@ export type ViewerAct =
   | { readonly kind: 'wrap' }
   | { readonly kind: 'whitespace' }
   | { readonly kind: 'realSize' }
-  | { readonly kind: 'version' };
+  | { readonly kind: 'version' }
+  | { readonly kind: 'compareVersions' };
 
 export interface ViewerKeys {
   readonly mode: ViewMode;
@@ -30,6 +31,9 @@ export function viewerKey(
   }
   if (keyPressed(viewerKeymap.version, event) !== undefined) {
     return { kind: 'version' };
+  }
+  if (keyPressed(viewerKeymap.compareVersions, event) !== undefined) {
+    return { kind: 'compareVersions' };
   }
   const wanted = keyPressed(viewerKeymap.viewAs, event);
   if (wanted !== undefined) {
