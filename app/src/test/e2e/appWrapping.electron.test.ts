@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { suite, test } from 'vitest';
@@ -15,7 +14,7 @@ import {
   wrapsSaved,
 } from './appFixtures';
 import { gridLines } from './gridLines';
-import { waitFor } from '../helpers/fixtures';
+import { waitFor, writeWhenFree } from '../helpers/fixtures';
 import {
   drawnCodeRow,
   near,
@@ -443,7 +442,7 @@ suite('App', () => {
     const report = reportPage(16_000);
     const data = report.split('\n')[reportDataLine - 1];
     assert.ok(data.length > 1024 * 1024);
-    fs.writeFileSync(file, report);
+    await writeWhenFree(file, report);
     try {
       await page.locator('.commit', { hasText: 'second' }).click();
       await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
@@ -465,12 +464,31 @@ suite('App', () => {
       const scrollTo = async (top: number) => {
         stalls.push(
           await list.evaluate(async (element, to) => {
-            const started = performance.now();
+            const turns = new MessageChannel();
+            let turned = performance.now();
+            let busiest = 0;
+            let drawing = true;
+            const turn = () => {
+              const now = performance.now();
+              busiest = Math.max(busiest, now - turned);
+              turned = now;
+            };
+            turns.port1.addEventListener('message', () => {
+              turn();
+              if (drawing) {
+                turns.port2.postMessage(0);
+              }
+            });
+            turns.port1.start();
+            turns.port2.postMessage(0);
             element.scrollTop = to;
             await new Promise((drawn) =>
               requestAnimationFrame(() => requestAnimationFrame(drawn)),
             );
-            return performance.now() - started;
+            drawing = false;
+            turn();
+            turns.port1.close();
+            return busiest;
           }, top),
         );
       };
