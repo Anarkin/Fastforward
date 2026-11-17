@@ -1,4 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
+import type { ProcessHolder } from './processHold';
 import { stopTree } from './processTree';
 
 export type OutputStream = 'stdout' | 'stderr';
@@ -63,7 +64,7 @@ function codeOf(error: unknown): string | number | undefined {
     : undefined;
 }
 
-export function serveGitSpawns(port: SpawnerPort): void {
+export function serveGitSpawns(port: SpawnerPort, held: ProcessHolder): void {
   const children = new Map<number, ChildProcess>();
   const failed = (id: number, error: unknown) =>
     port.postMessage({
@@ -115,7 +116,7 @@ export function serveGitSpawns(port: SpawnerPort): void {
     if (child !== undefined) {
       child.stdout?.destroy();
       child.stderr?.destroy();
-      await stopTree(child);
+      await stopTree(child, process.platform, held);
     }
     port.postMessage({ type: 'stopped', id });
   };

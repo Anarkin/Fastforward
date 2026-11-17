@@ -17,14 +17,12 @@ import {
   inRepository,
   isRepository,
 } from '../tools/commander/main/repositories';
+import { unpackedKoffi } from '../lib/main/unpacked';
 import { folderStamp, watchFolder } from '../lib/main/watch';
 import { watchTree } from '../tools/commander/main/watchTree';
 import { elevatedFileSystem } from '../tools/commander/main/elevated';
 import { transferProcess } from '../tools/commander/main/transferProcess';
-import {
-  sizeWorkers,
-  unpackedKoffi,
-} from '../tools/commander/main/sizeWorkers';
+import { sizeWorkers } from '../tools/commander/main/sizeWorkers';
 import { hashWorkers } from '../tools/commander/main/hashWorkers';
 import { sevenZipProgram } from '../tools/commander/main/sevenZip';
 import { sevenZipReaderAt } from '../tools/commander/main/sevenZipReader';

@@ -6,10 +6,7 @@ import { build } from 'esbuild';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { FolderSizes } from '../../../../../tools/commander/main/folderSizes';
 import { walkFolders } from '../../../../../tools/commander/main/sizeWalk';
-import {
-  sizeWorkers,
-  unpacked,
-} from '../../../../../tools/commander/main/sizeWorkers';
+import { sizeWorkers } from '../../../../../tools/commander/main/sizeWorkers';
 import { nodeSizeReader } from '../../../../../tools/commander/main/sizeReaders';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
@@ -116,38 +113,5 @@ suite('Walking folders in worker threads', () => {
     } finally {
       removeFolder(empty);
     }
-  });
-
-  test('loads koffi in a worker from where the app keeps it unpacked from its asar, as a worker can read no asar', () => {
-    assert.strictEqual(
-      unpacked(
-        path.join(
-          'C:',
-          'Fastforward',
-          'resources',
-          'app.asar',
-          'node_modules',
-          'koffi',
-          'index.cjs',
-        ),
-      ),
-      path.join(
-        'C:',
-        'Fastforward',
-        'resources',
-        'app.asar.unpacked',
-        'node_modules',
-        'koffi',
-        'index.cjs',
-      ),
-    );
-    const outside = path.join(
-      'C:',
-      'app',
-      'node_modules',
-      'koffi',
-      'index.cjs',
-    );
-    assert.strictEqual(unpacked(outside), outside);
   });
 });

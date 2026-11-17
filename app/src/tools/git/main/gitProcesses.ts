@@ -2,8 +2,9 @@ import type { ChildProcess } from 'node:child_process';
 import { lstat, readdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { commonDirOf, gitDirOf } from './gitDir';
+import { processHolderAt } from './processHold';
 import { stopTree } from './processTree';
-import { GitChild } from './spawnedGit';
+import { GitChild, koffiOnWindows } from './spawnedGit';
 
 interface Write {
   readonly cwd: string;
@@ -133,6 +134,8 @@ type StoppableGit =
 
 export const stopping = new Map<StoppableGit, Promise<void>>();
 
+const held = processHolderAt(koffiOnWindows());
+
 export function stopGit(
   child: StoppableGit,
   platform = process.platform,
@@ -157,7 +160,9 @@ async function endGit(
       : undefined;
   child.stdout?.destroy();
   child.stderr?.destroy();
-  await (child instanceof GitChild ? child.stop() : stopTree(child, platform));
+  await (child instanceof GitChild
+    ? child.stop()
+    : stopTree(child, platform, held));
   if (refsLeft !== undefined && platform === 'win32') {
     await removeRefLocks(refsLeft);
   }

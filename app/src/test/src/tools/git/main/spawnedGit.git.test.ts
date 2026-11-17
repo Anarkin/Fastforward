@@ -6,8 +6,59 @@ import { suite, test } from 'vitest';
 import {
   gitStarter,
   type GitChild,
+  type GitStarter,
 } from '../../../../../tools/git/main/spawnedGit';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+
+async function starterBuilt(): Promise<string> {
+  const folder = tempFolder('starter');
+  await build({
+    entryPoints: {
+      gitSpawner: path.join(
+        __dirname,
+        '../../../../../tools/git/main/gitSpawnerWorker.ts',
+      ),
+    },
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    outdir: folder,
+    logLevel: 'silent',
+  });
+  return folder;
+}
+
+async function stoppedOnceAnswering(starter: GitStarter): Promise<string> {
+  const child = starter.spawn('git', ['hash-object', '--stdin-paths'], {
+    cwd: process.cwd(),
+    env: { ...process.env, GIT_FLUSH: '1' },
+    detached: process.platform !== 'win32',
+  });
+  const closed = new Promise<string>((resolve) => {
+    child.on('close', () => resolve('stopped'));
+  });
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<string>((resolve) => {
+    timer = setTimeout(() => resolve('still running'), 10_000);
+  });
+  const folder = tempFolder('stopped');
+  const file = path.join(folder, 'hello.txt');
+  fs.writeFileSync(file, 'hello\n');
+  try {
+    const answered = new Promise((resolve) =>
+      child.stdout.once('data', resolve),
+    );
+    child.stdin.write(`${file}\n`);
+    await answered;
+    await child.stop();
+    return await Promise.race([closed, late]);
+  } finally {
+    clearTimeout(timer);
+    child.stdin.end();
+    await closed;
+    removeFolder(folder);
+  }
+}
 
 async function ran(
   child: GitChild,
@@ -89,21 +140,8 @@ suite('Starting the installed git', () => {
   });
 
   test('starts git in a worker thread once its starter is built next to it, as Windows can hold the thread starting a process for hundreds of milliseconds, which held up every message of the app', async () => {
-    const folder = tempFolder('starter');
+    const folder = await starterBuilt();
     try {
-      await build({
-        entryPoints: {
-          gitSpawner: path.join(
-            __dirname,
-            '../../../../../tools/git/main/gitSpawnerWorker.ts',
-          ),
-        },
-        bundle: true,
-        platform: 'node',
-        format: 'cjs',
-        outdir: folder,
-        logLevel: 'silent',
-      });
       const starter = gitStarter(folder);
 
       const version = await ran(starter.spawn('git', ['--version'], options));
@@ -111,6 +149,21 @@ suite('Starting the installed git', () => {
       assert.strictEqual(starter.threaded, true);
       assert.match(version.output, /^git version /);
       assert.strictEqual(gitStarter(tempFolder('no-starter')).threaded, false);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('stops a git it started, in a worker thread and in the thread of the app alike, the worker holding it open on Windows through koffi loaded from the whole path it is handed, as a worker run from its text loads no module by its name, and a git that is not held is not stopped', async () => {
+    const folder = await starterBuilt();
+    try {
+      const threaded = gitStarter(folder);
+      const unthreaded = gitStarter(tempFolder('no-starter'));
+
+      assert.strictEqual(threaded.threaded, true);
+      assert.strictEqual(unthreaded.threaded, false);
+      assert.strictEqual(await stoppedOnceAnswering(threaded), 'stopped');
+      assert.strictEqual(await stoppedOnceAnswering(unthreaded), 'stopped');
     } finally {
       removeFolder(folder);
     }

@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import { Worker } from 'node:worker_threads';
+import { unpackedKoffi } from '../../../lib/main/unpacked';
 import { strings } from '../../../lib/shared/strings';
 import {
   serveGitSpawns,
@@ -10,6 +11,7 @@ import {
   type OutputStream,
   type ToSpawner,
 } from './gitSpawner';
+import { processHolderAt } from './processHold';
 
 export interface SpawnOptions {
   readonly cwd: string;
@@ -137,15 +139,21 @@ interface Connection {
   readonly send: (message: ToSpawner) => void;
 }
 
-function inThread(receive: (message: FromSpawner) => void): Connection {
+function inThread(
+  koffi: string | undefined,
+  receive: (message: FromSpawner) => void,
+): Connection {
   const toSpawner = new EventEmitter();
-  serveGitSpawns({
-    postMessage: (message) => {
-      const copy = structuredClone(message);
-      setImmediate(() => receive(copy));
+  serveGitSpawns(
+    {
+      postMessage: (message) => {
+        const copy = structuredClone(message);
+        setImmediate(() => receive(copy));
+      },
+      on: (event, listener) => toSpawner.on(event, listener),
     },
-    on: (event, listener) => toSpawner.on(event, listener),
-  });
+    processHolderAt(koffi),
+  );
   return {
     send: (message) => {
       const copy = structuredClone(message);
@@ -156,10 +164,14 @@ function inThread(receive: (message: FromSpawner) => void): Connection {
 
 function inWorker(
   file: string,
+  koffi: string | undefined,
   receive: (message: FromSpawner) => void,
   lost: () => void,
 ): Connection {
-  const worker = new Worker(readFileSync(file, 'utf8'), { eval: true });
+  const worker = new Worker(readFileSync(file, 'utf8'), {
+    eval: true,
+    workerData: { koffi },
+  });
   worker.unref();
   worker.on('message', receive);
   worker.on('error', lost);
@@ -197,7 +209,14 @@ interface Thread {
   readonly starting: Set<number>;
 }
 
-export function gitStarter(folder: string): GitStarter {
+export function koffiOnWindows(): string | undefined {
+  return process.platform === 'win32' ? unpackedKoffi() : undefined;
+}
+
+export function gitStarter(
+  folder: string,
+  koffi = koffiOnWindows(),
+): GitStarter {
   const file = join(folder, starterFile);
   const threaded = existsSync(file);
   const threads: Thread[] = [];
@@ -217,7 +236,7 @@ export function gitStarter(folder: string): GitStarter {
     };
     const thread: Thread = {
       connection: threaded
-        ? inWorker(file, receive, () => {
+        ? inWorker(file, koffi, receive, () => {
             const at = threads.indexOf(thread);
             if (at === -1) {
               return;
@@ -227,7 +246,7 @@ export function gitStarter(folder: string): GitStarter {
             children.clear();
             orphans.forEach((child) => child.lost());
           })
-        : inThread(receive),
+        : inThread(koffi, receive),
       children,
       starting,
     };

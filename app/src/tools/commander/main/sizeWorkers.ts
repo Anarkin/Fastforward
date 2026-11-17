@@ -1,5 +1,4 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { strings } from '../../../lib/shared/strings';
@@ -26,18 +25,6 @@ interface Task {
 interface Thread {
   readonly worker: Worker;
   task: Task | undefined;
-}
-
-export function unpacked(file: string): string {
-  return file.replace(
-    /([\\/])app\.asar([\\/])/,
-    (_match, before: string, after: string) =>
-      `${before}app.asar.unpacked${after}`,
-  );
-}
-
-export function unpackedKoffi(): string {
-  return unpacked(createRequire(__filename).resolve('koffi'));
 }
 
 export function sizeWorkers(
