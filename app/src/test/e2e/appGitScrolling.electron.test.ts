@@ -11,7 +11,7 @@ import {
 } from './appFixtures';
 import { scrollPlaces } from './scrollProbes';
 import { longLines, firstLongLine } from './wrappingSamples';
-import { defaultSettings, waitFor } from '../helpers/fixtures';
+import { defaultSettings, waitFor, writeWhenFree } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
@@ -22,7 +22,7 @@ suite('App', () => {
 
   test('scrolls the diff by whole lines, gliding to each line, after its scrollbar dragged too, and coming to rest with a line at the top of the view', async () => {
     const file = path.join(sharedRepository.root, 'long.txt');
-    fs.writeFileSync(
+    await writeWhenFree(
       file,
       `${longLines.map((line, index) => (index % 10 === 0 ? `changed ${index}` : line)).join('\n')}\n`,
     );

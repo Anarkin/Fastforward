@@ -1,4 +1,5 @@
 import { readDefaults, type Settings } from '../../shell/main/settings';
+import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Sentence } from '../../lib/shared/sentences';
 
@@ -33,6 +34,25 @@ export async function waitFor(
     }
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+}
+
+const busyCodes = new Set(['EBUSY', 'EPERM', 'UNKNOWN']);
+
+export async function writeWhenFree(
+  file: string,
+  content: string,
+): Promise<void> {
+  await waitFor(() => {
+    try {
+      writeFileSync(file, content);
+      return true;
+    } catch (error) {
+      if (busyCodes.has(String(Reflect.get(Object(error), 'code')))) {
+        return false;
+      }
+      throw error;
+    }
+  }, `${file} to be free to write`);
 }
 
 export async function until(
