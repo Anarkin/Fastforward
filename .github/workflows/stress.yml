@@ -51,7 +51,7 @@ jobs:
           $failed = 0
           foreach ($run in 1..[int]$env:TIMES) {
             Write-Output "::group::Run $run of $env:TIMES"
-            npx vitest run @($env:FILES -split ' ')
+            npx vitest run @($env:FILES -split ' ' | Where-Object { $_ })
             if ($LASTEXITCODE -ne 0) { $failed++ }
             Write-Output "::endgroup::"
           }
