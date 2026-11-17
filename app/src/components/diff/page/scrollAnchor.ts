@@ -1,5 +1,11 @@
 import type { Virtualizer } from '@tanstack/react-virtual';
-import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  type RefObject,
+} from 'react';
 import type { DiffRow } from './rows';
 import type { WrapColumns } from './rowMeasures';
 
@@ -106,6 +112,24 @@ export function useScrollAnchor({
   const settling = useRef<{ at: ScrollAnchor; top: number; until: number }>(
     undefined,
   );
+  const drawn = useRef(shown);
+  const anchorNow = useEffectEvent(() => {
+    const element = list.current;
+    const last = anchor.current;
+    if (
+      element === null ||
+      last === undefined ||
+      last.key !== layoutKey ||
+      settling.current !== undefined ||
+      drawn.current !== shown
+    ) {
+      return;
+    }
+    anchor.current = {
+      key: layoutKey,
+      at: scrollAnchor(virtualizer.measurementsCache, shown, element.scrollTop),
+    };
+  });
   useEffect(() => {
     const element = list.current;
     if (element === null) {
@@ -114,16 +138,20 @@ export function useScrollAnchor({
     const handsOn = () => {
       settling.current = undefined;
     };
+    const scrolled = () => anchorNow();
     for (const hand of settlingEnds) {
       element.addEventListener(hand, handsOn, { passive: true });
     }
+    element.addEventListener('scroll', scrolled, { passive: true });
     return () => {
       for (const hand of settlingEnds) {
         element.removeEventListener(hand, handsOn);
       }
+      element.removeEventListener('scroll', scrolled);
     };
   }, [list]);
   useLayoutEffect(() => {
+    drawn.current = shown;
     const last = anchor.current;
     const scrolled = list.current?.scrollTop ?? 0;
     if (last?.at !== undefined && last.key !== layoutKey) {
