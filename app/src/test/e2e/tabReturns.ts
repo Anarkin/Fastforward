@@ -267,8 +267,9 @@ export async function comesBackAfter(
   page: Page,
   change: () => Promise<Page>,
   what: string,
-): Promise<void> {
-  const left = await settledLooks(page);
+  settledBefore?: TabLooks,
+): Promise<TabLooks> {
+  const left = settledBefore ?? (await settledLooks(page));
   const shown = await change();
   let back = await tabLooks(shown);
   try {
@@ -283,22 +284,25 @@ export async function comesBackAfter(
   } catch {
     assert.deepStrictEqual(back, left, `${what} comes back as it was left`);
   }
+  const stays = await settledLooks(shown);
   assert.deepStrictEqual(
-    await settledLooks(shown),
+    stays,
     left,
     `${what} stays as it was left once settled`,
   );
+  return stays;
 }
 
 export async function comesBackAsLeft(
   page: Page,
   away: number,
   what: string,
-): Promise<void> {
+  settledBefore?: TabLooks,
+): Promise<TabLooks> {
   const index = await tabs(page).evaluateAll((all) =>
     all.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'),
   );
-  await comesBackAfter(
+  return comesBackAfter(
     page,
     async () => {
       await showTab(page, away);
@@ -307,5 +311,18 @@ export async function comesBackAsLeft(
       return page;
     },
     what,
+    settledBefore,
   );
+}
+
+export async function comesBackFromEach(
+  page: Page,
+  aways: readonly number[],
+  what: (away: number) => string,
+): Promise<TabLooks | undefined> {
+  let settled: TabLooks | undefined;
+  for (const away of aways) {
+    settled = await comesBackAsLeft(page, away, what(away), settled);
+  }
+  return settled;
 }

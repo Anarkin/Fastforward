@@ -16,6 +16,7 @@ import {
   showTab,
   sizedWindow,
   tabs,
+  type TabLooks,
 } from './tabReturns';
 import { waitForCount, waitForFocus } from './waits';
 
@@ -119,8 +120,8 @@ suite('App git tabs shown again', () => {
     removeFolder(folder);
   });
 
-  const worktreeComesBack = async (what: string) => {
-    const left = await settledLooks(page);
+  const worktreeComesBack = async (what: string, settledBefore?: TabLooks) => {
+    const left = settledBefore ?? (await settledLooks(page));
     await page.keyboard.press('Control+PageDown');
     await page
       .locator('.worktrees .tab.active', { hasText: 'other' })
@@ -136,13 +137,18 @@ suite('App git tabs shown again', () => {
   };
 
   const comesBackFromEverywhere = async (what: string) => {
-    await comesBackAsLeft(page, otherTool, `${what} left for another tool`);
-    await comesBackAsLeft(
+    const leftForAnotherTool = await comesBackAsLeft(
+      page,
+      otherTool,
+      `${what} left for another tool`,
+    );
+    const leftForAnotherRepository = await comesBackAsLeft(
       page,
       otherRepository,
       `${what} left for another repository`,
+      leftForAnotherTool,
     );
-    await worktreeComesBack(what);
+    await worktreeComesBack(what, leftForAnotherRepository);
   };
 
   const comesBackReloaded = (what: string) =>

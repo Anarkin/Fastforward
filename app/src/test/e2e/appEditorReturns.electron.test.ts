@@ -7,7 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import {
-  comesBackAsLeft,
+  comesBackFromEach,
   scrolledAround,
   settledLooks,
   showTab,
@@ -75,11 +75,12 @@ suite('App editor tabs shown again', () => {
 
   const count = () =>
     page.locator('.editor .search-count').textContent({ timeout: 1000 });
-  const throughEveryOther = async (what: string) => {
-    for (const away of [commanderTab, terminalTab, otherTab]) {
-      await comesBackAsLeft(page, away, `${what} left for tab ${away}`);
-    }
-  };
+  const throughEveryOther = (what: string) =>
+    comesBackFromEach(
+      page,
+      [commanderTab, terminalTab, otherTab],
+      (away) => `${what} left for tab ${away}`,
+    );
 
   test('brings back a file edited with its find and replace open, their text, the match it was at and the caret in the box it was in, from a commander tab, the tab of another tool and the editor of another file, which shows nothing of them', async () => {
     await showTab(page, editorTab);

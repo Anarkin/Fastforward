@@ -5,7 +5,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import {
-  comesBackAsLeft,
+  comesBackFromEach,
   scrolledAround,
   settledLooks,
   showTab,
@@ -180,9 +180,11 @@ suite('Terminal tab shown again', () => {
   test('brings back a terminal scrolled around as it was left, every scroller of it where it was, from a tab of another tool and from another terminal tab', async () => {
     await settledLooks(page);
     await scrolledAround(page);
-    for (const away of awayTabs) {
-      await comesBackAsLeft(page, away, `The terminal left for tab ${away}`);
-    }
+    await comesBackFromEach(
+      page,
+      awayTabs,
+      (away) => `The terminal left for tab ${away}`,
+    );
   });
 
   test('brings back the shape a program gave the cursor and the cursor it hid, from a tab of another tool and from another terminal tab', async () => {

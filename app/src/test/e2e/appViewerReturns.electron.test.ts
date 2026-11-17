@@ -6,7 +6,14 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { comesBackAsLeft, settledLooks, showTab, tabs } from './tabReturns';
+import {
+  comesBackAsLeft,
+  comesBackFromEach,
+  settledLooks,
+  showTab,
+  tabs,
+  type TabLooks,
+} from './tabReturns';
 
 const envText = Array.from({ length: 300 }, (_, index) =>
   index % 30 === 11 ? `NAME_${index}=adam` : `KEY_${index}=value ${index}`,
@@ -124,8 +131,14 @@ suite('App viewer tabs shown again', () => {
     await page.keyboard.press('ArrowLeft');
     await page.keyboard.press('ArrowLeft');
 
+    let settled: TabLooks | undefined;
     for (const away of [commanderTab, terminalTab, otherTab]) {
-      await comesBackAsLeft(page, away, `The viewer left for tab ${away}`);
+      settled = await comesBackAsLeft(
+        page,
+        away,
+        `The viewer left for tab ${away}`,
+        settled,
+      );
       assert.strictEqual(await count(), '2 of 10');
       assert.strictEqual(await currentRow(), 'NAME_41=adam');
       assert.strictEqual(
@@ -158,9 +171,11 @@ suite('App viewer tabs shown again', () => {
   });
 
   const throughOthers = async (shown: number, what: string) => {
-    for (const away of [commanderTab, terminalTab, otherTab]) {
-      await comesBackAsLeft(page, away, `${what} left for tab ${away}`);
-    }
+    await comesBackFromEach(
+      page,
+      [commanderTab, terminalTab, otherTab],
+      (away) => `${what} left for tab ${away}`,
+    );
     assert.strictEqual(
       await tabs(page).nth(shown).getAttribute('aria-selected'),
       'true',
