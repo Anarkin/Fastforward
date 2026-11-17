@@ -25,6 +25,22 @@ export function startsOfRows(
   );
 }
 
+export function contentEndOf(
+  list: {
+    readonly top: number;
+    readonly scrolled: number;
+    readonly padding: number;
+  },
+  bottoms: readonly number[],
+): number {
+  return (
+    bottoms.reduce(
+      (end, bottom) => Math.max(end, bottom - list.top + list.scrolled),
+      0,
+    ) + list.padding
+  );
+}
+
 export function rowStep(heights: readonly number[]): number {
   const drawn = heights.filter((height) => height > 0);
   return drawn.length === 0 ? 0 : Math.min(...drawn);
@@ -72,13 +88,28 @@ function followWholeRows(
   );
   const pad = () => {
     const shown = starts();
+    const style = styleOf();
+    const box = element.getBoundingClientRect();
+    const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+    const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
     const needed = endPaddingToStart(
       (index) => shown[index],
       shown.length,
-      element.scrollHeight - padding,
-      element.clientHeight,
+      contentEndOf(
+        {
+          top: box.top + borderTop,
+          scrolled: element.scrollTop,
+          padding: ownPadding,
+        },
+        [...element.children].map(
+          (child) =>
+            child.getBoundingClientRect().bottom +
+            (Number.parseFloat(view.getComputedStyle(child).marginBottom) || 0),
+        ),
+      ),
+      box.height - borderTop - borderBottom,
     );
-    if (Math.abs(needed - padding) >= nearStart) {
+    if (Math.abs(needed - padding) >= nearStart / view.devicePixelRatio) {
       padding = needed;
       element.style.paddingBottom = `${ownPadding + padding}px`;
     }

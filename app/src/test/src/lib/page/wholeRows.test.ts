@@ -1,6 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { rowStep, startsOfRows } from '../../../../lib/page/wholeRows';
+import {
+  contentEndOf,
+  rowStep,
+  startsOfRows,
+} from '../../../../lib/page/wholeRows';
 
 suite('Whole rows', () => {
   test('starts each row at its top within the content scrolled, below as much as the scroll padding of the list says stays stuck at its top', () => {
@@ -24,5 +28,19 @@ suite('Whole rows', () => {
     assert.strictEqual(rowStep([36, 24, 24, 30]), 24);
     assert.strictEqual(rowStep([0, 24]), 24);
     assert.strictEqual(rowStep([]), 0);
+  });
+
+  test('ends the content of a list after its lowest child and its own padding to a fraction of a pixel, as scrollHeight rounds it to a whole pixel, which left the last row a device pixel below the cover at its end at a scale of 125%', () => {
+    assert.strictEqual(
+      contentEndOf(
+        { top: 100, scrolled: 773.6, padding: 16 },
+        [150.4, 940.2, 913.8],
+      ),
+      940.2 - 100 + 773.6 + 16,
+    );
+    assert.strictEqual(
+      contentEndOf({ top: 100, scrolled: 0, padding: 16 }, []),
+      16,
+    );
   });
 });
