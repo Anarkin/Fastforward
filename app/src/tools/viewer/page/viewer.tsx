@@ -87,10 +87,12 @@ export function Viewer() {
   const tab = useViewer((state) => state.tab);
   const { placeOf, keepPlace, editViewed, keptViewer, keepViewer } =
     useViewerActions();
-  const place = useRef(tab === undefined ? 0 : placeOf(tab));
+  const place = useCallback(
+    () => (tab === undefined ? 0 : placeOf(tab)),
+    [tab, placeOf],
+  );
   const onPlace = useCallback(
     (byte: number) => {
-      place.current = byte;
       if (tab !== undefined) {
         keepPlace(tab, byte);
       }
@@ -185,7 +187,7 @@ export function Viewer() {
             if (tab !== undefined) {
               editViewed(
                 tab,
-                place.current,
+                place(),
                 encoding === 'auto' || encoding === 'bytes'
                   ? undefined
                   : encoding,

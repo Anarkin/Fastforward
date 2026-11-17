@@ -2,7 +2,7 @@ import { sides } from '../shared/sides';
 import type { CommanderToWebviewOf } from '../shared/protocol';
 import type { PaneFilter } from './state';
 import type { StoreParts } from './dialogActions';
-import type { ScrollPlaces } from './scrollPlaces';
+import { withoutWhere, withRecent } from '../../../lib/page/recentPlaces';
 import { filterKey, withoutTab } from './sideFilters';
 import { ViewKeeper, type KeptViews } from '../../../lib/page/viewKeeper';
 import {
@@ -38,17 +38,13 @@ function parsedOf(kept: string): unknown {
   }
 }
 
-export function keptTabActions(
-  { set, get }: StoreParts,
-  scrolls: ScrollPlaces,
-  views: KeptViews,
-) {
+export function keptTabActions({ set, get }: StoreParts, views: KeptViews) {
   const known = new Set<string>();
   const viewOf = (tab: string): string | undefined => {
     if (!known.has(tab)) {
       return undefined;
     }
-    const kept = sidesKeptOf(get(), tab, scrolls);
+    const kept = sidesKeptOf(get(), tab);
     return kept && sidesViewOf(kept);
   };
   const keeping = new ViewKeeper(views, viewOf, () => get().view.tab);
@@ -67,11 +63,12 @@ export function keptTabActions(
           Object.keys(restored.dialogs).length === 0
             ? withoutParked(state.parked, tab)
             : new Map(state.parked).set(tab, restored.dialogs),
+        scrolls: (restored.scrolls ?? []).reduce(
+          (scrolls, [key, offset]) =>
+            withRecent(scrolls, `${tab} ${key}`, offset),
+          withoutWhere(state.scrolls, (key) => key.startsWith(`${tab} `)),
+        ),
       }));
-      scrolls.forget(`${tab} `);
-      for (const [key, offset] of restored.scrolls ?? []) {
-        scrolls.keep(`${tab} ${key}`, offset);
-      }
     }
   };
   return {

@@ -116,7 +116,7 @@ async function viewing(
     });
     const answered = new Set<number>();
     const places: number[] = [];
-    const place = { current: from };
+    const startAt = () => from;
     const asked = () =>
       posted.filter(
         (message): message is ReadRows =>
@@ -137,7 +137,7 @@ async function viewing(
                 encoding="utf-8"
                 language={undefined}
                 viewing={shown}
-                place={place}
+                place={startAt}
                 onPlace={(byte) => places.push(byte)}
               />
             </ViewerStore>,

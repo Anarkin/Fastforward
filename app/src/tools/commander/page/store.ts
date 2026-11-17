@@ -22,7 +22,7 @@ import { nextSort } from './rowOrder';
 import { shownColumns, shownRowsOf } from './shownRows';
 import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
-import { ScrollPlaces } from './scrollPlaces';
+import { withoutWhere, withRecent } from '../../../lib/page/recentPlaces';
 import { dialogSlots, settledDialogs, withoutParked } from './parkedDialogs';
 import { keptTabActions } from './tabViewActions';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
@@ -43,7 +43,6 @@ export function createCommanderStore(
 ): StoreApi<CommanderState> {
   const dropped: string[] = [];
   const cameIcons = new Map<string, string>();
-  const scrolls = new ScrollPlaces();
   const saveColumns = (columns: ColumnWidths) =>
     post({ type: 'columns', columns });
   return createStore<CommanderState>()((set, get, api) => {
@@ -124,11 +123,15 @@ export function createCommanderStore(
     };
     const parts: StoreParts = { set, get, post, onTab, onPane, onDisk };
     const flat = flatActions(parts, flatOptions);
-    const kept = keptTabActions(parts, scrolls, views);
+    const kept = keptTabActions(parts, views);
     const shownWhenReleased = new Set<string>();
     const letGo = (tab: string) => {
       announced(() => set((state) => released(state, tab)));
-      scrolls.forget(`${tab} `);
+      set((state) => ({
+        scrolls: withoutWhere(state.scrolls, (key) =>
+          key.startsWith(`${tab} `),
+        ),
+      }));
       forgetTab(tab);
     };
     const forgetTab = (tab: string) => {
@@ -335,7 +338,7 @@ export function createCommanderStore(
         const { columns, defaultColumns } = get().view;
         saveColumns({ ...columns, [column]: defaultColumns[column] });
       },
-      scrollOf: (key) => scrolls.of(key),
+      scrollOf: (key) => get().scrolls.get(key) ?? 0,
       filterSide: (side, query, options) => {
         set((state) => {
           const { tab, panes } = state.view;
@@ -383,7 +386,7 @@ export function createCommanderStore(
           post({ type: 'countSizes', tab, side, folder, names }),
         ),
       keepScroll: (key, offset) => {
-        scrolls.keep(key, offset);
+        set((state) => ({ scrolls: withRecent(state.scrolls, key, offset) }));
         kept.changed(tabOfScroll(key));
       },
       keepTabs: () => kept.flush(),

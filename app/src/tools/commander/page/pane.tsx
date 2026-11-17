@@ -51,7 +51,35 @@ export function Pane({
 }) {
   const tab = useCommander((state) => state.view.tab);
   const active = useCommander((state) => state.view.active === side);
-  const pane = useCommander((state) => state.view.panes[side]);
+  const paneShown = useCommander(
+    (state) => state.view.panes[side] !== undefined,
+  );
+  const paneFolder = useCommander((state) => state.view.panes[side]?.folder);
+  const archive = useCommander((state) => state.view.panes[side]?.archive);
+  const hidden = useCommander((state) => state.view.panes[side]?.hidden);
+  const marked = useCommander((state) => state.view.panes[side]?.marked);
+  const selectedName = useCommander(
+    (state) => state.view.panes[side]?.selected,
+  );
+  const inRepository = useCommander(
+    (state) => state.view.panes[side]?.inRepository === true,
+  );
+  const elevated = useCommander(
+    (state) => state.view.panes[side]?.elevated === true,
+  );
+  const parentShown = useCommander(
+    (state) => state.view.panes[side]?.parent === true,
+  );
+  const restored = useCommander(
+    (state) => state.view.panes[side]?.restored === true,
+  );
+  const flatShown = useCommander(
+    (state) => state.view.panes[side]?.flat !== undefined,
+  );
+  const duplicatesShown = useCommander(
+    (state) => state.view.panes[side]?.duplicates !== undefined,
+  );
+  const reading = useCommander((state) => goesOn(state.view.panes[side]));
   const told = useCommander((state) =>
     state.readingSides.has(readingKey(state.view.tab, side)),
   );
@@ -90,8 +118,8 @@ export function Pane({
   const platform = useCommander((state) => state.view.platform);
   const gitMissing = useCommander((state) => state.view.gitMissing);
   const copyItems = (copied: Copied, names: readonly string[]) => {
-    if (pane !== undefined) {
-      copyText(copiedText(copied, pane.folder, names, platform));
+    if (paneShown) {
+      copyText(copiedText(copied, paneFolder ?? '', names, platform));
     }
   };
   useEffect(() => {
@@ -123,17 +151,16 @@ export function Pane({
     }),
     [rows],
   );
-  const selectedIndex = listed.indexOf(pane?.selected ?? '');
-  const marked = pane?.marked;
+  const selectedIndex = listed.indexOf(selectedName ?? '');
   const openMenu = (
     key: string | undefined,
     at: { readonly x: number; readonly y: number },
   ) => {
-    const target = menuTargetOf(rows, key, marked, pane?.inRepository === true);
+    const target = menuTargetOf(rows, key, marked, inRepository);
     if (target === undefined) {
       return;
     }
-    const inArchive = pane?.archive !== undefined;
+    const inArchive = archive !== undefined;
     const items = fileMenuItems(
       target,
       {
@@ -162,7 +189,7 @@ export function Pane({
     }
   };
 
-  const scrollKey = `${tab ?? ''} ${side} ${pane?.folder ?? ''} ${layout}`;
+  const scrollKey = `${tab ?? ''} ${side} ${paneFolder ?? ''} ${layout}`;
   const keptScroll = actions.scrollOf(scrollKey);
   const { tiled, across, shownList, tileTextRow, fillScrolledTo, tileRows } =
     useTiles(body, side, rows, scrollKey);
@@ -247,12 +274,12 @@ export function Pane({
             side={side}
             query={query}
             options={options}
-            found={keptFiles(rows, pane?.selected)}
+            found={keptFiles(rows, selectedName)}
             input={filterInput}
             onQuery={filterTo}
             onOptions={(chosen) => actions.filterSide(side, query, chosen)}
             onStep={(step) => {
-              const next = steppedFile(rows, pane?.selected, step);
+              const next = steppedFile(rows, selectedName, step);
               if (next !== undefined) {
                 onSelect(next);
               }
@@ -302,7 +329,7 @@ export function Pane({
         onContextMenu={openFolderMenu}
       >
         <span className="commander-icon">
-          {pane?.elevated && (
+          {elevated && (
             <span
               className="elevated-mark"
               title={strings.commander.readAsAdministrator}
@@ -312,10 +339,10 @@ export function Pane({
           )}
         </span>
         <PathTitle
-          path={pane?.folder ?? ''}
-          looks={folderLooks(pane?.hidden ?? [], pane?.archive)}
-          flat={pane?.flat !== undefined}
-          duplicates={pane?.duplicates !== undefined}
+          path={paneFolder ?? ''}
+          looks={folderLooks(hidden ?? [], archive)}
+          flat={flatShown}
+          duplicates={duplicatesShown}
         />
       </div>
       {!tiled && <ColumnHeader side={side} />}
@@ -332,11 +359,11 @@ export function Pane({
             key={`${shownList} ${tab ?? ''}`}
             placeKey={scrollKey}
             initialOffset={keptScroll}
-            revealAtStart={pane?.restored !== true || keptScroll === 0}
+            revealAtStart={!restored || keptScroll === 0}
             onScrolled={scrolledTo}
             rows={tiled ? tileRows : listed}
             renderRow={tiled ? renderTiles : renderRow}
-            selectedKey={pane?.selected}
+            selectedKey={selectedName}
             label={strings.commander.sides[side]}
             wholeRows
             wheelStep={tiled ? tileTextRow : undefined}
@@ -346,12 +373,12 @@ export function Pane({
             onKeyDown={(event, visible) => {
               const pressed = paneKey(event, {
                 rows,
-                selected: pane?.selected,
+                selected: selectedName,
                 selectedIndex,
                 marked,
                 filtering,
-                reading: told || goesOn(pane),
-                parent: pane?.parent === true,
+                reading: told || reading,
+                parent: parentShown,
                 tiled,
                 across,
                 visible,

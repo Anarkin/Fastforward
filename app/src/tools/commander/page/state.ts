@@ -144,6 +144,7 @@ export interface CommanderSource {
   readonly resized:
     { readonly from: ColumnWidths; readonly widths: ColumnWidths } | undefined;
   readonly filters: ReadonlyMap<string, PaneFilter>;
+  readonly scrolls: ReadonlyMap<string, number>;
 }
 
 export interface PaneFilter {
@@ -316,4 +317,5 @@ export const commanderDefaults: CommanderSource = {
   noAccess: new Map(),
   resized: undefined,
   filters: new Map(),
+  scrolls: new Map(),
 };

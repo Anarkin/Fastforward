@@ -92,7 +92,7 @@ export function useTextRows({
   readonly wrapAt: number | undefined;
   readonly counting: TextWidths;
   readonly least: number;
-  readonly place: React.RefObject<number>;
+  readonly place: () => number;
   readonly onPlace: (byte: number) => void;
   readonly find: ViewerFind | undefined;
 }) {
@@ -355,7 +355,7 @@ export function useTextRows({
       return;
     }
     const from = current.current.rows[current.current.top];
-    const placed = place.current;
+    const placed = place();
     requests.restart();
     placing.current = undefined;
     requests.ask({

@@ -10,7 +10,6 @@ import {
   type SidesView,
 } from './tabView';
 import type { Dialogs } from './parkedDialogs';
-import type { ScrollPlaces } from './scrollPlaces';
 import { filterKey } from './sideFilters';
 import type { KeptTab } from './view';
 
@@ -44,9 +43,8 @@ const marksOf = (pane: PaneView): KeptMarks => ({
 export function sidesKeptOf(
   state: CommanderSource,
   tab: string,
-  scrolls: ScrollPlaces,
 ): SidesKept | undefined {
-  const { view, filters } = state;
+  const { view, filters, scrolls } = state;
   const kept: KeptTab | undefined =
     view.tab === tab ? view : view.kept.get(tab);
   if (kept === undefined) {
@@ -74,8 +72,9 @@ export function sidesKeptOf(
     layouts: kept.layouts,
     panes,
     filters: filtered,
-    scrolls: scrolls
-      .under(`${tab} `)
+    scrolls: [...scrolls]
+      .filter(([key]) => key.startsWith(`${tab} `))
+      .map(([key, offset]) => [key.slice(`${tab} `.length), offset] as const)
       .filter(([key]) => folders.some((start) => key.startsWith(start))),
     dialogs: dialogsOf(state, tab),
   };

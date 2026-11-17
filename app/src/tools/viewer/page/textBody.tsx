@@ -30,7 +30,7 @@ export function TextBody({
   viewing: Viewing;
   find?: ViewerFind;
   finding?: boolean;
-  place: React.RefObject<number>;
+  place: () => number;
   onPlace: (byte: number) => void;
 }) {
   const {
@@ -44,14 +44,13 @@ export function TextBody({
     sideways: ViewerTabView['sideways'],
   ): ViewerTabView['sideways'] =>
     sideways?.body === sidewaysBody ? sideways : undefined;
-  const keptSideways = sidewaysOf(keptViewer(viewing.tab).sideways);
   const across = useViewer((state) =>
     steppedColumn(
       sidewaysOf(state.tabViews.get(viewing.tab)?.sideways)?.column ?? 0,
     ),
   );
-  const sidewaysColumn = useRef(keptSideways?.column ?? 0);
-  const sidewaysLeft = useRef(keptSideways?.left ?? 0);
+  const sidewaysColumn = useRef<number>(undefined);
+  const sidewaysLeft = useRef<number>(undefined);
   const [measured, setMeasured] = useState<number>();
   const screen = measured ?? 1;
   const [columns, setColumns] = useState<number>();
@@ -111,17 +110,17 @@ export function TextBody({
     columns,
     across,
   });
-  const keepSideways = useCallback(
-    () =>
-      keepViewer(tab, {
-        sideways: {
-          body: sidewaysBody,
-          left: sidewaysLeft.current,
-          column: sidewaysColumn.current,
-        },
-      }),
-    [keepViewer, tab, sidewaysBody],
-  );
+  const keepSideways = useCallback(() => {
+    const kept = keptViewer(tab).sideways;
+    const stored = kept?.body === sidewaysBody ? kept : undefined;
+    keepViewer(tab, {
+      sideways: {
+        body: sidewaysBody,
+        left: sidewaysLeft.current ?? stored?.left ?? 0,
+        column: sidewaysColumn.current ?? stored?.column ?? 0,
+      },
+    });
+  }, [keepViewer, keptViewer, tab, sidewaysBody]);
   const onAcross = useCallback(
     (column: number) => {
       sidewaysColumn.current = column;
@@ -183,7 +182,7 @@ export function TextBody({
       width={width}
       wrapped={!whole}
       onSideways={onAcross}
-      keptLeft={keptSideways?.left}
+      keptLeft={sidewaysOf(keptViewer(viewing.tab).sideways)?.left}
       settled={text !== undefined && widths !== undefined}
       onLeft={onLeft}
       reveal={
