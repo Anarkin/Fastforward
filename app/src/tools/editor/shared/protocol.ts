@@ -74,12 +74,11 @@ export type EditorToHost =
       readonly overwriteChanged?: true;
     }
   | { readonly type: 'reloadEdited'; readonly tab: string }
+  | { readonly type: 'compareVersions'; readonly tab: string }
   | {
       readonly type: 'viewEdited';
       readonly tab: string;
       readonly at: number;
-      readonly save?: true;
-      readonly discard?: true;
     }
   | {
       readonly type: 'saveIn';

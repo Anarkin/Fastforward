@@ -1,3 +1,4 @@
+import { sameRoot } from '../../lib/main/paths';
 import { isObject } from '../../lib/main/json';
 import { isTool, type ToolId } from '../shared/tools';
 import type { Layout, TabWindow } from './windows';
@@ -128,6 +129,20 @@ export function savedLayout(
   return first === undefined
     ? [windowWith('1', left, active)]
     : [{ ...first, tabs: [...first.tabs, ...left] }, ...rest];
+}
+
+export function showsSame(
+  tab: SavedTab,
+  wanted: Omit<SavedTab, 'id'>,
+): boolean {
+  const { root } = wanted;
+  return (
+    (root !== undefined || wanted.compare !== undefined) &&
+    (tab.root === undefined
+      ? root === undefined
+      : root !== undefined && sameRoot(tab.root, root)) &&
+    sameTab(tab, { ...wanted, id: tab.id, root: tab.root })
+  );
 }
 
 export function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {

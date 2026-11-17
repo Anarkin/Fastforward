@@ -106,21 +106,6 @@ export function createShellStore(
           post({ type: 'closeTab', tab: id });
         }
       },
-      viewEdited: (id, at) => {
-        const tab = get().tabs?.find((each) => each.id === id);
-        if (tab?.unsaved === true) {
-          set((state) => ({
-            confirming: { kind: 'unsavedView', tab, at },
-            popups: withPopup(state.popups, 'confirm', true),
-          }));
-        } else if (tab !== undefined) {
-          post({
-            type: 'tool',
-            tool: 'editor',
-            message: { type: 'viewEdited', tab: id, at },
-          });
-        }
-      },
       confirm: () => {
         const { confirming } = get();
         if (confirming === undefined) {

@@ -326,6 +326,7 @@ export const strings = {
     tabLeaves: 'Let the next Tab move the focus on',
     closeEditor: 'Close the file being edited, once nothing is selected',
     viewEdited: 'View the file being edited in this tab',
+    compareEditedVersions: 'Compare the file as saved with its versions in git',
     replaceInFile: 'Replace in the file',
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',

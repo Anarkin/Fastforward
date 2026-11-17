@@ -244,40 +244,6 @@ suite('Shell store', () => {
     ]);
   });
 
-  test('turns an edited tab into a viewer at once while it has no unsaved changes, asking first whether to save them while it has, as closing it asks', () => {
-    const { posted, store } = posting();
-    const saved: TabInfo = { id: '3', tool: 'editor', name: 'a.txt' };
-    const edited: TabInfo = {
-      id: '4',
-      tool: 'editor',
-      name: 'b.txt',
-      unsaved: true,
-    };
-    store
-      .getState()
-      .receive({ type: 'tabs', tabs: [saved, edited], active: '3' });
-    store.getState().viewEdited('3', 5);
-    store.getState().viewEdited('4', 7);
-    assert.deepStrictEqual(store.getState().confirming, {
-      kind: 'unsavedView',
-      tab: edited,
-      at: 7,
-    });
-    store.getState().dontSave();
-    assert.deepStrictEqual(posted, [
-      {
-        type: 'tool',
-        tool: 'editor',
-        message: { type: 'viewEdited', tab: '3', at: 5 },
-      },
-      {
-        type: 'tool',
-        tool: 'editor',
-        message: { type: 'viewEdited', tab: '4', at: 7, discard: true },
-      },
-    ]);
-  });
-
   test('asks whether to close the window the main process asks about, closing it once confirmed, and opens a new window when asked', () => {
     const { posted, store } = posting();
     store.getState().receive({ type: 'confirmCloseWindow' });

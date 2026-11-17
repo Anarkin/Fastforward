@@ -12,7 +12,6 @@ export type Tab = SavedTab;
 export interface TabName {
   readonly name: string;
   readonly folder?: string;
-  readonly icon?: string;
   readonly unsaved?: true;
 }
 
@@ -40,8 +39,6 @@ export interface ShellAccess {
   ): Promise<void>;
   openView(page: Page, file: string, version?: FileVersion): Promise<void>;
   openEdit(page: Page, file: string): Promise<void>;
-  editViewed(page: Page, tab: string): Promise<void>;
-  viewEdited(page: Page, tab: string): Promise<void>;
   openCompare(page: Page, compare: Compared): Promise<void>;
   openFolders(
     page: Page,
@@ -98,8 +95,6 @@ export const unattachedShell: ShellAccess = {
   open: () => Promise.resolve(),
   openView: () => Promise.resolve(),
   openEdit: () => Promise.resolve(),
-  editViewed: () => Promise.resolve(),
-  viewEdited: () => Promise.resolve(),
   openCompare: () => Promise.resolve(),
   openFolders: () => Promise.resolve(),
   setRoot: () => undefined,

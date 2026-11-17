@@ -157,8 +157,8 @@ export class Editing {
       : undefined;
   }
 
-  startAt(tab: string, start: ViewedStart): void {
-    this.starts.set(tab, start);
+  startAt(file: string, start: ViewedStart): void {
+    this.starts.set(file, start);
   }
 
   async show(page: Page, tab: string, file: string): Promise<void> {
@@ -226,8 +226,8 @@ export class Editing {
     if (pending?.file === file) {
       return pending.loading;
     }
-    const start = this.starts.get(tab);
-    this.starts.delete(tab);
+    const start = this.starts.get(file);
+    this.starts.delete(file);
     const loading = this.load(file, 0, start?.encoding, start?.byte).then(
       (read): Opened => ({
         file,
@@ -682,7 +682,6 @@ export class Editing {
   }
 
   closed(tab: string): void {
-    this.starts.delete(tab);
     this.opened.get(tab)?.stop();
     this.opened.delete(tab);
     this.opening.delete(tab);

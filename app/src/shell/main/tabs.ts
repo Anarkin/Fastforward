@@ -1,11 +1,10 @@
-import { sameRoot } from '../../lib/main/paths';
 import type { ToolId } from '../shared/tools';
 import type { Pages } from './pages';
 import type { Storage } from './storage';
 import type { TabHistory } from './tabHistory';
 import type { TabViews } from './tabViews';
 import type { Page, Tab, Tools } from './toolContract';
-import type { Compared, FileVersion } from './savedTabs';
+import { showsSame, type Compared, type FileVersion } from './savedTabs';
 import {
   nextTabId,
   windowOf,
@@ -127,12 +126,12 @@ export class Tabs {
     let next = Math.max(Number(nextTabId(storage.layout)), this.lastTabId + 1);
     for (const root of roots) {
       const existing = reuse
-        ? [...tabs, ...added].find(
-            (tab) =>
-              tab.tool === tool &&
-              tab.root !== undefined &&
-              root !== undefined &&
-              sameRoot(tab.root, root),
+        ? [...tabs, ...added].find((tab) =>
+            showsSame(tab, {
+              tool,
+              ...(root !== undefined && { root }),
+              ...kind,
+            }),
           )
         : undefined;
       if (existing !== undefined) {
@@ -173,37 +172,6 @@ export class Tabs {
       return;
     }
     await this.show(there, last);
-  }
-
-  editViewed(page: Page, id: string): Promise<void> {
-    return this.turned(page, id, 'viewer', 'editor');
-  }
-
-  viewEdited(page: Page, id: string): Promise<void> {
-    return this.turned(page, id, 'editor', 'viewer');
-  }
-
-  private async turned(
-    page: Page,
-    id: string,
-    from: ToolId,
-    to: ToolId,
-  ): Promise<void> {
-    const { storage } = this;
-    const turning = this.pages
-      .windowOf(page)
-      .tabs.find((tab) => tab.id === id && tab.tool === from);
-    if (turning?.root === undefined) {
-      return;
-    }
-    this.tools[turning.tool].closed(page, turning);
-    this.views.drop(id);
-    this.host.save(
-      storage.setLayout(
-        withChanged(storage.layout, { id, tool: to, root: turning.root }),
-      ),
-    );
-    await this.show(page, id);
   }
 
   setRoot(id: string, root: string): void {

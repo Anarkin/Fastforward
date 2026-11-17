@@ -5,11 +5,6 @@ import type { TabInfo, ToHost } from '../shared/protocol';
 export type Confirming =
   | { readonly kind: 'tab'; readonly tab: TabInfo }
   | { readonly kind: 'unsavedTab'; readonly tab: TabInfo }
-  | {
-      readonly kind: 'unsavedView';
-      readonly tab: TabInfo;
-      readonly at: number;
-    }
   | { readonly kind: 'window'; readonly unsaved?: readonly string[] }
   | {
       readonly kind: 'quit';
@@ -26,17 +21,6 @@ export function closingOf(confirming: Confirming, save: boolean): ToHost {
         type: 'closeTab',
         tab: confirming.tab.id,
         ...(save && { save: true }),
-      };
-    case 'unsavedView':
-      return {
-        type: 'tool',
-        tool: 'editor',
-        message: {
-          type: 'viewEdited',
-          tab: confirming.tab.id,
-          at: confirming.at,
-          ...(save ? { save: true } : { discard: true }),
-        },
       };
     case 'window':
       return {
@@ -63,7 +47,6 @@ export function confirmation(confirming: Confirming): {
 } {
   switch (confirming.kind) {
     case 'unsavedTab':
-    case 'unsavedView':
       return {
         title: strings.confirm.saveTitle,
         lines: strings.confirm.filesLines([

@@ -4,6 +4,7 @@ import { EditorState } from '@codemirror/state';
 import { createEditorStore } from '../../../../../tools/editor/page/store';
 import { noop } from '../../../../helpers/fixtures';
 import { languageShown } from '../../../../../tools/editor/page/state';
+import type { EditorToHost } from '../../../../../tools/editor/shared/protocol';
 
 const shown = () => ({ store: createEditorStore(noop) });
 
@@ -13,6 +14,17 @@ const keptOf = (text: string) => ({
 });
 
 suite('Editor actions', () => {
+  test('asks the main process to view the file of a tab at the line at its top, and to compare its versions, asking nothing about its changes, as the editor stays open', () => {
+    const posted: EditorToHost[] = [];
+    const store = createEditorStore((message) => posted.push(message));
+    store.getState().viewEdited('3', 5);
+    store.getState().compareVersions('3');
+    assert.deepStrictEqual(posted, [
+      { type: 'viewEdited', tab: '3', at: 5 },
+      { type: 'compareVersions', tab: '3' },
+    ]);
+  });
+
   test('keeps the editor of each tab apart, for when its tab shows again', () => {
     const { store } = shown();
     const first = keptOf('first');

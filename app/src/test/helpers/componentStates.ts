@@ -61,8 +61,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the groups in view in the shortcuts popup, measured anew from its pane after each render',
   'shell/page/tabBar.tsx cycle':
     'made once: the tabs stepped to ahead of the one shown while ctrl+tab repeats, made once for the tab bar',
-  'shell/page/tabBar.tsx failed':
-    'a measure: the icon of a tab that failed to load, in the tab bar, which stays mounted through tab changes',
   'shell/page/tabDrag.ts drag':
     'a moment: set only while a tab is dragged in its row',
   'shell/page/tabDrag.ts torn':

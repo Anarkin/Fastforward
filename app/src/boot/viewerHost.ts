@@ -1,4 +1,3 @@
-import { app } from 'electron';
 import { watchFolder } from '../lib/main/watch';
 import { systemCodePage } from '../components/encodings/main/codePages';
 import type { CommanderTool } from '../tools/commander/main/tool';
@@ -28,10 +27,7 @@ export function viewerToolOf({
     watch: watchFolder,
     pdfPlaces,
     hiddenParts: (file) => commanderTool.hiddenParts(file),
-    fileIcon: async (file) =>
-      (await app.getFileIcon(file, { size: 'normal' })).toPNG(),
-    editViewed: (page, tab, file, at) =>
-      editorTool.editViewed(page, tab, file, at),
+    editViewed: (page, file, at) => editorTool.editViewed(page, file, at),
     closed: (file) => commanderTool.viewClosed(file),
     versionCopy: (file, rev) => gitTool.versionCopy(file, rev),
     fileHistory: (file) => gitTool.fileHistory(file),

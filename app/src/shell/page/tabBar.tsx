@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo } from '../shared/protocol';
-import type { ToolId } from '../shared/tools';
 import { AddIcon, CloseIcon, ToolIcon } from '../../lib/page/icons';
 import { titleBarHeight } from '../shared/titleBar';
 import { shellKeymap } from '../shared/keymap';
@@ -16,29 +15,10 @@ import { revealTab, sidewaysDelta, useOverflowing } from './tabStrip';
 import { leaving, usePlacedTabs } from './tabMotions';
 import { tabMenuItems, newTabTrigger } from './tabMenus';
 
-function TabIcon({ url, tool }: { url: string; tool: ToolId }) {
-  const [failed, setFailed] = useState<string>();
-  return failed === url ? (
-    <ToolIcon tool={tool} />
-  ) : (
-    <img
-      className="icon tab-icon"
-      src={url}
-      alt=""
-      draggable={false}
-      onError={() => setFailed(url)}
-    />
-  );
-}
-
 function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
   return [
     <span key="divider" className="tab-divider" />,
-    tab.icon === undefined ? (
-      <ToolIcon key="icon" tool={tab.tool} />
-    ) : (
-      <TabIcon key="icon" url={tab.icon} tool={tab.tool} />
-    ),
+    <ToolIcon key="icon" tool={tab.tool} />,
     <span key="name" className="tab-name">
       {tab.name}
     </span>,

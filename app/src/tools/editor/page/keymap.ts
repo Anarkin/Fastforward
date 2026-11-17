@@ -44,6 +44,9 @@ export const editorKeymap = {
     { fields: true },
   ),
   viewEdited: bind('Editing', strings.actions.viewEdited, { F3: true }),
+  compareVersions: bind('Editing', strings.actions.compareEditedVersions, {
+    'Shift+F3': true,
+  }),
   comment: bind(
     'Editing',
     strings.actions.toggleComment,

@@ -1,3 +1,4 @@
+import { sameRoot } from '../../../lib/main/paths';
 import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
@@ -11,7 +12,6 @@ import {
 } from '../../../shell/main/toolContract';
 import type { ViewerToHost } from '../shared/protocol';
 import type { FileHistoryListed } from '../../../components/versions/shared/versions';
-import { viewerIconUrl } from './icons';
 import type { WatchFolder } from '../../../lib/main/watch';
 import { post } from './post';
 import { ViewerPages } from './pages';
@@ -35,10 +35,8 @@ export interface ViewerAccess {
   readonly watch: WatchFolder;
   readonly pdfPlaces: PdfPlaceStore;
   readonly hiddenParts: (file: string) => Promise<readonly boolean[]>;
-  readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly editViewed: (
     page: Page,
-    tab: string,
     file: string,
     at: { readonly byte: number; readonly encoding?: TextEncoding },
   ) => Promise<void>;
@@ -86,7 +84,6 @@ export class ViewerTool implements Tool<'viewer'> {
       (page, tab) => this.compareVersions(page, tab),
     );
     this.serving = new Serving(
-      access,
       () => this.shell.tabs(),
       (tab) => this.copies.get(tab.id),
     );
@@ -110,8 +107,11 @@ export class ViewerTool implements Tool<'viewer'> {
       return;
     }
     this.pages.shown.set(page, { tab: tab.id, viewingsAsked: 0 });
-    const start = this.starts.get(tab.id);
-    this.starts.delete(tab.id);
+    const start =
+      tab.version === undefined ? this.starts.get(tab.root) : undefined;
+    if (tab.version === undefined) {
+      this.starts.delete(tab.root);
+    }
     post(page, {
       type: 'show',
       tab: tab.id,
@@ -132,11 +132,22 @@ export class ViewerTool implements Tool<'viewer'> {
 
   async viewEdited(
     page: Page,
-    tab: string,
+    file: string,
     start: { readonly byte: number; readonly encoding?: TextEncoding },
   ): Promise<void> {
-    this.starts.set(tab, start);
-    await this.shell.viewEdited(page, tab);
+    const viewing = this.shell
+      .tabs()
+      .some(
+        (tab) =>
+          tab.tool === 'viewer' &&
+          tab.root !== undefined &&
+          tab.version === undefined &&
+          sameRoot(tab.root, file),
+      );
+    if (!viewing) {
+      this.starts.set(file, start);
+    }
+    await this.shell.open(page, 'viewer', [file], true);
   }
 
   private async listVersions(
@@ -293,7 +304,6 @@ export class ViewerTool implements Tool<'viewer'> {
                         ? strings.versions.staged
                         : shortHash(tab.version.rev),
                   }),
-                  icon: viewerIconUrl(tab.id, tab.root),
                 },
               ],
             ],
@@ -331,10 +341,6 @@ export class ViewerTool implements Tool<'viewer'> {
     return this.serving.file(url, range);
   }
 
-  icon(url: URL): Promise<Response> {
-    return this.serving.icon(url);
-  }
-
   private async editViewed(
     page: Page,
     tab: string,
@@ -353,6 +359,6 @@ export class ViewerTool implements Tool<'viewer'> {
       });
       return;
     }
-    await this.access.editViewed(page, tab, viewed.root, at);
+    await this.access.editViewed(page, viewed.root, at);
   }
 }

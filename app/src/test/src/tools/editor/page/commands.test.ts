@@ -25,7 +25,10 @@ suite('Editor keys', () => {
     assert.deepStrictEqual(editorKeymap.tabLeaves.keys, { 'Ctrl+M': true });
   });
 
-  test('views the file on F3, as F4 edits the file a viewer shows', () => {
+  test('views the file on F3, as F4 edits the file a viewer shows, and compares its versions on Shift+F3, as the viewer and the commander do', () => {
     assert.deepStrictEqual(editorKeymap.viewEdited.keys, { F3: true });
+    assert.deepStrictEqual(editorKeymap.compareVersions.keys, {
+      'Shift+F3': true,
+    });
   });
 });

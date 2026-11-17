@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
-import { closingOf, confirmation } from '../../../../shell/page/confirming';
+import { confirmation } from '../../../../shell/page/confirming';
 
 suite('Confirmations', () => {
   test('names the tab to close on a line of its own, by the whole path of its folder when it has one, with no question or label, as the title and the buttons ask it, and asks before closing a window or quitting by its title and buttons alone, with no question', () => {
@@ -97,36 +97,6 @@ suite('Confirmations', () => {
         confirm: 'Save All',
         dontSave: true,
       },
-    );
-  });
-
-  test('asks to save the changes of a file before viewing it instead of editing it as it asks before closing it, asking the editor to view it once its changes are saved or dropped', () => {
-    const tab = {
-      id: '2',
-      tool: 'editor',
-      name: 'a.txt',
-      root: '/work/a.txt',
-      unsaved: true,
-    } as const;
-    const viewing = { kind: 'unsavedView', tab, at: 12 } as const;
-    assert.deepStrictEqual(
-      confirmation(viewing),
-      confirmation({ kind: 'unsavedTab', tab }),
-    );
-    assert.deepStrictEqual(
-      [closingOf(viewing, true), closingOf(viewing, false)],
-      [
-        {
-          type: 'tool',
-          tool: 'editor',
-          message: { type: 'viewEdited', tab: '2', at: 12, save: true },
-        },
-        {
-          type: 'tool',
-          tool: 'editor',
-          message: { type: 'viewEdited', tab: '2', at: 12, discard: true },
-        },
-      ],
     );
   });
 });

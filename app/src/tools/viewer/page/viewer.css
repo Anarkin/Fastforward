@@ -212,6 +212,7 @@
   height: var(--viewer-row-height);
   padding: 0 calc(var(--scrollbar-size) + 8px) 0 8px;
   line-height: var(--viewer-row-height);
+  background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
 }
 

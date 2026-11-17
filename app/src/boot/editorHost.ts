@@ -1,6 +1,5 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { app } from 'electron';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { GitLocator } from '../tools/git/main/gitLocator';
 import { watchFolder } from '../lib/main/watch';
@@ -22,6 +21,7 @@ export interface EditorHostDeps {
   readonly defaultSettingsCopy: string;
   readonly commanderTool: CommanderTool;
   readonly viewEdited: EditorAccess['viewEdited'];
+  readonly compareHistory: EditorAccess['compareHistory'];
 }
 
 export function editorToolOf({
@@ -30,6 +30,7 @@ export function editorToolOf({
   defaultSettingsCopy,
   commanderTool,
   viewEdited,
+  compareHistory,
 }: EditorHostDeps): EditorTool {
   const sources = (): TextDefaultSources => ({
     settings: userSettings.settings.tools.editor,
@@ -58,11 +59,10 @@ export function editorToolOf({
     editorDefaults: (file, asksGit) => textDefaultsOf(file, asksGit, sources()),
     editorSources: (file) => endingSourcesOf(file, sources()),
     closesBrackets: () => userSettings.settings.tools.editor.closeBrackets,
-    fileIcon: async (file) =>
-      (await app.getFileIcon(file, { size: 'normal' })).toPNG(),
     viewedCopy: (file) => commanderTool.viewedCopy(file),
     readOnlyCopy: (file) => commanderTool.readOnlyCopy(file),
     copySaved: (file) => commanderTool.copySaved(file),
     viewEdited,
+    compareHistory,
   });
 }

@@ -36,7 +36,6 @@ export function viewer() {
   const watching: { file: string; changed: () => void }[] = [];
   const places = new Map<string, { place: PdfPlace; file: string }>();
   const edited: {
-    readonly tab: string;
     readonly file: string;
     readonly at: { readonly byte: number; readonly encoding?: TextEncoding };
   }[] = [];
@@ -62,10 +61,8 @@ export function viewer() {
       Promise.resolve(
         pathParts(file).map((part) => path.basename(part.path).startsWith('.')),
       ),
-    fileIcon: (file) =>
-      Promise.resolve(new TextEncoder().encode(`icon of ${file}`)),
-    editViewed: (_page, tab, file, at) => {
-      edited.push({ tab, file, at });
+    editViewed: (_page, file, at) => {
+      edited.push({ file, at });
       return Promise.resolve();
     },
     closed: (file) => {
@@ -84,7 +81,7 @@ export function viewer() {
     },
   });
   const page = new ViewerPage();
-  const { shell, pages, tabs, notices, versionsSet, turnedToView } =
+  const { shell, pages, tabs, notices, versionsSet, tabsOpened } =
     fakeShell(page);
   tool.attach(shell);
   const send = (message: ViewerToHost, from: Page = page) =>
@@ -112,7 +109,7 @@ export function viewer() {
     histories,
     comparedHistories,
     versionsSet,
-    turnedToView,
+    tabsOpened,
   };
 }
 

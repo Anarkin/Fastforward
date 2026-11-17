@@ -32,11 +32,7 @@ const respond = appRoutes(
       icon: () => servedDrawing(),
       thumbnail: () => servedDrawing(),
     },
-    viewer: {
-      icon: () => servedDrawing(),
-      file: (_url, range) => servedDrawing(range),
-    },
-    editor: { icon: () => servedDrawing() },
+    viewer: { file: (_url, range) => servedDrawing(range) },
     diff: { image: () => servedDrawing() },
   }),
   () =>

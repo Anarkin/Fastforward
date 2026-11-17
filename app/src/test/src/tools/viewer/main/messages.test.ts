@@ -24,11 +24,11 @@ suite('Viewer tool turning a file viewed into one edited', () => {
     await tool.show(page, viewing);
     await send({ type: 'editViewed', tab: '3', at: 4, encoding: 'utf-16le' });
     assert.deepStrictEqual(edited, [
-      { tab: '3', file: notes, at: { byte: 4, encoding: 'utf-16le' } },
+      { file: notes, at: { byte: 4, encoding: 'utf-16le' } },
     ]);
   });
 
-  test('turns no tab it does not show, nor one at a place that is no byte or in an encoding it does not know, as the page is not trusted', async () => {
+  test('edits the file of no tab it does not show, nor one at a place that is no byte or in an encoding it does not know, as the page is not trusted', async () => {
     const notes = path.join(opened, 'notes.txt');
     fs.writeFileSync(notes, 'one\n');
     const { tool, page, send, tabs, edited } = viewer();

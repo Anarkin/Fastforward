@@ -39,25 +39,14 @@ const typeAndClose = async (typed: string) => {
 suite('App editor', () => {
   sharedEditorApp();
 
-  test('opens the file selected on F4 in an editor tab of its own named and iconed after it, its text in the editor, and goes back to that tab on F4 again rather than opening another', async () => {
+  test('opens the file selected on F4 in an editor tab of its own named after it, with the icon of the editor, its text in the editor, and goes back to that tab on F4 again rather than opening another', async () => {
     await edit('notes.txt');
     assert.strictEqual(
       await activeTab().locator('.tab-name').textContent(),
       'notes.txt',
     );
-    await waitFor(
-      () =>
-        activeTab()
-          .locator('img.tab-icon')
-          .evaluate(
-            (image) =>
-              image instanceof HTMLImageElement &&
-              image.complete &&
-              image.naturalWidth > 0,
-          )
-          .catch(() => false),
-      'the icon of the file on its tab',
-    );
+    await activeTab().locator('.tool-icon.tool-editor').waitFor();
+    assert.strictEqual(await activeTab().locator('img').count(), 0);
     await waitFor(
       async () => (await editedText()) === 'one\ntwo\n',
       'the text',
@@ -279,7 +268,7 @@ suite('App editor', () => {
     await right().locator('.commander-row', { hasText: 'packed' }).waitFor();
   });
 
-  test('turns the tab of a file viewed into one editing it on F4, in its place among the tabs, the cursor on the line the viewer showed at its top', async () => {
+  test('edits a file viewed in an editor tab of its own on F4, the cursor on the line the viewer showed at its top, and goes to that tab on F4 again', async () => {
     const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
     fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);
     await backToCommander();
@@ -309,11 +298,26 @@ suite('App editor', () => {
           'Col 1',
       'the cursor at the start of the line the viewer showed',
     );
-    assert.strictEqual(await page.locator('.tabs [role="tab"]').count(), tabs);
-    assert.strictEqual(await activeIndex(), viewerTab);
+    assert.strictEqual(
+      await page.locator('.tabs [role="tab"]').count(),
+      tabs + 1,
+    );
+    assert.strictEqual(await activeIndex(), tabs);
     await waitFor(
       async () => (await topLine()) === `line ${top[1]}`,
       'the line at the top of the editor',
+    );
+    await page.locator('.tabs [role="tab"]').nth(viewerTab).click();
+    await rows.first().waitFor();
+    await page.locator('.viewer .column-body').first().focus();
+    await page.keyboard.press('F4');
+    await waitFor(
+      async () => (await activeIndex()) === tabs,
+      'the tab editing the file',
+    );
+    assert.strictEqual(
+      await page.locator('.tabs [role="tab"]').count(),
+      tabs + 1,
     );
   });
 

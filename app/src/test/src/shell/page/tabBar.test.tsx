@@ -76,19 +76,15 @@ function draggable(shown: readonly TabInfo[], tearing = false): boolean[] {
 suite('Tab bar', () => {
   afterEach(() => vi.useRealTimers());
 
-  test('draws the icon a tab gives instead of its tool’s, as a viewer tab gives its file’s', () => {
+  test('draws the icon of its tool on every tab, a file viewed or edited too, rather than the icon of the file', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
         <ShellStore
           value={tabsStore(
             [
               { id: '1', tool: 'commander', name: 'Commander' },
-              {
-                id: '2',
-                tool: 'commander',
-                name: 'notes.txt',
-                icon: '/commander-icon?view=2',
-              },
+              { id: '2', tool: 'viewer', name: 'notes.txt' },
+              { id: '3', tool: 'editor', name: 'notes.txt' },
             ],
             '2',
             false,
@@ -98,12 +94,17 @@ suite('Tab bar', () => {
         </ShellStore>,
       ),
     ).window.document;
-    const [plain, viewer] = document.querySelectorAll('.tabs .tab');
-    assert.ok(plain?.querySelector('.tool-icon'));
-    assert.strictEqual(plain.querySelector('img'), null);
-    assert.strictEqual(
-      viewer?.querySelector('img.tab-icon')?.getAttribute('src'),
-      '/commander-icon?view=2',
+    const tabs = [...document.querySelectorAll('.tabs .tab')];
+    assert.deepStrictEqual(
+      tabs.map((tab) => [
+        tab.querySelector('.tool-icon')?.getAttribute('class'),
+        tab.querySelector('img'),
+      ]),
+      [
+        ['icon tool-icon tool-commander', null],
+        ['icon tool-icon tool-viewer', null],
+        ['icon tool-icon tool-editor', null],
+      ],
     );
   });
 

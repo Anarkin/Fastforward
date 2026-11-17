@@ -62,8 +62,10 @@ export function useEditorView(language: string | undefined) {
     editorKeeper,
     keptEditing,
     keepEditing,
+    compareVersions,
+    viewEdited,
   } = useEditorActions();
-  const { closeTab, viewEdited } = useShellActions();
+  const { closeTab } = useShellActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
   const [status, setStatus] = useState<string>();
   const [findCount, setFindCount] = useState<ReturnType<typeof countOf>>();
@@ -159,6 +161,7 @@ export function useEditorView(language: string | undefined) {
         },
         close: () => closeTab(tab),
         view: () => viewEdited(tab, placeOf(shown).from),
+        compare: () => compareVersions(tab),
       },
       scrolling: scrollingNow,
       onUpdate: (update) => {
@@ -323,6 +326,7 @@ export function useEditorView(language: string | undefined) {
     saveText,
     closeTab,
     viewEdited,
+    compareVersions,
     setGoingToLine,
   ]);
 

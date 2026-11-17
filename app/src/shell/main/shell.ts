@@ -182,10 +182,8 @@ export class Shell {
           version === undefined ? {} : { version },
         ),
       openEdit: (page, file) => this.tabs.open(page, 'editor', [file], true),
-      editViewed: (page, tab) => this.tabs.editViewed(page, tab),
-      viewEdited: (page, tab) => this.tabs.viewEdited(page, tab),
       openCompare: (page, compare) =>
-        this.tabs.open(page, 'diff', [undefined], false, { compare }),
+        this.tabs.open(page, 'diff', [undefined], true, { compare }),
       openFolders: (page, tool, folders) =>
         this.tools[tool].open(page, folders),
       setRoot: (tab, root) => this.tabs.setRoot(tab, root),

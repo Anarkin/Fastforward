@@ -36,6 +36,8 @@ export interface EditorActions {
     overwrite?: { readonly readOnly?: boolean; readonly changed?: boolean },
   ) => void;
   readonly reloadEdited: (tab: string) => void;
+  readonly compareVersions: (tab: string) => void;
+  readonly viewEdited: (tab: string, at: number) => void;
   readonly editSource: (tab: string, file: string) => void;
   readonly saveIn: (
     tab: string,

@@ -383,6 +383,29 @@ suite('Style', () => {
     });
   });
 
+  test('draws the path above what the commander, the viewer and the editor show on the background of the header of a file in the diff, as git draws the path of each file', () => {
+    const header = withClass(
+      rendered(<div className="file-header" />),
+      'file-header',
+    );
+    const rows = rendered(
+      <div>
+        <div className="commander">
+          <div className="commander-path commander-line" />
+        </div>
+        <div className="viewer-path" />
+        <div className="viewer-path editor-path" />
+      </div>,
+    );
+    assert.deepStrictEqual(
+      [
+        ...allWithClass(rows, 'commander-path'),
+        ...allWithClass(rows, 'viewer-path'),
+      ].map((row) => cascaded(row, 'background')),
+      Array.from({ length: 3 }, () => cascaded(header, 'background')),
+    );
+  });
+
   test('lays the path of a commander side out as its rows are, on a line of its own with a line under it, starting where the names of the rows start and running to the end of their dates', () => {
     const line = rendered(
       <div className="commander">

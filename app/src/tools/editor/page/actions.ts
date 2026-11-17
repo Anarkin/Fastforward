@@ -17,6 +17,8 @@ type StreamActions = Pick<
   | 'editSource'
   | 'saveIn'
   | 'reopenIn'
+  | 'compareVersions'
+  | 'viewEdited'
 >;
 
 const askOf = {
@@ -108,6 +110,8 @@ export function editorActions(
       saveIn: (tab, encoding, bom) =>
         post({ type: 'saveIn', tab, encoding, bom }),
       reopenIn: (tab, encoding) => post({ type: 'reopenIn', tab, encoding }),
+      compareVersions: (tab) => post({ type: 'compareVersions', tab }),
+      viewEdited: (tab, at) => post({ type: 'viewEdited', tab, at }),
     },
   };
 }

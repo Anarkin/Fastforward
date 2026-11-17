@@ -62,6 +62,7 @@ suite('The state of the editor', () => {
         goToLine: noop,
         close: noop,
         view: noop,
+        compare: noop,
       },
       scrolling: () => defaultScrolling,
       cursor: defaultCursorLook,

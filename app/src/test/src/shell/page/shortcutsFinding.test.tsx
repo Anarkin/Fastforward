@@ -167,7 +167,7 @@ suite('Shortcuts popup', () => {
       ['git', 1],
       ['viewer', 1],
       ['diff', 0],
-      ['editor', 1],
+      ['editor', 2],
       ['paint', 0],
     ]);
     assert.deepStrictEqual(counts('ARCHIVE')[2], ['commander', 2]);
@@ -380,7 +380,7 @@ suite('Shortcuts popup', () => {
           [
             ...document.querySelectorAll('.shortcuts-tool .shortcuts-count'),
           ].map((count) => count.textContent),
-          ['0', '0', '2', '1', '1', '0', '1', '0'],
+          ['0', '0', '2', '1', '1', '0', '2', '0'],
         );
         assert.strictEqual(
           document.querySelectorAll('.shortcuts-tool.empty').length,

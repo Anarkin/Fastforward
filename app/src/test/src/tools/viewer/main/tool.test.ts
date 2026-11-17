@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
-import { viewerIconUrl } from '../../../../../tools/viewer/main/icons';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 import { ViewerPage, viewer } from './viewerFixtures';
 import { pathParts } from '../../../../../lib/shared/pathParts';
@@ -29,7 +28,7 @@ suite('Viewer tool', () => {
 
   afterEach(() => removeFolder(opened));
 
-  test('names a tab after its file with the icon of the file and gives its folder as the folder of the tab', async () => {
+  test('names a tab after its file, leaving it the icon of the viewer, and gives its folder as the folder of the tab', async () => {
     const notes = path.join(opened, 'notes.txt');
     fs.writeFileSync(notes, 'one');
     const { tool, page } = viewer();
@@ -37,7 +36,6 @@ suite('Viewer tool', () => {
 
     assert.deepStrictEqual(tool.names([viewing]).get('3'), {
       name: 'notes.txt',
-      icon: viewerIconUrl('3', notes),
     });
     assert.strictEqual(tool.folderOf(viewing), opened);
     await tool.show(page, viewing);
@@ -70,25 +68,6 @@ suite('Viewer tool', () => {
       page.of('rows').map((answer) => answer.rows.map((row) => row.text)),
       [['one', 'two']],
     );
-  });
-
-  test('serves the icon of the file a tab views, and nothing for a file no tab views', async () => {
-    const notes = path.join(opened, 'notes.txt');
-    fs.writeFileSync(notes, 'one');
-    const { tool, tabs } = viewer();
-    tabs.push({ id: '3', tool: 'viewer', root: notes });
-
-    const icon = await tool.icon(
-      new URL(`fastforward://app${viewerIconUrl('3', notes)}`),
-    );
-    assert.strictEqual(icon.status, 200);
-    assert.strictEqual(await icon.text(), `icon of ${notes}`);
-    const other = await tool.icon(
-      new URL(
-        `fastforward://app${viewerIconUrl('3', path.join(opened, 'other.txt'))}`,
-      ),
-    );
-    assert.strictEqual(other.status, 404);
   });
 
   test('views a version of a file from the copy git makes of it, under the path of the file, which need not be there, the looks of its parts following that path', async () => {
@@ -287,32 +266,30 @@ suite('Viewer tool', () => {
     assert.deepStrictEqual(
       [names.get('3'), names.get('4')],
       [
-        {
-          name: 'notes.txt',
-          folder: '0123456',
-          icon: viewerIconUrl('3', notes),
-        },
-        {
-          name: 'notes.txt',
-          folder: strings.versions.staged,
-          icon: viewerIconUrl('4', notes),
-        },
+        { name: 'notes.txt', folder: '0123456' },
+        { name: 'notes.txt', folder: strings.versions.staged },
       ],
     );
   });
 
-  test('turns a tab editing a file into one viewing it, showing it once at the byte and in the encoding the editor gives', async () => {
+  test('views a file edited in a viewer tab of its own, showing it once at the byte and in the encoding the editor gives, or goes to the tab viewing it already as it was, never to that of a version', async () => {
     const notes = path.join(opened, 'notes.txt');
     fs.writeFileSync(notes, 'one\ntwo\n');
-    const { tool, page, turnedToView } = viewer();
-    await tool.viewEdited(page, '3', { byte: 4, encoding: 'windows-1250' });
-    assert.deepStrictEqual(turnedToView, ['3']);
-    const viewing: Tab = { id: '3', tool: 'viewer', root: notes };
+    const { tool, page, tabs, tabsOpened } = viewer();
+    tabs.push(versionOf(notes));
+    await tool.viewEdited(page, notes, { byte: 4, encoding: 'windows-1250' });
+    assert.deepStrictEqual(tabsOpened, [['viewer', [notes], true]]);
+    const viewing: Tab = { id: '5', tool: 'viewer', root: notes };
+    tabs.push(viewing);
     await tool.show(page, viewing);
+    await tool.show(page, viewing);
+    await tool.viewEdited(page, notes, { byte: 8 });
     await tool.show(page, viewing);
     assert.deepStrictEqual(page.of('show'), [
-      { type: 'show', tab: '3', file: notes, at: 4, encoding: 'windows-1250' },
-      { type: 'show', tab: '3', file: notes },
+      { type: 'show', tab: '5', file: notes, at: 4, encoding: 'windows-1250' },
+      { type: 'show', tab: '5', file: notes },
+      { type: 'show', tab: '5', file: notes },
     ]);
+    assert.strictEqual(tabsOpened.length, 2);
   });
 });

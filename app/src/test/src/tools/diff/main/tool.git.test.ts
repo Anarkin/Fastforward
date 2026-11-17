@@ -240,7 +240,7 @@ suite('Diff tool comparing two files', () => {
     assert.deepStrictEqual(sides(), [at(a), at(a)]);
   });
 
-  test('opens the history of one file in a compare tab: its uncommitted changes against its last commit, what its last commit changed while it has none, the index while it is staged, a version chosen against the one before it, and tells when git keeps no earlier version', async () => {
+  test('opens the history of one file in a compare tab: its uncommitted changes against its last commit, what its last commit changed while it has none, the index while it is staged, a version chosen against the one before it, going to the tab comparing them already, and tells when git keeps no earlier version', async () => {
     const saga = path.join(repository.root, 'saga.txt');
     const lone = path.join(repository.root, 'lone.txt');
     const untracked = path.join(repository.root, 'untracked.txt');
@@ -266,6 +266,15 @@ suite('Diff tool comparing two files', () => {
 
     await compare(saga);
     assert.deepStrictEqual(sides(), [saga, saga, first, undefined]);
+    const diffTabs = () => {
+      const tabs: unknown = opened.store.get(tabsKey);
+      return (Array.isArray(tabs) ? tabs : [])
+        .map((tab: unknown) => savedTabOf(tab))
+        .filter((tab) => tab?.tool === 'diff').length;
+    };
+    const before = diffTabs();
+    await compare(saga);
+    assert.strictEqual(diffTabs(), before);
     fs.writeFileSync(saga, 'third\n');
     await compare(saga);
     assert.deepStrictEqual(sides(), [saga, saga, second, undefined]);

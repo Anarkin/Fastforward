@@ -5,19 +5,12 @@ import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { fileResponse } from '../../../lib/main/fileRanges';
 import { viewedFileOf } from '../shared/files';
 import { isPdf, pdfType } from '../shared/pdf';
-import { viewerIconRoute } from './icons';
-import { fileTabIcon } from '../../../lib/main/fileTabIcons';
 import { onSameVolume } from '../../../lib/main/volumes';
-
-export interface ServingAccess {
-  readonly fileIcon: (file: string) => Promise<Uint8Array>;
-}
 
 const notFound = () => new Response(null, { status: 404 });
 
 export class Serving {
   constructor(
-    private readonly access: ServingAccess,
     private readonly tabs: () => readonly Tab[],
     private readonly copyOf: (tab: Tab) => string | undefined,
   ) {}
@@ -62,14 +55,5 @@ export class Serving {
     } catch {
       return notFound();
     }
-  }
-
-  icon(url: URL): Promise<Response> {
-    return fileTabIcon(
-      viewerIconRoute,
-      url,
-      this.tabs().filter((tab) => tab.tool === 'viewer'),
-      this.access.fileIcon,
-    );
   }
 }

@@ -57,6 +57,7 @@
 .commander-path {
   flex: none;
   box-sizing: content-box;
+  background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
 }
 

@@ -94,6 +94,7 @@ export interface EditorKeyActions {
   readonly goToLine: () => void;
   readonly close: () => void;
   readonly view: () => void;
+  readonly compare: () => void;
 }
 
 export function escapeCloses(selection: EditorSelection): boolean {
@@ -166,7 +167,9 @@ export function editorKeys(actions: EditorKeyActions): Extension {
               ? actions.goToLine
               : keyPressed(editorKeymap.viewEdited, event) !== undefined
                 ? actions.view
-                : undefined;
+                : keyPressed(editorKeymap.compareVersions, event) !== undefined
+                  ? actions.compare
+                  : undefined;
     return action === undefined
       ? undefined
       : () => {

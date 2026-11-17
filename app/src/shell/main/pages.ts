@@ -152,7 +152,6 @@ export class Pages {
         tool,
         name: name?.name ?? strings.tools[tool],
         ...(name?.folder !== undefined && { folder: name.folder }),
-        ...(name?.icon !== undefined && { icon: name.icon }),
         ...(root !== undefined && { root }),
         ...(name?.unsaved === true && { unsaved: true as const }),
       };

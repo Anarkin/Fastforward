@@ -2,7 +2,6 @@ import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';
-import { fileTabIcon } from '../../../lib/main/fileTabIcons';
 import type { Sentence } from '../../../lib/shared/sentences';
 import {
   unattachedShell,
@@ -15,18 +14,17 @@ import {
 import type { EditorToHost } from '../shared/protocol';
 import { Editing, type ViewedStart } from './editing';
 import { editingFiles, type EditingFilesAccess } from './editingFiles';
-import { editorIconRoute, editorIconUrl } from './icons';
 import { post } from './post';
 
 export interface EditorAccess extends EditingFilesAccess {
   readonly closesBrackets: () => boolean;
-  readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly viewedCopy: (file: string) => boolean;
   readonly viewEdited: (
     page: Page,
-    tab: string,
+    file: string,
     start: ViewedStart,
   ) => Promise<void>;
+  readonly compareHistory: (page: Page, file: string) => Promise<void>;
 }
 
 export class EditorTool implements Tool<'editor'> {
@@ -97,41 +95,40 @@ export class EditorTool implements Tool<'editor'> {
   }
 
   receive(page: Page, message: EditorToHost): Promise<void> {
-    return message.type === 'viewEdited'
-      ? this.viewEdited(page, message)
-      : this.editing.receive(page, message);
+    switch (message.type) {
+      case 'viewEdited':
+        return this.viewEdited(page, message);
+      case 'compareVersions':
+        return this.compareVersions(page, message.tab);
+      default:
+        return this.editing.receive(page, message);
+    }
+  }
+
+  private compareVersions(page: Page, id: string): Promise<void> {
+    const tab = this.shell.tabs().find((each) => each.id === id);
+    return tab?.root === undefined || !this.shell.holds(page, id)
+      ? Promise.resolve()
+      : this.access.compareHistory(page, tab.root);
   }
 
   private async viewEdited(
     page: Page,
-    {
-      tab,
-      at,
-      save,
-      discard,
-    }: Extract<EditorToHost, { readonly type: 'viewEdited' }>,
+    { tab, at }: Extract<EditorToHost, { readonly type: 'viewEdited' }>,
   ): Promise<void> {
     if (!this.shell.holds(page, tab) || !Number.isSafeInteger(at) || at < 0) {
       return;
     }
-    if (this.editing.unsaved(tab)) {
-      if (save === true) {
-        if (!(await this.editing.save(page, tab))) {
-          return;
-        }
-      } else if (discard !== true) {
-        return;
-      }
-    }
+    const file = this.shell.tabs().find((each) => each.id === tab)?.root;
     const viewing = this.editing.viewedStart(tab, at);
-    if (viewing === undefined) {
+    if (viewing === undefined || file === undefined) {
       return;
     }
     if ('refusal' in viewing) {
       this.shell.notice(page, { level: 'error', message: viewing.refusal });
       return;
     }
-    await this.access.viewEdited(page, tab, viewing.start);
+    await this.access.viewEdited(page, file, viewing.start);
   }
 
   refreshShown(): Promise<void> {
@@ -148,7 +145,6 @@ export class EditorTool implements Tool<'editor'> {
                 tab.id,
                 {
                   name: path.basename(tab.root),
-                  icon: editorIconUrl(tab.id, tab.root),
                   ...(this.editing.unsaved(tab.id) && { unsaved: true }),
                 },
               ],
@@ -193,25 +189,11 @@ export class EditorTool implements Tool<'editor'> {
     this.shown.clear();
   }
 
-  icon(url: URL): Promise<Response> {
-    return fileTabIcon(
-      editorIconRoute,
-      url,
-      this.shell.tabs().filter((tab) => tab.tool === 'editor'),
-      this.access.fileIcon,
-    );
-  }
-
   refusal(file: string, named = file): Promise<Sentence | undefined> {
     return this.editing.refusal(file, named);
   }
 
-  async editViewed(
-    page: Page,
-    tab: string,
-    file: string,
-    at: ViewedStart,
-  ): Promise<void> {
+  async editViewed(page: Page, file: string, at: ViewedStart): Promise<void> {
     const refusal = this.access.viewedCopy(file)
       ? strings.editor.viewedCopy(path.basename(file))
       : await this.editing.refusal(file);
@@ -227,12 +209,10 @@ export class EditorTool implements Tool<'editor'> {
           each.root !== undefined &&
           sameRoot(each.root, file),
       );
-    if (edited) {
-      await this.shell.openEdit(page, file);
-      return;
+    if (!edited) {
+      this.editing.startAt(file, at);
     }
-    this.editing.startAt(tab, at);
-    await this.shell.editViewed(page, tab);
+    await this.shell.openEdit(page, file);
   }
 
   private postSettings(page: Page): void {

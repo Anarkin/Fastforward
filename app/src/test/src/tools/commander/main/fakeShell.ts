@@ -17,8 +17,7 @@ export function fakeShell<P extends Page>(page: P) {
   let focused: P = page;
   const viewed: string[] = [];
   const edited: string[] = [];
-  const turned: string[] = [];
-  const turnedToView: string[] = [];
+  const tabsOpened: [string, (string | undefined)[], boolean][] = [];
   const compared: Compared[] = [];
   const versionsSet: [string, string, FileVersion | undefined][] = [];
   const tabs: Tab[] = [];
@@ -32,21 +31,16 @@ export function fakeShell<P extends Page>(page: P) {
     active: () => undefined,
     holds: () => true,
     shown: () => [],
-    open: () => Promise.resolve(),
+    open: (_page, tool, roots, reuse) => {
+      tabsOpened.push([tool, [...roots], reuse]);
+      return Promise.resolve();
+    },
     openView: (_page, viewedFile) => {
       viewed.push(viewedFile);
       return Promise.resolve();
     },
     openEdit: (_page, editedFile) => {
       edited.push(editedFile);
-      return Promise.resolve();
-    },
-    editViewed: (_page, turnedTab) => {
-      turned.push(turnedTab);
-      return Promise.resolve();
-    },
-    viewEdited: (_page, turnedTab) => {
-      turnedToView.push(turnedTab);
       return Promise.resolve();
     },
     openCompare: (_page, files) => {
@@ -86,8 +80,7 @@ export function fakeShell<P extends Page>(page: P) {
     notices,
     viewed,
     edited,
-    turned,
-    turnedToView,
+    tabsOpened,
     compared,
     versionsSet,
     tabs,

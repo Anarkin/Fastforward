@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
+import { waitFor } from '../helpers/fixtures';
 import {
   opened,
   page,
@@ -82,29 +83,35 @@ suite('App file tabs', () => {
     }
   });
 
-  test('turns an editor tab back into a viewer of its file on F3, in the same tab, asking first whether to save its changes and viewing them once saved', async () => {
+  test('views the file of an editor tab on F3 in a viewer tab of its own, as it is saved and without asking about its changes, going to that tab on F3 again and back to the editor on F4', async () => {
     written('both.txt', 'one\ntwo\n');
     await backAndEdit('both.txt');
     await textShown('one\ntwo\n', 'the text of both.txt');
     const count = await tabCount();
-    await page.keyboard.press('F3');
-    await shownInViewer('both.txt', 'one\ntwo\n');
-    assert.strictEqual(await tabCount(), count);
-    await page.keyboard.press('F4');
-    await textShown('one\ntwo\n', 'both.txt edited again');
     await toStartOfText();
     await page.keyboard.type('new ');
     await activeTab().locator('.tab-unsaved').waitFor();
     await page.keyboard.press('F3');
-    await page.locator('.confirm-popup').waitFor();
-    await page.locator('.confirm-button.default').click();
-    await shownInViewer('both.txt', 'new one\ntwo\n');
-    assert.strictEqual(
-      fs.readFileSync(path.join(opened, 'both.txt'), 'utf8'),
-      'new one\ntwo\n',
-    );
-    assert.strictEqual(await tabCount(), count);
+    await shownInViewer('both.txt', 'one\ntwo\n');
+    assert.strictEqual(await tabCount(), count + 1);
+    assert.strictEqual(await page.locator('.confirm-popup').count(), 0);
+    await page.keyboard.press('F4');
+    await textShown('new one\ntwo\n', 'both.txt still edited');
+    assert.strictEqual(await tabCount(), count + 1);
+    await page.keyboard.press('F3');
+    await shownInViewer('both.txt', 'one\ntwo\n');
+    assert.strictEqual(await tabCount(), count + 1);
     await closeShownTab();
+    await textShown('new one\ntwo\n', 'the editor shown again');
+    await toStartOfText();
+    await page.keyboard.press('Escape');
+    await page.locator('.confirm-popup').waitFor();
+    await page.locator('.confirm-button', { hasText: "Don't Save" }).click();
+    await page.locator('.confirm-popup').waitFor({ state: 'detached' });
+    await waitFor(
+      async () => (await tabCount()) === count - 1,
+      'the tab closed',
+    );
   });
 
   test('keeps each editor tab on its own file as the tabs are switched, an edit in one tab saved to its file alone', async () => {
