@@ -1,4 +1,7 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { waitFor } from '../../../../helpers/fixtures';
@@ -9,6 +12,33 @@ import { lastFolder } from './fakePage';
 import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {
+  test('opens a tab opened with an archive beside it on the right, entering it, as Open with 7-Zip... on a part of a path anywhere asks', async () => {
+    const holding = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'fastforward-archive-tab-'),
+    );
+    const archive = path.join(holding, 'a.zip');
+    fs.writeFileSync(archive, '');
+    try {
+      const { tool, page, archived } = commander({
+        [root]: [],
+        [holding]: [file('a.zip')],
+      });
+      archived.set(archive, zipped);
+      await tool.show(page, { ...tab, root: archive });
+      await waitFor(
+        () => page.listings().length === 3,
+        'the archive to be entered',
+      );
+      assert.deepStrictEqual(page.listings(), [
+        `left ${root}: `,
+        `right ${holding} ↑: a.zip`,
+        `right ${archive} ↑: docs top.txt`,
+      ]);
+    } finally {
+      fs.rmSync(holding, { recursive: true, force: true });
+    }
+  });
+
   test('enters an archive the page asks to, listing it as a folder by a path through the archive, going into its folders and out again with .., selecting where it came from', async () => {
     const { tool, page, send, archived } = commander({
       [root]: [file('a.zip'), file('notes.txt')],

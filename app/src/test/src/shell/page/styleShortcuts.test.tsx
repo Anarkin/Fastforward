@@ -1,3 +1,4 @@
+import { layerOver } from '../../../../lib/page/overlayScrollbars';
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { plainFilter } from '../../../helpers/filters';
@@ -22,7 +23,7 @@ import {
   hovered,
   after,
 } from './stylesheetFixtures';
-import { overlayScrollbar, keyOf, popupOf } from '../../../helpers/styleMarkup';
+import { keyOf, popupOf } from '../../../helpers/styleMarkup';
 import {
   allWithClass,
   rendered,
@@ -395,7 +396,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws the shortcuts over the notices and menus, but under the overlay scrollbars', () => {
+  test('draws the shortcuts over the notices and menus, and the overlay scrollbars of its lists over it', () => {
     const backdrop = popupOf(<ShortcutsPopupShown />).parent;
     assert.ok(backdrop);
     const shortcuts = layer(backdrop);
@@ -406,6 +407,6 @@ suite('Style', () => {
     ]) {
       assert.ok(shortcuts > layer(below), below.classes.join(' '));
     }
-    assert.ok(layer(overlayScrollbar()) > shortcuts);
+    assert.ok(layerOver([String(shortcuts)]) > shortcuts);
   });
 });

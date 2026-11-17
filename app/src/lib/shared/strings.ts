@@ -806,8 +806,6 @@ export const strings = {
     noPath: 'Type the path to go to.',
     copyPath: 'Copy Path',
     copyPaths: 'Copy Paths',
-    copyName: 'Copy Name',
-    copyNames: 'Copy Names',
     renameFailed: (item: string, reason: Sentence) =>
       sentence`${namedItem(item)} could not be renamed: ${reason}`,
     renameAsAdministrator:

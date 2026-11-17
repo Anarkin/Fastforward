@@ -1,5 +1,10 @@
 import type { Log } from './log';
 import { lookedPaths, type PathLooks } from '../../lib/shared/partLooks';
+import {
+  answerPathFacts,
+  runPathCommand,
+  type PathMenuHost,
+} from './pathMenus';
 import { isImageView, isTextView } from '../shared/views';
 import type { DragEvent, Visit } from './dragEvents';
 import { InFlight } from '../../lib/main/inFlight';
@@ -39,7 +44,7 @@ import {
 } from './savedViews';
 import type { Notice, Page, ShellAccess, Tools } from './toolContract';
 
-export interface ShellHost {
+export interface ShellHost extends PathMenuHost {
   userSettingsFile(): Promise<string>;
   defaultSettingsFile(): Promise<string>;
   settingsProblems(): readonly Sentence[];
@@ -431,6 +436,12 @@ export class Shell {
         }
         return;
       }
+      case 'pathFacts':
+        await answerPathFacts(page, message, host);
+        return;
+      case 'pathCommand':
+        await runPathCommand(page, message, host, this.tools);
+        return;
       case 'log':
         if (
           (message.level === 'info' || message.level === 'error') &&

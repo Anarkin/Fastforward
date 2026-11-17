@@ -1,3 +1,4 @@
+import { pathMenuClass } from './pathMenu';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { keymap } from './keymap';
 import { letterTyped, pressedAlone } from '../shared/keymap';
@@ -72,9 +73,11 @@ export function MenuButton({
       className="menu-button"
       ref={container}
       onBlur={(event) => {
+        const to = event.relatedTarget;
         if (
-          event.relatedTarget instanceof Node &&
-          !event.currentTarget.contains(event.relatedTarget)
+          to instanceof Element &&
+          !event.currentTarget.contains(to) &&
+          to.closest(`.${pathMenuClass}`) === null
         ) {
           close();
         }

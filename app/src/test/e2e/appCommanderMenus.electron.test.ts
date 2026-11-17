@@ -16,6 +16,7 @@ import {
   selected,
   select,
   sharedCommanderApp,
+  textOnClipboard,
 } from './commanderAppFixtures';
 
 const focusIn = (selector: string) =>
@@ -51,6 +52,36 @@ async function shownThumb(
 
 suite('App commander', () => {
   sharedCommanderApp();
+
+  test('opens the menu of the folder each part of the path of a side is on with a right click on the part, the one the commander shows its items in, over the scrollbars, Go To... on the folder shown alone, copying its whole path', async () => {
+    const parts = right().locator('.commander-path .path-part');
+    const pathMenu = page.locator('.path-menu');
+    const offers = (name: string) =>
+      pathMenu.getByRole('menuitem', { name }).count();
+    await parts.first().click({ button: 'right' });
+    await pathMenu.waitFor();
+    assert.deepStrictEqual(
+      [
+        await offers(strings.commander.copyPath),
+        await offers(strings.commander.goToItem),
+      ],
+      [1, 0],
+    );
+    await page.keyboard.press('Escape');
+    await pathMenu.waitFor({ state: 'detached' });
+
+    await parts.last().click({ button: 'right' });
+    await pathMenu.waitFor();
+    assert.strictEqual(await offers(strings.commander.goToItem), 1);
+    await pathMenu
+      .getByRole('menuitem', { name: strings.commander.copyPath })
+      .click();
+    await pathMenu.waitFor({ state: 'detached' });
+    await waitFor(
+      async () => (await textOnClipboard()) === opened,
+      'the path of the folder shown to be on the clipboard',
+    );
+  });
 
   test('hands the focus to the list of a side once a layout or a bookmark is chosen with the pointer from the menus of its header, and to the text of a file viewed once an encoding or a language is, so their keys work at once', async () => {
     const inList = '.commander-pane:nth-child(2) .column-body';
@@ -302,7 +333,6 @@ suite('App commander', () => {
         assert.deepStrictEqual(await appMenuItems(), [
           strings.commander.openWithSevenZip,
           strings.commander.copyPath,
-          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
         const choosing = appMenu
@@ -346,7 +376,6 @@ suite('App commander', () => {
         assert.deepStrictEqual(await appMenuItems(), [
           strings.commander.openWithSevenZip,
           strings.commander.copyPath,
-          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
         await page.keyboard.press('Escape');

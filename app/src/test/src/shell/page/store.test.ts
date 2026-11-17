@@ -14,6 +14,13 @@ function posting() {
   return { posted, store: createShellStore((message) => posted.push(message)) };
 }
 
+const ask = (path: string) => ({
+  path,
+  file: false,
+  at: { x: 4, y: 8 },
+  extended: false,
+});
+
 suite('Shell store', () => {
   test('keeps the color groups of the files and what it was told of the parts of paths, part by part', () => {
     const store = createShellStore(noop);
@@ -434,6 +441,70 @@ suite('Shell store', () => {
       { type: 'installUpdate' },
       { type: 'installTerminalCommand' },
       { type: 'openIn' },
+    ]);
+  });
+
+  test('asks the main process what a path is before showing the menu of a part of it, showing the menu of the part right clicked last alone, its items acting on the path', () => {
+    const posted: ToHost[] = [];
+    const store = createShellStore(
+      (message) => posted.push(message),
+      {},
+      noop,
+      () => 'linux',
+    );
+    store.getState().openPathMenu(ask('/code'));
+    store.getState().openPathMenu(ask('/code/app'));
+    assert.deepStrictEqual(posted, [
+      { type: 'pathFacts', ask: 1, path: '/code' },
+      { type: 'pathFacts', ask: 2, path: '/code/app' },
+    ]);
+    const facts = {
+      kind: 'folder',
+      inRepository: true,
+      gitMissing: false,
+    } as const;
+    store.getState().receive({ type: 'pathFacts', ask: 1, facts });
+    assert.strictEqual(store.getState().pathMenu, undefined);
+    store.getState().receive({ type: 'pathFacts', ask: 2, facts });
+    const menu = store.getState().pathMenu?.menu;
+    assert.deepStrictEqual([menu?.x, menu?.y], [4, 8]);
+    for (const item of menu?.items ?? []) {
+      if (!('separator' in item)) {
+        item.onClick?.();
+      }
+    }
+    assert.deepStrictEqual(posted.slice(2), [
+      { type: 'pathCommand', path: '/code/app', command: 'newTerminal' },
+      { type: 'pathCommand', path: '/code/app', command: 'openInGit' },
+      { type: 'copyText', text: '/code/app' },
+    ]);
+    store.getState().closePathMenu();
+    assert.strictEqual(store.getState().pathMenu, undefined);
+  });
+
+  test('opens the menu of Windows of a path at once on a right click with Shift on Windows, as the commander does', () => {
+    const posted: ToHost[] = [];
+    const store = createShellStore(
+      (message) => posted.push(message),
+      {},
+      noop,
+      () => 'win32',
+    );
+    store.getState().openPathMenu({
+      path: 'C:\\Code',
+      file: false,
+      at: { x: 4, y: 8 },
+      extended: true,
+    });
+    assert.deepStrictEqual(posted, [
+      {
+        type: 'pathCommand',
+        path: 'C:\\Code',
+        command: 'systemMenu',
+        x: 4,
+        y: 8,
+        extended: true,
+      },
     ]);
   });
 });

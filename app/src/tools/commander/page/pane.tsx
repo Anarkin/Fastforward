@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { type Side } from '../shared/sides';
-import { fileMenuItems, menuTargetOf } from './fileMenu';
-import { copiedText, type Copied } from './copiedText';
+import { menuTargetOf } from './fileMenu';
+import { copiedText } from './copiedText';
+import { fileMenuItems, type Copied } from '../../../lib/page/fileMenu';
 import { type Row } from './listing';
 import { goesInto } from './rowKeys';
 import { filterStep, keptFiles, steppedFile } from './filterSteps';
@@ -343,6 +344,7 @@ export function Pane({
           looks={folderLooks(hidden ?? [], archive)}
           flat={flatShown}
           duplicates={duplicatesShown}
+          goTo={() => actions.askGoTo(side)}
         />
       </div>
       {!tiled && <ColumnHeader side={side} />}

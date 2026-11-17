@@ -1,5 +1,6 @@
 import type { Sentence } from '../../lib/shared/sentences';
 import type { PathLooks } from '../../lib/shared/partLooks';
+import type { PathFacts } from '../../lib/shared/pathFacts';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { AboutInfo, UpdateStatus } from '../../shell/shared/protocol';
@@ -109,6 +110,47 @@ export class FakeHost implements ShellHost, GitHost {
 
   drag(window: string, event: DragEvent): void {
     this.dragged.push([window, event]);
+  }
+
+  readonly facts = new Map<string, PathFacts>();
+  readonly factsAsked: string[] = [];
+
+  pathFacts(file: string): Promise<PathFacts> {
+    this.factsAsked.push(file);
+    return Promise.resolve(
+      this.facts.get(file) ?? {
+        kind: 'missing',
+        inRepository: false,
+        gitMissing: false,
+      },
+    );
+  }
+
+  readonly cloned: string[] = [];
+  readonly inited: string[] = [];
+  readonly shellMenus: [
+    readonly string[],
+    { readonly x: number; readonly y: number },
+    boolean,
+  ][] = [];
+
+  cloneInto(folder: string): Promise<void> {
+    this.cloned.push(folder);
+    return Promise.resolve();
+  }
+
+  initRepository(folder: string): Promise<void> {
+    this.inited.push(folder);
+    return Promise.resolve();
+  }
+
+  shellMenu(
+    files: readonly string[],
+    at: { readonly x: number; readonly y: number },
+    extended: boolean,
+  ): Promise<void> {
+    this.shellMenus.push([files, at, extended]);
+    return Promise.resolve();
   }
 
   readonly looked: (readonly string[])[] = [];

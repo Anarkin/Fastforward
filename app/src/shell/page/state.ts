@@ -1,3 +1,4 @@
+import type { PathMenuAsk } from '../../lib/page/pathMenu';
 import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenuItem';
 import { defaultDateFormat } from '../../lib/page/dates';
 import { noFileColors, type FileColors } from '../../lib/page/fileColors';
@@ -51,6 +52,8 @@ export interface ShellSource {
   readonly popups: readonly Popup[];
   readonly confirming: Confirming | undefined;
   readonly menu: TabMenu | undefined;
+  readonly pathMenu:
+    { readonly id: number; readonly menu: OpenMenu } | undefined;
   readonly toolItems: Partial<Record<ToolId, readonly ContextMenuItem[]>>;
   readonly toolTitles: Partial<Record<ToolId, string>>;
 }
@@ -64,6 +67,8 @@ export interface ShellActions {
   readonly togglePopup: (popup: Popup) => void;
   readonly showMenu: (menu: OpenMenu) => void;
   readonly closeMenu: () => void;
+  readonly openPathMenu: (ask: PathMenuAsk) => void;
+  readonly closePathMenu: () => void;
   readonly closeTab: (id: string) => void;
   readonly confirm: () => void;
   readonly dontSave: () => void;
@@ -123,6 +128,7 @@ export const shellDefaults: ShellSource = {
   popups: [],
   confirming: undefined,
   menu: undefined,
+  pathMenu: undefined,
   toolItems: {},
   toolTitles: {},
 };

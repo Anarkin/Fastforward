@@ -1,6 +1,6 @@
 import type { Side } from '../shared/sides';
 import type { CommanderActions } from './state';
-import type { Copied } from './copiedText';
+import type { Copied } from '../../../lib/page/fileMenu';
 import type { PaneAct } from './paneKeys';
 
 export interface PaneHost {

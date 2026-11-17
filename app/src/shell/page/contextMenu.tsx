@@ -13,9 +13,11 @@ import { useShell } from './store';
 export function ContextMenu({
   menu,
   onClose,
+  className,
 }: {
   menu: OpenMenu;
   onClose: () => void;
+  className?: string;
 }) {
   const element = useRef<HTMLDivElement>(null);
   const scrolling = useShell((state) => state.scrolling);
@@ -46,7 +48,7 @@ export function ContextMenu({
   return (
     <div
       ref={element}
-      className={`menu context-menu${scrolled ? ' scrolls' : ''}`}
+      className={`menu context-menu${scrolled ? ' scrolls' : ''}${className === undefined ? '' : ` ${className}`}`}
       role="menu"
       style={position}
       onContextMenu={(event) => event.preventDefault()}

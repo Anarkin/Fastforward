@@ -25,6 +25,9 @@ import { overlayScrollbar, popupOf } from '../../../helpers/styleMarkup';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import { HistoryMenuShown } from '../../../helpers/styleHistoryFixtures';
 
+const zIndexOf = (className: string) =>
+  Number(cascaded(rendered(<div className={className} />), 'z-index'));
+
 suite('Style', () => {
   test('starts the labels of every menu alike, leaving the same room before each for an icon, a check or nothing, as an item without an icon started further left than those with one', () => {
     const menu = rendered(
@@ -298,7 +301,7 @@ suite('Style', () => {
     );
   });
 
-  test('draws a menu, a context menu and so their submenus over the notices, which take the pointer only on a notice, and both under the overlay scrollbars', () => {
+  test('draws a menu, a context menu and so their submenus over the notices, which take the pointer only on a notice, and both over the overlay scrollbars of the lists under them', () => {
     assert.strictEqual(
       cascaded(rendered(<ContextMenuShown />), 'position'),
       'fixed',
@@ -310,7 +313,7 @@ suite('Style', () => {
       layer(rendered(<HistoryMenuShown />)) > layer(rendered(<NoticesShown />)),
     );
     assert.ok(
-      layer(overlayScrollbar()) > layer(rendered(<ContextMenuShown />)),
+      layer(overlayScrollbar()) < layer(rendered(<ContextMenuShown />)),
     );
     looks(rendered(<NoticesShown />), { 'pointer-events': 'none' });
     looks(withClass(rendered(<NoticesShown />), 'notice'), {
@@ -335,5 +338,11 @@ suite('Style', () => {
       cascaded(withClass(button, 'menu-button-label'), 'font-size'),
       undefined,
     );
+  });
+
+  test('draws the menu of a part of a path over the dialogs, their scrollbars and the other menus, as a part in a dialog or a menu opens it over them', () => {
+    const pathMenu = zIndexOf('menu context-menu path-menu');
+    assert.ok(pathMenu > zIndexOf('backdrop') + 1, String(pathMenu));
+    assert.ok(pathMenu > zIndexOf('menu context-menu'), String(pathMenu));
   });
 });

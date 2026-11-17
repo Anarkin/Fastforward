@@ -2,7 +2,8 @@ import type { Sentence } from '../lib/shared/sentences';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { app, type BrowserWindow, nativeImage, screen, shell } from 'electron';
+import { app, type BrowserWindow, nativeImage, shell } from 'electron';
+import { shellMenuIn } from './shellMenu';
 import type { Log } from '../shell/main/log';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { JsonFileStore } from '../shell/main/stateFile';
@@ -140,25 +141,7 @@ export function commanderToolOf({
           process.platform,
         );
       },
-      shellMenu: async (files, at, extended) => {
-        const { showShellMenu } =
-          await import('../tools/commander/main/windowsShellMenu.js');
-        const window = windows.focusedWindow();
-        if (window === undefined || window.isDestroyed()) {
-          return;
-        }
-        const content = window.getContentBounds();
-        const zoom = window.webContents.getZoomFactor();
-        showShellMenu(
-          window.getNativeWindowHandle(),
-          files,
-          screen.dipToScreenPoint({
-            x: content.x + at.x * zoom,
-            y: content.y + at.y * zoom,
-          }),
-          extended,
-        );
-      },
+      shellMenu: shellMenuIn(windows),
     }),
     archives: new Archives(
       sevenZipReaderAt(

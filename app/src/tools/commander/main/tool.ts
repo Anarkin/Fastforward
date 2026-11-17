@@ -27,7 +27,7 @@ import type { ArchiveCopies } from './archiveCopies';
 import type { ArchivePasswords } from './archivePasswords';
 import type { TransferCommands } from './transferCommands';
 import type { CommanderAccess } from './access';
-import { isFolder } from './fileStats';
+import { isFile, isFolder } from './fileStats';
 import type { Listings } from './listings';
 import type { Elevation } from './elevation';
 import type { CommanderMessages } from './messages';
@@ -123,7 +123,10 @@ export class CommanderTool implements Tool<'commander'> {
     });
     this.copies.askNextUpdate();
     post(page, { type: 'show', tab: tab.id });
-    const panes = this.sides.panes.get(tab.id) ?? (await this.start(tab));
+    const started = this.sides.panes.get(tab.id);
+    const archive =
+      started === undefined ? await this.archiveOpenedWith(tab) : undefined;
+    const panes = started ?? (await this.start(tab, archive));
     if (!this.shows(page, tab)) {
       return;
     }
@@ -134,6 +137,23 @@ export class CommanderTool implements Tool<'commander'> {
       ),
       this.postDrives(page),
     ]);
+    if (archive !== undefined && this.shows(page, tab)) {
+      await this.receive(page, {
+        type: 'enterArchive',
+        tab: tab.id,
+        side: 'right',
+        folder: path.dirname(archive),
+        name: path.basename(archive),
+      });
+    }
+  }
+
+  private async archiveOpenedWith(tab: Tab): Promise<string | undefined> {
+    return this.savedSides.of(tab.id).right === undefined &&
+      tab.root !== undefined &&
+      (await isFile(tab.root))
+      ? path.resolve(tab.root)
+      : undefined;
   }
 
   shows(page: Page, tab: Tab): boolean {
@@ -278,14 +298,16 @@ export class CommanderTool implements Tool<'commander'> {
     return this.thumbnailServing.thumbnail(url);
   }
 
-  private async start(tab: Tab): Promise<Panes> {
+  private async start(tab: Tab, archive: string | undefined): Promise<Panes> {
     const { root } = this.access;
     const saved = this.savedSides.of(tab.id);
     const right =
       saved.right ??
-      (tab.root !== undefined && (await isFolder(tab.root))
-        ? path.resolve(tab.root)
-        : root);
+      (archive !== undefined
+        ? path.dirname(archive)
+        : tab.root !== undefined && (await isFolder(tab.root))
+          ? path.resolve(tab.root)
+          : root);
     return {
       left: newPane(saved.left ?? root),
       right: newPane(right),

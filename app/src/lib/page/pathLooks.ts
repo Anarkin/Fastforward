@@ -70,6 +70,8 @@ export function newlyKnown(
 
 export interface ShownPart {
   readonly key: string;
+  readonly whole: string;
+  readonly file: boolean;
   readonly name: string;
   readonly separator: string;
   readonly at: number;
@@ -103,6 +105,8 @@ export function shownParts(
       look === undefined ? dotHides && part.name.startsWith('.') : look.hidden;
     const shown = {
       key: part.path,
+      whole: part.path,
+      file: !folder,
       name: part.name,
       separator: part.separator,
       at,
@@ -131,6 +135,13 @@ function lastOf(
   count: number,
 ): PartLooks | undefined {
   return looks === undefined ? undefined : looks.slice(looks.length - count);
+}
+
+function wholeIn(root: string, path: string): string {
+  return joinedPath(
+    root,
+    root.includes('\\') ? path.replaceAll('/', '\\') : path,
+  );
 }
 
 const isWhole = (path: string) => /^(?:[a-zA-Z]:|[\\/])/.test(path);
@@ -176,11 +187,14 @@ export function usePathParts(
       source.know(path, shared);
     }
   }, [source, path, shared]);
-  return shownParts(
+  const parts = shownParts(
     path,
     file,
     looks ?? lastOf(asked, pathParts(path).length),
     fileColors,
     source.dotHides(),
   );
+  return root === undefined || root === ''
+    ? parts
+    : parts.map((part) => ({ ...part, whole: wholeIn(root, part.key) }));
 }

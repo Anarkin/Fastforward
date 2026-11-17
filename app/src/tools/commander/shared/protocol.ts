@@ -1,3 +1,4 @@
+import type { FolderCommand } from '../../../lib/shared/folderCommands';
 import type { PackFormat, PackLevel, ZipCipher } from './packing';
 import type { ColumnWidths } from './columnWidths';
 import type { FileColor } from '../../../lib/shared/fileColors';
@@ -39,19 +40,6 @@ export interface FlatProgress {
 }
 
 export const parentFolder = '..';
-
-const folderCommands = [
-  'newTerminal',
-  'openInGit',
-  'cloneHere',
-  'initHere',
-] as const;
-
-export type FolderCommand = (typeof folderCommands)[number];
-
-export function isFolderCommand(value: unknown): value is FolderCommand {
-  return folderCommands.some((command) => command === value);
-}
 
 export type CommanderToHost =
   | {

@@ -1,8 +1,12 @@
 import type { Sentence } from '../../lib/shared/sentences';
 import type { FileColor } from '../../lib/shared/fileColors';
 import type { PathLooks } from '../../lib/shared/partLooks';
+import type { PathFacts } from '../../lib/shared/pathFacts';
+import type { FolderCommand } from '../../lib/shared/folderCommands';
 import type { ImageView, TextView } from './views';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
+
+export type PathCommand = FolderCommand | 'enterArchive' | 'systemMenu';
 
 export const maxViewChars = 1024 * 1024;
 
@@ -101,6 +105,15 @@ export type ToHost =
   | { readonly type: 'openIn' }
   | { readonly type: 'copyText'; readonly text: string }
   | { readonly type: 'partLooks'; readonly paths: readonly string[] }
+  | { readonly type: 'pathFacts'; readonly ask: number; readonly path: string }
+  | {
+      readonly type: 'pathCommand';
+      readonly path: string;
+      readonly command: PathCommand;
+      readonly x?: number;
+      readonly y?: number;
+      readonly extended?: boolean;
+    }
   | { readonly type: 'openSettings' }
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'checkForUpdates' }
@@ -128,6 +141,11 @@ export type ToWebview =
   | { readonly type: 'dateFormat'; readonly format: string }
   | { readonly type: 'fileColors'; readonly groups: readonly FileColor[] }
   | { readonly type: 'partLooks'; readonly looks: readonly PathLooks[] }
+  | {
+      readonly type: 'pathFacts';
+      readonly ask: number;
+      readonly facts: PathFacts;
+    }
   | {
       readonly type: 'scrolling';
       readonly wheelRows: number;

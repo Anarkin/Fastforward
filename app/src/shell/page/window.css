@@ -118,7 +118,7 @@ body {
 
 .overlay-scrollbar {
   position: fixed;
-  z-index: 30;
+  z-index: 20;
   box-sizing: border-box;
   border-radius: 1px;
   background: var(--scrollbar-background) padding-box;

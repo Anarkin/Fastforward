@@ -128,7 +128,7 @@ suite('Menu button', () => {
     assert.strictEqual(arrowed.querySelector('.menu-button-label'), null);
   });
 
-  test('closes its menu once the focus moves out of it, as to the menu of another button, but not while it moves within', async () => {
+  test('closes its menu once the focus moves out of it, as to the menu of another button, but not while it moves within, or into the menu of a part of a path opened over it', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {
       window: dom.window,
@@ -164,6 +164,9 @@ suite('Menu button', () => {
               title="Right"
               items={items}
             />
+            <div className="menu context-menu path-menu">
+              <button className="path-menu-item">Copy Path</button>
+            </div>
           </>,
         );
       });
@@ -178,7 +181,12 @@ suite('Menu button', () => {
         main.querySelectorAll<HTMLButtonElement>('.menu .menu-item');
       assert.ok(first && second);
       await act(async () => second.focus());
-      assert.strictEqual(openMenus(), 1);
+      assert.strictEqual(openMenus(), 2);
+      await act(async () =>
+        main.querySelector<HTMLButtonElement>('.path-menu-item')?.focus(),
+      );
+      assert.strictEqual(left.getAttribute('aria-expanded'), 'true');
+      await act(async () => second.focus());
 
       await act(async () => right.click());
       await act(async () =>
@@ -186,7 +194,7 @@ suite('Menu button', () => {
           .querySelectorAll<HTMLButtonElement>('.menu .menu-item')[2]
           ?.focus(),
       );
-      assert.strictEqual(openMenus(), 1);
+      assert.strictEqual(openMenus(), 2);
       assert.strictEqual(left.getAttribute('aria-expanded'), 'false');
       assert.strictEqual(right.getAttribute('aria-expanded'), 'true');
       await act(async () => {

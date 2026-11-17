@@ -29,7 +29,7 @@ export function TileName({
   return (
     <div className="commander-tile-name">
       {part !== undefined && (
-        <PathPart part={part}>
+        <PathPart part={part} menu={false}>
           <span className="commander-tile-base">
             <Marked text={row.base} ranges={ranges} />
           </span>

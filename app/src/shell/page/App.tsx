@@ -1,3 +1,4 @@
+import { PathMenuContext, pathMenuClass } from '../../lib/page/pathMenu';
 import { useEffect, useState } from 'react';
 import { PathLooksContext } from '../../lib/page/pathLooks';
 import { shellPathLooks } from './pathLooks';
@@ -126,6 +127,19 @@ function Popups() {
   );
 }
 
+function PathMenu() {
+  const opened = useShell((state) => state.pathMenu);
+  const { closePathMenu } = useShellActions();
+  return opened === undefined ? null : (
+    <ContextMenu
+      key={opened.id}
+      menu={opened.menu}
+      onClose={closePathMenu}
+      className={pathMenuClass}
+    />
+  );
+}
+
 function EmptyState() {
   const noTab = useShell((state) => state.tabs?.length === 0);
   return <EmptyStateView noTab={noTab} />;
@@ -149,7 +163,8 @@ function NoticeKey() {
 export function App({ name, post, listen, dropFiles }: Props) {
   const [store] = useState(() => createShellStore(post, {}, dropFiles));
   const [looks] = useState(() => shellPathLooks(store));
-  const { togglePopup, closeTab, ready, openIn, newWindow } = store.getState();
+  const { togglePopup, closeTab, ready, openIn, newWindow, openPathMenu } =
+    store.getState();
 
   useEffect(() => {
     const stop = listen(store.getState().receive);
@@ -171,16 +186,19 @@ export function App({ name, post, listen, dropFiles }: Props) {
   return (
     <ShellStore value={store}>
       <PathLooksContext value={looks}>
-        <div className="app">
-          <WindowTitle name={name} />
-          <TabBar menu={<AppMenu />} />
-          <ShellMenu />
-          <Popups />
-          <Notices />
-          <EmptyState />
-          <ToolViews />
-          <NoticeKey />
-        </div>
+        <PathMenuContext value={openPathMenu}>
+          <div className="app">
+            <WindowTitle name={name} />
+            <TabBar menu={<AppMenu />} />
+            <ShellMenu />
+            <PathMenu />
+            <Popups />
+            <Notices />
+            <EmptyState />
+            <ToolViews />
+            <NoticeKey />
+          </div>
+        </PathMenuContext>
       </PathLooksContext>
     </ShellStore>
   );

@@ -324,6 +324,7 @@ async function start(asked: readonly string[]): Promise<void> {
     system,
     commandPlace,
     windows,
+    gitTool,
   });
   const viewerTool = viewerToolOf({ pdfPlaces, commanderTool, editorTool });
   const diffTool = diffToolOf({ log, userSettings, git });

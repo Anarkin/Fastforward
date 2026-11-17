@@ -66,4 +66,7 @@ export const keymap = {
   ),
   go: bind(undefined, strings.actions.go, { Enter: true }, { fields: true }),
   drag: bind(undefined, strings.actions.drag, { Click: true }),
+  systemMenu: bind(undefined, strings.actions.systemMenu, {
+    'Shift+RightClick': true,
+  }),
 };

@@ -16,6 +16,7 @@ import { received } from './received';
 import { withPopup } from './popups';
 import { nextMenu } from './openedMenu';
 import { lookAsker } from './lookAsker';
+import { pathMenuAsks } from './pathMenuAsks';
 
 export function createShellStore(
   post: (message: ToHost) => void,
@@ -25,10 +26,15 @@ export function createShellStore(
     tool: ToolId,
     message: unknown,
   ) => void = () => {},
+  platform: () => string | undefined = () =>
+    typeof document === 'undefined'
+      ? undefined
+      : document.documentElement.dataset.platform,
 ): StoreApi<ShellState> {
   let noticesShown = 0;
   const { channels, deliver, views } = toolChannels(post, dropFiles);
   const askLooks = lookAsker((paths) => post({ type: 'partLooks', paths }));
+  const pathMenus = pathMenuAsks(post, platform);
   return createStore<ShellState>()((set, get) => {
     return {
       ...shellDefaults,
@@ -40,6 +46,11 @@ export function createShellStore(
           views.handed(message.tab, message.view);
         } else if (message.type === 'release') {
           views.release(message.tab);
+        } else if (message.type === 'pathFacts') {
+          const menu = pathMenus.answered(message.ask, message.facts);
+          if (menu !== undefined) {
+            set({ pathMenu: { id: message.ask, menu } });
+          }
         } else {
           if (message.type === 'tabs') {
             views.held(message.tabs.map((tab) => tab.id));
@@ -72,6 +83,8 @@ export function createShellStore(
       showMenu: (menu) =>
         set((state) => ({ menu: nextMenu(state.menu, state.active, menu) })),
       closeMenu: () => set({ menu: undefined }),
+      openPathMenu: (ask) => pathMenus.open(ask),
+      closePathMenu: () => set({ pathMenu: undefined }),
       closeTab: (id) => {
         const tab = get().tabs?.find((each) => each.id === id);
         if (tab?.unsaved === true) {

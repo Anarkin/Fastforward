@@ -15,6 +15,10 @@ import {
   type LocalFileSystem,
 } from '../tools/commander/main/fileSystem';
 import { partLooksOf } from '../tools/commander/main/partLooks';
+import { pathFactsOf } from '../tools/commander/main/pathFacts';
+import { inRepository } from '../tools/commander/main/repositories';
+import type { GitTool } from '../tools/git/main/tool';
+import { shellMenuIn } from './shellMenu';
 import {
   commandFiles,
   commandState,
@@ -36,6 +40,7 @@ export interface ShellHostDeps {
   readonly system: string;
   readonly commandPlace: CommandPlace | undefined;
   readonly windows: AppWindows;
+  readonly gitTool: Pick<GitTool, 'cloneInto' | 'initRepositoryIn'>;
 }
 
 export function shellHostOf({
@@ -51,6 +56,7 @@ export function shellHostOf({
   system,
   commandPlace,
   windows,
+  gitTool,
 }: ShellHostDeps): ShellHost {
   let looking: Promise<LocalFileSystem> | undefined;
   return {
@@ -108,6 +114,19 @@ export function shellHostOf({
     showWindow: (id) => windows.show(id),
     tearsOff: () => tearsOffTabs(process.platform, process.env),
     drag: (window, event) => windows.dragged(window, event),
+    pathFacts: (file) =>
+      pathFactsOf(
+        file,
+        {
+          stat: (at) => fs.promises.stat(at).catch(() => undefined),
+          inRepository: (folder) => inRepository(folder),
+          gitMissing: () => git.path === undefined,
+        },
+        process.platform,
+      ),
+    cloneInto: (folder) => gitTool.cloneInto(folder),
+    initRepository: (folder) => gitTool.initRepositoryIn(folder),
+    ...(process.platform === 'win32' && { shellMenu: shellMenuIn(windows) }),
     partLooks: async (paths) => {
       looking ??= fileSystemFor(process.platform);
       const files = await looking;

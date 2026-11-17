@@ -7,6 +7,10 @@ import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import type { Layout } from '../../../../../tools/commander/page/layouts';
 import type { CommanderToWebview } from '../../../../../tools/commander/shared/protocol';
 import { inSide, rowNamed, sort } from './paneFixtures';
+import {
+  PathMenuContext,
+  type PathMenuAsk,
+} from '../../../../../lib/page/pathMenu';
 
 vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
   const { createElement, Fragment } = await import('react');
@@ -69,7 +73,6 @@ const shownFolderMenu = [
   strings.commander.cloneHere,
   strings.commander.initHere,
   strings.commander.copyPath,
-  strings.commander.copyName,
   strings.commander.goToItem,
   strings.commander.showMoreOptions,
 ];
@@ -108,20 +111,47 @@ suite('Commander menu on a side', () => {
     });
   });
 
-  test('opens the menu of the folder shown on a right click on its path, copying its path or name as text, or asking for a path to go to', async () => {
+  test('asks for the menu of the folder or file a part of the path of a side is on a right click on the part, Go To... on the folder the side shows alone', async () => {
+    const asked: PathMenuAsk[] = [];
+    await inSide(
+      <PathMenuContext value={(ask) => asked.push(ask)}>
+        <Pane
+          side="left"
+          driveTrigger={null}
+          bookmarkTrigger={null}
+          resizer={null}
+        />
+      </PathMenuContext>,
+      async ({ main, rightClick, menu, goingTo }) => {
+        const [top, work] = main.querySelectorAll('.commander-path .path-part');
+        rightClick(top ?? null);
+        rightClick(work ?? null);
+        assert.deepStrictEqual(menu(), []);
+        assert.deepStrictEqual(
+          asked.map((ask) => [ask.path, ask.file, ask.onGoTo !== undefined]),
+          [
+            ['/', false, false],
+            ['/work', false, true],
+          ],
+        );
+        asked[1]?.onGoTo?.();
+        assert.strictEqual(goingTo(), '/work');
+      },
+    );
+  });
+
+  test('opens the menu of the folder shown on a right click on its path outside its parts, copying its path as text, or asking for a path to go to', async () => {
     await inPane(
       async ({ main, rightClick, menu, choose, copied, goingTo }) => {
-        rightClick(main.querySelector('.commander-path .path-name'));
+        rightClick(main.querySelector('.commander-path .commander-icon'));
         assert.deepStrictEqual(menu(), shownFolderMenu);
         choose(strings.commander.copyPath);
-        rightClick(main.querySelector('.commander-path'));
-        choose(strings.commander.copyName);
         rightClick(rowNamed(main, 'notes'));
-        choose(strings.commander.copyName);
+        choose(strings.commander.copyPath);
         rightClick(main.querySelector('.commander-path'));
         choose(strings.commander.goToItem);
 
-        assert.deepStrictEqual(copied(), ['/work', 'work', 'notes.txt']);
+        assert.deepStrictEqual(copied(), ['/work', '/work\\notes.txt']);
         assert.strictEqual(goingTo(), '/work');
       },
     );
@@ -168,7 +198,6 @@ suite('Commander menu on a side', () => {
           strings.commander.newTerminalHere,
           strings.commander.openInGit,
           strings.commander.copyPath,
-          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
         choose(strings.commander.openInGit);
@@ -178,7 +207,6 @@ suite('Commander menu on a side', () => {
         assert.deepStrictEqual(menu(), [
           strings.commander.openWithSevenZip,
           strings.commander.copyPath,
-          strings.commander.copyName,
           strings.commander.showMoreOptions,
         ]);
 

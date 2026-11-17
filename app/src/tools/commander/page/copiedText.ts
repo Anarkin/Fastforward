@@ -1,7 +1,7 @@
 import { pathParts } from '../../../lib/shared/pathParts';
 import { baseNameOf } from './naming';
 
-export type Copied = 'paths' | 'names';
+import type { Copied } from '../../../lib/page/fileMenu';
 
 export function pathIn(
   folder: string,

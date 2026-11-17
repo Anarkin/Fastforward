@@ -366,13 +366,14 @@ suite('Architecture', () => {
     );
   });
 
-  test('makes a context only to hand out the store of the shell or of a tool, so the library makes none, as it holds no state, but the one through which the shell hands its library the looks of paths, read from its store, so every path is drawn alike', () => {
+  test('makes a context only to hand out the store of the shell or of a tool, so the library makes none, as it holds no state, but the two through which the shell hands its library the looks of paths, read from its store, so every path is drawn alike, and the menu of a part of a path, so every part opens the same menu', () => {
     assert.deepStrictEqual(
       sourceFiles
         .filter((file) => read(file).includes('createContext'))
         .toSorted(),
       [
         'lib/page/pathLooks.ts',
+        'lib/page/pathMenu.ts',
         'shell/page/store.ts',
         'tools/commander/page/store.ts',
         'tools/diff/page/store.ts',

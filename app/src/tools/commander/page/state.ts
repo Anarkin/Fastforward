@@ -1,7 +1,8 @@
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { IconSource } from '../shared/icons';
 import type { PackFormat, PackLevel, ZipCipher } from '../shared/packing';
-import type { CommanderToWebview, FolderCommand } from '../shared/protocol';
+import type { CommanderToWebview } from '../shared/protocol';
+import type { FolderCommand } from '../../../lib/shared/folderCommands';
 import type { Side } from '../shared/sides';
 import type { ColumnWidths, SizedColumn } from '../shared/columnWidths';
 import type { Layout } from './layouts';

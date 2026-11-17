@@ -92,6 +92,25 @@ function barSize(): number {
   );
 }
 
+const listLayer = 20;
+
+export function layerOver(zIndexes: readonly string[]): number {
+  return (
+    zIndexes.reduce((top, zIndex) => {
+      const layer = Number.parseInt(zIndex, 10);
+      return Number.isFinite(layer) ? Math.max(top, layer) : top;
+    }, listLayer - 1) + 1
+  );
+}
+
+function zIndexesAround(element: Element): string[] {
+  const found: string[] = [];
+  for (let at: Element | null = element; at !== null; at = at.parentElement) {
+    found.push(getComputedStyle(at).zIndex);
+  }
+  return found;
+}
+
 class Bar {
   readonly element = document.createElement('div');
   scroller: Element | null = null;
@@ -133,6 +152,7 @@ class Bar {
     style.width = `${box.width}px`;
     style.height = `${box.height}px`;
     style.setProperty('clip-path', clipPathOf(this.axis, box.clip));
+    style.zIndex = String(layerOver(zIndexesAround(scroller)));
     return true;
   }
 

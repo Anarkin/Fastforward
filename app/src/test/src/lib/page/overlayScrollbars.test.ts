@@ -5,6 +5,7 @@ import {
   drawsOverlay,
   followedScroller,
   installOverlayScrollbars,
+  layerOver,
   overlayScrollbarClass,
   scrolledScroller,
 } from '../../../../lib/page/overlayScrollbars';
@@ -74,6 +75,18 @@ function framedList(height = 100) {
 }
 
 suite('Overlay scrollbars', () => {
+  test('draws a scrollbar just over the highest layer what it scrolls is in, so it shows over its own menu or dialog, yet under a menu opened over its list', () => {
+    assert.deepStrictEqual(
+      [
+        layerOver(['auto', 'auto']),
+        layerOver(['auto', '1', 'auto']),
+        layerOver(['21', 'auto']),
+        layerOver(['auto', '25']),
+      ],
+      [20, 20, 22, 26],
+    );
+  });
+
   test('shows and places the scrollbar of an area scrolled, by keys too, in the frame after the scroll, without waiting for a timer, as timers wait behind a flood of key presses held down', () => {
     const { bar, scrollTo, frame, close } = framedList();
     try {

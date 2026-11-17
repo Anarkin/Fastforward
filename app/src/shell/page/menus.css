@@ -114,6 +114,10 @@
   right: auto;
 }
 
+.menu.context-menu.path-menu {
+  z-index: 27;
+}
+
 .menu.context-menu.scrolls {
   box-sizing: border-box;
   max-height: 100vh;

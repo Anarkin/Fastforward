@@ -5,6 +5,7 @@ import { afterAll, suite, test } from 'vitest';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
 import type { ToHost } from '../../../../shell/shared/protocol';
+import type { PathFacts } from '../../../../lib/shared/pathFacts';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
 import {
   closeViews,
@@ -188,6 +189,105 @@ suite('Shell with no tab open', () => {
         });
         await view.connection.receive({ type: 'copyText', text: 'copied' });
         assert.deepStrictEqual(host.opened, ['copy copied']);
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
+  test('answers what a page asks of a path to draw the menu of a part of it, and nothing to a forged ask', async () => {
+    const host = new FakeHost();
+    host.facts.set('C:\\Code', {
+      kind: 'folder',
+      inRepository: false,
+      gitMissing: false,
+    });
+    await withView(
+      log,
+      [],
+      async (view) => {
+        for (const message of [
+          '{ "type": "pathFacts", "ask": 1, "path": 5 }',
+          '{ "type": "pathFacts", "ask": "1", "path": "C:\\\\Code" }',
+          '{ "type": "pathFacts", "path": "C:\\\\Code" }',
+          '{ "type": "pathFacts", "ask": 1, "path": "" }',
+        ]) {
+          await view.connection.receive(JSON.parse(message));
+        }
+        assert.deepStrictEqual(host.factsAsked, []);
+        assert.strictEqual(view.page.last('pathFacts'), undefined);
+        await view.connection.receive({
+          type: 'pathFacts',
+          ask: 3,
+          path: 'C:\\Code',
+        });
+        assert.deepStrictEqual(host.factsAsked, ['C:\\Code']);
+        assert.deepStrictEqual(view.page.last('pathFacts'), {
+          type: 'pathFacts',
+          ask: 3,
+          facts: { kind: 'folder', inRepository: false, gitMissing: false },
+        });
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
+  test('runs a command of the menu of a part of a path only where what the path is allows it, opening a terminal in a folder, cloning or initing a repository in one, an archive in the commander and the menu of Windows', async () => {
+    const host = new FakeHost();
+    const folder: PathFacts = {
+      kind: 'folder',
+      inRepository: false,
+      gitMissing: false,
+    };
+    host.facts.set('C:\\Code', folder);
+    host.facts.set('C:\\a.zip', { ...folder, kind: 'file' });
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const run = (file: string, command: string, more = {}) =>
+          view.connection.receive(
+            forged(
+              JSON.stringify({
+                type: 'pathCommand',
+                path: file,
+                command,
+                ...more,
+              }),
+            ),
+          );
+        await run('C:\\Code', 'forged');
+        await run('C:\\a.zip', 'newTerminal');
+        await run('C:\\a.zip', 'cloneHere');
+        await run('C:\\a.zip', 'initHere');
+        await run('C:\\Code', 'enterArchive');
+        await run('C:\\a.zip', 'systemMenu', { x: '1', y: 2, extended: false });
+        await run('C:\\gone', 'systemMenu', { x: 1, y: 2, extended: false });
+        assert.deepStrictEqual(view.page.tabs?.tabs ?? [], []);
+        assert.deepStrictEqual(
+          [host.cloned, host.inited, host.shellMenus],
+          [[], [], []],
+        );
+
+        await run('C:\\Code', 'newTerminal');
+        await run('C:\\Code', 'cloneHere');
+        await run('C:\\Code', 'initHere');
+        await run('C:\\a.zip', 'enterArchive');
+        await run('C:\\a.zip', 'systemMenu', { x: 1, y: 2, extended: true });
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
+          [
+            ['terminal', 'C:\\Code'],
+            ['commander', 'C:\\a.zip'],
+          ],
+        );
+        assert.deepStrictEqual(
+          [host.cloned, host.inited, host.shellMenus],
+          [['C:\\Code'], ['C:\\Code'], [[['C:\\a.zip'], { x: 1, y: 2 }, true]]],
+        );
       },
       true,
       host,

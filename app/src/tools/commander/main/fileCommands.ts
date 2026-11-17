@@ -1,13 +1,11 @@
+import { runFolderCommand } from '../../../lib/main/folderCommands';
+import { isFolderCommand } from '../../../lib/shared/folderCommands';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
-import {
-  isFolderCommand,
-  parentFolder,
-  type CommanderToHost,
-} from '../shared/protocol';
+import { parentFolder, type CommanderToHost } from '../shared/protocol';
 import { type Side } from '../shared/sides';
 import { nameProblem } from '../shared/names';
 import { type Pane, type ShownPane, type Sides, type Listing } from './sides';
@@ -228,18 +226,11 @@ export class FileCommands {
     if (target === undefined) {
       return;
     }
-    switch (command) {
-      case 'newTerminal':
-        return this.host.shell().openFolders(page, 'terminal', [target]);
-      case 'openInGit':
-        return this.host.shell().openFolders(page, 'git', [target]);
-      case 'cloneHere':
-        return this.access.cloneInto?.(target);
-      case 'initHere':
-        return this.access.initRepository?.(target);
-      default:
-        return command satisfies never;
-    }
+    return runFolderCommand(command, target, {
+      open: (tool, at) => this.host.shell().openFolders(page, tool, [at]),
+      cloneInto: async (at) => this.access.cloneInto?.(at),
+      initRepository: async (at) => this.access.initRepository?.(at),
+    });
   }
 
   openRepository(

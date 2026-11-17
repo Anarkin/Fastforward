@@ -12,7 +12,7 @@ import { type Side } from '../shared/sides';
 import { type Row } from './listing';
 import { chosenKeys, opens, passedKeys } from './rowKeys';
 import { namesIgnoreCase } from './markPattern';
-import type { Copied } from './copiedText';
+import type { Copied } from '../../../lib/page/fileMenu';
 import { moveInGrid } from './tiles';
 
 export type PaneAct =
