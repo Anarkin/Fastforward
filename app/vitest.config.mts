@@ -28,6 +28,7 @@ export default defineConfig({
           name: 'unit',
           include: ['src/test/**/*.test.{ts,tsx}'],
           exclude: [git, electron, shells, sevenZip, perf, packaging],
+          testTimeout: process.env.CI === undefined ? 5000 : 20_000,
         },
       },
       {
