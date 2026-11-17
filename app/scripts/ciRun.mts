@@ -16,12 +16,18 @@ export interface Clock {
   readonly pause: (milliseconds: number) => Promise<unknown>;
 }
 
+export interface FailedJob {
+  readonly name: string;
+  readonly databaseId: number;
+  readonly started: boolean;
+}
+
 export type Watched =
   | { readonly ended: 'passed'; readonly run: Run }
   | {
       readonly ended: 'failed';
       readonly run: Run;
-      readonly failedJobs: readonly string[];
+      readonly failedJobs: readonly FailedJob[];
     }
   | { readonly ended: 'unwatched'; readonly why: string; readonly said: string }
   | { readonly ended: 'missing' }
@@ -29,8 +35,12 @@ export type Watched =
 
 interface Job {
   readonly name: string;
-  readonly conclusion: string;
+  readonly conclusion: string | null;
+  readonly databaseId: number;
+  readonly steps?: readonly unknown[];
 }
+
+const notFailed: readonly (string | null)[] = ['', null, 'success', 'skipped'];
 
 const poll = 15_000;
 const callWithin = 60_000;
@@ -93,8 +103,41 @@ export const runOfRelease = (gh: Gh, commit: string, tag: string) =>
     tag,
   ]);
 
-export const inFailedJobs = (failedJobs: readonly string[]) =>
-  failedJobs.length > 0 ? ` in ${failedJobs.join(', ')}` : '';
+const namesOf = (jobs: readonly FailedJob[]) =>
+  jobs.map((job) => job.name).join(', ');
+
+export const inFailedJobs = (failedJobs: readonly FailedJob[]) =>
+  failedJobs.length > 0 ? ` in ${namesOf(failedJobs)}` : '';
+
+export function failureOfPush(
+  commit: string,
+  run: Run,
+  failedJobs: readonly FailedJob[],
+): string {
+  const ended = run.status === 'completed';
+  const started = failedJobs.filter((job) => job.started);
+  const unstarted = failedJobs.filter((job) => !job.started);
+  return [
+    ended
+      ? `CI ended as ${run.conclusion} for ${commit}${inFailedJobs(failedJobs)}: ${run.url}`
+      : `CI failed for ${commit}${inFailedJobs(failedJobs)}, with other jobs still running: ${run.url}`,
+    ...(ended
+      ? started.length > 0 || unstarted.length === 0
+        ? [
+            `Read the log of the failed jobs with gh run view ${run.databaseId} --log-failed.`,
+          ]
+        : []
+      : started.map(
+          (job) =>
+            `Read the log of ${job.name} with gh api --allow-escape-sequences repos/{owner}/{repo}/actions/jobs/${job.databaseId}/logs`,
+        )),
+    ...(unstarted.length > 0
+      ? [
+          `${namesOf(unstarted)} never got a machine from GitHub, which no commit causes; run ${unstarted.length === 1 ? 'it' : 'them'} again with gh run rerun ${run.databaseId} --failed${ended ? '' : ' once the run has ended'}.`,
+        ]
+      : []),
+  ].join('\n');
+}
 
 const cannotWork = (error: unknown) =>
   error instanceof Error &&
@@ -109,23 +152,40 @@ const saidBy = (error: unknown) =>
     ? String(error.stderr).trim()
     : String(error);
 
-async function failedJobsOf(gh: Gh, run: Run): Promise<readonly string[]> {
+async function failedJobsOf(gh: Gh, run: Run): Promise<readonly FailedJob[]> {
   try {
     const { jobs }: { readonly jobs: readonly Job[] } = JSON.parse(
       await gh('run', 'view', String(run.databaseId), '--json', 'jobs'),
     );
     return jobs
-      .filter((job) => !['success', 'skipped'].includes(job.conclusion))
-      .map((job) => job.name);
+      .filter((job) => !notFailed.includes(job.conclusion))
+      .map((job) => ({
+        name: job.name,
+        databaseId: job.databaseId,
+        started: job.conclusion !== 'cancelled' || (job.steps ?? []).length > 0,
+      }));
   } catch {
     return [];
   }
 }
 
-export async function watchRun(
+export const watchRun = (
   gh: Gh,
   find: () => Promise<Run | undefined>,
   clock: Clock = realClock,
+): Promise<Watched> => watch(gh, find, clock, false);
+
+export const watchRunToFirstFailure = (
+  gh: Gh,
+  find: () => Promise<Run | undefined>,
+  clock: Clock = realClock,
+): Promise<Watched> => watch(gh, find, clock, true);
+
+async function watch(
+  gh: Gh,
+  find: () => Promise<Run | undefined>,
+  clock: Clock,
+  toFirstFailure: boolean,
 ): Promise<Watched> {
   const started = clock.now();
   let failingSince: number | undefined;
@@ -161,6 +221,12 @@ export async function watchRun(
       return run.conclusion === 'success'
         ? { ended: 'passed', run }
         : { ended: 'failed', run, failedJobs: await failedJobsOf(gh, run) };
+    }
+    if (run !== undefined && toFirstFailure) {
+      const failedJobs = await failedJobsOf(gh, run);
+      if (failedJobs.length > 0) {
+        return { ended: 'failed', run, failedJobs };
+      }
     }
     if (run !== undefined && waited >= finishWithin) {
       return { ended: 'unfinished', run };

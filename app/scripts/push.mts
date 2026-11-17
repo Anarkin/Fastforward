@@ -1,5 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { ghCli, inFailedJobs, runOfPush, watchRun } from './ciRun.mts';
+import {
+  failureOfPush,
+  ghCli,
+  runOfPush,
+  watchRunToFirstFailure,
+} from './ciRun.mts';
 
 const git = (...args: string[]) =>
   execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -22,15 +27,15 @@ try {
   process.exit(1);
 }
 
-const watched = await watchRun(ghCli, () => runOfPush(ghCli, commit));
+const watched = await watchRunToFirstFailure(ghCli, () =>
+  runOfPush(ghCli, commit),
+);
 switch (watched.ended) {
   case 'passed':
     console.log(`CI passed for ${commit}: ${watched.run.url}`);
     process.exit(0);
   case 'failed':
-    console.error(
-      `CI ended as ${watched.run.conclusion} for ${commit}${inFailedJobs(watched.failedJobs)}: ${watched.run.url}\nRead the log of the failed jobs with gh run view ${watched.run.databaseId} --log-failed.`,
-    );
+    console.error(failureOfPush(commit, watched.run, watched.failedJobs));
     process.exit(1);
   case 'unwatched':
     console.error(

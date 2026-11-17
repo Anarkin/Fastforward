@@ -29,6 +29,22 @@ interface CiRun {
     find: () => Promise<Run | undefined>,
     clock: Clock,
   ) => Promise<unknown>;
+  readonly watchRunToFirstFailure: (
+    gh: Gh,
+    find: () => Promise<Run | undefined>,
+    clock: Clock,
+  ) => Promise<unknown>;
+  readonly failureOfPush: (
+    commit: string,
+    run: Run,
+    failedJobs: readonly FailedJob[],
+  ) => string;
+}
+
+interface FailedJob {
+  readonly name: string;
+  readonly databaseId: number;
+  readonly started: boolean;
 }
 
 async function loadCiRun(): Promise<CiRun> {
@@ -199,6 +215,93 @@ const flaky = () =>
     stderr: 'HTTP 502: Bad Gateway\n',
   });
 
+const building = {
+  name: 'test (ubuntu-latest, 1/6)',
+  conclusion: '',
+  databaseId: 11,
+  steps: [{}],
+};
+
+const broken = {
+  name: 'test (windows-latest, 3/8)',
+  conclusion: 'failure',
+  databaseId: 12,
+  steps: [{}],
+};
+
+const unpicked = {
+  name: 'test (macos-latest, 2/4)',
+  conclusion: 'cancelled',
+  databaseId: 13,
+  steps: [],
+};
+
+function jobsAtEachPoll(...polls: readonly (readonly object[])[]): Gh {
+  let at = 0;
+  return () => {
+    const jobs = polls[Math.min(at, polls.length - 1)];
+    at += 1;
+    return Promise.resolve(JSON.stringify({ jobs }));
+  };
+}
+
+suite('Telling how the CI of a push failed', () => {
+  const windows = { name: broken.name, databaseId: 12, started: true };
+  const macos = { name: unpicked.name, databaseId: 13, started: false };
+
+  test('names the failed jobs of a run that has ended and how to read their log, and only that when its jobs could not be read', async () => {
+    const { failureOfPush } = await loadCiRun();
+    assert.strictEqual(
+      failureOfPush(commit, failed, [windows]),
+      [
+        `CI ended as failure for ${commit} in test (windows-latest, 3/8): https://github.com/runs/5`,
+        'Read the log of the failed jobs with gh run view 5 --log-failed.',
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      failureOfPush(commit, failed, []),
+      [
+        `CI ended as failure for ${commit}: https://github.com/runs/5`,
+        'Read the log of the failed jobs with gh run view 5 --log-failed.',
+      ].join('\n'),
+    );
+  });
+
+  test('gives the log of each failed job by its id while the run is still in progress, which is there before the run ends', async () => {
+    const { failureOfPush } = await loadCiRun();
+    assert.strictEqual(
+      failureOfPush(commit, running, [windows]),
+      [
+        `CI failed for ${commit} in test (windows-latest, 3/8), with other jobs still running: https://github.com/runs/5`,
+        'Read the log of test (windows-latest, 3/8) with gh api --allow-escape-sequences repos/{owner}/{repo}/actions/jobs/12/logs',
+      ].join('\n'),
+    );
+  });
+
+  test('says of a job that never got a machine that no commit causes it, and how to run it again once the run has ended, with no log to read', async () => {
+    const { failureOfPush } = await loadCiRun();
+    assert.strictEqual(
+      failureOfPush(commit, failed, [macos]),
+      [
+        `CI ended as failure for ${commit} in test (macos-latest, 2/4): https://github.com/runs/5`,
+        'test (macos-latest, 2/4) never got a machine from GitHub, which no commit causes; run it again with gh run rerun 5 --failed.',
+      ].join('\n'),
+    );
+    assert.strictEqual(
+      failureOfPush(commit, running, [
+        windows,
+        macos,
+        { ...macos, name: 'playground (macos-latest)' },
+      ]),
+      [
+        `CI failed for ${commit} in test (windows-latest, 3/8), test (macos-latest, 2/4), playground (macos-latest), with other jobs still running: https://github.com/runs/5`,
+        'Read the log of test (windows-latest, 3/8) with gh api --allow-escape-sequences repos/{owner}/{repo}/actions/jobs/12/logs',
+        'test (macos-latest, 2/4), playground (macos-latest) never got a machine from GitHub, which no commit causes; run them again with gh run rerun 5 --failed once the run has ended.',
+      ].join('\n'),
+    );
+  });
+});
+
 suite('Watching a run', () => {
   test('waits while the run is in progress, and passes once it ends in success', async () => {
     const { watchRun } = await loadCiRun();
@@ -216,10 +319,30 @@ suite('Watching a run', () => {
       return Promise.resolve(
         JSON.stringify({
           jobs: [
-            { name: 'check', conclusion: 'success' },
-            { name: 'build (windows-latest)', conclusion: 'failure' },
-            { name: 'build (macos-latest)', conclusion: 'cancelled' },
-            { name: 'release', conclusion: 'skipped' },
+            {
+              name: 'check',
+              conclusion: 'success',
+              databaseId: 1,
+              steps: [{}],
+            },
+            {
+              name: 'build (windows-latest)',
+              conclusion: 'failure',
+              databaseId: 2,
+              steps: [{}],
+            },
+            {
+              name: 'build (macos-latest)',
+              conclusion: 'cancelled',
+              databaseId: 3,
+              steps: [{}],
+            },
+            {
+              name: 'release',
+              conclusion: 'skipped',
+              databaseId: 4,
+              steps: [],
+            },
           ],
         }),
       );
@@ -229,10 +352,79 @@ suite('Watching a run', () => {
       {
         ended: 'failed',
         run: failed,
-        failedJobs: ['build (windows-latest)', 'build (macos-latest)'],
+        failedJobs: [
+          { name: 'build (windows-latest)', databaseId: 2, started: true },
+          { name: 'build (macos-latest)', databaseId: 3, started: true },
+        ],
       },
     );
     assert.deepStrictEqual(calls, [['run', 'view', '5', '--json', 'jobs']]);
+  });
+
+  test('stops as soon as a job of a run still in progress has failed, naming it, rather than waiting for the other jobs to end', async () => {
+    const { watchRunToFirstFailure } = await loadCiRun();
+    const time = clock();
+    assert.deepStrictEqual(
+      await watchRunToFirstFailure(
+        jobsAtEachPoll([building], [building, broken]),
+        finding(running),
+        time,
+      ),
+      {
+        ended: 'failed',
+        run: running,
+        failedJobs: [{ name: broken.name, databaseId: 12, started: true }],
+      },
+    );
+    assert.strictEqual(time.now(), 15_000);
+  });
+
+  test('goes on watching to the first failure while no job has failed, and while the jobs cannot be read, and passes once the run ends in success', async () => {
+    const { watchRunToFirstFailure } = await loadCiRun();
+    for (const gh of [jobsAtEachPoll([building]), unused]) {
+      assert.deepStrictEqual(
+        await watchRunToFirstFailure(
+          gh,
+          finding(running, running, passed),
+          clock(),
+        ),
+        { ended: 'passed', run: passed },
+      );
+    }
+  });
+
+  test('takes a job cancelled before any step of it ran as one that never got a machine', async () => {
+    const { watchRunToFirstFailure } = await loadCiRun();
+    assert.deepStrictEqual(
+      await watchRunToFirstFailure(
+        jobsAtEachPoll([building, unpicked]),
+        finding(running),
+        clock(),
+      ),
+      {
+        ended: 'failed',
+        run: running,
+        failedJobs: [{ name: unpicked.name, databaseId: 13, started: false }],
+      },
+    );
+  });
+
+  test('waits for the run to end unless asked for its first failure, though a job of it has failed meanwhile, as a release is run again only once its run has ended', async () => {
+    const { watchRun } = await loadCiRun();
+    const time = clock();
+    assert.deepStrictEqual(
+      await watchRun(
+        jobsAtEachPoll([building, broken]),
+        finding(running, running, failed),
+        time,
+      ),
+      {
+        ended: 'failed',
+        run: failed,
+        failedJobs: [{ name: broken.name, databaseId: 12, started: true }],
+      },
+    );
+    assert.strictEqual(time.now(), 30_000);
   });
 
   test('stops at once when gh does not work here, as waiting would not make it work', async () => {
