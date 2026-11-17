@@ -64,6 +64,7 @@ suite('Cursor', () => {
             cell.top === prompt.top &&
             cell.left === prompt.left + prompt.width * text.length,
           'the cursor of the terminal after what was typed',
+          200,
         );
         const terminalShot = await shotShowing(
           around(inTerminal),

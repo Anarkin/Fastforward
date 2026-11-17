@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import { onceDrawn, untilSettled } from './waits';
 
 export interface TabLooks {
   readonly focus: string | null;
@@ -12,15 +13,8 @@ export interface TabLooks {
   readonly text: string;
 }
 
-const tabLooks = (page: Page): Promise<TabLooks> =>
-  page.evaluate(async () => {
-    await new Promise<void>((drawn) => {
-      const withoutFrames = setTimeout(drawn, 250);
-      requestAnimationFrame(() => {
-        clearTimeout(withoutFrames);
-        setTimeout(drawn);
-      });
-    });
+const looksNow = (page: Page): Promise<TabLooks> =>
+  page.evaluate(() => {
     const root = document.querySelector('.app');
     const shown = (element: Element) =>
       root?.contains(element) === true &&
@@ -194,6 +188,11 @@ const tabLooks = (page: Page): Promise<TabLooks> =>
 const looksAlike = (one: TabLooks, other: TabLooks) =>
   JSON.stringify(one) === JSON.stringify(other);
 
+const tabLooks = async (page: Page): Promise<TabLooks> => {
+  await onceDrawn(page);
+  return looksNow(page);
+};
+
 const newline = String.fromCharCode(10);
 
 const busy: readonly string[] = [
@@ -214,27 +213,13 @@ const scrollerHeld = (page: Page): Promise<boolean> =>
     }),
   );
 
-export async function settledLooks(page: Page): Promise<TabLooks> {
-  let last = await tabLooks(page);
-  let since = Date.now();
-  let readsAlike = 1;
-  await waitFor(async () => {
-    const now = await tabLooks(page);
-    if (looksAlike(now, last)) {
-      readsAlike += 1;
-    } else {
-      last = now;
-      since = Date.now();
-      readsAlike = 1;
-    }
-    return (
-      Date.now() - since >= 400 &&
-      readsAlike >= 3 &&
+export function settledLooks(page: Page, quiet = 400): Promise<TabLooks> {
+  return untilSettled(() => tabLooks(page), 'the tab to settle', {
+    quiet,
+    accepted: async (now) =>
       !busy.some((sentence) => now.text.split(newline).includes(sentence)) &&
-      !(await scrollerHeld(page))
-    );
-  }, 'the tab to settle');
-  return last;
+      !(await scrollerHeld(page)),
+  });
 }
 
 export async function scrolledAround(page: Page): Promise<void> {
@@ -281,7 +266,7 @@ export async function comesBackAfter(
   what: string,
   settledBefore?: TabLooks,
 ): Promise<TabLooks> {
-  const left = settledBefore ?? (await settledLooks(page));
+  const left = settledBefore ?? (await settledLooks(page, 1000));
   const shown = await change();
   let back = await tabLooks(shown);
   try {

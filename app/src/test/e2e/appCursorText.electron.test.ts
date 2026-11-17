@@ -99,6 +99,7 @@ suite('Cursor over the text under it and beside it', () => {
             cell.top === prompt.top &&
             cell.left === prompt.left + prompt.width * cells,
           'the cursor of the terminal after what was typed',
+          200,
         );
         const middle = (prompt.top + prompt.height / 2) / ratio;
         await page.mouse.move((prompt.left + prompt.width / 4) / ratio, middle);

@@ -24,6 +24,7 @@ import {
 } from './cursorPixels';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { fitWindow, windowOfPage } from './cursorWindow';
+import { onceDrawn, untilSettled } from './waits';
 
 const shell =
   process.platform === 'win32'
@@ -219,31 +220,19 @@ async function screenLeftTop(): Promise<[number, number]> {
   return [Math.round(rect[0] * ratio), Math.round(rect[1] * ratio)];
 }
 
-export async function settledCell(
+export function settledCell(
   accept: (cell: Box) => boolean | Promise<boolean>,
   what: string,
+  quiet = 1000,
 ): Promise<Box> {
-  let last = '';
-  let since = Date.now();
-  let cell: Box | undefined;
-  await waitFor(
+  return untilSettled(
     async () => {
-      const now = await terminalCell();
-      const key = JSON.stringify(now);
-      if (key !== last) {
-        last = key;
-        since = Date.now();
-      }
-      cell = now;
-      return (await accept(now)) && Date.now() - since > 1000;
+      await onceDrawn(page);
+      return terminalCell();
     },
     what,
-    30_000,
+    { quiet, accepted: accept, timeout: 30_000 },
   );
-  if (cell === undefined) {
-    throw new Error(`No cell for ${what}`);
-  }
-  return cell;
 }
 
 export async function promptAtTop(): Promise<Box> {

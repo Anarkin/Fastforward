@@ -21,6 +21,7 @@ import {
   sharedEditorApp,
 } from './editorAppFixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { onceDrawn, untilSettled } from './waits';
 
 const shortLines = (count: number, name: string) =>
   Array.from({ length: count }, (_, at) => `${name} ${at + 1}`);
@@ -194,19 +195,15 @@ suite('App editor, long lines and places shown again', () => {
         ),
       `the status ${String(wanted)}`,
     );
-  const settledTopRow = async () => {
-    let last = '';
-    let since = Date.now();
-    await waitFor(async () => {
-      const now = JSON.stringify(await topRow());
-      if (now !== last) {
-        last = now;
-        since = Date.now();
-      }
-      return Date.now() - since > 600;
-    }, 'the text to stop scrolling');
-    return topRow();
-  };
+  const settledTopRow = () =>
+    untilSettled(
+      async () => {
+        await onceDrawn(page);
+        return topRow();
+      },
+      'the text to stop scrolling',
+      { quiet: 600 },
+    );
   const scrolledToRow = async (rows: number) => {
     await scroller().evaluate((element, by) => {
       const row = parseFloat(getComputedStyle(element).lineHeight);

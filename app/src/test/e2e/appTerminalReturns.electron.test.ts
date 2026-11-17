@@ -12,6 +12,7 @@ import {
 } from './tabReturns';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { onceDrawn, untilSettled } from './waits';
 
 const windows = process.platform === 'win32';
 
@@ -66,18 +67,28 @@ async function run(command: string): Promise<void> {
   await page.keyboard.press('Enter');
 }
 
-async function settledTerminal(): Promise<TerminalLooks> {
-  let last = await terminalLooks();
-  let since = Date.now();
+const lastRow = async () =>
+  (await terminalLooks()).rows.findLast((row) => row !== '') ?? '';
+
+async function interrupted(): Promise<void> {
+  const running = await lastRow();
+  await page.locator('.terminal-screen').click();
+  await page.keyboard.press('Control+C');
   await waitFor(async () => {
-    const now = await terminalLooks();
-    if (JSON.stringify(now) !== JSON.stringify(last)) {
-      last = now;
-      since = Date.now();
-    }
-    return Date.now() - since >= 500;
-  }, 'the terminal to settle');
-  return last;
+    const row = await lastRow();
+    return row !== running && /[>$#%]$/.test(row);
+  }, 'the prompt of the shell once its command is interrupted');
+}
+
+function settledTerminal(): Promise<TerminalLooks> {
+  return untilSettled(
+    async () => {
+      await onceDrawn(page);
+      return terminalLooks();
+    },
+    'the terminal to settle',
+    { quiet: 500 },
+  );
 }
 
 const rowShown = async (row: string) =>
@@ -198,7 +209,7 @@ suite('Terminal tab shown again', () => {
     for (const away of awayTabs) {
       await comesBack(bar, away);
     }
-    await page.keyboard.press('Control+C');
+    await interrupted();
     await run(printing(['[?25l']));
     await waitFor(
       async () => (await terminalLooks()).cursor === null,
@@ -208,7 +219,7 @@ suite('Terminal tab shown again', () => {
     for (const away of awayTabs) {
       await comesBack(hidden, away);
     }
-    await page.keyboard.press('Control+C');
+    await interrupted();
     await run(printing(['[?25h', '[0 q'], false));
   });
 });
