@@ -44,7 +44,3 @@
   align-items: center;
   gap: 8px;
 }
-
-.pack-note {
-  color: var(--muted-foreground);
-}

@@ -202,10 +202,14 @@ suite('Pack popup', () => {
     });
   });
 
-  test('names a single item to pack by its whole path, drawn as the parts of a path', async () => {
+  test('names a single item to pack by its whole path, drawn as the parts of a path, on the first row of the table of its fields with an empty label, lined up with the archive', async () => {
     await packing(
       async ({ dom }) => {
-        const named = dom.window.document.querySelector('.name-value');
+        const [label, named] = [
+          ...(dom.window.document.querySelector('.pack-fields')?.children ??
+            []),
+        ];
+        assert.strictEqual(label?.textContent, '');
         assert.deepStrictEqual(
           [...(named?.querySelectorAll('.path-part') ?? [])].map(
             (part) => part.textContent,

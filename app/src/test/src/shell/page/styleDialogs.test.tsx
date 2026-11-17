@@ -140,7 +140,7 @@ suite('Style', () => {
     });
   });
 
-  test('writes every label and value of a dialog in the color of its text, none dimmed, as the labels of its fields are', () => {
+  test('writes every label, value, status and note of a dialog in the color of its text, none dimmed, as the labels of its fields are', () => {
     const lines = rendered(
       <ConfirmPopup
         title="Copy"
@@ -158,10 +158,17 @@ suite('Style', () => {
         ...allWithClass(lines, 'name-label').map((label) =>
           cascaded(label, 'color'),
         ),
-        cascaded(rendered(<div className="transfer-sides" />), 'color'),
-        cascaded(rendered(<div className="open-with-folders" />), 'color'),
+        ...[
+          'transfer-sides',
+          'open-with-folders',
+          'transfer-current',
+          'transfer-counts',
+          'pack-note',
+          'prompt-note',
+          'clone-detail',
+        ].map((box) => cascaded(rendered(<div className={box} />), 'color')),
       ],
-      [undefined, undefined, undefined, undefined],
+      Array.from({ length: 9 }, () => undefined),
     );
   });
 

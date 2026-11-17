@@ -17,7 +17,6 @@
 
 .transfer-current {
   min-height: 1lh;
-  color: var(--muted-foreground);
 }
 
 .transfer-bar {
@@ -36,7 +35,6 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
 }
 

@@ -99,4 +99,11 @@ suite('Sentences', () => {
       'Reopening the file in another encoding drops the changes made here.',
     );
   });
+
+  test('titles the dialogs of the editor in title case, as every other dialog, Go To as the commander has it', () => {
+    assert.deepStrictEqual(
+      [strings.editor.overwriteTitle, strings.editor.goToLineTitle],
+      ['Read-Only File', 'Go To Line'],
+    );
+  });
 });

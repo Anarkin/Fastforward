@@ -46,13 +46,13 @@ suite('Commander deleting', () => {
     });
   });
 
-  test('deletes from an archive permanently, naming the archive by its whole path on a line of its own, as an archive has no Recycle Bin', () => {
+  test('deletes from an archive permanently, naming the archive by its whole path on a line of its own, lined up with what it deletes, as an archive has no Recycle Bin', () => {
     assert.deepStrictEqual(
       deleteQuestion(['a.txt', 'docs'], true, 'linux', false, '/x/photos.zip'),
       {
         title: 'Delete Permanently',
         lines: [
-          { text: '2 items' },
+          { label: '', text: '2 items' },
           { label: 'Archive', name: '/x/photos.zip', path: 'file' },
         ],
         confirm: 'Delete Permanently',
@@ -68,7 +68,7 @@ suite('Commander deleting', () => {
         'C:\\x\\photos.zip\\docs',
       ).lines,
       [
-        { name: 'C:\\x\\photos.zip\\docs\\a.txt', path: 'file' },
+        { label: '', name: 'C:\\x\\photos.zip\\docs\\a.txt', path: 'file' },
         { label: 'Archive', name: 'C:\\x\\photos.zip', path: 'file' },
       ],
     );

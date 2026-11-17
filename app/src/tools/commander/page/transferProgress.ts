@@ -59,7 +59,7 @@ export function progressLines({
   }
   if (progress.deleting === true) {
     return {
-      current: commander.deletingMovedFrom(progress.current ?? ''),
+      current: commander.deletingMovedOut,
       files: undefined,
     };
   }

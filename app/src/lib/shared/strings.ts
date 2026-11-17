@@ -732,7 +732,7 @@ export const strings = {
       `${fileSize(done)} of ${fileSize(total)}`,
     stopTransfer: 'Stop',
     stoppingTransfer: 'Stopping…',
-    clashQuestion: (what: Value) => sentence`${what} is there already.`,
+    clashThereAlready: 'It is there already.',
     clashCopying: 'Copying',
     clashMoving: 'Moving',
     clashThere: 'There now',
@@ -819,7 +819,6 @@ export const strings = {
     transferAsAdministrator:
       "Items can't be copied or moved yet in a folder read as administrator.",
     packTitle: 'Pack',
-    packLines: (what: Value): Line[] => [what],
     packArchive: 'Archive',
     packFormat: 'Format',
     packFormats: {
@@ -934,8 +933,7 @@ export const strings = {
       sentence`Putting back into ${namedFile(archive)} stopped unexpectedly.`,
     putBackWithout: (item: string, reason: Sentence) =>
       sentence`Not everything could be put back into ${namedItem(item)}: ${reason}`,
-    deletingMovedFrom: (item: string) =>
-      sentence`Deleting from ${namedItem(item)} what was moved out of it…`,
+    deletingMovedOut: 'Deleting from the archive what was moved out of it…',
     thereAlready: (count: number, total: number) =>
       count < total
         ? `${count.toLocaleString()} of them are there already.`
@@ -1145,7 +1143,7 @@ export const strings = {
         ? '1 character selected'
         : `${characters.toLocaleString()} characters selected`,
     between: ' · ',
-    goToLineTitle: 'Go to Line',
+    goToLineTitle: 'Go To Line',
     lineNumber: (lines: number) => `Line, 1 to ${lines}`,
     goToLine: 'Go',
     noSuchLine: (lines: number) => `Type a line from 1 to ${lines}.`,
@@ -1210,7 +1208,7 @@ export const strings = {
       `${counts.join(', ')}; new lines end in ${newLines}`,
     linesEndingIn: (lines: number, ending: string) =>
       `${lines} ${lines === 1 ? 'line ends' : 'lines end'} in ${ending}`,
-    overwriteTitle: 'Read-only file',
+    overwriteTitle: 'Read-Only File',
     overwriteLines: (file: string): Line[] => [namedFile(file)],
     overwrite: 'Save Anyway',
     unsaved: 'Unsaved changes',

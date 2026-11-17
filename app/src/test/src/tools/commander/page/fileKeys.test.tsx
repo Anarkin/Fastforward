@@ -259,8 +259,14 @@ suite('Commander file keys', () => {
           },
         });
         assert.strictEqual(
-          document.querySelector('.transfer-clash')?.innerHTML,
-          '<code class="name named-path"><span class="path-piece"><span class="path-part">D:\\</span></span><span class="path-piece"><span class="path-part">photos</span>\\</span><span class="path-piece"><span class="path-part">a.txt</span></span></code> is there already.',
+          document.querySelector('.transfer-clash')?.textContent,
+          'It is there already.',
+        );
+        assert.deepStrictEqual(
+          [...(document.querySelector('.transfer-sides')?.children ?? [])]
+            .slice(0, 3)
+            .map((cell) => cell.textContent),
+          ['', 'D:\\photos\\a.txt', 'Copying'],
         );
         assert.ok(!dialogText().includes(strings.commander.clashReadOnly));
         await send({

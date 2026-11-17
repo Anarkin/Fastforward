@@ -62,10 +62,6 @@
   white-space: nowrap;
 }
 
-.clone-detail {
-  color: var(--muted-foreground);
-}
-
 .clone-running {
   display: grid;
   grid-template-columns: 12em minmax(0, 1fr);

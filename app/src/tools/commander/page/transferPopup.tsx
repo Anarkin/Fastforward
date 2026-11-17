@@ -12,7 +12,7 @@ import { useShell } from '../../../shell/page/store';
 import type { ClashSide, TransferView } from '../shared/transfers';
 import { useCommander, useCommanderActions } from './store';
 import { PathTitle } from '../../../lib/page/pathTitle';
-import { NameLines, Words } from '../../../lib/page/name';
+import { NameLines, NamedPath, Words } from '../../../lib/page/name';
 import { progressLines, runningLines, shareDone } from './transferProgress';
 
 type Clash = NonNullable<TransferView['clash']>;
@@ -56,14 +56,12 @@ function ClashBody({
   const { commander } = strings;
   return (
     <div className="confirm-body transfer-body">
-      <span className="transfer-clash">
-        <Words>
-          {commander.clashQuestion(
-            commander.oneItem(joinedPath(target, clash.name)),
-          )}
-        </Words>
-      </span>
+      <span className="transfer-clash">{commander.clashThereAlready}</span>
       <div className="transfer-sides">
+        <span />
+        <span className="transfer-clash-path">
+          <NamedPath path={joinedPath(target, clash.name)} file />
+        </span>
         <ClashSideRow
           label={move ? commander.clashMoving : commander.clashCopying}
           side={clash.source}

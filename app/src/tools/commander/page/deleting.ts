@@ -1,6 +1,6 @@
 import { joinedPath } from '../../../lib/page/pathLooks';
 import { strings } from '../../../lib/shared/strings';
-import { namedItem, type Line } from '../../../lib/shared/sentences';
+import { labeled, namedItem, type Line } from '../../../lib/shared/sentences';
 
 export function deleteQuestion(
   names: readonly string[],
@@ -12,12 +12,14 @@ export function deleteQuestion(
 ): { title: string; message?: string; lines: Line[]; confirm: string } {
   const { commander } = strings;
   const [name] = names;
-  const lines = [
+  const what =
     names.length === 1 && name !== undefined
       ? namedItem(joinedPath(folder, name))
-      : { text: commander.items(names.length) },
-    ...(archive === undefined ? [] : commander.archiveLines(archive)),
-  ];
+      : { text: commander.items(names.length) };
+  const lines =
+    archive === undefined
+      ? [what]
+      : [labeled('', what), ...commander.archiveLines(archive)];
   if (permanently) {
     return {
       title: commander.deletePermanentlyTitle,

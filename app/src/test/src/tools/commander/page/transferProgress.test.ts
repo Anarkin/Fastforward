@@ -74,7 +74,7 @@ suite('The progress of a pack', () => {
         progress: { ...progress, current: 'a.zip', deleting: true },
       }),
       {
-        current: strings.commander.deletingMovedFrom('a.zip'),
+        current: strings.commander.deletingMovedOut,
         files: undefined,
       },
     );
