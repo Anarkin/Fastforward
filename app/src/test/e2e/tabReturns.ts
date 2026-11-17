@@ -32,7 +32,8 @@ const tabLooks = (page: Page): Promise<TabLooks> =>
         at = at.parentElement
       ) {
         const style = getComputedStyle(at);
-        if (style.opacity === '0') {
+        const blinking = style.animationName.startsWith('cursor-blink');
+        if (style.opacity === '0' && !blinking) {
           return false;
         }
         if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
