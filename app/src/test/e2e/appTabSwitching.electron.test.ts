@@ -38,6 +38,9 @@ function recordFrames(lasting: number): void {
   };
   const frames: string[] = [];
   Reflect.set(window, 'switchFrames', frames);
+  Reflect.set(window, 'switchFramesEnded', false);
+  const fewest = 12;
+  const longest = 5000;
   const started = performance.now();
   const step = () => {
     frames.push(
@@ -47,8 +50,11 @@ function recordFrames(lasting: number): void {
         )
         .join(' '),
     );
-    if (performance.now() - started < lasting) {
+    const lasted = performance.now() - started;
+    if (lasted < lasting || (frames.length < fewest && lasted < longest)) {
       requestAnimationFrame(step);
+    } else {
+      Reflect.set(window, 'switchFramesEnded', true);
     }
   };
   requestAnimationFrame(step);
@@ -57,7 +63,9 @@ function recordFrames(lasting: number): void {
 async function framesSwitchingTo(page: Page, index: number): Promise<string[]> {
   await page.evaluate(recordFrames, 800);
   await tabs(page).nth(index).click();
-  await page.waitForTimeout(900);
+  await page.waitForFunction(
+    () => Reflect.get(window, 'switchFramesEnded') === true,
+  );
   const frames: unknown = await page.evaluate(() =>
     Reflect.get(window, 'switchFrames'),
   );
