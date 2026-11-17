@@ -78,6 +78,41 @@ function topRowOf(scroller: Element): TopRow {
   };
 }
 
+interface TopRows {
+  readonly first: string;
+  readonly second: string;
+}
+
+function topRowsOf(scroller: Element): TopRows {
+  const top = scroller.getBoundingClientRect().top;
+  const line = Array.from(scroller.querySelectorAll('.cm-line')).find(
+    (each) => each.getBoundingClientRect().bottom > top + 1,
+  );
+  const range = document.createRange();
+  if (line !== undefined) {
+    range.selectNodeContents(line);
+  }
+  const row = Array.from(range.getClientRects()).find(
+    (rect) => rect.height > 0 && rect.bottom > top + 1,
+  );
+  const from = (rowsDown: number) => {
+    const at =
+      row === undefined
+        ? null
+        : document.caretRangeFromPoint(
+            row.left + 1,
+            row.top + row.height * (rowsDown + 0.5),
+          );
+    const shown = document.createRange();
+    if (at !== null && line !== undefined) {
+      shown.setStart(at.startContainer, at.startOffset);
+      shown.setEnd(line, line.childNodes.length);
+    }
+    return shown.toString().slice(0, 400);
+  };
+  return { first: from(0), second: from(1) };
+}
+
 function recordTopRows(frameCount: number): void {
   const frames: string[] = [];
   Reflect.set(window, 'topRowsRecorded', frames);
@@ -162,6 +197,16 @@ suite('App editor, long lines and places shown again', () => {
   const scroller = () => page.locator('.editor .cm-scroller');
   const tabs = () => page.locator('.tabs [role="tab"]');
   const topRow = () => scroller().evaluate(topRowOf);
+  const topRowOfLongLine = async () => {
+    const { first, second } = await scroller().evaluate(topRowsOf);
+    const from = longLine.indexOf(first);
+    const to = longLine.indexOf(second);
+    assert.ok(
+      first !== '' && from !== -1 && to > from,
+      `the top row and the one below it inside the long line: ${JSON.stringify({ from, to, first: first.slice(0, 40), second: second.slice(0, 40) })}`,
+    );
+    return { from, to };
+  };
   const recordedRows = () =>
     page.evaluate(() => {
       const recorded: unknown = Reflect.get(window, 'topRowsRecorded');
@@ -328,12 +373,18 @@ suite('App editor, long lines and places shown again', () => {
     const scrolledTo = await settledTopRow();
     assert.match(scrolledTo.text, /^(?!<script)/, 'deep inside the line');
     for (let time = 0; time < 6; time++) {
-      const { left, frames } = await shownAgain();
+      const led = (await topRowOfLongLine()).from;
+      const { frames } = await shownAgain();
       assert.ok(frames.length > 0, 'frames drawn');
       assert.deepStrictEqual(
         [...new Set(frames)],
-        [left],
-        `shown again ${time + 1} times`,
+        [JSON.stringify(await topRow())],
+        `one place from the first frame, shown again ${time + 1} times`,
+      );
+      const back = await topRowOfLongLine();
+      assert.ok(
+        back.from <= led && led < back.to,
+        `the character that led the top row in that row still, shown again ${time + 1} times: ${JSON.stringify({ led, back })}`,
       );
       assert.deepStrictEqual(await gapsShown(), [], 'nothing undrawn');
       assert.ok(

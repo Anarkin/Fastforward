@@ -80,6 +80,25 @@ export function samePlace(one: EditorPlace, other: EditorPlace): boolean {
   return one.from === other.from && Math.abs(one.offset - other.offset) < 1;
 }
 
+export function rowHolds(
+  first: number,
+  next: number,
+  { from, offset }: EditorPlace,
+): boolean {
+  return offset === 0 && first < from && from <= next;
+}
+
+function topRowHolds(view: EditorView, place: EditorPlace): boolean {
+  const top = view.scrollDOM.getBoundingClientRect().top;
+  const x = view.contentDOM.getBoundingClientRect().left + 1;
+  const row = view.defaultLineHeight;
+  return rowHolds(
+    view.posAtCoords({ x, y: top + row / 2 }, false),
+    view.posAtCoords({ x, y: top + row * 1.5 }, false),
+    place,
+  );
+}
+
 function shownWhenBack(
   view: EditorView,
   wanted: EditorPlace,
@@ -97,7 +116,10 @@ function shownWhenBack(
     const seen = JSON.stringify([scroller.scrollTop, now]);
     const settled = seen === last;
     last = seen;
-    if ((settled && samePlace(now, wanted)) || checks > settleChecks) {
+    if (
+      (settled && (samePlace(now, wanted) || topRowHolds(view, wanted))) ||
+      checks > settleChecks
+    ) {
       return true;
     }
     if (settled && tries < settleTries) {
