@@ -5,7 +5,7 @@ import {
   parsePatch,
   type DiffFile,
 } from '../../../../../components/diff/page/diff';
-import type { ImageOrigin } from '../../../../../components/diff/page/diffImages';
+import type { ImageOrigin } from '../../../../../components/diff/page/images';
 import {
   viewedSource,
   wholeViewedSource,

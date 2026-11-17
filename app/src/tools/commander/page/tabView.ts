@@ -10,7 +10,7 @@ import {
   text,
   type Infer,
 } from '../../../lib/shared/schema';
-import { focusSchema, typedSchema } from '../../../lib/page/keptFocus';
+import { focusSchema, typedSchema } from '../../../lib/page/viewFocus';
 import { searchOptionsSchema } from '../../../lib/shared/searchOptions';
 import { packFormats, packLevels, zipCiphers } from '../shared/packing';
 import { sides } from '../shared/sides';

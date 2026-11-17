@@ -5,7 +5,7 @@ import type { CommanderToHost } from '../shared/protocol';
 import { type Sides } from './sides';
 import { listedIn } from './listedEntries';
 import type { ArchiveCopies } from './archiveCopies';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 
 export type SystemCommandsAccess = Pick<
   CommanderAccess,

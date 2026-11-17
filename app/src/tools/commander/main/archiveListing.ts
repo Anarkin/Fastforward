@@ -12,7 +12,7 @@ import type { OpenedArchive, Opening } from './archives';
 import { type Pane, type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';
 import type { ArchivePasswords } from './archivePasswords';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 import { isFile } from './fileStats';
 import { tellReading } from './readingTold';
 

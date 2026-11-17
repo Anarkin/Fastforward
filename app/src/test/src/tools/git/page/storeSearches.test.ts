@@ -5,7 +5,7 @@ import { createGitStore } from '../../../../../tools/git/page/store';
 import {
   fileFilterOf,
   searchOf,
-} from '../../../../../tools/git/page/gitSelectors';
+} from '../../../../../tools/git/page/selectors';
 import { noop } from '../../../../helpers/fixtures';
 import { at, shown, posting } from './storeFixtures';
 

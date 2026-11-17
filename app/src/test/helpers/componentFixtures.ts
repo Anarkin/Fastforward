@@ -12,7 +12,7 @@ import {
   createCommanderStore,
 } from '../../tools/commander/page/store';
 import { defaultTextView } from '../../shell/page/textView';
-import { emptyTabView, type TabView } from '../../tools/git/page/tabView';
+import { emptyTabView, type TabView } from '../../tools/git/page/shownTab';
 import type {
   Bookmark,
   DiffLayout,

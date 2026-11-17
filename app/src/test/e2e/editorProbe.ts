@@ -2,9 +2,9 @@ import * as path from 'node:path';
 import type * as viewModule from '@codemirror/view';
 import * as esbuild from 'esbuild';
 import type { JSHandle } from 'playwright-core';
-import type * as editorKeymapModule from '../../tools/editor/page/editorKeymap';
-import type * as editorSelectionModule from '../../tools/editor/page/editorSelection';
-import type * as editorTextModule from '../../tools/editor/page/editorText';
+import type * as editorKeymapModule from '../../tools/editor/page/keymap';
+import type * as editorSelectionModule from '../../tools/editor/page/selection';
+import type * as editorTextModule from '../../tools/editor/page/text';
 import type * as cellTableModule from '../../lib/page/cellTable';
 import { page } from './appFixtures';
 
@@ -19,9 +19,9 @@ export async function editorInPage(): Promise<JSHandle<PageEditor>> {
     stdin: {
       contents: [
         "export { EditorView, lineNumbers } from '@codemirror/view';",
-        "export { appTextLook, blanksShown } from '../../tools/editor/page/editorText';",
-        "export { appSelection } from '../../tools/editor/page/editorSelection';",
-        "export { editorKeymap } from '../../tools/editor/page/editorKeymap';",
+        "export { appTextLook, blanksShown } from '../../tools/editor/page/text';",
+        "export { appSelection } from '../../tools/editor/page/selection';",
+        "export { editorKeymap } from '../../tools/editor/page/keymap';",
         "export { terminalCells } from './cellTable';",
       ].join('\n'),
       resolveDir: path.join(__dirname, '..', '..', 'lib', 'page'),

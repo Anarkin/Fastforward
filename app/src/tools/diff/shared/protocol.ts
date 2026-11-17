@@ -2,8 +2,8 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import type {
   DiffSettingMessage,
   TextRequest,
-} from '../../../components/diff/shared/diffProtocol';
-import type { DiffSettings } from '../../../components/diff/shared/diffSettings';
+} from '../../../components/diff/shared/protocol';
+import type { DiffSettings } from '../../../components/diff/shared/settings';
 
 export interface CompareView {
   readonly tab: string;

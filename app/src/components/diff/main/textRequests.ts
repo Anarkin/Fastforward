@@ -1,4 +1,4 @@
-import type { TextRequest } from '../shared/diffProtocol';
+import type { TextRequest } from '../shared/protocol';
 
 export function uniqueTexts(requests: readonly TextRequest[]): TextRequest[] {
   return [

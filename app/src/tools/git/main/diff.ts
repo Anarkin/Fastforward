@@ -7,8 +7,8 @@ import {
   showArgs,
   showPatchArgs,
   type PatchScope,
-} from '../../../components/diff/main/diffArgs';
-import { keptFiles, keptPatch } from './keptDiff';
+} from '../../../components/diff/main/args';
+import { keptFiles, keptPatch } from './runningDiff';
 import { readPatch, type ReadPatch } from './patchBudget';
 import { withoutFilesInside } from './patchText';
 import { parseChanges } from './rawChanges';

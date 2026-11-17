@@ -1,5 +1,5 @@
 import { wheeled, type Modifiers } from '../../../lib/shared/keymap';
-import { diffKeymap } from './diffKeymap';
+import { diffKeymap } from './keymap';
 import { sidewaysColumns } from '../../../lib/page/scrollSettings';
 
 export function sideScroll(scroll: number, widest: number): number {

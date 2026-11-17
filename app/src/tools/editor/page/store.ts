@@ -4,15 +4,15 @@ import { strings } from '../../../lib/shared/strings';
 import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { EditorToHost, EditorToWebview } from '../shared/protocol';
-import { editorActions } from './editorActions';
-import { noKeptEditing } from './editorKept';
+import { editorActions } from './actions';
+import { noKeptEditing } from './editing';
 import { editorViewSchema } from './tabView';
 import {
   editorDefaults,
   type EditorActions,
   type EditorSource,
   type EditorStoreState,
-} from './editorShown';
+} from './state';
 
 const streams: ReadonlySet<EditorToWebview['type']> = new Set([
   'editedText',

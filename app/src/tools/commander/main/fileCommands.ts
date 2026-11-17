@@ -14,7 +14,7 @@ import { type Pane, type ShownPane, type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';
 import { parentOf } from './folderPaths';
 import type { ArchiveCopies } from './archiveCopies';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 
 export type FileCommandsAccess = Pick<
   CommanderAccess,

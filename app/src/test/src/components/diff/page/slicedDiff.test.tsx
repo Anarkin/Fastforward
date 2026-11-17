@@ -4,16 +4,16 @@ import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { SlicedOptions } from '../../../../../components/diff/page/slicedDiff';
-import { DiffToggles } from '../../../../../components/diff/page/diffToggles';
+import { DiffToggles } from '../../../../../components/diff/page/toggles';
 import {
   createGitStore,
   useGit,
   useGitStore,
 } from '../../../../../tools/git/page/store';
 import { useTextViewSettings } from '../../../../../shell/page/textViewSettings';
-import { languageKeyOf } from '../../../../../tools/git/page/gitSelectors';
-import { pickedFor } from '../../../../../components/diff/page/diffSlice';
-import { emptyTabView } from '../../../../../tools/git/page/tabView';
+import { languageKeyOf } from '../../../../../tools/git/page/selectors';
+import { pickedFor } from '../../../../../components/diff/page/slice';
+import { emptyTabView } from '../../../../../tools/git/page/shownTab';
 import { createShellStore } from '../../../../../shell/page/store';
 import { defaultTextView } from '../../../../../shell/page/textView';
 import {

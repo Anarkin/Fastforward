@@ -1,5 +1,5 @@
 import type { Side } from '../shared/sides';
-import type { CommanderActions } from './commanderState';
+import type { CommanderActions } from './state';
 import type { Copied } from './copiedText';
 import type { PaneAct } from './paneKeys';
 

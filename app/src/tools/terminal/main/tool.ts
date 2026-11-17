@@ -18,7 +18,7 @@ import {
   type TerminalToWebview,
   type WindowsPty,
 } from '../shared/protocol';
-import { sizeWithin } from '../shared/terminalSize';
+import { sizeWithin } from '../shared/size';
 import {
   contrastRatio,
   scrollbackLines,

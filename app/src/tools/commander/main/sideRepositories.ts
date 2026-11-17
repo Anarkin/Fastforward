@@ -3,7 +3,7 @@ import type { Side } from '../shared/sides';
 import { repositoriesIn } from './repositories';
 import type { Pane, Sides } from './sides';
 import { post } from './post';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 
 export type SideRepositoriesAccess = Pick<
   CommanderAccess,

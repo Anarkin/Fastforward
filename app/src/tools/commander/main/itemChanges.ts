@@ -8,7 +8,7 @@ import { nameProblem } from '../shared/names';
 import { type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';
 import type { ArchiveCommands } from './archiveCommands';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 
 export type ItemChangesAccess = Pick<
   CommanderAccess,

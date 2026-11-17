@@ -6,7 +6,7 @@ import {
   treeOf,
   treeToLoad,
   type TabView,
-} from '../../../../../tools/git/page/tabView';
+} from '../../../../../tools/git/page/shownTab';
 
 const openTab = (view: TabView, worktree: string) =>
   reduceTabView(view, {

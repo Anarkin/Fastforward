@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { suite, test } from 'vitest';
 import type { SearchOptions } from '../../../../../lib/shared/searchOptions';
-import { searchOf } from '../../../../../tools/git/page/gitSelectors';
+import { searchOf } from '../../../../../tools/git/page/selectors';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type {
   GitToWebviewOf,

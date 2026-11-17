@@ -21,7 +21,7 @@ import {
   openingOf,
   searchingOf,
   tabScopeOf,
-} from './gitSelectors';
+} from './selectors';
 import { useGit, useGitActions } from './store';
 import { listError } from './columnsShown';
 import { MenuButton } from '../../../lib/page/menu';

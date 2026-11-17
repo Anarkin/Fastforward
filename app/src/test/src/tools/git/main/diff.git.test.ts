@@ -13,7 +13,7 @@ import {
   comparePatchArgs,
   pathspecs,
   showPatchArgs,
-} from '../../../../../components/diff/main/diffArgs';
+} from '../../../../../components/diff/main/args';
 import {
   leftOutOf,
   readPatch,

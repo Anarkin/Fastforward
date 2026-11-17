@@ -1,12 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { useFocusKeeper } from '../../../lib/page/keptFocus';
+import { useFocusKeeper } from '../../../lib/page/viewFocus';
 import { strings } from '../../../lib/shared/strings';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { Words } from '../../../lib/page/name';
 import { languageOf } from '../../../lib/page/languages';
 import { startColorer } from '../../../components/syntax/page/colorer';
 import { StatusLine } from '../../../lib/page/statusLine';
-import { findAskOf } from './editorFind';
+import { findAskOf } from './find';
 import {
   languageChoiceOf,
   shownLanguage,
@@ -14,12 +14,12 @@ import {
 import { LanguageButton } from '../../../components/syntax/page/languageChoice';
 import { PathTitle } from '../../../lib/page/pathTitle';
 import { useEditor, useEditorActions } from './store';
-import { useEditorView } from './editorView';
-import { editedShown, languageShown } from './editorShown';
-import { useEditorFinding } from './editorFinding';
-import { EditorFindBar } from './editorFindBar';
-import { EditorToolbar } from './editorToolbar';
-import { EditorAsks } from './editorAsks';
+import { useEditorView } from './view';
+import { editedShown, languageShown } from './state';
+import { useEditorFinding } from './finding';
+import { EditorFindBar } from './findBar';
+import { EditorToolbar } from './toolbar';
+import { EditorAsks } from './asks';
 
 export function Editor() {
   useEffect(startColorer, []);

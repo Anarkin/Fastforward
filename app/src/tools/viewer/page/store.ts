@@ -4,14 +4,14 @@ import { strings } from '../../../lib/shared/strings';
 import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { ViewerToHost } from '../shared/protocol';
-import { viewerActions } from './viewerActions';
+import { viewerActions } from './actions';
 import { noSearch } from '../../../lib/shared/searchOptions';
 import {
   cachesOf,
   maxCachedViewers,
   noKeptViewer,
   withoutCaches,
-} from './viewerKept';
+} from './tabParts';
 import { viewerViewSchema } from './tabView';
 import {
   choicesOf,
@@ -20,7 +20,7 @@ import {
   type ViewerChoices,
   type ViewerSource,
   type ViewerState,
-} from './viewerState';
+} from './state';
 import { isViewerStream, sameViewing, viewingOf } from './viewing';
 
 function without<T>(

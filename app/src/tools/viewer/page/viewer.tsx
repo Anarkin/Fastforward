@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ViewMode } from './viewerKeymap';
+import type { ViewMode } from './keymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
-import { focusBack, useFocusKeeper } from '../../../lib/page/keptFocus';
+import { focusBack, useFocusKeeper } from '../../../lib/page/viewFocus';
 import { useRestore } from '../../../lib/page/restore';
 import { SearchButton } from '../../../lib/page/search';
-import { useViewerFind } from './viewerFind';
-import { ViewerFindBar } from './viewerFindBar';
+import { useViewerFind } from './find';
+import { ViewerFindBar } from './findBar';
 import { usePdfPreview } from './pdfPreview';
 import { strings } from '../../../lib/shared/strings';
 import {
@@ -37,8 +37,8 @@ import { startColorer } from '../../../components/syntax/page/colorer';
 import { PathTitle } from '../../../lib/page/pathTitle';
 import { fileLooks } from './fileLooks';
 import { useViewer, useViewerActions } from './store';
-import { choicesOf } from './viewerState';
-import { viewerKey } from './viewerKeys';
+import { choicesOf } from './state';
+import { viewerKey } from './keys';
 
 const modes: readonly {
   readonly mode: ViewMode;

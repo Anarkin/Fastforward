@@ -21,11 +21,11 @@ import {
   fileFilterOf,
   folderViewOf,
   shownFoldersOf,
-} from '../../../../../tools/git/page/gitSelectors';
+} from '../../../../../tools/git/page/selectors';
 import {
   emptyTabView,
   type TabView,
-} from '../../../../../tools/git/page/tabView';
+} from '../../../../../tools/git/page/shownTab';
 import type { VisibleRows } from '../../../../../lib/page/listMoves';
 import type { Folders } from '../../../../../tools/git/page/viewFolders';
 import { revealAgain, type ListedRows } from '../../../../../lib/page/listRows';

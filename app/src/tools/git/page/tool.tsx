@@ -9,7 +9,7 @@ import { useBinding } from '../../../lib/page/shortcuts';
 import { startColorer } from '../../../components/syntax/page/colorer';
 import { strings } from '../../../lib/shared/strings';
 import { WorktreeBar } from './worktreeBar';
-import { treeToLoad } from './tabView';
+import { treeToLoad } from './shownTab';
 import { repositoryMenuItems } from './repositoryMenu';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { ClonePopup } from './clonePopup';

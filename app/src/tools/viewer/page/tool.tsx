@@ -6,7 +6,7 @@ import { useShellActions } from '../../../shell/page/store';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { ViewerToHost, ViewerToWebview } from '../shared/protocol';
 import { Viewer } from './viewer';
-import { viewerKeymap } from './viewerKeymap';
+import { viewerKeymap } from './keymap';
 import { createViewerStore, ViewerStore } from './store';
 
 export function ViewerTool({

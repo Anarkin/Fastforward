@@ -10,7 +10,7 @@ import {
   jumpStep,
   unsearchedFiles,
 } from '../../../../../components/diff/page/find';
-import { wholeLines } from '../../../../../components/diff/page/diffLines';
+import { wholeLines } from '../../../../../components/diff/page/lines';
 import { matchCount } from '../../../../../lib/shared/textMatches';
 
 const patch = [

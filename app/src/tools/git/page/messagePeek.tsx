@@ -18,7 +18,7 @@ import {
   type PeekAnchor,
 } from './messageHolding';
 import { MessageCorner, MessagePanel } from './messagePanel';
-import type { KeptPin } from './gitState';
+import type { KeptPin } from './state';
 
 interface Peek {
   readonly index: number;

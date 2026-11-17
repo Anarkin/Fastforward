@@ -6,7 +6,7 @@ import type {
   RefInfo,
   WorktreeInfo,
 } from '../../tools/git/shared/protocol';
-import { emptyTabView } from '../../tools/git/page/tabView';
+import { emptyTabView } from '../../tools/git/page/shownTab';
 import { ChangesTreeItem } from '../../tools/git/page/changesTree';
 import { WorkingTreeRow } from '../../tools/git/page/commitRow';
 import { CommitRow } from '../../tools/git/page/commitRow';

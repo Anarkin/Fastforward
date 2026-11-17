@@ -8,8 +8,8 @@ import type {
 } from '../../../../../tools/git/shared/protocol';
 import { withStores } from '../../../../helpers/componentFixtures';
 import { createGitStore } from '../../../../../tools/git/page/store';
-import { emptyTabView } from '../../../../../tools/git/page/tabView';
-import { searchingOf } from '../../../../../tools/git/page/gitSelectors';
+import { emptyTabView } from '../../../../../tools/git/page/shownTab';
+import { searchingOf } from '../../../../../tools/git/page/selectors';
 
 export const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));

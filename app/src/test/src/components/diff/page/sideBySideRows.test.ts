@@ -8,18 +8,18 @@ import {
   diffRows,
   lineKeys,
   type DiffRow,
-} from '../../../../../components/diff/page/diffRows';
+} from '../../../../../components/diff/page/rows';
 import {
   splitRows,
   showsSideBySide,
   splitPairs,
 } from '../../../../../components/diff/page/sideBySideRows';
-import { changeStarts } from '../../../../../components/diff/page/diffScrolling';
+import { changeStarts } from '../../../../../components/diff/page/scrolling';
 import { minimapRows } from '../../../../../components/diff/page/rowMeasures';
-import { splitSideClass } from '../../../../../components/diff/page/diffRowClasses';
+import { splitSideClass } from '../../../../../components/diff/page/rowClasses';
 import { sideBySideWords } from '../../../../../components/diff/page/pairing';
 import { wordRanges } from '../../../../../components/diff/page/wordDiff';
-import { lineKey } from '../../../../../components/diff/page/diffLines';
+import { lineKey } from '../../../../../components/diff/page/lines';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',

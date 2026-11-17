@@ -25,14 +25,14 @@ import {
   type GitActions,
   type GitSource,
   type GitState,
-} from './gitState';
+} from './state';
 import {
   commitsShownOf,
   detachedHead,
   folderViewOf,
   locationsScrollOf,
-} from './gitSelectors';
-import { diffSlice } from '../../../components/diff/page/diffSlice';
+} from './selectors';
+import { diffSlice } from '../../../components/diff/page/slice';
 import { withRecent } from '../../../lib/page/recentPlaces';
 import { withEntry, withKey } from '../../../lib/page/tabKeyed';
 import { collected } from './collections';
@@ -45,7 +45,7 @@ import {
   tabViewOf,
   targetOf,
   worktreeScope,
-} from './keptTab';
+} from './worktreeViews';
 import { TabWorktrees } from './tabWorktrees';
 import { ViewKeeper } from '../../../lib/page/viewKeeper';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';

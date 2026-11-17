@@ -11,7 +11,7 @@ import {
 } from '../../../lib/shared/searchOptions';
 import type { Side } from '../shared/sides';
 import type { ColumnWidths } from '../shared/columnWidths';
-import type { CommanderSource } from './commanderState';
+import type { CommanderSource } from './state';
 import type { Row } from './listing';
 import { filterOf } from './sideFilters';
 

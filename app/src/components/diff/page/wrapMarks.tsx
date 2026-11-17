@@ -11,7 +11,7 @@ import {
   wrapIndent,
   wrapStarts,
 } from '../../../lib/page/wordWrap';
-import { keptWrapStarts } from '../../../lib/page/keptStarts';
+import { keptWrapStarts } from '../../../lib/page/wrapStarts';
 import { numberWidth } from './textLayout';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import {
@@ -19,7 +19,7 @@ import {
   noBreaks,
   knownBreaks,
   rememberBreaks,
-} from './diffRowBreaks';
+} from './rowBreaks';
 
 export function WrapMarks({
   text,

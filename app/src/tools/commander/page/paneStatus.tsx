@@ -1,6 +1,6 @@
 import { type Side } from '../shared/sides';
 import { type Row } from './listing';
-import { readingKey } from './commanderReceived';
+import { readingKey } from './received';
 import { useCommander } from './store';
 import { StatusLine } from '../../../lib/page/statusLine';
 import { PathName } from '../../../lib/page/pathName';

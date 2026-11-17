@@ -1,7 +1,7 @@
 import { type CommanderToWebviewOf } from '../shared/protocol';
 import { plainSearch } from '../../../lib/shared/searchOptions';
 import { sides } from '../shared/sides';
-import type { CommanderActions } from './commanderState';
+import type { CommanderActions } from './state';
 import type { StoreParts } from './dialogActions';
 import {
   FlatLists,

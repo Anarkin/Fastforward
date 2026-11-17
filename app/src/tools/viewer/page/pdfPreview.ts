@@ -8,7 +8,7 @@ import {
 } from '../../../lib/shared/searchOptions';
 import type { ShownPdf } from './pdfDocument';
 import type { PdfFound } from './pdfFinds';
-import { KeptMatch } from './pdfKeptMatch';
+import { KeptMatch } from './pdfMatch';
 import { useViewer, useViewerActions } from './store';
 
 export function pdfFound(found: PdfFound | undefined): MatchesFound {

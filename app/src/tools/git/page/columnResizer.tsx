@@ -1,6 +1,6 @@
 import { dragColumn } from './columns';
 import { useGit, useGitActions } from './store';
-import { commitsShownOf, searchingOf } from './gitSelectors';
+import { commitsShownOf, searchingOf } from './selectors';
 
 export function ColumnResizer({ index }: { index: number }) {
   const widths = useGit((state) => state.columnWidths);

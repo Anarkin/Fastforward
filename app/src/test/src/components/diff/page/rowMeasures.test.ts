@@ -6,7 +6,7 @@ import {
   diffRowKey,
   diffRows,
   type DiffRow,
-} from '../../../../../components/diff/page/diffRows';
+} from '../../../../../components/diff/page/rows';
 import {
   rowHeight,
   rowMeasures,

@@ -13,7 +13,7 @@ import {
   type DiffSettingMessage,
   type LeftOut,
   type TextRequest,
-} from '../../../components/diff/shared/diffProtocol';
+} from '../../../components/diff/shared/protocol';
 
 export {
   diffLayouts,

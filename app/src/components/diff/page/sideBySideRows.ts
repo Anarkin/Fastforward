@@ -1,9 +1,9 @@
 import type { DiffFile } from './diff';
 import { changeBlocks } from './changeBlocks';
-import { lineKey } from './diffLines';
+import { lineKey } from './lines';
 import { changePairs, pairingBudget, type PairingBudget } from './pairing';
 import type { Pair } from './wordDiff';
-import type { DiffRow, WholeFile } from './diffRows';
+import type { DiffRow, WholeFile } from './rows';
 
 export function showsSideBySide(
   sideBySide: boolean,

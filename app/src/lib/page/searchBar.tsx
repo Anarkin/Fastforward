@@ -3,7 +3,7 @@ import type { SearchOptions } from '../shared/searchOptions';
 import { strings } from '../shared/strings';
 import { matchCount, type MatchesFound } from '../shared/textMatches';
 import { BackIcon, NextIcon, PreviousIcon } from './icons';
-import { focusNameAttribute } from './keptFocus';
+import { focusNameAttribute } from './viewFocus';
 
 const toggles = [
   {

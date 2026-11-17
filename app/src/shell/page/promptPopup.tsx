@@ -7,7 +7,7 @@ import { moveBetweenButtons } from '../../lib/page/dialogButtons';
 import { useModalDialog } from '../../lib/page/modalDialog';
 import { useDialogDrag } from '../../lib/page/dialogDrag';
 import { NameLines, Words } from '../../lib/page/name';
-import type { KeptTyped } from '../../lib/page/keptFocus';
+import type { KeptTyped } from '../../lib/page/viewFocus';
 
 const typedIn = (field: HTMLInputElement): KeptTyped =>
   field.selectionStart === null || field.selectionEnd === null

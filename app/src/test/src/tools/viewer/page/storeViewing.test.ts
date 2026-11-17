@@ -8,7 +8,7 @@ import {
   type ViewerToHost,
 } from '../../../../../tools/viewer/shared/protocol';
 import { createViewerStore } from '../../../../../tools/viewer/page/store';
-import { choicesOf } from '../../../../../tools/viewer/page/viewerState';
+import { choicesOf } from '../../../../../tools/viewer/page/state';
 import { noop } from '../../../../helpers/fixtures';
 
 const place = { page: 2, zoom: 'auto', left: 0, top: 10 } as const;

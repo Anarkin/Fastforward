@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
-import { emptyTabView } from '../../../../../tools/git/page/tabView';
+import { emptyTabView } from '../../../../../tools/git/page/shownTab';
 import { renderToStaticMarkup, noop } from './commitListFixtures';
 import { SoloButton } from '../../../../../tools/git/page/soloButton';
 

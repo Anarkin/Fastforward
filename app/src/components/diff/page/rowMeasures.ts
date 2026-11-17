@@ -8,7 +8,7 @@ import {
   isCode,
   diffRowKey,
   changeOf,
-} from './diffRows';
+} from './rows';
 import type { MinimapRow } from './minimapMarks';
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';

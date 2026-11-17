@@ -12,8 +12,8 @@ import {
   type CommanderActions,
   type CommanderSource,
   type CommanderState,
-} from './commanderState';
-import { received, released } from './commanderReceived';
+} from './state';
+import { received, released } from './received';
 import { filesToCompare } from './comparing';
 import { dialogActions, type StoreParts } from './dialogActions';
 import { flatActions, startFlatWorker, type FlatOptions } from './flatActions';
@@ -24,7 +24,7 @@ import { filterKey, filterOf, seenFilters, withoutTab } from './sideFilters';
 import { reduceView, type ViewAction } from './view';
 import { ScrollPlaces } from './scrollPlaces';
 import { dialogSlots, settledDialogs, withoutParked } from './parkedDialogs';
-import { keptTabActions } from './keptTabActions';
+import { keptTabActions } from './tabViewActions';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 
 const maxCameIcons = 5000;

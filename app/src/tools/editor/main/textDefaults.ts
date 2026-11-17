@@ -5,9 +5,9 @@ import type {
   TextShown,
 } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
-import type { EditorSettings } from '../shared/editorSettings';
+import type { EditorSettings } from '../shared/settings';
 import { isLineEnding, type LineEnding } from '../shared/textMarks';
-import type { EditorCharset, EditorConfig } from './editorConfig';
+import type { EditorCharset, EditorConfig } from './config';
 import type { GitEnding } from './gitEnding';
 
 export interface TextDefaults {

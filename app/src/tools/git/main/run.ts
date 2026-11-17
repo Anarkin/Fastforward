@@ -15,7 +15,7 @@ import {
   stopping,
   writingRefs,
 } from './gitProcesses';
-import { KeptGits } from './keptGit';
+import { KeptGits } from './runningGit';
 import { spawnGit, type GitChild } from './spawnedGit';
 
 const gitConfigArgs = [

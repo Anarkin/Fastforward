@@ -1,4 +1,4 @@
-import { diffRows } from '../../../../../components/diff/page/diffRows';
+import { diffRows } from '../../../../../components/diff/page/rows';
 
 export function patch(path: string, added: number): string {
   return [

@@ -18,10 +18,10 @@ import {
   layoutSelectionOf,
   openingOf,
   searchingOf,
-} from './gitSelectors';
+} from './selectors';
 import { useGit, useGitActions, useGitStore } from './store';
-import { usePrefetchedColors } from '../../../components/diff/page/diffSyntax';
-import { changesShown } from './tabView';
+import { usePrefetchedColors } from '../../../components/diff/page/syntax';
+import { changesShown } from './shownTab';
 import { templateOf } from './columns';
 import { columnsClass } from './columnsShown';
 import {
@@ -37,7 +37,7 @@ import {
 import { NavButtons } from './navBar';
 import { gitImageRoute } from '../shared/images';
 import { AddressBar } from './addressBar';
-import { focusBack, type KeptFocus } from '../../../lib/page/keptFocus';
+import { focusBack, type KeptFocus } from '../../../lib/page/viewFocus';
 import { useTabFocus } from './tabFocus';
 
 const CommitColumn = memo(Commits);

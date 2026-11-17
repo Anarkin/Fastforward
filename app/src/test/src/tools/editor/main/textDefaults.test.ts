@@ -1,13 +1,13 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import type { EditorConfig } from '../../../../../tools/editor/main/editorConfig';
+import type { EditorConfig } from '../../../../../tools/editor/main/config';
 import type { GitEnding } from '../../../../../tools/editor/main/gitEnding';
 import {
   endingSourcesOf,
   textDefaultsOf,
 } from '../../../../../tools/editor/main/textDefaults';
-import type { EditorSettings } from '../../../../../tools/editor/shared/editorSettings';
+import type { EditorSettings } from '../../../../../tools/editor/shared/settings';
 
 const settings: EditorSettings = {
   endOfLine: 'lf',

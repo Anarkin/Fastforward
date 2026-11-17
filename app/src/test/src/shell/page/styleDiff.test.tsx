@@ -20,12 +20,12 @@ import {
   markerWidth,
   numberWidth,
 } from '../../../../components/diff/page/textLayout';
-import { diffRowClass } from '../../../../components/diff/page/diffRowClasses';
+import { diffRowClass } from '../../../../components/diff/page/rowClasses';
 import {
   FileNote,
   FileHeader,
   HunkDivider,
-} from '../../../../components/diff/page/diffRowParts';
+} from '../../../../components/diff/page/rowParts';
 import {
   allWithClass,
   rendered,

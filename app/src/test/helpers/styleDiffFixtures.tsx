@@ -1,16 +1,16 @@
 import type { ShownOptions } from './componentFixtures';
-import { DiffToggles } from '../../components/diff/page/diffToggles';
+import { DiffToggles } from '../../components/diff/page/toggles';
 import { SearchBar } from '../../lib/page/searchBar';
 import { plainSearch } from '../../lib/shared/searchOptions';
 import type { FindRange } from '../../lib/shared/textMatches';
 import { Minimap } from '../../components/diff/page/minimap';
 import { Code, MarkedCode } from '../../components/diff/page/codeMarks';
-import { diffRowClass } from '../../components/diff/page/diffRowClasses';
-import { DiffView } from '../../components/diff/page/diffView';
-import { FileHeader } from '../../components/diff/page/diffRowParts';
+import { diffRowClass } from '../../components/diff/page/rowClasses';
+import { DiffView } from '../../components/diff/page/view';
+import { FileHeader } from '../../components/diff/page/rowParts';
 import { noop } from './fixtures';
 import { diffLookOf, diffMeasuring } from './diffFixtures';
-import { unmeasuredDiff } from '../../components/diff/page/diffMeasures';
+import { unmeasuredDiff } from '../../components/diff/page/measures';
 
 export function DiffOptionsShown(shown: ShownOptions) {
   return (

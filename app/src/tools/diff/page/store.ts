@@ -12,8 +12,8 @@ import {
 import {
   diffPlaceKey,
   diffPlaceScopeOf,
-} from '../../../components/diff/page/diffPlace';
-import { diffSlice } from '../../../components/diff/page/diffSlice';
+} from '../../../components/diff/page/place';
+import { diffSlice } from '../../../components/diff/page/slice';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { ComparedText, DiffToHost } from '../shared/protocol';
 import { compareViewSchema, languageKeyOf } from './tabView';
@@ -22,7 +22,7 @@ import {
   type CompareActions,
   type CompareSource,
   type CompareState,
-} from './diffState';
+} from './state';
 
 function withTexts(
   texts: ReadonlyMap<string, LoadedText>,

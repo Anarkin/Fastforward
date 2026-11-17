@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../components/diff/page/diff';
 import { collapseThreshold } from '../../../../../components/diff/shared/patchBudget';
 import { patch, kinds } from './diffViewFixtures';
-import { diffRows } from '../../../../../components/diff/page/diffRows';
+import { diffRows } from '../../../../../components/diff/page/rows';
 import { rowHeight } from '../../../../../components/diff/page/rowMeasures';
 
 const binaryOf = (path: string) =>

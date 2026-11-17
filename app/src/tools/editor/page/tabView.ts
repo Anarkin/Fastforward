@@ -5,7 +5,7 @@ import {
   record,
   text,
 } from '../../../lib/shared/schema';
-import { focusSchema, typedSchema } from '../../../lib/page/keptFocus';
+import { focusSchema, typedSchema } from '../../../lib/page/viewFocus';
 import { searchOptionsSchema } from '../../../lib/shared/searchOptions';
 import { textEncodings } from '../../../components/encodings/shared/textEncodings';
 

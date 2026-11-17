@@ -1,5 +1,5 @@
 import type { DiffFile } from './diff';
-import { diffImageUrl, type ImageOrigin, type Side } from './diffImages';
+import { diffImageUrl, type ImageOrigin, type Side } from './images';
 
 export interface Pane {
   readonly side: Side;

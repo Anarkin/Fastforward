@@ -1,5 +1,5 @@
 import type { GitToWebviewOf } from '../shared/protocol';
-import type { GitSource } from './gitState';
+import type { GitSource } from './state';
 import { withEntry, withKey } from '../../../lib/page/tabKeyed';
 
 export const searchFocusName = 'commit-search';

@@ -4,7 +4,7 @@ import { useGit, useGitActions } from './store';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { gitKeymap } from './keymap';
 import { locationsPopupKey } from './navHistory';
-import { activeColumnOf, searchingOf } from './gitSelectors';
+import { activeColumnOf, searchingOf } from './selectors';
 
 export function AddressBar() {
   const open = useGit(searchingOf);

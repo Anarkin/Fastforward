@@ -1,6 +1,6 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
-import type { DiffSettings } from '../../../components/diff/shared/diffSettings';
+import type { DiffSettings } from '../../../components/diff/shared/settings';
 import type { Log } from '../../../shell/main/log';
 import type { UserSettings } from '../../../shell/main/userSettings';
 import {

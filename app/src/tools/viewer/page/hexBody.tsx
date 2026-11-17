@@ -6,7 +6,7 @@ import {
   useEffectEvent,
 } from 'react';
 import { RowRequests } from './rowRequests';
-import type { ViewerFind } from './viewerFind';
+import type { ViewerFind } from './find';
 import { byteMarks, hexMarks } from './markPieces';
 import { MarkedText } from './findMarks';
 
@@ -22,7 +22,7 @@ import {
 } from './hex';
 import type { Viewing } from './viewing';
 import { useViewer, useViewerActions } from './store';
-import type { KeptBytes } from './viewerKept';
+import type { KeptBytes } from './tabParts';
 
 type Bytes = KeptBytes;
 

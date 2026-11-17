@@ -6,7 +6,7 @@ import {
   plainSearch,
   type SearchOptions,
 } from '../../../../../lib/shared/searchOptions';
-import { viewerKeymap } from '../../../../../tools/viewer/page/viewerKeymap';
+import { viewerKeymap } from '../../../../../tools/viewer/page/keymap';
 import type {
   PdfEvents,
   ShownPdf,

@@ -1,6 +1,6 @@
 import { optional, record } from '../../../lib/shared/schema';
-import { focusSchema } from '../../../lib/page/keptFocus';
-import { diffViewFields } from '../../../components/diff/page/diffSlice';
+import { focusSchema } from '../../../lib/page/viewFocus';
+import { diffViewFields } from '../../../components/diff/page/slice';
 
 export const compareViewSchema = record({
   ...diffViewFields,

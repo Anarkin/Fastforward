@@ -5,7 +5,7 @@ import {
   changesArgs,
   diffArgs,
   listArgs,
-} from '../../../components/diff/main/diffArgs';
+} from '../../../components/diff/main/args';
 import { parseRawChanges, type RawChange, withBytes } from './rawChanges';
 import { maxFileSize } from './files';
 import { listUntracked } from './fileLists';

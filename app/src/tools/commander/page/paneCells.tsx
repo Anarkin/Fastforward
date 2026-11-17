@@ -15,7 +15,7 @@ import {
 } from '../../../lib/page/icons';
 import { strings } from '../../../lib/shared/strings';
 import { tileThumbnailUrl } from './paneTiles';
-import type { CommanderActions } from './commanderState';
+import type { CommanderActions } from './state';
 
 type IconTickets = Pick<CommanderActions, 'iconTicketOf' | 'iconCame'>;
 

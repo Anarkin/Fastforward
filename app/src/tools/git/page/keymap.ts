@@ -1,6 +1,6 @@
 import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
-import { diffKeymap } from '../../../components/diff/page/diffKeymap';
+import { diffKeymap } from '../../../components/diff/page/keymap';
 
 export const gitGroups = [
   'Moving',

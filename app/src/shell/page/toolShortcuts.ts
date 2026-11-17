@@ -1,5 +1,5 @@
 import { gitGroups, gitKeymap } from '../../tools/git/page/keymap';
-import { compareKeymap, diffGroups } from '../../tools/diff/page/compareKeymap';
+import { compareKeymap, diffGroups } from '../../tools/diff/page/keymap';
 import { everywhereGroups, shellKeymap } from '../shared/keymap';
 import type { Binding } from '../../lib/shared/keymap';
 import { keymap } from '../../lib/page/keymap';
@@ -9,14 +9,8 @@ import {
   commanderGroups,
   commanderKeymap,
 } from '../../tools/commander/page/keymap';
-import {
-  viewerGroups,
-  viewerKeymap,
-} from '../../tools/viewer/page/viewerKeymap';
-import {
-  editorGroups,
-  editorKeymap,
-} from '../../tools/editor/page/editorKeymap';
+import { viewerGroups, viewerKeymap } from '../../tools/viewer/page/keymap';
+import { editorGroups, editorKeymap } from '../../tools/editor/page/keymap';
 import {
   terminalGroups,
   terminalKeymap,

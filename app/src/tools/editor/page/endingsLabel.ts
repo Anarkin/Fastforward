@@ -1,7 +1,7 @@
 import type { EditorState } from '@codemirror/state';
 import { strings } from '../../../lib/shared/strings';
 import type { LineEnding } from '../shared/textMarks';
-import { endingCounts, endingsField } from './editorEndings';
+import { endingCounts, endingsField } from './endings';
 
 export interface EndingsShown {
   readonly ending: LineEnding;

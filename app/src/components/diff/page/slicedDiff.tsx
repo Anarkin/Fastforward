@@ -1,8 +1,8 @@
 import { useCallback, useEffect } from 'react';
 import { useStore, type StoreApi } from 'zustand';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
-import { Diff, type DiffProps } from './diffColumn';
-import { DiffLanguage } from './diffLanguage';
+import { Diff, type DiffProps } from './column';
+import { DiffLanguage } from './language';
 import {
   diffFindOf,
   diffPlaceFor,
@@ -10,8 +10,8 @@ import {
   type DiffActions,
   type DiffSource,
   type PlaceChange,
-} from './diffSlice';
-import { DiffToggles } from './diffToggles';
+} from './slice';
+import { DiffToggles } from './toggles';
 
 export type DiffStore = StoreApi<DiffSource & DiffActions>;
 

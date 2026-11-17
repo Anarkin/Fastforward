@@ -2,7 +2,7 @@ import type { CommitInfo, StashInfo } from '../shared/protocol';
 import { CommitBubble, HeadBubble, RefBubble } from './bubbles';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { CommitRow } from './commitRow';
-import { detachedHead } from './gitSelectors';
+import { detachedHead } from './selectors';
 import { useGit } from './store';
 import { HighlightWords } from '../../../lib/page/highlight';
 import type { Filter } from '../../../lib/shared/filter';

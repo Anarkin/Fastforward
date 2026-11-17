@@ -6,7 +6,7 @@ import {
   minimapMarks,
 } from '../../../../../components/diff/page/minimapMarks';
 import { Minimap } from '../../../../../components/diff/page/minimap';
-import type { DiffRow } from '../../../../../components/diff/page/diffRows';
+import type { DiffRow } from '../../../../../components/diff/page/rows';
 import {
   uniformHeight as row,
   minimapRows,

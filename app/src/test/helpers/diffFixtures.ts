@@ -1,5 +1,5 @@
-import type { DiffLook } from '../../components/diff/page/diffLook';
-import type { DiffMeasuring } from '../../components/diff/page/diffMeasures';
+import type { DiffLook } from '../../components/diff/page/look';
+import type { DiffMeasuring } from '../../components/diff/page/measures';
 import { defaultScrolling } from '../../lib/page/scrollSettings';
 import { noop } from './fixtures';
 

@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act, type ReactElement } from 'react';
 import { parsePatch } from '../../../../../components/diff/page/diff';
 import type { LoadedText } from '../../../../../components/diff/page/sideTexts';
-import { syntaxSources } from '../../../../../components/diff/page/diffSyntaxSources';
+import { syntaxSources } from '../../../../../components/diff/page/syntaxSources';
 import { noop } from '../../../../helpers/fixtures';
 import type { SyntaxRange } from '../../../../../components/syntax/page/engine';
 import type {

@@ -7,6 +7,7 @@ import { shortcutEntries } from '../shell/page/toolShortcuts';
 import { defaultSettings } from './helpers/fixtures';
 import { programsOfSuffixes } from './helpers/programs';
 import { componentStates } from './helpers/componentStates';
+import { seededFromStore, statesIn } from './helpers/stateScan';
 import {
   source,
   appFolder,
@@ -66,66 +67,6 @@ function countedOver(
       .map((file) => [file, count(file)] as const)
       .filter(([, counted]) => counted > 0),
   );
-}
-
-function statesIn(text: string): string[] {
-  const named = [
-    ...text.matchAll(
-      /\bconst\s+(\[[^\]]*\]|\w+)\s*(?::[^=]*)?=\s*use(?:State|Reducer)\b/g,
-    ),
-  ].map(([, held = '']) => {
-    const [first = '', setter = ''] = held.startsWith('[')
-      ? held
-          .slice(1, -1)
-          .split(/,(?![^{]*\})/)
-          .map((part) => part.trim())
-      : [held];
-    return /^\w+$/.test(first)
-      ? first
-      : setter.replace(/^set(\w)/, (_, letter: string) => letter.toLowerCase());
-  });
-  const calls = text.match(/\buse(?:State|Reducer)\s*[<(]/g)?.length ?? 0;
-  return calls === named.length ? named : [...named, '?'];
-}
-
-function argumentAt(text: string, open: number): string {
-  let depth = 0;
-  for (let at = open; at < text.length; at++) {
-    const char = text[at];
-    if (char === '(') {
-      depth += 1;
-    } else if (char === ')') {
-      depth -= 1;
-      if (depth === 0) {
-        return text.slice(open + 1, at);
-      }
-    }
-  }
-  return text.slice(open + 1);
-}
-
-function seededFromStore(text: string): string[] {
-  const actions = [
-    ...text.matchAll(/const\s*\{([^}]*)\}\s*=\s*use\w*Actions\(\)/g),
-  ].flatMap(([, names = '']) =>
-    names
-      .split(',')
-      .map((name) => name.split(':').at(-1)?.trim() ?? '')
-      .filter((name) => name !== ''),
-  );
-  const reads = new RegExp(
-    [String.raw`\.getState\(\)`, String.raw`\buse[A-Z]\w*\(`]
-      .concat(actions.map((name) => String.raw`\b${name}\(`))
-      .join('|'),
-  );
-  return [
-    ...text.matchAll(
-      /\bconst\s+(\[[^\]]*\]|\w+)\s*(?::[^=]*)?=\s*use(?:State|Reducer)\s*(?:<[^(]*>)?\(/g,
-    ),
-  ].flatMap((match) => {
-    const open = match.index + match[0].length - 1;
-    return reads.test(argumentAt(text, open)) ? [match[1] ?? '?'] : [];
-  });
 }
 
 function partialsOf(folder: string): string[] {
@@ -237,6 +178,64 @@ suite('Architecture', () => {
               ? []
               : [`components/${component} has no page`],
           ),
+      ),
+      [],
+    );
+  });
+
+  test('names no file of a tool or a component after the part, as its folder names it already, but the files that run the git program', () => {
+    const gitProgram = new Set([
+      'gitCommand',
+      'gitDir',
+      'gitDirPaths',
+      'gitEnding',
+      'gitLocator',
+      'gitOutput',
+      'gitProcesses',
+      'gitSpawner',
+      'gitSpawnerWorker',
+    ]);
+    assert.deepStrictEqual(
+      sourceFiles.filter((file) => {
+        const [kind, part, , name = ''] = file.split('/');
+        const stem = name.replace(/\..*$/, '');
+        return (
+          (kind === 'tools' || kind === 'components') &&
+          part !== undefined &&
+          stem.startsWith(part) &&
+          /^[A-Z]/.test(stem.slice(part.length)) &&
+          !gitProgram.has(stem)
+        );
+      }),
+      [],
+    );
+  });
+
+  test('names no file kept, as what a tab keeps is its view, held by its store', () => {
+    assert.deepStrictEqual(
+      fs
+        .readdirSync(source, { recursive: true, encoding: 'utf8' })
+        .filter((file) => /^kept|Kept/.test(path.basename(file))),
+      [],
+    );
+  });
+
+  test('gives each tool the files every tool has, by the same names: main/tool.ts, page/tool.tsx, page/store.ts, page/keymap.ts and shared/protocol.ts, and page/state.ts and page/tabView.ts but the terminal, whose screens the main process keeps', () => {
+    const skeleton = [
+      'main/tool.ts',
+      'page/tool.tsx',
+      'page/store.ts',
+      'page/keymap.ts',
+      'shared/protocol.ts',
+    ];
+    const ofTabs = ['page/state.ts', 'page/tabView.ts'];
+    assert.deepStrictEqual(
+      tools.flatMap((tool) =>
+        [...skeleton, ...(tool === 'terminal' ? [] : ofTabs)]
+          .filter(
+            (file) => !fs.existsSync(path.join(source, 'tools', tool, file)),
+          )
+          .map((file) => `tools/${tool}/${file}`),
       ),
       [],
     );
@@ -598,7 +597,7 @@ suite('Architecture', () => {
     const finds = [
       ...matchers,
       'components/diff/page/find.ts',
-      'tools/editor/page/editorFind.ts',
+      'tools/editor/page/find.ts',
       'tools/viewer/main/textFind.ts',
       'tools/viewer/page/markPieces.ts',
     ];
@@ -656,8 +655,8 @@ suite('Architecture', () => {
       code.filter((file) => /\bfind-match\b/.test(read(file))),
       [
         'components/diff/page/codeMarks.tsx',
-        'components/diff/page/diffFound.ts',
-        'tools/editor/page/editorFind.ts',
+        'components/diff/page/found.ts',
+        'tools/editor/page/find.ts',
         'tools/viewer/page/findMarks.tsx',
       ],
     );
@@ -687,11 +686,11 @@ suite('Architecture', () => {
         'shell/page/promptPopup.tsx',
         'tools/commander/page/packPopup.tsx',
         'tools/commander/page/transferPopup.tsx',
-        'tools/editor/page/editorFindBar.tsx',
+        'tools/editor/page/findBar.tsx',
         'tools/git/page/clonePopup.tsx',
       ],
     );
-    const editorFindBar = read('tools/editor/page/editorFindBar.tsx');
+    const editorFindBar = read('tools/editor/page/findBar.tsx');
     assert.strictEqual(editorFindBar.match(/<input\b/g)?.length, 1);
     assert.match(editorFindBar, /<input\s+className="editor-replace-input"/);
   });
@@ -709,7 +708,7 @@ suite('Architecture', () => {
         'lib/shared/filter.ts',
         'lib/shared/searchOptions.ts',
         'lib/shared/textMatches.ts',
-        'tools/editor/page/editorFind.ts',
+        'tools/editor/page/find.ts',
         'tools/viewer/main/textFind.ts',
         'tools/viewer/page/pdfDocument.ts',
       ],

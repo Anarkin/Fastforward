@@ -24,7 +24,7 @@ import {
 } from '../../../components/encodings/main/encodingDetection';
 import { blockCache, readingFile } from '../../../lib/main/fileBlocks';
 import { reasonOf } from '../../../lib/main/reasons';
-import type { ViewerPages } from './viewerPages';
+import type { ViewerPages } from './pages';
 import { post } from './post';
 
 export interface ViewersAccess {

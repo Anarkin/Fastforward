@@ -8,8 +8,8 @@ import {
   sameSearchOptions,
   type SearchOptions,
 } from '../../../lib/shared/searchOptions';
-import type { WholeFile } from './diffRows';
-import { wholeLines } from './diffLines';
+import type { WholeFile } from './rows';
+import { wholeLines } from './lines';
 
 export type { FindRange };
 

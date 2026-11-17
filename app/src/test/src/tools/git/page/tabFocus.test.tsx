@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act, useEffect, useRef, useState } from 'react';
 import { suite, test } from 'vitest';
-import { focusBack } from '../../../../../lib/page/keptFocus';
+import { focusBack } from '../../../../../lib/page/viewFocus';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
 import { useTabFocus } from '../../../../../tools/git/page/tabFocus';
 import { noop } from '../../../../helpers/fixtures';

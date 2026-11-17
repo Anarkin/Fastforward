@@ -5,7 +5,7 @@ import {
 import { sides, type Side } from '../shared/sides';
 import { defaultLayouts, type Layout, type Layouts } from './layouts';
 import { type ColumnWidths } from '../shared/columnWidths';
-import type { KeptFocus } from '../../../lib/page/keptFocus';
+import type { KeptFocus } from '../../../lib/page/viewFocus';
 import { type Sort, type Sorts } from '../shared/sorts';
 import { rowsOf, type Row } from './listing';
 import {

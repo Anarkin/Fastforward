@@ -1,5 +1,5 @@
 import type { FindRange } from './find';
-import type { DiffRow } from './diffRows';
+import type { DiffRow } from './rows';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import {

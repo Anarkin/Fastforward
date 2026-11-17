@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { type CommitInfo, workingTreeHash } from '../shared/protocol';
 import { CommitBubble, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { commitMenuTarget, useOpenMenu } from './menus';
-import { detachedHead } from './gitSelectors';
+import { detachedHead } from './selectors';
 import { useGit } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';

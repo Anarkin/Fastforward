@@ -8,7 +8,7 @@ import {
   setsCursorMode,
 } from '../shared/programCursor';
 import type { CursorStyle } from '../../../lib/shared/cursorSettings';
-import { KeptPlace } from './keptPlace';
+import { KeptPlace } from './screenPlace';
 
 export interface Mirror {
   readonly terminal: Terminal;

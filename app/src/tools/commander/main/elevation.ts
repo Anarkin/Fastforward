@@ -4,7 +4,7 @@ import { sides as bothSides } from '../shared/sides';
 import type { ElevatedFileSystem } from './elevated';
 import type { Sides } from './sides';
 import { post } from './post';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 import { Listings } from './listings';
 
 export interface ElevationHost {

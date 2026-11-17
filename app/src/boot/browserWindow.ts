@@ -14,7 +14,7 @@ import {
   restoresMaximized,
   visibleBounds,
 } from './windowPlacement';
-import { keptBounds } from './keptBounds';
+import { keptBounds } from './savedBounds';
 import type { Place, SavedPlace } from './places';
 
 export function createWindow(

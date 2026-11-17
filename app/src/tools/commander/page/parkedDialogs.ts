@@ -1,5 +1,5 @@
 import { otherSide, type Side } from '../shared/sides';
-import type { CommanderSource, ParkedDialogs } from './commanderState';
+import type { CommanderSource, ParkedDialogs } from './state';
 import type { CommanderView } from './view';
 
 export const dialogSlots = [

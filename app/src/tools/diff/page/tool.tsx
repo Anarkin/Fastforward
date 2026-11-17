@@ -3,11 +3,11 @@ import { useStore } from 'zustand';
 import './style.css';
 import { startColorer } from '../../../components/syntax/page/colorer';
 import { useBinding } from '../../../lib/page/shortcuts';
-import { diffKeymap } from '../../../components/diff/page/diffKeymap';
+import { diffKeymap } from '../../../components/diff/page/keymap';
 import { useShellActions } from '../../../shell/page/store';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { DiffToHost, DiffToWebview } from '../shared/protocol';
-import { compareKeymap } from './compareKeymap';
+import { compareKeymap } from './keymap';
 import { CompareView } from './compareView';
 import { createDiffStore, DiffStore } from './store';
 

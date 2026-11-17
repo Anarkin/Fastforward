@@ -6,11 +6,11 @@ import {
   focusBack,
   useFocusKeeper,
   type KeptFocus,
-} from '../../../lib/page/keptFocus';
+} from '../../../lib/page/viewFocus';
 import { useRestore } from '../../../lib/page/restore';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
-import { diffKeymap } from '../../../components/diff/page/diffKeymap';
-import type { LeftOut } from '../../../components/diff/shared/diffProtocol';
+import { diffKeymap } from '../../../components/diff/page/keymap';
+import type { LeftOut } from '../../../components/diff/shared/protocol';
 import type { DiffFile } from '../../../components/diff/page/diff';
 import type { LoadedText } from '../../../components/diff/page/sideTexts';
 import { SlicedDiff } from '../../../components/diff/page/slicedDiff';

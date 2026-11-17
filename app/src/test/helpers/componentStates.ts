@@ -1,11 +1,11 @@
 export const componentStates: Readonly<Record<string, string>> = {
   'tools/viewer/page/pdfPreview.ts found':
     'a measure: the matches PDF.js counts as it searches, anew as the PDF opens, stepped to the match the store keeps',
-  'tools/editor/page/editorView.ts endingsShown':
+  'tools/editor/page/view.ts endingsShown':
     'a measure: the line endings of the text, read from its editor state as the view is made and as it changes',
-  'tools/editor/page/editorView.ts findCount':
+  'tools/editor/page/view.ts findCount':
     'a measure: the matches of the find, counted from the editor state as the view is made and as it changes',
-  'tools/editor/page/editorView.ts status':
+  'tools/editor/page/view.ts status':
     'a measure: the line, column and selection, read from the editor state as the view is made and as it changes',
   'tools/viewer/page/pdfPreview.ts match':
     'made once: the helper that steps back to the match a tab kept, handed that match from the store once mounted',
@@ -73,13 +73,13 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: the slot a tab dragged in from another window takes, set only while it is over the row',
   'tools/commander/page/dropping.ts dropInto':
     'a moment: the row files dragged from another app are over, set only while they are dragged',
-  'tools/editor/page/editorFinding.ts focusAsks':
+  'tools/editor/page/finding.ts focusAsks':
     'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in keptEditings',
-  'tools/editor/page/editorView.ts findAsk':
+  'tools/editor/page/view.ts findAsk':
     'a trigger: an ask of the find keys with the text selected, handled once; the find itself is kept per tab',
-  'tools/editor/page/editorView.ts lineCount':
+  'tools/editor/page/view.ts lineCount':
     'a measure: the lines of the text, counted as the go-to-line prompt opens',
-  'tools/editor/page/editorView.ts mounts':
+  'tools/editor/page/view.ts mounts':
     'a trigger: counts the views of the text mounted, only to apply the find to each',
   'tools/viewer/page/hexBody.tsx columns':
     'a measure: the bytes that fit in a row, measured anew from the body once mounted',
@@ -139,9 +139,9 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the viewer store, made once for the page; it keeps what each viewer tab shows through tab changes',
   'tools/viewer/page/viewer.tsx focusAsks':
     'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in the kept viewers',
-  'tools/viewer/page/viewerFind.ts jump':
+  'tools/viewer/page/find.ts jump':
     'a trigger: counts the jumps to a match; a viewer shown again keeps its place rather than jumping',
-  'tools/viewer/page/viewerScrollbar.tsx dragging':
+  'tools/viewer/page/scrollbar.tsx dragging':
     'a moment: true only while the thumb of the viewer is dragged',
   'tools/git/page/addressBar.tsx asked':
     'a trigger: counts the find key presses only to mount the search anew; the search itself is kept per repository',
@@ -181,27 +181,27 @@ export const componentStates: Readonly<Record<string, string>> = {
     'made once: a scroll function made once around the capped scroll and the tops reported',
   'tools/diff/page/compareView.tsx findAsked':
     'a trigger: counts the find key presses, read only as changes; the find itself is kept per scope in diffFinds',
-  'components/diff/page/diffColumn.tsx awaitedDiff':
+  'components/diff/page/column.tsx awaitedDiff':
     'a moment: the diff a toggle of the entire file waits for to jump to its first change; a diff shown again keeps its place',
-  'components/diff/page/diffColumn.tsx entireSeen':
+  'components/diff/page/column.tsx entireSeen':
     'a moment: the entire-file toggle last seen, only to notice it change while mounted',
-  'components/diff/page/diffColumn.tsx firstChange':
+  'components/diff/page/column.tsx firstChange':
     'a trigger: counts the jumps to the first change once the entire file shows; a diff shown again keeps its place',
-  'components/diff/page/diffColumn.tsx seen':
+  'components/diff/page/column.tsx seen':
     'a moment: the scope and selection last shown, only to notice them change while mounted',
-  'components/diff/page/diffFind.ts focusAsks':
+  'components/diff/page/finding.ts focusAsks':
     'a trigger: counts the asks to focus the find box, read only as changes after mounting',
-  'components/diff/page/diffFind.ts jump':
+  'components/diff/page/finding.ts jump':
     'a trigger: counts the jumps to a match; a diff shown again keeps its place rather than jumping again',
-  'components/diff/page/diffFind.ts shownFor':
+  'components/diff/page/finding.ts shownFor':
     'a moment: the selection shown and whether a place was kept for it as it was shown, so a selection without one jumps to its first match',
-  'components/diff/page/diffFollow.ts viewportHeight':
+  'components/diff/page/follow.ts viewportHeight':
     'a measure: the height of the diff, measured anew by a resize observer once mounted',
-  'components/diff/page/diffJumps.ts revealing':
+  'components/diff/page/jumps.ts revealing':
     'a moment: the match brought into view after a jump, set only until it is drawn',
-  'components/diff/page/diffSideways.ts measured':
+  'components/diff/page/sideways.ts measured':
     'a measure: the sideways room of the diff, measured anew from its layout once mounted',
-  'components/diff/page/diffView.tsx dragged':
+  'components/diff/page/view.tsx dragged':
     'a moment: true only while the thumb of the minimap is dragged',
   'tools/git/page/filesColumn.tsx filterAsked':
     'a trigger: counts the find key presses, read only as changes; the filter itself is kept per repository in fileFilters',
@@ -234,7 +234,7 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: the value, lagging 200 ms only while it changes; seeded with the value itself as mounted',
   'lib/page/skeletonDelay.ts shown':
     'a moment: false until a load has gone on 150 ms, timed anew as mounted',
-  'components/diff/page/diffSyntax.ts colored':
+  'components/diff/page/syntax.ts colored':
     'a measure: the colors drawn, read as mounted from the colors kept per blob (keptColors.ts) and colored anew by the worker',
   'tools/git/page/tool.tsx store':
     'a measure: the git store, made once for the page; it keeps what each git tab shows through tab changes',

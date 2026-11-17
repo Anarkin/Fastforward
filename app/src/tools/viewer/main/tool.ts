@@ -12,12 +12,12 @@ import type { ViewerToHost } from '../shared/protocol';
 import { viewerIconUrl } from './icons';
 import type { WatchFolder } from '../../../lib/main/watch';
 import { post } from './post';
-import { ViewerPages } from './viewerPages';
+import { ViewerPages } from './pages';
 import { Viewers } from './viewers';
-import { ViewerFind } from './viewerFind';
+import { ViewerFind } from './find';
 import { ViewedPdfPlaces } from './viewedPdfPlaces';
 import type { PdfPlaceStore } from './pdfPlaces';
-import { ViewerMessages } from './viewerMessages';
+import { ViewerMessages } from './messages';
 import { Serving } from './serving';
 
 export interface ViewerAccess {

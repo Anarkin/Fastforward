@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
-import { useFocusKeeper, type KeptFocus } from '../../../lib/page/keptFocus';
+import { useFocusKeeper, type KeptFocus } from '../../../lib/page/viewFocus';
 import { useRestore } from '../../../lib/page/restore';
 import { useGitActions } from './store';
 

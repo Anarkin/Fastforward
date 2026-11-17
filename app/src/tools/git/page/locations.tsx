@@ -3,7 +3,7 @@ import { searchedBookmarks } from './bookmarks';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { noRefs } from './commitListItems';
-import { locationsOf, locationsScrollOf, searchOf } from './gitSelectors';
+import { locationsOf, locationsScrollOf, searchOf } from './selectors';
 import { useRestore } from '../../../lib/page/restore';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';

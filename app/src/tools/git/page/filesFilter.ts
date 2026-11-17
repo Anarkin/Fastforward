@@ -2,7 +2,7 @@ import type { Filter } from '../../../lib/shared/filter';
 import type { Search } from '../../../lib/shared/searchOptions';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
-import { fileFoldsOf } from './gitSelectors';
+import { fileFoldsOf } from './selectors';
 import { useGit, useGitActions } from './store';
 
 export const noneClosed: ReadonlySet<string> = new Set();

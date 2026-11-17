@@ -9,7 +9,7 @@ import {
   diffArgs,
   diffOptionArgs,
   type PatchScope,
-} from '../../../components/diff/main/diffArgs';
+} from '../../../components/diff/main/args';
 import type { ImageRead } from '../../../components/diff/main/imageReads';
 
 interface GitRunOptions {

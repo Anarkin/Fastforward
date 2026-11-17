@@ -2,10 +2,10 @@ import type { CloneView } from '../shared/clone';
 import type { GitToWebview } from '../shared/protocol';
 import type { CloneTarget } from './cloneForm';
 import { widthsToLoad } from './columns';
-import { reduceTabView, type TabAction, type TabView } from './tabView';
+import { reduceTabView, type TabAction, type TabView } from './shownTab';
 import { withEntry } from '../../../lib/page/tabKeyed';
 
-import type { Cloning, GitState } from './gitState';
+import type { Cloning, GitState } from './state';
 
 export function withTab(state: GitState, action: TabAction): GitState {
   const tab = reduceTabView(state.tab, action);

@@ -1,7 +1,7 @@
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
-import type { TextRequest } from '../../../components/diff/shared/diffProtocol';
-import type { DiffSettings } from '../../../components/diff/shared/diffSettings';
+import type { TextRequest } from '../../../components/diff/shared/protocol';
+import type { DiffSettings } from '../../../components/diff/shared/settings';
 import { gitErrorText } from '../../../lib/main/errorText';
 import { uniqueTexts } from '../../../components/diff/main/textRequests';
 import type { Log } from '../../../shell/main/log';

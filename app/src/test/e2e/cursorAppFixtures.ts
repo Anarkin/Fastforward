@@ -7,12 +7,12 @@ import * as esbuild from 'esbuild';
 import type { ElectronApplication, JSHandle, Page } from 'playwright-core';
 import { afterAll, beforeAll } from 'vitest';
 import type { CursorStyle } from '../../lib/shared/cursorSettings';
-import type * as editorKeymapModule from '../../tools/editor/page/editorKeymap';
+import type * as editorKeymapModule from '../../tools/editor/page/keymap';
 import { type CursorBox } from '../../lib/page/cursor';
 import { pixelBox, type Box } from '../../lib/page/pixelBoxes';
 import type * as cursorModule from '../../lib/page/cursor';
-import type * as editorSelectionModule from '../../tools/editor/page/editorSelection';
-import type * as editorTextModule from '../../tools/editor/page/editorText';
+import type * as editorSelectionModule from '../../tools/editor/page/selection';
+import type * as editorTextModule from '../../tools/editor/page/text';
 import type * as cellTableModule from '../../lib/page/cellTable';
 import { closeOrKill, launchApp, within } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
@@ -74,9 +74,9 @@ export async function partsInPage(): Promise<JSHandle<PageParts>> {
       contents: [
         "export { EditorView } from '@codemirror/view';",
         "export { EditorSelection } from '@codemirror/state';",
-        "export { appTextLook } from '../../tools/editor/page/editorText';",
-        "export { appSelection } from '../../tools/editor/page/editorSelection';",
-        "export { editorKeymap } from '../../tools/editor/page/editorKeymap';",
+        "export { appTextLook } from '../../tools/editor/page/text';",
+        "export { appSelection } from '../../tools/editor/page/selection';",
+        "export { editorKeymap } from '../../tools/editor/page/keymap';",
         "export { terminalCells } from './cellTable';",
         "export { pageCursorLook } from './cursor';",
       ].join('\n'),

@@ -1,4 +1,4 @@
-import { diffLayouts } from '../../../components/diff/shared/diffProtocol';
+import { diffLayouts } from '../../../components/diff/shared/protocol';
 import { areTextRequests } from '../../../components/diff/main/textRequests';
 import type { DiffToHost } from '../shared/protocol';
 

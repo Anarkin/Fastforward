@@ -47,9 +47,9 @@ import {
   folderViewOf,
   openingOf,
   shownFoldersOf,
-} from './gitSelectors';
+} from './selectors';
 import { useGit, useGitActions } from './store';
-import { treeOf } from './tabView';
+import { treeOf } from './shownTab';
 import {
   listsNothing,
   sidesOf,

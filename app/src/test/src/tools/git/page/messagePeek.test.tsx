@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import type { CommitInfo } from '../../../../../tools/git/shared/protocol';
 import { MessagePeek } from '../../../../../tools/git/page/messagePeek';
 import { MessageBody } from '../../../../../tools/git/page/messagePanel';
-import type { KeptPin } from '../../../../../tools/git/page/gitState';
+import type { KeptPin } from '../../../../../tools/git/page/state';
 import { commitInfo } from '../../../../helpers/gitValues';
 
 async function inList(

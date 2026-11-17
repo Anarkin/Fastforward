@@ -11,7 +11,7 @@ import {
 import type { ByteRange } from '../shared/protocol';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { wheeled } from '../../../lib/shared/keymap';
-import { viewerKeymap } from './viewerKeymap';
+import { viewerKeymap } from './keymap';
 import { sidewaysColumns } from '../../../lib/page/scrollSettings';
 import { wheelTurn } from '../../../lib/page/wheelTurns';
 import { useShell } from '../../../shell/page/store';
@@ -20,7 +20,7 @@ import { wrapColumns } from '../../../lib/page/wordWrap';
 import { boxColumns } from '../../../lib/page/wrapBox';
 import { type Thumb } from './scrollThumbs';
 import { copiedRows, type RowText } from './rowCopy';
-import { ViewerScrollbar } from './viewerScrollbar';
+import { ViewerScrollbar } from './scrollbar';
 
 const probeText = '0'.repeat(100);
 

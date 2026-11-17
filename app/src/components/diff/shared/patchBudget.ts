@@ -1,5 +1,5 @@
 import type { FileChange } from '../../../lib/shared/changes';
-import type { LeftOut } from './diffProtocol';
+import type { LeftOut } from './protocol';
 
 export const collapseThreshold = 25_000;
 

@@ -42,8 +42,8 @@ import type { Inits } from './inits';
 import type { ViewSettings } from './viewSettings';
 import type { TabLoads } from './tabLoads';
 import type { Runs } from './runs';
-import type { GitMessages } from './gitMessages';
-import { buildParts } from './gitParts';
+import type { GitMessages } from './messages';
+import { buildParts } from './parts';
 import { needsGit, type GitLocator } from './gitLocator';
 import { inFolderWithGit } from './repository';
 

@@ -10,7 +10,7 @@ import {
   pathspecs,
   showPatchArgs,
   type PatchScope,
-} from '../../../components/diff/main/diffArgs';
+} from '../../../components/diff/main/args';
 import { leftOutOf, readPatch, type ReadPatch } from './patchBudget';
 import {
   newSideUnchanged,

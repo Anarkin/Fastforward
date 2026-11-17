@@ -1,6 +1,6 @@
 import type { FileChange, StashInfo } from '../shared/protocol';
 import { showFiles, showPatch } from './diff';
-import type { PatchScope } from '../../../components/diff/main/diffArgs';
+import type { PatchScope } from '../../../components/diff/main/args';
 import { runGit } from './run';
 
 export interface Stash extends StashInfo {

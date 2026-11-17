@@ -15,7 +15,7 @@ import {
 } from '../../../../../components/diff/page/overflow';
 import type { TextWidths } from '../../../../../lib/page/textWidths';
 import { parsePatch } from '../../../../../components/diff/page/diff';
-import { diffRows } from '../../../../../components/diff/page/diffRows';
+import { diffRows } from '../../../../../components/diff/page/rows';
 
 const monospace = (char: number): TextWidths => ({
   char,

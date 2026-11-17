@@ -12,7 +12,7 @@ import { listedIn } from './listedEntries';
 import { archiveItems } from './archiveItems';
 import type { OpenedArchive } from './archives';
 import type { PackOptions, Packing } from './archiveReader';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 
 export type ArchiveCommandsAccess = Pick<
   CommanderAccess,

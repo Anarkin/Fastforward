@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import type { DiffRow } from '../../../../../components/diff/page/diffRows';
+import type { DiffRow } from '../../../../../components/diff/page/rows';
 import {
   rowOverscan,
   sameRowInput,

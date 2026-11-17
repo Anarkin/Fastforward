@@ -10,7 +10,7 @@ import {
 import { maxRowsAsked, type TextRow } from '../shared/protocol';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import type { ViewerActions } from './viewerState';
+import type { ViewerActions } from './state';
 import type { Viewing } from './viewing';
 import { RowRequests } from './rowRequests';
 import {
@@ -26,7 +26,7 @@ import {
   bytesPerRow,
   lastScreenStart,
 } from './textScroll';
-import type { ViewerFind } from './viewerFind';
+import type { ViewerFind } from './find';
 import { useViewer, useViewerActions } from './store';
 
 const rowsAboveMatch = 2;

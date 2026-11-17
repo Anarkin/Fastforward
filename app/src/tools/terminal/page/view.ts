@@ -13,7 +13,7 @@ import { withHiddenCursor, terminalTheme } from './theme';
 import { cellsOf } from './cells';
 import { type TerminalToWebview } from '../shared/protocol';
 import { inputChunks } from './inputChunks';
-import { sizeWithin } from '../shared/terminalSize';
+import { sizeWithin } from '../shared/size';
 import type { Renderer } from '../shared/settings';
 import type { WindowsPty } from '../shared/protocol';
 import type { FromScreen } from './store';

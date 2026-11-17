@@ -1,8 +1,8 @@
 import { shownSide, workingTreeSide } from '../../../lib/shared/comparisons';
 import { workingTreeHash } from '../../../lib/shared/changes';
 import type { DiffFile } from './diff';
-import type { WholeFile } from './diffRows';
-import { sidePath, type ImageOrigin, type Side } from './diffImages';
+import type { WholeFile } from './rows';
+import { sidePath, type ImageOrigin, type Side } from './images';
 
 export interface ViewedSource {
   readonly path: string;

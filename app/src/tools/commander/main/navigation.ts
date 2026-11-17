@@ -4,7 +4,7 @@ import type { CommanderToHost } from '../shared/protocol';
 import type { Side } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
 import type { Listing, Sides } from './sides';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 import { isFile } from './fileStats';
 import { shownBookmarks, type BookmarkSystem } from './bookmarks';
 import { typedPath } from './typedPaths';

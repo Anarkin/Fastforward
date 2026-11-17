@@ -16,7 +16,7 @@ import type { SideFlat } from './sideFlat';
 import { sizedEntry, type SideSizes } from './sideSizes';
 import type { SideDuplicates } from './sideDuplicates';
 import { ArchiveCopies } from './archiveCopies';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 import { isFolder } from './fileStats';
 import type { SideRepositories } from './sideRepositories';
 import { ReadingStopped, type Opener, ArchiveListing } from './archiveListing';

@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { StoreApi } from 'zustand';
-import type { CommanderState } from '../../../../../tools/commander/page/commanderState';
+import type { CommanderState } from '../../../../../tools/commander/page/state';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { noop } from '../../../../helpers/fixtures';
 import { keepingViews, listing, withFiles } from './storeFixtures';

@@ -25,12 +25,12 @@ import type { ThumbnailServing } from './thumbnailServing';
 import type { ArchiveCopies } from './archiveCopies';
 import type { ArchivePasswords } from './archivePasswords';
 import type { TransferCommands } from './transferCommands';
-import type { CommanderAccess } from './commanderAccess';
+import type { CommanderAccess } from './access';
 import { isFolder } from './fileStats';
 import type { Listings } from './listings';
 import type { Elevation } from './elevation';
-import type { CommanderMessages } from './commanderMessages';
-import { buildParts } from './commanderParts';
+import type { CommanderMessages } from './messages';
+import { buildParts } from './parts';
 
 export class CommanderTool implements Tool<'commander'> {
   private shell: ShellAccess = unattachedShell;

@@ -1,4 +1,4 @@
-import { focusNameAttribute } from './keptFocus';
+import { focusNameAttribute } from './viewFocus';
 
 export function Column({
   title,

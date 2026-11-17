@@ -2,12 +2,12 @@ import { folderKey } from '../shared/paths';
 import { type CommanderToHost } from '../shared/protocol';
 import { otherSide, type Side } from '../shared/sides';
 import type { StoreApi } from 'zustand';
-import type { CommanderActions, CommanderState } from './commanderState';
+import type { CommanderActions, CommanderState } from './state';
 import { keysMatching } from './markPattern';
 import { baseNameOf } from './naming';
 import { shownRowsOf } from './shownRows';
 import { archiveFor, volumeSizes } from './packing';
-import { noAccessShown, withoutNoAccess } from './commanderReceived';
+import { noAccessShown, withoutNoAccess } from './received';
 
 export type DialogActions = Pick<
   CommanderActions,

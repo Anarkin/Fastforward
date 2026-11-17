@@ -1,8 +1,8 @@
 import type { DiffFile } from './diff';
-import { lineKey, wholeLines } from './diffLines';
+import { lineKey, wholeLines } from './lines';
 import type { SyntaxRange } from '../../syntax/page/engine';
-import type { WholeFile } from './diffRows';
-import { syntaxSources } from './diffSyntaxSources';
+import type { WholeFile } from './rows';
+import { syntaxSources } from './syntaxSources';
 
 export interface Colored {
   readonly files: readonly DiffFile[];

@@ -13,12 +13,12 @@ import {
   searchOf,
   searchingOf,
   shownFoldersOf,
-} from '../../../../../tools/git/page/gitSelectors';
+} from '../../../../../tools/git/page/selectors';
 import {
   diffFindOf,
   pickedFor,
-} from '../../../../../components/diff/page/diffSlice';
-import { emptyTabView } from '../../../../../tools/git/page/tabView';
+} from '../../../../../components/diff/page/slice';
+import { emptyTabView } from '../../../../../tools/git/page/shownTab';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { noop } from '../../../../helpers/fixtures';
 import { at, shown, worktree as worktreeInfo } from './storeFixtures';

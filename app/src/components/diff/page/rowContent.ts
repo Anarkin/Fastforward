@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { DiffRow } from './diffRows';
+import type { DiffRow } from './rows';
 
 interface RowInput {
   readonly row: DiffRow;

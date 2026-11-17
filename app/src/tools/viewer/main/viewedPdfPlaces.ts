@@ -2,7 +2,7 @@ import type { Page } from '../../../shell/main/toolContract';
 import type { ViewerToHost } from '../shared/protocol';
 import { isPdf, isPdfFingerprint, pdfPlaceOf } from '../shared/pdf';
 import type { PdfPlaceStore } from './pdfPlaces';
-import type { ViewerPages } from './viewerPages';
+import type { ViewerPages } from './pages';
 import { post } from './post';
 
 export interface ViewedPdfPlacesAccess {

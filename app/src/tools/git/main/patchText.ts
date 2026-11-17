@@ -1,5 +1,5 @@
 import type { FileChange } from '../shared/protocol';
-import type { PatchScope } from '../../../components/diff/main/diffArgs';
+import type { PatchScope } from '../../../components/diff/main/args';
 
 const sectionStart = 'diff --git ';
 

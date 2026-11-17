@@ -7,7 +7,7 @@ import {
   commitsShownOf,
   detachedHead,
   searchingOf,
-} from '../../../../../tools/git/page/gitSelectors';
+} from '../../../../../tools/git/page/selectors';
 import { noop } from '../../../../helpers/fixtures';
 import {
   at,
@@ -18,7 +18,7 @@ import {
   labelled,
 } from './storeFixtures';
 import type { GitToHost } from '../../../../../tools/git/shared/protocol';
-import { emptyTabView } from '../../../../../tools/git/page/tabView';
+import { emptyTabView } from '../../../../../tools/git/page/shownTab';
 import { checkoutOptions } from '../../../../../tools/git/page/checkout';
 import { bookmarkOptions } from '../../../../../tools/git/page/bookmarks';
 import { strings } from '../../../../../lib/shared/strings';

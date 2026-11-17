@@ -1,5 +1,5 @@
 import { sides, type Side } from '../shared/sides';
-import type { CommanderSource, PaneFilter } from './commanderState';
+import type { CommanderSource, PaneFilter } from './state';
 
 export function filterKey(tab: string, side: Side): string {
   return JSON.stringify([tab, side]);

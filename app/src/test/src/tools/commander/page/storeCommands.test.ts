@@ -4,7 +4,7 @@ import { createCommanderStore } from '../../../../../tools/commander/page/store'
 import { emptyView } from '../../../../../tools/commander/page/view';
 import { noop } from '../../../../helpers/fixtures';
 import { left, shown, listing } from './storeFixtures';
-import { noAccessShown } from '../../../../../tools/commander/page/commanderReceived';
+import { noAccessShown } from '../../../../../tools/commander/page/received';
 
 const askedAbout = (tab: string, folder: string) =>
   ({

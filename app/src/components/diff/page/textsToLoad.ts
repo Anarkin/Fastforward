@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef } from 'react';
-import type { TextRequest } from '../shared/diffProtocol';
+import type { TextRequest } from '../shared/protocol';
 import type { DiffFile } from './diff';
 import { textKey, type LoadedText } from './sideTexts';
-import type { WholeFile } from './diffRows';
-import { sidePlans } from './diffSyntaxSources';
+import type { WholeFile } from './rows';
+import { sidePlans } from './syntaxSources';
 
 export function textsToLoad(
   files: readonly DiffFile[],

@@ -5,7 +5,7 @@ import {
   type NumberedLine,
 } from './changeBlocks';
 import { type FindRange } from './find';
-import { keyedLine } from './diffLines';
+import { keyedLine } from './lines';
 import { changePairs } from './pairing';
 import { tokenSteps } from './tokenSteps';
 

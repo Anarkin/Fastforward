@@ -1,8 +1,8 @@
 import { bookmarkedCommits } from '../shared/refNames';
 import { indexRefs } from './refIndex';
 import { tagsOnRemote } from './tagPushes';
-import type { TabView } from './tabView';
-import type { GitCollections, GitData, GitSource } from './gitState';
+import type { TabView } from './shownTab';
+import type { GitCollections, GitData, GitSource } from './state';
 
 const noNames: ReadonlySet<string> = new Set();
 
