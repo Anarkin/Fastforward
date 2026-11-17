@@ -274,6 +274,48 @@ suite('Editing a file', () => {
     assert.strictEqual(page.last('editedText')?.shown.version, 1);
   });
 
+  test('keeps what was typed while the file changed on disk was being read again, saying the file changed rather than putting the text read in its place', async () => {
+    const { edits, changeOnDisk, showing, notices, held } = editing({
+      'a.txt': 'one\n',
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    const reading = Promise.withResolvers<void>();
+    held.set('a.txt', reading.promise);
+    await changeOnDisk('a.txt', 'two\n');
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'x' }));
+    held.delete('a.txt');
+    reading.resolve();
+    await settled();
+    assert.notStrictEqual(page.last('editedText')?.reloaded, true);
+    assert.strictEqual(page.last('textChanged')?.changed, true);
+    assert.deepStrictEqual(notices, [
+      '"a.txt" changed on disk while edited here. Saving it writes over those changes.',
+    ]);
+  });
+
+  test('gives a text read again a version past every change typed while it was read, so no change typed against the text before lands in the one read', async () => {
+    const { edits, showing, held } = editing({ 'a.txt': 'one\n' });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    const reading = Promise.withResolvers<void>();
+    held.set('a.txt', reading.promise);
+    const reloading = edits.receive(page, { type: 'reloadEdited', tab: '1' });
+    await settled();
+    await edits.receive(page, editFrom(page, '1', { from: 0, insert: 'x' }));
+    const typed = page.last('textChanged') === undefined ? 0 : 1;
+    held.delete('a.txt');
+    reading.resolve();
+    await reloading;
+    await settled();
+    assert.strictEqual(typed, 1);
+    assert.strictEqual(page.last('editedText')?.shown.version, 2);
+  });
+
   test('keeps the changes made here once the file changes on disk, saying so, and asks before saving over it, saving over it or reading it again as told', async () => {
     const { edits, changeOnDisk, showing, notices, saved } = editing({
       'a.txt': 'one\n',

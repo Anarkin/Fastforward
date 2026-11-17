@@ -340,9 +340,13 @@ export class Editing {
       return;
     }
     if (!opened.changed) {
-      await this.readAgain(tab, opened);
+      await this.readAgain(tab, opened, opened.chosen ?? 'auto', true);
       return;
     }
+    this.changedOutside(tab, opened);
+  }
+
+  private changedOutside(tab: string, opened: Opened): void {
     if (!opened.outside) {
       opened.outside = true;
       const pages = this.shell.pagesShowing(tab);
@@ -365,12 +369,19 @@ export class Editing {
     tab: string,
     opened: Opened,
     choice: TextEncoding | 'auto' = opened.chosen ?? 'auto',
+    keepsEdits = false,
   ): Promise<void> {
     const chosen = choice === 'auto' ? undefined : choice;
-    const version = (opened.read.text?.version ?? 0) + 1;
-    const read = await this.load(opened.file, version, chosen);
+    const read = await this.load(opened.file, 0, chosen);
     if (this.opened.get(tab) !== opened) {
       return;
+    }
+    if (keepsEdits && opened.changed) {
+      this.changedOutside(tab, opened);
+      return;
+    }
+    if (read.text !== undefined) {
+      read.text.version = (opened.read.text?.version ?? 0) + 1;
     }
     opened.read = read;
     opened.chosen = chosen;
