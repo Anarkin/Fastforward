@@ -126,7 +126,7 @@ suite('App buttons', () => {
     assert.ok(viewer.gaps.length > 4);
     assert.ok(whole(gaps), gaps.join());
     assert.strictEqual(
-      distinct(gaps.filter((gap) => gap < 10)).length,
+      distinct(gaps).filter((gap) => gap < 10).length,
       1,
       JSON.stringify({
         git: git.gaps,
