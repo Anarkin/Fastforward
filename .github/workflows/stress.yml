@@ -42,6 +42,23 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Run the files again and again
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          FILES: ${{ inputs.files }}
+          TIMES: ${{ inputs.times }}
+        run: |
+          $failed = 0
+          foreach ($run in 1..[int]$env:TIMES) {
+            Write-Output "::group::Run $run of $env:TIMES"
+            npx vitest run @($env:FILES -split ' ')
+            if ($LASTEXITCODE -ne 0) { $failed++ }
+            Write-Output "::endgroup::"
+          }
+          "$failed of $env:TIMES runs failed" | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          if ($failed -ne 0) { exit 1 }
+      - name: Run the files again and again
+        if: runner.os != 'Windows'
         shell: bash
         env:
           FILES: ${{ inputs.files }}
