@@ -44,7 +44,6 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 4px 12px;
-  color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
 }
 

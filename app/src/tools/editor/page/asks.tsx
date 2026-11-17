@@ -78,7 +78,6 @@ export function EditorAsks({
       {asking === 'changed' && (
         <ConfirmPopup
           title={strings.editor.changedTitle}
-          message={strings.editor.changedAsked}
           lines={strings.editor.overwriteLines(file)}
           confirm={strings.editor.saveOver}
           extra={{
@@ -94,7 +93,6 @@ export function EditorAsks({
       {asking === 'overwrite' && (
         <ConfirmPopup
           title={strings.editor.overwriteTitle}
-          message={strings.editor.overwriteAsked}
           lines={strings.editor.overwriteLines(file)}
           confirm={strings.editor.overwrite}
           onConfirm={() =>

@@ -105,7 +105,7 @@ suite('Style', () => {
     }
   });
 
-  test('sets a name apart in a dialog in the monospace font of the settings alone, with no tint or padding around it, the same on a line of its own as in a sentence, each piece of a path kept whole on a line unless it alone is wider, and the labels of the lines muted', () => {
+  test('sets a name apart in a dialog in the monospace font of the settings alone, with no tint or padding around it, the same on a line of its own as in a sentence, each piece of a path kept whole on a line unless it alone is wider', () => {
     const popup = rendered(
       <ConfirmPopup
         title="Copy"
@@ -138,9 +138,31 @@ suite('Style', () => {
       display: 'grid',
       'grid-template-columns': 'auto minmax(0, 1fr)',
     });
-    looks(withClass(popup, 'name-label'), {
-      color: 'var(--muted-foreground)',
-    });
+  });
+
+  test('writes every label and value of a dialog in the color of its text, none dimmed, as the labels of its fields are', () => {
+    const lines = rendered(
+      <ConfirmPopup
+        title="Copy"
+        lines={[
+          { label: '', text: '3 items' },
+          { label: 'To', name: 'D:\\photos' },
+        ]}
+        confirm="Copy"
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    assert.deepStrictEqual(
+      [
+        ...allWithClass(lines, 'name-label').map((label) =>
+          cascaded(label, 'color'),
+        ),
+        cascaded(rendered(<div className="transfer-sides" />), 'color'),
+        cascaded(rendered(<div className="open-with-folders" />), 'color'),
+      ],
+      [undefined, undefined, undefined, undefined],
+    );
   });
 
   test('writes a path in a dialog, a sentence or a menu in the monospace font of the settings with no tint behind it, as a path of a side is written, its parts in their colors', () => {

@@ -8,6 +8,7 @@ import {
   renamedPart,
   renameProblem,
 } from './naming';
+import { passwordQuestion } from './passwordAsking';
 import { deleteQuestion } from './deleting';
 import { transferQuestion } from './transferring';
 import { TransferPopup } from './transferPopup';
@@ -84,7 +85,6 @@ export function CommanderPopups() {
         <ConfirmPopup
           key={askingUpdate.ask}
           title={strings.commander.updateTitle}
-          message={strings.commander.updateAsked}
           lines={strings.commander.updateLines(
             askingUpdate.name,
             askingUpdate.archive,
@@ -98,13 +98,7 @@ export function CommanderPopups() {
       {askingPassword !== undefined && (
         <PromptPopup
           key={askingPassword.ask}
-          title={strings.commander.passwordTitle}
-          message={
-            askingPassword.wrong
-              ? strings.commander.passwordWrong
-              : strings.commander.passwordAsked
-          }
-          lines={strings.commander.archiveLines(askingPassword.name)}
+          {...passwordQuestion(askingPassword)}
           label={strings.commander.passwordLabel}
           confirm={strings.commander.passwordOpen}
           problemOf={(password) =>
@@ -245,7 +239,6 @@ export function CommanderPopups() {
       {noAccess !== undefined && (
         <ConfirmPopup
           title={strings.commander.noAccessTitle}
-          message={strings.commander.noAccess}
           lines={strings.commander.folderLines(noAccess.folder)}
           confirm={strings.confirm.ok}
           cancel={null}

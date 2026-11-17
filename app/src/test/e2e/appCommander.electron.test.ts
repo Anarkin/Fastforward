@@ -120,10 +120,10 @@ suite('App commander', () => {
       await popup.waitFor();
       assert.deepStrictEqual(
         [
-          await popup.locator('.confirm-question > span').textContent(),
+          await popup.locator('.confirm-question > span').count(),
           await popup.locator('.name-value').allTextContents(),
         ],
-        [strings.commander.noAccess, [locked]],
+        [0, [locked]],
       );
       assert.strictEqual(await page.locator('.notice').count(), 0);
       assert.deepStrictEqual(

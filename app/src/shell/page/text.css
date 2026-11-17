@@ -16,10 +16,6 @@
   gap: 4px 12px;
 }
 
-.name-label {
-  color: var(--muted-foreground);
-}
-
 .name-alone {
   grid-column: 1 / -1;
 }

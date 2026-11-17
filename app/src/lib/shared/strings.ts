@@ -196,10 +196,9 @@ export const strings = {
     quitApp: `Are you sure you want to quit ${brand}?`,
     quit: 'Quit',
     initTitle: 'Init',
-    initInside:
-      'This folder is inside another repository. Are you sure you want to init a repository in it?',
+    initInside: 'This folder is inside another repository.',
     initInsideLines: (folder: string, repository: string) => [
-      labeled('Folder', namedFolder(folder)),
+      labeled('', namedFolder(folder)),
       labeled('Repository', namedFolder(repository)),
     ],
     init: 'Init',
@@ -669,7 +668,6 @@ export const strings = {
       sentence`${namedItem(item)} could not be opened as an archive: ${reason}`,
     openWithSevenZip: 'Open with 7-Zip...',
     passwordTitle: 'Password',
-    passwordAsked: 'The archive is encrypted. Type its password.',
     passwordWrong: 'The password is wrong. Type it again.',
     archiveLines: (archive: string) => [labeled('Archive', namedItem(archive))],
     passwordLabel: 'Password',
@@ -921,10 +919,8 @@ export const strings = {
     archiveGone: (item: string) =>
       sentence`${namedItem(item)} is no longer there, so it was not changed.`,
     updateTitle: 'Update the Archive',
-    updateAsked:
-      'A file was changed since it was taken out of its archive. Put it back into the archive?',
     updateLines: (name: string, archive: string) => [
-      labeled('File', namedFile(name)),
+      labeled('', namedFile(name)),
       labeled('Archive', namedFile(archive)),
     ],
     updateConfirm: 'Update',
@@ -989,8 +985,7 @@ export const strings = {
     couldNotOpen: (folder: string, reason: Sentence) =>
       sentence`Couldn't open ${namedFolder(folder)}. ${reason}`,
     noAccessTitle: 'No Access',
-    noAccess: "You don't have access to this folder.",
-    folderLines: (folder: string) => [labeled('Folder', namedFolder(folder))],
+    folderLines: (folder: string): Line[] => [namedFolder(folder)],
     asAdministrator: 'As Administrator',
     readAsAdministrator: 'Read as administrator',
     openRepository: 'Open the repository in a git tab',
@@ -1139,8 +1134,6 @@ export const strings = {
     changedOutside: (file: string) =>
       sentence`${namedFile(file)} changed on disk while edited here. Saving it writes over those changes.`,
     changedTitle: 'Changed on Disk',
-    changedAsked:
-      'The file changed on disk since it was opened here. Save over it, or read it again and drop the changes made here?',
     saveOver: 'Save Over It',
     readAgain: 'Read Again',
     askedInTab: (file: string) =>
@@ -1208,7 +1201,7 @@ export const strings = {
       sentence`${encoding}, from ${named('tools.editor.charset')} in the settings`,
     reopenTitle: 'Reopen',
     reopenAsked:
-      'Reopening the file in another encoding drops the changes made here. Reopen it?',
+      'Reopening the file in another encoding drops the changes made here.',
     reopen: 'Reopen',
     endingNames: { lf: 'LF', crlf: 'CRLF', cr: 'CR' },
     mixed: 'Mixed',
@@ -1218,8 +1211,7 @@ export const strings = {
     linesEndingIn: (lines: number, ending: string) =>
       `${lines} ${lines === 1 ? 'line ends' : 'lines end'} in ${ending}`,
     overwriteTitle: 'Read-only file',
-    overwriteAsked: 'The file is read-only. Save over it anyway?',
-    overwriteLines: (file: string) => [labeled('File', namedFile(file))],
+    overwriteLines: (file: string): Line[] => [namedFile(file)],
     overwrite: 'Save Anyway',
     unsaved: 'Unsaved changes',
     readOnlyMark: 'Read-only',

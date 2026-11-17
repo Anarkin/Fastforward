@@ -59,4 +59,44 @@ suite('Sentences', () => {
       { name: '/home/me/a.txt', path: 'file' },
     ]);
   });
+
+  test('names the folder a dialog refuses to open by its whole path on a line of its own, with no label, as the title says what is wrong', () => {
+    assert.deepStrictEqual(strings.commander.folderLines('/root/secret'), [
+      { name: '/root/secret', path: 'folder' },
+    ]);
+  });
+
+  test('names the file of a question about saving it, or putting it back into its archive, by its whole path with no label on its first line, as the title says what it asks, labeling only the archive it goes into', () => {
+    assert.deepStrictEqual(strings.editor.overwriteLines('/home/me/a.txt'), [
+      { name: '/home/me/a.txt', path: 'file' },
+    ]);
+    assert.deepStrictEqual(
+      strings.commander.updateLines(
+        '/home/me/a.zip/docs/a.txt',
+        '/home/me/a.zip',
+      ),
+      [
+        { label: '', name: '/home/me/a.zip/docs/a.txt', path: 'file' },
+        { label: 'Archive', name: '/home/me/a.zip', path: 'file' },
+      ],
+    );
+  });
+
+  test('says why it asks before making a repository inside another, or reopening a file in another encoding, without asking it again, the buttons asking it', () => {
+    assert.strictEqual(
+      strings.confirm.initInside,
+      'This folder is inside another repository.',
+    );
+    assert.deepStrictEqual(
+      strings.confirm.initInsideLines('/code/a/b', '/code/a'),
+      [
+        { label: '', name: '/code/a/b', path: 'folder' },
+        { label: 'Repository', name: '/code/a', path: 'folder' },
+      ],
+    );
+    assert.strictEqual(
+      strings.editor.reopenAsked,
+      'Reopening the file in another encoding drops the changes made here.',
+    );
+  });
 });
