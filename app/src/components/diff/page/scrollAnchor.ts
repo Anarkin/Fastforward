@@ -28,16 +28,19 @@ export interface ScrollAnchor {
 
 type Laid = readonly { readonly start: number; readonly size: number }[];
 
+const readerOffset = 0.5;
+
 export function scrollAnchor(
   rows: Laid,
   shown: readonly (readonly string[])[],
   scrollTop: number,
 ): ScrollAnchor | undefined {
+  const seen = scrollTop + readerOffset;
   let low = 0;
   let high = rows.length - 1;
   while (low < high) {
     const middle = Math.ceil((low + high) / 2);
-    if (rows[middle].start <= scrollTop) {
+    if (rows[middle].start <= seen) {
       low = middle;
     } else {
       high = middle - 1;
@@ -50,7 +53,8 @@ export function scrollAnchor(
   }
   return {
     shows,
-    fraction: row.size > 0 ? (scrollTop - row.start) / row.size : 0,
+    fraction:
+      row.size > 0 ? Math.max(0, (scrollTop - row.start) / row.size) : 0,
   };
 }
 
@@ -58,6 +62,7 @@ export function anchoredScrollTop(
   anchor: ScrollAnchor,
   rows: Laid,
   shown: readonly (readonly string[])[],
+  line: number,
 ): number | undefined {
   const index = shown.findIndex((shows) =>
     shows.some((id) => anchor.shows.includes(id)),
@@ -65,7 +70,11 @@ export function anchoredScrollTop(
   const row = index === -1 ? undefined : rows.at(index);
   return (
     row &&
-    row.start + Math.min(anchor.fraction * row.size, Math.max(0, row.size - 1))
+    row.start +
+      Math.min(
+        anchor.fraction * row.size,
+        Math.max(0, row.size - Math.min(row.size, line) / 2),
+      )
   );
 }
 
@@ -80,6 +89,7 @@ export function useScrollAnchor({
   split,
   wordWrap,
   columns,
+  line,
 }: {
   readonly list: RefObject<HTMLDivElement | null>;
   readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -87,6 +97,7 @@ export function useScrollAnchor({
   readonly split: boolean;
   readonly wordWrap: boolean;
   readonly columns: WrapColumns | undefined;
+  readonly line: number;
 }): void {
   const layoutKey = `${split}:${wordWrap ? `${columns?.left}:${columns?.right}` : ''}`;
   const anchor = useRef<{ key: string; at: ScrollAnchor | undefined }>(
@@ -121,6 +132,7 @@ export function useScrollAnchor({
         last.at,
         virtualizer.measurementsCache,
         shown,
+        line,
       );
       if (top !== undefined) {
         virtualizer.scrollToOffset(top);
@@ -142,6 +154,7 @@ export function useScrollAnchor({
         settle.at,
         virtualizer.measurementsCache,
         shown,
+        line,
       );
       if (top !== undefined && Math.abs(top - settle.top) >= 0.5) {
         virtualizer.scrollToOffset(top);

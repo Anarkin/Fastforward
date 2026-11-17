@@ -480,6 +480,7 @@ export function DiffView({
     split,
     wordWrap,
     columns,
+    line: lineHeight,
   });
   useKeptPlace({
     list,
@@ -497,6 +498,7 @@ export function DiffView({
     anchors,
     scrollsSides,
     reveal,
+    line: lineHeight,
   });
 
   return (

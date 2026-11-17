@@ -15,6 +15,7 @@ export function useKeptPlace({
   anchors,
   scrollsSides,
   reveal,
+  line,
 }: {
   readonly list: RefObject<HTMLDivElement | null>;
   readonly place: DiffPlace | undefined;
@@ -24,6 +25,7 @@ export function useKeptPlace({
   readonly anchors: readonly (readonly string[])[];
   readonly scrollsSides: boolean;
   readonly reveal: (scrolled: number) => void;
+  readonly line: number;
 }): void {
   const restoring = useRestore(
     place,
@@ -35,6 +37,7 @@ export function useKeptPlace({
             target.anchor,
             virtualizer.measurementsCache,
             anchors,
+            line,
           )) ??
         target.top;
       virtualizer.scrollToOffset(top);
