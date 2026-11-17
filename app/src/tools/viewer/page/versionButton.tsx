@@ -4,7 +4,13 @@ import { useShell } from '../../../shell/page/store';
 import { useViewer, useViewerActions } from './store';
 import { showsCommit, versionLabel, versionMenu } from './versionMenu';
 
-export function VersionButton({ onChosen }: { readonly onChosen: () => void }) {
+export function VersionButton({
+  trigger,
+  onChosen,
+}: {
+  readonly trigger: React.Ref<HTMLButtonElement>;
+  readonly onChosen: () => void;
+}) {
   const listed = useViewer((state) =>
     state.tab === undefined ? undefined : state.versions.get(state.tab),
   );
@@ -26,6 +32,7 @@ export function VersionButton({ onChosen }: { readonly onChosen: () => void }) {
       <MenuButton
         scrolling={scrolling}
         title={strings.viewer.version}
+        trigger={trigger}
         label={versionLabel(version, listed)}
         onChosen={onChosen}
         filter={strings.viewer.findVersion}

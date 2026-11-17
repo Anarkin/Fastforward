@@ -22,6 +22,11 @@ export interface EditorAccess extends EditingFilesAccess {
   readonly closesBrackets: () => boolean;
   readonly fileIcon: (file: string) => Promise<Uint8Array>;
   readonly viewedCopy: (file: string) => boolean;
+  readonly viewEdited: (
+    page: Page,
+    tab: string,
+    start: ViewedStart,
+  ) => Promise<void>;
 }
 
 export class EditorTool implements Tool<'editor'> {
@@ -92,7 +97,41 @@ export class EditorTool implements Tool<'editor'> {
   }
 
   receive(page: Page, message: EditorToHost): Promise<void> {
-    return this.editing.receive(page, message);
+    return message.type === 'viewEdited'
+      ? this.viewEdited(page, message)
+      : this.editing.receive(page, message);
+  }
+
+  private async viewEdited(
+    page: Page,
+    {
+      tab,
+      at,
+      save,
+      discard,
+    }: Extract<EditorToHost, { readonly type: 'viewEdited' }>,
+  ): Promise<void> {
+    if (!this.shell.holds(page, tab) || !Number.isSafeInteger(at) || at < 0) {
+      return;
+    }
+    if (this.editing.unsaved(tab)) {
+      if (save === true) {
+        if (!(await this.editing.save(page, tab))) {
+          return;
+        }
+      } else if (discard !== true) {
+        return;
+      }
+    }
+    const viewing = this.editing.viewedStart(tab, at);
+    if (viewing === undefined) {
+      return;
+    }
+    if ('refusal' in viewing) {
+      this.shell.notice(page, { level: 'error', message: viewing.refusal });
+      return;
+    }
+    await this.access.viewEdited(page, tab, viewing.start);
   }
 
   refreshShown(): Promise<void> {

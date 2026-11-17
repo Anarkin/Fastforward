@@ -102,6 +102,8 @@ export type ViewerToWebview =
       readonly tab: string;
       readonly file: string;
       readonly version?: string;
+      readonly at?: number;
+      readonly encoding?: TextEncoding;
     }
   | {
       readonly type: 'versions';

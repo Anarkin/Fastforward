@@ -169,7 +169,8 @@ suite('App', () => {
         [await trigger.textContent(), await tabFolder.textContent()],
         [short, short],
       );
-      await trigger.click();
+      await page.locator('.viewer .column-body').first().focus();
+      await page.keyboard.press('v');
       const items = await page
         .locator('.menu-item:not(:disabled)')
         .allTextContents();

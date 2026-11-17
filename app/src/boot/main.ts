@@ -310,6 +310,7 @@ async function start(asked: readonly string[]): Promise<void> {
     git,
     defaultSettingsCopy,
     commanderTool,
+    viewEdited: (page, tab, at) => viewerTool.viewEdited(page, tab, at),
   });
   const shellHost = shellHostOf({
     dist,

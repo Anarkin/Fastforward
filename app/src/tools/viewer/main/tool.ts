@@ -61,6 +61,10 @@ export class ViewerTool implements Tool<'viewer'> {
   private readonly serving: Serving;
   private readonly copies = new Map<string, string>();
   private readonly listed = new Map<string, Versions>();
+  private readonly starts = new Map<
+    string,
+    { readonly byte: number; readonly encoding?: TextEncoding }
+  >();
 
   constructor(private readonly access: ViewerAccess) {
     const pdfPlaces = new ViewedPdfPlaces(access, this.pages);
@@ -103,11 +107,15 @@ export class ViewerTool implements Tool<'viewer'> {
       return;
     }
     this.pages.shown.set(page, { tab: tab.id, viewingsAsked: 0 });
+    const start = this.starts.get(tab.id);
+    this.starts.delete(tab.id);
     post(page, {
       type: 'show',
       tab: tab.id,
       file: tab.root,
       ...(tab.version !== undefined && { version: tab.version.rev }),
+      ...(start !== undefined && { at: start.byte }),
+      ...(start?.encoding !== undefined && { encoding: start.encoding }),
     });
     const read =
       tab.version === undefined
@@ -117,6 +125,15 @@ export class ViewerTool implements Tool<'viewer'> {
       await this.viewers.startViewing(page, tab.id, tab.root, read);
     }
     await this.listVersions(page, tab.id, tab.version?.file ?? tab.root);
+  }
+
+  async viewEdited(
+    page: Page,
+    tab: string,
+    start: { readonly byte: number; readonly encoding?: TextEncoding },
+  ): Promise<void> {
+    this.starts.set(tab, start);
+    await this.shell.viewEdited(page, tab);
   }
 
   private async listVersions(

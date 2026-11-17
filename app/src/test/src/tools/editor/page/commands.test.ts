@@ -24,4 +24,8 @@ suite('Editor keys', () => {
     assert.deepStrictEqual(editorKeymap.singleCursor.keys, { Escape: true });
     assert.deepStrictEqual(editorKeymap.tabLeaves.keys, { 'Ctrl+M': true });
   });
+
+  test('views the file on F3, as F4 edits the file a viewer shows', () => {
+    assert.deepStrictEqual(editorKeymap.viewEdited.keys, { F3: true });
+  });
 });

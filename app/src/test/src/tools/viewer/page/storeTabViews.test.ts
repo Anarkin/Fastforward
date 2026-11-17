@@ -212,4 +212,17 @@ suite('Viewer store keeping its tabs', () => {
     assert.deepStrictEqual([...store.getState().choices.keys()], []);
     assert.strictEqual(store.getState().placeOf('2'), 0);
   });
+
+  test('starts a tab the editor turned into a viewer at the byte and in the encoding the editor gives, over what it kept of the tab before', () => {
+    const { store } = keepingViews();
+    const { receive } = store.getState();
+    receive({ type: 'show', tab: '1', file });
+    store.getState().keepPlace('1', 40);
+    store.getState().choose({ encoding: 'utf-16le' });
+    receive({ type: 'show', tab: '1', file, at: 12, encoding: 'windows-1250' });
+    assert.deepStrictEqual(
+      [store.getState().placeOf('1'), choicesOf(store.getState()).encoding],
+      [12, 'windows-1250'],
+    );
+  });
 });

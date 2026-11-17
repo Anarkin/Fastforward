@@ -75,6 +75,13 @@ export type EditorToHost =
     }
   | { readonly type: 'reloadEdited'; readonly tab: string }
   | {
+      readonly type: 'viewEdited';
+      readonly tab: string;
+      readonly at: number;
+      readonly save?: true;
+      readonly discard?: true;
+    }
+  | {
       readonly type: 'saveIn';
       readonly tab: string;
       readonly encoding: TextEncoding | 'auto';

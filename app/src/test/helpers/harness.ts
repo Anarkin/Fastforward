@@ -234,6 +234,7 @@ export function newView(
         viewedCopy: () => false,
         readOnlyCopy: () => false,
         copySaved: () => undefined,
+        viewEdited: () => Promise.resolve(),
       }),
     }),
   );

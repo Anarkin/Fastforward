@@ -127,4 +127,30 @@ suite('Text being edited', () => {
       false,
     );
   });
+
+  test('tells the byte of the file on disk a place of its text starts at, its byte order mark, line endings and multibyte characters counted', () => {
+    const utf8 = new EditedText(
+      decodedText(
+        Buffer.concat([
+          Buffer.from([0xef, 0xbb, 0xbf]),
+          Buffer.from('é\r\nb\nc', 'utf8'),
+        ]),
+        'utf-8',
+      ),
+    );
+    assert.deepStrictEqual(
+      [0, 1, 2, 3, 4, 5].map((at) => utf8.byteAt(at)),
+      [3, 5, 7, 8, 9, 10],
+    );
+    const utf16 = new EditedText(
+      decodedText(
+        Buffer.from([0xff, 0xfe, 0x61, 0, 0x0a, 0, 0x62, 0]),
+        'utf-16le',
+      ),
+    );
+    assert.deepStrictEqual(
+      [0, 2, 3].map((at) => utf16.byteAt(at)),
+      [2, 6, 8],
+    );
+  });
 });

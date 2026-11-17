@@ -93,6 +93,7 @@ export interface EditorKeyActions {
   readonly replace: () => void;
   readonly goToLine: () => void;
   readonly close: () => void;
+  readonly view: () => void;
 }
 
 export function escapeCloses(selection: EditorSelection): boolean {
@@ -163,7 +164,9 @@ export function editorKeys(actions: EditorKeyActions): Extension {
             ? actions.replace
             : keyPressed(editorKeymap.goToLine, event) !== undefined
               ? actions.goToLine
-              : undefined;
+              : keyPressed(editorKeymap.viewEdited, event) !== undefined
+                ? actions.view
+                : undefined;
     return action === undefined
       ? undefined
       : () => {

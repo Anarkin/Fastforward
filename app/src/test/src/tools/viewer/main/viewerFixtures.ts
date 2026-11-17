@@ -82,7 +82,8 @@ export function viewer() {
     },
   });
   const page = new ViewerPage();
-  const { shell, pages, tabs, notices, versionsSet } = fakeShell(page);
+  const { shell, pages, tabs, notices, versionsSet, turnedToView } =
+    fakeShell(page);
   tool.attach(shell);
   const send = (message: ViewerToHost, from: Page = page) =>
     tool.receive(from, message);
@@ -108,6 +109,7 @@ export function viewer() {
     versions,
     histories,
     versionsSet,
+    turnedToView,
   };
 }
 

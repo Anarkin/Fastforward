@@ -183,6 +183,7 @@ export class Shell {
         ),
       openEdit: (page, file) => this.tabs.open(page, 'editor', [file], true),
       editViewed: (page, tab) => this.tabs.editViewed(page, tab),
+      viewEdited: (page, tab) => this.tabs.viewEdited(page, tab),
       openCompare: (page, compare) =>
         this.tabs.open(page, 'diff', [undefined], false, { compare }),
       openFolders: (page, tool, folders) =>

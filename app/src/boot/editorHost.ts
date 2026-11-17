@@ -14,13 +14,14 @@ import {
   textDefaultsOf,
   type TextDefaultSources,
 } from '../tools/editor/main/textDefaults';
-import { EditorTool } from '../tools/editor/main/tool';
+import { EditorTool, type EditorAccess } from '../tools/editor/main/tool';
 
 export interface EditorHostDeps {
   readonly userSettings: UserSettings;
   readonly git: GitLocator;
   readonly defaultSettingsCopy: string;
   readonly commanderTool: CommanderTool;
+  readonly viewEdited: EditorAccess['viewEdited'];
 }
 
 export function editorToolOf({
@@ -28,6 +29,7 @@ export function editorToolOf({
   git,
   defaultSettingsCopy,
   commanderTool,
+  viewEdited,
 }: EditorHostDeps): EditorTool {
   const sources = (): TextDefaultSources => ({
     settings: userSettings.settings.tools.editor,
@@ -61,5 +63,6 @@ export function editorToolOf({
     viewedCopy: (file) => commanderTool.viewedCopy(file),
     readOnlyCopy: (file) => commanderTool.readOnlyCopy(file),
     copySaved: (file) => commanderTool.copySaved(file),
+    viewEdited,
   });
 }

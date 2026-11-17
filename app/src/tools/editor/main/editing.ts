@@ -1,3 +1,4 @@
+import { basename } from 'node:path';
 import type { Notice, Page } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
@@ -656,6 +657,28 @@ export class Editing {
 
   unsaved(tab: string): boolean {
     return this.opened.get(tab)?.changed === true;
+  }
+
+  viewedStart(
+    tab: string,
+    at: number,
+  ):
+    | { readonly start: ViewedStart }
+    | { readonly refusal: Sentence }
+    | undefined {
+    const opened = this.opened.get(tab);
+    const text = opened?.read.text;
+    if (opened === undefined || text === undefined) {
+      return undefined;
+    }
+    if (opened.read.made) {
+      return {
+        refusal: strings.editor.notSavedToView(basename(opened.file)),
+      };
+    }
+    return {
+      start: { byte: text.byteAt(at), encoding: text.onDisk().encoding },
+    };
   }
 
   closed(tab: string): void {

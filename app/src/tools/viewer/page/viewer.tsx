@@ -102,6 +102,7 @@ export function Viewer() {
   );
   const encodingTrigger = useRef<HTMLButtonElement>(null);
   const languageTrigger = useRef<HTMLButtonElement>(null);
+  const versionTrigger = useRef<HTMLButtonElement>(null);
   const preview = previewOf(file);
   const shownModes = modes.filter(
     (each) => each.mode !== 'preview' || preview !== undefined,
@@ -204,6 +205,9 @@ export function Viewer() {
           case 'language':
             languageTrigger.current?.click();
             return;
+          case 'version':
+            versionTrigger.current?.click();
+            return;
           case 'wrap':
             changeTextView({ wordWrap: !wordWrap });
             return;
@@ -267,7 +271,7 @@ export function Viewer() {
                 scrolling={scrolling}
               />
             )}
-            <VersionButton onChosen={focusBody} />
+            <VersionButton trigger={versionTrigger} onChosen={focusBody} />
             {showsImage && <span className="nav-button-space" />}
             {showsImage && (
               <div className="viewer-toggles">

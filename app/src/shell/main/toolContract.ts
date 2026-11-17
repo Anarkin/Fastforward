@@ -41,6 +41,7 @@ export interface ShellAccess {
   openView(page: Page, file: string, version?: FileVersion): Promise<void>;
   openEdit(page: Page, file: string): Promise<void>;
   editViewed(page: Page, tab: string): Promise<void>;
+  viewEdited(page: Page, tab: string): Promise<void>;
   openCompare(page: Page, compare: Compared): Promise<void>;
   openFolders(
     page: Page,
@@ -97,6 +98,7 @@ export const unattachedShell: ShellAccess = {
   openView: () => Promise.resolve(),
   openEdit: () => Promise.resolve(),
   editViewed: () => Promise.resolve(),
+  viewEdited: () => Promise.resolve(),
   openCompare: () => Promise.resolve(),
   openFolders: () => Promise.resolve(),
   setRoot: () => undefined,

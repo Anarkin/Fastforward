@@ -43,6 +43,7 @@ export const editorKeymap = {
     { Escape: true },
     { fields: true },
   ),
+  viewEdited: bind('Editing', strings.actions.viewEdited, { F3: true }),
   comment: bind(
     'Editing',
     strings.actions.toggleComment,

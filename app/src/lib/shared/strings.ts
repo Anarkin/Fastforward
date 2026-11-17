@@ -325,6 +325,7 @@ export const strings = {
     singleCursor: 'Leave one cursor, or drop the selection',
     tabLeaves: 'Let the next Tab move the focus on',
     closeEditor: 'Close the file being edited, once nothing is selected',
+    viewEdited: 'View the file being edited in this tab',
     replaceInFile: 'Replace in the file',
     dialogButton: 'Move between the buttons of a dialog',
     newFolder: 'Make a folder in the folder of the side',
@@ -360,6 +361,7 @@ export const strings = {
     compareFiles:
       'Compare the marked files, or the selected file of each side, in a git tab',
     editViewed: 'Edit the file being viewed in this tab',
+    chooseVersion: 'Choose the version of the file to show, as git keeps them',
     closeViewer: 'Close the file being viewed',
     closeCompare: 'Close the files being compared',
     viewAs: 'View the file as hex, text or a preview',
@@ -1121,6 +1123,8 @@ export const strings = {
       sentence`${namedItem(item, 'folder')} is a folder. F4 edits files.`,
     asAdministrator: (item: string) =>
       sentence`${namedItem(item)} is in a folder read as administrator, where files can't be edited yet.`,
+    notSavedToView: (file: string) =>
+      sentence`${namedFile(file)} isn't saved yet, so there is nothing of it on disk to view.`,
     viewedCopy: (item: string) =>
       sentence`${namedItem(item)} is a copy taken out of an archive or a commit to view it, so it can't be edited.`,
     couldNotSave: (file: string, reason: Sentence) =>

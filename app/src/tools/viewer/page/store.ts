@@ -144,6 +144,19 @@ export function createViewerStore(
                     ? state.viewed
                     : undefined,
             }));
+            const { at, encoding } = message;
+            if (at !== undefined) {
+              set((state) => ({
+                places: new Map(state.places).set(message.tab, at),
+                ...(encoding !== undefined && {
+                  choices: new Map(state.choices).set(message.tab, {
+                    ...state.choices.get(message.tab),
+                    encoding,
+                  }),
+                }),
+              }));
+              changed(message.tab);
+            }
             break;
           }
           case 'hide':

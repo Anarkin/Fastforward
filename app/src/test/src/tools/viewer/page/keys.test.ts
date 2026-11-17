@@ -46,6 +46,14 @@ suite('Viewer keys', () => {
     }
   });
 
+  test('opens the menu of the versions of the file on V, whatever it shows', () => {
+    for (const shown of [text, hex, image]) {
+      assert.deepStrictEqual(viewerKey(keyPress('v'), shown), {
+        kind: 'version',
+      });
+    }
+  });
+
   test('edits the file on F4, whatever it shows', () => {
     for (const shown of [text, hex, image]) {
       assert.deepStrictEqual(viewerKey(keyPress('F4'), shown), {

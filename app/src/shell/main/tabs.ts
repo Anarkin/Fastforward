@@ -175,23 +175,32 @@ export class Tabs {
     await this.show(there, last);
   }
 
-  async editViewed(page: Page, id: string): Promise<void> {
+  editViewed(page: Page, id: string): Promise<void> {
+    return this.turned(page, id, 'viewer', 'editor');
+  }
+
+  viewEdited(page: Page, id: string): Promise<void> {
+    return this.turned(page, id, 'editor', 'viewer');
+  }
+
+  private async turned(
+    page: Page,
+    id: string,
+    from: ToolId,
+    to: ToolId,
+  ): Promise<void> {
     const { storage } = this;
-    const viewed = this.pages
+    const turning = this.pages
       .windowOf(page)
-      .tabs.find((tab) => tab.id === id && tab.tool === 'viewer');
-    if (viewed?.root === undefined) {
+      .tabs.find((tab) => tab.id === id && tab.tool === from);
+    if (turning?.root === undefined) {
       return;
     }
-    this.tools[viewed.tool].closed(page, viewed);
+    this.tools[turning.tool].closed(page, turning);
     this.views.drop(id);
     this.host.save(
       storage.setLayout(
-        withChanged(storage.layout, {
-          id,
-          tool: 'editor',
-          root: viewed.root,
-        }),
+        withChanged(storage.layout, { id, tool: to, root: turning.root }),
       ),
     );
     await this.show(page, id);

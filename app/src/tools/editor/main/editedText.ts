@@ -207,4 +207,14 @@ export class EditedText {
     const shown = this.shown();
     return encodedText(shown);
   }
+
+  byteAt(at: number): number {
+    const shown = this.shown();
+    const before = encodedText({
+      ...shown,
+      ...this.onDisk(),
+      text: shown.text.slice(0, Math.max(0, at)),
+    });
+    return 'bytes' in before ? before.bytes.length : 0;
+  }
 }

@@ -271,4 +271,19 @@ suite('Viewer tool', () => {
       ],
     );
   });
+
+  test('turns a tab editing a file into one viewing it, showing it once at the byte and in the encoding the editor gives', async () => {
+    const notes = path.join(opened, 'notes.txt');
+    fs.writeFileSync(notes, 'one\ntwo\n');
+    const { tool, page, turnedToView } = viewer();
+    await tool.viewEdited(page, '3', { byte: 4, encoding: 'windows-1250' });
+    assert.deepStrictEqual(turnedToView, ['3']);
+    const viewing: Tab = { id: '3', tool: 'viewer', root: notes };
+    await tool.show(page, viewing);
+    await tool.show(page, viewing);
+    assert.deepStrictEqual(page.of('show'), [
+      { type: 'show', tab: '3', file: notes, at: 4, encoding: 'windows-1250' },
+      { type: 'show', tab: '3', file: notes },
+    ]);
+  });
 });

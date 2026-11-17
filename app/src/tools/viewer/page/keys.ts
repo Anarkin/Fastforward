@@ -9,7 +9,8 @@ export type ViewerAct =
   | { readonly kind: 'language' }
   | { readonly kind: 'wrap' }
   | { readonly kind: 'whitespace' }
-  | { readonly kind: 'realSize' };
+  | { readonly kind: 'realSize' }
+  | { readonly kind: 'version' };
 
 export interface ViewerKeys {
   readonly mode: ViewMode;
@@ -26,6 +27,9 @@ export function viewerKey(
   }
   if (keyPressed(viewerKeymap.edit, event) !== undefined) {
     return { kind: 'edit' };
+  }
+  if (keyPressed(viewerKeymap.version, event) !== undefined) {
+    return { kind: 'version' };
   }
   const wanted = keyPressed(viewerKeymap.viewAs, event);
   if (wanted !== undefined) {

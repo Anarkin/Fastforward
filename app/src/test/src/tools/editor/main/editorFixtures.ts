@@ -8,6 +8,7 @@ export function editor({
   const closing = { now: false };
   const iconsLoaded: string[] = [];
   const saved: string[] = [];
+  const viewed: [string, unknown][] = [];
   const tool = new EditorTool({
     watch: () => () => {},
     codePage: () => Promise.resolve('windows-1252'),
@@ -20,6 +21,10 @@ export function editor({
     readOnlyCopy: (file) => viewedCopies.includes(file),
     copySaved: (file) => {
       saved.push(file);
+    },
+    viewEdited: (_page, tab, start) => {
+      viewed.push([tab, start]);
+      return Promise.resolve();
     },
   });
   const page = new EditorPage();
@@ -35,5 +40,6 @@ export function editor({
     closing,
     iconsLoaded,
     saved,
+    viewed,
   };
 }

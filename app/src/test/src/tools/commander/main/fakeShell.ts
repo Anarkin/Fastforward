@@ -18,6 +18,7 @@ export function fakeShell<P extends Page>(page: P) {
   const viewed: string[] = [];
   const edited: string[] = [];
   const turned: string[] = [];
+  const turnedToView: string[] = [];
   const compared: Compared[] = [];
   const versionsSet: [string, string, FileVersion | undefined][] = [];
   const tabs: Tab[] = [];
@@ -42,6 +43,10 @@ export function fakeShell<P extends Page>(page: P) {
     },
     editViewed: (_page, turnedTab) => {
       turned.push(turnedTab);
+      return Promise.resolve();
+    },
+    viewEdited: (_page, turnedTab) => {
+      turnedToView.push(turnedTab);
       return Promise.resolve();
     },
     openCompare: (_page, files) => {
@@ -81,6 +86,7 @@ export function fakeShell<P extends Page>(page: P) {
     viewed,
     edited,
     turned,
+    turnedToView,
     compared,
     versionsSet,
     tabs,

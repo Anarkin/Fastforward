@@ -7,7 +7,7 @@ import { strings } from '../../../../../lib/shared/strings';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { editorIconUrl } from '../../../../../tools/editor/main/icons';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
-import { settled } from './editingFixtures';
+import { editFrom, settled } from './editingFixtures';
 import { editor } from './editorFixtures';
 
 suite('Editor tool', () => {
@@ -46,6 +46,73 @@ suite('Editor tool', () => {
     await tool.editViewed(page, '4', notes, { byte: 0 });
     assert.deepStrictEqual(turned, ['3']);
     assert.deepStrictEqual(edited, [notes]);
+  });
+
+  test('turns the tab of a file edited into one viewing it, starting at the byte the line at the top of the editor starts at on disk, in the encoding of the file on disk', async () => {
+    const notes = path.join(opened, 'notes.txt');
+    fs.writeFileSync(notes, Buffer.from('é\r\ntwo\r\n', 'utf8'));
+    const { tool, page, tabs, viewed } = editor();
+    const editing: Tab = { id: '3', tool: 'editor', root: notes };
+    tabs.push(editing);
+    await tool.show(page, editing);
+    await tool.receive(page, { type: 'readEdited', tab: '3' });
+    await settled();
+    await tool.receive(page, { type: 'viewEdited', tab: '3', at: 2 });
+    assert.deepStrictEqual(viewed, [['3', { byte: 4, encoding: 'utf-8' }]]);
+  });
+
+  test('views a file with changes not saved only once told to save them, saving them first, or to drop them, leaving the file on disk as it was', async () => {
+    const notes = path.join(opened, 'notes.txt');
+    fs.writeFileSync(notes, 'one\n');
+    const { tool, page, tabs, viewed } = editor();
+    const editing: Tab = { id: '3', tool: 'editor', root: notes };
+    tabs.push(editing);
+    await tool.show(page, editing);
+    await tool.receive(page, { type: 'readEdited', tab: '3' });
+    await settled();
+    const changed = async () => {
+      await tool.receive(page, editFrom(page, '3', { from: 0, insert: 'x' }));
+      await settled();
+    };
+
+    await changed();
+    await tool.receive(page, { type: 'viewEdited', tab: '3', at: 0 });
+    assert.strictEqual(viewed.length, 0);
+    await tool.receive(page, {
+      type: 'viewEdited',
+      tab: '3',
+      at: 0,
+      save: true,
+    });
+    assert.strictEqual(fs.readFileSync(notes, 'utf8'), 'xone\n');
+    await changed();
+    await tool.receive(page, {
+      type: 'viewEdited',
+      tab: '3',
+      at: 0,
+      discard: true,
+    });
+    assert.strictEqual(fs.readFileSync(notes, 'utf8'), 'xone\n');
+    assert.deepStrictEqual(
+      viewed.map(([tab]) => tab),
+      ['3', '3'],
+    );
+  });
+
+  test('views no file not saved yet, saying why, as nothing of it is on disk', async () => {
+    const notes = path.join(opened, 'new.txt');
+    const { tool, page, tabs, viewed, notices } = editor();
+    const editing: Tab = { id: '3', tool: 'editor', root: notes };
+    tabs.push(editing);
+    await tool.show(page, editing);
+    await tool.receive(page, { type: 'readEdited', tab: '3' });
+    await settled();
+    await tool.receive(page, { type: 'viewEdited', tab: '3', at: 0 });
+    assert.deepStrictEqual(viewed, []);
+    assert.deepStrictEqual(
+      notices.map((notice) => plainOf(notice.message)),
+      [plainOf(strings.editor.notSavedToView('new.txt'))],
+    );
   });
 
   test('edits no copy taken out of an archive or a commit to view it, saying why', async () => {
