@@ -368,6 +368,7 @@ suite('App', () => {
         .first()
         .waitFor({ state: 'detached' });
       await closeTabShown(page.locator('.editor'));
+      await closeTabShown(page.locator('.viewer'));
 
       await marked('before');
       await marked('wrapped');
