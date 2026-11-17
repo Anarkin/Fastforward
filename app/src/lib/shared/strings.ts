@@ -769,7 +769,7 @@ export const strings = {
     newFolderTitle: 'New Folder',
     newFileTitle: 'New File',
     editNewFile: 'Edit',
-    newFolderLines: (folder: string) => [labeled('In', namedFolder(folder))],
+    newFolderLines: (folder: string): Line[] => [namedFolder(folder)],
     newFolderName: 'Name',
     makeFolder: 'Make',
     noName: 'Type the name of the folder.',

@@ -175,9 +175,11 @@ async function inCommander(
       dialogText: () =>
         document.querySelector('[role="dialog"]')?.textContent ?? '',
       dialogLines: () =>
-        [...document.querySelectorAll('[role="dialog"] .name-label')].map(
-          (label) =>
-            `${label.textContent} ${label.nextElementSibling?.textContent}`.trim(),
+        [...document.querySelectorAll('[role="dialog"] .name-value')].map(
+          (value) => {
+            const label = value.previousElementSibling;
+            return `${label?.classList.contains('name-label') === true ? label.textContent : ''} ${value.textContent}`.trim();
+          },
         ),
       button: (text) =>
         [...document.querySelectorAll('.confirm-button')].find(
@@ -304,7 +306,7 @@ suite('Commander file keys', () => {
         const make = () => button(strings.commander.makeFolder);
 
         await press('F7');
-        assert.deepStrictEqual(dialogLines(), ['In C:\\work']);
+        assert.deepStrictEqual(dialogLines(), ['C:\\work']);
         assert.strictEqual(document.activeElement?.className, 'prompt-input');
         assert.strictEqual(problem(), undefined);
         assert.strictEqual(make()?.disabled, true);
