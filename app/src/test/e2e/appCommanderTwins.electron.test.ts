@@ -76,13 +76,29 @@ const leaveFolder = async (name: string) => {
   );
 };
 
-const contentsOf = (folder: string) =>
+const readNow = (folder: string) =>
   Object.fromEntries(
     fs
       .readdirSync(folder)
       .toSorted()
       .map((name) => [name, fs.readFileSync(path.join(folder, name), 'utf8')]),
   );
+
+async function contentsOf(folder: string): Promise<Record<string, string>> {
+  let read: Record<string, string> | undefined;
+  await waitFor(() => {
+    try {
+      read = readNow(folder);
+      return true;
+    } catch (error) {
+      if (Reflect.get(Object(error), 'code') === 'EBUSY') {
+        return false;
+      }
+      throw error;
+    }
+  }, `the files of ${folder} to be written whole`);
+  return read ?? {};
+}
 
 const popup = () => page.locator('.confirm-popup');
 
@@ -116,7 +132,7 @@ suite(
         'the file to be renamed',
       );
       const { 'default.br2': renamed, ...others } = twins;
-      assert.deepStrictEqual(contentsOf(folder), {
+      assert.deepStrictEqual(await contentsOf(folder), {
         ...others,
         'renamed.br2': renamed,
       });
@@ -153,7 +169,7 @@ suite(
         () => fs.existsSync(path.join(target, 'vertical.br2')),
         'the selected file to be copied',
       );
-      assert.deepStrictEqual(contentsOf(target), {
+      assert.deepStrictEqual(await contentsOf(target), {
         'vertical.br2': twins['vertical.br2'],
       });
 
@@ -181,7 +197,7 @@ suite(
         () => fs.readdirSync(target).length === 3,
         'the marked files to be copied',
       );
-      assert.deepStrictEqual(contentsOf(target), {
+      assert.deepStrictEqual(await contentsOf(target), {
         'default.bar': twins['default.bar'],
         'vertical.br2': twins['vertical.br2'],
         'wincmd.ini': twins['wincmd.ini'],
@@ -201,7 +217,7 @@ suite(
         'the selected file to be deleted',
       );
       const { 'vertical.bar': _deleted, ...left } = twins;
-      assert.deepStrictEqual(contentsOf(folder), left);
+      assert.deepStrictEqual(await contentsOf(folder), left);
 
       for (const name of ['wcx_ftp.ini', 'wincmd.key']) {
         const at = (await rowNames()).indexOf(name);
@@ -223,7 +239,7 @@ suite(
         'the marked files to be deleted',
       );
       const { 'wcx_ftp.ini': _empty, 'wincmd.key': _key, ...kept } = left;
-      assert.deepStrictEqual(contentsOf(folder), kept);
+      assert.deepStrictEqual(await contentsOf(folder), kept);
       await leaveFolder('deleting');
     });
 
