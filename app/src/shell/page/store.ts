@@ -83,7 +83,12 @@ export function createShellStore(
       showMenu: (menu) =>
         set((state) => ({ menu: nextMenu(state.menu, state.active, menu) })),
       closeMenu: () => set({ menu: undefined }),
-      openPathMenu: (ask) => pathMenus.open(ask),
+      openPathMenu: (ask) => {
+        const shown = pathMenus.open(ask);
+        if (shown !== undefined) {
+          set({ pathMenu: shown });
+        }
+      },
       closePathMenu: () => set({ pathMenu: undefined }),
       closeTab: (id) => {
         const tab = get().tabs?.find((each) => each.id === id);

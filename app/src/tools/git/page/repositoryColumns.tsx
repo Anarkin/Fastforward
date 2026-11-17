@@ -39,6 +39,7 @@ import { gitImageRoute } from '../shared/images';
 import { AddressBar } from './addressBar';
 import { focusBack, type KeptFocus } from '../../../lib/page/viewFocus';
 import { useTabFocus } from './tabFocus';
+import { VersionedPaths } from './versionedPaths';
 
 const CommitColumn = memo(Commits);
 
@@ -259,8 +260,10 @@ export function RepositoryColumns() {
       }}
     >
       <CommitColumn navigation={commitNavigation} search={commitSearch} />
-      <FileColumn />
-      <RepositoryDiff />
+      <VersionedPaths>
+        <FileColumn />
+        <RepositoryDiff />
+      </VersionedPaths>
     </div>
   );
 }

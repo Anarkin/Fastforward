@@ -1,4 +1,5 @@
 import { maxSteps } from './navigation';
+import { isFileRev } from '../shared/fileRevs';
 import { isSearchOptions } from '../../../lib/shared/searchOptions';
 import {
   diffLayouts,
@@ -124,7 +125,11 @@ function wellFormedInTab(message: TabMessage): boolean {
     case 'checkout':
       return isCheckoutTarget(message.target);
     case 'viewFile':
-      return isPathAsked(message.path) && isOptional(message.blob, isString);
+      return (
+        isPathAsked(message.path) &&
+        isOptional(message.blob, isString) &&
+        isOptional(message.rev, isFileRev)
+      );
     case 'loadFileDiff':
       return (
         isString(message.hash) &&

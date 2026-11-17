@@ -4,7 +4,10 @@ import { strings } from '../../../../lib/shared/strings';
 import type { PathFacts } from '../../../../lib/shared/pathFacts';
 import type { ContextMenuItem } from '../../../../lib/page/contextMenuItem';
 import type { PathMenuAsk } from '../../../../lib/page/pathMenu';
-import { pathMenuItems } from '../../../../shell/page/pathMenu';
+import {
+  pathMenuItems,
+  versionMenuItems,
+} from '../../../../shell/page/pathMenu';
 
 const facts = (kind: PathFacts['kind'], inRepository = false): PathFacts => ({
   kind,
@@ -42,6 +45,11 @@ function menuOf(
 }
 
 const { commander } = strings;
+
+const enabled = (from: readonly ContextMenuItem[]) =>
+  from.flatMap((item) =>
+    'separator' in item || item.disabled === true ? [] : [item],
+  );
 
 suite('The menu of a part of a path', () => {
   test('offers a folder on disk what the commander offers it, acting on its whole path, the menu of Windows on Windows alone', () => {
@@ -116,6 +124,42 @@ suite('The menu of a part of a path', () => {
     );
     assert.deepStrictEqual(
       menuOf({ path: 'src/gone.ts', file: true }, facts('missing')).offered,
+      [commander.copyPath],
+    );
+  });
+
+  test('offers a file shown as a version other than the one on disk only to view that version and to copy its path, the rest disabled, whatever is on disk at that path', () => {
+    const done: string[] = [];
+    const items = (view?: () => void) =>
+      versionMenuItems(
+        {
+          path: '/repo/src/a.ts',
+          file: true,
+          at: { x: 0, y: 0 },
+          extended: false,
+          version: view === undefined ? {} : { view },
+        },
+        { copy: (text) => done.push(`copy ${text}`) },
+      );
+    const shown = items(() => done.push('view'));
+    assert.deepStrictEqual(
+      enabled(shown).map((item) => item.label),
+      [commander.openWithViewer, commander.copyPath],
+    );
+    for (const item of enabled(shown)) {
+      item.onClick?.();
+    }
+    assert.deepStrictEqual(done, ['view', 'copy /repo/src/a.ts']);
+    assert.ok(
+      shown.every(
+        (item) =>
+          'separator' in item ||
+          item.disabled !== true ||
+          item.onClick === undefined,
+      ),
+    );
+    assert.deepStrictEqual(
+      enabled(items()).map((item) => item.label),
       [commander.copyPath],
     );
   });

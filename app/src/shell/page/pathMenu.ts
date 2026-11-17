@@ -13,6 +13,26 @@ export interface PathMenuActs {
   readonly copy: (text: string) => void;
 }
 
+const nothing = () => {};
+
+export function versionMenuItems(
+  { path, version }: PathMenuAsk,
+  acts: Pick<PathMenuActs, 'copy'>,
+): ContextMenuItem[] {
+  return fileMenuItems(
+    { kind: 'file', name: path, image: editsImage(path) },
+    {
+      onFolder: nothing,
+      onEnterArchive: nothing,
+      onView: () => version?.view?.(),
+      onEdit: nothing,
+      onCopy: () => acts.copy(path),
+      onSystemMenu: undefined,
+    },
+    { onDisk: false, ofVersion: version?.view !== undefined },
+  );
+}
+
 export function pathMenuItems(
   { path, file }: PathMenuAsk,
   facts: PathFacts,

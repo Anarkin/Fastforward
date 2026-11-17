@@ -2,6 +2,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import { gitErrorText } from '../../../lib/main/errorText';
 import { viewedFile } from './viewedFiles';
+import { blobAt } from './objects';
 import type { GitSessions } from './sessions';
 import type { Context } from './tabContext';
 
@@ -17,6 +18,7 @@ export class FileViews {
     context: Context,
     file: string,
     blob: string | undefined,
+    rev?: string,
   ): Promise<void> {
     const page = context.session?.page;
     if (page === undefined) {
@@ -24,13 +26,20 @@ export class FileViews {
     }
     const notify = this.sessions.notify(context);
     try {
-      const viewed = await viewedFile(
-        this.gitPath(),
-        context.root,
-        file,
-        blob,
-        this.viewedFiles,
-      );
+      const at =
+        rev === undefined
+          ? blob
+          : await blobAt(this.gitPath(), context.root, rev, file);
+      const viewed =
+        rev !== undefined && at === undefined
+          ? ({ kind: 'missing' } as const)
+          : await viewedFile(
+              this.gitPath(),
+              context.root,
+              file,
+              at,
+              this.viewedFiles,
+            );
       if (viewed.kind === 'file') {
         await this.shell().openView(page, viewed.file);
       } else {

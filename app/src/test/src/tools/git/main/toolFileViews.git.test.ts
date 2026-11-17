@@ -116,6 +116,60 @@ suite('Git tool viewing files', () => {
     });
   });
 
+  test('opens a file as a commit, the parent of one, HEAD or the index has it, from a copy of the blob there, and says why not for a path the version lacks', async () => {
+    const revs = await tempRepository(path.join(folder, 'revs'));
+    await revs.commit('one', { 'x.txt': 'one\n' });
+    await revs.commit('two', { 'x.txt': 'two\n' });
+    const two = (await revs.git('rev-parse', 'HEAD')).trim();
+    fs.writeFileSync(path.join(revs.root, 'x.txt'), 'staged\n');
+    await revs.git('add', 'x.txt');
+    fs.writeFileSync(path.join(revs.root, 'x.txt'), 'working\n');
+    const viewing = async (file: string, rev: string) => {
+      let seen = { texts: [] as string[], notices: [] as string[] };
+      await withView(log, [revs.root], async (view) => {
+        await view.connection.receive({
+          type: 'viewFile',
+          root: revs.root,
+          path: file,
+          rev,
+        });
+        const tabs = view.store.get(tabsKey);
+        seen = {
+          texts: Array.isArray(tabs)
+            ? tabs.flatMap((tab: unknown) =>
+                typeof tab === 'object' &&
+                tab !== null &&
+                'tool' in tab &&
+                tab.tool === 'viewer' &&
+                'root' in tab &&
+                typeof tab.root === 'string'
+                  ? [fs.readFileSync(tab.root, 'utf8')]
+                  : [],
+              )
+            : [],
+          notices: view.page.messages.flatMap((message) =>
+            message.type === 'notice' ? [plainOf(message.message)] : [],
+          ),
+        };
+      });
+      return seen;
+    };
+
+    assert.deepStrictEqual(
+      [
+        await viewing('x.txt', `${two}^`),
+        await viewing('x.txt', two),
+        await viewing('x.txt', 'HEAD'),
+        await viewing('x.txt', 'index'),
+      ].map((seen) => seen.texts),
+      [['one\n'], ['two\n'], ['two\n'], ['staged\n']],
+    );
+    assert.deepStrictEqual(await viewing('gone.txt', 'HEAD'), {
+      texts: [],
+      notices: [plainOf(strings.diff.viewMissing('gone.txt'))],
+    });
+  });
+
   suite('Images', () => {
     let images: TempRepository;
     const pixel = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1]);

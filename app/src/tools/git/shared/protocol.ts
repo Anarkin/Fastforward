@@ -232,6 +232,7 @@ export type TabMessage =
       readonly type: 'viewFile';
       readonly path: string;
       readonly blob?: string;
+      readonly rev?: string;
     }
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
   | { readonly type: 'fetch' }

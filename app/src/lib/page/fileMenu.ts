@@ -47,6 +47,7 @@ export interface FileMenuPlace {
   readonly gitMissing?: boolean;
   readonly onDisk?: boolean;
   readonly entersArchives?: boolean;
+  readonly ofVersion?: boolean;
 }
 
 function offered(
@@ -69,6 +70,7 @@ function toolItems(
     gitMissing = false,
     onDisk = true,
     entersArchives = true,
+    ofVersion = false,
   }: FileMenuPlace,
 ): ContextMenuItem[] {
   const folder = target.kind === 'folder' ? target : undefined;
@@ -104,10 +106,14 @@ function toolItems(
       icon: 'git',
       onClick: run('initHere'),
     }),
-    offered(strings.commander.openWithViewer, opens, {
-      icon: 'viewer',
-      onClick: () => onView(name),
-    }),
+    offered(
+      strings.commander.openWithViewer,
+      opens || (ofVersion && file !== undefined),
+      {
+        icon: 'viewer',
+        onClick: () => onView(name),
+      },
+    ),
     offered(
       strings.commander.openWithDiff,
       target.kind !== 'folder' && onCompare !== undefined,

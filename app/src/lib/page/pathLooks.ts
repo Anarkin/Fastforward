@@ -137,10 +137,10 @@ function lastOf(
   return looks === undefined ? undefined : looks.slice(looks.length - count);
 }
 
-function wholeIn(root: string, path: string): string {
+export function wholePath(root: string | undefined, path: string): string {
   return joinedPath(
     root,
-    root.includes('\\') ? path.replaceAll('/', '\\') : path,
+    root?.includes('\\') === true ? path.replaceAll('/', '\\') : path,
   );
 }
 
@@ -196,5 +196,5 @@ export function usePathParts(
   );
   return root === undefined || root === ''
     ? parts
-    : parts.map((part) => ({ ...part, whole: wholeIn(root, part.key) }));
+    : parts.map((part) => ({ ...part, whole: wholePath(root, part.key) }));
 }

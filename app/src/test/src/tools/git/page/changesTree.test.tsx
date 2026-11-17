@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { isValidElement } from 'react';
+import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { plainFilter } from '../../../../helpers/filters';
@@ -18,6 +18,8 @@ import { classesOf, tagsWith, tagWith } from '../../../../helpers/markup';
 import { fileChange } from '../../../../helpers/gitValues';
 import { knownWith, PathLooksContext } from '../../../../../lib/page/pathLooks';
 import { noFileColors } from '../../../../../lib/page/fileColors';
+import { PathMenuContext } from '../../../../../lib/page/pathMenu';
+import { mounted } from '../../../../helpers/mounted';
 
 const changesTreeElements = ({
   rows,
@@ -123,6 +125,44 @@ suite('Changes tree rows', () => {
       html,
       /<span class="path"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
     );
+  });
+
+  test('names the folders and files of its rows by their whole paths, in the separators of the folder of the worktree', async () => {
+    const asked: string[] = [];
+    await mounted(
+      <PathMenuContext value={(ask) => asked.push(ask.path)}>
+        {changesTreeElements({
+          rows: changesTreeRows(
+            changesTree([fileChange('src/test/a.ts')]),
+            new Set(),
+          ),
+          root: 'C:\\repo',
+          showsAll: false,
+          onToggle: noop,
+          selected: undefined,
+          onSelect: noop,
+          cursor: undefined,
+        })}
+      </PathMenuContext>,
+      (main, window) => {
+        act(() => {
+          for (const part of main.querySelectorAll('.path-part')) {
+            part.dispatchEvent(
+              new window.MouseEvent('contextmenu', {
+                bubbles: true,
+                cancelable: true,
+                button: 2,
+              }),
+            );
+          }
+        });
+      },
+    );
+    assert.deepStrictEqual(asked, [
+      'C:\\repo\\src',
+      'C:\\repo\\src\\test',
+      'C:\\repo\\src\\test\\a.ts',
+    ]);
   });
 
   test('marks the row under the cursor, still deselecting the selected file on a click', () => {

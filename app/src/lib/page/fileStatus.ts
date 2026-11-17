@@ -2,7 +2,7 @@ import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
 import { sentence, type Sentence, type Value } from '../shared/sentences';
 import type { ChangeKind } from './iconKinds';
-import { joinedPath } from './pathLooks';
+import { wholePath } from './pathLooks';
 
 const kinds: Record<FileChange['status'], ChangeKind> = {
   A: 'added',
@@ -35,7 +35,7 @@ const piece = (
   name === '' ? '' : { name, path: kind, ...(root !== undefined && { root }) };
 
 const within = (root: string | undefined, folder: string) =>
-  folder === '' ? root : joinedPath(root, folder);
+  folder === '' ? root : wholePath(root, folder);
 
 export function renamedPath(from: string, to: string, root?: string): Sentence {
   let start = 0;

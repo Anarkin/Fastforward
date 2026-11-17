@@ -66,9 +66,9 @@ suite('File status', () => {
     assert.deepStrictEqual(renamedPath('a/b/c.txt', 'a/c.txt', 'C:\\repo'), [
       { name: 'a/', path: 'folder', root: 'C:\\repo' },
       '{',
-      { name: 'b', path: 'folder', root: 'C:\\repo\\a/' },
+      { name: 'b', path: 'folder', root: 'C:\\repo\\a\\' },
       ' → }/',
-      { name: 'c.txt', path: 'file', root: 'C:\\repo\\a/' },
+      { name: 'c.txt', path: 'file', root: 'C:\\repo\\a\\' },
     ]);
     assert.deepStrictEqual(
       renamedPath('lib/old.ts', 'components/diff/new.ts', '/repo'),

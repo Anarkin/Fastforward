@@ -238,7 +238,12 @@ export class GitMessages {
         await this.selections.receive(context, message);
         break;
       case 'viewFile':
-        await this.fileViews.viewFile(context, message.path, message.blob);
+        await this.fileViews.viewFile(
+          context,
+          message.path,
+          message.blob,
+          message.rev,
+        );
         break;
     }
   }

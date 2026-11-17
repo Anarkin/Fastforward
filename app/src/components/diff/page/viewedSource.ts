@@ -7,6 +7,7 @@ import { sidePath, type ImageOrigin, type Side } from './images';
 export interface ViewedSource {
   readonly path: string;
   readonly blob?: string;
+  readonly rev?: string;
 }
 
 export function viewedSource(

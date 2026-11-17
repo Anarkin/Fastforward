@@ -107,6 +107,36 @@ suite('App', () => {
     await waitForFocus(page.locator('.virtual-rows.list'), 'the commit list');
   });
 
+  test('offers a file of a commit only to view it as the commit has it and to copy its path, viewing a copy of it rather than the file on disk', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page
+      .locator('.row.file', { hasText: 'changed.txt' })
+      .locator('.path-part')
+      .last()
+      .click({ button: 'right' });
+    const menu = page.locator('.context-menu.path-menu');
+    await menu.waitFor();
+    assert.deepStrictEqual(
+      await menu.locator('.menu-item:not(:disabled)').allTextContents(),
+      [strings.commander.openWithViewer, strings.commander.copyPath],
+    );
+    await menu
+      .locator('.menu-item', { hasText: strings.commander.openWithViewer })
+      .click();
+    const viewer = page.locator('.viewer');
+    try {
+      await viewer.getByText('two').waitFor();
+      assert.strictEqual(
+        await viewer.getByText('2', { exact: true }).count(),
+        0,
+      );
+    } finally {
+      await page.locator('.viewer .column-body').first().focus();
+      await page.keyboard.press('Escape');
+      await viewer.waitFor({ state: 'detached' });
+    }
+  });
+
   test('closes the + menu when + is clicked again, or on Ctrl+T again', async () => {
     const add = page.locator('.tab-add');
     const menu = page.locator('.context-menu', {

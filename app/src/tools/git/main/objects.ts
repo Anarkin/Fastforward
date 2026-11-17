@@ -2,6 +2,8 @@ import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { gitDirOf } from './gitDir';
 import { runningGits, runGit, runGitBytes } from './run';
+import { isFullHash } from '../../../lib/shared/hashes';
+import { revObject } from '../shared/fileRevs';
 
 const batchInput = (list: readonly string[]) =>
   list.map((id) => `${id}\n`).join('');
@@ -295,4 +297,27 @@ export function blobOf(
     (read?.kind === 'object' && read.type === 'blob')
     ? read
     : undefined;
+}
+
+export async function blobAt(
+  gitPath: string,
+  cwd: string,
+  rev: string,
+  path: string,
+): Promise<string | undefined> {
+  const id = (
+    await runGit(
+      gitPath,
+      cwd,
+      [
+        'rev-parse',
+        '--verify',
+        '--quiet',
+        '--end-of-options',
+        revObject(rev, path),
+      ],
+      { okExitCodes: [0, 1, 128] },
+    )
+  ).trim();
+  return isFullHash(id) ? id : undefined;
 }

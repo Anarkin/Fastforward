@@ -2,7 +2,7 @@ import type { ChangeArea } from '../shared/protocol';
 import { noFilter, type Filter } from '../../../lib/shared/filter';
 import { FileRow, FolderRow } from '../../../lib/page/tree';
 import { PathName } from '../../../lib/page/pathName';
-import { joinedPath } from '../../../lib/page/pathLooks';
+import { wholePath } from '../../../lib/page/pathLooks';
 import { areaKey, treeRowKey, type ChangesTreeRow } from './changesRows';
 
 function folderOf(row: ChangesTreeRow, root: string | undefined) {
@@ -10,7 +10,7 @@ function folderOf(row: ChangesTreeRow, root: string | undefined) {
     0,
     Math.max(0, row.path.length - row.name.length - 1),
   );
-  return folder === '' ? root : joinedPath(root, folder);
+  return folder === '' ? root : wholePath(root, folder);
 }
 
 export function ChangesTreeItem({

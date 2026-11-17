@@ -2,10 +2,15 @@ import type { OpenMenu } from '../../lib/page/contextMenuItem';
 import type { PathMenuAsk } from '../../lib/page/pathMenu';
 import type { PathFacts } from '../../lib/shared/pathFacts';
 import type { ToHost } from '../shared/protocol';
-import { pathMenuItems } from './pathMenu';
+import { pathMenuItems, versionMenuItems } from './pathMenu';
+
+interface ShownPathMenu {
+  readonly id: number;
+  readonly menu: OpenMenu;
+}
 
 export interface PathMenuAsks {
-  readonly open: (ask: PathMenuAsk) => void;
+  readonly open: (ask: PathMenuAsk) => ShownPathMenu | undefined;
   readonly answered: (ask: number, facts: PathFacts) => OpenMenu | undefined;
 }
 
@@ -15,8 +20,20 @@ export function pathMenuAsks(
 ): PathMenuAsks {
   let asks = 0;
   let waiting: { readonly id: number; readonly ask: PathMenuAsk } | undefined;
+  const copy = (text: string) => post({ type: 'copyText', text });
   return {
     open: (ask) => {
+      if (ask.version !== undefined) {
+        waiting = undefined;
+        return {
+          id: ++asks,
+          menu: {
+            x: ask.at.x,
+            y: ask.at.y,
+            items: versionMenuItems(ask, { copy }),
+          },
+        };
+      }
       if (ask.extended && platform() === 'win32') {
         waiting = undefined;
         post({
@@ -27,10 +44,11 @@ export function pathMenuAsks(
           y: ask.at.y,
           extended: true,
         });
-        return;
+        return undefined;
       }
       waiting = { id: ++asks, ask };
       post({ type: 'pathFacts', ask: waiting.id, path: ask.path });
+      return undefined;
     },
     answered: (id, facts) => {
       if (waiting?.id !== id) {
@@ -53,7 +71,7 @@ export function pathMenuAsks(
                 extended: false,
               }),
             }),
-          copy: (text) => post({ type: 'copyText', text }),
+          copy,
         }),
       };
     },

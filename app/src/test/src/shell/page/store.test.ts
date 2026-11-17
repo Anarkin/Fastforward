@@ -5,6 +5,7 @@ import type { ToHost, TabInfo } from '../../../../shell/shared/protocol';
 import { createShellStore } from '../../../../shell/page/store';
 import { defaultTextView } from '../../../../shell/page/textView';
 import { noop } from '../../../helpers/fixtures';
+import { strings } from '../../../../lib/shared/strings';
 
 const terminal: TabInfo = { id: '1', tool: 'terminal', name: 'repo' };
 const git: TabInfo = { id: '2', tool: 'git', name: 'repo' };
@@ -481,6 +482,35 @@ suite('Shell store', () => {
     ]);
     store.getState().closePathMenu();
     assert.strictEqual(store.getState().pathMenu, undefined);
+  });
+
+  test('shows the menu of a file shown as a version other than the one on disk at once, asking the main process nothing, Shift too', () => {
+    const posted: ToHost[] = [];
+    const viewed: string[] = [];
+    const store = createShellStore(
+      (message) => posted.push(message),
+      {},
+      noop,
+      () => 'win32',
+    );
+    for (const extended of [false, true]) {
+      store.getState().openPathMenu({
+        ...ask('/repo/a.ts'),
+        file: true,
+        extended,
+        version: { view: () => viewed.push('a.ts') },
+      });
+      const items = store.getState().pathMenu?.menu.items ?? [];
+      const viewer = items.find(
+        (item) =>
+          !('separator' in item) &&
+          item.label === strings.commander.openWithViewer,
+      );
+      assert.ok(viewer !== undefined && !('separator' in viewer));
+      viewer.onClick?.();
+    }
+    assert.deepStrictEqual(posted, []);
+    assert.deepStrictEqual(viewed, ['a.ts', 'a.ts']);
   });
 
   test('opens the menu of Windows of a path at once on a right click with Shift on Windows, as the commander does', () => {
