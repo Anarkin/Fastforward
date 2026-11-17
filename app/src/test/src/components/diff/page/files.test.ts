@@ -106,6 +106,29 @@ suite('Files whose changes are all whitespace', () => {
   });
 });
 
+suite('Order of the files', () => {
+  test('shows the files in the order of the list it is handed, which its host decides, rather than in the order of the patch', () => {
+    const parsed = parsePatch(
+      [patch('a.ts', 1), patch('b/c.ts', 1), patch('d.ts', 1)].join('\n'),
+    );
+    const listed = ['b/c.ts', 'd.ts', 'a.ts'];
+    assert.deepStrictEqual(
+      shownFiles(
+        parsed,
+        undefined,
+        listed.map((path) => fileChange(path)),
+        [{ path: 'd.ts', lines: collapseThreshold + 1 }],
+        new Map(),
+      ).map((file) => [file.path, file.placeholder !== undefined]),
+      [
+        ['b/c.ts', false],
+        ['d.ts', true],
+        ['a.ts', false],
+      ],
+    );
+  });
+});
+
 const diffFile = (path: string, oldPath?: string): DiffFile => ({
   path,
   ...(oldPath === undefined ? {} : { oldPath }),

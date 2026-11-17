@@ -20,6 +20,7 @@ import {
   type LoadedText,
 } from '../../../components/diff/page/sideTexts';
 import type { WholeFile } from '../../../components/diff/page/rows';
+import { inTreeOrder } from './treeOrder';
 
 export interface TabView {
   readonly root: string | undefined;
@@ -272,9 +273,9 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
       return {
         ...state,
         hash: action.hash,
-        files: action.files,
-        staged: action.staged,
-        all: action.all,
+        files: inTreeOrder(action.files),
+        staged: action.staged && inTreeOrder(action.staged),
+        all: action.all && inTreeOrder(action.all),
         filesLoading: false,
       };
     case 'diff':
