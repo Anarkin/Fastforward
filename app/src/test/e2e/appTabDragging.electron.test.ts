@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { onceDrawn, untilSettled } from './waits';
 import {
   shownWindows,
   tabsIn,
@@ -48,7 +49,20 @@ function recordPointer(): void {
 
 async function grabTab(page: Page, index: number) {
   await page.evaluate(recordPointer);
-  const box = await page.locator('.tabs [role="tab"]').nth(index).boundingBox();
+  const tab = page.locator('.tabs [role="tab"]').nth(index);
+  const box = await untilSettled(
+    async () => {
+      await onceDrawn(page);
+      return tab.boundingBox();
+    },
+    'the tab at rest in its row',
+    {
+      quiet: 200,
+      accepted: async (rested) =>
+        rested !== null &&
+        (await page.locator('.tabs .opening, .tabs .closing').count()) === 0,
+    },
+  );
   assert.ok(box);
   const at = { x: box.x + 20, y: box.y + box.height / 2 };
   await page.mouse.move(at.x, at.y);

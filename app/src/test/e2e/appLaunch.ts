@@ -120,9 +120,18 @@ export async function launchApp(
     readonly env?: Record<string, string>;
   } = {},
 ): Promise<ElectronApplication> {
-  return _electron.launch({
+  const app = await _electron.launch({
     args: [...before, ...appArguments(profile, ...after)],
     cwd: appFolder,
     ...(env === undefined ? {} : { env }),
   });
+  await app.evaluate(({ app: started, BrowserWindow }) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      window.setIgnoreMouseEvents(true);
+    }
+    started.on('browser-window-created', (_event, window) => {
+      window.setIgnoreMouseEvents(true);
+    });
+  });
+  return app;
 }
