@@ -197,8 +197,22 @@ suite('App', () => {
         async () => (await topLine()) === reading,
         `${reading} to stay at the top once ${shown} is ${state}`,
       ).catch(async (error: unknown) => {
+        const rows = await list.evaluate((element) => {
+          const top = element.getBoundingClientRect().top;
+          return {
+            scrollTop: element.scrollTop,
+            scale: devicePixelRatio,
+            rows: [...element.querySelectorAll('.diff-row')]
+              .map((drawn) => ({
+                line: drawn.querySelector('.code')?.textContent?.split(' ')[0],
+                top: drawn.getBoundingClientRect().top - top,
+                height: drawn.getBoundingClientRect().height,
+              }))
+              .filter(({ top: at }) => at > -60 && at < 60),
+          };
+        });
         throw new Error(
-          `${String(error)} in ${layout}, ${await topLine()} at the top`,
+          `${String(error)} in ${layout}, ${await topLine()} at the top, ${JSON.stringify(rows)}`,
         );
       });
       await waitFor(
