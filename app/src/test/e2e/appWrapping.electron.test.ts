@@ -196,7 +196,11 @@ suite('App', () => {
       await waitFor(
         async () => (await topLine()) === reading,
         `${reading} to stay at the top once ${shown} is ${state}`,
-      );
+      ).catch(async (error: unknown) => {
+        throw new Error(
+          `${String(error)} in ${layout}, ${await topLine()} at the top`,
+        );
+      });
       await waitFor(
         () => viewSaved(wraps, layout),
         `the choice that ${shown} is ${state} to be saved`,
