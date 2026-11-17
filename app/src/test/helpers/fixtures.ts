@@ -1,5 +1,5 @@
 import { readDefaults, type Settings } from '../../shell/main/settings';
-import { writeFileSync } from 'node:fs';
+import { statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Sentence } from '../../lib/shared/sentences';
 
@@ -53,6 +53,17 @@ export async function writeWhenFree(
       throw error;
     }
   }, `${file} to be free to write`);
+}
+
+export function writeOver(file: string, content: string): void {
+  const bytes = Buffer.from(content);
+  const size = statSync(file).size;
+  if (bytes.length !== size) {
+    throw new Error(
+      `${file} holds ${size} bytes, so ${bytes.length} can't be written over them without cutting or growing it`,
+    );
+  }
+  writeFileSync(file, bytes, { flag: 'r+' });
 }
 
 export async function until(

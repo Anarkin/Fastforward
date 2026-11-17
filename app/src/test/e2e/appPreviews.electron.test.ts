@@ -6,7 +6,7 @@ import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { page, repository, sharedApp } from './appFixtures';
 import { gridLines, linesOffGrid } from './gridLines';
-import { waitFor } from '../helpers/fixtures';
+import { waitFor, writeOver } from '../helpers/fixtures';
 
 const viewDiagram = async (
   from: 'first' | 'uncommitted',
@@ -191,7 +191,7 @@ suite('App', () => {
         return { undrawn, stop: () => observer.disconnect() };
       });
       for (const count of [2, 3, 4]) {
-        fs.writeFileSync(file, edited(count));
+        writeOver(file, edited(count));
         await preview
           .locator('p', { hasText: `Edited ${count} times.` })
           .waitFor();
