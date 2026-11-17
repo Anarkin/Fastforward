@@ -112,6 +112,7 @@ export function hashWorkers(
     }
     const reading = threads.find((thread) => thread.task === task);
     if (reading !== undefined) {
+      threads.splice(threads.indexOf(reading), 1);
       void reading.worker.terminate();
     }
   };
