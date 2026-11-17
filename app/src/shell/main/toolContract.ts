@@ -57,6 +57,7 @@ export interface ShellAccess {
 }
 
 export interface Tool<K extends ToolId> {
+  readonly viewVersion: number;
   attach(shell: ShellAccess): void;
   ready(page: Page): void;
   show(page: Page, tab: Tab): Promise<void>;

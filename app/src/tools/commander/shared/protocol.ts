@@ -5,6 +5,8 @@ import type { Sort, Sorts } from './sorts';
 import type { ClashAnswer, TransferView } from './transfers';
 import { isSide, type Side } from './sides';
 
+export const viewVersion = 1;
+
 export interface ComparedFile {
   readonly side: Side;
   readonly folder: string;

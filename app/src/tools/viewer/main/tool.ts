@@ -1,3 +1,4 @@
+import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
@@ -36,6 +37,7 @@ export interface ViewerAccess {
 }
 
 export class ViewerTool implements Tool<'viewer'> {
+  readonly viewVersion = viewVersion;
   private shell: ShellAccess = unattachedShell;
   private readonly pages = new ViewerPages();
   private readonly viewers: Viewers;

@@ -1,3 +1,4 @@
+import { viewVersion } from '../shared/protocol';
 import type { AutoFetch } from './autoFetch';
 import { keptGits } from './run';
 import { locateRepository } from './repositoryLocation';
@@ -71,6 +72,7 @@ export interface GitHost {
 }
 
 export class GitTool implements Tool<'git'> {
+  readonly viewVersion = viewVersion;
   private shell: ShellAccess = unattachedShell;
   private readonly tabStates: Map<string, TabWork>;
   private readonly autoFetch: AutoFetch;

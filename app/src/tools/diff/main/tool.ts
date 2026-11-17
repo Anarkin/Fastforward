@@ -1,3 +1,4 @@
+import { viewVersion } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { DiffSettings } from '../../../components/diff/shared/settings';
@@ -26,6 +27,7 @@ export interface DiffAccess {
 }
 
 export class DiffTool implements Tool<'diff'> {
+  readonly viewVersion = viewVersion;
   private shell: ShellAccess = unattachedShell;
   private readonly comparisons: Comparisons;
   private readonly images: ComparedImages;

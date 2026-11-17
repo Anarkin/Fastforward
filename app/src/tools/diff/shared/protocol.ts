@@ -5,6 +5,8 @@ import type {
 } from '../../../components/diff/shared/protocol';
 import type { DiffSettings } from '../../../components/diff/shared/settings';
 
+export const viewVersion = 1;
+
 export interface CompareView {
   readonly tab: string;
   readonly name: string;

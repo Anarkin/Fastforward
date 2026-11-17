@@ -1,3 +1,4 @@
+import { viewVersion } from '../shared/protocol';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { HostLink, type ConnectHost } from './hostLink';
@@ -44,6 +45,7 @@ interface Session {
 type ShownMessage = Extract<TerminalToHost, { readonly tab: string }>;
 
 export class TerminalTool implements Tool<'terminal'> {
+  readonly viewVersion = viewVersion;
   private shell: ShellAccess = unattachedShell;
   private readonly link: HostLink;
   private readonly sessions = new Map<string, Session>();

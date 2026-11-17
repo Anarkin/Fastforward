@@ -3,6 +3,8 @@ import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { PdfPlace } from './pdf';
 
+export const viewVersion = 1;
+
 export interface TextRow {
   readonly start: number;
   readonly end: number;

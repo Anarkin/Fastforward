@@ -2,6 +2,8 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
 
+export const viewVersion = 1;
+
 export type EndingSource =
   | {
       readonly kind: 'editorConfig';

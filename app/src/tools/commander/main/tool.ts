@@ -1,3 +1,4 @@
+import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import {
@@ -33,6 +34,7 @@ import type { CommanderMessages } from './messages';
 import { buildParts } from './parts';
 
 export class CommanderTool implements Tool<'commander'> {
+  readonly viewVersion = viewVersion;
   private shell: ShellAccess = unattachedShell;
   private readonly sides: Sides;
   private readonly flat: SideFlat;

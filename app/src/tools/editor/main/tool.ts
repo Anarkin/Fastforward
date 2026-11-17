@@ -1,3 +1,4 @@
+import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import { sameRoot } from '../../../lib/main/paths';
@@ -24,6 +25,7 @@ export interface EditorAccess extends EditingFilesAccess {
 }
 
 export class EditorTool implements Tool<'editor'> {
+  readonly viewVersion = viewVersion;
   private shell: ShellAccess = unattachedShell;
   private readonly shown = new Map<Page, string>();
   private readonly editing: Editing;

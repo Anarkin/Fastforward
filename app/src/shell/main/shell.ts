@@ -31,6 +31,12 @@ import { TabMoves } from './tabMoves';
 import { Closing } from './closing';
 import { Tabs } from './tabs';
 import { TabViews } from './tabViews';
+import {
+  savedViewsOf,
+  ViewSaver,
+  viewsToSave,
+  type ViewVersions,
+} from './savedViews';
 import type { Notice, Page, ShellAccess, Tools } from './toolContract';
 
 export interface ShellHost {
@@ -97,6 +103,7 @@ export class Shell {
   private readonly closing: Closing;
   private readonly tabs: Tabs;
   private readonly views: TabViews;
+  private readonly viewSaver: ViewSaver;
 
   constructor(
     private readonly log: Log,
@@ -105,10 +112,21 @@ export class Shell {
     private readonly tools: Tools,
   ) {
     this.pages = new Pages(storage, tools);
+    this.viewSaver = new ViewSaver(() => {
+      void this.saveViews();
+    });
     this.views = new TabViews(
       (page, tab) =>
         this.pages.windowOf(page).tabs.some((each) => each.id === tab),
       () => this.pages.all(),
+      () => this.viewSaver.changed(),
+    );
+    this.views.restore(
+      savedViewsOf(
+        storage.savedViews,
+        new Map(storage.savedTabs.map((tab) => [tab.id, tab.tool])),
+        this.viewVersions,
+      ),
     );
     this.tabs = new Tabs(storage, tools, this.pages, this.history, this.views, {
       showWindow: (window) => host.showWindow(window),
@@ -257,9 +275,28 @@ export class Shell {
   }
 
   quit(): void {
+    this.viewSaver.flush();
     for (const tool of toolIds) {
       this.tools[tool].quit();
     }
+  }
+
+  private readonly viewVersions: ViewVersions = (tool) =>
+    this.tools[tool].viewVersion;
+
+  private saveViews(): Promise<void> {
+    const tools = new Map(
+      this.storage.savedTabs.map((tab) => [tab.id, tab.tool]),
+    );
+    return this.storage.setSavedViews(
+      viewsToSave(
+        this.views.entries().flatMap(([tab, view]) => {
+          const tool = tools.get(tab);
+          return tool === undefined ? [] : [[tab, { tool, view }] as const];
+        }),
+        this.viewVersions,
+      ),
+    );
   }
 
   idle(): Promise<void> {

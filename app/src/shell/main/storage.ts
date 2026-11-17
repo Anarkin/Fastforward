@@ -11,6 +11,7 @@ import { savedLayout, savedTabOf, sameTab, type SavedTab } from './savedTabs';
 export const tabsKey = 'tabs';
 export const activeTabKey = 'activeTab';
 export const windowsKey = 'windows';
+const viewsKey = 'tabViews';
 const toolsKey = 'tools';
 const commandOfferedKey = 'terminalCommandOffered';
 export const maxRecentItems = 50;
@@ -111,6 +112,14 @@ export class Storage {
         ? undefined
         : this.state.update(activeTabKey, undefined),
     ]);
+  }
+
+  get savedViews(): unknown {
+    return this.state.get(viewsKey);
+  }
+
+  async setSavedViews(views: unknown): Promise<void> {
+    await this.state.update(viewsKey, views);
   }
 
   get commandOffered(): boolean {

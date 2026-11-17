@@ -17,9 +17,11 @@ const pageOf = (): PostedPage => {
 function viewsWith(max?: number) {
   const holding = new Map<Page, Set<string>>();
   const pages: PostedPage[] = [];
+  const changes = { count: 0 };
   const views = new TabViews(
     (page, tab) => holding.get(page)?.has(tab) === true,
     () => pages,
+    () => (changes.count += 1),
     max,
   );
   const page = (...tabs: string[]): PostedPage => {
@@ -31,7 +33,7 @@ function viewsWith(max?: number) {
   };
   const hold = (held: Page, ...tabs: string[]) =>
     holding.set(held, new Set(tabs));
-  return { views, page, hold };
+  return { views, page, hold, changes };
 }
 
 const handed = (page: PostedPage) =>
@@ -51,6 +53,28 @@ suite('Tab views', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  test('hands the view saved for a tab before the app started to the first page that shows it, as kept by no page', () => {
+    const { views, page } = viewsWith();
+    views.restore(new Map([['1', '{"place":7}']]));
+    const first = page('1');
+    views.handTo(first, '1');
+    assert.deepStrictEqual(handed(first), ['1 {"place":7}']);
+    assert.deepStrictEqual(views.entries(), [['1', '{"place":7}']]);
+  });
+
+  test('tells of every change of the views it keeps, a view kept anew or dropped, and of none when a page sends the view it kept already, so the views are saved only as they change', () => {
+    const { views, page, changes } = viewsWith();
+    const one = page('1');
+    views.keep(one, '1', '{"place":7}');
+    views.keep(one, '1', '{"place":7}');
+    assert.strictEqual(changes.count, 1);
+    views.keep(one, '1', '{"place":8}');
+    assert.strictEqual(changes.count, 2);
+    views.drop('1');
+    views.drop('1');
+    assert.strictEqual(changes.count, 3);
   });
 
   test('hands the view a page kept of a tab to every other page that shows it, the last kept winning, and none to the page that kept it last, which holds it already', () => {

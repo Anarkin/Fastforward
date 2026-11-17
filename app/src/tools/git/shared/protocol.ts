@@ -15,6 +15,8 @@ import {
   type TextRequest,
 } from '../../../components/diff/shared/protocol';
 
+export const viewVersion = 1;
+
 export {
   diffLayouts,
   linkMode,

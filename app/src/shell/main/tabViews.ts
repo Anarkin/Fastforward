@@ -24,8 +24,19 @@ export class TabViews {
   constructor(
     private readonly holds: (page: Page, tab: string) => boolean,
     private readonly pages: () => readonly Page[],
+    private readonly changed: () => void = () => undefined,
     private readonly max = maxViewChars,
   ) {}
+
+  restore(saved: ReadonlyMap<string, string>): void {
+    for (const [tab, view] of saved) {
+      this.views.set(tab, { view, from: undefined });
+    }
+  }
+
+  entries(): (readonly [string, string])[] {
+    return [...this.views].map(([tab, { view }]) => [tab, view] as const);
+  }
 
   ready(page: Page): void {
     this.readied.add(page);
@@ -44,13 +55,19 @@ export class TabViews {
       pending.overtaken = true;
     }
     if (typeof view !== 'string' || view.length > this.max) {
-      this.views.delete(tab);
+      if (this.views.delete(tab)) {
+        this.changed();
+      }
       return false;
     }
+    const was = this.views.get(tab)?.view;
     this.views.set(tab, {
       view,
       from: !releasing && this.readied.has(page) ? page : undefined,
     });
+    if (was !== view) {
+      this.changed();
+    }
     return true;
   }
 
@@ -128,7 +145,9 @@ export class TabViews {
     this.drops.set(tab, (this.drops.get(tab) ?? 0) + 1);
     this.settling.delete(tab);
     this.releasing.get(tab)?.done();
-    this.views.delete(tab);
+    if (this.views.delete(tab)) {
+      this.changed();
+    }
     for (const page of this.pages()) {
       page.post({ type: 'release', tab });
     }

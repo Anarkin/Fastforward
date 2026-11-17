@@ -1,5 +1,7 @@
 import type { Renderer } from './settings';
 
+export const viewVersion = 1;
+
 export const maxInputLength = 65_536;
 
 export interface WindowsPty {
