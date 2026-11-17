@@ -84,10 +84,6 @@ export function anchoredScrollTop(
   );
 }
 
-const settleWithin = 1000;
-
-const settlingEnds = ['wheel', 'keydown', 'pointerdown'] as const;
-
 export function useScrollAnchor({
   list,
   virtualizer,
@@ -109,18 +105,12 @@ export function useScrollAnchor({
   const anchor = useRef<{ key: string; at: ScrollAnchor | undefined }>(
     undefined,
   );
-  const settling = useRef<{ at: ScrollAnchor; top: number; until: number }>(
-    undefined,
-  );
   const drawn = useRef(shown);
   const anchorNow = useEffectEvent(() => {
     const element = list.current;
-    const last = anchor.current;
     if (
       element === null ||
-      last === undefined ||
-      last.key !== layoutKey ||
-      settling.current !== undefined ||
+      anchor.current?.key !== layoutKey ||
       drawn.current !== shown
     ) {
       return;
@@ -135,25 +125,13 @@ export function useScrollAnchor({
     if (element === null) {
       return undefined;
     }
-    const handsOn = () => {
-      settling.current = undefined;
-    };
     const scrolled = () => anchorNow();
-    for (const hand of settlingEnds) {
-      element.addEventListener(hand, handsOn, { passive: true });
-    }
     element.addEventListener('scroll', scrolled, { passive: true });
-    return () => {
-      for (const hand of settlingEnds) {
-        element.removeEventListener(hand, handsOn);
-      }
-      element.removeEventListener('scroll', scrolled);
-    };
+    return () => element.removeEventListener('scroll', scrolled);
   }, [list]);
   useLayoutEffect(() => {
     drawn.current = shown;
     const last = anchor.current;
-    const scrolled = list.current?.scrollTop ?? 0;
     if (last?.at !== undefined && last.key !== layoutKey) {
       anchor.current = { key: layoutKey, at: last.at };
       const top = anchoredScrollTop(
@@ -164,40 +142,16 @@ export function useScrollAnchor({
       );
       if (top !== undefined) {
         virtualizer.scrollToOffset(top);
-        settling.current = {
-          at: last.at,
-          top,
-          until: performance.now() + settleWithin,
-        };
       }
       return;
     }
-    const settle = settling.current;
-    if (
-      settle !== undefined &&
-      performance.now() < settle.until &&
-      Math.abs(scrolled - settle.top) < 1
-    ) {
-      const top = anchoredScrollTop(
-        settle.at,
-        virtualizer.measurementsCache,
-        shown,
-        line,
-      );
-      if (top !== undefined && Math.abs(top - settle.top) >= 0.5) {
-        virtualizer.scrollToOffset(top);
-        settling.current = { ...settle, top };
-        return;
-      }
-    }
-    if (settle !== undefined && Math.abs(scrolled - settle.top) >= 1) {
-      settling.current = undefined;
-    }
     anchor.current = {
       key: layoutKey,
-      at:
-        settling.current?.at ??
-        scrollAnchor(virtualizer.measurementsCache, shown, scrolled),
+      at: scrollAnchor(
+        virtualizer.measurementsCache,
+        shown,
+        list.current?.scrollTop ?? 0,
+      ),
     };
   });
 }
