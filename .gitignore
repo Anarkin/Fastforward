@@ -8,3 +8,4 @@ release/
 .idea/
 app/perf-results/
 app/perf-build/
+app/test-durations.json

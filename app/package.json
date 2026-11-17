@@ -32,6 +32,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "coverage": "npm run build && vitest run --coverage --project=!playground --project=!perf",
+    "durations": "node scripts/testDurations.mts",
     "verify": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm test",
     "verify:fast": "npm run format:check && npm run lint && npm run knip && npm run check-types && npm run test:unit",
     "lint": "oxlint --type-aware --deny-warnings",
