@@ -7,6 +7,7 @@ import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { tempRepository, type TempRepository } from '../helpers/repositories';
 import { baseSettings, closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { resetMark, shownReset } from './settingsReset';
 
 export let folder: string;
 export let profile: string;
@@ -141,9 +142,29 @@ export function viewSaved(wordWrap: boolean, diffLayout: string): boolean {
   );
 }
 
+let resets = 0;
+
+function resetTo(count: number): object {
+  return count === 0
+    ? baseSettings
+    : {
+        ...baseSettings,
+        fonts: {
+          family: `${defaultSettings().fonts.family}, ${resetMark(count)}`,
+        },
+      };
+}
+
+const savedByApp = /^settings\.user\.json\.[0-9a-f]+\.tmp$/;
+
+function appSaving(): boolean {
+  return fs.readdirSync(profile).some((name) => savedByApp.test(name));
+}
+
 async function resetSettings(): Promise<void> {
   const settings = userSettings();
-  const expected = { ...defaultSettings(), ...baseSettings };
+  const reset = resetTo(resets);
+  const expected = { ...defaultSettings(), ...reset };
   if (
     typeof settings === 'object' &&
     settings !== null &&
@@ -151,16 +172,35 @@ async function resetSettings(): Promise<void> {
     Object.entries(settings).every(([name, value]) =>
       isDeepStrictEqual(value, Reflect.get(expected, name)),
     ) &&
-    Object.keys(baseSettings).every((name) => name in settings)
+    Object.keys(reset).every((name) => name in settings) &&
+    !appSaving()
   ) {
     return;
   }
-  const reloaded = page.waitForEvent('load');
-  fs.writeFileSync(
-    path.join(profile, 'settings.user.json'),
-    `${JSON.stringify(baseSettings)}\n`,
+  const file = path.join(profile, 'settings.user.json');
+  resets = await shownReset(
+    {
+      read: () => {
+        try {
+          return fs.readFileSync(file, 'utf8');
+        } catch {
+          return undefined;
+        }
+      },
+      write: (text) => fs.writeFileSync(file, text),
+      saving: appSaving,
+      shown: () =>
+        page
+          .evaluate(() =>
+            getComputedStyle(document.documentElement).getPropertyValue(
+              '--font-family',
+            ),
+          )
+          .catch(() => ''),
+    },
+    (count) => `${JSON.stringify(resetTo(count))}\n`,
+    resets + 1,
   );
-  await reloaded;
 }
 
 export async function diffLineNumbered(number: number): Promise<Locator> {
