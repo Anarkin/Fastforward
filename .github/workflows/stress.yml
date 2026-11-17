@@ -1,0 +1,61 @@
+name: Stress
+
+on:
+  workflow_dispatch:
+    inputs:
+      os:
+        description: The system to run on
+        type: choice
+        options: [ubuntu-latest, macos-latest, windows-latest]
+        default: ubuntu-latest
+      files:
+        description: The test files to run, by path from app/
+        type: string
+        required: true
+      times:
+        description: How many times to run them
+        type: number
+        default: 20
+
+permissions:
+  contents: read
+
+jobs:
+  stress:
+    runs-on: ${{ inputs.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: Add-MpPreference -ExclusionPath $env:TEMP, $env:GITHUB_WORKSPACE
+        if: runner.os == 'Windows'
+        shell: pwsh
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - name: Run the files again and again
+        shell: bash
+        env:
+          FILES: ${{ inputs.files }}
+          TIMES: ${{ inputs.times }}
+        run: |
+          failed=0
+          for run in $(seq 1 "$TIMES"); do
+            echo "::group::Run $run of $TIMES"
+            if [ "$RUNNER_OS" = Linux ]; then
+              xvfb-run -a npx vitest run $FILES || failed=$((failed + 1))
+            else
+              npx vitest run $FILES || failed=$((failed + 1))
+            fi
+            echo "::endgroup::"
+          done
+          echo "$failed of $TIMES runs failed" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$failed" -eq 0 ]
