@@ -368,10 +368,20 @@ suite('App at a scale of 125%', () => {
     assert.strictEqual(row[edge], line, JSON.stringify(row));
   });
 
-  test('rounds the end of the thumb of the shortcuts scrolled to their end as their window rounds its corner, as it stood square past the corner where the side of the shortcuts fell between pixels', async () => {
+  test('rounds the end of the thumb of the shortcuts of the commander, the longest, scrolled to their end as their window rounds its corner, as it stood square past the corner where the side of the shortcuts fell between pixels', async () => {
     await page.keyboard.press('F1');
     const pane = page.locator('.shortcuts-pane');
     await pane.waitFor();
+    await page.locator('.shortcuts-tool', { hasText: 'Commander' }).click();
+    await page
+      .locator('.shortcuts-tool.open', { hasText: 'Commander' })
+      .waitFor();
+    assert.ok(
+      await pane.evaluate(
+        (element) => element.scrollHeight > element.clientHeight,
+      ),
+      'the shortcuts of the commander fit their window, so it has no thumb',
+    );
     await pane.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
