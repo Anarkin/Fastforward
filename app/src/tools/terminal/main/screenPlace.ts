@@ -13,7 +13,7 @@ interface KeptSelection {
   readonly endX: number;
 }
 
-export class KeptPlace {
+export class ScreenPlace {
   private top: IMarker | undefined;
   private selection: KeptSelection | undefined;
   private rows: number;

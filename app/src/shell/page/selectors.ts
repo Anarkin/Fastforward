@@ -1,5 +1,5 @@
 import type { TabInfo } from '../shared/protocol';
-import type { ShellSource } from './shellState';
+import type { ShellSource } from './state';
 
 export function activeTabOf({
   tabs,

@@ -1,6 +1,6 @@
 import { viewVersion } from '../shared/protocol';
 import type { AutoFetch } from './autoFetch';
-import { keptGits } from './run';
+import { runningGits } from './run';
 import { locateRepository } from './repositoryLocation';
 import type { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
@@ -157,7 +157,7 @@ export class GitTool implements Tool<'git'> {
   }
 
   reloadSettings(): void {
-    keptGits.update();
+    runningGits.update();
     this.autoFetch.update();
     this.viewSettings.reloaded();
     this.posts.sendRecentEverywhere();

@@ -31,15 +31,15 @@ suite('App commander', () => {
       await select('kept');
       await page.keyboard.press('F3');
       await waitFor(
-        async () => (await pressedMode()) === strings.commander.viewPreview,
+        async () => (await pressedMode()) === strings.viewer.viewPreview,
         'the preview',
       );
       await page
         .locator('.viewer .segmented')
-        .getByRole('button', { name: strings.commander.viewText })
+        .getByRole('button', { name: strings.viewer.viewText })
         .click();
       await waitFor(
-        async () => (await pressedMode()) === strings.commander.viewText,
+        async () => (await pressedMode()) === strings.viewer.viewText,
         'the text',
       );
 
@@ -49,7 +49,7 @@ suite('App commander', () => {
       await page.locator('.viewer').waitFor({ state: 'detached' });
       await viewerTab.click();
       await page.locator('.viewer').waitFor();
-      assert.strictEqual(await pressedMode(), strings.commander.viewText);
+      assert.strictEqual(await pressedMode(), strings.viewer.viewText);
 
       await page.locator('.viewer .column-body').first().focus();
       await page.keyboard.press('Escape');
@@ -57,7 +57,7 @@ suite('App commander', () => {
       await select('kept');
       await page.keyboard.press('F3');
       await waitFor(
-        async () => (await pressedMode()) === strings.commander.viewPreview,
+        async () => (await pressedMode()) === strings.viewer.viewPreview,
         'the preview of a tab opened anew',
       );
     } finally {

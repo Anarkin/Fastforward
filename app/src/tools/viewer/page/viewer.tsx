@@ -45,11 +45,11 @@ const modes: readonly {
   readonly title: string;
   readonly icon: React.ReactNode;
 }[] = [
-  { mode: 'hex', title: strings.commander.viewHex, icon: <HexIcon /> },
-  { mode: 'text', title: strings.commander.viewText, icon: <TextIcon /> },
+  { mode: 'hex', title: strings.viewer.viewHex, icon: <HexIcon /> },
+  { mode: 'text', title: strings.viewer.viewText, icon: <TextIcon /> },
   {
     mode: 'preview',
-    title: strings.commander.viewPreview,
+    title: strings.viewer.viewPreview,
     icon: <PreviewIcon />,
   },
 ];
@@ -227,7 +227,7 @@ export function Viewer() {
             <div
               className="segmented"
               role="group"
-              aria-label={strings.commander.viewAs}
+              aria-label={strings.viewer.viewAs}
             >
               {shownModes.map(({ mode: each, title, icon }) => (
                 <button
@@ -246,10 +246,10 @@ export function Viewer() {
               <div className="viewer-encoding">
                 <MenuButton
                   scrolling={scrolling}
-                  title={strings.commander.encoding}
+                  title={strings.encodings.encoding}
                   trigger={encodingTrigger}
                   onChosen={focusBody}
-                  label={strings.commander.encodingShort[shown]}
+                  label={strings.encodings.short[shown]}
                   filter={strings.common.findEncoding}
                   items={encodingMenu(encoding, shown, setEncoding)}
                 />
@@ -271,7 +271,7 @@ export function Viewer() {
               <div className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${realSize ? 'active' : ''}`}
-                  title={strings.commander.realSize}
+                  title={strings.viewer.realSize}
                   aria-pressed={realSize}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={toggleRealSize}
@@ -308,7 +308,7 @@ export function Viewer() {
           </div>
           <div className="column-actions">
             <SearchButton
-              title={strings.commander.findInFile}
+              title={strings.textFile.findInFile}
               onClick={openFind}
             />
           </div>

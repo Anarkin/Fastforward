@@ -15,7 +15,7 @@ import {
   stopping,
   writingRefs,
 } from './gitProcesses';
-import { KeptGits } from './runningGit';
+import { RunningGits } from './runningGit';
 import { spawnGit, type GitChild } from './spawnedGit';
 
 const gitConfigArgs = [
@@ -137,7 +137,7 @@ export function keepGitRunningWhile(enabled: () => boolean): void {
   keepingGitRunning = enabled;
 }
 
-export const keptGits = new KeptGits(startGit, () => keepingGitRunning());
+export const runningGits = new RunningGits(startGit, () => keepingGitRunning());
 
 const processNotInitialized = 0xc0000142;
 
@@ -309,7 +309,7 @@ function closeOutputHeldPastExit(child: GitChild): void {
 }
 
 export async function stopRunningGit(waitTime?: number): Promise<void> {
-  keptGits.stopAll();
+  runningGits.stopAll();
   await stopEveryGit(waitTime);
 }
 

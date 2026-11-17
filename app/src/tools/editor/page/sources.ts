@@ -105,8 +105,8 @@ export function endingSourceItems(
 
 const encodingName = (encoding: TextEncoding, bom = false) =>
   bom && encoding === 'utf-8'
-    ? strings.editor.withBom(strings.commander.encodings[encoding])
-    : strings.commander.encodings[encoding];
+    ? strings.editor.withBom(strings.encodings.names[encoding])
+    : strings.encodings.names[encoding];
 
 function encodingRow(source: EncodingSource, opening: SourceOpening): Row {
   switch (source.kind) {

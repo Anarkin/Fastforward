@@ -54,12 +54,21 @@ const textsOutsideTheDictionary = [
 suite('Strings', () => {
   test('uses every string, so none is translated for nothing', () => {
     const referenced = new Set(
-      codeFiles.flatMap(({ text }) =>
-        Array.from(
+      codeFiles.flatMap(({ text }) => [
+        ...Array.from(
           text.matchAll(/\bstrings((?:\.[A-Za-z_$][\w$]*)+)/g),
           ([, chain = '']) => chain.slice(1),
         ),
-      ),
+        ...Array.from(
+          text.matchAll(/\{([^}]*)\}\s*=\s*strings\b(?!\.)/g),
+          ([, names = '']) => names,
+        ).flatMap((names) =>
+          names
+            .split(',')
+            .map((name) => name.split(':')[0]?.trim() ?? '')
+            .filter((name) => name !== ''),
+        ),
+      ]),
     );
     const used = (keys: readonly string[]) =>
       keys.some((_, end) => referenced.has(keys.slice(0, end + 1).join('.')));

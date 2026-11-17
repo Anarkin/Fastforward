@@ -15,7 +15,7 @@ export class GitOutput {
       this.length += chunk.length;
       this.wake?.();
     });
-    const end = () => this.end(new Error(strings.errors.keptGitEnded));
+    const end = () => this.end(new Error(strings.errors.runningGitEnded));
     stream.on('end', end);
     stream.on('close', end);
     stream.on('error', end);

@@ -11,8 +11,8 @@ import {
   type ShellActions,
   type ShellSource,
   type ShellState,
-} from './shellState';
-import { received } from './shellReceived';
+} from './state';
+import { received } from './received';
 import { withPopup } from './popups';
 import { nextMenu } from './openedMenu';
 import { lookAsker } from './lookAsker';

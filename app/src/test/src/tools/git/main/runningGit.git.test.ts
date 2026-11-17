@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../../../../helpers/fixtures';
-import { KeptGits } from '../../../../../tools/git/main/runningGit';
+import { RunningGits } from '../../../../../tools/git/main/runningGit';
 import { startGit } from '../../../../../tools/git/main/run';
 import type { GitChild } from '../../../../../tools/git/main/spawnedGit';
 import { installedGit } from '../../../../helpers/repositories';
@@ -18,7 +18,7 @@ const cwd = process.cwd();
 const ended = (child: GitChild | undefined) =>
   child !== undefined && (child.exitCode !== null || child.signalCode !== null);
 
-async function headerOf(kept: KeptGits, gitPath: string): Promise<string> {
+async function headerOf(kept: RunningGits, gitPath: string): Promise<string> {
   const git = await kept.use(gitPath, cwd, catFile);
   assert.ok(git);
   return git.request('info HEAD\0', async (output) =>
@@ -38,7 +38,7 @@ suite('A git kept running', () => {
   test('answers every request through the one git it keeps running for a repository and command, as starting git costs a fraction of a second on Windows', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started));
+    const kept = new RunningGits(counting(started));
     try {
       const first = await headerOf(kept, gitPath);
       const second = await headerOf(kept, gitPath);
@@ -54,7 +54,7 @@ suite('A git kept running', () => {
   test('starts git again once the one it kept stopped, as git may be stopped or crash', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started));
+    const kept = new RunningGits(counting(started));
     try {
       await headerOf(kept, gitPath);
       (await kept.use(gitPath, cwd, catFile))?.stop();
@@ -70,7 +70,7 @@ suite('A git kept running', () => {
   test('stops a git it kept once it is idle for a while, as an idle git holds the pack files open, which Windows then cannot delete', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started), () => true, 100);
+    const kept = new RunningGits(counting(started), () => true, 100);
     await headerOf(kept, gitPath);
 
     await waitFor(() => ended(started[0]), 'the idle git to stop');
@@ -80,7 +80,7 @@ suite('A git kept running', () => {
   test('keeps at most a few gits running in all, stopping the one used longest ago', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started), () => true, 60_000, 2);
+    const kept = new RunningGits(counting(started), () => true, 60_000, 2);
     try {
       for (const args of [
         catFile,
@@ -102,7 +102,7 @@ suite('A git kept running', () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
     let on = true;
-    const kept = new KeptGits(counting(started), () => on);
+    const kept = new RunningGits(counting(started), () => on);
     await headerOf(kept, gitPath);
 
     on = false;
@@ -114,7 +114,7 @@ suite('A git kept running', () => {
   test('gives up on a request git does not answer in time, stopping that git so the next request starts a new one', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started));
+    const kept = new RunningGits(counting(started));
     try {
       const git = await kept.use(gitPath, cwd, catFile);
       assert.ok(git);
@@ -135,7 +135,7 @@ suite('A git kept running', () => {
   test('stops the gits it kept for a folder when asked, as on closing its tab, so the folder can be moved or deleted at once', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started));
+    const kept = new RunningGits(counting(started));
     const other = path.dirname(cwd);
     try {
       await kept.use(gitPath, cwd, catFile);
@@ -154,7 +154,7 @@ suite('A git kept running', () => {
   test('keeps a git running while it answers, however long, counting it idle only from its last answer, as stopping it midway failed the request', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started), () => true, 100);
+    const kept = new RunningGits(counting(started), () => true, 100);
     try {
       const git = await kept.use(gitPath, cwd, catFile);
       assert.ok(git);
@@ -174,7 +174,7 @@ suite('A git kept running', () => {
   test('starts one git for requests that come at once, as selecting a commit asks for its files and its patch together, rather than a second one it then loses track of and never stops', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started));
+    const kept = new RunningGits(counting(started));
     const [first, second] = await Promise.all([
       kept.use(gitPath, cwd, catFile),
       kept.use(gitPath, cwd, catFile),
@@ -190,7 +190,7 @@ suite('A git kept running', () => {
   test('stops the git answering a request no longer wanted, as what it prints next would be read for the request after, and leaves a request not yet sent unsent', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started));
+    const kept = new RunningGits(counting(started));
     try {
       const git = await kept.use(gitPath, cwd, catFile);
       assert.ok(git);
@@ -230,7 +230,7 @@ suite('A git kept running', () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
     let on = true;
-    const kept = new KeptGits(counting(started), () => on);
+    const kept = new RunningGits(counting(started), () => on);
     await headerOf(kept, gitPath);
 
     on = false;
@@ -243,7 +243,7 @@ suite('A git kept running', () => {
   test('stops the idle git used longest ago when too many are kept, rather than one still answering, whose request would fail and be read again', async () => {
     const gitPath = await installedGit();
     const started: GitChild[] = [];
-    const kept = new KeptGits(counting(started), () => true, 60_000, 2);
+    const kept = new RunningGits(counting(started), () => true, 60_000, 2);
     try {
       const busy = await kept.use(gitPath, cwd, catFile);
       assert.ok(busy);

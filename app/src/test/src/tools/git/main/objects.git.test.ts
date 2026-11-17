@@ -10,7 +10,7 @@ import {
 } from '../../../../../tools/git/main/files';
 import {
   keepGitRunningWhile,
-  keptGits,
+  runningGits,
 } from '../../../../../tools/git/main/run';
 import { gitsStarted, tempRepository } from '../../../../helpers/repositories';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
@@ -73,7 +73,7 @@ suite('Repository files', () => {
       assert.strictEqual(again.gits, 0);
     } finally {
       keepGitRunningWhile(() => false);
-      keptGits.stopAll();
+      runningGits.stopAll();
       removeFolder(folder);
     }
   });
@@ -104,7 +104,7 @@ suite('Repository files', () => {
       assert.strictEqual(read.gits, 1);
     } finally {
       keepGitRunningWhile(() => false);
-      keptGits.stopAll();
+      runningGits.stopAll();
       removeFolder(folder);
     }
   });
@@ -127,7 +127,7 @@ suite('Repository files', () => {
       assert.deepStrictEqual([...after], [[staged, 6]]);
     } finally {
       keepGitRunningWhile(() => false);
-      keptGits.stopAll();
+      runningGits.stopAll();
       removeFolder(folder);
     }
   });
@@ -155,7 +155,7 @@ suite('Repository files', () => {
       }
     } finally {
       keepGitRunningWhile(() => false);
-      keptGits.stopAll();
+      runningGits.stopAll();
       removeFolder(folder);
     }
   });
@@ -188,7 +188,7 @@ suite('Repository files', () => {
       assert.deepStrictEqual(await read('a.txt'), file);
     } finally {
       keepGitRunningWhile(() => false);
-      keptGits.stopAll();
+      runningGits.stopAll();
       removeFolder(folder);
     }
   });

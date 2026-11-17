@@ -189,7 +189,7 @@ suite('App commander', () => {
   test('shows an image previewed at its real size on F, a pixel of it on a pixel of the screen, from its middle, scrolled by the keys, saved for the next image, and fitted to the viewer again on its button', async () => {
     fs.writeFileSync(path.join(opened, 'huge.png'), grayPng(3000, 2000));
     const realSize = page.locator(
-      `.viewer button[title="${strings.commander.realSize}"]`,
+      `.viewer button[title="${strings.viewer.realSize}"]`,
     );
     const openHuge = async () => {
       await select('huge');
@@ -267,7 +267,7 @@ suite('App commander', () => {
     fs.writeFileSync(path.join(opened, 'small.png'), grayPng(400, 300));
     fs.writeFileSync(path.join(opened, 'huge.png'), grayPng(3000, 2000));
     const realSize = page.locator(
-      `.viewer button[title="${strings.commander.realSize}"]`,
+      `.viewer button[title="${strings.viewer.realSize}"]`,
     );
     const display = await page.evaluate(() => devicePixelRatio);
 

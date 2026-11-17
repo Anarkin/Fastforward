@@ -6,7 +6,7 @@ import { shellKeymap } from '../shared/keymap';
 import { clicked, released } from '../../lib/shared/keymap';
 import { keymap } from '../../lib/page/keymap';
 import { keyPressed } from '../../lib/page/shortcuts';
-import type { ScreenPoint } from './shellState';
+import type { ScreenPoint } from './state';
 
 export function slotLefts(
   widths: readonly number[],

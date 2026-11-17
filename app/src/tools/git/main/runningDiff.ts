@@ -4,7 +4,7 @@ import { isFullHash } from '../../../lib/shared/hashes';
 import { keptFirstParent } from './objects';
 import { strings } from '../../../lib/shared/strings';
 import { StoppedReading, type GitOutput } from './gitOutput';
-import { keptGits } from './run';
+import { runningGits } from './run';
 import {
   diffArgs,
   diffOptionArgs,
@@ -49,7 +49,7 @@ async function keptDiff<T>(
     return undefined;
   }
   signal?.throwIfAborted();
-  const git = await keptGits.use(gitPath, cwd, [...keptDiffArgs, ...args]);
+  const git = await runningGits.use(gitPath, cwd, [...keptDiffArgs, ...args]);
   return git
     ?.request(keptRequest(hash, parent), read, { signal, timeout: false })
     .catch((error: unknown) => {
@@ -66,7 +66,7 @@ async function readKeptAnswer(
 ): Promise<void> {
   const header = (await output.until(end)).toString('latin1');
   if (header !== `${keptMarkerText}${hash}`) {
-    throw new Error(strings.errors.keptGitOutOfStep);
+    throw new Error(strings.errors.runningGitOutOfStep);
   }
   while ((await output.peek(1))[0] === 0x0a) {
     await output.take(1);
@@ -81,7 +81,7 @@ async function readKeptAnswer(
   }
   const ending = (await output.until(end)).toString('latin1');
   if (ending !== (follows ? hash : `${keptMarkerText}${hash}`)) {
-    throw new Error(strings.errors.keptGitOutOfStep);
+    throw new Error(strings.errors.runningGitOutOfStep);
   }
 }
 

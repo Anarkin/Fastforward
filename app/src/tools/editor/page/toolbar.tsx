@@ -97,7 +97,7 @@ export function EditorToolbar({
                     scrolling={scrolling}
                     title={strings.editor.readEncodingTitle}
                     label={strings.editor.readLabel(
-                      strings.commander.encodingShort[
+                      strings.encodings.short[
                         edited?.onDisk?.encoding ?? encoding
                       ],
                     )}
@@ -186,7 +186,7 @@ export function EditorToolbar({
           </div>
         </div>
         <div className="column-actions">
-          <SearchButton title={strings.commander.findInFile} onClick={onFind} />
+          <SearchButton title={strings.textFile.findInFile} onClick={onFind} />
         </div>
       </header>
       {reopening !== undefined && tab !== undefined && (

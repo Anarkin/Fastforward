@@ -8,11 +8,11 @@ import {
   setsCursorMode,
 } from '../shared/programCursor';
 import type { CursorStyle } from '../../../lib/shared/cursorSettings';
-import { KeptPlace } from './screenPlace';
+import { ScreenPlace } from './screenPlace';
 
 export interface Mirror {
   readonly terminal: Terminal;
-  readonly place: KeptPlace;
+  readonly place: ScreenPlace;
   serialize(): string;
   scrollback(lines: number): void;
   dispose(): void;
@@ -213,7 +213,7 @@ export function createMirror({
   const region = trackScrollRegion(terminal);
   return {
     terminal,
-    place: new KeptPlace(terminal),
+    place: new ScreenPlace(terminal),
     serialize: () =>
       colors() + serializer.serialize() + mouseEncoding() + cursor() + region(),
     scrollback: (lines) => {

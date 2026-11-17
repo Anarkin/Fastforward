@@ -2,9 +2,9 @@ import { strings } from '../../../lib/shared/strings';
 import { GitOutput } from './gitOutput';
 import type { GitChild } from './spawnedGit';
 
-const keptGitTimeout = 30_000;
+const runningGitTimeout = 30_000;
 
-export class KeptGit {
+export class RunningGit {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly output: GitOutput;
   private alive = true;
@@ -17,7 +17,7 @@ export class KeptGit {
     child.stdin.on('error', () => undefined);
     const ended = () => {
       this.alive = false;
-      this.output.end(new Error(strings.errors.keptGitEnded));
+      this.output.end(new Error(strings.errors.runningGitEnded));
     };
     child.on('close', ended);
     child.on('error', ended);
@@ -40,7 +40,7 @@ export class KeptGit {
     read: (output: GitOutput) => Promise<T>,
     {
       signal,
-      timeout = keptGitTimeout,
+      timeout = runningGitTimeout,
     }: {
       readonly signal?: AbortSignal;
       readonly timeout?: number | false;
@@ -50,7 +50,7 @@ export class KeptGit {
     const answered = this.queue.then(async () => {
       signal?.throwIfAborted();
       if (!this.alive) {
-        throw new Error(strings.errors.keptGitEnded);
+        throw new Error(strings.errors.runningGitEnded);
       }
       const { promise: late, reject } = Promise.withResolvers<never>();
       const timer =
@@ -58,7 +58,7 @@ export class KeptGit {
           ? undefined
           : setTimeout(() => {
               this.stop();
-              reject(new Error(strings.errors.keptGitTimedOut));
+              reject(new Error(strings.errors.runningGitTimedOut));
             }, timeout);
       const stopped = () => {
         this.stop();
@@ -89,19 +89,19 @@ export class KeptGit {
       return;
     }
     this.alive = false;
-    this.output.end(new Error(strings.errors.keptGitEnded));
+    this.output.end(new Error(strings.errors.runningGitEnded));
     this.child.stdin.end();
     void this.child.stop();
   }
 }
 
-const keptGitIdle = 30_000;
+const runningGitIdle = 30_000;
 const mostKeptGits = 16;
 
 interface Kept {
   readonly cwd: string;
-  readonly git: Promise<KeptGit | undefined>;
-  started: KeptGit | undefined;
+  readonly git: Promise<RunningGit | undefined>;
+  started: RunningGit | undefined;
   failed: boolean;
   idle: ReturnType<typeof setTimeout> | undefined;
 }
@@ -114,7 +114,7 @@ function busy(kept: Kept): boolean {
   return !kept.failed && kept.started?.answering !== false;
 }
 
-export class KeptGits {
+export class RunningGits {
   private readonly kept = new Map<string, Kept>();
 
   constructor(
@@ -124,7 +124,7 @@ export class KeptGits {
       args: readonly string[],
     ) => Promise<GitChild>,
     private readonly enabled: () => boolean = () => true,
-    private readonly idle = keptGitIdle,
+    private readonly idle = runningGitIdle,
     private readonly most = mostKeptGits,
   ) {}
 
@@ -143,7 +143,7 @@ export class KeptGits {
     cwd: string,
     args: readonly string[],
     asOf = '',
-  ): Promise<KeptGit | undefined> {
+  ): Promise<RunningGit | undefined> {
     if (!this.enabled()) {
       this.stopAll();
       return Promise.resolve(undefined);
@@ -170,7 +170,7 @@ export class KeptGits {
       cwd,
       git: this.start(gitPath, cwd, args).then(
         (child) => {
-          kept.started = new KeptGit(child);
+          kept.started = new RunningGit(child);
           return kept.started;
         },
         () => {

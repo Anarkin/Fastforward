@@ -1021,17 +1021,9 @@ export const strings = {
     folderThere: 'A folder of that name is there.',
     fileThere: 'A file of that name is there.',
     itselfThere: 'The item there is this one, reached by another path.',
-    couldNotRead: (file: string, reason: Sentence) =>
-      sentence`Couldn't read ${namedFile(file)}. ${reason}`,
     layout: 'Layout',
     layouts: { details: 'Details', thumbnails: 'Thumbnails' },
     groupByColor: 'Group by Color',
-    viewAs: 'View as',
-    viewText: 'Text',
-    viewHex: 'Hex',
-    viewPreview: 'Preview',
-    realSize: 'Real Size',
-    encoding: 'Encoding',
     filterFolder: 'Filter the folder',
     filterPlaceholder: 'Filter…',
     flatView: 'List the files of every folder in it',
@@ -1039,8 +1031,21 @@ export const strings = {
       count === 1
         ? "1 folder in it couldn't be read, so it may be larger"
         : `${count.toLocaleString()} folders in it couldn't be read, so it may be larger`,
-    findInFile: 'Search the file',
-    encodings: {
+    nothingToCompare:
+      'Mark two files on a side, or select a file on each side, to compare them.',
+  },
+  viewer: {
+    viewAs: 'View as',
+    viewText: 'Text',
+    viewHex: 'Hex',
+    viewPreview: 'Preview',
+    realSize: 'Real Size',
+    previewTooLarge: (megabytes: number) =>
+      `Documents over ${megabytes} MB are not previewed.`,
+  },
+  encodings: {
+    encoding: 'Encoding',
+    names: {
       auto: 'Auto',
       'utf-8': 'UTF-8',
       'utf-16le': 'UTF-16 LE',
@@ -1075,7 +1080,7 @@ export const strings = {
       'x-mac-cyrillic': 'Mac Cyrillic',
       bytes: 'Bytes',
     },
-    encodingShort: {
+    short: {
       'utf-8': 'UTF-8',
       'utf-16le': 'UTF-16 LE',
       'utf-16be': 'UTF-16 BE',
@@ -1109,10 +1114,11 @@ export const strings = {
       'x-mac-cyrillic': 'Mac Cyr',
       bytes: 'Bytes',
     },
-    previewTooLarge: (megabytes: number) =>
-      `Documents over ${megabytes} MB are not previewed.`,
-    nothingToCompare:
-      'Mark two files on a side, or select a file on each side, to compare them.',
+  },
+  textFile: {
+    couldNotRead: (file: string, reason: Sentence) =>
+      sentence`Couldn't read ${namedFile(file)}. ${reason}`,
+    findInFile: 'Search the file',
   },
   editor: {
     tooLarge: (file: string) =>
@@ -1433,9 +1439,9 @@ export const strings = {
       `git ${command} failed: it was stopped by ${signal}`,
     gitOutputTooLarge: (command: string, megabytes: number) =>
       `git ${command} failed: it printed over ${megabytes} MB`,
-    keptGitEnded: 'The git kept running stopped',
-    keptGitTimedOut: 'The git kept running did not answer in time',
-    keptGitOutOfStep: 'The git kept running answered for another request',
+    runningGitEnded: 'The git kept running stopped',
+    runningGitTimedOut: 'The git kept running did not answer in time',
+    runningGitOutOfStep: 'The git kept running answered for another request',
     gitStarterStopped: 'the thread that starts git stopped',
     commitReaderStopped: 'the thread that reads the history stopped',
     sizeWorkerStopped: 'the thread that counts the sizes of folders stopped',

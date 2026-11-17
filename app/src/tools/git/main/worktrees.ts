@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { keptGits } from './run';
+import { runningGits } from './run';
 import { listWorktrees, type Worktree } from './repositoryLocation';
 import type { Log } from '../../../shell/main/log';
 import { shortHash } from '../../../lib/shared/hashes';
@@ -117,7 +117,7 @@ export class Worktrees {
 
   forgetTab(root: string, tab: TabWork): void {
     this.tabStates.delete(root);
-    keptGits.stopIn(root);
+    runningGits.stopIn(root);
     tab.closed.abort();
     tab.loadingFiles.abort();
     tab.loadingDiff.abort();

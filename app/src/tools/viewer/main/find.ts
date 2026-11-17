@@ -79,7 +79,7 @@ export class ViewerFind {
           type: 'viewing',
           tab,
           size: undefined,
-          error: strings.commander.couldNotRead(viewing.file, reasonOf(failed)),
+          error: strings.textFile.couldNotRead(viewing.file, reasonOf(failed)),
         });
       }
       return;

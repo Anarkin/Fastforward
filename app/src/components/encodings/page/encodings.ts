@@ -112,7 +112,7 @@ function choiceItems<Encoding extends ShownEncoding>(
   choose: (choice: Encoding | 'auto') => void,
   groups: readonly (readonly Encoding[])[],
 ): ContextMenuItem[] {
-  const { encodings } = strings.commander;
+  const encodings = strings.encodings.names;
   const { autoChoice } = strings.common;
   return [
     {

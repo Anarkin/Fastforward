@@ -4,7 +4,7 @@ import { knownWith } from '../../lib/page/pathLooks';
 import type { ToWebview } from '../shared/protocol';
 import { menuIn } from './openedMenu';
 import { withPopup } from './popups';
-import type { ShellSource } from './shellState';
+import type { ShellSource } from './state';
 
 export function received(
   state: ShellSource,

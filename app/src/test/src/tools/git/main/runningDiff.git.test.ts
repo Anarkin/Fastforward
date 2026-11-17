@@ -7,7 +7,7 @@ import type { PatchScope } from '../../../../../components/diff/main/args';
 import { keptFirstParent } from '../../../../../tools/git/main/objects';
 import {
   keepGitRunningWhile,
-  keptGits,
+  runningGits,
   runGit,
 } from '../../../../../tools/git/main/run';
 import { patchByteBudget } from '../../../../../components/diff/shared/patchBudget';
@@ -63,7 +63,7 @@ suite('Commit diffs read through a git kept running', () => {
 
   afterAll(() => {
     keepGitRunningWhile(() => false);
-    keptGits.stopAll();
+    runningGits.stopAll();
     removeFolder(folder);
   });
 
@@ -137,7 +137,7 @@ suite('Commit diffs read through a git kept running', () => {
         await repository.git('config', '--unset', key);
       }
       removeFolder(path.dirname(order));
-      keptGits.stopIn(root);
+      runningGits.stopIn(root);
     }
   });
 
@@ -185,7 +185,7 @@ suite('Commit diffs read through a git kept running', () => {
     const { gitPath, root } = repository;
     const [hash = ''] = commits;
     const reason = new Error('closed');
-    keptGits.stopIn(root);
+    runningGits.stopIn(root);
     keepGitRunningWhile(() => true);
     try {
       const { result, gits } = await gitsStarted(() =>
@@ -261,7 +261,7 @@ suite('Commit diffs read through a git kept running', () => {
       );
     } finally {
       keepGitRunningWhile(() => false);
-      keptGits.stopAll();
+      runningGits.stopAll();
       removeFolder(large);
     }
   });

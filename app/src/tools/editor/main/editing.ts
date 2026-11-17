@@ -288,7 +288,7 @@ export class Editing {
       }
       return {
         text: undefined,
-        error: strings.commander.couldNotRead(file, reasonOf(error)),
+        error: strings.textFile.couldNotRead(file, reasonOf(error)),
         made: false,
         stamp,
       };

@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import { join } from 'node:path';
 import { gitDirOf } from './gitDir';
-import { keptGits, runGit, runGitBytes } from './run';
+import { runningGits, runGit, runGitBytes } from './run';
 
 const batchInput = (list: readonly string[]) =>
   list.map((id) => `${id}\n`).join('');
@@ -52,7 +52,7 @@ async function keptIndexMode(
   const git =
     stamp === undefined
       ? undefined
-      : await keptGits.use(gitPath, cwd, modeCheck, stamp);
+      : await runningGits.use(gitPath, cwd, modeCheck, stamp);
   return git
     ?.request(`${name}\0`, async (output) =>
       (await output.until(0)).toString('utf8'),
@@ -87,7 +87,7 @@ async function keptInfo(
     return undefined;
   }
   signal?.throwIfAborted();
-  const git = await keptGits.use(gitPath, cwd, keptCatFile);
+  const git = await runningGits.use(gitPath, cwd, keptCatFile);
   if (git === undefined) {
     return undefined;
   }
@@ -130,7 +130,7 @@ async function keptContents(
   cwd: string,
   ids: readonly string[],
 ): Promise<Map<string, Buffer> | undefined> {
-  const git = await keptGits.use(gitPath, cwd, keptCatFile);
+  const git = await runningGits.use(gitPath, cwd, keptCatFile);
   if (git === undefined) {
     return undefined;
   }

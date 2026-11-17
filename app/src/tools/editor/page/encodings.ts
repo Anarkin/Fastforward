@@ -29,13 +29,13 @@ const bomsOf = (encoding: TextEncoding): readonly boolean[] =>
 
 export const savedName = (encoding: TextEncoding, bom: boolean): string =>
   bom && encoding === 'utf-8'
-    ? strings.editor.shortWithBom(strings.commander.encodingShort[encoding])
-    : strings.commander.encodingShort[encoding];
+    ? strings.editor.shortWithBom(strings.encodings.short[encoding])
+    : strings.encodings.short[encoding];
 
 const encodedName = (encoding: TextEncoding, bom: boolean): string =>
   bom && encoding === 'utf-8'
-    ? strings.editor.withBom(strings.commander.encodings[encoding])
-    : strings.commander.encodings[encoding];
+    ? strings.editor.withBom(strings.encodings.names[encoding])
+    : strings.encodings.names[encoding];
 
 const withSources = (
   items: readonly ContextMenuItem[],

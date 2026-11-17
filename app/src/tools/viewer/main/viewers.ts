@@ -72,7 +72,7 @@ export class Viewers {
           type: 'viewing',
           tab,
           size: undefined,
-          error: strings.commander.couldNotRead(file, reasonOf(error)),
+          error: strings.textFile.couldNotRead(file, reasonOf(error)),
         });
       }
       return;
@@ -121,7 +121,7 @@ export class Viewers {
                   type: 'viewing',
                   tab,
                   size: undefined,
-                  error: strings.commander.couldNotRead(file, reasonOf(error)),
+                  error: strings.textFile.couldNotRead(file, reasonOf(error)),
                 });
               }
             },
@@ -173,7 +173,7 @@ export class Viewers {
           type: 'viewing',
           tab,
           size: undefined,
-          error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
+          error: strings.textFile.couldNotRead(viewing.file, reasonOf(error)),
         });
       }
     }
@@ -256,7 +256,7 @@ export class Viewers {
           type: 'viewing',
           tab: viewing.tab,
           size: undefined,
-          error: strings.commander.couldNotRead(viewing.file, reasonOf(error)),
+          error: strings.textFile.couldNotRead(viewing.file, reasonOf(error)),
         });
       }
     }

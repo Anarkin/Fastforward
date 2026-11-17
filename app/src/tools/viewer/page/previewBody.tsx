@@ -51,7 +51,7 @@ function MarkdownPreview({
     return (
       <div className="markdown-pane">
         <div className="markdown-note">
-          {strings.commander.previewTooLarge(maxPreviewBytes / 1024 / 1024)}
+          {strings.viewer.previewTooLarge(maxPreviewBytes / 1024 / 1024)}
         </div>
       </div>
     );

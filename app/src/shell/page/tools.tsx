@@ -4,7 +4,7 @@ import { GitTool } from '../../tools/git/page/tool';
 import { ViewerTool } from '../../tools/viewer/page/tool';
 import { EditorTool } from '../../tools/editor/page/tool';
 import { DiffTool } from '../../tools/diff/page/tool';
-import { activeTabOf } from './shellSelectors';
+import { activeTabOf } from './selectors';
 import { useShell, useShellActions } from './store';
 
 export function ToolViews() {

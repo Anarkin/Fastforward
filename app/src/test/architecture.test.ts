@@ -183,7 +183,7 @@ suite('Architecture', () => {
     );
   });
 
-  test('names no file of a tool or a component after the part, as its folder names it already, but the files that run the git program', () => {
+  test('names no file of the shell, a tool or a component after the part, as its folder names it already, but the files that run the git program', () => {
     const gitProgram = new Set([
       'gitCommand',
       'gitDir',
@@ -197,13 +197,19 @@ suite('Architecture', () => {
     ]);
     assert.deepStrictEqual(
       sourceFiles.filter((file) => {
-        const [kind, part, , name = ''] = file.split('/');
-        const stem = name.replace(/\..*$/, '');
+        const parts = file.split('/');
+        const [kind] = parts;
+        const owner =
+          kind === 'shell'
+            ? 'shell'
+            : kind === 'tools' || kind === 'components'
+              ? parts[1]
+              : undefined;
+        const stem = (parts.at(-1) ?? '').replace(/\..*$/, '');
         return (
-          (kind === 'tools' || kind === 'components') &&
-          part !== undefined &&
-          stem.startsWith(part) &&
-          /^[A-Z]/.test(stem.slice(part.length)) &&
+          owner !== undefined &&
+          stem.startsWith(owner) &&
+          /^[A-Z]/.test(stem.slice(owner.length)) &&
           !gitProgram.has(stem)
         );
       }),

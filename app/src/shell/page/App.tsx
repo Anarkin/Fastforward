@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PathLooksContext } from '../../lib/page/pathLooks';
-import { shellPathLooks } from './shellPathLooks';
+import { shellPathLooks } from './pathLooks';
 import { shellKeymap } from '../shared/keymap';
 import type { ToHost, ToWebview } from '../shared/protocol';
 import { strings } from '../../lib/shared/strings';
@@ -13,7 +13,7 @@ import { Notices } from './notices';
 import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../lib/page/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
-import { activeTabOf } from './shellSelectors';
+import { activeTabOf } from './selectors';
 import {
   createShellStore,
   ShellStore,

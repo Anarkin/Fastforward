@@ -4,7 +4,7 @@ import {
   newlyKnown,
   type PathLooksSource,
 } from '../../lib/page/pathLooks';
-import type { ShellState } from './shellState';
+import type { ShellState } from './state';
 
 export function shellPathLooks(store: StoreApi<ShellState>): PathLooksSource {
   return {
