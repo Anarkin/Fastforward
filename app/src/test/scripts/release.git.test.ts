@@ -16,6 +16,7 @@ import {
   type TempRepository,
 } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { withoutGh } from './ghFixtures';
 
 const script = path.join(__dirname, '..', '..', '..', 'scripts', 'release.mts');
 
@@ -86,12 +87,10 @@ suite('Release', () => {
       said: string;
       told: string;
     }>((resolve) => {
-      const env: NodeJS.ProcessEnv = {
-        ...process.env,
-        ...identity,
-        npm_execpath: npm,
-      };
-      delete env.GH_REPO;
+      const env = withoutGh(
+        { ...process.env, ...identity, npm_execpath: npm },
+        template,
+      );
       execFile(
         process.execPath,
         [script, '7.0.0'],

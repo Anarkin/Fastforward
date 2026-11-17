@@ -11,6 +11,7 @@ import {
 } from 'vitest';
 import { tempRepository, type TempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { withoutGh } from './ghFixtures';
 
 const script = path.join(__dirname, '..', '..', '..', 'scripts', 'push.mts');
 
@@ -54,8 +55,7 @@ suite('Pushing', () => {
 
   const pushing = () =>
     new Promise<{ code: number; said: string }>((resolve) => {
-      const env = { ...process.env };
-      delete env.GH_REPO;
+      const env = withoutGh(process.env, template);
       execFile(
         process.execPath,
         [script],
