@@ -6,7 +6,8 @@ import {
   type CloneView,
 } from '../shared/clone';
 import { strings } from '../../../lib/shared/strings';
-import { Words } from '../../../lib/page/name';
+import { NamedPath, Words } from '../../../lib/page/name';
+import { named as nameOf } from '../../../lib/shared/sentences';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
@@ -111,12 +112,15 @@ function CloneForm({ form }: { form: Form }) {
           autoComplete="off"
           onChange={editing(setName)}
         />
+        {folder !== '' && nameProblem(named) === undefined && (
+          <>
+            <label>{strings.clone.target}</label>
+            <div className="clone-target" title={targetPath(folder, named)}>
+              <NamedPath path={targetPath(folder, named)} />
+            </div>
+          </>
+        )}
       </div>
-      {folder !== '' && nameProblem(named) === undefined && (
-        <div className="clone-target" title={targetPath(folder, named)}>
-          <Words>{strings.clone.into(targetPath(folder, named))}</Words>
-        </div>
-      )}
       {message !== undefined && (
         <div className="clone-problem" role="alert">
           <Words>{message}</Words>
@@ -144,32 +148,34 @@ function CloneRunning({ running }: { running: Running }) {
   return (
     <div className="clone-body">
       <div className="clone-running">
-        <span title={running.url}>
-          <Words>{strings.clone.cloning(running.url)}</Words>
+        <span>{strings.clone.cloningLabel}</span>
+        <span className="clone-value" title={running.url}>
+          <Words>{[nameOf(running.url)]}</Words>
         </span>
-        <span title={running.target}>
-          <Words>{strings.clone.intoTarget(running.target)}</Words>
+        <span>{strings.clone.intoLabel}</span>
+        <span className="clone-value" title={running.target}>
+          <NamedPath path={running.target} />
         </span>
-      </div>
-      <div className="clone-progress">
         <span className="clone-phase">
           {progress?.phase ?? strings.clone.connecting}
         </span>
-        <div
-          className="clone-bar"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={progress?.percent}
-        >
+        <div className="clone-progress">
           <div
-            className="clone-bar-done"
-            style={{ width: `${progress?.percent ?? 0}%` }}
-          />
+            className="clone-bar"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress?.percent}
+          >
+            <div
+              className="clone-bar-done"
+              style={{ width: `${progress?.percent ?? 0}%` }}
+            />
+          </div>
+          <span className="clone-percent">
+            {progress && strings.clone.percent(progress.percent)}
+          </span>
         </div>
-        <span className="clone-percent">
-          {progress && strings.clone.percent(progress.percent)}
-        </span>
       </div>
       <div className="clone-detail">{progress?.detail}</div>
       <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>

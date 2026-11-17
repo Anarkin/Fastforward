@@ -34,4 +34,11 @@ suite('Name', () => {
       '<div class="name-lines"><span class="name-label">Copy</span><span class="name-value">3 items</span><span class="name-label">To</span><span class="name-value"><code class="name"><span>D:\\</span><span>photos</span></code></span></div>',
     );
   });
+
+  test('writes a value without a label across the whole line, as a name the title of its dialog says enough about', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(<NameLines lines={[{ name: 'notes' }]} />),
+      '<div class="name-lines"><span class="name-value name-alone"><code class="name"><span>notes</span></code></span></div>',
+    );
+  });
 });

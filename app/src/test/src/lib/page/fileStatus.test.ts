@@ -6,6 +6,14 @@ import {
   renamedPath,
 } from '../../../../lib/page/fileStatus';
 import { fileChange as change } from '../../../helpers/gitValues';
+import type { Sentence } from '../../../../lib/shared/sentences';
+
+const textOf = (said: Sentence) =>
+  typeof said === 'string'
+    ? said
+    : said
+        .map((part) => (typeof part === 'string' ? part : part.name))
+        .join('');
 
 suite('File status', () => {
   test('sorts every status into the four kinds GitHub shows, a copy or an untracked file being new and a type change or an unknown status a modification', () => {
@@ -40,7 +48,7 @@ suite('File status', () => {
         ['moved/Case.txt', 'moved/CASE.txt'],
         ['old.txt', 'new.txt'],
         ['ab/c.txt', 'b/c.txt'],
-      ].map(([from, to]) => renamedPath(from, to)),
+      ].map(([from, to]) => textOf(renamedPath(from, to))),
       [
         'samples/{old-name.txt → new-name.txt}',
         '{moved → elsewhere}/to-folder.txt',
@@ -52,6 +60,32 @@ suite('File status', () => {
         '{ab → b}/c.txt',
       ],
     );
+  });
+
+  test('names each piece of a rename as the files and folders it is, in the folder of the worktree it is in, so they are drawn as the parts of a path', () => {
+    assert.deepStrictEqual(renamedPath('a/b/c.txt', 'a/c.txt', 'C:\\repo'), [
+      { name: 'a/', path: 'folder', root: 'C:\\repo' },
+      '{',
+      { name: 'b', path: 'folder', root: 'C:\\repo\\a/' },
+      ' → }/',
+      { name: 'c.txt', path: 'file', root: 'C:\\repo\\a/' },
+    ]);
+    assert.deepStrictEqual(
+      renamedPath('lib/old.ts', 'components/diff/new.ts', '/repo'),
+      [
+        { name: 'lib/old.ts', path: 'file', root: '/repo' },
+        ' → ',
+        { name: 'components/diff/new.ts', path: 'file', root: '/repo' },
+      ],
+    );
+    assert.deepStrictEqual(renamedPath('docs/old.md', 'docs/new.md'), [
+      { name: 'docs/', path: 'folder' },
+      '{',
+      { name: 'old.md', path: 'file', root: 'docs/' },
+      ' → ',
+      { name: 'new.md', path: 'file', root: 'docs/' },
+      '}',
+    ]);
   });
 
   test('names the status and both paths of a rename in the tooltip', () => {

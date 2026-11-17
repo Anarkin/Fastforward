@@ -144,15 +144,23 @@ const form: CloneView = {
 };
 
 suite('Clone popup', () => {
-  test('focuses the URL, names the folder after it unless named otherwise, shows where it clones, has the folder checked, and clones on Enter', async () => {
+  test('focuses the URL, names the folder after it unless named otherwise, shows where it clones on a Target row of the form, labeled as its other rows, has the folder checked, and clones on Enter', async () => {
     await withPopup({ view: form }, async ({ dom, cloned, checked }) => {
       const [url, folder, name] = inputs(dom);
       assert.strictEqual(dom.window.document.activeElement, url);
       assert.strictEqual(folder.value, '/code');
       assert.strictEqual(name.placeholder, 'Fastforward');
+      assert.strictEqual(text(dom, '.clone-target'), '/code/Fastforward');
+      const fields = dom.window.document.querySelector('.clone-fields');
+      assert.deepStrictEqual(
+        [...(fields?.children ?? [])]
+          .filter((child) => child.tagName === 'LABEL')
+          .map((label) => label.textContent),
+        ['URL', 'Folder', 'Name', 'Target'],
+      );
       assert.strictEqual(
-        text(dom, '.clone-target'),
-        'Clones into /code/Fastforward',
+        fields?.querySelector('.clone-target')?.parentElement,
+        fields,
       );
       assert.deepStrictEqual(checked, []);
       await paused();
@@ -163,7 +171,7 @@ suite('Clone popup', () => {
       ]);
       await type(dom, name, 'f');
       await type(dom, name, 'ff');
-      assert.strictEqual(text(dom, '.clone-target'), 'Clones into /code/ff');
+      assert.strictEqual(text(dom, '.clone-target'), '/code/ff');
       await paused();
       assert.deepStrictEqual(checked, ['/code Fastforward', '/code ff']);
       await submit(dom);
@@ -242,7 +250,7 @@ suite('Clone popup', () => {
     });
   });
 
-  test('shows how far a running clone got, with Stop focused, closing on its close button', async () => {
+  test('shows what a running clone clones, where, and how far it got on the rows of one table, with Stop focused, closing on its close button', async () => {
     await withPopup(
       {
         view: {
@@ -257,9 +265,19 @@ suite('Clone popup', () => {
         },
       },
       async ({ dom, asked }) => {
-        assert.strictEqual(
-          text(dom, '.clone-running'),
-          `Cloning ${form.url}into /code/Fastforward`,
+        assert.deepStrictEqual(
+          [
+            ...(dom.window.document.querySelector('.clone-running')?.children ??
+              []),
+          ].map((cell) => cell.textContent),
+          [
+            'Cloning',
+            form.url,
+            'Into',
+            '/code/Fastforward',
+            'Receiving objects',
+            '45%',
+          ],
         );
         assert.strictEqual(text(dom, '.clone-phase'), 'Receiving objects');
         assert.strictEqual(text(dom, '.clone-percent'), '45%');

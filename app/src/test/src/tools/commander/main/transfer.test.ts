@@ -712,7 +712,7 @@ suite('Transfer', () => {
     });
   });
 
-  test('tells of its progress at most once in each interval, then of where it ended, naming the file it is at', async () => {
+  test('tells of its progress at most once in each interval, then of where it ended, naming the file it is at by its whole path', async () => {
     for (const name of ['a', 'b', 'c', 'd', 'e']) {
       write(path.join(source, `${name}.txt`), name);
     }
@@ -741,7 +741,7 @@ suite('Transfer', () => {
       totalFiles: 5,
       bytes: 5,
       totalBytes: 5,
-      current: 'e.txt',
+      current: path.join(source, 'e.txt'),
     });
   });
 });

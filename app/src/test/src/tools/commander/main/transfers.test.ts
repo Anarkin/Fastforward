@@ -208,7 +208,7 @@ suite('Transfers', () => {
       {
         level: 'info',
         message: strings.commander.deletedFrom(
-          strings.commander.oneItem('docs'),
+          strings.commander.oneItem(path.join(deleting().folder, 'docs')),
           archive,
         ),
       },
@@ -275,7 +275,7 @@ suite('Transfers', () => {
       {
         level: 'info',
         message: strings.commander.putBack(
-          strings.commander.oneItem('readme.md'),
+          strings.commander.oneItem(path.join(updating().folder, 'readme.md')),
           archive,
         ),
       },

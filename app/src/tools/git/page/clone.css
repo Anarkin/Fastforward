@@ -1,7 +1,3 @@
-.clone-popup {
-  width: min(560px, 100%);
-}
-
 .clone-body {
   display: flex;
   flex-direction: column;
@@ -52,23 +48,29 @@
   color: var(--muted-foreground);
 }
 
-.clone-target,
-.clone-running > span,
+.clone-target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 9px;
+}
+
+.clone-value,
 .clone-detail {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.clone-detail {
   color: var(--muted-foreground);
 }
 
 .clone-running {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.clone-running > span:first-child {
-  color: var(--color-foreground);
+  display: grid;
+  grid-template-columns: 12em minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 12px;
 }
 
 .clone-detail {
@@ -86,7 +88,7 @@
 
 .clone-progress {
   display: grid;
-  grid-template-columns: minmax(0, 12em) minmax(0, 1fr) 4ch;
+  grid-template-columns: minmax(0, 1fr) 4ch;
   align-items: center;
   gap: 12px;
 }

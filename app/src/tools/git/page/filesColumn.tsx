@@ -293,6 +293,7 @@ export function Files() {
   };
   const rowOptions = (side: ChangeArea | undefined) => ({
     area: side,
+    root,
     showsAll: showAll,
     onToggle: (folder: string, changed: boolean) => {
       setMoved({

@@ -4,6 +4,7 @@ import { whatOf } from './items';
 
 export function transferQuestion(
   names: readonly string[],
+  folder: string,
   move: boolean,
   target: string,
   existing = 0,
@@ -11,8 +12,7 @@ export function transferQuestion(
   const { commander } = strings;
   const title = move ? commander.moveTitle : commander.copyTitle;
   const lines = commander.transferLines(
-    move,
-    whatOf(names.length, names[0]),
+    whatOf(names.length, names[0], folder),
     target,
   );
   return existing > 0

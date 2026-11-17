@@ -4,7 +4,7 @@ import { strings } from '../../../../lib/shared/strings';
 import { confirmation } from '../../../../shell/page/confirming';
 
 suite('Confirmations', () => {
-  test('asks whether you are sure, naming the tool and, on a line of its own, the tab to close, as a tab named after a folder could pass for anything, or the app to quit', () => {
+  test('names the tab to close on a line of its own, by the whole path of its folder when it has one, with no question or label, as the title and the buttons ask it, and asks whether you are sure to close a window or quit', () => {
     assert.deepStrictEqual(
       confirmation({
         kind: 'tab',
@@ -12,10 +12,22 @@ suite('Confirmations', () => {
       }),
       {
         title: 'Close Tab',
-        message: 'Are you sure you want to close this Terminal tab?',
-        lines: [{ label: 'Tab', name: 'repo (main)' }],
+        lines: [{ name: 'repo (main)' }],
         confirm: 'Close',
       },
+    );
+    assert.deepStrictEqual(
+      confirmation({
+        kind: 'tab',
+        tab: {
+          id: '1',
+          tool: 'terminal',
+          name: 'repo',
+          folder: 'main',
+          root: '/home/me/main/repo',
+        },
+      }).lines,
+      [{ name: '/home/me/main/repo', path: 'folder' }],
     );
     assert.deepStrictEqual(confirmation({ kind: 'window' }), {
       title: 'Close Window',
@@ -41,28 +53,35 @@ suite('Confirmations', () => {
     );
   });
 
-  test('asks whether to save the changes of a file before closing its tab, and of the files a window or the app holds before closing or quitting, naming each on a line of its own and offering not to save them', () => {
+  test('names the files whose changes to save before closing a tab, a window or the app, each by its whole path on a line of its own with no question or label, as the title and the buttons ask it, offering not to save them', () => {
     assert.deepStrictEqual(
       confirmation({
         kind: 'unsavedTab',
-        tab: { id: '1', tool: 'commander', name: 'notes.txt', unsaved: true },
+        tab: {
+          id: '1',
+          tool: 'editor',
+          name: 'notes.txt',
+          root: '/home/me/notes.txt',
+          unsaved: true,
+        },
       }),
       {
         title: 'Unsaved Changes',
-        message: 'Save the changes to this file before closing it?',
-        lines: [{ label: 'File', name: 'notes.txt', path: 'file' }],
+        lines: [{ name: '/home/me/notes.txt', path: 'file' }],
         confirm: 'Save',
         dontSave: true,
       },
     );
     assert.deepStrictEqual(
-      confirmation({ kind: 'window', unsaved: ['a.txt', 'b.txt'] }),
+      confirmation({
+        kind: 'window',
+        unsaved: ['/home/me/a.txt', '/home/me/b.txt'],
+      }),
       {
         title: 'Close Window',
-        message: 'Save the changes to these files before closing the window?',
         lines: [
-          { label: 'File', name: 'a.txt', path: 'file' },
-          { label: 'File', name: 'b.txt', path: 'file' },
+          { name: '/home/me/a.txt', path: 'file' },
+          { name: '/home/me/b.txt', path: 'file' },
         ],
         confirm: 'Save All',
         dontSave: true,
@@ -71,13 +90,12 @@ suite('Confirmations', () => {
     assert.deepStrictEqual(
       confirmation({
         kind: 'quit',
-        unsaved: ['a.txt'],
+        unsaved: ['/home/me/a.txt'],
         note: strings.commander.quitStopsTransfers,
       }),
       {
         title: 'Quit',
-        message: 'Save the changes to these files before quitting Fastforward?',
-        lines: [{ label: 'File', name: 'a.txt', path: 'file' }],
+        lines: [{ name: '/home/me/a.txt', path: 'file' }],
         note: strings.commander.quitStopsTransfers,
         confirm: 'Save All',
         dontSave: true,

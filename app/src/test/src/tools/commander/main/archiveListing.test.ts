@@ -271,9 +271,9 @@ suite('Commander tool in archives', () => {
     assert.deepStrictEqual(
       asked().map(({ name, wrong }) => [name, wrong]),
       [
-        ['a.zip', false],
-        ['a.zip', false],
-        ['a.zip', true],
+        [at('a.zip'), false],
+        [at('a.zip'), false],
+        [at('a.zip'), true],
       ],
     );
     assert.strictEqual(

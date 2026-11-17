@@ -177,7 +177,7 @@ async function inCommander(
       dialogLines: () =>
         [...document.querySelectorAll('[role="dialog"] .name-label')].map(
           (label) =>
-            `${label.textContent} ${label.nextElementSibling?.textContent}`,
+            `${label.textContent} ${label.nextElementSibling?.textContent}`.trim(),
         ),
       button: (text) =>
         [...document.querySelectorAll('.confirm-button')].find(
@@ -216,7 +216,10 @@ suite('Commander file keys', () => {
           );
 
         await press('F5');
-        assert.deepStrictEqual(dialogLines(), ['Copy a.txt', 'To D:\\photos']);
+        assert.deepStrictEqual(dialogLines(), [
+          'C:\\work\\a.txt',
+          'To D:\\photos',
+        ]);
         await click(button('Copy'));
         assert.deepStrictEqual(fromPage(), [
           {
@@ -231,10 +234,7 @@ suite('Commander file keys', () => {
         ]);
 
         await send({ type: 'transfer', view: shownTransfer });
-        assert.deepStrictEqual(dialogLines(), [
-          'Copying a.txt',
-          'To D:\\photos',
-        ]);
+        assert.deepStrictEqual(dialogLines(), ['a.txt', 'To D:\\photos']);
         assert.match(dialogText(), /1 of 2 files/);
         assert.match(dialogText(), /2\.0 KB of 4\.0 KB/);
         assert.strictEqual(
@@ -258,7 +258,7 @@ suite('Commander file keys', () => {
         });
         assert.strictEqual(
           document.querySelector('.transfer-clash')?.innerHTML,
-          '<code class="name"><span><span class="path-part">a.txt</span></span></code> is there already.',
+          '<code class="name named-path"><span class="path-piece"><span class="path-part">D:\\</span></span><span class="path-piece"><span class="path-part">photos</span>\\</span><span class="path-piece"><span class="path-part">a.txt</span></span></code> is there already.',
         );
         assert.ok(!dialogText().includes(strings.commander.clashReadOnly));
         await send({
@@ -315,7 +315,7 @@ suite('Commander file keys', () => {
         await type('con');
         assert.strictEqual(
           document.querySelector('.prompt-problem')?.innerHTML,
-          'Windows keeps the name <code class="name"><span><span class="path-part">con</span></span></code> for itself.',
+          'Windows keeps the name <code class="name named-path"><span class="path-piece"><span class="path-part">con</span></span></code> for itself.',
         );
         await type('  photos  ');
         assert.strictEqual(problem(), undefined);

@@ -39,7 +39,7 @@ export function closingOf(confirming: Confirming, save: boolean): ToHost {
 
 export function confirmation(confirming: Confirming): {
   title: string;
-  message: string;
+  message?: string;
   lines?: readonly Line[];
   note?: string;
   confirm: string;
@@ -49,7 +49,6 @@ export function confirmation(confirming: Confirming): {
     case 'unsavedTab':
       return {
         title: strings.confirm.saveTitle,
-        message: strings.confirm.saveFile,
         lines: strings.confirm.filesLines([
           confirming.tab.root ?? confirming.tab.name,
         ]),
@@ -59,9 +58,9 @@ export function confirmation(confirming: Confirming): {
     case 'tab':
       return {
         title: strings.confirm.closeTitle,
-        message: strings.confirm.closeTab(strings.tools[confirming.tab.tool]),
         lines: strings.confirm.closeTabLines(
           strings.tabs.label(confirming.tab.name, confirming.tab.folder),
+          confirming.tab.root,
         ),
         confirm: strings.confirm.close,
       };
@@ -74,7 +73,6 @@ export function confirmation(confirming: Confirming): {
           }
         : {
             title: strings.confirm.closeWindowTitle,
-            message: strings.confirm.saveWindowFiles,
             lines: strings.confirm.filesLines(confirming.unsaved),
             confirm: strings.confirm.saveAll,
             dontSave: true,
@@ -82,10 +80,9 @@ export function confirmation(confirming: Confirming): {
     case 'quit':
       return {
         title: strings.confirm.quitTitle,
-        message:
-          confirming.unsaved === undefined
-            ? strings.confirm.quitApp
-            : strings.confirm.saveQuitFiles,
+        ...(confirming.unsaved === undefined && {
+          message: strings.confirm.quitApp,
+        }),
         ...(confirming.unsaved !== undefined && {
           lines: strings.confirm.filesLines(confirming.unsaved),
         }),

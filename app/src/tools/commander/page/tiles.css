@@ -44,6 +44,11 @@
   justify-content: center;
 }
 
+.commander-tile-name > .path-part {
+  display: flex;
+  min-width: 0;
+}
+
 .commander-tile-base {
   min-width: 0;
   overflow: hidden;

@@ -155,13 +155,13 @@ suite(
           (await left.locator('.column-name').textContent()) === target,
         'the left side to open the target',
       );
-      await madeFolder('copying');
+      const copying = await madeFolder('copying');
 
       await select('vertical.br2');
       await page.keyboard.press('F5');
       await popup().waitFor();
       assert.deepStrictEqual(await asked(), [
-        ['Copy', 'vertical.br2'],
+        ['', path.join(copying, 'vertical.br2')],
         ['To', target],
       ]);
       await page.keyboard.press('Enter');
@@ -189,7 +189,7 @@ suite(
       await page.keyboard.press('F5');
       await popup().waitFor();
       assert.deepStrictEqual(await asked(), [
-        ['Copy', strings.commander.items(2)],
+        ['', strings.commander.items(2)],
         ['To', target],
       ]);
       await page.keyboard.press('Enter');
@@ -210,7 +210,9 @@ suite(
       await select('vertical.bar');
       await page.keyboard.press('Shift+Delete');
       await popup().waitFor();
-      assert.deepStrictEqual(await namesAsked(), ['vertical.bar']);
+      assert.deepStrictEqual(await namesAsked(), [
+        path.join(folder, 'vertical.bar'),
+      ]);
       await page.keyboard.press('Enter');
       await waitFor(
         () => !fs.existsSync(path.join(folder, 'vertical.bar')),
@@ -231,7 +233,7 @@ suite(
       await popup().waitFor();
       assert.strictEqual(
         await popup().locator('.confirm-question').textContent(),
-        strings.commander.deleteItems(strings.commander.items(2)),
+        strings.commander.items(2),
       );
       await page.keyboard.press('Enter');
       await waitFor(

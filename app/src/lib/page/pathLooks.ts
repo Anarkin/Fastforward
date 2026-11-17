@@ -133,6 +133,8 @@ function lastOf(
   return looks === undefined ? undefined : looks.slice(looks.length - count);
 }
 
+const isWhole = (path: string) => /^(?:[a-zA-Z]:|[\\/])/.test(path);
+
 export function usePathParts(
   path: string,
   {
@@ -152,10 +154,7 @@ export function usePathParts(
     source.fileColors,
   );
   const whole = joinedPath(root, path);
-  const wanted =
-    looks === undefined && /^(?:[a-zA-Z]:|[\\/])/.test(whole)
-      ? whole
-      : undefined;
+  const wanted = looks === undefined && isWhole(whole) ? whole : undefined;
   const known = useSyncExternalStore(
     source.subscribe,
     source.known,
@@ -173,7 +172,7 @@ export function usePathParts(
   }, [source, wanted, unknown]);
   const shared = file ? looks?.slice(0, -1) : looks;
   useEffect(() => {
-    if (shared !== undefined && shared.length > 0) {
+    if (shared !== undefined && shared.length > 0 && isWhole(path)) {
       source.know(path, shared);
     }
   }, [source, path, shared]);

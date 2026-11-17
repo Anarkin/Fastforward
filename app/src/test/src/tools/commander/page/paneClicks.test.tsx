@@ -83,6 +83,24 @@ suite('Commander clicks on a side', () => {
     });
   });
 
+  test('draws the name of a thumbnail as the part of a path, as every name of the app is drawn, its base cut short before its extension', async () => {
+    await inPane(async ({ main }) => {
+      const part = tileNamed(main, 'notes')?.querySelector(
+        '.commander-tile-name > .path-part',
+      );
+      assert.deepStrictEqual(
+        [...(part?.children ?? [])].map((piece) => [
+          piece.className,
+          piece.textContent,
+        ]),
+        [
+          ['commander-tile-base', 'notes'],
+          ['commander-tile-extension', '.txt'],
+        ],
+      );
+    }, 'thumbnails');
+  });
+
   test('marks a thumbnail on a click on its box and unmarks it on the next, leaving the selection where it was, the parent folder having no box', async () => {
     await inPane(async ({ main, click, selected, marked }) => {
       assert.ok(tileNamed(main, '..'));

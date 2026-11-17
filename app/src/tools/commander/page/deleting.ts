@@ -1,6 +1,6 @@
 import { joinedPath } from '../../../lib/page/pathLooks';
 import { strings } from '../../../lib/shared/strings';
-import type { Line } from '../../../lib/shared/sentences';
+import { namedItem, type Line } from '../../../lib/shared/sentences';
 
 export function deleteQuestion(
   names: readonly string[],
@@ -9,36 +9,26 @@ export function deleteQuestion(
   binOff = false,
   archive?: string,
   folder?: string,
-): { title: string; message: string; lines: Line[]; confirm: string } {
+): { title: string; message?: string; lines: Line[]; confirm: string } {
   const { commander } = strings;
   const [name] = names;
-  const one = names.length === 1 && name !== undefined;
-  const what = commander.items(names.length);
   const lines = [
-    ...(one ? commander.itemLines(joinedPath(folder, name)) : []),
-    ...(archive === undefined
-      ? []
-      : commander.archiveLines(archive.split(/[\\/]/).at(-1) ?? archive)),
+    names.length === 1 && name !== undefined
+      ? namedItem(joinedPath(folder, name))
+      : { text: commander.items(names.length) },
+    ...(archive === undefined ? [] : commander.archiveLines(archive)),
   ];
   if (permanently) {
-    const [item, items] =
-      archive !== undefined
-        ? [commander.deleteFromArchiveItem, commander.deleteFromArchiveItems]
-        : binOff
-          ? [commander.binOffItem, commander.binOffItems]
-          : [commander.deleteItem, commander.deleteItems];
     return {
       title: commander.deletePermanentlyTitle,
-      message: one ? item : items(what),
+      ...(binOff && archive === undefined && { message: commander.binOff }),
       lines,
       confirm: commander.deletePermanentlyTitle,
     };
   }
-  const bin = commander.bin(platform);
   return {
     title: commander.deleteTitle,
-    message: one ? commander.trashItem(bin) : commander.trashItems(what, bin),
     lines,
-    confirm: commander.moveToBin(bin),
+    confirm: commander.moveToBin(commander.bin(platform)),
   };
 }

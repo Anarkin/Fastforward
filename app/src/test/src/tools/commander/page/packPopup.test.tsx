@@ -70,6 +70,7 @@ async function packing(
   }) => Promise<void>,
   backup: readonly string[] = [],
   flat = false,
+  names: readonly string[] = ['a.txt', 'docs'],
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
   const globals = {
@@ -101,7 +102,7 @@ async function packing(
         },
       },
     });
-    store.getState().askPack('left', ['a.txt', 'docs']);
+    store.getState().askPack('left', names);
     await act(async () => {
       renderIn(
         root,
@@ -199,6 +200,23 @@ suite('Pack popup', () => {
         ],
       );
     });
+  });
+
+  test('names a single item to pack by its whole path, drawn as the parts of a path', async () => {
+    await packing(
+      async ({ dom }) => {
+        const named = dom.window.document.querySelector('.name-value');
+        assert.deepStrictEqual(
+          [...(named?.querySelectorAll('.path-part') ?? [])].map(
+            (part) => part.textContent,
+          ),
+          ['/', 'code', 'a.txt'],
+        );
+      },
+      [],
+      false,
+      ['a.txt'],
+    );
   });
 
   test('says it replaces an archive of the name there already, telling the host it may only then, as it packs over nothing else', async () => {

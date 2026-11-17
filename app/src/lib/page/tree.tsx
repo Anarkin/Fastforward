@@ -1,7 +1,7 @@
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
-import { HighlightWords } from './highlight';
+import { PathName } from './pathName';
 import { noFilter, type Filter } from '../shared/filter';
 import { ChangeIcon, LinkIcon } from './icons';
 import { treeIndent, twistyWidth } from './treeLayout';
@@ -52,6 +52,7 @@ export function FolderRow({
 export function FileRow({
   path,
   name,
+  root,
   depth,
   change,
   selected,
@@ -61,6 +62,7 @@ export function FileRow({
 }: {
   path: string;
   name: string;
+  root?: string | undefined;
   depth: number;
   change: FileChange | undefined;
   selected: string | undefined;
@@ -77,7 +79,7 @@ export function FileRow({
     >
       {change && <ChangeIcon kind={changeKind(change)} />}
       <span className={changeClass(change)}>
-        <HighlightWords text={name} filter={filter} />
+        <PathName path={name} file root={root} filter={filter} />
       </span>
       {change?.link && <LinkIcon />}
     </div>

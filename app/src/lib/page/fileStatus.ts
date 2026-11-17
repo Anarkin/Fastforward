@@ -1,6 +1,8 @@
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
+import { sentence, type Sentence, type Value } from '../shared/sentences';
 import type { ChangeKind } from './iconKinds';
+import { joinedPath } from './pathLooks';
 
 const kinds: Record<FileChange['status'], ChangeKind> = {
   A: 'added',
@@ -25,7 +27,17 @@ export function changeClass(change: FileChange | undefined): string {
       : 'path';
 }
 
-export function renamedPath(from: string, to: string): string {
+const piece = (
+  name: string,
+  kind: 'file' | 'folder',
+  root: string | undefined,
+): Sentence | Value =>
+  name === '' ? '' : { name, path: kind, ...(root !== undefined && { root }) };
+
+const within = (root: string | undefined, folder: string) =>
+  folder === '' ? root : joinedPath(root, folder);
+
+export function renamedPath(from: string, to: string, root?: string): Sentence {
   let start = 0;
   for (let i = 0; i < from.length && from[i] === to[i]; i++) {
     if (from[i] === '/') {
@@ -44,15 +56,23 @@ export function renamedPath(from: string, to: string): string {
     }
   }
   if (start + end === 0) {
-    return strings.common.fromTo(from, to);
+    return strings.common.renamed(
+      piece(from, 'file', root),
+      piece(to, 'file', root),
+    );
   }
   const middle = (path: string) =>
     path.slice(start, start + Math.max(0, path.length - start - end));
-  return strings.common.fromToWithin(
-    from.slice(0, start),
-    middle(from),
-    middle(to),
-    from.slice(from.length - end),
+  const shared = from.slice(0, start);
+  const kept = from.slice(from.length - end);
+  const changed = kept === '' ? 'file' : 'folder';
+  return strings.common.renamedWithin(
+    piece(shared, 'folder', root),
+    piece(middle(from), changed, within(root, shared)),
+    piece(middle(to), changed, within(root, shared)),
+    kept === ''
+      ? ''
+      : sentence`${kept.slice(0, 1)}${piece(kept.slice(1), 'file', within(root, shared + middle(to)))}`,
   );
 }
 

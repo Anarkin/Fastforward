@@ -3,75 +3,74 @@ import { suite, test } from 'vitest';
 import { deleteQuestion } from '../../../../../tools/commander/page/deleting';
 
 suite('Commander deleting', () => {
-  test('asks before moving to the Recycle Bin on Windows and to the Trash elsewhere, naming a single item on a line of its own and counting more', () => {
+  test('names what it moves to the Recycle Bin on Windows and to the Trash elsewhere on a line of its own, a single item by its whole path and more by their count, with no question or label, as the title and the buttons ask it', () => {
     assert.deepStrictEqual(deleteQuestion(['a.txt'], false, 'win32'), {
       title: 'Delete',
-      message: 'Move to the Recycle Bin?',
-      lines: [{ label: 'Item', name: 'a.txt', path: 'file' }],
+      lines: [{ name: 'a.txt', path: 'file' }],
       confirm: 'Move to the Recycle Bin',
     });
     assert.deepStrictEqual(
       deleteQuestion(['a.txt', 'b', 'c'], false, 'darwin'),
       {
         title: 'Delete',
-        message: 'Move 3 items to the Trash?',
-        lines: [],
+        lines: [{ text: '3 items' }],
         confirm: 'Move to the Trash',
       },
     );
+    assert.deepStrictEqual(
+      deleteQuestion(['lib'], false, 'darwin', false, undefined, '/code/src')
+        .lines,
+      [{ name: '/code/src/lib', path: 'file' }],
+    );
   });
 
-  test('warns that deleting for good cannot be undone', () => {
+  test('names what it deletes permanently alike, the title and the button saying it is for good', () => {
     assert.deepStrictEqual(deleteQuestion(['a.txt'], true, 'win32'), {
       title: 'Delete Permanently',
-      message: 'Delete permanently? This cannot be undone.',
-      lines: [{ label: 'Item', name: 'a.txt', path: 'file' }],
+      lines: [{ name: 'a.txt', path: 'file' }],
       confirm: 'Delete Permanently',
     });
     assert.deepStrictEqual(deleteQuestion(['a.txt', 'b'], true, 'linux'), {
       title: 'Delete Permanently',
-      message: 'Delete 2 items permanently? This cannot be undone.',
-      lines: [],
+      lines: [{ text: '2 items' }],
       confirm: 'Delete Permanently',
     });
   });
 
-  test('says the items will be deleted permanently, and why, on a drive whose Recycle Bin is turned off, as Delete failed there saying only that the delete operation failed', () => {
+  test('says why it deletes permanently on a drive whose Recycle Bin is turned off, as F8 asked for the Recycle Bin and Delete failed there saying only that the delete operation failed', () => {
     assert.deepStrictEqual(deleteQuestion(['a.txt'], true, 'win32', true), {
       title: 'Delete Permanently',
-      message:
-        'The Recycle Bin of this drive is turned off. Delete permanently? This cannot be undone.',
-      lines: [{ label: 'Item', name: 'a.txt', path: 'file' }],
+      message: 'The Recycle Bin of this drive is turned off.',
+      lines: [{ name: 'a.txt', path: 'file' }],
       confirm: 'Delete Permanently',
     });
-    assert.deepStrictEqual(
-      deleteQuestion(['a.txt', 'b'], true, 'win32', true).message,
-      'The Recycle Bin of this drive is turned off. Delete 2 items permanently? This cannot be undone.',
-    );
   });
 
-  test('asks before deleting from an archive permanently, naming the archive on a line of its own, as an archive has no Recycle Bin', () => {
+  test('deletes from an archive permanently, naming the archive by its whole path on a line of its own, as an archive has no Recycle Bin', () => {
     assert.deepStrictEqual(
       deleteQuestion(['a.txt', 'docs'], true, 'linux', false, '/x/photos.zip'),
       {
         title: 'Delete Permanently',
-        message:
-          'Delete 2 items from the archive permanently? This cannot be undone.',
-        lines: [{ label: 'Archive', name: 'photos.zip', path: 'file' }],
+        lines: [
+          { text: '2 items' },
+          { label: 'Archive', name: '/x/photos.zip', path: 'file' },
+        ],
         confirm: 'Delete Permanently',
       },
     );
     assert.deepStrictEqual(
-      deleteQuestion(['a.txt'], true, 'win32', false, 'C:\\x\\photos.zip'),
-      {
-        title: 'Delete Permanently',
-        message: 'Delete from the archive permanently? This cannot be undone.',
-        lines: [
-          { label: 'Item', name: 'a.txt', path: 'file' },
-          { label: 'Archive', name: 'photos.zip', path: 'file' },
-        ],
-        confirm: 'Delete Permanently',
-      },
+      deleteQuestion(
+        ['a.txt'],
+        true,
+        'win32',
+        false,
+        'C:\\x\\photos.zip',
+        'C:\\x\\photos.zip\\docs',
+      ).lines,
+      [
+        { name: 'C:\\x\\photos.zip\\docs\\a.txt', path: 'file' },
+        { label: 'Archive', name: 'C:\\x\\photos.zip', path: 'file' },
+      ],
     );
   });
 });

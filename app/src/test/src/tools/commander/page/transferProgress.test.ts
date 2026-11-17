@@ -28,7 +28,8 @@ suite('The progress of a pack', () => {
 
   test('counts the files 7-Zip read, which it reads ahead of what it packed, and names the one it read last until it read them all, then says it packs the rest', () => {
     assert.deepStrictEqual(progressLines(view), {
-      current: 'docs/a.txt',
+      current: undefined,
+      file: 'docs/a.txt',
       files: '10 of 40 files read',
     });
     assert.deepStrictEqual(
@@ -50,11 +51,19 @@ suite('The progress of a pack', () => {
     );
   });
 
-  test('counts and names the files a copy on disk copied, as it copies them one at a time', () => {
-    assert.deepStrictEqual(progressLines({ ...view, archiveJob: undefined }), {
-      current: 'docs/a.txt',
-      files: '10 of 40 files',
-    });
+  test('counts and names the files a copy on disk copied, as it copies them one at a time, each by its path, for the dialog to draw on a line of its own as the path of a side, its folders giving way first', () => {
+    assert.deepStrictEqual(
+      progressLines({
+        ...view,
+        archiveJob: undefined,
+        progress: { ...progress, current: '/home/me/docs/a.txt' },
+      }),
+      {
+        current: undefined,
+        file: '/home/me/docs/a.txt',
+        files: '10 of 40 files',
+      },
+    );
   });
 
   test('says a move out of an archive deletes from it what it moved, once moved, without counting files', () => {
@@ -78,16 +87,21 @@ suite('Commander transferring', () => {
       id: 1,
       move: false,
       items: 1,
-      name: 'a.txt',
+      name: 'C:\\from\\a.txt',
       target: 'D:\\photos',
       stopping: false,
     };
     assert.deepStrictEqual(runningLines(copy), [
-      { label: 'Copying', name: 'a.txt' },
+      { label: '', name: 'C:\\from\\a.txt', path: 'file' },
       { label: 'To', name: 'D:\\photos', path: 'folder' },
     ]);
+    assert.deepStrictEqual(runningLines({ ...copy, name: 'a.txt' })[0], {
+      label: '',
+      name: 'a.txt',
+      path: 'file',
+    });
     assert.deepStrictEqual(runningLines({ ...copy, move: true, items: 2 }), [
-      { label: 'Moving', text: '2 items' },
+      { label: '', text: '2 items' },
       { label: 'To', name: 'D:\\photos', path: 'folder' },
     ]);
     const archive = { ...copy, items: 3, target: '/x/a.zip' };
@@ -106,31 +120,31 @@ suite('Commander transferring', () => {
       ).map((archiveJob) => runningLines({ ...archive, archiveJob })),
       [
         [
-          { label: 'Packing', text: '3 items' },
+          { label: '', text: '3 items' },
           { label: 'Into', name: '/x/a.zip', path: 'file' },
         ],
         [
-          { label: 'Deleting', text: '3 items' },
+          { label: '', text: '3 items' },
           { label: 'From', name: '/x/a.zip', path: 'file' },
         ],
         [
-          { label: 'Renaming', text: '3 items' },
+          { label: '', text: '3 items' },
           { label: 'In', name: '/x/a.zip', path: 'file' },
         ],
         [
-          { label: 'Making', text: '3 items' },
+          { label: '', text: '3 items' },
           { label: 'In', name: '/x/a.zip', path: 'file' },
         ],
         [
-          { label: 'Copying', text: '3 items' },
+          { label: '', text: '3 items' },
           { label: 'To', name: '/x/a.zip', path: 'folder' },
         ],
         [
-          { label: 'Moving', text: '3 items' },
+          { label: '', text: '3 items' },
           { label: 'To', name: '/x/a.zip', path: 'folder' },
         ],
-        [{ label: 'Testing', text: '3 items' }],
-        [{ label: 'Putting back', text: '3 items' }],
+        [{ text: '3 items' }],
+        [{ text: '3 items' }],
       ],
     );
   });

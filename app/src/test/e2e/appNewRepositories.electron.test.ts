@@ -90,7 +90,7 @@ suite('App making new repositories', () => {
       .waitFor();
     await name.fill('copy');
     await popup
-      .getByText(shownText(strings.clone.into(path.join(folder, 'copy'))))
+      .locator('.clone-target', { hasText: path.join(folder, 'copy') })
       .waitFor();
     await name.press('Enter');
     await page.locator('.tabs .tab.active', { hasText: 'copy' }).waitFor();

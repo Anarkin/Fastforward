@@ -61,6 +61,7 @@ function Choices<Choice extends string>({
 function PackForm({ names }: { names: readonly string[] }) {
   const platform = useCommander((state) => state.view.platform);
   const form = useCommander((state) => state.packing?.form);
+  const folder = useCommander((state) => state.packing?.folder);
   const fresh = useCommander((state) => state.packing?.fresh === true);
   const { pack, cancelPack, keepPackForm } = useCommanderActions();
   const { commander } = strings;
@@ -142,7 +143,9 @@ function PackForm({ names }: { names: readonly string[] }) {
         });
       }}
     >
-      <NameLines lines={commander.packLines(whatOf(names.length, names[0]))} />
+      <NameLines
+        lines={commander.packLines(whatOf(names.length, names[0], folder))}
+      />
       <div className="pack-fields">
         <label htmlFor={`${ids}archive`}>{commander.packArchive}</label>
         <input

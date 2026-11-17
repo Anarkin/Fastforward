@@ -13,7 +13,7 @@ const ignored: RepositoryMenuActions = {
 };
 
 suite('Repository menu', () => {
-  test('offers Open..., Clone... and Init... first, then lists the recent repositories by name', () => {
+  test('offers Open..., Clone... and Init... first, then lists the recent repositories by their whole paths, drawn as paths', () => {
     const asked: string[] = [];
     const items = repositoryMenuItems([{ root: '/code/app', name: 'app' }], {
       onOpen: (root) => asked.push(`open ${root}`),
@@ -23,9 +23,11 @@ suite('Repository menu', () => {
     });
     assert.deepStrictEqual(
       items.map((item) =>
-        'separator' in item ? '-' : `${item.label} ${item.title ?? ''}`,
+        'separator' in item
+          ? '-'
+          : `${item.label} ${item.path === true ? 'path' : ''}`,
       ),
-      ['Open... ', 'Clone... ', 'Init... ', '-', 'app /code/app'],
+      ['Open... ', 'Clone... ', 'Init... ', '-', '/code/app path'],
     );
     for (const item of items) {
       if (!('separator' in item)) {
@@ -40,7 +42,7 @@ suite('Repository menu', () => {
     ]);
   });
 
-  test('offers to remove each recent repository from the list, naming it, but not Open..., Clone... or Init...', () => {
+  test('offers to remove each recent repository from the list, naming it by its whole path, but not Open..., Clone... or Init...', () => {
     const removed: string[] = [];
     const items = repositoryMenuItems([{ root: '/code/app', name: 'app' }], {
       ...ignored,
@@ -53,7 +55,7 @@ suite('Repository menu', () => {
         !('separator' in clone) &&
         !('separator' in init),
     );
-    assert.strictEqual(app.removeTitle, 'Remove app from this list');
+    assert.strictEqual(app.removeTitle, 'Remove /code/app from this list');
     app.onRemove?.();
     assert.deepStrictEqual(removed, ['/code/app']);
     assert.strictEqual(browse.onRemove, undefined);
@@ -61,24 +63,19 @@ suite('Repository menu', () => {
     assert.strictEqual(init.onRemove, undefined);
   });
 
-  test('tells recent repositories named the same apart by the folder that differs, in their names and in offering to remove them', () => {
+  test('tells recent repositories named the same apart by their whole paths', () => {
     const items = repositoryMenuItems(
       [
         { root: '/code/site', name: 'site', folder: 'code' },
         { root: '/code/x/site', name: 'site', folder: 'x' },
       ],
-      { ...ignored, onRemove: () => undefined },
+      ignored,
     );
     assert.deepStrictEqual(
       items.flatMap((item) =>
-        'separator' in item || item.removeTitle === undefined
-          ? []
-          : [[item.label, item.removeTitle]],
+        'separator' in item || item.onClick === undefined ? [] : [item.label],
       ),
-      [
-        ['site (code)', 'Remove site (code) from this list'],
-        ['site (x)', 'Remove site (x) from this list'],
-      ],
+      ['Open...', 'Clone...', 'Init...', '/code/site', '/code/x/site'],
     );
   });
 

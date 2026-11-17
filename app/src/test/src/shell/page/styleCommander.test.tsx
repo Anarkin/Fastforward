@@ -457,15 +457,15 @@ suite('Style', () => {
         ),
       ],
       [
-        [foreground, undefined, undefined, undefined, undefined],
+        [foreground, foreground, foreground, foreground, foreground],
         [
           foreground,
-          undefined,
+          foreground,
           muted,
           'var(--file-color)',
           'var(--file-color)',
         ],
-        [foreground, undefined, undefined, muted, muted],
+        [foreground, foreground, foreground, muted, muted],
       ],
     );
   });

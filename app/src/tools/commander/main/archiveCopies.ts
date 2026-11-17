@@ -53,7 +53,6 @@ export class ArchiveCopies {
       readonly archives: ArchiveAccess;
       readonly archive: OpenedArchive;
       readonly inner: readonly string[];
-      readonly name: string;
     }
   >();
   private updateAskedIn: Page | undefined;
@@ -195,14 +194,17 @@ export class ArchiveCopies {
     if (copy === undefined) {
       return;
     }
-    const refusal = await this.access.editRefusal?.(copy, name);
+    const refusal = await this.access.editRefusal?.(
+      copy,
+      path.join(shown.pane.folder, name),
+    );
     if (refusal !== undefined) {
       this.host.shell().notice(page, { level: 'error', message: refusal });
       return;
     }
     const putBack = this.putBackOf(shown.pane.folder, name, copy);
     if (putBack !== undefined) {
-      this.editedCopies.set(copy, { ...putBack, name });
+      this.editedCopies.set(copy, putBack);
     }
     await this.host.shell().openEdit(page, copy);
   }
@@ -242,7 +244,6 @@ export class ArchiveCopies {
       archives,
       archive: inside.archive,
       inner: inside.inner,
-      name,
     });
     await this.host.shell().openEdit(page, copy);
   }
@@ -250,13 +251,7 @@ export class ArchiveCopies {
   editedCopySaved(copy: string): void {
     const edited = this.editedCopies.get(copy);
     if (edited !== undefined) {
-      this.putBack(
-        edited.archives,
-        edited.archive,
-        edited.inner,
-        copy,
-        edited.name,
-      );
+      this.putBack(edited.archives, edited.archive, edited.inner, copy);
     }
   }
 
@@ -318,12 +313,12 @@ export class ArchiveCopies {
           const now = await stampNow();
           if (now !== undefined && now !== stamp) {
             const update = await this.updateWanted(
-              name,
-              path.basename(archive.file),
+              path.join(archive.file, name),
+              archive.file,
             );
             stamp = (await stampNow()) ?? now;
             if (update) {
-              this.putBack(archives, archive, inner, copy, name);
+              this.putBack(archives, archive, inner, copy);
             }
           }
         } while (again);
@@ -413,7 +408,6 @@ export class ArchiveCopies {
     archive: OpenedArchive,
     inner: readonly string[],
     copy: string,
-    name: string,
   ): void {
     this.transfers.start(
       {
@@ -423,7 +417,7 @@ export class ArchiveCopies {
           move: false,
         },
         folder: path.join(archive.file, ...inner),
-        names: [name],
+        names: [path.basename(copy)],
         archive: { job: 'update', file: archive.file },
       },
       archiveJob(path.basename(archive.file), (options) =>

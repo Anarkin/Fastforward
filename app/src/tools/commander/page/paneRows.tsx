@@ -6,7 +6,7 @@ import { parentFolder } from '../shared/protocol';
 import { type Side } from '../shared/sides';
 import { type Row } from './listing';
 import { opens, pointedKeys, rangeKeys } from './rowKeys';
-import { HighlightWords } from '../../../lib/page/highlight';
+import { TileName } from './tileName';
 import type { Filter } from '../../../lib/shared/filter';
 import { shownRowsOf } from './shownRows';
 import { useCommander, useCommanderActions } from './store';
@@ -198,16 +198,7 @@ export function PaneTile(props: PaneItemProps) {
           tickets={actions}
         />
       </div>
-      <div className="commander-tile-name">
-        <span className="commander-tile-base">
-          <HighlightWords text={row.base} filter={filter} />
-        </span>
-        {row.extension !== '' && (
-          <span className="commander-tile-extension">
-            <HighlightWords text={`.${row.extension}`} filter={filter} />
-          </span>
-        )}
-      </div>
+      <TileName row={row} filter={filter} />
       <SizeCell entry={row.entry} tile />
       <div className="commander-tile-date">{date}</div>
     </div>

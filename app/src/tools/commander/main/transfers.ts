@@ -60,19 +60,13 @@ interface Running {
   clash: (Clash & { readonly asked: number }) | undefined;
 }
 
-const onDisk = (archive: TransferAsk['archive']) =>
-  archive === undefined ||
-  archive.job === 'pack' ||
-  archive.job === 'test' ||
-  archive.job === 'copyIn' ||
-  archive.job === 'moveIn';
+const firstItemOf = ({ names, folder }: TransferAsk) =>
+  path.join(folder, names[0]);
 
-function whatOf({ names, folder, archive }: TransferAsk): Value | string {
-  return names.length === 1
-    ? strings.commander.oneItem(
-        onDisk(archive) ? path.join(folder, names[0]) : path.basename(names[0]),
-      )
-    : strings.commander.items(names.length);
+function whatOf(ask: TransferAsk): Value | string {
+  return ask.names.length === 1
+    ? strings.commander.oneItem(firstItemOf(ask))
+    : strings.commander.items(ask.names.length);
 }
 
 const archiveSentences: Readonly<
@@ -393,7 +387,7 @@ export class Transfers {
       move: ask.plan.move,
       ...(ask.archive !== undefined && { archiveJob: ask.archive.job }),
       items: ask.names.length,
-      ...(ask.names.length === 1 && { name: path.basename(ask.names[0]) }),
+      ...(ask.names.length === 1 && { name: firstItemOf(ask) }),
       target: ask.archive?.at ?? ask.archive?.file ?? ask.plan.target,
       ...(progress !== undefined && { progress }),
       ...(clash !== undefined && { clash }),

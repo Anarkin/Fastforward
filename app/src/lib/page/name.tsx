@@ -41,7 +41,7 @@ export function NamedPath({
   readonly filter?: Filter;
 }) {
   return (
-    <code className="name">
+    <code className="name named-path">
       <PathName
         path={path}
         file={file}
@@ -55,6 +55,7 @@ export function NamedPath({
 function NamedPart({
   part,
   filter = noFilter,
+  boxed = true,
 }: {
   readonly part: {
     readonly name: string;
@@ -62,25 +63,32 @@ function NamedPart({
     readonly root?: string;
   };
   readonly filter?: Filter;
+  readonly boxed?: boolean;
 }) {
-  return part.path === undefined ? (
-    <Name filter={filter}>{part.name}</Name>
-  ) : (
-    <NamedPath
-      path={part.name}
-      file={part.path === 'file'}
-      {...(part.root !== undefined && { root: part.root })}
-      filter={filter}
-    />
-  );
+  if (part.path === undefined) {
+    return boxed ? (
+      <Name filter={filter}>{part.name}</Name>
+    ) : (
+      <HighlightWords text={part.name} filter={filter} />
+    );
+  }
+  const shown = {
+    path: part.name,
+    file: part.path === 'file',
+    ...(part.root !== undefined && { root: part.root }),
+    filter,
+  };
+  return boxed ? <NamedPath {...shown} /> : <PathName {...shown} />;
 }
 
 export function Words({
   children,
   filter = noFilter,
+  boxed = true,
 }: {
   readonly children: Sentence;
   readonly filter?: Filter;
+  readonly boxed?: boolean;
 }) {
   return typeof children === 'string' ? (
     <HighlightWords text={children} filter={filter} />
@@ -89,7 +97,7 @@ export function Words({
       typeof part === 'string' ? (
         <HighlightWords key={index} text={part} filter={filter} />
       ) : (
-        <NamedPart key={index} part={part} filter={filter} />
+        <NamedPart key={index} part={part} filter={filter} boxed={boxed} />
       ),
     )
   );
@@ -98,10 +106,16 @@ export function Words({
 export function NameLines({ lines }: { readonly lines: readonly Line[] }) {
   return (
     <div className="name-lines">
-      {lines.map((line) => (
-        <Fragment key={line.label}>
-          <span className="name-label">{line.label}</span>
-          <span className="name-value">
+      {lines.map((line, index) => (
+        <Fragment key={index}>
+          {line.label !== undefined && (
+            <span className="name-label">{line.label}</span>
+          )}
+          <span
+            className={
+              line.label === undefined ? 'name-value name-alone' : 'name-value'
+            }
+          >
             {'name' in line ? <NamedPart part={line} /> : line.text}
           </span>
         </Fragment>

@@ -1,15 +1,6 @@
 .name {
-  padding: 0 3px;
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
-  background: var(--name-background);
-  border-radius: 3px;
-  box-decoration-break: clone;
-}
-
-.menu-button-label > .name {
-  padding: 0;
-  background: none;
 }
 
 .name > span {
@@ -27,6 +18,10 @@
 
 .name-label {
   color: var(--muted-foreground);
+}
+
+.name-alone {
+  grid-column: 1 / -1;
 }
 
 .blank {
@@ -310,6 +305,11 @@ mark.match,
 .markdown .syntax-comment,
 .cm-editor.editor-text .syntax-comment {
   color: var(--color-syntax-comment);
+}
+
+.path-piece,
+.path-part {
+  color: var(--color-foreground);
 }
 
 .path-part.colored {

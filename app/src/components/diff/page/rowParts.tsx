@@ -54,7 +54,7 @@ export function FileHeader({
         </span>
       ) : (
         <span className="path" title={strings.common.fromTo(oldPath, path)}>
-          {renamedPath(oldPath, path)}
+          <Words boxed={false}>{renamedPath(oldPath, path, root)}</Words>
         </span>
       )}
       <span className="file-header-end">

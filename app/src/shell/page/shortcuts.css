@@ -1,4 +1,5 @@
-.shortcuts-window {
+.shortcuts-popup.shortcuts-window {
+  width: min(1000px, 100%);
   height: 680px;
 }
 

@@ -3,6 +3,7 @@ import {
   named,
   namesBetween,
   sentence,
+  type Line,
   type Sentence,
   type Value,
   namedFile,
@@ -126,8 +127,14 @@ export const strings = {
     reading: 'Reading…',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
-    fromToWithin: (start: string, from: string, to: string, end: string) =>
-      `${start}{${from} → ${to}}${end}`,
+    renamed: (from: Sentence | Value, to: Sentence | Value) =>
+      sentence`${from} → ${to}`,
+    renamedWithin: (
+      start: Sentence | Value,
+      from: Sentence | Value,
+      to: Sentence | Value,
+      end: Sentence | Value,
+    ) => sentence`${start}{${from} → ${to}}${end}`,
   },
   symbols: {
     checked: '✓',
@@ -179,9 +186,9 @@ export const strings = {
   },
   confirm: {
     closeTitle: 'Close Tab',
-    closeTab: (tool: string) =>
-      `Are you sure you want to close this ${tool} tab?`,
-    closeTabLines: (tab: string) => [labeled('Tab', named(tab))],
+    closeTabLines: (tab: string, folder?: string): Line[] => [
+      folder === undefined ? named(tab) : namedFolder(folder),
+    ],
     close: 'Close',
     closeWindowTitle: 'Close Window',
     closeWindow: 'Are you sure you want to close this window and its tabs?',
@@ -197,12 +204,8 @@ export const strings = {
     ],
     init: 'Init',
     saveTitle: 'Unsaved Changes',
-    saveFile: 'Save the changes to this file before closing it?',
-    saveWindowFiles:
-      'Save the changes to these files before closing the window?',
-    saveQuitFiles: `Save the changes to these files before quitting ${brand}?`,
-    filesLines: (names: readonly string[]) =>
-      names.map((name) => labeled('File', namedItem(name))),
+    filesLines: (names: readonly string[]): Line[] =>
+      names.map((name) => namedItem(name)),
     save: 'Save',
     saveAll: 'Save All',
     dontSave: "Don't Save",
@@ -627,11 +630,11 @@ export const strings = {
     folder: 'Folder',
     name: 'Name',
     chooseFolder: 'Choose the folder to clone into',
-    into: (target: string) => sentence`Clones into ${namedFolder(target)}`,
+    target: 'Target',
     clone: 'Clone',
     stop: 'Stop',
-    cloning: (url: string) => sentence`Cloning ${named(url)}`,
-    intoTarget: (target: string) => sentence`into ${namedFolder(target)}`,
+    cloningLabel: 'Cloning',
+    intoLabel: 'Into',
     connecting: 'Connecting',
     percent: (percent: number) => `${percent}%`,
     noUrl: 'Paste the URL of the repository to clone',
@@ -668,7 +671,7 @@ export const strings = {
     passwordTitle: 'Password',
     passwordAsked: 'The archive is encrypted. Type its password.',
     passwordWrong: 'The password is wrong. Type it again.',
-    archiveLines: (archive: string) => [labeled('Archive', namedFile(archive))],
+    archiveLines: (archive: string) => [labeled('Archive', namedItem(archive))],
     passwordLabel: 'Password',
     passwordOpen: 'Open',
     noPassword: 'No password is typed.',
@@ -698,30 +701,22 @@ export const strings = {
     bin: (platform: string | undefined) =>
       platform === 'win32' ? 'the Recycle Bin' : 'the Trash',
     moveToBin: (bin: string) => `Move to ${bin}`,
-    trashItem: (bin: string) => `Move to ${bin}?`,
-    trashItems: (what: string, bin: string) => `Move ${what} to ${bin}?`,
-    deleteItem: 'Delete permanently? This cannot be undone.',
-    deleteItems: (what: string) =>
-      `Delete ${what} permanently? This cannot be undone.`,
-    binOffItem:
-      'The Recycle Bin of this drive is turned off. Delete permanently? This cannot be undone.',
-    binOffItems: (what: string) =>
-      `The Recycle Bin of this drive is turned off. Delete ${what} permanently? This cannot be undone.`,
-    itemLines: (item: string) => [labeled('Item', namedItem(item))],
+    binOff: 'The Recycle Bin of this drive is turned off.',
+    itemLines: (item: string): Line[] => [namedItem(item)],
     oneItem: (item: string) => namedItem(item),
     items: (count: number) => `${count} items`,
     copyTitle: 'Copy',
     moveTitle: 'Move',
-    transferLines: (move: boolean, what: Value, target: string) => [
-      labeled(move ? 'Move' : 'Copy', what),
+    transferLines: (what: Value, target: string) => [
+      labeled('', what),
       labeled('To', namedFolder(target)),
     ],
     copying: (what: Value, target: string) => [
-      labeled('Copying', what),
+      labeled('', what),
       labeled('To', namedFolder(target)),
     ],
     moving: (what: Value, target: string) => [
-      labeled('Moving', what),
+      labeled('', what),
       labeled('To', namedFolder(target)),
     ],
     counting: 'Counting the files…',
@@ -826,7 +821,7 @@ export const strings = {
     transferAsAdministrator:
       "Items can't be copied or moved yet in a folder read as administrator.",
     packTitle: 'Pack',
-    packLines: (what: Value) => [labeled('Pack', what)],
+    packLines: (what: Value): Line[] => [what],
     packArchive: 'Archive',
     packFormat: 'Format',
     packFormats: {
@@ -868,7 +863,7 @@ export const strings = {
     volumeFat32: '4092 MB, the largest file FAT32 holds',
     volumeDvd: '4480 MB, a DVD',
     packingInto: (what: Value, archive: string) => [
-      labeled('Packing', what),
+      labeled('', what),
       labeled('Into', namedFile(archive)),
     ],
     packed: (what: Value | string, archive: string) =>
@@ -879,7 +874,7 @@ export const strings = {
     packedWithout: (item: string, reason: Sentence) =>
       sentence`${namedItem(item)} was packed without some of the files: ${reason}`,
     deletingFrom: (what: Value, archive: string) => [
-      labeled('Deleting', what),
+      labeled('', what),
       labeled('From', namedFile(archive)),
     ],
     deletedFrom: (what: Value | string, archive: string) =>
@@ -889,7 +884,7 @@ export const strings = {
     deletingStopped: (archive: string) =>
       sentence`Deleting from ${namedFile(archive)} stopped unexpectedly.`,
     renamingIn: (what: Value, archive: string) => [
-      labeled('Renaming', what),
+      labeled('', what),
       labeled('In', namedFile(archive)),
     ],
     renamedIn: (what: Value | string, archive: string) =>
@@ -899,7 +894,7 @@ export const strings = {
     renamingStopped: (archive: string) =>
       sentence`Renaming in ${namedFile(archive)} stopped unexpectedly.`,
     makingFolderIn: (what: Value, archive: string) => [
-      labeled('Making', what),
+      labeled('', what),
       labeled('In', namedFile(archive)),
     ],
     madeFolderIn: (what: Value | string, archive: string) =>
@@ -934,7 +929,7 @@ export const strings = {
     ],
     updateConfirm: 'Update',
     updateLater: 'Not Now',
-    puttingBack: (what: Value) => [labeled('Putting back', what)],
+    puttingBack: (what: Value): Line[] => [what],
     putBack: (what: Value | string, archive: string) =>
       sentence`Put ${what} back into ${namedFile(archive)}`,
     putBackFailed: (item: string, reason: Sentence) =>
@@ -953,12 +948,8 @@ export const strings = {
           : 'They are there already.',
     replace: 'Replace',
     skipThem: 'Skip Them',
-    deleteFromArchiveItem:
-      'Delete from the archive permanently? This cannot be undone.',
-    deleteFromArchiveItems: (what: string) =>
-      `Delete ${what} from the archive permanently? This cannot be undone.`,
     testTitle: 'Test',
-    testingArchives: (what: Value) => [labeled('Testing', what)],
+    testingArchives: (what: Value): Line[] => [what],
     testPassed: (what: Value | string) => sentence`${what} passed the test.`,
     testFailed: (item: string, reason: Sentence) =>
       sentence`${namedItem(item)} failed the test: ${reason}`,

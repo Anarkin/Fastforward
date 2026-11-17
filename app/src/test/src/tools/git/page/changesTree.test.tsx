@@ -16,6 +16,8 @@ import { clickRow } from '../../../../helpers/componentFixtures';
 import { noop } from '../../../../helpers/fixtures';
 import { classesOf, tagsWith, tagWith } from '../../../../helpers/markup';
 import { fileChange } from '../../../../helpers/gitValues';
+import { knownWith, PathLooksContext } from '../../../../../lib/page/pathLooks';
+import { noFileColors } from '../../../../../lib/page/fileColors';
 
 const changesTreeElements = ({
   rows,
@@ -26,7 +28,7 @@ const changesTreeElements = ({
 >) => rows.map((row) => ChangesTreeItem({ row, ...options }));
 
 suite('Changes tree rows', () => {
-  test('draws folders and files, marking the selected file', () => {
+  test('draws folders and files, a folder no dimmer than a file, marking the selected file', () => {
     const changes = [fileChange('src/a.ts'), fileChange('src/b.ts')];
     const html = renderToStaticMarkup(
       <>
@@ -40,7 +42,8 @@ suite('Changes tree rows', () => {
         })}
       </>,
     );
-    tagWith(html, 'title="src"', 'row', 'tree-row', 'folder', 'dimmed');
+    const src = tagWith(html, 'title="src"', 'row', 'tree-row', 'folder');
+    assert.ok(!classesOf(src).has('dimmed'));
     tagWith(html, 'title="Modified: src/b.ts"', 'row', 'file', 'selected');
     const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
     assert.ok(!classesOf(a).has('selected'));
@@ -65,11 +68,60 @@ suite('Changes tree rows', () => {
     );
     assert.match(
       html,
-      /<span class="path"><mark class="match">deal<\/mark>s<\/span>/,
+      /<span class="path"><span class="path-piece"><span class="path-part"><mark class="match">deal<\/mark>s<\/span><\/span><\/span>/,
     );
     assert.match(
       html,
-      /<span class="path"><mark class="match">deal<\/mark>View\.ts<\/span>/,
+      /<span class="path"><span class="path-piece"><span class="path-part"><mark class="match">deal<\/mark>View\.ts<\/span><\/span><\/span>/,
+    );
+  });
+
+  test('draws each folder of a row that merges folders as a part of its own, as a path, asking the looks of a part in the folder of its worktree', () => {
+    const folder = { hidden: false, file: false, executable: false };
+    const known = knownWith(new Map(), [
+      {
+        path: '/repo/src/test/a.ts',
+        parts: [
+          folder,
+          folder,
+          folder,
+          { ...folder, hidden: true },
+          { hidden: false, file: true, executable: false },
+        ],
+      },
+    ]);
+    const html = renderToStaticMarkup(
+      <PathLooksContext
+        value={{
+          subscribe: () => () => {},
+          fileColors: () => noFileColors,
+          known: () => known,
+          ask: noop,
+          know: noop,
+          dotHides: () => false,
+        }}
+      >
+        {changesTreeElements({
+          rows: changesTreeRows(
+            changesTree([fileChange('src/test/a.ts')]),
+            new Set(),
+          ),
+          root: '/repo',
+          showsAll: false,
+          onToggle: noop,
+          selected: undefined,
+          onSelect: noop,
+          cursor: undefined,
+        })}
+      </PathLooksContext>,
+    );
+    assert.match(
+      html,
+      /<span class="path"><span class="path-piece"><span class="path-part">src<\/span>\/<\/span><span class="path-piece"><span class="path-part hidden">test<\/span><\/span><\/span>/,
+    );
+    assert.match(
+      html,
+      /<span class="path"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
     );
   });
 

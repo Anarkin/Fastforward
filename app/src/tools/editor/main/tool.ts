@@ -174,7 +174,7 @@ export class EditorTool implements Tool<'editor'> {
     at: ViewedStart,
   ): Promise<void> {
     const refusal = this.access.viewedCopy(file)
-      ? strings.editor.viewedCopy(file)
+      ? strings.editor.viewedCopy(path.basename(file))
       : await this.editing.refusal(file);
     if (refusal !== undefined) {
       this.shell.notice(page, { level: 'error', message: refusal });

@@ -36,10 +36,10 @@ suite('App commander', () => {
     await popup.waitFor();
     assert.deepStrictEqual(
       [
-        await popup.locator('.confirm-question > span').textContent(),
+        await popup.locator('.confirm-question > span').count(),
         await popup.locator('.name-value').allTextContents(),
       ],
-      [strings.commander.deleteItem, ['b.txt']],
+      [0, [path.join(deletingFolder, 'b.txt')]],
     );
     await page.keyboard.press('ArrowLeft');
     await waitFor(
@@ -58,7 +58,7 @@ suite('App commander', () => {
     await popup.waitFor();
     assert.strictEqual(
       await popup.locator('.confirm-question').textContent(),
-      strings.commander.deleteItems(strings.commander.items(2)),
+      strings.commander.items(2),
     );
     await page.keyboard.press('Enter');
     await waitFor(
@@ -83,11 +83,11 @@ suite('App commander', () => {
     );
   });
 
-  test('copies the selected file into the folder of the other side on F5 once confirmed, and moves the marked folder and file there on F6, through the process that copies, the other side listing them, naming them and the folder on lines, its path wrapping only between its folders', async () => {
+  test('copies the selected file into the folder of the other side on F5 once confirmed, and moves the marked folder and file there on F6, through the process that copies, the other side listing them, naming them and the folder on lines by their whole paths, a path wrapping only between its folders', async () => {
     const from = path.join(opened, 'copyfrom');
     const into = path.join(
       opened,
-      'copy-into-a-folder-whose-name-is-this-long',
+      'copy-into-a-folder-whose-name-is-this-long-so-that-its-path-wraps-in-a-dialog',
     );
     fs.mkdirSync(path.join(from, 'docs'), { recursive: true });
     fs.mkdirSync(into);
@@ -129,11 +129,10 @@ suite('App commander', () => {
     await page.keyboard.press('F5');
     await popup.waitFor();
     assert.deepStrictEqual(await asked(), [
-      ['Copy', 'first.txt'],
+      ['', path.join(from, 'first.txt')],
       ['To', into],
     ]);
     const wrapped = await wrapping();
-    assert.strictEqual(wrapped.lines[0], 1);
     assert.ok(wrapped.lines[1] > 1, JSON.stringify(wrapped));
     assert.strictEqual(wrapped.brokenPieces, 0);
     await page.keyboard.press('Enter');
@@ -159,7 +158,7 @@ suite('App commander', () => {
     await page.keyboard.press('F6');
     await popup.waitFor();
     assert.deepStrictEqual(await asked(), [
-      ['Move', '2 items'],
+      ['', '2 items'],
       ['To', into],
     ]);
     await page.keyboard.press('Enter');

@@ -1,5 +1,5 @@
 .pack-popup {
-  width: min(560px, calc(100vw - 32px));
+  width: min(600px, calc(100vw - 32px));
 }
 
 .pack-fields {

@@ -210,8 +210,14 @@ suite('Commander tool in archives', () => {
       ['folder', at('a.zip'), [], 'fresh'],
     ]);
     assert.deepStrictEqual(notices, [
-      { level: 'error', message: strings.commander.nameTaken('docs') },
-      { level: 'error', message: strings.commander.nameTaken('top.txt') },
+      {
+        level: 'error',
+        message: strings.commander.nameTaken(path.join(at('a.zip'), 'docs')),
+      },
+      {
+        level: 'error',
+        message: strings.commander.nameTaken(path.join(at('a.zip'), 'top.txt')),
+      },
     ]);
   });
 });

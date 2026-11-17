@@ -11,6 +11,9 @@ import { cascaded } from '../../../helpers/cascade';
 import { noop, looks } from './stylesheetFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 
+const widthOf = (className: string) =>
+  cascaded(rendered(<div className={className} />), 'width');
+
 suite('Style', () => {
   test('draws the button of a dialog the keyboard moved the focus to as the tool chooser draws its tool, tinted inside the outline of focus, the default button then plain, as Enter presses the one focused', () => {
     const row = rendered(
@@ -102,7 +105,7 @@ suite('Style', () => {
     }
   });
 
-  test('sets a name apart in a dialog in the monospace font of the settings on a faint tint of the text, the same on a line of its own as in a sentence, each piece of a path kept whole on a line unless it alone is wider, and the labels of the lines muted', () => {
+  test('sets a name apart in a dialog in the monospace font of the settings alone, with no tint or padding around it, the same on a line of its own as in a sentence, each piece of a path kept whole on a line unless it alone is wider, and the labels of the lines muted', () => {
     const popup = rendered(
       <ConfirmPopup
         title="Copy"
@@ -119,9 +122,11 @@ suite('Style', () => {
     looks(name, {
       'font-family': 'var(--monospace-font-family)',
       'font-size': 'var(--monospace-font-size)',
-      background: 'var(--name-background)',
-      'box-decoration-break': 'clone',
     });
+    assert.deepStrictEqual(
+      ['background', 'padding'].map((property) => cascaded(name, property)),
+      [undefined, undefined],
+    );
     for (const piece of name.children) {
       looks(piece, {
         display: 'inline-block',
@@ -138,6 +143,56 @@ suite('Style', () => {
     });
   });
 
+  test('writes a path in a dialog, a sentence or a menu in the monospace font of the settings with no tint behind it, as a path of a side is written, its parts in their colors', () => {
+    const popup = rendered(
+      <ConfirmPopup
+        title="Copy"
+        lines={[
+          { label: 'Copy', name: 'C:\\Code\\a.txt', path: 'file' },
+          { label: 'To', name: 'D:\\photos', path: 'folder' },
+        ]}
+        confirm="Copy"
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    const paths = allWithClass(popup, 'name');
+    assert.strictEqual(paths.length, 2);
+    for (const path of paths) {
+      looks(path, {
+        'font-family': 'var(--monospace-font-family)',
+        'font-size': 'var(--monospace-font-size)',
+      });
+      assert.deepStrictEqual(
+        ['background', 'padding'].map((property) => cascaded(path, property)),
+        [undefined, undefined],
+      );
+    }
+  });
+
+  test('makes the shortcuts 1000 px wide and every other dialog 600 px, each narrower only with its window', () => {
+    assert.deepStrictEqual(
+      [
+        'shortcuts-popup shortcuts-window',
+        'shortcuts-popup about-popup',
+        'shortcuts-popup confirm-popup',
+        'shortcuts-popup open-with-popup',
+        'shortcuts-popup confirm-popup pack-popup',
+        'shortcuts-popup confirm-popup transfer-popup',
+        'shortcuts-popup clone-popup',
+      ].map(widthOf),
+      [
+        'min(1000px, 100%)',
+        'min(600px, 100%)',
+        'min(600px, 100%)',
+        'min(600px, 100%)',
+        'min(600px, calc(100vw - 32px))',
+        'min(600px, 100%)',
+        'min(600px, 100%)',
+      ],
+    );
+  });
+
   test('lines the check boxes of a dialog up with its labels, without the margin the browser gives them', () => {
     for (const className of ['pack-check', 'transfer-all']) {
       const label = rendered(
@@ -150,7 +205,7 @@ suite('Style', () => {
     }
   });
 
-  test('sets a name on a button apart only in the monospace font, as the button frames it as its tint would', () => {
+  test('sets a name on a button apart only in the monospace font, as everywhere', () => {
     const name = withClass(
       rendered(
         <MenuButton
@@ -163,11 +218,11 @@ suite('Style', () => {
       ),
       'name',
     );
-    looks(name, {
-      'font-family': 'var(--monospace-font-family)',
-      background: 'none',
-      padding: '0',
-    });
+    looks(name, { 'font-family': 'var(--monospace-font-family)' });
+    assert.deepStrictEqual(
+      ['background', 'padding'].map((property) => cascaded(name, property)),
+      [undefined, undefined],
+    );
   });
 
   test('keeps the spaces of a name that follow a separator, which a piece of a path kept whole would drop at its start, as in the characters a name cannot hold', () => {

@@ -8,6 +8,8 @@ import {
   HunkDivider,
 } from '../../../../../components/diff/page/rowParts';
 import { tagsWith } from '../../../../helpers/markup';
+import { PathLooksContext } from '../../../../../lib/page/pathLooks';
+import { fileColorsOf } from '../../../../../lib/page/fileColors';
 
 const binaryMarkup = (
   change: 'added' | 'removed' | undefined,
@@ -81,20 +83,34 @@ suite('Diff file header', () => {
     assert.doesNotMatch(collapsibleHeader(false), /twisty/);
   });
 
-  test('names a renamed file by both its paths, shortened as git does, with both in full in its tooltip', () => {
+  test('names a renamed file by both its paths, shortened as git does, each folder and file a part of a path colored as the commander lists it, with both in full in its tooltip', () => {
     const html = renderToStaticMarkup(
-      <FileHeader
-        path="elsewhere/to-folder.txt"
-        oldPath="moved/to-folder.txt"
-        open
-        whole={false}
-        collapsible
-        onClick={() => {}}
-      />,
+      <PathLooksContext
+        value={{
+          subscribe: () => () => {},
+          fileColors: () =>
+            fileColorsOf([
+              { extensions: ['txt'], colors: { light: 'blue', dark: 'blue' } },
+            ]),
+          known: () => new Map(),
+          ask: () => {},
+          know: () => {},
+          dotHides: () => false,
+        }}
+      >
+        <FileHeader
+          path="elsewhere/to-folder.txt"
+          oldPath="moved/to-folder.txt"
+          open
+          whole={false}
+          collapsible
+          onClick={() => {}}
+        />
+      </PathLooksContext>,
     );
     assert.match(
       html,
-      /<span class="path" title="moved\/to-folder\.txt → elsewhere\/to-folder\.txt">\{moved → elsewhere\}\/to-folder\.txt<\/span>/,
+      /<span class="path" title="moved\/to-folder\.txt → elsewhere\/to-folder\.txt">\{<span class="path-piece"><span class="path-part">moved<\/span><\/span> → <span class="path-piece"><span class="path-part">elsewhere<\/span><\/span>\}\/<span class="path-piece"><span class="path-part colored" style="--file-color:light-dark\(blue, blue\)">to-folder\.txt<\/span><\/span><\/span>/,
     );
   });
 });

@@ -136,7 +136,7 @@ suite('App editor', () => {
     await typeAndClose('x');
     assert.match(
       (await page.locator('.confirm-popup').textContent()) ?? '',
-      /Save the changes to this file before closing it\?.*notes\.txt/,
+      /^Unsaved Changes.*notes\.txt/,
     );
     await page.locator('.confirm-button.default').click();
     await waitFor(

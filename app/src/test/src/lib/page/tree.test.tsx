@@ -8,6 +8,8 @@ import { noop } from '../../../helpers/fixtures';
 import { fileChange as change } from '../../../helpers/gitValues';
 import { stylesheetPx } from '../../../helpers/pageSources';
 import { tagWith } from '../../../helpers/markup';
+import { knownWith, PathLooksContext } from '../../../../lib/page/pathLooks';
+import { fileColorsOf } from '../../../../lib/page/fileColors';
 
 suite('Tree', () => {
   test('draws the twisty as wide as a level of the tree is indented', () => {
@@ -43,14 +45,14 @@ suite('File rows', () => {
       assert.match(
         changedRow(status),
         new RegExp(
-          `<svg class="icon change-icon ${kind}".*?</svg><span class="path">a\\.ts</span>`,
+          `<svg class="icon change-icon ${kind}".*?</svg><span class="path"><span class="path-piece"><span class="path-part">a\\.ts</span></span></span>`,
         ),
         status,
       );
     }
     assert.match(
       changedRow('D'),
-      /<svg class="icon change-icon deleted".*?<\/svg><span class="path deleted">a\.ts<\/span>/,
+      /<svg class="icon change-icon deleted".*?<\/svg><span class="path deleted"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
     );
   });
 
@@ -78,7 +80,7 @@ suite('File rows', () => {
     );
     assert.match(
       html,
-      /<svg class="icon change-icon added".*?<\/svg><span class="path">AGENTS\.md<\/span><svg class="icon link-icon"/,
+      /<svg class="icon change-icon added".*?<\/svg><span class="path"><span class="path-piece"><span class="path-part">AGENTS\.md<\/span><\/span><\/span><svg class="icon link-icon"/,
     );
     tagWith(html, 'title="Added symbolic link: AGENTS.md"', 'row', 'tree-row');
     assert.doesNotMatch(changedRow('A'), /link-icon/);
@@ -113,5 +115,49 @@ suite('File rows', () => {
     );
     tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
     tagWith(html, '', 'path', 'unchanged');
+  });
+
+  test('colors a file as the commander lists it, by its kind and its looks in the folder of the worktree it is in', () => {
+    const html = renderToStaticMarkup(
+      <PathLooksContext
+        value={{
+          subscribe: () => () => {},
+          fileColors: () =>
+            fileColorsOf([
+              { extensions: ['ts'], colors: { light: 'blue', dark: 'blue' } },
+            ]),
+          known: () =>
+            knownWith(new Map(), [
+              {
+                path: 'C:\\repo\\src\\a.ts',
+                parts: [
+                  { hidden: false, file: false, executable: false },
+                  { hidden: false, file: false, executable: false },
+                  { hidden: false, file: false, executable: false },
+                  { hidden: true, file: true, executable: false },
+                ],
+              },
+            ]),
+          ask: () => {},
+          know: () => {},
+          dotHides: () => false,
+        }}
+      >
+        <FileRow
+          path="src/a.ts"
+          name="a.ts"
+          root={'C:\\repo\\src'}
+          depth={1}
+          change={change('src/a.ts')}
+          selected={undefined}
+          marked={false}
+          onSelect={noop}
+        />
+      </PathLooksContext>,
+    );
+    assert.match(
+      html,
+      /<span class="path"><span class="path-piece"><span class="path-part colored hidden" style="--file-color:light-dark\(blue, blue\)">a\.ts<\/span><\/span><\/span>/,
+    );
   });
 });

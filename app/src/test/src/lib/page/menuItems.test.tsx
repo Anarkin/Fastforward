@@ -62,8 +62,8 @@ suite('Menu items', () => {
       />,
     );
     assert.deepStrictEqual(
-      [...html.matchAll(/<code class="name">(.*?)<\/code>/g)].map(([, inner]) =>
-        inner.replaceAll(/<[^>]*>/g, ''),
+      [...html.matchAll(/<code class="name named-path">(.*?)<\/code>/g)].map(
+        ([, inner]) => inner.replaceAll(/<[^>]*>/g, ''),
       ),
       ['C:\\'],
     );

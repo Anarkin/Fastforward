@@ -63,7 +63,7 @@ suite('Commander tool in archives', () => {
       );
     });
 
-    test('opens a file of an archive in the app the system opens it with from a copy, asking once it is saved whether to put it back, putting it back in the dialog of copies once asked to, asking again once saved again and only while the commander is shown, and from a read-only copy for an archive that cannot be changed', async () => {
+    test('opens a file of an archive in the app the system opens it with from a copy, asking once it is saved whether to put it back, naming the file and its archive by their whole paths, putting it back in the dialog of copies once asked to, asking again once saved again and only while the commander is shown, and from a read-only copy for an archive that cannot be changed', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);
       made.archived.set(path.join(at('a.zip'), 'inner.zip'), zipped);
@@ -108,7 +108,12 @@ suite('Commander tool in archives', () => {
       await waitFor(() => notices.length === 1, 'the copy to be put back');
       assert.strictEqual(tool.quitNote(), undefined);
       assert.deepStrictEqual(asked(), [
-        { type: 'askUpdate', ask: 1, name, archive: 'a.zip' },
+        {
+          type: 'askUpdate',
+          ask: 1,
+          name: path.join(at('a.zip'), name),
+          archive: at('a.zip'),
+        },
       ]);
       assert.deepStrictEqual(made.changedInArchives, [
         ['add', at('a.zip'), ['docs'], holding, ['readme.md']],
@@ -124,7 +129,9 @@ suite('Commander tool in archives', () => {
         {
           level: 'info',
           message: strings.commander.putBack(
-            strings.commander.oneItem('readme.md'),
+            strings.commander.oneItem(
+              path.join(at('a.zip'), 'docs', 'readme.md'),
+            ),
             at('a.zip'),
           ),
         },
@@ -402,7 +409,7 @@ suite('Commander tool in archives', () => {
 
       assert.strictEqual(
         page.of('askUpdate')[0]?.name,
-        path.join('docs', 'readme.md'),
+        path.join(at('a.zip'), 'docs', 'readme.md'),
       );
       assert.deepStrictEqual(made.changedInArchives, [
         ['add', at('a.zip'), ['docs'], path.dirname(copy), ['readme.md']],

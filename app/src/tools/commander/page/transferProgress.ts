@@ -14,6 +14,11 @@ const archiveJobLines = {
   update: strings.commander.puttingBack,
 };
 
+const fileOf = (
+  file: string | undefined,
+): { readonly current: undefined; readonly file?: string } =>
+  file === undefined ? { current: undefined } : { current: undefined, file };
+
 export function runningLines(transfer: TransferView): Line[] {
   const { commander } = strings;
   const what = whatOf(transfer.items, transfer.name);
@@ -45,6 +50,7 @@ export function progressLines({
   progress,
 }: Pick<TransferView, 'archiveJob' | 'progress'>): {
   readonly current: Sentence | undefined;
+  readonly file?: string;
   readonly files: string | undefined;
 } {
   const { commander } = strings;
@@ -65,15 +71,14 @@ export function progressLines({
   }
   if (archiveJob === undefined) {
     return {
-      current: progress.current,
+      ...fileOf(progress.current),
       files: commander.transferredFiles(progress.files, progress.totalFiles),
     };
   }
   return {
-    current:
-      progress.files < progress.totalFiles
-        ? progress.current
-        : commander.packingRest,
+    ...(progress.files < progress.totalFiles
+      ? fileOf(progress.current)
+      : { current: commander.packingRest }),
     files: commander.filesRead(progress.files, progress.totalFiles),
   };
 }

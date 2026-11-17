@@ -212,6 +212,7 @@ export function CommanderPopups() {
         <ConfirmPopup
           {...transferQuestion(
             transferring.names,
+            transferring.folder,
             transferring.move,
             transferring.target,
             transferring.existing?.length,

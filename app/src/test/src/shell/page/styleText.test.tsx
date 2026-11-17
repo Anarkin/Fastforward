@@ -88,7 +88,48 @@ const marked = (mark: React.ReactElement, className: string) =>
     className,
   );
 
+const colorOf = (box: string, part: string) =>
+  cascaded(
+    withClass(
+      rendered(
+        <div className={box}>
+          <span className="path-piece">
+            <span className={part}>x</span>/
+          </span>
+        </div>,
+      ),
+      ...part.split(' '),
+    ),
+    'color',
+  );
+
 suite('Style', () => {
+  test('draws each part of a path and the separator after it in the color of the text, whatever color the box around it has, so a path looks alike everywhere, a file of a color group in its color and a hidden part dimmed in its own', () => {
+    const boxes = [
+      'open-with-folders',
+      'transfer-current',
+      'name-value',
+      'menu-item',
+      'file-header',
+      'row tree-row file',
+      'commander-tile-name',
+    ];
+    assert.deepStrictEqual(
+      boxes.map((box) => [
+        colorOf(box, 'path-piece'),
+        colorOf(box, 'path-part'),
+        colorOf(box, 'path-part colored'),
+        colorOf(box, 'path-part hidden'),
+      ]),
+      boxes.map(() => [
+        'var(--color-foreground)',
+        'var(--color-foreground)',
+        'var(--file-color)',
+        'color-mix( in srgb, var(--file-color, var(--color-foreground)) var(--color-hidden-file), transparent )',
+      ]),
+    );
+  });
+
   test('draws a line in the color of the line over the status of a column at the end of the column of line numbers, in the editor, the diff, side by side too, and the viewer, so the numbers stand apart from the text', () => {
     const status = rendered(<div className="column-status" />);
     const line = cascaded(status, 'box-shadow')?.split(' ').at(-1);

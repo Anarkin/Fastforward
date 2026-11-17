@@ -11,6 +11,7 @@ import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
 import type { ClashSide, TransferView } from '../shared/transfers';
 import { useCommander, useCommanderActions } from './store';
+import { PathTitle } from '../../../lib/page/pathTitle';
 import { NameLines, Words } from '../../../lib/page/name';
 import { progressLines, runningLines, shareDone } from './transferProgress';
 
@@ -149,10 +150,15 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
         <span
           className="transfer-current"
           title={
-            lines.current === undefined ? undefined : plainOf(lines.current)
+            lines.file ??
+            (lines.current === undefined ? undefined : plainOf(lines.current))
           }
         >
-          {lines.current !== undefined && <Words>{lines.current}</Words>}
+          {lines.file !== undefined ? (
+            <PathTitle path={lines.file} file />
+          ) : (
+            lines.current !== undefined && <Words>{lines.current}</Words>
+          )}
         </span>
       </div>
       <div

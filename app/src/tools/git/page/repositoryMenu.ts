@@ -19,17 +19,15 @@ export function repositoryMenuItems(
     { label: strings.tabs.clone, onClick: onClone },
     { label: strings.tabs.init, onClick: onInit },
     ...(recent.length > 0 ? [{ separator: true } as const] : []),
-    ...recent.map((repository) => {
-      const label = strings.tabs.label(repository.name, repository.folder);
-      return {
-        label,
-        title: repository.root,
-        onClick: () => onOpen(repository.root),
-        ...(onRemove && {
-          onRemove: () => onRemove(repository.root),
-          removeTitle: strings.tabs.removeRecent(label),
-        }),
-      };
-    }),
+    ...recent.map(({ root }) => ({
+      label: root,
+      path: true,
+      title: root,
+      onClick: () => onOpen(root),
+      ...(onRemove && {
+        onRemove: () => onRemove(root),
+        removeTitle: strings.tabs.removeRecent(root),
+      }),
+    })),
   ];
 }

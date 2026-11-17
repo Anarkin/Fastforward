@@ -80,7 +80,9 @@ export class ArchiveCommands {
     if (taken) {
       this.host.shell().notice(page, {
         level: 'error',
-        message: strings.commander.nameTaken(name),
+        message: strings.commander.nameTaken(
+          path.join(archive.file, ...inner, name),
+        ),
       });
     }
     return taken;

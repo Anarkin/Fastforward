@@ -1,5 +1,6 @@
 import { strings } from '../shared/strings';
 import { usePathParts, type PartLooks } from './pathLooks';
+import { PathPart } from './pathPart';
 
 function flatSuffixOf(path: string): string {
   if (/[\\/]$/.test(path)) {
@@ -30,13 +31,9 @@ export function PathTitle({
           <span className="path-folder">
             <span dir="ltr">
               {parts.slice(0, last).map((part) => [
-                <span
-                  key={part.key}
-                  className={part.className}
-                  style={part.style}
-                >
+                <PathPart key={part.key} part={part}>
                   {part.name}
-                </span>,
+                </PathPart>,
                 part.separator,
               ])}
             </span>
@@ -44,13 +41,10 @@ export function PathTitle({
         )}
         <span className="path-end">
           {last >= 0 && (
-            <span
-              className={`path-name ${parts[last].className}`}
-              style={parts[last].style}
-            >
+            <PathPart part={parts[last]} className="path-name">
               {parts[last].name}
               {parts[last].separator}
-            </span>
+            </PathPart>
           )}
           {flat && <span className="path-flat">{flatSuffixOf(path)}</span>}
           {duplicates && (

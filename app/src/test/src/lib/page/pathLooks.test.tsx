@@ -14,6 +14,7 @@ import { PathName } from '../../../../lib/page/pathName';
 import { fileColorsOf } from '../../../../lib/page/fileColors';
 import { searchFilter } from '../../../../lib/shared/filter';
 import { plainSearch } from '../../../../lib/shared/searchOptions';
+import { mounted } from '../../../helpers/mounted';
 
 const colors = fileColorsOf([
   { extensions: ['log'], colors: { light: 'blue', dark: 'blue' } },
@@ -35,13 +36,17 @@ const looked = (
       `${name}:${className}${style === undefined ? '' : `:${style['--file-color']}`}`,
   );
 
-function source(known: KnownLooks, asked: string[] = []): PathLooksSource {
+function source(
+  known: KnownLooks,
+  asked: string[] = [],
+  told: string[] = [],
+): PathLooksSource {
   return {
     subscribe: () => () => {},
     fileColors: () => colors,
     known: () => known,
     ask: (path) => asked.push(path),
-    know: () => {},
+    know: (path) => told.push(path),
     dotHides: () => false,
   };
 }
@@ -159,7 +164,7 @@ suite('The parts of a path, as the commander lists them', () => {
           />
         </PathLooksContext>,
       ),
-      '<span><span class="path-part">C:\\</span></span><span><span class="path-part"><mark class="match">Temp</mark></span><mark class="match">\\</mark></span><span><span class="path-part colored" style="--file-color:light-dark(blue, blue)"><mark class="match">Hmx</mark>Lib.log</span></span>',
+      '<span class="path-piece"><span class="path-part">C:\\</span></span><span class="path-piece"><span class="path-part"><mark class="match">Temp</mark></span><mark class="match">\\</mark></span><span class="path-piece"><span class="path-part colored" style="--file-color:light-dark(blue, blue)"><mark class="match">Hmx</mark>Lib.log</span></span>',
     );
   });
 
@@ -176,7 +181,22 @@ suite('The parts of a path, as the commander lists them', () => {
           <PathName path=".config/a.log" file root={'C:\\repo'} />
         </PathLooksContext>,
       ),
-      '<span><span class="path-part hidden">.config</span>/</span><span><span class="path-part colored" style="--file-color:light-dark(blue, blue)">a.log</span></span>',
+      '<span class="path-piece"><span class="path-part hidden">.config</span>/</span><span class="path-piece"><span class="path-part colored" style="--file-color:light-dark(blue, blue)">a.log</span></span>',
     );
+  });
+
+  test('tells the looks it was given of the folders of a whole path, so other paths in them show them at once, but nothing of a name without its folder, which no other path could find', async () => {
+    const told: string[] = [];
+    await mounted(
+      <PathLooksContext value={source(new Map(), [], told)}>
+        <PathName
+          path={'C:\\Temp\\docs'}
+          looks={[folder, hiddenFolder, folder]}
+        />
+        <PathName path="docs" looks={[folder]} />
+      </PathLooksContext>,
+      () => {},
+    );
+    assert.deepStrictEqual(told, ['C:\\Temp\\docs']);
   });
 });

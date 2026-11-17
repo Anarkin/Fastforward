@@ -1,5 +1,3 @@
-import { pathParts } from './pathParts';
-
 type Named = {
   readonly name: string;
   readonly path?: 'file' | 'folder';
@@ -8,7 +6,7 @@ type Named = {
 
 export type Value = Named | { readonly text: string };
 
-export type Line = Value & { readonly label: string };
+export type Line = Value & { readonly label?: string };
 
 export type Sentence = string | readonly (string | Named)[];
 
@@ -32,14 +30,7 @@ export const namedFolder = (path: string): Named => ({
 export const namedItem = (
   item: string,
   kind: 'file' | 'folder' = 'file',
-): Named => {
-  const parts = pathParts(item);
-  const last = parts.at(-1);
-  const folder = parts.at(-2);
-  return last === undefined || folder === undefined
-    ? { name: item, path: kind }
-    : { name: last.name, path: kind, root: folder.path };
-};
+): Named => ({ name: item, path: kind });
 
 export const namesBetween = (names: readonly string[], between: string) =>
   names.flatMap((name, index) =>

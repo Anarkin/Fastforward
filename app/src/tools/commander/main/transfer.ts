@@ -479,7 +479,7 @@ class Transfer {
     overwrite: boolean,
     name: string,
   ): Promise<void> {
-    this.current = name;
+    this.current = source;
     const bytesBefore = this.bytes;
     const into = overwrite ? partOf(target) : target;
     try {

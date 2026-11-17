@@ -19,7 +19,7 @@ suite('Commander tool in archives', () => {
 
     const inArchive = () => commanderInArchive(copiesFolder);
 
-    test('asks for the password of an encrypted file before reading it, again when it was wrong, and reads nothing when none is given', async () => {
+    test('asks for the password of an encrypted file before reading it, naming its archive by its whole path, again when it was wrong, and reads nothing when none is given', async () => {
       const { page, send, notices, archived, secrets, viewed } =
         await inArchive();
       archived.set(at('a.zip'), [
@@ -50,8 +50,8 @@ suite('Commander tool in archives', () => {
       assert.deepStrictEqual(
         asked().map(({ name, wrong }) => [name, wrong]),
         [
-          ['a.zip', false],
-          ['a.zip', true],
+          [at('a.zip'), false],
+          [at('a.zip'), true],
         ],
       );
       assert.strictEqual(path.basename(viewed[0] ?? ''), 'secret.txt');

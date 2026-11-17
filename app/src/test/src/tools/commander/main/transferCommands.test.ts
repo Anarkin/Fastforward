@@ -124,7 +124,7 @@ suite('Commander tool', () => {
     transfers[0].listener.event({ type: 'done', stopped: false });
     await waitFor(() => tool.quitNote() === undefined, 'the copy to end');
   });
-  test('shows the page the transfer to show and what it asks, sends on what the page answers to it, and lists the side showing its target again once it is done', async () => {
+  test('shows the page the transfer to show, a single item by its whole path, and what it asks, sends on what the page answers to it, and lists the side showing its target again once it is done', async () => {
     const { tool, page, send, transfers } = commander({
       [root]: [file('a.txt'), folder('target')],
       [at('target')]: [],
@@ -144,7 +144,7 @@ suite('Commander tool', () => {
       id: 1,
       move: false,
       items: 1,
-      name: 'a.txt',
+      name: at('a.txt'),
       target: at('target'),
       stopping: false,
     });
