@@ -13,7 +13,14 @@ export interface TabLooks {
 }
 
 const tabLooks = (page: Page): Promise<TabLooks> =>
-  page.evaluate(() => {
+  page.evaluate(async () => {
+    await new Promise<void>((drawn) => {
+      const withoutFrames = setTimeout(drawn, 250);
+      requestAnimationFrame(() => {
+        clearTimeout(withoutFrames);
+        setTimeout(drawn);
+      });
+    });
     const root = document.querySelector('.app');
     const shown = (element: Element) =>
       root?.contains(element) === true &&
@@ -210,14 +217,19 @@ const scrollerHeld = (page: Page): Promise<boolean> =>
 export async function settledLooks(page: Page): Promise<TabLooks> {
   let last = await tabLooks(page);
   let since = Date.now();
+  let readsAlike = 1;
   await waitFor(async () => {
     const now = await tabLooks(page);
-    if (!looksAlike(now, last)) {
+    if (looksAlike(now, last)) {
+      readsAlike += 1;
+    } else {
       last = now;
       since = Date.now();
+      readsAlike = 1;
     }
     return (
       Date.now() - since >= 400 &&
+      readsAlike >= 3 &&
       !busy.some((sentence) => now.text.split(newline).includes(sentence)) &&
       !(await scrollerHeld(page))
     );
