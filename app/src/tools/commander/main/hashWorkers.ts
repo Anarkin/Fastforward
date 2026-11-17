@@ -61,7 +61,11 @@ export function hashWorkers(
     worker.on('message', (answer: HashAnswer) => {
       const { task } = thread;
       thread.task = undefined;
-      task?.done('hashed' in answer ? answer.hashed : undefined);
+      task?.done(
+        task.signal.aborted || !('hashed' in answer)
+          ? undefined
+          : answer.hashed,
+      );
       next();
     });
     const lost = () => {
