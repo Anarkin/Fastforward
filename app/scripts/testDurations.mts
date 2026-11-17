@@ -45,12 +45,7 @@ export function secondsOfReport(report: Report): Record<string, number> {
       const at = slashed.indexOf('/src/test/');
       return at === -1
         ? []
-        : [
-            [
-              slashed.slice(at + 1),
-              Math.round((endTime - startTime) / 100) / 10,
-            ],
-          ];
+        : [[slashed.slice(at + 1), Math.round((endTime - startTime) / 1000)]];
     }),
   );
 }
@@ -78,14 +73,28 @@ export async function latestDurations(
   if (run === undefined) {
     throw new Error('No run of CI on main has passed to read durations from');
   }
-  await gh(
-    'run',
-    'download',
-    String(run.databaseId),
-    '--pattern',
-    `${artifactPrefix}*`,
-    '--dir',
-    folder,
+  const artifacts = (
+    await gh(
+      'api',
+      `repos/{owner}/{repo}/actions/runs/${run.databaseId}/artifacts?per_page=100`,
+      '--jq',
+      '.artifacts[].name',
+    )
+  )
+    .split(/\r?\n/)
+    .filter((name) => name.startsWith(artifactPrefix));
+  await Promise.all(
+    artifacts.map((name) =>
+      gh(
+        'run',
+        'download',
+        String(run.databaseId),
+        '--name',
+        name,
+        '--dir',
+        path.join(folder, name),
+      ),
+    ),
   );
   const byPlatform: Partial<Record<NodeJS.Platform, Record<string, number>>> =
     {};

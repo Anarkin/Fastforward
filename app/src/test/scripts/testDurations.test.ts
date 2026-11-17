@@ -42,6 +42,9 @@ const reportOf = (...files: readonly [string, number][]): Report => ({
   })),
 });
 
+const byName = (one: string, other: string) =>
+  one < other ? -1 : one > other ? 1 : 0;
+
 suite('Durations of the test files read from CI', () => {
   let folder: string | undefined;
 
@@ -52,7 +55,7 @@ suite('Durations of the test files read from CI', () => {
     }
   });
 
-  test('takes each file by its path from src/test, on every runner, to a tenth of a second', async () => {
+  test('takes each file by its path from src/test, on every runner, to a whole second, so a refresh changes fewer of them', async () => {
     const { secondsOfReport } = await loadTestDurations();
     assert.deepStrictEqual(
       secondsOfReport(
@@ -69,13 +72,13 @@ suite('Durations of the test files read from CI', () => {
         ),
       ),
       {
-        'src/test/e2e/appCursor.electron.test.ts': 104.1,
-        'src/test/src/lib/shared/strings.test.ts': 0.3,
+        'src/test/e2e/appCursor.electron.test.ts': 104,
+        'src/test/src/lib/shared/strings.test.ts': 0,
       },
     );
   });
 
-  test('reads the durations of the last run of CI on main that passed, every shard of each runner merged into its platform, sorted', async () => {
+  test('reads the durations of the last run of CI on main that passed, downloading those of every shard at once and merging those of each runner into its platform, sorted', async () => {
     const { artifactPrefix, reportFile, latestDurations } =
       await loadTestDurations();
     const downloads = tempFolder('test-durations');
@@ -99,18 +102,26 @@ suite('Durations of the test files read from CI', () => {
         3,
       ]),
     };
+    let downloading = 0;
+    let mostAtOnce = 0;
     const gh: Gh = async (...args) => {
       calls.push(args);
       if (args[1] === 'list') {
         return JSON.stringify([{ databaseId: 42 }]);
       }
-      for (const [name, report] of Object.entries(artifacts)) {
-        fs.mkdirSync(path.join(downloads, name));
-        fs.writeFileSync(
-          path.join(downloads, name, reportFile),
-          JSON.stringify(report),
-        );
+      if (args[0] === 'api') {
+        return [...Object.keys(artifacts), 'coverage'].join('\n');
       }
+      const [, , , , name = '', , into = ''] = args;
+      downloading += 1;
+      mostAtOnce = Math.max(mostAtOnce, downloading);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      fs.mkdirSync(into, { recursive: true });
+      fs.writeFileSync(
+        path.join(into, reportFile),
+        JSON.stringify(artifacts[name]),
+      );
+      downloading -= 1;
       return '';
     };
     const durations = await latestDurations(gh, downloads);
@@ -128,7 +139,7 @@ suite('Durations of the test files read from CI', () => {
       'src/test/a.test.ts',
       'src/test/b.test.ts',
     ]);
-    assert.deepStrictEqual(calls, [
+    assert.deepStrictEqual(calls.slice(0, 2), [
       [
         'run',
         'list',
@@ -144,15 +155,31 @@ suite('Durations of the test files read from CI', () => {
         'databaseId',
       ],
       [
-        'run',
-        'download',
-        '42',
-        '--pattern',
-        `${artifactPrefix}*`,
-        '--dir',
-        downloads,
+        'api',
+        'repos/{owner}/{repo}/actions/runs/42/artifacts?per_page=100',
+        '--jq',
+        '.artifacts[].name',
       ],
     ]);
+    assert.deepStrictEqual(
+      calls
+        .slice(2)
+        .toSorted(([, , , , one = ''], [, , , , other = '']) =>
+          byName(one, other),
+        ),
+      Object.keys(artifacts)
+        .toSorted(byName)
+        .map((name) => [
+          'run',
+          'download',
+          '42',
+          '--name',
+          name,
+          '--dir',
+          path.join(downloads, name),
+        ]),
+    );
+    assert.strictEqual(mostAtOnce, Object.keys(artifacts).length);
   });
 
   test('says so when no run of CI on main has passed', async () => {
