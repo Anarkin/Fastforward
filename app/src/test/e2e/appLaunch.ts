@@ -125,13 +125,17 @@ export async function launchApp(
     cwd: appFolder,
     ...(env === undefined ? {} : { env }),
   });
-  await app.evaluate(({ app: started, BrowserWindow }) => {
-    for (const window of BrowserWindow.getAllWindows()) {
-      window.setIgnoreMouseEvents(true);
-    }
-    started.on('browser-window-created', (_event, window) => {
-      window.setIgnoreMouseEvents(true);
-    });
-  });
+  if (process.platform !== 'linux') {
+    void app
+      .evaluate(({ app: started, BrowserWindow }) => {
+        for (const window of BrowserWindow.getAllWindows()) {
+          window.setIgnoreMouseEvents(true);
+        }
+        started.on('browser-window-created', (_event, window) => {
+          window.setIgnoreMouseEvents(true);
+        });
+      })
+      .catch(() => undefined);
+  }
   return app;
 }
