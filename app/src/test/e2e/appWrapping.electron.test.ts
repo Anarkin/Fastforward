@@ -446,9 +446,15 @@ suite('App', () => {
     try {
       await page.locator('.commit', { hasText: 'second' }).click();
       await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-      await page
-        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
-        .click();
+      const changed = page.locator('.commit.working-tree', {
+        hasText: '1 uncommitted change',
+      });
+      await changed.waitFor().catch(async (error: unknown) => {
+        throw new Error(
+          `${String(error)}: the working tree shows ${JSON.stringify(await page.locator('.commit.working-tree').allTextContents())} while git says ${JSON.stringify(await repository.git('status', '--porcelain'))}`,
+        );
+      });
+      await changed.click();
       await page.locator('.row.file', { hasText: 'report.html' }).click();
       await clickView('Side by Side')();
       await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
