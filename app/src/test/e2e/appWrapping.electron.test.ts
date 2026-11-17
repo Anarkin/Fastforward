@@ -153,7 +153,7 @@ suite('App', () => {
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
     const list = page.locator('.diff-view .virtual-rows');
     await list.evaluate((element) => {
-      element.scrollTop = element.scrollHeight / 2;
+      element.scrollTop = element.scrollHeight / 4;
     });
     const topLine = () =>
       list.evaluate((element) => {
@@ -201,6 +201,7 @@ suite('App', () => {
           const top = element.getBoundingClientRect().top;
           return {
             scrollTop: element.scrollTop,
+            room: element.scrollHeight - element.clientHeight,
             scale: devicePixelRatio,
             rows: [...element.querySelectorAll('.diff-row')]
               .map((drawn) => ({
