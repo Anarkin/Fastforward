@@ -6,10 +6,12 @@ import {
   focusBack,
   focusOf,
   focusSchema,
+  typedSchema,
   useFocusKeeper,
   type KeptFocus,
 } from '../../../../lib/page/viewFocus';
 import { mounted } from '../../../helpers/mounted';
+import { maxViewText } from '../../../../lib/shared/searchOptions';
 
 const page = () =>
   new JSDOM(
@@ -207,5 +209,18 @@ suite('The focus kept for a tab', () => {
       { name: 'body' },
       undefined,
     ]);
+  });
+
+  test('keeps the text typed in a box up to the longest text a view holds, and none longer, so the view of its tab stays within its bound', () => {
+    assert.deepStrictEqual(
+      typedSchema.encode({ value: 'a'.repeat(maxViewText) }),
+      {
+        value: 'a'.repeat(maxViewText),
+      },
+    );
+    assert.strictEqual(
+      typedSchema.encode({ value: 'a'.repeat(maxViewText + 1) }),
+      undefined,
+    );
   });
 });

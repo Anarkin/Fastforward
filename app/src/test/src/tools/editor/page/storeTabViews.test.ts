@@ -107,4 +107,26 @@ suite('Editor store keeping its tabs', () => {
     assert.deepStrictEqual(other.getState().keptEditing('3'), editing);
     assert.strictEqual(other.getState().keptEditor('3'), undefined);
   });
+
+  test('drops the question to reopen a tab in another encoding once its text comes without changes, as after the app starts again with the changes it warned of gone, and keeps it while the text has them', () => {
+    const { store } = keepingViews();
+    const { receive } = store.getState();
+    const editing = (changed: boolean) =>
+      receive({
+        type: 'editing',
+        tab: '3',
+        file,
+        version: 1,
+        encoding: 'utf-8',
+        ...(changed && { changed: true }),
+        endingSources: [],
+        encodingSources: [],
+      });
+    receive({ type: 'show', tab: '3', file });
+    store.getState().keepEditing('3', { reopening: 'utf-16le' });
+    editing(true);
+    assert.strictEqual(store.getState().keptEditing('3').reopening, 'utf-16le');
+    editing(false);
+    assert.strictEqual(store.getState().keptEditing('3').reopening, undefined);
+  });
 });

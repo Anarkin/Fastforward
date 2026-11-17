@@ -53,7 +53,9 @@ export const searchOptionsSchema: Schema<SearchOptions> = record({
   regex: flag(),
 });
 
+export const maxViewText = 32 * 1024;
+
 export const searchSchema: Schema<Search> = record({
-  query: text(),
+  query: text({ max: maxViewText }),
   options: searchOptionsSchema,
 });

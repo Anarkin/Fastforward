@@ -1,3 +1,4 @@
+import { maxViewText } from '../shared/searchOptions';
 import { useEffect, useEffectEvent, type RefObject } from 'react';
 import { restoreWhen } from './restore';
 import {
@@ -99,7 +100,7 @@ const caretSchema: Schema<NonNullable<KeptFocus['selection']>> = {
 };
 
 export const typedSchema: Schema<KeptTyped> = record({
-  value: text(),
+  value: text({ max: maxViewText }),
   selection: optional(caretSchema),
 });
 

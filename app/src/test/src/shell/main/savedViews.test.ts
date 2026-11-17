@@ -1,23 +1,23 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import {
-  maxSavedViewChars,
   savedViewsOf,
   ViewSaver,
   viewsToSave,
   type ViewVersions,
 } from '../../../../shell/main/savedViews';
+import { maxViewChars } from '../../../../shell/shared/protocol';
 
 const versions: ViewVersions = (tool) =>
   tool === 'viewer' ? 3 : tool === 'editor' ? 2 : 1;
 
 suite('Views saved with the tabs', () => {
-  test('saves the view of each tab with the version of its schema, leaving out a view over 64 KiB', () => {
+  test('saves the view of each tab with the version of its schema, leaving out a view over the bound the main process keeps views within, as a restart brings back what a reload does', () => {
     assert.deepStrictEqual(
       viewsToSave(
         [
           ['1', { tool: 'viewer', view: '{"place":7}' }],
-          ['2', { tool: 'editor', view: 'x'.repeat(maxSavedViewChars + 1) }],
+          ['2', { tool: 'editor', view: 'x'.repeat(maxViewChars + 1) }],
         ],
         versions,
       ),

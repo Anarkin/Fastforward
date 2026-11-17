@@ -130,6 +130,12 @@ export function createEditorStore(
                 encodingSources: message.encodingSources,
               },
             });
+            if (
+              message.changed !== true &&
+              get().editings.get(message.tab)?.reopening !== undefined
+            ) {
+              get().keepEditing(message.tab, { reopening: undefined });
+            }
             break;
           case 'textChanged':
             set((state) =>

@@ -1,7 +1,6 @@
+import { maxViewChars } from '../shared/protocol';
 import { isObject } from '../../lib/main/json';
 import type { ToolId } from '../shared/tools';
-
-export const maxSavedViewChars = 64 * 1024;
 
 const savedViewsWait = 1000;
 
@@ -27,7 +26,7 @@ export function savedViewsOf(
         isObject(kept) &&
         kept.version === versions(tool) &&
         typeof kept.view === 'string' &&
-        kept.view.length <= maxSavedViewChars
+        kept.view.length <= maxViewChars
         ? [[tab, kept.view] as const]
         : [];
     }),
@@ -40,7 +39,7 @@ export function viewsToSave(
 ): Record<string, { readonly version: number; readonly view: string }> {
   return Object.fromEntries(
     [...views].flatMap(([tab, { tool, view }]) =>
-      view.length <= maxSavedViewChars
+      view.length <= maxViewChars
         ? [[tab, { version: versions(tool), view }]]
         : [],
     ),
