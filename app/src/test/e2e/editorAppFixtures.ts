@@ -99,6 +99,13 @@ export const backAndView = async (name: string) => {
   await select(name);
   await page.keyboard.press('F3');
   await page.locator('.viewer').waitFor();
+  await waitFor(
+    () =>
+      page.evaluate(
+        () => (document.activeElement?.closest('.viewer') ?? null) !== null,
+      ),
+    'the viewer to take the keyboard, once it knows its file',
+  );
 };
 export const shownInViewer = async (name: string, text: string) => {
   const lines = text.replace(/\n$/, '');
