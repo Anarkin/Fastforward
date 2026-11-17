@@ -1,6 +1,7 @@
 import { spawnSync, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
 import { _electron, type ElectronApplication } from 'playwright-core';
+import { strings } from '../../lib/shared/strings';
 
 export const appFolder = path.join(__dirname, '..', '..', '..');
 
@@ -21,14 +22,58 @@ export function within<T>(
   ]).finally(() => clearTimeout(timer));
 }
 
+async function answeredToQuit(app: ElectronApplication): Promise<boolean> {
+  for (const page of app.windows()) {
+    const asked = page.locator('.confirm-popup', {
+      has: page.locator('.shortcuts-title', {
+        hasText: strings.confirm.quitTitle,
+      }),
+    });
+    if ((await asked.count()) === 0) {
+      continue;
+    }
+    const withoutSaving = asked.locator('.confirm-button', {
+      hasText: strings.confirm.dontSave,
+    });
+    const answer =
+      (await withoutSaving.count()) > 0
+        ? withoutSaving
+        : asked.locator('.confirm-button.default');
+    if (
+      await answer.click({ timeout: 500 }).then(
+        () => true,
+        () => false,
+      )
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function answeringToQuit(
+  app: ElectronApplication,
+  ended: AbortSignal,
+): Promise<void> {
+  while (!ended.aborted) {
+    await answeredToQuit(app).catch(() => false);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 export async function closeOrKill(app: ElectronApplication): Promise<void> {
   const closing = app.close();
+  const ended = new AbortController();
+  const answering = answeringToQuit(app, ended.signal);
   try {
     await within(closing, 'the app to close');
   } catch {
     killWithChildren(app.process());
     closing.catch(() => undefined);
+  } finally {
+    ended.abort();
   }
+  await answering;
 }
 
 function killWithChildren(child: ChildProcess): void {
