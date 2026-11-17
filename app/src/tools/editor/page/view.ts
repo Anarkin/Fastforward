@@ -20,6 +20,7 @@ import { savingFixes } from './saving';
 import { endingsChanged, endingsField, endingsSent } from './endings';
 import { endingsShownOf, type EndingsShown } from './endingsLabel';
 import {
+  backTo,
   editorAt,
   placeIn,
   placeMapped,
@@ -250,12 +251,13 @@ export function useEditorView(language: string | undefined) {
       );
       const keptPlace = placeIn(keptState);
       if (message.reloaded === true) {
+        const left = settling && place !== undefined ? place : placeOf(shown);
         shown.setState(next);
         shown.dispatch({
           selection: EditorSelection.cursor(
             Math.min(head, shown.state.doc.length),
           ),
-          scrollIntoView: true,
+          effects: backTo(shown.state.doc, left),
         });
       } else if (message.at !== undefined) {
         const start = next.doc.lineAt(

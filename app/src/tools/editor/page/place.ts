@@ -63,7 +63,7 @@ function placeDown(view: EditorView): EditorPlace {
   return { from: Math.min(row + 1, view.state.doc.lineAt(row).to), offset: 0 };
 }
 
-function backTo(
+export function backTo(
   doc: Text,
   { from, offset }: EditorPlace,
 ): StateEffect<unknown> {

@@ -248,4 +248,21 @@ suite('App editor tabs shown again', () => {
       );
     });
   });
+
+  test('keeps the place scrolled to of a file shown while it is read again for a change on disk, though its cursor is out of view, rather than scrolling to the cursor', async () => {
+    const scroller = page.locator('.editor .cm-scroller');
+    await scroller.evaluate((element) => element.scrollTo({ top: 400 }));
+    const left = await settledLooks(page);
+    const tall = await scroller.evaluate((element) => element.scrollHeight);
+    fs.appendFileSync(
+      path.join(folder, 'opened', 'other.txt'),
+      `${String.fromCharCode(10)}more`,
+    );
+    await waitFor(
+      async () =>
+        (await scroller.evaluate((element) => element.scrollHeight)) > tall,
+      'the text read again, a line longer',
+    );
+    assert.deepStrictEqual(await settledLooks(page), left);
+  });
 });
