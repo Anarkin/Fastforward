@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines } from '../../lib/page/wordWrap';
 import {
@@ -190,29 +191,32 @@ suite('App', () => {
       .first();
     await line.waitFor();
     await waitFor(() => marksFollowRows(line), 'the marks to follow the rows');
-    const before = await line
-      .locator('.wrap-break')
-      .evaluateAll((marks) =>
-        marks.map((mark) => mark.getBoundingClientRect().left),
-      );
-    await line.evaluate((element) => {
-      const code = element.querySelector<HTMLElement>('.code');
-      if (code) {
-        code.style.paddingRight = 'calc(2 * var(--diff-code-padding) + 9ch)';
-      }
-    });
-    await waitFor(
-      () => marksFollowRows(line),
-      'the marks to follow the rows broken elsewhere',
-    );
-    assert.notDeepStrictEqual(
-      await line
+    const marks = () =>
+      line
         .locator('.wrap-break')
-        .evaluateAll((marks) =>
-          marks.map((mark) => mark.getBoundingClientRect().left),
-        ),
-      before,
-    );
+        .evaluateAll((all) =>
+          all.map((mark) => mark.getBoundingClientRect().left),
+        );
+    const before = await marks();
+    let after = before;
+    for (
+      let columns = 8;
+      columns <= 16 && isDeepStrictEqual(after, before);
+      columns++
+    ) {
+      await line.evaluate((element, narrower) => {
+        const code = element.querySelector<HTMLElement>('.code');
+        if (code) {
+          code.style.paddingRight = `calc(2 * var(--diff-code-padding) + ${narrower}ch)`;
+        }
+      }, columns);
+      await waitFor(
+        () => marksFollowRows(line),
+        'the marks to follow the rows broken elsewhere',
+      );
+      after = await marks();
+    }
+    assert.notDeepStrictEqual(after, before);
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
