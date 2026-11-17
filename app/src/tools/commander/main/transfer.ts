@@ -548,7 +548,7 @@ class Transfer {
     const input = await fs.promises.open(source, 'r');
     let output: fs.promises.FileHandle | undefined;
     try {
-      output = await fs.promises.open(target, 'wx', stats.mode & 0o7777);
+      output = await fs.promises.open(target, 'wx', 0o666);
       const piece = Buffer.allocUnsafe(pieceBytes);
       for (let position = 0; ;) {
         this.stopIfAsked();
@@ -561,7 +561,10 @@ class Transfer {
         this.bytes += bytesRead;
         this.report();
       }
+      await output.close();
+      output = undefined;
       await keptMark(source, target);
+      await fs.promises.chmod(target, stats.mode & 0o7777);
     } catch (error) {
       await output?.close().catch(ignored);
       output = undefined;

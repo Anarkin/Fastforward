@@ -566,6 +566,37 @@ suite('Transfer', () => {
     },
   );
 
+  test.skipIf(process.platform !== 'win32')(
+    'keeps the Mark of the Web of a large read-only file copied in pieces on Windows, and keeps it read-only, as the target was made read-only before its mark was written, which Windows refused',
+    async () => {
+      const big = path.join(source, 'setup.iso');
+      fs.writeFileSync(big, Buffer.alloc(10_000, 7));
+      const mark = '[ZoneTransfer]\r\nZoneId=3\r\n';
+      fs.writeFileSync(`${big}:Zone.Identifier`, mark);
+      fs.chmodSync(big, 0o444);
+
+      try {
+        const copied = await run(
+          { sources: [big], target, move: false },
+          { piecesFrom: 4000, pieceBytes: 1000, cloning: false },
+        );
+
+        assert.deepStrictEqual(copied.failures, []);
+        const made = path.join(target, 'setup.iso');
+        assert.strictEqual(
+          fs.readFileSync(`${made}:Zone.Identifier`, 'utf8'),
+          mark,
+        );
+        assert.strictEqual(fs.statSync(made).mode & 0o222, 0);
+      } finally {
+        fs.chmodSync(big, 0o666);
+        if (fs.existsSync(path.join(target, 'setup.iso'))) {
+          fs.chmodSync(path.join(target, 'setup.iso'), 0o666);
+        }
+      }
+    },
+  );
+
   test('copies a symbolic link as a link, and moves it so to another drive', async (context) => {
     write(path.join(source, 'real.txt'), 'real');
     try {
