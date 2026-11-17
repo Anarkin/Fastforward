@@ -130,9 +130,9 @@ suite('App', () => {
       sample.style.font = style.font;
       sample.style.letterSpacing = style.letterSpacing;
       sample.style.whiteSpace = 'pre';
-      sample.textContent = '0'.repeat(100);
+      sample.textContent = '0'.repeat(1000);
       document.body.append(sample);
-      const char = sample.getBoundingClientRect().width / 100;
+      const char = sample.getBoundingClientRect().width / 1000;
       sample.remove();
       return {
         height: element.getBoundingClientRect().height,
@@ -501,18 +501,16 @@ suite('App', () => {
         async () => (await line.count()) === 0,
         'the line of over a megabyte to leave',
       );
-      for (let step = 0; (await line.count()) === 0; step++) {
-        if (step >= 40) {
-          const scrolled = await list.evaluate((element) => ({
-            top: element.scrollTop,
-            height: element.scrollHeight,
-            view: element.clientHeight,
-            rows: element.querySelectorAll('.diff-row').length,
-          }));
-          assert.fail(
-            `The line of over a megabyte never came: ${JSON.stringify(scrolled)}, ${JSON.stringify(stalls)}`,
-          );
-        }
+      while ((await line.count()) === 0) {
+        const scrolled = await list.evaluate((element) => ({
+          top: element.scrollTop,
+          height: element.scrollHeight,
+          view: element.clientHeight,
+        }));
+        assert.ok(
+          scrolled.top + scrolled.view < scrolled.height - 1,
+          `The line of over a megabyte never came: ${JSON.stringify(scrolled)}`,
+        );
         await scrollByHalf();
       }
       const { top, height, view } = await line.evaluate((element) => {

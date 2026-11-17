@@ -299,9 +299,11 @@ export function wrappedLines(
   return wrapStarts(text, columns, undefined, widths).length;
 }
 
+const layoutUnit = 1 / 64;
+
 export function wrapColumns(width: number, charWidth: number): number {
   if (!(charWidth > 0)) {
     return Infinity;
   }
-  return Math.max(1, Math.floor(width / charWidth + 1e-6));
+  return Math.max(1, Math.floor((width + layoutUnit) / charWidth - 1e-6));
 }

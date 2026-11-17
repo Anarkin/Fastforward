@@ -6,7 +6,7 @@ import { uniformHeight, type WrapColumns } from './rowMeasures';
 import { wordPadding, type Edges } from './textLayout';
 import { sideSnaps } from './codeSnap';
 
-const wrapSample = '0'.repeat(100);
+const wrapSample = '0'.repeat(1000);
 
 function measureWrapColumns(probe: HTMLElement): WrapColumns {
   const [left = Infinity, right = left] = Array.from(

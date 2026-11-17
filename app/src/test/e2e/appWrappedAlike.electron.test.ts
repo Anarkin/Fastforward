@@ -223,9 +223,9 @@ const diffWraps = (): Promise<readonly DiffWrap[]> =>
         sample.style.font = style.font;
         sample.style.letterSpacing = style.letterSpacing;
         sample.style.whiteSpace = 'pre';
-        sample.textContent = '0'.repeat(100);
+        sample.textContent = '0'.repeat(1000);
         document.body.append(sample);
-        const char = sample.getBoundingClientRect().width / 100;
+        const char = sample.getBoundingClientRect().width / 1000;
         sample.remove();
         const starts: number[] = [];
         let lastTop = Number.NaN;

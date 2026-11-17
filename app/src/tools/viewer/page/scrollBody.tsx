@@ -22,7 +22,7 @@ import { type Thumb } from './scrollThumbs';
 import { copiedRows, type RowText } from './rowCopy';
 import { ViewerScrollbar } from './scrollbar';
 
-const probeText = '0'.repeat(100);
+const probeText = '0'.repeat(1000);
 
 const revealColumns = 8;
 

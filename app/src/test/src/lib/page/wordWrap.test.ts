@@ -157,6 +157,12 @@ suite('Word wrap', () => {
     assert.strictEqual(wrapColumns(3, 7.2), 1);
   });
 
+  test('fits a character that fills the row to within a sixty-fourth of a pixel, the layout unit of Chromium, as a character measured on a sample comes out that much wider than it lays out, and fits none past the row by a whole unit', () => {
+    assert.strictEqual(wrapColumns(476, 700.015625 / 100), 68);
+    assert.strictEqual(wrapColumns(476, 7), 68);
+    assert.strictEqual(wrapColumns(476 - 1 / 64, 7), 67);
+  });
+
   test('expects no line to wrap while the characters have no width, as in a hidden column, or none that can be measured', () => {
     assert.strictEqual(wrapColumns(0, 0), Infinity);
     assert.strictEqual(wrapColumns(100, Number.NaN), Infinity);
