@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import { mergeSettings } from '../../../../shell/main/settingsMerge';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
+import { defaultCursorLook } from '../../../../lib/shared/cursorSettings';
 import { defaultSettings } from '../../../helpers/fixtures';
 
 const defaults = defaultSettings();
@@ -254,12 +255,13 @@ suite('Settings', () => {
     );
   });
 
-  test('takes a block, a bar, an underline or an outline as the style of the cursor, keeping a steady block of a bar two pixels wide by default', () => {
+  test('takes a block, a bar, an underline or an outline as the style of the cursor, keeping a blinking block of a bar two pixels wide by default, as the fallback of the page has it', () => {
     assert.deepStrictEqual(defaults.cursor, {
       style: 'block',
       width: 2,
-      blink: false,
+      blink: true,
     });
+    assert.deepStrictEqual(defaults.cursor, defaultCursorLook);
     const { settings, problems } = mergeSettings(defaults, {
       cursor: { style: 'beam', width: 3 },
     });

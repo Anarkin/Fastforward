@@ -11,7 +11,7 @@ export interface CursorLook {
 export const defaultCursorLook: CursorLook = {
   style: 'block',
   width: 2,
-  blink: false,
+  blink: true,
 };
 
 export const cursorVariables = {
@@ -30,11 +30,15 @@ function isCursorStyle(value: string): value is CursorStyle {
 export function cursorLookOf(read: (name: string) => string): CursorLook {
   const style = read(cursorVariables.style).trim();
   const width = Number.parseFloat(read(cursorVariables.width));
+  const blink = read(cursorVariables.blink).trim();
   return {
     style: isCursorStyle(style) ? style : defaultCursorLook.style,
     width: Number.isFinite(width)
       ? Math.min(thickest, Math.max(thinnest, Math.round(width)))
       : defaultCursorLook.width,
-    blink: read(cursorVariables.blink).trim() === 'on',
+    blink:
+      blink === 'on' || blink === 'off'
+        ? blink === 'on'
+        : defaultCursorLook.blink,
   };
 }

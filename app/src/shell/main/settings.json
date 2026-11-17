@@ -11,7 +11,7 @@
   "cursor": {
     "style": "block",
     "width": 2,
-    "blink": false
+    "blink": true
   },
   "text": {
     "wordWrap": true,

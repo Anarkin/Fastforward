@@ -10,15 +10,20 @@ const barOf = (width: string) =>
   cursorLookOf((name) => (name === cursorVariables.width ? width : '')).width;
 
 suite('Cursor settings', () => {
-  test('reads its look from the variables of the theme, falling back on a steady block of a bar two pixels wide', () => {
+  test('reads its look from the variables of the theme, falling back on a blinking block of a bar two pixels wide', () => {
     const variables: Record<string, string> = {
       [cursorVariables.style]: ' bar',
       [cursorVariables.width]: ' 3',
-      [cursorVariables.blink]: ' on',
+      [cursorVariables.blink]: ' off',
     };
     assert.deepStrictEqual(
       cursorLookOf((name) => variables[name] ?? ''),
-      { style: 'bar', width: 3, blink: true },
+      { style: 'bar', width: 3, blink: false },
+    );
+    assert.strictEqual(
+      cursorLookOf((name) => (name === cursorVariables.blink ? 'on' : ''))
+        .blink,
+      true,
     );
     assert.deepStrictEqual(
       cursorLookOf(() => ''),
@@ -27,7 +32,7 @@ suite('Cursor settings', () => {
     assert.deepStrictEqual(defaultCursorLook, {
       style: 'block',
       width: 2,
-      blink: false,
+      blink: true,
     });
     assert.deepStrictEqual(
       cursorLookOf(

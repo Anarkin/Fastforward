@@ -82,15 +82,15 @@ suite('Cursor the page draws over the terminal', () => {
     assert.deepStrictEqual(cursorOptions(defaultCursorLook), {
       cursorStyle: 'block',
       cursorWidth: 2,
-      cursorBlink: false,
+      cursorBlink: true,
       cursorInactiveStyle: 'block',
     });
     assert.deepStrictEqual(
-      cursorOptions({ style: 'bar', width: 3, blink: true }),
+      cursorOptions({ style: 'bar', width: 3, blink: false }),
       {
         cursorStyle: 'bar',
         cursorWidth: 3,
-        cursorBlink: true,
+        cursorBlink: false,
         cursorInactiveStyle: 'bar',
       },
     );
