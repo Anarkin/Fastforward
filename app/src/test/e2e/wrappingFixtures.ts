@@ -98,7 +98,32 @@ export function browserStarts(line: Locator) {
     document.body.append(sample);
     const char = sample.getBoundingClientRect().width / 100;
     sample.remove();
+    const rowWidths = starts.slice(0, 3).map((start, row) => {
+      const walked = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+      const end = starts[row + 1] ?? (code.textContent ?? '').length;
+      let passed = 0;
+      const rows = document.createRange();
+      for (let node = walked.nextNode(); node; node = walked.nextNode()) {
+        if (!(node instanceof Text)) {
+          continue;
+        }
+        if (start >= passed && start <= passed + node.length) {
+          rows.setStart(node, start - passed);
+        }
+        if (end >= passed && end <= passed + node.length) {
+          rows.setEnd(node, end - passed);
+          break;
+        }
+        passed += node.length;
+      }
+      return rows.getBoundingClientRect().width;
+    });
     return {
+      measured: {
+        scale: devicePixelRatio,
+        font: style.fontFamily,
+        rowWidths,
+      },
       text: code.textContent ?? '',
       starts,
       boxed: [...code.querySelectorAll('.cell')].map(

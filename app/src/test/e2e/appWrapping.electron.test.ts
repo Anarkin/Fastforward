@@ -331,6 +331,11 @@ suite('App', () => {
       const columns = wrapColumns(laidOut.width, laidOut.char);
       found.push({
         line: `${line.slice(0, 24)} ${columns}`,
+        measured: {
+          width: laidOut.width,
+          char: laidOut.char,
+          ...laidOut.measured,
+        },
         browser: laidOut.starts,
         app: await wrapping.evaluate(
           async (app, { text, wrapAt, boxed }) => {
@@ -497,7 +502,17 @@ suite('App', () => {
         'the line of over a megabyte to leave',
       );
       for (let step = 0; (await line.count()) === 0; step++) {
-        assert.ok(step < 40, 'The line of over a megabyte never came');
+        if (step >= 40) {
+          const scrolled = await list.evaluate((element) => ({
+            top: element.scrollTop,
+            height: element.scrollHeight,
+            view: element.clientHeight,
+            rows: element.querySelectorAll('.diff-row').length,
+          }));
+          assert.fail(
+            `The line of over a megabyte never came: ${JSON.stringify(scrolled)}, ${JSON.stringify(stalls)}`,
+          );
+        }
         await scrollByHalf();
       }
       const { top, height, view } = await line.evaluate((element) => {
@@ -555,6 +570,11 @@ suite('App', () => {
       wrapStarts(minifiedLine, wrapColumns(laidOut.width, laidOut.char)).filter(
         (start) => start < laidOut.text.length,
       ),
+      JSON.stringify({
+        width: laidOut.width,
+        char: laidOut.char,
+        ...laidOut.measured,
+      }),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
