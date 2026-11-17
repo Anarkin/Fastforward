@@ -126,6 +126,12 @@ export class FakeHost implements ShellHost, GitHost {
     );
   }
 
+  readonly refusals = new Map<string, Sentence>();
+
+  editRefusal(file: string): Promise<Sentence | undefined> {
+    return Promise.resolve(this.refusals.get(file));
+  }
+
   readonly cloned: string[] = [];
   readonly inited: string[] = [];
   readonly shellMenus: [

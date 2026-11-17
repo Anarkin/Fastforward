@@ -160,18 +160,18 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
         </span>
       </div>
       <div
-        className="transfer-bar"
+        className="progress-bar"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={done}
       >
-        <div className="transfer-bar-done" style={{ width: `${done}%` }} />
+        <div className="progress-bar-done" style={{ width: `${done}%` }} />
       </div>
       {progress !== undefined &&
         (transfer.archiveJob === undefined ||
           countedJobs.has(transfer.archiveJob)) && (
-          <div className="transfer-counts">
+          <div className="progress-counts">
             <span>{lines.files}</span>
             <span>
               {commander.transferredBytes(progress.bytes, progress.totalBytes)}

@@ -1,5 +1,6 @@
 const folderCommands = [
   'newTerminal',
+  'openInCommander',
   'openInGit',
   'cloneHere',
   'initHere',

@@ -58,11 +58,11 @@ suite('Shortcuts popup', () => {
   test('lists the shortcuts of every tab first, then those of every tool of the app once, under its name, in the order of the sections of the settings', () => {
     assert.deepStrictEqual(
       shortcutEntries.map((each) => each.id),
-      ['everywhere', ...toolSections],
+      ['everywhere', ...toolSections, 'paint'],
     );
     assert.deepStrictEqual([...toolSections].toSorted(), [...tools].toSorted());
     assert.deepStrictEqual(
-      shortcutEntries.slice(1).map((each) => each.title),
+      shortcutEntries.slice(1, -1).map((each) => each.title),
       toolSections.map((tool) => strings.tools[tool]),
     );
   });
@@ -71,12 +71,13 @@ suite('Shortcuts popup', () => {
     const html = shortcutsMarkup(<ShortcutsPopup />, 'commander');
     assert.deepStrictEqual(textsOf(html, 'shortcuts-tool-name'), [
       'General',
+      'Terminal',
       'Commander',
+      'Git',
       'Viewer',
       'Diff',
       'Editor',
-      'Git',
-      'Terminal',
+      'Paint',
     ]);
     const appIcon = renderToStaticMarkup(
       <AppIcon className="icon" size={16} />,
@@ -161,14 +162,15 @@ suite('Shortcuts popup', () => {
   test("narrows the shortcuts to those with every word typed in what they do or among their keys, whatever their case, counting each tool's matches", () => {
     assert.deepStrictEqual(counts('f3'), [
       ['everywhere', 0],
+      ['terminal', 0],
       ['commander', 2],
+      ['git', 1],
       ['viewer', 0],
       ['diff', 0],
       ['editor', 0],
-      ['git', 1],
-      ['terminal', 0],
+      ['paint', 0],
     ]);
-    assert.deepStrictEqual(counts('ARCHIVE')[1], ['commander', 2]);
+    assert.deepStrictEqual(counts('ARCHIVE')[2], ['commander', 2]);
     const shiftF6 = shown('shift f6')
       .flatMap((each) => each.groups.flatMap((group) => group.rows))
       .map((row) => row.binding.action);
@@ -269,13 +271,13 @@ suite('Shortcuts popup', () => {
         view('commander/Viewing and comparing', { atEnd: true }),
         1,
       ),
-      'viewer/Scrolling',
+      'git/Moving around',
     );
     assert.strictEqual(
       steppedGroup(
         all,
-        'viewer',
-        view('viewer/Scrolling', { atStart: true }),
+        'git',
+        view('git/Moving around', { atStart: true }),
         -1,
       ),
       'commander/Archives',
@@ -283,8 +285,8 @@ suite('Shortcuts popup', () => {
     assert.strictEqual(
       steppedGroup(
         all,
-        'terminal',
-        view('terminal/Clipboard', { atStart: true, atEnd: true }),
+        'editor',
+        view('editor/Searching', { atStart: true, atEnd: true }),
         1,
       ),
       undefined,
@@ -296,13 +298,13 @@ suite('Shortcuts popup', () => {
         view('everywhere/Tabs', { atEnd: true }),
         1,
       ),
-      'commander/Moving around',
+      'terminal/Clipboard',
     );
     assert.strictEqual(
       steppedGroup(
         all,
-        'commander',
-        view('commander/Moving around', { atStart: true }),
+        'terminal',
+        view('terminal/Clipboard', { atStart: true }),
         -1,
       ),
       'everywhere/Lists and popups',
@@ -332,12 +334,16 @@ suite('Shortcuts popup', () => {
       'commander/Viewing and comparing',
     );
     assert.strictEqual(
-      steppedGroup(f3, 'viewer', view(undefined, whole), 1),
+      steppedGroup(f3, 'terminal', view(undefined, whole), 1),
+      'commander/Viewing and comparing',
+    );
+    assert.strictEqual(
+      steppedGroup(f3, 'diff', view(undefined, whole), -1),
       'git/Files',
     );
     assert.strictEqual(
-      steppedGroup(f3, 'viewer', view(undefined, whole), -1),
-      'commander/Viewing and comparing',
+      steppedGroup(f3, 'diff', view(undefined, whole), 1),
+      undefined,
     );
   });
 
@@ -351,17 +357,18 @@ suite('Shortcuts popup', () => {
         assert.strictEqual(document.activeElement, field);
         assert.strictEqual(openTool(document), 'Commander');
         await press('Tab', { ctrlKey: true });
-        assert.strictEqual(openTool(document), 'Viewer');
+        assert.strictEqual(openTool(document), 'Git');
         assert.deepStrictEqual(headingsOf(document), [
-          'Scrolling',
-          'Showing the file',
-          'Text',
+          'Moving around',
+          'Commits',
+          'Commit messages',
+          'Files',
           'Searching',
         ]);
         await press('Tab', { ctrlKey: true, shiftKey: true });
         assert.strictEqual(openTool(document), 'Commander');
         await press('ArrowDown');
-        assert.strictEqual(openTool(document), 'Viewer');
+        assert.strictEqual(openTool(document), 'Git');
         await press('ArrowUp');
         assert.strictEqual(openTool(document), 'Commander');
         await type('f3');
@@ -369,11 +376,11 @@ suite('Shortcuts popup', () => {
           [
             ...document.querySelectorAll('.shortcuts-tool .shortcuts-count'),
           ].map((count) => count.textContent),
-          ['0', '2', '0', '0', '0', '1', '0'],
+          ['0', '0', '2', '1', '0', '0', '0', '0'],
         );
         assert.strictEqual(
           document.querySelectorAll('.shortcuts-tool.empty').length,
-          5,
+          6,
         );
         assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
         await press('ArrowDown');
@@ -407,9 +414,10 @@ suite('Shortcuts popup', () => {
   });
 
   test('steps through the tools round, from the last back to the first', () => {
-    assert.strictEqual(steppedEntry('commander', 1), 'viewer');
-    assert.strictEqual(steppedEntry('everywhere', 1), 'commander');
-    assert.strictEqual(steppedEntry('commander', -1), 'everywhere');
+    assert.strictEqual(steppedEntry('terminal', 1), 'commander');
+    assert.strictEqual(steppedEntry('everywhere', 1), 'terminal');
+    assert.strictEqual(steppedEntry('terminal', -1), 'everywhere');
+    assert.strictEqual(steppedEntry('paint', 1), 'everywhere');
   });
 
   test('takes its title from the menu entry that opens it, so both name it alike', () => {

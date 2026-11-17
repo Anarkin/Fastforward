@@ -12,7 +12,7 @@ import { lastFolder } from './fakePage';
 import { archiveItem, zipped } from './fakeArchives';
 
 suite('Commander tool in archives', () => {
-  test('opens a tab opened with an archive beside it on the right, entering it, as Open with 7-Zip... on a part of a path anywhere asks', async () => {
+  test('opens a tab opened with an archive beside it on the right, entering it, as Open with Commander’s 7-Zip on a part of a path anywhere asks', async () => {
     const holding = fs.mkdtempSync(
       path.join(os.tmpdir(), 'fastforward-archive-tab-'),
     );

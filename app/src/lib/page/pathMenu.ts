@@ -5,7 +5,6 @@ export interface PathMenuAsk {
   readonly file: boolean;
   readonly at: { readonly x: number; readonly y: number };
   readonly extended: boolean;
-  readonly onGoTo?: () => void;
 }
 
 export const pathMenuClass = 'path-menu';

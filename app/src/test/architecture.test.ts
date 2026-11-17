@@ -590,7 +590,7 @@ suite('Architecture', () => {
     assert.deepStrictEqual(Object.keys(settings.tools), [...toolSections]);
     assert.deepStrictEqual(
       shortcutEntries.map((entry) => entry.id),
-      ['everywhere', ...toolSections],
+      ['everywhere', ...toolSections, 'paint'],
     );
     assert.ok(tools.every((tool) => toolSections.includes(tool)));
     assert.deepStrictEqual(

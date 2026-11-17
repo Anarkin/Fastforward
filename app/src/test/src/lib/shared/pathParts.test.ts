@@ -30,6 +30,12 @@ suite('The parts of a path', () => {
     ]);
   });
 
+  test('takes a drive written alone, as its button shows it, for its root, so what is done on it is done on the root rather than on the folder Windows keeps current on the drive', () => {
+    assert.deepStrictEqual(pathParts('C:'), [
+      { name: 'C:', path: 'C:\\', separator: '' },
+    ]);
+  });
+
   test('keeps every character of the path, so the parts read as the path', () => {
     for (const each of [
       'C:\\Downloads\\notes.txt',

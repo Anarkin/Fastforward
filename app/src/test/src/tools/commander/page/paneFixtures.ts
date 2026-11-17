@@ -185,7 +185,7 @@ export async function inSide(
     });
     const items = () =>
       (shell.getState().menu?.menu.items ?? []).flatMap((item) =>
-        'separator' in item ? [] : [item],
+        'separator' in item || item.disabled === true ? [] : [item],
       );
     await run({
       main,

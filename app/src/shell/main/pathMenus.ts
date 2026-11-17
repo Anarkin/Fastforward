@@ -2,11 +2,19 @@ import { isFolderCommand } from '../../lib/shared/folderCommands';
 import { runFolderCommand } from '../../lib/main/folderCommands';
 import { maxLookedPathLength } from '../../lib/shared/partLooks';
 import type { PathFacts } from '../../lib/shared/pathFacts';
+import type { Sentence } from '../../lib/shared/sentences';
 import type { ToHost } from '../shared/protocol';
-import type { Page, Tools } from './toolContract';
+import type { Notice, Page, Tools } from './toolContract';
+
+export interface PathOpening {
+  view(page: Page, file: string): Promise<void>;
+  edit(page: Page, file: string): Promise<void>;
+  notice(page: Page, notice: Notice): void;
+}
 
 export interface PathMenuHost {
   pathFacts(file: string): Promise<PathFacts>;
+  editRefusal(file: string): Promise<Sentence | undefined>;
   cloneInto(folder: string): Promise<void>;
   initRepository(folder: string): Promise<void>;
   shellMenu?(
@@ -36,6 +44,7 @@ export async function runPathCommand(
   { path, command, x, y, extended }: Extract<ToHost, { type: 'pathCommand' }>,
   host: PathMenuHost,
   tools: Pick<Tools, 'terminal' | 'git' | 'commander'>,
+  opening: PathOpening,
 ): Promise<void> {
   if (!isPath(path)) {
     return;
@@ -49,6 +58,20 @@ export async function runPathCommand(
           initRepository: (folder) => host.initRepository(folder),
         })
       : Promise.resolve();
+  }
+  if (command === 'view' || command === 'edit') {
+    if (facts.kind !== 'file') {
+      return;
+    }
+    if (command === 'view') {
+      return opening.view(page, path);
+    }
+    const refusal = await host.editRefusal(path);
+    if (refusal !== undefined) {
+      opening.notice(page, { level: 'error', message: refusal });
+      return;
+    }
+    return opening.edit(page, path);
   }
   if (command === 'enterArchive') {
     return facts.kind === 'file'

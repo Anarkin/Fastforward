@@ -300,14 +300,16 @@ suite('App without git', () => {
       await repositoryRow.click({ button: 'right' });
       const menu = page.locator('.context-menu');
       await menu.waitFor();
-      const items = await menu.locator('.menu-item').allTextContents();
-      assert.ok(items.includes(strings.commander.newTerminalHere));
+      const items = await menu
+        .locator('.menu-item:not(:disabled)')
+        .allTextContents();
+      assert.ok(items.includes(strings.commander.openWithTerminal));
       assert.deepStrictEqual(
         items.filter((item) =>
           [
-            strings.commander.openInGit,
-            strings.commander.cloneHere,
-            strings.commander.initHere,
+            strings.commander.openWithGit,
+            strings.commander.cloneWithGit,
+            strings.commander.initWithGit,
           ].includes(item),
         ),
         [],

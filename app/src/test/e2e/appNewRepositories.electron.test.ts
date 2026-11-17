@@ -80,7 +80,7 @@ suite('App making new repositories', () => {
     await chooseFromGitMenu(strings.tabs.clone);
     const popup = page.locator('.clone-popup');
     const [address, into, name] = [0, 1, 2].map((index) =>
-      popup.locator('.clone-input').nth(index),
+      popup.locator('.prompt-input').nth(index),
     );
     assert.strictEqual(await address.inputValue(), url);
     assert.strictEqual(await name.getAttribute('placeholder'), 'repo');

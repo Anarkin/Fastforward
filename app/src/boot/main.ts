@@ -325,6 +325,7 @@ async function start(asked: readonly string[]): Promise<void> {
     commandPlace,
     windows,
     gitTool,
+    editRefusal: (file) => editorTool.refusal(file),
   });
   const viewerTool = viewerToolOf({ pdfPlaces, commanderTool, editorTool });
   const diffTool = diffToolOf({ log, userSettings, git });

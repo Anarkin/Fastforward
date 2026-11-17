@@ -27,18 +27,18 @@ function menuOf(
       copy: (text) => done.push(`copy ${text}`),
     },
   );
-  const labels = items.map((item: ContextMenuItem) =>
-    'separator' in item ? '-' : item.label,
+  const offered = items.flatMap((item: ContextMenuItem) =>
+    'separator' in item || item.disabled === true ? [] : [item.label],
   );
   const chooseAll = () => {
     for (const item of items) {
-      if (!('separator' in item)) {
+      if (!('separator' in item) && item.disabled !== true) {
         item.onClick?.();
       }
     }
     return done;
   };
-  return { labels, chooseAll };
+  return { offered, chooseAll };
 }
 
 const { commander } = strings;
@@ -46,94 +46,76 @@ const { commander } = strings;
 suite('The menu of a part of a path', () => {
   test('offers a folder on disk what the commander offers it, acting on its whole path, the menu of Windows on Windows alone', () => {
     const menu = menuOf({ path: 'C:\\Code' }, facts('folder'));
-    assert.deepStrictEqual(menu.labels, [
-      commander.newTerminalHere,
-      commander.cloneHere,
-      commander.initHere,
-      '-',
+    assert.deepStrictEqual(menu.offered, [
+      commander.openWithTerminal,
+      commander.openWithCommander,
+      commander.cloneWithGit,
+      commander.initWithGit,
       commander.copyPath,
-      '-',
       commander.showMoreOptions,
     ]);
     assert.deepStrictEqual(menu.chooseAll(), [
       'newTerminal',
+      'openInCommander',
       'cloneHere',
       'initHere',
       'copy C:\\Code',
       'systemMenu',
     ]);
     assert.ok(
-      !menuOf({ path: '/code' }, facts('folder'), 'linux').labels.includes(
+      !menuOf({ path: '/code' }, facts('folder'), 'linux').offered.includes(
         commander.showMoreOptions,
       ),
     );
   });
 
-  test('offers git to open a folder in a repository, and Go To... only where the part is the folder a side of the commander shows', () => {
-    let wentTo = 0;
-    const menu = menuOf(
-      {
-        path: 'C:\\Code\\repo',
-        onGoTo: () => {
-          wentTo += 1;
-        },
-      },
-      facts('folder', true),
+  test('offers git to open a folder in a repository', () => {
+    assert.deepStrictEqual(
+      menuOf({ path: 'C:\\Code\\repo' }, facts('folder', true)).offered,
+      [
+        commander.openWithTerminal,
+        commander.openWithCommander,
+        commander.openWithGit,
+        commander.copyPath,
+        commander.showMoreOptions,
+      ],
     );
-    assert.deepStrictEqual(menu.labels, [
-      commander.newTerminalHere,
-      commander.openInGit,
-      '-',
-      commander.copyPath,
-      '-',
-      commander.goToItem,
-      '-',
-      commander.showMoreOptions,
-    ]);
-    assert.deepStrictEqual(menu.chooseAll(), [
-      'newTerminal',
-      'openInGit',
-      'copy C:\\Code\\repo',
-      'systemMenu',
-    ]);
-    assert.strictEqual(wentTo, 1);
   });
 
-  test('offers a file on disk to open with 7-Zip and an image to edit, as the commander does', () => {
+  test('offers a file on disk to open with the commander’s 7-Zip, the viewer, the editor and Paint for an image, as the commander does', () => {
     const menu = menuOf(
       { path: 'C:\\Photos\\a.png', file: true },
       facts('file'),
     );
-    assert.deepStrictEqual(menu.labels, [
-      commander.editImage,
+    assert.deepStrictEqual(menu.offered, [
       commander.openWithSevenZip,
-      '-',
+      commander.openWithViewer,
+      commander.openWithEditor,
+      commander.openWithPaint,
       commander.copyPath,
-      '-',
       commander.showMoreOptions,
     ]);
     assert.deepStrictEqual(menu.chooseAll(), [
       'enterArchive',
+      'view',
+      'edit',
       'copy C:\\Photos\\a.png',
       'systemMenu',
     ]);
   });
 
-  test('offers a part inside an archive or on no disk only its copies, and Go To... on the folder a side shows', () => {
+  test('offers a part inside an archive or on no disk only to copy its path', () => {
     assert.deepStrictEqual(
       menuOf({ path: 'C:\\a.zip\\docs\\b.zip', file: true }, facts('inArchive'))
-        .labels,
+        .offered,
       [commander.copyPath],
     );
     assert.deepStrictEqual(
-      menuOf(
-        { path: 'C:\\a.zip\\docs', onGoTo: () => undefined },
-        facts('inArchive'),
-      ).labels,
-      [commander.copyPath, '-', commander.goToItem],
+      menuOf({ path: 'C:\\a.zip\\docs' }, facts('inArchive')).offered,
+      [commander.copyPath],
     );
     assert.deepStrictEqual(
-      menuOf({ path: 'src/gone.ts', file: true }, facts('missing')).labels,
+      menuOf({ path: 'src/gone.ts', file: true }, facts('missing')).offered,
       [commander.copyPath],
     );
   });

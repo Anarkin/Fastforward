@@ -60,11 +60,15 @@ export function ConfirmPopup({
           </button>
         </div>
         <div className="confirm-body">
-          <div className="confirm-question">
-            {message !== undefined && <span>{message}</span>}
-            {lines.length > 0 && <NameLines lines={lines} />}
-            {note !== undefined && <span>{note}</span>}
-          </div>
+          {(message !== undefined ||
+            lines.length > 0 ||
+            note !== undefined) && (
+            <div className="confirm-question">
+              {message !== undefined && <span>{message}</span>}
+              {lines.length > 0 && <NameLines lines={lines} />}
+              {note !== undefined && <span>{note}</span>}
+            </div>
+          )}
           <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
             {cancel !== null && (
               <button className="confirm-button" onClick={onCancel}>

@@ -235,7 +235,7 @@ suite('Shell with no tab open', () => {
     );
   });
 
-  test('runs a command of the menu of a part of a path only where what the path is allows it, opening a terminal in a folder, cloning or initing a repository in one, an archive in the commander and the menu of Windows', async () => {
+  test('runs a command of the menu of a part of a path only where what the path is allows it, opening a terminal or the commander in a folder, cloning or initing a repository in one, an archive in the commander and the menu of Windows', async () => {
     const host = new FakeHost();
     const folder: PathFacts = {
       kind: 'folder',
@@ -261,6 +261,7 @@ suite('Shell with no tab open', () => {
           );
         await run('C:\\Code', 'forged');
         await run('C:\\a.zip', 'newTerminal');
+        await run('C:\\a.zip', 'openInCommander');
         await run('C:\\a.zip', 'cloneHere');
         await run('C:\\a.zip', 'initHere');
         await run('C:\\Code', 'enterArchive');
@@ -273,6 +274,7 @@ suite('Shell with no tab open', () => {
         );
 
         await run('C:\\Code', 'newTerminal');
+        await run('C:\\Code', 'openInCommander');
         await run('C:\\Code', 'cloneHere');
         await run('C:\\Code', 'initHere');
         await run('C:\\a.zip', 'enterArchive');
@@ -281,6 +283,7 @@ suite('Shell with no tab open', () => {
           view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
           [
             ['terminal', 'C:\\Code'],
+            ['commander', 'C:\\Code'],
             ['commander', 'C:\\a.zip'],
           ],
         );
@@ -288,6 +291,54 @@ suite('Shell with no tab open', () => {
           [host.cloned, host.inited, host.shellMenus],
           [['C:\\Code'], ['C:\\Code'], [[['C:\\a.zip'], { x: 1, y: 2 }, true]]],
         );
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
+  test('views or edits a file of the menu of a part of a path in a tab of its own, nothing that is no file, and says why the editor refuses a file rather than opening it', async () => {
+    const host = new FakeHost();
+    const file: PathFacts = {
+      kind: 'file',
+      inRepository: false,
+      gitMissing: false,
+    };
+    host.facts.set('C:\\Code', { ...file, kind: 'folder' });
+    host.facts.set('C:\\a.zip\\b.txt', { ...file, kind: 'inArchive' });
+    host.facts.set('C:\\notes.txt', file);
+    host.facts.set('C:\\movie.mkv', file);
+    host.refusals.set('C:\\movie.mkv', 'It is binary.');
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const run = (at: string, command: string) =>
+          view.connection.receive(
+            forged(JSON.stringify({ type: 'pathCommand', path: at, command })),
+          );
+        for (const at of ['C:\\Code', 'C:\\a.zip\\b.txt', 'C:\\gone.txt']) {
+          await run(at, 'view');
+          await run(at, 'edit');
+        }
+        assert.deepStrictEqual(view.page.tabs?.tabs ?? [], []);
+
+        await run('C:\\notes.txt', 'view');
+        await run('C:\\notes.txt', 'edit');
+        await run('C:\\movie.mkv', 'edit');
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
+          [
+            ['viewer', 'C:\\notes.txt'],
+            ['editor', 'C:\\notes.txt'],
+          ],
+        );
+        assert.deepStrictEqual(view.page.last('notice'), {
+          type: 'notice',
+          level: 'error',
+          message: 'It is binary.',
+        });
       },
       true,
       host,

@@ -53,26 +53,19 @@ async function shownThumb(
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('opens the menu of the folder each part of the path of a side is on with a right click on the part, the one the commander shows its items in, over the scrollbars, Go To... on the folder shown alone, copying its whole path', async () => {
+  test('opens the menu of the folder each part of the path of a side is on with a right click on the part, the one the commander shows its items in, over the scrollbars, copying its whole path', async () => {
     const parts = right().locator('.commander-path .path-part');
     const pathMenu = page.locator('.path-menu');
     const offers = (name: string) =>
       pathMenu.getByRole('menuitem', { name }).count();
     await parts.first().click({ button: 'right' });
     await pathMenu.waitFor();
-    assert.deepStrictEqual(
-      [
-        await offers(strings.commander.copyPath),
-        await offers(strings.commander.goToItem),
-      ],
-      [1, 0],
-    );
+    assert.strictEqual(await offers(strings.commander.copyPath), 1);
     await page.keyboard.press('Escape');
     await pathMenu.waitFor({ state: 'detached' });
 
     await parts.last().click({ button: 'right' });
     await pathMenu.waitFor();
-    assert.strictEqual(await offers(strings.commander.goToItem), 1);
     await pathMenu
       .getByRole('menuitem', { name: strings.commander.copyPath })
       .click();
@@ -320,7 +313,7 @@ suite('App commander', () => {
       };
       const appMenu = page.locator('.context-menu');
       const appMenuItems = () =>
-        appMenu.locator('.menu-item').allTextContents();
+        appMenu.locator('.menu-item:not(:disabled)').allTextContents();
       const closeWindowsMenu = async (closing: string) => {
         postMessage(shown(), 0x100, 0x1b, 0);
         await waitFor(() => shown() === null, closing);
@@ -332,6 +325,9 @@ suite('App commander', () => {
         assert.match(await selected(), /menu/);
         assert.deepStrictEqual(await appMenuItems(), [
           strings.commander.openWithSevenZip,
+          strings.commander.openWithViewer,
+          strings.commander.openWithDiff,
+          strings.commander.openWithEditor,
           strings.commander.copyPath,
           strings.commander.showMoreOptions,
         ]);
@@ -354,7 +350,7 @@ suite('App commander', () => {
         await appMenu.waitFor();
         assert.strictEqual(
           (await appMenuItems()).at(0),
-          strings.commander.newTerminalHere,
+          strings.commander.openWithTerminal,
         );
         await page.keyboard.press('Escape');
         await appMenu.waitFor({ state: 'detached' });
@@ -375,6 +371,9 @@ suite('App commander', () => {
         await appMenu.waitFor();
         assert.deepStrictEqual(await appMenuItems(), [
           strings.commander.openWithSevenZip,
+          strings.commander.openWithViewer,
+          strings.commander.openWithDiff,
+          strings.commander.openWithEditor,
           strings.commander.copyPath,
           strings.commander.showMoreOptions,
         ]);

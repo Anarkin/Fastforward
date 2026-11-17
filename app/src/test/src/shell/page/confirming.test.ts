@@ -4,7 +4,7 @@ import { strings } from '../../../../lib/shared/strings';
 import { confirmation } from '../../../../shell/page/confirming';
 
 suite('Confirmations', () => {
-  test('names the tab to close on a line of its own, by the whole path of its folder when it has one, with no question or label, as the title and the buttons ask it, and asks whether you are sure to close a window or quit', () => {
+  test('names the tab to close on a line of its own, by the whole path of its folder when it has one, with no question or label, as the title and the buttons ask it, and asks before closing a window or quitting by its title and buttons alone, with no question', () => {
     assert.deepStrictEqual(
       confirmation({
         kind: 'tab',
@@ -31,12 +31,10 @@ suite('Confirmations', () => {
     );
     assert.deepStrictEqual(confirmation({ kind: 'window' }), {
       title: 'Close Window',
-      message: 'Are you sure you want to close this window and its tabs?',
       confirm: 'Close',
     });
     assert.deepStrictEqual(confirmation({ kind: 'quit' }), {
       title: 'Quit',
-      message: 'Are you sure you want to quit Fastforward?',
       confirm: 'Quit',
     });
     assert.deepStrictEqual(
@@ -46,7 +44,6 @@ suite('Confirmations', () => {
       }),
       {
         title: 'Quit',
-        message: 'Are you sure you want to quit Fastforward?',
         note: strings.commander.quitStopsTransfers,
         confirm: 'Quit',
       },

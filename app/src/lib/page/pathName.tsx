@@ -9,14 +9,12 @@ export function PathName({
   looks,
   root,
   filter = noFilter,
-  goTo,
 }: {
   readonly path: string;
   readonly file?: boolean;
   readonly looks?: PartLooks;
   readonly root?: string;
   readonly filter?: Filter;
-  readonly goTo?: () => void;
 }) {
   const parts = usePathParts(path, {
     file,
@@ -24,12 +22,9 @@ export function PathName({
     ...(root !== undefined && { root }),
   });
   const ranges = filterRanges(path, filter);
-  return parts.map((part, index) => (
+  return parts.map((part) => (
     <span key={part.key} className="path-piece">
-      <PathPart
-        part={part}
-        onGoTo={index === parts.length - 1 ? goTo : undefined}
-      >
+      <PathPart part={part}>
         <Marked text={part.name} ranges={ranges} at={part.at} />
       </PathPart>
       <Marked

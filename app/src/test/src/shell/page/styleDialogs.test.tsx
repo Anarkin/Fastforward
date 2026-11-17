@@ -94,7 +94,7 @@ suite('Style', () => {
     );
     const fields = [
       withClass(prompt, 'prompt-input'),
-      ...allWithClass(clone, 'clone-input'),
+      ...allWithClass(clone, 'prompt-input'),
     ];
     assert.strictEqual(fields.length, 4);
     for (const field of fields) {
@@ -162,7 +162,7 @@ suite('Style', () => {
           'transfer-sides',
           'open-with-folders',
           'transfer-current',
-          'transfer-counts',
+          'progress-counts',
           'pack-note',
           'prompt-note',
           'clone-detail',

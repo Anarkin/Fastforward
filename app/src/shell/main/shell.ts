@@ -440,7 +440,11 @@ export class Shell {
         await answerPathFacts(page, message, host);
         return;
       case 'pathCommand':
-        await runPathCommand(page, message, host, this.tools);
+        await runPathCommand(page, message, host, this.tools, {
+          view: (at, file) => this.tabs.open(at, 'viewer', [file], false),
+          edit: (at, file) => this.tabs.open(at, 'editor', [file], true),
+          notice: (at, notice) => this.pages.notice(at, notice),
+        });
         return;
       case 'log':
         if (

@@ -24,6 +24,19 @@ const asked = {
 };
 
 suite('Confirm popup', () => {
+  test('leaves out the box of its question when it has nothing to say but its title, as Close Window and Quit, its buttons right under the title', () => {
+    const html = renderToStaticMarkup(
+      <ConfirmPopup
+        title="Quit"
+        confirm="Quit"
+        onConfirm={noop}
+        onCancel={noop}
+      />,
+    );
+    assert.doesNotMatch(html, /confirm-question/);
+    assert.match(html, /confirm-buttons/);
+  });
+
   test('asks its question in a dialog under its title, offering to cancel before to confirm', () => {
     const html = renderToStaticMarkup(
       <ConfirmPopup {...asked} onConfirm={noop} onCancel={noop} />,

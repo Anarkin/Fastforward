@@ -6,8 +6,7 @@ import {
   type CloneView,
 } from '../shared/clone';
 import { strings } from '../../../lib/shared/strings';
-import { NamedPath, Words } from '../../../lib/page/name';
-import { named as nameOf } from '../../../lib/shared/sentences';
+import { NameLines, NamedPath, Words } from '../../../lib/page/name';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
 import { moveBetweenButtons } from '../../../lib/page/dialogButtons';
@@ -64,7 +63,7 @@ function CloneForm({ form }: { form: Form }) {
     };
   return (
     <form
-      className="clone-body"
+      className="confirm-body"
       onSubmit={(event) => {
         event.preventDefault();
         if (ready) {
@@ -77,7 +76,7 @@ function CloneForm({ form }: { form: Form }) {
         <input
           id={`${ids}url`}
           ref={address}
-          className="clone-input"
+          className="prompt-input"
           value={url}
           spellCheck={false}
           autoComplete="off"
@@ -87,7 +86,7 @@ function CloneForm({ form }: { form: Form }) {
         <div className="clone-folder">
           <input
             id={`${ids}folder`}
-            className="clone-input"
+            className="prompt-input"
             value={folder}
             spellCheck={false}
             autoComplete="off"
@@ -105,7 +104,7 @@ function CloneForm({ form }: { form: Form }) {
         <label htmlFor={`${ids}name`}>{strings.clone.name}</label>
         <input
           id={`${ids}name`}
-          className="clone-input"
+          className="prompt-input"
           value={name}
           placeholder={derived}
           spellCheck={false}
@@ -122,7 +121,7 @@ function CloneForm({ form }: { form: Form }) {
         )}
       </div>
       {message !== undefined && (
-        <div className="clone-problem" role="alert">
+        <div className="prompt-problem clone-problem" role="alert">
           <Words>{message}</Words>
         </div>
       )}
@@ -146,40 +145,39 @@ function CloneRunning({ running }: { running: Running }) {
   const { stopClone: onStop } = useGitActions();
   const { progress } = running;
   return (
-    <div className="clone-body">
+    <div className="confirm-body">
       <div className="clone-running">
-        <span>{strings.clone.cloningLabel}</span>
-        <span className="clone-value" title={running.url}>
-          <Words>{[nameOf(running.url)]}</Words>
-        </span>
-        <span>{strings.clone.intoLabel}</span>
-        <span className="clone-value" title={running.target}>
-          <NamedPath path={running.target} />
-        </span>
+        <NameLines
+          lines={strings.clone.runningLines(running.url, running.target)}
+        />
         <span className="clone-phase">
           {progress?.phase ?? strings.clone.connecting}
         </span>
-        <div className="clone-progress">
-          <div
-            className="clone-bar"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={progress?.percent}
-          >
-            <div
-              className="clone-bar-done"
-              style={{ width: `${progress?.percent ?? 0}%` }}
-            />
-          </div>
-          <span className="clone-percent">
-            {progress && strings.clone.percent(progress.percent)}
-          </span>
-        </div>
       </div>
-      <div className="clone-detail">{progress?.detail}</div>
+      <div
+        className="progress-bar"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress?.percent}
+      >
+        <div
+          className="progress-bar-done"
+          style={{ width: `${progress?.percent ?? 0}%` }}
+        />
+      </div>
+      <div className="progress-counts">
+        <span className="clone-detail">{progress?.detail}</span>
+        <span className="clone-percent">
+          {progress && strings.clone.percent(progress.percent)}
+        </span>
+      </div>
       <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>
-        <button type="button" className="confirm-button" onClick={onStop}>
+        <button
+          type="button"
+          className="confirm-button default"
+          onClick={onStop}
+        >
           {strings.clone.stop}
         </button>
       </div>
@@ -198,7 +196,7 @@ export function ClonePopup() {
   const kind = view?.kind;
   useEffect(() => {
     const first = popup.current?.querySelector<HTMLElement>(
-      kind === 'form' ? '.clone-input' : '.confirm-button',
+      kind === 'form' ? '.prompt-input' : '.confirm-button',
     );
     first?.focus();
     if (first instanceof HTMLInputElement) {

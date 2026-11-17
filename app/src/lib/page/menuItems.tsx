@@ -33,6 +33,9 @@ function MenuIconOf({ icon }: { icon: MenuIcon }) {
     case 'terminal':
     case 'commander':
     case 'git':
+    case 'viewer':
+    case 'diff':
+    case 'editor':
       return <ToolIcon tool={icon} />;
     default:
       return icon satisfies never;

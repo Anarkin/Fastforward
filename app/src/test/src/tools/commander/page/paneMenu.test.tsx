@@ -69,11 +69,11 @@ const settings = (gitMissing: boolean): CommanderToWebview => ({
 });
 
 const shownFolderMenu = [
-  strings.commander.newTerminalHere,
-  strings.commander.cloneHere,
-  strings.commander.initHere,
+  strings.commander.openWithTerminal,
+  strings.commander.openWithCommander,
+  strings.commander.cloneWithGit,
+  strings.commander.initWithGit,
   strings.commander.copyPath,
-  strings.commander.goToItem,
   strings.commander.showMoreOptions,
 ];
 
@@ -111,7 +111,7 @@ suite('Commander menu on a side', () => {
     });
   });
 
-  test('asks for the menu of the folder or file a part of the path of a side is on a right click on the part, Go To... on the folder the side shows alone', async () => {
+  test('asks for the menu of the folder or file a part of the path of a side is on a right click on the part', async () => {
     const asked: PathMenuAsk[] = [];
     await inSide(
       <PathMenuContext value={(ask) => asked.push(ask)}>
@@ -122,46 +122,39 @@ suite('Commander menu on a side', () => {
           resizer={null}
         />
       </PathMenuContext>,
-      async ({ main, rightClick, menu, goingTo }) => {
+      async ({ main, rightClick, menu }) => {
         const [top, work] = main.querySelectorAll('.commander-path .path-part');
         rightClick(top ?? null);
         rightClick(work ?? null);
         assert.deepStrictEqual(menu(), []);
         assert.deepStrictEqual(
-          asked.map((ask) => [ask.path, ask.file, ask.onGoTo !== undefined]),
+          asked.map((ask) => [ask.path, ask.file]),
           [
-            ['/', false, false],
-            ['/work', false, true],
+            ['/', false],
+            ['/work', false],
           ],
         );
-        asked[1]?.onGoTo?.();
-        assert.strictEqual(goingTo(), '/work');
       },
     );
   });
 
-  test('opens the menu of the folder shown on a right click on its path outside its parts, copying its path as text, or asking for a path to go to', async () => {
-    await inPane(
-      async ({ main, rightClick, menu, choose, copied, goingTo }) => {
-        rightClick(main.querySelector('.commander-path .commander-icon'));
-        assert.deepStrictEqual(menu(), shownFolderMenu);
-        choose(strings.commander.copyPath);
-        rightClick(rowNamed(main, 'notes'));
-        choose(strings.commander.copyPath);
-        rightClick(main.querySelector('.commander-path'));
-        choose(strings.commander.goToItem);
+  test('opens the menu of the folder shown on a right click on its path outside its parts, copying its path as text', async () => {
+    await inPane(async ({ main, rightClick, menu, choose, copied }) => {
+      rightClick(main.querySelector('.commander-path .commander-icon'));
+      assert.deepStrictEqual(menu(), shownFolderMenu);
+      choose(strings.commander.copyPath);
+      rightClick(rowNamed(main, 'notes'));
+      choose(strings.commander.copyPath);
 
-        assert.deepStrictEqual(copied(), ['/work', '/work\\notes.txt']);
-        assert.strictEqual(goingTo(), '/work');
-      },
-    );
+      assert.deepStrictEqual(copied(), ['/work', '/work\\notes.txt']);
+    });
   });
 
   test('opens the menu of the folder shown on a right click on .. or on the empty space, asking for its commands without naming a folder', async () => {
     await inPane(async ({ main, rightClick, menu, choose, posted }) => {
       rightClick(main.querySelector('.commander-row'));
       assert.deepStrictEqual(menu(), shownFolderMenu);
-      choose(strings.commander.newTerminalHere);
+      choose(strings.commander.openWithTerminal);
 
       rightClick(main.querySelector('.column-body'));
       assert.deepStrictEqual(menu(), shownFolderMenu);
@@ -189,26 +182,32 @@ suite('Commander menu on a side', () => {
     });
   });
 
-  test('opens the menu of a folder or file clicked, selecting it, a repository offered to open in git', async () => {
+  test('opens the menu of a folder or file clicked, selecting it, a repository offered to open in git, a folder in the commander too, the diff comparing files as Shift+F3 does', async () => {
     await inPane(
       async ({ main, rightClick, menu, choose, posted, selected }) => {
         rightClick(rowNamed(main, 'app'));
         assert.strictEqual(selected(), 'app');
         assert.deepStrictEqual(menu(), [
-          strings.commander.newTerminalHere,
-          strings.commander.openInGit,
+          strings.commander.openWithTerminal,
+          strings.commander.openWithCommander,
+          strings.commander.openWithGit,
           strings.commander.copyPath,
           strings.commander.showMoreOptions,
         ]);
-        choose(strings.commander.openInGit);
+        choose(strings.commander.openWithGit);
+        choose(strings.commander.openWithCommander);
 
         rightClick(rowNamed(main, 'notes'));
         assert.strictEqual(selected(), 'notes.txt');
         assert.deepStrictEqual(menu(), [
           strings.commander.openWithSevenZip,
+          strings.commander.openWithViewer,
+          strings.commander.openWithDiff,
+          strings.commander.openWithEditor,
           strings.commander.copyPath,
           strings.commander.showMoreOptions,
         ]);
+        choose(strings.commander.openWithDiff);
 
         assert.deepStrictEqual(posted, [
           {
@@ -219,6 +218,15 @@ suite('Commander menu on a side', () => {
             name: 'app',
             command: 'openInGit',
           },
+          {
+            type: 'folderCommand',
+            tab: '1',
+            side: 'left',
+            folder: '/work',
+            name: 'app',
+            command: 'openInCommander',
+          },
+          { type: 'compare', tab: '1', files: [] },
         ]);
       },
     );
@@ -231,9 +239,9 @@ suite('Commander menu on a side', () => {
       const gitItems = () =>
         menu().filter((label) =>
           [
-            strings.commander.openInGit,
-            strings.commander.cloneHere,
-            strings.commander.initHere,
+            strings.commander.openWithGit,
+            strings.commander.cloneWithGit,
+            strings.commander.initWithGit,
           ].includes(label),
         );
       const shownGit = () => {
@@ -244,8 +252,8 @@ suite('Commander menu on a side', () => {
       };
       const withGit = [
         true,
-        [strings.commander.openInGit],
-        [strings.commander.cloneHere, strings.commander.initHere],
+        [strings.commander.openWithGit],
+        [strings.commander.cloneWithGit, strings.commander.initWithGit],
       ];
 
       assert.deepStrictEqual(shownGit(), withGit);

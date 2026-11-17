@@ -60,12 +60,12 @@ export const folderTools = [
 ] as const satisfies readonly ToolId[];
 
 export const toolSections = [
+  'terminal',
   'commander',
+  'git',
   'viewer',
   'diff',
   'editor',
-  'git',
-  'terminal',
 ] as const;
 
 export type ToolSection = (typeof toolSections)[number];

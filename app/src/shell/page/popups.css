@@ -217,6 +217,29 @@
   border-color: var(--color-focus);
 }
 
+.prompt-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.progress-bar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.progress-bar-done {
+  height: 100%;
+  background: var(--color-focus);
+}
+
+.progress-counts {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .prompt-problem {
   overflow-wrap: anywhere;
   color: var(--color-error-foreground);

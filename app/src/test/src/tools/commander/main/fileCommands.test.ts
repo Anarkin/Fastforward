@@ -186,6 +186,7 @@ suite('Commander tool', () => {
 
     await command('newTerminal');
     await command('openInGit', 'app');
+    await command('openInCommander', 'app');
     await command('cloneHere', 'app');
     await command('initHere');
     await command('newTerminal', 'notes.txt');
@@ -198,6 +199,7 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(openedIn, [
       { tool: 'terminal', folders: [root] },
       { tool: 'git', folders: [at('app')] },
+      { tool: 'commander', folders: [at('app')] },
     ]);
     assert.deepStrictEqual(clonedInto, [at('app')]);
     assert.deepStrictEqual(initedIn, [root]);

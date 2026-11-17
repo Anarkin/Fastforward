@@ -3,10 +3,10 @@ import { suite, test } from 'vitest';
 import { runFolderCommand } from '../../../../lib/main/folderCommands';
 
 suite('Folder commands', () => {
-  test('opens a terminal or git in a folder, or clones or inits a repository in it, the same wherever the menu that asked for it was', async () => {
+  test('opens a terminal, the commander or git in a folder, or clones or inits a repository in it, the same wherever the menu that asked for it was', async () => {
     const ran: string[] = [];
     const runner = {
-      open: (tool: 'terminal' | 'git', folder: string) => {
+      open: (tool: 'terminal' | 'commander' | 'git', folder: string) => {
         ran.push(`${tool} ${folder}`);
         return Promise.resolve();
       },
@@ -21,6 +21,7 @@ suite('Folder commands', () => {
     };
     for (const command of [
       'newTerminal',
+      'openInCommander',
       'openInGit',
       'cloneHere',
       'initHere',
@@ -29,6 +30,7 @@ suite('Folder commands', () => {
     }
     assert.deepStrictEqual(ran, [
       'terminal /code',
+      'commander /code',
       'git /code',
       'clone /code',
       'init /code',

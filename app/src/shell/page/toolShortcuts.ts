@@ -34,7 +34,7 @@ function shortcutGroupsOf<const Group extends string>(
   }));
 }
 
-export type ShortcutEntryId = ToolSection | 'everywhere';
+export type ShortcutEntryId = ToolSection | 'paint' | 'everywhere';
 
 export interface ShortcutEntry {
   readonly id: ShortcutEntryId;
@@ -54,9 +54,19 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
     }),
   },
   {
+    id: 'terminal',
+    title: strings.tools.terminal,
+    groups: shortcutGroupsOf(terminalGroups, titles, terminalKeymap),
+  },
+  {
     id: 'commander',
     title: strings.tools.commander,
     groups: shortcutGroupsOf(commanderGroups, titles, commanderKeymap),
+  },
+  {
+    id: 'git',
+    title: strings.tools.git,
+    groups: shortcutGroupsOf(gitGroups, titles, gitKeymap),
   },
   {
     id: 'viewer',
@@ -74,13 +84,8 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
     groups: shortcutGroupsOf(editorGroups, titles, editorKeymap),
   },
   {
-    id: 'git',
-    title: strings.tools.git,
-    groups: shortcutGroupsOf(gitGroups, titles, gitKeymap),
-  },
-  {
-    id: 'terminal',
-    title: strings.tools.terminal,
-    groups: shortcutGroupsOf(terminalGroups, titles, terminalKeymap),
+    id: 'paint',
+    title: strings.shortcuts.paint,
+    groups: [],
   },
 ];

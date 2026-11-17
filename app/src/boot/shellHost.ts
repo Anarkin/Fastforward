@@ -41,6 +41,7 @@ export interface ShellHostDeps {
   readonly commandPlace: CommandPlace | undefined;
   readonly windows: AppWindows;
   readonly gitTool: Pick<GitTool, 'cloneInto' | 'initRepositoryIn'>;
+  readonly editRefusal: (file: string) => Promise<Sentence | undefined>;
 }
 
 export function shellHostOf({
@@ -57,6 +58,7 @@ export function shellHostOf({
   commandPlace,
   windows,
   gitTool,
+  editRefusal,
 }: ShellHostDeps): ShellHost {
   let looking: Promise<LocalFileSystem> | undefined;
   return {
@@ -124,6 +126,7 @@ export function shellHostOf({
         },
         process.platform,
       ),
+    editRefusal: (file) => editRefusal(file),
     cloneInto: (folder) => gitTool.cloneInto(folder),
     initRepository: (folder) => gitTool.initRepositoryIn(folder),
     ...(process.platform === 'win32' && { shellMenu: shellMenuIn(windows) }),

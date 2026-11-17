@@ -13,17 +13,18 @@ import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { entry, contents } from './shortcutsFixtures';
 
 suite('Shortcuts popup', () => {
-  test('lists the shortcuts of every tab first, as General, then the tools, the viewer, the diff and the editor apart from the commander and git they open in', () => {
+  test('lists the shortcuts of every tab first, as General, then the tools, the viewer, the diff and the editor apart from the commander and git they open in, and Paint, still to come, with none', () => {
     assert.deepStrictEqual(
-      shortcutEntries.map((each) => [each.id, each.title]),
+      shortcutEntries.map((each) => [each.id, each.title, each.groups.length]),
       [
-        ['everywhere', 'General'],
-        ['commander', 'Commander'],
-        ['viewer', 'Viewer'],
-        ['diff', 'Diff'],
-        ['editor', 'Editor'],
-        ['git', 'Git'],
-        ['terminal', 'Terminal'],
+        ['everywhere', 'General', 3],
+        ['terminal', 'Terminal', 2],
+        ['commander', 'Commander', 7],
+        ['git', 'Git', 5],
+        ['viewer', 'Viewer', 4],
+        ['diff', 'Diff', 2],
+        ['editor', 'Editor', 4],
+        ['paint', 'Paint', 0],
       ],
     );
   });
@@ -36,6 +37,7 @@ suite('Shortcuts popup', () => {
       ]),
       [
         ['General', ['Tabs', 'App', 'Lists and popups']],
+        ['Terminal', ['Clipboard', 'Kept from the shell']],
         [
           'Commander',
           [
@@ -48,17 +50,17 @@ suite('Shortcuts popup', () => {
             'Archives',
           ],
         ],
+        [
+          'Git',
+          ['Moving around', 'Commits', 'Commit messages', 'Files', 'Searching'],
+        ],
         ['Viewer', ['Scrolling', 'Showing the file', 'Text', 'Searching']],
         ['Diff', ['Diff', 'Searching']],
         [
           'Editor',
           ['Editing', 'Moving around', 'Cursors and selections', 'Searching'],
         ],
-        [
-          'Git',
-          ['Moving around', 'Commits', 'Commit messages', 'Files', 'Searching'],
-        ],
-        ['Terminal', ['Clipboard', 'Kept from the shell']],
+        ['Paint', []],
       ],
     );
   });

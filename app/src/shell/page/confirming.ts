@@ -68,7 +68,6 @@ export function confirmation(confirming: Confirming): {
       return confirming.unsaved === undefined
         ? {
             title: strings.confirm.closeWindowTitle,
-            message: strings.confirm.closeWindow,
             confirm: strings.confirm.close,
           }
         : {
@@ -80,9 +79,6 @@ export function confirmation(confirming: Confirming): {
     case 'quit':
       return {
         title: strings.confirm.quitTitle,
-        ...(confirming.unsaved === undefined && {
-          message: strings.confirm.quitApp,
-        }),
         ...(confirming.unsaved !== undefined && {
           lines: strings.confirm.filesLines(confirming.unsaved),
         }),

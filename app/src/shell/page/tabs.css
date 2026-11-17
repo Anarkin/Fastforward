@@ -241,6 +241,18 @@
   color: var(--color-terminal-icon);
 }
 
+.tool-viewer {
+  color: var(--color-viewer-icon);
+}
+
+.tool-diff {
+  color: var(--color-diff-icon);
+}
+
+.tool-editor {
+  color: var(--color-editor-icon);
+}
+
 .tabs .tab-unsaved {
   flex: none;
   margin-left: -4px;

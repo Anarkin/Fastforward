@@ -1,6 +1,14 @@
 import type { Sentence } from '../shared/sentences';
 
-export type MenuIcon = 'sevenZip' | 'image' | 'terminal' | 'commander' | 'git';
+export type MenuIcon =
+  | 'sevenZip'
+  | 'image'
+  | 'terminal'
+  | 'commander'
+  | 'git'
+  | 'viewer'
+  | 'diff'
+  | 'editor';
 
 export type ContextMenuItem =
   | {

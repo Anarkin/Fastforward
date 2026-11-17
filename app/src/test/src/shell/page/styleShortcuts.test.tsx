@@ -224,16 +224,20 @@ suite('Style', () => {
     looks(withClass(popup, 'shortcut-keys'), { gap: '0 6px' });
   });
 
-  test('draws the icons of the commander, git and the terminal beside the shortcuts in their own colors, as their tabs have them, muting the icon of a file of the viewer, the diff and the editor', () => {
+  test('draws the icon of every tool beside its shortcuts in its own color, as the theme gives each tool one', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
-    for (const tool of ['commander', 'git', 'terminal']) {
+    for (const tool of [
+      'terminal',
+      'commander',
+      'git',
+      'viewer',
+      'diff',
+      'editor',
+    ]) {
       looks(withClass(popup, `tool-${tool}`), {
         color: `var(--color-${tool}-icon)`,
       });
     }
-    looks(withClass(popup, 'file-icon'), {
-      color: 'var(--muted-foreground)',
-    });
   });
 
   test('lays the tools and their groups on lines of the row height too, with no room between them, and their lines drawn without taking room', () => {

@@ -6,11 +6,13 @@ export interface PathPart {
 
 const rootPattern = /^(?:[a-zA-Z]:|[\\/]{2}[^\\/]+[\\/][^\\/]+|)[\\/]?/;
 const namePattern = /([^\\/]+)([\\/]*)/g;
+const driveAlone = /^[a-zA-Z]:$/;
 
 export function pathParts(path: string): PathPart[] {
   const [root = ''] = rootPattern.exec(path) ?? [];
+  const rootPath = driveAlone.test(root) ? `${root}\\` : root;
   const parts: PathPart[] =
-    root === '' ? [] : [{ name: root, path: root, separator: '' }];
+    root === '' ? [] : [{ name: root, path: rootPath, separator: '' }];
   for (const found of path.slice(root.length).matchAll(namePattern)) {
     const [, name = '', separator = ''] = found;
     const end = root.length + found.index + name.length;

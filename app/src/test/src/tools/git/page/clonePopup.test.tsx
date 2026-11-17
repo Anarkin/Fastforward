@@ -250,7 +250,7 @@ suite('Clone popup', () => {
     });
   });
 
-  test('shows what a running clone clones, where, and how far it got on the rows of one table, with Stop focused, closing on its close button', async () => {
+  test('shows what a running clone clones and where on lines as a copy names its items, an empty label over Into, and how far it got under them as a copy does, with Stop the default button and focused, closing on its close button', async () => {
     await withPopup(
       {
         view: {
@@ -267,17 +267,21 @@ suite('Clone popup', () => {
       async ({ dom, asked }) => {
         assert.deepStrictEqual(
           [
-            ...(dom.window.document.querySelector('.clone-running')?.children ??
-              []),
+            ...dom.window.document.querySelectorAll(
+              '.clone-running .name-lines > *',
+            ),
           ].map((cell) => cell.textContent),
-          [
-            'Cloning',
-            form.url,
-            'Into',
-            '/code/Fastforward',
-            'Receiving objects',
-            '45%',
-          ],
+          ['', form.url, 'Into', '/code/Fastforward'],
+        );
+        assert.ok(
+          dom.window.document.querySelector(
+            '.confirm-body > .progress-bar[role="progressbar"]',
+          ),
+        );
+        assert.ok(
+          dom.window.document.querySelector(
+            '.confirm-buttons .confirm-button.default',
+          ),
         );
         assert.strictEqual(text(dom, '.clone-phase'), 'Receiving objects');
         assert.strictEqual(text(dom, '.clone-percent'), '45%');

@@ -167,8 +167,10 @@ export function Pane({
       {
         onFolder: (command, name) => actions.folderCommand(side, name, command),
         onEnterArchive: (name) => actions.enterArchive(side, name),
+        onView: (name) => actions.viewFile(side, name),
+        onCompare: actions.compare,
+        onEdit: (name) => actions.editFile(side, name),
         onCopy: copyItems,
-        onGoTo: () => actions.askGoTo(side),
         onSystemMenu:
           platform === 'win32' && !inArchive
             ? (names) => onShellMenu(names, at, false)
@@ -344,7 +346,6 @@ export function Pane({
           looks={folderLooks(hidden ?? [], archive)}
           flat={flatShown}
           duplicates={duplicatesShown}
-          goTo={() => actions.askGoTo(side)}
         />
       </div>
       {!tiled && <ColumnHeader side={side} />}

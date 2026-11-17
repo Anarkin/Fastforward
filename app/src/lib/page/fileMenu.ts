@@ -17,8 +17,10 @@ export type MenuTarget =
 export interface FileMenuActions {
   readonly onFolder: (command: FolderCommand, name: string | undefined) => void;
   readonly onEnterArchive: (name: string) => void;
+  readonly onView: (name: string) => void;
+  readonly onCompare?: () => void;
+  readonly onEdit: (name: string) => void;
   readonly onCopy: (copied: Copied, names: readonly string[]) => void;
-  readonly onGoTo?: () => void;
   readonly onSystemMenu: ((names: readonly string[]) => void) | undefined;
 }
 
@@ -47,9 +49,21 @@ export interface FileMenuPlace {
   readonly entersArchives?: boolean;
 }
 
-function ownItems(
+function offered(
+  label: string,
+  offers: boolean,
+  more: Omit<Extract<ContextMenuItem, { label: string }>, 'label'> = {},
+): ContextMenuItem {
+  if (offers) {
+    return { label, ...more };
+  }
+  const { onClick: _onClick, ...shown } = more;
+  return { label, ...shown, disabled: true };
+}
+
+function toolItems(
   target: MenuTarget,
-  { onFolder, onEnterArchive }: FileMenuActions,
+  { onFolder, onEnterArchive, onView, onCompare, onEdit }: FileMenuActions,
   {
     inArchive = false,
     gitMissing = false,
@@ -57,68 +71,58 @@ function ownItems(
     entersArchives = true,
   }: FileMenuPlace,
 ): ContextMenuItem[] {
-  const enterArchive = (name: string): ContextMenuItem[] =>
-    entersArchives
-      ? [
-          {
-            label: strings.commander.openWithSevenZip,
-            icon: 'sevenZip',
-            onClick: () => onEnterArchive(name),
-          },
-        ]
-      : [];
-  if (!onDisk) {
-    return [];
-  }
-  if (inArchive) {
-    return target.kind === 'file' ? enterArchive(target.name) : [];
-  }
-  switch (target.kind) {
-    case 'folder': {
-      const run = (command: FolderCommand) => () =>
-        onFolder(command, target.name);
-      return [
-        {
-          label: strings.commander.newTerminalHere,
-          icon: 'terminal',
-          onClick: run('newTerminal'),
-        },
-        ...(gitMissing
-          ? []
-          : target.inRepository
-            ? [
-                {
-                  label: strings.commander.openInGit,
-                  icon: 'git' as const,
-                  onClick: run('openInGit'),
-                },
-              ]
-            : [
-                {
-                  label: strings.commander.cloneHere,
-                  icon: 'git' as const,
-                  onClick: run('cloneHere'),
-                },
-                {
-                  label: strings.commander.initHere,
-                  icon: 'git' as const,
-                  onClick: run('initHere'),
-                },
-              ]),
-      ];
-    }
-    case 'file':
-      return [
-        ...(target.image
-          ? [{ label: strings.commander.editImage, icon: 'image' as const }]
-          : []),
-        ...enterArchive(target.name),
-      ];
-    case 'items':
-      return [];
-    default:
-      return target satisfies never;
-  }
+  const folder = target.kind === 'folder' ? target : undefined;
+  const file = target.kind === 'file' ? target : undefined;
+  const onFolders = folder !== undefined && onDisk && !inArchive;
+  const git = onFolders && !gitMissing;
+  const inRepository = folder?.inRepository === true;
+  const run = (command: FolderCommand) => () => onFolder(command, folder?.name);
+  const name = file?.name ?? '';
+  const opens = file !== undefined && onDisk && entersArchives;
+  return [
+    offered(strings.commander.openWithTerminal, onFolders, {
+      icon: 'terminal',
+      onClick: run('newTerminal'),
+    }),
+    offered(strings.commander.openWithCommander, onFolders, {
+      icon: 'commander',
+      onClick: run('openInCommander'),
+    }),
+    offered(strings.commander.openWithSevenZip, opens, {
+      icon: 'sevenZip',
+      onClick: () => onEnterArchive(name),
+    }),
+    offered(strings.commander.openWithGit, git && inRepository, {
+      icon: 'git',
+      onClick: run('openInGit'),
+    }),
+    offered(strings.commander.cloneWithGit, git && !inRepository, {
+      icon: 'git',
+      onClick: run('cloneHere'),
+    }),
+    offered(strings.commander.initWithGit, git && !inRepository, {
+      icon: 'git',
+      onClick: run('initHere'),
+    }),
+    offered(strings.commander.openWithViewer, opens, {
+      icon: 'viewer',
+      onClick: () => onView(name),
+    }),
+    offered(
+      strings.commander.openWithDiff,
+      target.kind !== 'folder' && onCompare !== undefined,
+      { icon: 'diff', ...(onCompare !== undefined && { onClick: onCompare }) },
+    ),
+    offered(strings.commander.openWithEditor, opens, {
+      icon: 'editor',
+      onClick: () => onEdit(name),
+    }),
+    offered(
+      strings.commander.openWithPaint,
+      file?.image === true && onDisk && !inArchive,
+      { icon: 'image' },
+    ),
+  ];
 }
 
 function copyItems(
@@ -140,28 +144,20 @@ export function fileMenuItems(
   actions: FileMenuActions,
   place: FileMenuPlace = {},
 ): ContextMenuItem[] {
-  const { onGoTo, onSystemMenu } = actions;
+  const { onSystemMenu } = actions;
   const groups: ContextMenuItem[][] = [
-    ownItems(target, actions, place),
+    toolItems(target, actions, place),
     copyItems(target, actions),
-    onGoTo !== undefined &&
-    target.kind === 'folder' &&
-    target.name === undefined
-      ? [{ label: strings.commander.goToItem, onClick: onGoTo }]
-      : [],
-    onSystemMenu === undefined
-      ? []
-      : [
-          {
-            label: strings.commander.showMoreOptions,
-            title: strings.commander.showMoreOptionsTitle,
-            onClick: () => onSystemMenu(namesOf(target)),
-          },
-        ],
+    [
+      offered(strings.commander.showMoreOptions, onSystemMenu !== undefined, {
+        title: strings.commander.showMoreOptionsTitle,
+        ...(onSystemMenu !== undefined && {
+          onClick: () => onSystemMenu(namesOf(target)),
+        }),
+      }),
+    ],
   ];
-  return groups
-    .filter((group) => group.length > 0)
-    .flatMap((group, index) =>
-      index === 0 ? group : [{ separator: true } as const, ...group],
-    );
+  return groups.flatMap((group, index) =>
+    index === 0 ? group : [{ separator: true } as const, ...group],
+  );
 }

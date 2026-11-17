@@ -475,6 +475,7 @@ suite('Shell store', () => {
     }
     assert.deepStrictEqual(posted.slice(2), [
       { type: 'pathCommand', path: '/code/app', command: 'newTerminal' },
+      { type: 'pathCommand', path: '/code/app', command: 'openInCommander' },
       { type: 'pathCommand', path: '/code/app', command: 'openInGit' },
       { type: 'copyText', text: '/code/app' },
     ]);

@@ -14,7 +14,7 @@ export interface PathMenuActs {
 }
 
 export function pathMenuItems(
-  { path, file, onGoTo }: PathMenuAsk,
+  { path, file }: PathMenuAsk,
   facts: PathFacts,
   platform: string | undefined,
   acts: PathMenuActs,
@@ -24,7 +24,7 @@ export function pathMenuItems(
     facts.kind === 'folder' || (!onDisk && !file)
       ? {
           kind: 'folder',
-          ...(onGoTo === undefined && { name: path }),
+          name: path,
           inRepository: facts.inRepository,
         }
       : { kind: 'file', name: path, image: editsImage(path) };
@@ -33,8 +33,9 @@ export function pathMenuItems(
     {
       onFolder: (command) => acts.command(command),
       onEnterArchive: () => acts.command('enterArchive'),
+      onView: () => acts.command('view'),
+      onEdit: () => acts.command('edit'),
       onCopy: () => acts.copy(path),
-      ...(onGoTo !== undefined && { onGoTo }),
       onSystemMenu:
         platform === 'win32' && onDisk
           ? () => acts.command('systemMenu')

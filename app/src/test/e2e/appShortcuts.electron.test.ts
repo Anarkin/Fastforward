@@ -166,7 +166,7 @@ suite('App commander', () => {
     );
     await commanderPage.keyboard.press('ArrowDown');
     await commanderPage
-      .locator('.shortcuts-tool.open', { hasText: 'Viewer' })
+      .locator('.shortcuts-tool.open', { hasText: 'Git' })
       .waitFor();
     await commanderPage
       .locator('.shortcuts-tool', { hasText: 'Terminal' })

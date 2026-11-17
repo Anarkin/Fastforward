@@ -15,14 +15,12 @@ export function PathTitle({
   looks,
   flat = false,
   duplicates = false,
-  goTo,
 }: {
   readonly path: string;
   readonly file?: boolean;
   readonly looks?: PartLooks;
   readonly flat?: boolean;
   readonly duplicates?: boolean;
-  readonly goTo?: () => void;
 }) {
   const parts = usePathParts(path, { file, ...(looks && { looks }) });
   const last = parts.length - 1;
@@ -43,7 +41,7 @@ export function PathTitle({
         )}
         <span className="path-end">
           {last >= 0 && (
-            <PathPart part={parts[last]} className="path-name" onGoTo={goTo}>
+            <PathPart part={parts[last]} className="path-name">
               {parts[last].name}
               {parts[last].separator}
             </PathPart>

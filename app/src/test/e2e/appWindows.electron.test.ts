@@ -124,7 +124,7 @@ suite('App with several windows', () => {
       await launched().browserWindow(second)
     ).evaluate((window) => window.close());
     const asked = second.locator('.confirm-popup', {
-      hasText: strings.confirm.closeWindow,
+      hasText: strings.confirm.closeWindowTitle,
     });
     await asked.waitFor();
     assert.strictEqual((await visiblePages(launched())).length, 2);

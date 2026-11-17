@@ -19,7 +19,9 @@ type Chosen =
   | { readonly folder: FolderCommand; readonly name: string | undefined }
   | { readonly archive: string }
   | { readonly copy: Copied; readonly names: readonly string[] }
-  | { readonly goTo: true }
+  | { readonly view: string }
+  | { readonly compare: true }
+  | { readonly edit: string }
   | { readonly system: readonly string[] };
 
 function menuOf(
@@ -27,6 +29,7 @@ function menuOf(
   windows = true,
   inArchive = false,
   gitMissing = false,
+  compares = true,
 ) {
   const chosen: Chosen[] = [];
   const items = fileMenuItems(
@@ -35,7 +38,9 @@ function menuOf(
       onFolder: (command, name) => chosen.push({ folder: command, name }),
       onEnterArchive: (name) => chosen.push({ archive: name }),
       onCopy: (copied, names) => chosen.push({ copy: copied, names }),
-      onGoTo: () => chosen.push({ goTo: true }),
+      onView: (name) => chosen.push({ view: name }),
+      ...(compares && { onCompare: () => chosen.push({ compare: true }) }),
+      onEdit: (name) => chosen.push({ edit: name }),
       onSystemMenu: windows
         ? (names) => chosen.push({ system: names })
         : undefined,
@@ -57,12 +62,19 @@ const menuInArchive = (target: MenuTarget) => menuOf(target, false, true);
 const labels = (items: readonly ContextMenuItem[]) =>
   items.map((item) => ('separator' in item ? '-' : item.label));
 
+const offered = (items: readonly ContextMenuItem[]) =>
+  items.flatMap((item) =>
+    'separator' in item || item.disabled === true ? [] : [item.label],
+  );
+
 const isTool = (icon: string | undefined): icon is ToolId =>
   tools.some((tool) => tool === icon);
 
 const toolsOf = (items: readonly ContextMenuItem[]): ToolId[] =>
   items.flatMap((item) =>
-    'separator' in item || !isTool(item.icon) ? [] : [item.icon],
+    'separator' in item || item.disabled === true || !isTool(item.icon)
+      ? []
+      : [item.icon],
   );
 
 const folderShown = (inRepository: boolean): MenuTarget => ({
@@ -80,26 +92,69 @@ const copyOne = [strings.commander.copyPath];
 const copyMany = [strings.commander.copyPaths];
 
 suite('File menu', () => {
-  test('offers a folder a new terminal in it, and git to open it when it is in a repository, or to clone into it or init one in it when it is not, never making a repository inside another, the menu of Windows last', () => {
-    assert.deepStrictEqual(labels(menuOf(docs(false)).items), [
-      strings.commander.newTerminalHere,
-      strings.commander.cloneHere,
-      strings.commander.initHere,
-      '-',
+  const { commander } = strings;
+  const all = [
+    commander.openWithTerminal,
+    commander.openWithCommander,
+    commander.openWithSevenZip,
+    commander.openWithGit,
+    commander.cloneWithGit,
+    commander.initWithGit,
+    commander.openWithViewer,
+    commander.openWithDiff,
+    commander.openWithEditor,
+    commander.openWithPaint,
+    '-',
+    commander.copyPath,
+    '-',
+    commander.showMoreOptions,
+  ];
+  const image = { kind: 'file', name: 'photo.png', image: true } as const;
+  const text = { kind: 'file', name: 'notes.txt', image: false } as const;
+  const marked = { kind: 'items', names: ['docs', 'notes.txt'] } as const;
+
+  test('shows every item it has on every folder, file and set of marked items, wherever it opens, those that do not apply there disabled and doing nothing, so the menu always shows all it can do', () => {
+    for (const items of [
+      menuOf(docs(false)).items,
+      menuOf(docs(true), false, false, true).items,
+      menuOf(folderShown(true)).items,
+      menuOf(image, false).items,
+      menuInArchive(image).items,
+    ]) {
+      assert.deepStrictEqual(labels(items), all);
+      for (const item of items) {
+        if (!('separator' in item) && item.disabled === true) {
+          assert.strictEqual(item.onClick, undefined, item.label);
+        }
+      }
+    }
+    assert.deepStrictEqual(
+      labels(menuOf(marked).items),
+      all.map((label) =>
+        label === commander.copyPath ? commander.copyPaths : label,
+      ),
+    );
+  });
+
+  test('offers a folder a terminal and the commander in it, and git to open it when it is in a repository, or to clone into it or init one in it when it is not, never making a repository inside another, the menu of Windows last', () => {
+    assert.deepStrictEqual(offered(menuOf(docs(false)).items), [
+      commander.openWithTerminal,
+      commander.openWithCommander,
+      commander.cloneWithGit,
+      commander.initWithGit,
       ...copyOne,
-      '-',
-      strings.commander.showMoreOptions,
+      commander.showMoreOptions,
     ]);
-    assert.deepStrictEqual(labels(menuOf(docs(true)).items), [
-      strings.commander.newTerminalHere,
-      strings.commander.openInGit,
-      '-',
+    assert.deepStrictEqual(offered(menuOf(docs(true)).items), [
+      commander.openWithTerminal,
+      commander.openWithCommander,
+      commander.openWithGit,
       ...copyOne,
-      '-',
-      strings.commander.showMoreOptions,
+      commander.showMoreOptions,
     ]);
     assert.deepStrictEqual(toolsOf(menuOf(docs(false)).items), [
       'terminal',
+      'commander',
       'git',
       'git',
     ]);
@@ -108,26 +163,30 @@ suite('File menu', () => {
   test('offers a folder no git while git is missing, whether it is in a repository or not', () => {
     for (const target of [docs(false), docs(true), folderShown(true)]) {
       const { items } = menuOf(target, true, false, true);
-      assert.deepStrictEqual(toolsOf(items), ['terminal']);
-      assert.deepStrictEqual(labels(items).slice(0, 2), [
-        strings.commander.newTerminalHere,
-        '-',
+      assert.deepStrictEqual(toolsOf(items), ['terminal', 'commander']);
+      assert.deepStrictEqual(offered(items), [
+        commander.openWithTerminal,
+        commander.openWithCommander,
+        ...copyOne,
+        commander.showMoreOptions,
       ]);
     }
   });
 
   test('asks for each command on the folder the menu is on, naming none for the folder shown', () => {
     const named = menuOf(docs(true));
-    named.choose(strings.commander.newTerminalHere);
-    named.choose(strings.commander.openInGit);
+    named.choose(commander.openWithTerminal);
+    named.choose(commander.openWithCommander);
+    named.choose(commander.openWithGit);
     const shown = menuOf(folderShown(false));
-    shown.choose(strings.commander.cloneHere);
-    shown.choose(strings.commander.initHere);
+    shown.choose(commander.cloneWithGit);
+    shown.choose(commander.initWithGit);
 
     assert.deepStrictEqual(
       [...named.chosen, ...shown.chosen],
       [
         { folder: 'newTerminal', name: 'docs' },
+        { folder: 'openInCommander', name: 'docs' },
         { folder: 'openInGit', name: 'docs' },
         { folder: 'cloneHere', name: undefined },
         { folder: 'initHere', name: undefined },
@@ -135,55 +194,58 @@ suite('File menu', () => {
     );
   });
 
-  test('offers one image to edit, doing nothing yet, as the image editor is still to come, and no SVG', () => {
-    const { items } = menuOf({ kind: 'file', name: 'photo.png', image: true });
-    const [edit] = items;
-    assert.deepStrictEqual(labels(items), [
-      strings.commander.editImage,
-      strings.commander.openWithSevenZip,
-      '-',
+  test('offers a file to open with the viewer, the diff, the editor and 7-Zip, by its name, and an image with Paint too, which does nothing yet, as Paint is still to come, and no SVG, and marked items with the diff', () => {
+    const menu = menuOf(image);
+    assert.deepStrictEqual(offered(menu.items), [
+      commander.openWithSevenZip,
+      commander.openWithViewer,
+      commander.openWithDiff,
+      commander.openWithEditor,
+      commander.openWithPaint,
       ...copyOne,
-      '-',
-      strings.commander.showMoreOptions,
+      commander.showMoreOptions,
     ]);
-    assert.ok(edit !== undefined && !('separator' in edit));
-    assert.notStrictEqual(edit.disabled, true);
-    assert.strictEqual(edit.onClick, undefined);
+    const paint = menu.items.find(
+      (item) =>
+        !('separator' in item) && item.label === commander.openWithPaint,
+    );
+    assert.ok(paint !== undefined && !('separator' in paint));
+    assert.strictEqual(paint.onClick, undefined);
+    menu.choose(commander.openWithViewer);
+    menu.choose(commander.openWithDiff);
+    menu.choose(commander.openWithEditor);
+    menu.choose(commander.openWithSevenZip);
+    assert.deepStrictEqual(menu.chosen, [
+      { view: 'photo.png' },
+      { compare: true },
+      { edit: 'photo.png' },
+      { archive: 'photo.png' },
+    ]);
+    assert.deepStrictEqual(offered(menuOf(text, false).items), [
+      commander.openWithSevenZip,
+      commander.openWithViewer,
+      commander.openWithDiff,
+      commander.openWithEditor,
+      ...copyOne,
+    ]);
+    assert.deepStrictEqual(offered(menuOf(marked, false).items), [
+      commander.openWithDiff,
+      ...copyMany,
+    ]);
     assert.deepStrictEqual(
       ['photo.png', 'logo.svg', 'notes.txt'].map(editsImage),
       [true, false, false],
     );
   });
 
-  test('offers one file to try entering as an archive, whatever its name, asking for it by its name, and no items marked together', () => {
-    const menu = menuOf(
-      { kind: 'file', name: 'notes.txt', image: false },
-      false,
-    );
-    assert.deepStrictEqual(labels(menu.items), [
-      strings.commander.openWithSevenZip,
-      '-',
-      ...copyOne,
-    ]);
-    menu.choose(strings.commander.openWithSevenZip);
-    assert.deepStrictEqual(menu.chosen, [{ archive: 'notes.txt' }]);
-    assert.deepStrictEqual(
-      labels(menuOf({ kind: 'items', names: ['a.zip', 'b.zip'] }, false).items),
-      copyMany,
-    );
-  });
-
   test('shows the menu of Windows for what the menu is on, the folder shown by no name, and only it for other items', () => {
-    const chosen = [
-      folderShown(false),
-      docs(false),
-      { kind: 'file', name: 'photo.png', image: true } as const,
-      { kind: 'items', names: ['docs', 'notes.txt'] } as const,
-    ].flatMap((target) => {
-      const menu = menuOf(target);
-      menu.choose(strings.commander.showMoreOptions);
-      return menu.chosen;
-    });
+    const chosen = [folderShown(false), docs(false), image, marked].flatMap(
+      (target) => {
+        const menu = menuOf(target);
+        menu.choose(commander.showMoreOptions);
+        return menu.chosen;
+      },
+    );
 
     assert.deepStrictEqual(chosen, [
       { system: [] },
@@ -195,93 +257,77 @@ suite('File menu', () => {
     assert.ok(more !== undefined && !('separator' in more));
     assert.deepStrictEqual(
       [more.label, more.title],
-      ['...', strings.commander.showMoreOptionsTitle],
+      ['...', commander.showMoreOptionsTitle],
     );
   });
 
-  test('leaves the menu of Windows out where there is none, and only the copies for other items there', () => {
-    assert.deepStrictEqual(labels(menuOf(docs(false), false).items), [
-      strings.commander.newTerminalHere,
-      strings.commander.cloneHere,
-      strings.commander.initHere,
-      '-',
+  test('leaves the diff disabled where nothing compares files, as outside the commander', () => {
+    for (const target of [image, marked]) {
+      assert.ok(
+        !offered(menuOf(target, false, false, false, false).items).includes(
+          commander.openWithDiff,
+        ),
+      );
+    }
+  });
+
+  test('leaves the menu of Windows disabled where there is none', () => {
+    assert.deepStrictEqual(offered(menuOf(docs(false), false).items), [
+      commander.openWithTerminal,
+      commander.openWithCommander,
+      commander.cloneWithGit,
+      commander.initWithGit,
       ...copyOne,
     ]);
-    assert.deepStrictEqual(
-      labels(menuOf({ kind: 'items', names: ['notes.txt'] }, false).items),
-      copyMany,
-    );
   });
 
-  test('copies the paths or the names of what the menu is on as text, the folder shown by no name, and offers to go to a path typed on the folder shown alone', () => {
-    const chosen = [
-      folderShown(false),
-      docs(false),
-      { kind: 'file', name: 'photo.png', image: true } as const,
-      { kind: 'items', names: ['docs', 'notes.txt'] } as const,
-    ].flatMap((target) => {
-      const menu = menuOf(target);
-      const many = target.kind === 'items';
-      menu.choose(
-        many ? strings.commander.copyPaths : strings.commander.copyPath,
-      );
-      return menu.chosen;
-    });
-    const shown = menuOf(folderShown(true));
-    shown.choose(strings.commander.goToItem);
-
+  test('copies the paths of what the menu is on as text, the folder shown by no name', () => {
+    const chosen = [folderShown(false), docs(false), image, marked].flatMap(
+      (target) => {
+        const menu = menuOf(target);
+        menu.choose(
+          target.kind === 'items' ? commander.copyPaths : commander.copyPath,
+        );
+        return menu.chosen;
+      },
+    );
     assert.deepStrictEqual(chosen, [
       { copy: 'paths', names: [] },
       { copy: 'paths', names: ['docs'] },
       { copy: 'paths', names: ['photo.png'] },
       { copy: 'paths', names: ['docs', 'notes.txt'] },
     ]);
-    assert.deepStrictEqual(shown.chosen, [{ goTo: true }]);
-    assert.deepStrictEqual(labels(shown.items), [
-      strings.commander.newTerminalHere,
-      strings.commander.openInGit,
-      '-',
-      ...copyOne,
-      '-',
-      strings.commander.goToItem,
-      '-',
-      strings.commander.showMoreOptions,
-    ]);
   });
 
-  test('offers inside an archive only to try entering one file of it as an archive, to copy paths and names, and to go to a path on the folder shown, no tools on its folders and no image to edit', () => {
-    const menu = menuInArchive({
-      kind: 'file',
-      name: 'photo.png',
-      image: true,
-    });
-    assert.deepStrictEqual(labels(menu.items), [
-      strings.commander.openWithSevenZip,
-      '-',
+  test('offers inside an archive to open one of its files with the viewer, the diff, the editor and 7-Zip, and to copy paths, no tools on its folders and no Paint', () => {
+    const menu = menuInArchive(image);
+    assert.deepStrictEqual(offered(menu.items), [
+      commander.openWithSevenZip,
+      commander.openWithViewer,
+      commander.openWithDiff,
+      commander.openWithEditor,
       ...copyOne,
     ]);
-    menu.choose(strings.commander.openWithSevenZip);
+    menu.choose(commander.openWithSevenZip);
     assert.deepStrictEqual(menu.chosen, [{ archive: 'photo.png' }]);
     assert.deepStrictEqual(
-      [
-        folderShown(false),
-        docs(true),
-        { kind: 'items', names: ['a.zip', 'b.zip'] } as const,
-      ].map((target) => labels(menuInArchive(target).items)),
-      [[...copyOne, '-', strings.commander.goToItem], copyOne, copyMany],
+      [folderShown(false), docs(true), marked].map((target) =>
+        offered(menuInArchive(target).items),
+      ),
+      [copyOne, copyOne, [commander.openWithDiff, ...copyMany]],
     );
   });
 
-  test('offers on a folder every tool of the + menu but the commander it is in, made local to the folder, so a tool added there is offered here too, or left out on purpose', () => {
-    const offered = new Set(
+  test('offers on a folder every tool of the + menu, the commander it is in too, made local to the folder, so a tool added there is offered here too', () => {
+    const offeredTools = new Set(
       [false, true].flatMap((inRepository) =>
         toolsOf(menuOf(docs(inRepository)).items),
       ),
     );
 
     assert.deepStrictEqual(
-      folderTools.filter((tool) => offered.has(tool)),
-      folderTools.filter((tool) => tool !== 'commander'),
+      folderTools.filter((tool) => offeredTools.has(tool)),
+      [...folderTools],
     );
   });
 });

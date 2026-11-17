@@ -10,7 +10,7 @@ import { narrows, searchFilter } from '../../lib/shared/filter';
 import { noSearch, type Search } from '../../lib/shared/searchOptions';
 import { SearchBar } from '../../lib/page/searchBar';
 import { useDismiss } from '../../lib/page/dismiss';
-import { CloseIcon, FileIcon, ToolIcon } from '../../lib/page/icons';
+import { CloseIcon, ImageIcon, ToolIcon } from '../../lib/page/icons';
 import { AppIcon } from './appIcon';
 import { useModalDialog } from '../../lib/page/modalDialog';
 import { useDialogDrag } from '../../lib/page/dialogDrag';
@@ -61,14 +61,14 @@ export function ShortcutsList({ entry }: { entry: ShownEntry }) {
 }
 
 function EntryIcon({ id }: { id: ShortcutEntryId }) {
-  if (id === 'viewer' || id === 'diff' || id === 'editor') {
-    return <FileIcon />;
+  switch (id) {
+    case 'everywhere':
+      return <AppIcon className="icon" size={16} />;
+    case 'paint':
+      return <ImageIcon />;
+    default:
+      return <ToolIcon tool={id} />;
   }
-  return id === 'everywhere' ? (
-    <AppIcon className="icon" size={16} />
-  ) : (
-    <ToolIcon tool={id} />
-  );
 }
 
 function ShortcutsTree({

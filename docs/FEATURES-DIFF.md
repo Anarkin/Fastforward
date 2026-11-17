@@ -14,7 +14,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Compare two files | Diff any two files, in a repository or not | Shift+F3 | Advanced | ✅ Yes | Shift+F3 in the commander, the two files marked on a side or the file of each side, in a diff tab of their own that follows their changes, coming back with its find, the match it was on, its scroll and the keyboard as they were left, once shown again, reloaded or moved to another window; images side by side, as a commit shows them; no Markdown preview |
+| Compare two files | Diff any two files, in a repository or not | Shift+F3 | Advanced | ✅ Yes | Shift+F3 in the commander, or Open with Diff in its menu of a file or of marked items, the two files marked on a side or the file of each side, in a diff tab of their own that follows their changes, coming back with its find, the match it was on, its scroll and the keyboard as they were left, once shown again, reloaded or moved to another window; images side by side, as a commit shows them; no Markdown preview |
 | Follow changes | Diff the files again once one changes | — | Common | ✅ Yes | The files are watched while their tab shows |
 | Restore after a restart | Open the files compared again once the app starts | — | Common | ✅ Yes | Their tabs come back as tabs of the diff, those git saved before the diff was a tool of its own too |
 | Close | Close the files compared | Esc | Core | ✅ Yes | Esc closes the tab |
