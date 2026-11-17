@@ -1,5 +1,6 @@
 import { availableParallelism } from 'node:os';
 import { defineConfig } from 'vitest/config';
+import { ShardsByDuration } from './scripts/testShards.mts';
 
 const git = 'src/test/**/*.git.test.ts';
 const electron = 'src/test/**/*.electron.test.ts';
@@ -13,6 +14,7 @@ export default defineConfig({
   test: {
     setupFiles: ['src/test/setup.ts'],
     allowOnly: false,
+    sequence: { sequencer: ShardsByDuration },
     maxWorkers: Math.min(8, Math.max(1, availableParallelism() - 1)),
     coverage: {
       include: ['src/**'],
