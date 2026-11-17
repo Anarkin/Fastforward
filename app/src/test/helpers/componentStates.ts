@@ -51,8 +51,10 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: whether the window has the focus, read anew from the document as mounted',
   'shell/page/notices.tsx held':
     'a moment: the notice under the pointer, held from fading only while the pointer is over it',
-  'shell/page/shortcutsPopup.tsx open':
-    'a moment: the entry shown in the shortcuts popup, a modal popup of the window that stays open through a tab change',
+  'shell/page/shortcutsPopup.tsx chosen':
+    'a moment: the entry opened in the shortcuts popup, a modal popup of the window that stays open through a tab change, the entry of the tool shown until one is opened',
+  'shell/page/shortcutsPopup.tsx focusedAtOpen':
+    'a moment: the entry of the part that had the focus as the shortcuts popup opened, before the popup took the focus',
   'shell/page/shortcutsPopup.tsx search':
     'a moment: typed in the shortcuts popup, a modal popup of the window that stays open through a tab change',
   'shell/page/shortcutsPopup.tsx visible':
@@ -74,7 +76,7 @@ export const componentStates: Readonly<Record<string, string>> = {
   'tools/commander/page/dropping.ts dropInto':
     'a moment: the row files dragged from another app are over, set only while they are dragged',
   'tools/editor/page/finding.ts focusAsks':
-    'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in keptEditings',
+    'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in editings',
   'tools/editor/page/view.ts findAsk':
     'a trigger: an ask of the find keys with the text selected, handled once; the find itself is kept per tab',
   'tools/editor/page/view.ts lineCount':
@@ -88,7 +90,7 @@ export const componentStates: Readonly<Record<string, string>> = {
   'tools/viewer/page/markdownView.tsx render':
     'made once: the markdown renderer, loaded once for the page and read from the module as mounted',
   'tools/commander/page/pane.tsx focusAsks':
-    'a trigger: counts the asks to focus the filter box; the focus of the tab is kept apart in view.kept',
+    'a trigger: counts the asks to focus the filter box; the focus of the tab is kept apart in view.focus',
   'tools/commander/page/pane.tsx pairsClick':
     'made once: a function made once that pairs the two clicks of a double click on one row',
   'tools/commander/page/paneCells.tsx failed':
@@ -97,8 +99,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: true once the system icon has loaded, at once when its ticket came before',
   'tools/commander/page/paneCells.tsx ticket':
     'made once: the ticket of a system icon, taken once from the icon tickets of the store',
-  'tools/commander/page/packPopup.tsx openedFresh':
-    'a moment: whether the pack dialog opened as asked for rather than shown again, to select the name of the archive only then; the form itself lives in the store',
   'tools/commander/page/paneTiles.ts fill':
     'a measure: where thumbnails fill from, set as the list scrolls and asked anew once shown again',
   'tools/commander/page/paneTiles.ts fitting':
@@ -130,15 +130,15 @@ export const componentStates: Readonly<Record<string, string>> = {
   'tools/commander/page/thumbnails.tsx shown':
     'a measure: the thumbnail drawn, peeked from the thumbnail cache of the page as mounted',
   'tools/commander/page/tool.tsx store':
-    'a measure: the commander store, made once for the page; it keeps what each commander tab shows through tab changes',
+    'made once: the commander store, made once for the page; it keeps what each commander tab shows through tab changes',
   'tools/diff/page/tool.tsx store':
-    'a measure: the diff store, made once for the page; it keeps what each tab of the diff shows through tab changes',
+    'made once: the diff store, made once for the page; it keeps what each tab of the diff shows through tab changes',
   'tools/editor/page/tool.tsx store':
-    'a measure: the editor store, made once for the page; it keeps what each editor tab shows through tab changes',
+    'made once: the editor store, made once for the page; it keeps what each editor tab shows through tab changes',
   'tools/viewer/page/tool.tsx store':
-    'a measure: the viewer store, made once for the page; it keeps what each viewer tab shows through tab changes',
+    'made once: the viewer store, made once for the page; it keeps what each viewer tab shows through tab changes',
   'tools/viewer/page/viewer.tsx focusAsks':
-    'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in the kept viewers',
+    'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in tabViews',
   'tools/viewer/page/find.ts jump':
     'a trigger: counts the jumps to a match; a viewer shown again keeps its place rather than jumping',
   'tools/viewer/page/scrollbar.tsx dragging':
@@ -235,9 +235,9 @@ export const componentStates: Readonly<Record<string, string>> = {
   'lib/page/skeletonDelay.ts shown':
     'a moment: false until a load has gone on 150 ms, timed anew as mounted',
   'components/diff/page/syntax.ts colored':
-    'a measure: the colors drawn, read as mounted from the colors kept per blob (keptColors.ts) and colored anew by the worker',
+    'a measure: the colors drawn, read as mounted from the colors kept per blob (blobColors.ts) and colored anew by the worker',
   'tools/git/page/tool.tsx store':
-    'a measure: the git store, made once for the page; it keeps what each git tab shows through tab changes',
+    'made once: the git store, made once for the page; it keeps what each git tab shows through tab changes',
   'tools/git/page/worktreeBar.tsx cycle':
     'made once: the worktrees stepped to ahead of the one shown while the key repeats, made once for the bar',
   'components/diff/page/wrapMarks.tsx breaks':
@@ -245,5 +245,5 @@ export const componentStates: Readonly<Record<string, string>> = {
   'components/diff/page/wrapMarks.tsx near':
     'a measure: whether a block of marks is near the view, observed anew by an intersection observer once mounted',
   'tools/terminal/page/tool.tsx store':
-    'a measure: the terminal store, made once for the page; each screen is kept by the main process',
+    'made once: the terminal store, made once for the page; each screen is kept by the main process',
 };

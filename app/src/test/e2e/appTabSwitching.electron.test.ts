@@ -14,7 +14,7 @@ const longText = Array.from(
   (_, index) => `${index} ${'line '.repeat(index % 30)}`,
 ).join('\n');
 
-const kinds = ['commander', 'viewer', 'editor', 'git'] as const;
+const kinds = ['commander', 'viewer', 'editor', 'diff', 'git'] as const;
 
 function recordFrames(lasting: number): void {
   const bare = new Set([
@@ -62,6 +62,7 @@ async function framesSwitchingTo(page: Page, index: number): Promise<string[]> {
     Reflect.get(window, 'switchFrames'),
   );
   assert.ok(Array.isArray(frames));
+  assert.ok(frames.length > 10, `${frames.length} frames recorded`);
   return frames.map(String);
 }
 
@@ -77,14 +78,21 @@ suite('App switching tabs', () => {
     fs.mkdirSync(opened, { recursive: true });
     fs.writeFileSync(path.join(opened, 'long.txt'), longText);
     fs.writeFileSync(path.join(opened, 'edited.txt'), longText);
+    fs.writeFileSync(path.join(opened, 'older.txt'), `${longText}\nolder`);
     const repository = await tempRepository(path.join(folder, 'repo'));
     await repository.commit('first', { 'long.txt': longText });
     fs.mkdirSync(profile, { recursive: true });
     const roots = {
-      commander: opened,
-      viewer: path.join(opened, 'long.txt'),
-      editor: path.join(opened, 'edited.txt'),
-      git: repository.root,
+      commander: { root: opened },
+      viewer: { root: path.join(opened, 'long.txt') },
+      editor: { root: path.join(opened, 'edited.txt') },
+      diff: {
+        compare: {
+          old: path.join(opened, 'older.txt'),
+          new: path.join(opened, 'long.txt'),
+        },
+      },
+      git: { root: repository.root },
     };
     fs.writeFileSync(
       path.join(profile, 'state.json'),
@@ -92,7 +100,7 @@ suite('App switching tabs', () => {
         tabs: kinds.map((tool, index) => ({
           id: String(index + 1),
           tool,
-          root: roots[tool],
+          ...roots[tool],
         })),
         activeTab: '1',
       }),

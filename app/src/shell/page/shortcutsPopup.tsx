@@ -198,14 +198,13 @@ export function ShortcutsPopup() {
   const tool = useShell((state) => activeTabOf(state)?.tool);
   const { showPopup } = useShellActions();
   const onClose = useCallback(() => showPopup('shortcuts', false), [showPopup]);
-  const [open, setOpen] = useState(() =>
-    entryFor(
-      tool,
-      typeof document === 'undefined'
-        ? undefined
-        : shortcutsEntryOf(document.activeElement),
-    ),
+  const [focusedAtOpen] = useState(() =>
+    typeof document === 'undefined'
+      ? undefined
+      : shortcutsEntryOf(document.activeElement),
   );
+  const [chosen, setOpen] = useState<ShortcutEntryId>();
+  const open = chosen ?? entryFor(tool, focusedAtOpen);
   const [{ query, options }, setSearch] = useState(noSearch);
   const [visible, setVisible] = useState<readonly string[]>();
   const popup = useRef<HTMLDivElement>(null);

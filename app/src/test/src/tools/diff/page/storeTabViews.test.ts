@@ -51,6 +51,21 @@ suite('Diff store keeping its tabs', () => {
     state().keepDiffPlace('7', '7', { top: 30, current: 1 });
     state().pickLanguage(languageKeyOf('7'), 'rust');
     const looked = looksOf(state(), '7');
+    assert.deepStrictEqual(
+      [looked[0], looked[1], looked[3]],
+      [
+        { finding: true, search: { query: 'eve', options: plainSearch } },
+        { name: 'diff' },
+        'rust',
+      ],
+    );
+    assert.deepStrictEqual(
+      [
+        state().diffPlaceOf('7', '7')?.top,
+        state().diffPlaceOf('7', '7')?.current,
+      ],
+      [30, 1],
+    );
     state().receive({ type: 'show', tab: '8', settings });
     const sent = left.release('7') ?? '';
     assert.deepStrictEqual(looksOf(state(), '7'), [

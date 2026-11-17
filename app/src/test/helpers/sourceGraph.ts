@@ -28,7 +28,10 @@ export const sourceFiles = fs
 
 export function importsOf(file: string): string[] {
   const text = fs.readFileSync(path.join(source, file), 'utf8');
-  return [...text.matchAll(/from '(\.{1,2}\/[^']+)'/g)].map(([, spec]) =>
+  return [
+    ...text.matchAll(/from '(\.{1,2}\/[^']+)'/g),
+    ...text.matchAll(/import\('(\.{1,2}\/[^']+?)(?:\.js)?'\)/g),
+  ].map(([, spec = '']) =>
     path.posix.normalize(path.posix.join(path.posix.dirname(file), spec)),
   );
 }

@@ -43,9 +43,15 @@ export function seededFromStore(text: string): string[] {
       .map((name) => name.split(':').at(-1)?.trim() ?? '')
       .filter((name) => name !== ''),
   );
+  const selected = [
+    ...text.matchAll(
+      /\bconst\s+(\w+)\s*(?::[^=]*)?=\s*use(?:Shell|Git|Commander|Viewer|Editor|Diff|Terminal|Store)\b/g,
+    ),
+  ].map(([, name = '']) => name);
   const reads = new RegExp(
     [String.raw`\.getState\(\)`, String.raw`\buse[A-Z]\w*\(`]
       .concat(actions.map((name) => String.raw`\b${name}\(`))
+      .concat(selected.map((name) => String.raw`(?<![.\w])${name}\b(?!\s*:)`))
       .join('|'),
   );
   return [

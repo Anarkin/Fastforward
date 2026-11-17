@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { strings } from '../../../lib/shared/strings';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
@@ -66,17 +66,16 @@ function PackForm({ names }: { names: readonly string[] }) {
   const { commander } = strings;
   const ids = useId();
   const field = useRef<HTMLInputElement>(null);
-  const [openedFresh] = useState(fresh);
   useEffect(() => {
     const typed = field.current;
-    if (typed !== null && openedFresh) {
+    if (typed !== null && fresh) {
       typed.focus();
       const { start, end } = namedPart(typed.value, platform);
       typed.setSelectionRange(start, end);
     } else {
       typed?.focus();
     }
-  }, [platform, openedFresh]);
+  }, [platform, fresh]);
   const there = useCommander((state) =>
     sides.some((side) =>
       archiveThere(
@@ -294,18 +293,18 @@ function PackForm({ names }: { names: readonly string[] }) {
 }
 
 export function PackPopup() {
-  const packing = useCommander((state) => state.packing);
-  return packing === undefined ? null : <PackDialog />;
+  const packing = useCommander((state) => state.packing !== undefined);
+  return packing ? <PackDialog /> : null;
 }
 
 function PackDialog() {
-  const packing = useCommander((state) => state.packing);
+  const names = useCommander((state) => state.packing?.names);
   const { cancelPack } = useCommanderActions();
   const popup = useRef<HTMLDivElement>(null);
   useDismiss(popup, cancelPack, { byKeyOnly: true });
   const dialog = useModalDialog(popup);
   const drag = useDialogDrag(popup);
-  if (packing === undefined) {
+  if (names === undefined) {
     return null;
   }
   const title = strings.commander.packTitle;
@@ -333,7 +332,7 @@ function PackDialog() {
             <CloseIcon />
           </button>
         </div>
-        <PackForm names={packing.names} />
+        <PackForm names={names} />
       </div>
     </div>
   );
