@@ -50,4 +50,19 @@ suite('Menu filter', () => {
       ['élan'],
     );
   });
+
+  test('keeps the items whose details have the words too, as a hash or a date before a label', () => {
+    const items = [
+      { label: 'docs: one', details: ['917d84c', '2026-10-12 01:44'] },
+      { label: 'docs: two', details: ['fc4493e', '2026-10-10 11:38'] },
+    ];
+    assert.deepStrictEqual(
+      labelsOf(filteredItems(items, plainFilter('fc44 docs'))),
+      ['docs: two'],
+    );
+    assert.deepStrictEqual(
+      labelsOf(filteredItems(items, plainFilter('2026-10-12'))),
+      ['docs: one'],
+    );
+  });
 });

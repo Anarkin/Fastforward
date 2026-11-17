@@ -5,6 +5,7 @@ import { pathParts } from '../../../../../lib/shared/pathParts';
 import { ViewerTool } from '../../../../../tools/viewer/main/tool';
 import type { PdfPlace } from '../../../../../tools/viewer/shared/pdf';
 import type {
+  ViewedVersion,
   ViewerToHost,
   ViewerToWebview,
 } from '../../../../../tools/viewer/shared/protocol';
@@ -40,6 +41,11 @@ export function viewer() {
     readonly at: { readonly byte: number; readonly encoding?: TextEncoding };
   }[] = [];
   const closed: string[] = [];
+  const versions = new Map<string, string>();
+  const histories = new Map<
+    string,
+    { versions: readonly ViewedVersion[]; staged: boolean; changed: boolean }
+  >();
   const tool = new ViewerTool({
     codePage: () => Promise.resolve('windows-1250'),
     watch: (file, changed) => {
@@ -67,9 +73,16 @@ export function viewer() {
     closed: (file) => {
       closed.push(file);
     },
+    fileHistory: (file) => Promise.resolve(histories.get(file)),
+    versionCopy: (file, rev) => {
+      const copy = versions.get(`${rev} ${file}`);
+      return Promise.resolve(
+        copy === undefined ? { kind: 'missing' } : { kind: 'file', file: copy },
+      );
+    },
   });
   const page = new ViewerPage();
-  const { shell, pages, tabs, notices } = fakeShell(page);
+  const { shell, pages, tabs, notices, versionsSet } = fakeShell(page);
   tool.attach(shell);
   const send = (message: ViewerToHost, from: Page = page) =>
     tool.receive(from, message);
@@ -92,6 +105,9 @@ export function viewer() {
     places,
     edited,
     closed,
+    versions,
+    histories,
+    versionsSet,
   };
 }
 

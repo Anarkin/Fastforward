@@ -162,6 +162,30 @@ suite('Storage', () => {
     assert.deepStrictEqual(written.get(tabsKey), [tab]);
   });
 
+  test('keeps a tab that views a version of a file as one, read and written, the file whose history it is with it, dropping a version not of two strings', async () => {
+    const store = new FakeStore();
+    const version = {
+      rev: '0123456789abcdef0123456789abcdef01234567',
+      file: path.resolve('src', 'new.ts'),
+    };
+    const tab = {
+      id: '1',
+      tool: 'viewer',
+      root: path.resolve('lib', 'old.ts'),
+      version,
+    } as const;
+    await store.update(tabsKey, [
+      tab,
+      { ...tab, id: '2', version: { rev: version.rev } },
+      { ...tab, id: '3', version: 'HEAD' },
+    ]);
+    assert.deepStrictEqual(storageOf(store).savedTabs, [tab]);
+
+    const written = new FakeStore();
+    await storageOf(written).setLayout([{ id: '1', tabs: [tab], active: '1' }]);
+    assert.deepStrictEqual(written.get(tabsKey), [tab]);
+  });
+
   test('reads a tab of git that compared two files, saved before the diff was a tool of its own, as a tab of the diff with the same id, leaving the tabs of repositories to git', async () => {
     const store = new FakeStore();
     const compare = {

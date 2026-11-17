@@ -116,16 +116,22 @@ suite('Git tool viewing files', () => {
     });
   });
 
-  test('opens a file as a commit, the parent of one, HEAD or the index has it, from a copy of the blob there, and says why not for a path the version lacks', async () => {
+  test('opens a file as a commit, the parent of one, HEAD or the index has it in a viewer tab of the file at that version, the commit named whole, read from a copy of the blob there, and says why not for a path the version lacks', async () => {
     const revs = await tempRepository(path.join(folder, 'revs'));
-    await revs.commit('one', { 'x.txt': 'one\n' });
-    await revs.commit('two', { 'x.txt': 'two\n' });
+    await revs.commit('one', { 'x.txt': 'one-' });
+    const one = (await revs.git('rev-parse', 'HEAD')).trim();
+    await revs.commit('two', { 'x.txt': 'two-' });
     const two = (await revs.git('rev-parse', 'HEAD')).trim();
-    fs.writeFileSync(path.join(revs.root, 'x.txt'), 'staged\n');
+    fs.writeFileSync(path.join(revs.root, 'x.txt'), 'staged-');
     await revs.git('add', 'x.txt');
-    fs.writeFileSync(path.join(revs.root, 'x.txt'), 'working\n');
+    fs.writeFileSync(path.join(revs.root, 'x.txt'), 'working-');
+    const x = path.join(revs.root, 'x.txt');
     const viewing = async (file: string, rev: string) => {
-      let seen = { texts: [] as string[], notices: [] as string[] };
+      let seen = {
+        versions: [] as unknown[],
+        sizes: [] as unknown[],
+        notices: [] as string[],
+      };
       await withView(log, [revs.root], async (view) => {
         await view.connection.receive({
           type: 'viewFile',
@@ -135,18 +141,23 @@ suite('Git tool viewing files', () => {
         });
         const tabs = view.store.get(tabsKey);
         seen = {
-          texts: Array.isArray(tabs)
+          versions: Array.isArray(tabs)
             ? tabs.flatMap((tab: unknown) =>
                 typeof tab === 'object' &&
                 tab !== null &&
                 'tool' in tab &&
                 tab.tool === 'viewer' &&
                 'root' in tab &&
-                typeof tab.root === 'string'
-                  ? [fs.readFileSync(tab.root, 'utf8')]
+                'version' in tab
+                  ? [[tab.root, tab.version]]
                   : [],
               )
             : [],
+          sizes: view.page.otherTools.flatMap((sent) =>
+            sent.tool === 'viewer' && sent.message.type === 'viewing'
+              ? [sent.message.size]
+              : [],
+          ),
           notices: view.page.messages.flatMap((message) =>
             message.type === 'notice' ? [plainOf(message.message)] : [],
           ),
@@ -161,12 +172,90 @@ suite('Git tool viewing files', () => {
         await viewing('x.txt', two),
         await viewing('x.txt', 'HEAD'),
         await viewing('x.txt', 'index'),
-      ].map((seen) => seen.texts),
-      [['one\n'], ['two\n'], ['two\n'], ['staged\n']],
+      ].map((seen) => [seen.versions, seen.sizes]),
+      [
+        [[[x, { rev: one, file: x }]], [4]],
+        [[[x, { rev: two, file: x }]], [4]],
+        [[[x, { rev: two, file: x }]], [4]],
+        [[[x, { rev: 'index', file: x }]], [7]],
+      ],
     );
     assert.deepStrictEqual(await viewing('gone.txt', 'HEAD'), {
-      texts: [],
+      versions: [],
+      sizes: [],
       notices: [plainOf(strings.diff.viewMissing('gone.txt'))],
+    });
+  });
+
+  test('lists the versions of a file a viewer tab shows, and switches the tab to another and to the file on disk, the tab saved with the version it shows', async () => {
+    const switching = await tempRepository(path.join(folder, 'switching'));
+    await switching.commit('one', { 'y.txt': 'one-' });
+    await switching.commit('two', { 'y.txt': 'twenty-' });
+    const [one, two] = await switching.resolve('HEAD~1', 'HEAD');
+    fs.writeFileSync(path.join(switching.root, 'y.txt'), 'working-');
+    const y = path.join(switching.root, 'y.txt');
+    await withView(log, [switching.root], async (view) => {
+      const viewerTabs = () => {
+        const tabs = view.store.get(tabsKey);
+        return Array.isArray(tabs)
+          ? tabs.filter(
+              (tab: unknown) =>
+                typeof tab === 'object' &&
+                tab !== null &&
+                'tool' in tab &&
+                tab.tool === 'viewer',
+            )
+          : [];
+      };
+      const viewerSent = (type: string) =>
+        view.page.otherTools.flatMap((sent) =>
+          sent.tool === 'viewer' && sent.message.type === type
+            ? [sent.message]
+            : [],
+        );
+      await view.connection.receive({
+        type: 'viewFile',
+        root: switching.root,
+        path: 'y.txt',
+        rev: `${two}^`,
+      });
+      const [opened] = viewerTabs();
+      assert.ok(opened !== undefined && 'id' in opened);
+      const tab = String(opened.id);
+      assert.deepStrictEqual(
+        viewerSent('versions').map((sent) =>
+          sent.type === 'versions'
+            ? sent.versions.map((version) => [version.rev, version.path])
+            : [],
+        ),
+        [
+          [
+            [two, y],
+            [one, y],
+          ],
+        ],
+      );
+      const choose = (rev?: string) =>
+        view.connection.receive({
+          type: 'tool',
+          tool: 'viewer',
+          message: { type: 'chooseVersion', tab, ...(rev && { rev }) },
+        });
+
+      await choose(two);
+      assert.deepStrictEqual(viewerTabs(), [
+        { id: tab, tool: 'viewer', root: y, version: { rev: two, file: y } },
+      ]);
+      await choose();
+      assert.deepStrictEqual(viewerTabs(), [
+        { id: tab, tool: 'viewer', root: y },
+      ]);
+      assert.deepStrictEqual(
+        viewerSent('viewing').map((sent) =>
+          sent.type === 'viewing' ? sent.size : undefined,
+        ),
+        [4, 7, 8],
+      );
     });
   });
 

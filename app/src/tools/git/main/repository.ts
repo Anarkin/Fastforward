@@ -34,6 +34,28 @@ export async function repositoryRoot(
   return (await sameFolder(root, top)) ? root : path.resolve(top);
 }
 
+async function nearestFolder(file: string): Promise<string> {
+  let folder = path.dirname(file);
+  while (!(await isFolder(folder)) && path.dirname(folder) !== folder) {
+    folder = path.dirname(folder);
+  }
+  return folder;
+}
+
+export async function fileInRepository(
+  gitPath: string,
+  file: string,
+): Promise<{ readonly root: string; readonly path: string } | undefined> {
+  const root = await repositoryRoot(gitPath, await nearestFolder(file));
+  const inside = root === undefined ? '' : path.relative(root, file);
+  return root === undefined ||
+    inside === '' ||
+    inside.startsWith('..') ||
+    path.isAbsolute(inside)
+    ? undefined
+    : { root, path: inside.split(path.sep).join('/') };
+}
+
 export function hasGitFolder(folder: string): Promise<boolean> {
   return fs
     .lstat(path.join(folder, '.git'))

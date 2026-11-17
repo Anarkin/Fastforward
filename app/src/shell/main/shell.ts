@@ -173,7 +173,14 @@ export class Shell {
         }),
       open: (page, tool, roots, reuse) =>
         this.tabs.open(page, tool, roots, reuse),
-      openView: (page, file) => this.tabs.open(page, 'viewer', [file], false),
+      openView: (page, file, version) =>
+        this.tabs.open(
+          page,
+          'viewer',
+          [file],
+          false,
+          version === undefined ? {} : { version },
+        ),
       openEdit: (page, file) => this.tabs.open(page, 'editor', [file], true),
       editViewed: (page, tab) => this.tabs.editViewed(page, tab),
       openCompare: (page, compare) =>
@@ -181,6 +188,8 @@ export class Shell {
       openFolders: (page, tool, folders) =>
         this.tools[tool].open(page, folders),
       setRoot: (tab, root) => this.tabs.setRoot(tab, root),
+      setVersion: (tab, root, version) =>
+        this.tabs.setVersion(tab, root, version),
       visited: (folder) => {
         for (const tool of toolIds) {
           this.tools[tool].visited(folder);

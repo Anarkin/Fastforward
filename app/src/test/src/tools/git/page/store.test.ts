@@ -19,6 +19,9 @@ import {
 } from './storeFixtures';
 import type { GitToHost } from '../../../../../tools/git/shared/protocol';
 import { emptyTabView } from '../../../../../tools/git/page/shownTab';
+import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
+import { workingTreeHash } from '../../../../../lib/shared/changes';
+import { fileChange } from '../../../../helpers/gitValues';
 import { checkoutOptions } from '../../../../../tools/git/page/checkout';
 import { bookmarkOptions } from '../../../../../tools/git/page/bookmarks';
 import { strings } from '../../../../../lib/shared/strings';
@@ -32,6 +35,25 @@ const detachedAt = (head: string | undefined) =>
       },
     }).getState(),
   );
+
+function viewed(hash: string) {
+  const posted: GitToHost[] = [];
+  const store = createGitStore((message) => posted.push(message), {
+    tab: {
+      ...emptyTabView,
+      root: '/repo',
+      history: new CommitHistory(0),
+      hash,
+      files: [
+        fileChange('src/a.ts'),
+        fileChange('src/gone.ts', { status: 'D' }),
+      ],
+    },
+  });
+  store.getState().viewFile({ path: 'src/a.ts', blob: 'b'.repeat(40) });
+  store.getState().viewFile({ path: 'src/gone.ts', blob: 'c'.repeat(40) });
+  return posted;
+}
 
 suite('Git store', () => {
   test('applies the messages of the main process to the worktree shown through the tab reducer, and keeps the worktrees', () => {
@@ -495,6 +517,18 @@ suite('Git store', () => {
       { type: 'scrolled', hash: at, offset: 3, report: 1, root: '/other' },
       { type: 'loadCommits', generation: 2, start: 0, count: 50, root },
       { type: 'viewFile', path: 'a.txt', blob: 'b1', root },
+    ]);
+  });
+
+  test('views a file of a commit as the version the commit shows, a file it deleted as its parent had it, and a file of the working tree from disk', () => {
+    const root = '/repo';
+    assert.deepStrictEqual(viewed(at), [
+      { type: 'viewFile', path: 'src/a.ts', rev: at, root },
+      { type: 'viewFile', path: 'src/gone.ts', rev: `${at}^`, root },
+    ]);
+    assert.deepStrictEqual(viewed(workingTreeHash), [
+      { type: 'viewFile', path: 'src/a.ts', blob: 'b'.repeat(40), root },
+      { type: 'viewFile', path: 'src/gone.ts', rev: 'HEAD', root },
     ]);
   });
 

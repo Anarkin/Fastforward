@@ -7,11 +7,17 @@ export interface Compared {
   readonly new: string;
 }
 
+export interface FileVersion {
+  readonly rev: string;
+  readonly file: string;
+}
+
 export interface SavedTab {
   readonly id: string;
   readonly tool: ToolId;
   readonly root?: string;
   readonly compare?: Compared;
+  readonly version?: FileVersion;
 }
 
 function isCompared(value: unknown): value is Compared {
@@ -22,13 +28,22 @@ function isCompared(value: unknown): value is Compared {
   );
 }
 
+function isFileVersion(value: unknown): value is FileVersion {
+  return (
+    isObject(value) &&
+    typeof value.rev === 'string' &&
+    typeof value.file === 'string'
+  );
+}
+
 function isSavedTab(value: unknown): value is SavedTab {
   return (
     isObject(value) &&
     typeof value.id === 'string' &&
     isTool(value.tool) &&
     (value.root === undefined || typeof value.root === 'string') &&
-    (value.compare === undefined || isCompared(value.compare))
+    (value.compare === undefined || isCompared(value.compare)) &&
+    (value.version === undefined || isFileVersion(value.version))
   );
 }
 
@@ -113,6 +128,8 @@ export function sameTab(a: SavedTab, b: SavedTab | undefined): boolean {
     a.tool === b.tool &&
     a.root === b.root &&
     a.compare?.old === b.compare?.old &&
-    a.compare?.new === b.compare?.new
+    a.compare?.new === b.compare?.new &&
+    a.version?.rev === b.version?.rev &&
+    a.version?.file === b.version?.file
   );
 }

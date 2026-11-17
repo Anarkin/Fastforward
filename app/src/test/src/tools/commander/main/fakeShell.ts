@@ -4,7 +4,10 @@ import type {
   ShellAccess,
   Tab,
 } from '../../../../../shell/main/toolContract';
-import type { Compared } from '../../../../../shell/main/savedTabs';
+import type {
+  Compared,
+  FileVersion,
+} from '../../../../../shell/main/savedTabs';
 
 export function fakeShell<P extends Page>(page: P) {
   const notices: Notice[] = [];
@@ -16,6 +19,7 @@ export function fakeShell<P extends Page>(page: P) {
   const edited: string[] = [];
   const turned: string[] = [];
   const compared: Compared[] = [];
+  const versionsSet: [string, string, FileVersion | undefined][] = [];
   const tabs: Tab[] = [];
   const windows = new Map<Page, Tab[]>();
   const shell: ShellAccess = {
@@ -49,6 +53,9 @@ export function fakeShell<P extends Page>(page: P) {
       return Promise.resolve();
     },
     setRoot: () => {},
+    setVersion: (tab, root, version) => {
+      versionsSet.push([tab, root, version]);
+    },
     visited: () => {},
     recentFolders: () => 10,
     postTabs: () => {},
@@ -75,6 +82,7 @@ export function fakeShell<P extends Page>(page: P) {
     edited,
     turned,
     compared,
+    versionsSet,
     tabs,
     windows,
     openedIn,

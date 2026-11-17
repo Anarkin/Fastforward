@@ -1028,6 +1028,12 @@ export const strings = {
     realSize: 'Real Size',
     previewTooLarge: (megabytes: number) =>
       `Documents over ${megabytes} MB are not previewed.`,
+    version: 'Version',
+    staged: 'Staged',
+    findVersion: 'Filter by words, hash or date',
+    deletedHere: 'The file was deleted in this commit',
+    versionNotEdited: (file: string) =>
+      sentence`${namedFile(file)} is shown as git keeps a version of it, not as it is on disk, so it can't be edited.`,
   },
   encodings: {
     encoding: 'Encoding',

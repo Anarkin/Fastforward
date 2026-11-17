@@ -223,6 +223,8 @@ export function newView(
         fileIcon: () => Promise.resolve(new Uint8Array()),
         editViewed: () => Promise.resolve(),
         closed: () => undefined,
+        versionCopy: (file, rev) => view.versionCopy(file, rev),
+        fileHistory: (file) => view.fileHistory(file),
       }),
       editor: new EditorTool({
         watch: () => () => {},

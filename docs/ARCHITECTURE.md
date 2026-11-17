@@ -27,6 +27,7 @@
 
 - Use the installed `git` CLI for everything, rather than a library or a git bundled with the app
 - The commit list is kept whole by the main process per worktree, rather than read a page at a time as it scrolls, so the list knows its full size and locations can jump to any commit's position
+- A file shown as git keeps a version of it, at a commit or in the index, opens in a viewer tab of the file itself, its path the root of the tab and the version beside it, the commit or the index and the file whose history it is, saved with the tab, as the main process never reads the view of a tab; the viewer reads a copy git takes out of the blob, made anew whenever the tab shows, so the tab names the file rather than the copy, and a restart or a cleared cache loses nothing
 
 ### Commander, `commander`
 

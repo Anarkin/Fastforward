@@ -5,6 +5,7 @@ import type { Storage } from './storage';
 import type { TabHistory } from './tabHistory';
 import type { TabViews } from './tabViews';
 import type { Page, Tab, Tools } from './toolContract';
+import type { FileVersion } from './savedTabs';
 import {
   nextTabId,
   windowOf,
@@ -116,7 +117,7 @@ export class Tabs {
     tool: ToolId,
     roots: readonly (string | undefined)[],
     reuse: boolean,
-    kind: Pick<Tab, 'compare'> = {},
+    kind: Pick<Tab, 'compare' | 'version'> = {},
   ): Promise<void> {
     const { storage } = this;
     const window = this.pages.windowOf(page);
@@ -206,6 +207,28 @@ export class Tabs {
     }
     this.host.save(
       storage.setLayout(withChanged(storage.layout, { ...tab, root })),
+    );
+    const page = this.pages.live(windowOf(storage.layout, id)?.id);
+    if (page !== undefined) {
+      this.pages.postTabs(page);
+    }
+  }
+
+  setVersion(id: string, root: string, version: FileVersion | undefined): void {
+    const { storage } = this;
+    const tab = storage.savedTabs.find((each) => each.id === id);
+    if (tab === undefined) {
+      return;
+    }
+    const { version: _was, ...kept } = tab;
+    this.host.save(
+      storage.setLayout(
+        withChanged(storage.layout, {
+          ...kept,
+          root,
+          ...(version !== undefined && { version }),
+        }),
+      ),
     );
     const page = this.pages.live(windowOf(storage.layout, id)?.id);
     if (page !== undefined) {

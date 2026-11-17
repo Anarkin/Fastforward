@@ -1,6 +1,6 @@
 import type { ToWebview, ToWebviewOf } from '../shared/protocol';
 import type { ToHostOf, ToolId } from '../shared/tools';
-import type { Compared, SavedTab } from './savedTabs';
+import type { Compared, FileVersion, SavedTab } from './savedTabs';
 
 export interface Page {
   post(message: ToWebview): void;
@@ -38,7 +38,7 @@ export interface ShellAccess {
     roots: readonly (string | undefined)[],
     reuse: boolean,
   ): Promise<void>;
-  openView(page: Page, file: string): Promise<void>;
+  openView(page: Page, file: string, version?: FileVersion): Promise<void>;
   openEdit(page: Page, file: string): Promise<void>;
   editViewed(page: Page, tab: string): Promise<void>;
   openCompare(page: Page, compare: Compared): Promise<void>;
@@ -48,6 +48,7 @@ export interface ShellAccess {
     folders: readonly string[],
   ): Promise<void>;
   setRoot(tab: string, root: string): void;
+  setVersion(tab: string, root: string, version: FileVersion | undefined): void;
   visited(folder: string): void;
   recentFolders(): number;
   postTabs(page: Page): void;
@@ -99,6 +100,7 @@ export const unattachedShell: ShellAccess = {
   openCompare: () => Promise.resolve(),
   openFolders: () => Promise.resolve(),
   setRoot: () => undefined,
+  setVersion: () => undefined,
   visited: () => undefined,
   recentFolders: () => 0,
   postTabs: () => undefined,

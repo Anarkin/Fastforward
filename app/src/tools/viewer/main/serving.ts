@@ -19,6 +19,7 @@ export class Serving {
   constructor(
     private readonly access: ServingAccess,
     private readonly tabs: () => readonly Tab[],
+    private readonly copyOf: (tab: Tab) => string | undefined,
   ) {}
 
   async file(url: URL, range: string | null): Promise<Response> {
@@ -29,9 +30,13 @@ export class Serving {
     if (asked === undefined || viewer?.root === undefined) {
       return notFound();
     }
+    const source =
+      asked.file === viewer.root
+        ? (this.copyOf(viewer) ?? asked.file)
+        : asked.file;
     if (isPdf(asked.file)) {
       return viewer.root === asked.file
-        ? fileResponse(asked.file, pdfType, range).catch(notFound)
+        ? fileResponse(source, pdfType, range).catch(notFound)
         : notFound();
     }
     const type = imageType(asked.file);
@@ -43,14 +48,14 @@ export class Serving {
       return notFound();
     }
     try {
-      const stats = await fs.promises.stat(asked.file);
+      const stats = await fs.promises.stat(source);
       if (!stats.isFile()) {
         return notFound();
       }
       if (stats.size > maxImageSize) {
         return new Response(null, { status: 413 });
       }
-      const body = await fs.promises.readFile(asked.file);
+      const body = await fs.promises.readFile(source);
       return new Response(new Uint8Array(body), {
         headers: { 'content-type': type, 'cache-control': 'no-store' },
       });

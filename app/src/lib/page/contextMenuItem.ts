@@ -26,6 +26,7 @@ export type ContextMenuItem =
       readonly accessKey?: string;
       readonly showAccessKey?: boolean;
       readonly keywords?: string;
+      readonly details?: readonly string[];
     }
   | { readonly separator: true };
 

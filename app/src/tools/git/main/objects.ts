@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { gitDirOf } from './gitDir';
 import { runningGits, runGit, runGitBytes } from './run';
 import { isFullHash } from '../../../lib/shared/hashes';
-import { revObject } from '../shared/fileRevs';
+import { indexRev, revObject } from '../shared/fileRevs';
 
 const batchInput = (list: readonly string[]) =>
   list.map((id) => `${id}\n`).join('');
@@ -315,6 +315,31 @@ export async function blobAt(
         '--quiet',
         '--end-of-options',
         revObject(rev, path),
+      ],
+      { okExitCodes: [0, 1, 128] },
+    )
+  ).trim();
+  return isFullHash(id) ? id : undefined;
+}
+
+export async function commitOf(
+  gitPath: string,
+  cwd: string,
+  rev: string,
+): Promise<string | undefined> {
+  if (rev === indexRev) {
+    return indexRev;
+  }
+  const id = (
+    await runGit(
+      gitPath,
+      cwd,
+      [
+        'rev-parse',
+        '--verify',
+        '--quiet',
+        '--end-of-options',
+        `${rev}^{commit}`,
       ],
       { okExitCodes: [0, 1, 128] },
     )

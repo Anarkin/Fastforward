@@ -2,7 +2,10 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { viewedFile } from '../../../../../tools/git/main/viewedFiles';
+import {
+  versionCopy,
+  viewedFile,
+} from '../../../../../tools/git/main/viewedFiles';
 import {
   tempRepository,
   type TempRepository,
@@ -144,5 +147,42 @@ suite('Repository files', () => {
       { kind: 'missing' },
     );
     assert.ok(!fs.existsSync(path.join(copies, '1'.repeat(40))));
+  });
+
+  test('gives a copy of a file on disk as a version has it, by its path on disk, in a folder gone since too, and nothing outside a repository or for a version it does not take', async () => {
+    const copies = path.join(parent, 'versions');
+    const head = (await repository.git('rev-parse', 'HEAD')).trim();
+    const tracked = path.join(cwd, 'src', 'tracked.txt');
+    const copy = await versionCopy(gitPath, tracked, head, copies);
+    assert.strictEqual(copy.kind, 'file');
+    assert.strictEqual(
+      copy.kind === 'file' && fs.readFileSync(copy.file, 'utf8'),
+      'one\n',
+    );
+
+    const moved = await tempRepository(path.join(parent, 'moved'));
+    await moved.commit('old', { 'gone/old.txt': 'old\n' });
+    const old = (await moved.git('rev-parse', 'HEAD')).trim();
+    await moved.git('rm', '-r', 'gone');
+    await moved.git('commit', '-m', 'gone');
+    const gone = await versionCopy(
+      gitPath,
+      path.join(moved.root, 'gone', 'old.txt'),
+      old,
+      copies,
+    );
+    assert.strictEqual(
+      gone.kind === 'file' && fs.readFileSync(gone.file, 'utf8'),
+      'old\n',
+    );
+
+    assert.deepStrictEqual(
+      await Promise.all([
+        versionCopy(gitPath, path.join(parent, 'outside.txt'), head, copies),
+        versionCopy(gitPath, tracked, 'main', copies),
+        versionCopy(gitPath, path.join(cwd, 'untracked.txt'), head, copies),
+      ]),
+      [{ kind: 'missing' }, { kind: 'missing' }, { kind: 'missing' }],
+    );
   });
 });

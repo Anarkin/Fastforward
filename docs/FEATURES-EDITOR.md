@@ -26,7 +26,7 @@
 | Settings files | Edit the settings of the app | — | Advanced | ✅ Yes | The two settings items of the app menu open the user settings and, read-only, the defaults; problems are told in notices as the settings are saved, not on their lines |
 | Files in archives | Edit a file inside an archive and put it back | — | Advanced | ✅ Yes | F4 edits a copy 7-Zip takes out, kept with the copies of viewed files, each save putting it back in the dialog of copies without asking; Shift+F4 starts a new one, added on its first save; read-only from an archive that can't be changed, as one inside another, and once the app starts again |
 | Files read as administrator | Edit a file in a folder only an administrator may read | — | Advanced | ❌ No | Refused, saying so |
-| From the viewer | Switch a file viewed to editing it | — | Common | ✅ Yes | F4 in a viewer tab turns it into an editor tab, the cursor on the line at the top of the viewer, read in the encoding chosen there, or goes to the tab editing it already; a copy taken out of an archive or a commit to view it refused, saying so |
+| From the viewer | Switch a file viewed to editing it | — | Common | ✅ Yes | F4 in a viewer tab turns it into an editor tab, the cursor on the line at the top of the viewer, read in the encoding chosen there, or goes to the tab editing it already; a copy taken out of an archive or a commit to view it, or a version of git, refused, saying so |
 
 ## Text and encodings
 

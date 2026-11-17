@@ -54,6 +54,9 @@ import {
   withSearchCarried,
   worktreeSwitched,
 } from './worktreeSearch';
+import { changesShown } from './shownTab';
+import { fileVersions } from './fileVersions';
+import { wholePath } from '../../../lib/page/pathLooks';
 
 function foldersIn(state: GitState, root: string): ViewFolders {
   return state.folders.get(root) ?? noFolders;
@@ -338,7 +341,19 @@ export function createGitStore(
         withHash((hash, diff) =>
           postTab({ type: 'loadTexts', hash, diff, texts: requests }),
         ),
-      viewFile: (source) => postTab({ type: 'viewFile', ...source }),
+      viewFile: (source) => {
+        const { tab } = get();
+        const at =
+          tab.root === undefined || tab.hash === undefined
+            ? undefined
+            : fileVersions(
+                tab.root,
+                tab.hash,
+                tab.area,
+                changesShown(tab),
+              )(wholePath(tab.root, source.path));
+        postTab({ type: 'viewFile', ...(at ?? source) });
+      },
       requestTree: (hash) => {
         apply((state) => withTab(state, { type: 'requestTree', hash }));
         const { root } = get().tab;

@@ -146,6 +146,7 @@ export function terminal(
     openCompare: () => Promise.resolve(),
     openFolders: () => Promise.resolve(),
     setRoot: (tab, root) => moved.push([tab, root]),
+    setVersion: () => {},
     visited: () => {},
     recentFolders: () => recent.items,
     postTabs: () => {},

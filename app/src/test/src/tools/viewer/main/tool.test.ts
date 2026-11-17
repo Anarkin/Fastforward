@@ -6,6 +6,19 @@ import type { Tab } from '../../../../../shell/main/toolContract';
 import { viewerIconUrl } from '../../../../../tools/viewer/main/icons';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 import { ViewerPage, viewer } from './viewerFixtures';
+import { pathParts } from '../../../../../lib/shared/pathParts';
+import { strings } from '../../../../../lib/shared/strings';
+import { viewedFileUrl } from '../../../../../tools/viewer/shared/files';
+
+const hash = '0123456789abcdef0123456789abcdef01234567';
+const otherHash = 'fedcba9876543210fedcba9876543210fedcba98';
+
+const versionOf = (root: string): Tab => ({
+  id: '3',
+  tool: 'viewer',
+  root,
+  version: { rev: hash, file: root },
+});
 
 suite('Viewer tool', () => {
   let opened: string;
@@ -76,5 +89,186 @@ suite('Viewer tool', () => {
       ),
     );
     assert.strictEqual(other.status, 404);
+  });
+
+  test('views a version of a file from the copy git makes of it, under the path of the file, which need not be there, the looks of its parts following that path', async () => {
+    const copy = path.join(opened, 'copies', 'notes.txt');
+    fs.mkdirSync(path.dirname(copy));
+    fs.writeFileSync(copy, 'old\ntext\n');
+    const notes = path.join(opened, '.gone', 'notes.txt');
+    const { tool, page, send, versions } = viewer();
+    versions.set(`${hash} ${notes}`, copy);
+
+    await tool.show(page, versionOf(notes));
+    assert.deepStrictEqual(page.of('show'), [
+      { type: 'show', tab: '3', file: notes, version: hash },
+    ]);
+    const [viewing] = page.of('viewing');
+    assert.deepStrictEqual(
+      [viewing?.size, viewing?.hidden],
+      [
+        9,
+        pathParts(notes).map((part) =>
+          path.basename(part.path).startsWith('.'),
+        ),
+      ],
+    );
+    await send({
+      type: 'readRows',
+      tab: '3',
+      encoding: 'utf-8',
+      anchor: 0,
+      exact: true,
+      before: 0,
+      after: 2,
+      least: 0,
+      request: 1,
+    });
+    assert.deepStrictEqual(
+      page.of('rows').map((answer) => answer.rows.map((row) => row.text)),
+      [['old', 'text']],
+    );
+  });
+
+  test('serves the preview of a version from its copy rather than the file on disk', async () => {
+    const copy = path.join(opened, 'copies', 'logo.png');
+    fs.mkdirSync(path.dirname(copy));
+    fs.writeFileSync(copy, 'old pixels');
+    const logo = path.join(opened, 'logo.png');
+    fs.writeFileSync(logo, 'new pixels');
+    const { tool, page, tabs, versions } = viewer();
+    versions.set(`${hash} ${logo}`, copy);
+    tabs.push(versionOf(logo));
+    await tool.show(page, versionOf(logo));
+
+    const served = await tool.file(
+      new URL(`fastforward://app${viewedFileUrl('3', logo)}`),
+      null,
+    );
+    assert.strictEqual(served.status, 200);
+    assert.strictEqual(await served.text(), 'old pixels');
+  });
+
+  test('says a version is not there to view when git can no longer give it', async () => {
+    const notes = path.join(opened, 'notes.txt');
+    const { tool, page } = viewer();
+
+    await tool.show(page, versionOf(notes));
+    assert.deepStrictEqual(page.of('viewing'), [
+      {
+        type: 'viewing',
+        tab: '3',
+        size: undefined,
+        error: strings.diff.viewMissing(notes),
+      },
+    ]);
+  });
+
+  test('refuses to edit a version, saying why, as only the file on disk can be edited', async () => {
+    const copy = path.join(opened, 'notes.txt');
+    fs.writeFileSync(copy, 'old');
+    const notes = path.join(opened, 'src', 'notes.txt');
+    const { tool, page, tabs, send, versions, edited, notices } = viewer();
+    versions.set(`${hash} ${notes}`, copy);
+    tabs.push(versionOf(notes));
+    await tool.show(page, versionOf(notes));
+
+    await send({ type: 'editViewed', tab: '3', at: 0 });
+    assert.deepStrictEqual(edited, []);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.viewer.versionNotEdited(notes) },
+    ]);
+  });
+
+  test('lists the versions of the file a tab shows once it is shown, those of the file whose history a version is of, saying whether that file is on disk and the index holds a version of its own', async () => {
+    const notes = path.join(opened, 'notes.txt');
+    fs.writeFileSync(notes, 'one');
+    const old = path.join(opened, 'old.txt');
+    const { tool, page, histories } = viewer();
+    const listed = {
+      versions: [
+        { rev: hash, path: notes, date: 2000, subject: 'two', gone: false },
+        { rev: otherHash, path: old, date: 1000, subject: 'one', gone: false },
+      ],
+      staged: true,
+      changed: false,
+    };
+    histories.set(notes, listed);
+
+    await tool.show(page, { id: '3', tool: 'viewer', root: notes });
+    await tool.show(page, {
+      id: '4',
+      tool: 'viewer',
+      root: old,
+      version: { rev: otherHash, file: notes },
+    });
+    await tool.show(page, {
+      id: '5',
+      tool: 'viewer',
+      root: path.join(opened, 'untracked.txt'),
+    });
+    assert.deepStrictEqual(page.of('versions'), [
+      { type: 'versions', tab: '3', ...listed, onDisk: true },
+      { type: 'versions', tab: '4', ...listed, onDisk: true },
+    ]);
+  });
+
+  test('switches a tab to a version it listed, keeping the file whose history it is, and back to that file on disk, but to no version it did not list or that is gone', async () => {
+    const notes = path.join(opened, 'notes.txt');
+    fs.writeFileSync(notes, 'one');
+    const old = path.join(opened, 'old.txt');
+    const copy = path.join(opened, 'copy.txt');
+    fs.writeFileSync(copy, 'old');
+    const { tool, page, send, tabs, histories, versions, versionsSet } =
+      viewer();
+    histories.set(notes, {
+      versions: [
+        { rev: hash, path: notes, date: 3000, subject: 'gone', gone: true },
+        { rev: otherHash, path: old, date: 1000, subject: 'one', gone: false },
+      ],
+      staged: false,
+      changed: false,
+    });
+    versions.set(`${otherHash} ${old}`, copy);
+    tabs.push({ id: '3', tool: 'viewer', root: notes });
+    await tool.show(page, { id: '3', tool: 'viewer', root: notes });
+
+    await send({ type: 'chooseVersion', tab: '3', rev: hash });
+    await send({ type: 'chooseVersion', tab: '3', rev: 'index' });
+    await send({ type: 'chooseVersion', tab: '3', rev: 'c'.repeat(40) });
+    await send({ type: 'chooseVersion', tab: '3', rev: otherHash });
+    await send({ type: 'chooseVersion', tab: '3' });
+    assert.deepStrictEqual(versionsSet, [
+      ['3', old, { rev: otherHash, file: notes }],
+      ['3', notes, undefined],
+    ]);
+    assert.deepStrictEqual(page.of('show').slice(1), [
+      { type: 'show', tab: '3', file: old, version: otherHash },
+      { type: 'show', tab: '3', file: notes },
+    ]);
+  });
+
+  test('names a tab of a version after its file and that version, by its short hash or as the version of the index, to tell it from the tab of the file on disk', () => {
+    const notes = path.join(opened, 'notes.txt');
+    const { tool } = viewer();
+    const names = tool.names([
+      versionOf(notes),
+      { ...versionOf(notes), id: '4', version: { rev: 'index', file: notes } },
+    ]);
+    assert.deepStrictEqual(
+      [names.get('3'), names.get('4')],
+      [
+        {
+          name: 'notes.txt',
+          folder: '0123456',
+          icon: viewerIconUrl('3', notes),
+        },
+        {
+          name: 'notes.txt',
+          folder: strings.viewer.staged,
+          icon: viewerIconUrl('4', notes),
+        },
+      ],
+    );
   });
 });

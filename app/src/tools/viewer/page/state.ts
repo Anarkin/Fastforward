@@ -1,7 +1,11 @@
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { EncodingChoice } from '../../../components/encodings/page/encodings';
-import type { ByteRange, ViewerToWebview } from '../shared/protocol';
+import type {
+  ByteRange,
+  ViewedVersion,
+  ViewerToWebview,
+} from '../shared/protocol';
 import type { PdfPlace } from '../shared/pdf';
 import type { ViewMode } from './keymap';
 import type { KeptViewer, ViewerTabView } from './tabParts';
@@ -13,9 +17,18 @@ export interface ViewerChoices {
   readonly language?: string;
 }
 
+export interface ListedVersions {
+  readonly versions: readonly ViewedVersion[];
+  readonly staged: boolean;
+  readonly changed: boolean;
+  readonly onDisk: boolean;
+}
+
 export interface ViewerSource {
   readonly tab: string | undefined;
   readonly file: string | undefined;
+  readonly version: string | undefined;
+  readonly versions: ReadonlyMap<string, ListedVersions>;
   readonly viewed: Viewing | undefined;
   readonly keptViewed: ReadonlyMap<string, Viewing>;
   readonly choices: ReadonlyMap<string, ViewerChoices>;
@@ -54,6 +67,7 @@ export interface ViewerActions {
   ) => void;
   readonly flushPdfPlace: () => void;
   readonly choose: (choices: Partial<ViewerChoices>) => void;
+  readonly chooseVersion: (rev: string | undefined) => void;
   readonly editViewed: (
     tab: string,
     at: number,
@@ -72,6 +86,8 @@ export type ViewerState = ViewerSource & ViewerActions;
 export const viewerDefaults: ViewerSource = {
   tab: undefined,
   file: undefined,
+  version: undefined,
+  versions: new Map(),
   viewed: undefined,
   keptViewed: new Map(),
   choices: new Map(),

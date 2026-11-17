@@ -138,6 +138,11 @@ export function MenuItems({
                   {shownKey(item)}
                 </span>
               )}
+              {item.details?.map((detail, at) => (
+                <span key={at} className="menu-detail">
+                  <HighlightWords text={detail} filter={filter} />
+                </span>
+              ))}
               {item.sentence !== undefined ? (
                 <Words filter={filter}>{item.sentence}</Words>
               ) : item.path === true ? (

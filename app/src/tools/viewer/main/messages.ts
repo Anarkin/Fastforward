@@ -20,6 +20,11 @@ export class ViewerMessages {
       tab: string,
       at: { readonly byte: number; readonly encoding?: TextEncoding },
     ) => Promise<void>,
+    private readonly chooseVersion: (
+      page: Page,
+      tab: string,
+      rev: string | undefined,
+    ) => Promise<void>,
   ) {}
 
   receive(page: Page, message: ViewerToHost): Promise<void> {
@@ -53,6 +58,13 @@ export class ViewerMessages {
           byte: at,
           ...(encoding !== undefined && { encoding }),
         });
+      }
+      case 'chooseVersion': {
+        const { tab, rev } = message;
+        return this.pages.shown.get(page)?.tab !== tab ||
+          (rev !== undefined && typeof rev !== 'string')
+          ? Promise.resolve()
+          : this.chooseVersion(page, tab, rev);
       }
       default:
         return message satisfies never;

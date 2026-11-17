@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { app, page, repository, sharedApp } from './appFixtures';
@@ -129,6 +130,66 @@ suite('App', () => {
       assert.strictEqual(
         await viewer.getByText('2', { exact: true }).count(),
         0,
+      );
+      assert.strictEqual(
+        await page.locator('.viewer-path').textContent(),
+        path.join(repository.root, 'changed.txt'),
+      );
+    } finally {
+      await page.locator('.viewer .column-body').first().focus();
+      await page.keyboard.press('Escape');
+      await viewer.waitFor({ state: 'detached' });
+    }
+  });
+
+  test('switches a file viewed as a commit has it to the file on disk from the menu of its versions, the newest commit standing for the file on disk while it is unchanged, its tab and its button naming the version shown', async () => {
+    const [first, second] = await repository.resolve('HEAD~1', 'HEAD');
+    const short = first?.slice(0, 7);
+    const newest = second?.slice(0, 7) ?? '';
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page
+      .locator('.row.file', { hasText: 'changed.txt' })
+      .locator('.path-part')
+      .last()
+      .click({ button: 'right' });
+    await page
+      .locator('.context-menu.path-menu .menu-item', {
+        hasText: strings.commander.openWithViewer,
+      })
+      .click();
+    const viewer = page.locator('.viewer');
+    const trigger = page.locator('.viewer-version .menu-button-trigger');
+    const tabFolder = page.locator(
+      '[role="tab"][aria-selected="true"] .tab-folder',
+    );
+    try {
+      await viewer.getByText('two').waitFor();
+      await trigger.waitFor();
+      assert.deepStrictEqual(
+        [await trigger.textContent(), await tabFolder.textContent()],
+        [short, short],
+      );
+      await trigger.click();
+      const items = await page
+        .locator('.menu-item:not(:disabled)')
+        .allTextContents();
+      assert.deepStrictEqual(
+        items.map((item) => [
+          item.includes(newest),
+          item.includes(short ?? ''),
+        ]),
+        [
+          [true, false],
+          [false, true],
+        ],
+      );
+      await page.locator('.menu-item', { hasText: newest }).click();
+      await viewer.getByText('2', { exact: true }).waitFor();
+      await waitFor(
+        async () =>
+          (await trigger.textContent()) === newest &&
+          (await tabFolder.count()) === 0,
+        'the button to name the newest commit and the tab the file on disk',
       );
     } finally {
       await page.locator('.viewer .column-body').first().focus();

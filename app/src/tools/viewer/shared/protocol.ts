@@ -26,6 +26,14 @@ export const maxPreviewBytes = 1024 * 1024;
 
 export const maxBytesAsked = 64 * 1024;
 
+export interface ViewedVersion {
+  readonly rev: string;
+  readonly path: string;
+  readonly date: number;
+  readonly subject: string;
+  readonly gone: boolean;
+}
+
 export type ViewerToHost =
   | {
       readonly type: 'readBytes';
@@ -81,10 +89,28 @@ export type ViewerToHost =
       readonly tab: string;
       readonly at: number;
       readonly encoding?: TextEncoding;
+    }
+  | {
+      readonly type: 'chooseVersion';
+      readonly tab: string;
+      readonly rev?: string;
     };
 
 export type ViewerToWebview =
-  | { readonly type: 'show'; readonly tab: string; readonly file: string }
+  | {
+      readonly type: 'show';
+      readonly tab: string;
+      readonly file: string;
+      readonly version?: string;
+    }
+  | {
+      readonly type: 'versions';
+      readonly tab: string;
+      readonly versions: readonly ViewedVersion[];
+      readonly staged: boolean;
+      readonly changed: boolean;
+      readonly onDisk: boolean;
+    }
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }
   | {

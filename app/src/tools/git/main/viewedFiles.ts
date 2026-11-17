@@ -1,6 +1,8 @@
 import * as fs from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import { isFullHash } from '../../../lib/shared/hashes';
+import { isFileRev } from '../shared/fileRevs';
+import { fileInRepository } from './repository';
 import {
   forbiddenCharacters,
   forbiddenEnd,
@@ -8,7 +10,7 @@ import {
 } from '../shared/windowsNames';
 import { repositoryFile } from './files';
 import { lstatFollowingNoLink, lstatIfThere } from './fileStats';
-import { blobOf, readObjects } from './objects';
+import { blobAt, blobOf, readObjects } from './objects';
 
 const maxViewedSize = 256 * 1024 * 1024;
 
@@ -45,6 +47,25 @@ export async function viewedFile(
 }
 
 const copiesBeingWritten = new Map<string, Promise<ViewedFile>>();
+
+export async function versionCopy(
+  gitPath: string,
+  file: string,
+  rev: string,
+  copies: string,
+): Promise<ViewedFile> {
+  if (!isFileRev(rev)) {
+    return { kind: 'missing' };
+  }
+  const at = await fileInRepository(gitPath, file);
+  if (at === undefined) {
+    return { kind: 'missing' };
+  }
+  const blob = await blobAt(gitPath, at.root, rev, at.path);
+  return blob === undefined
+    ? { kind: 'missing' }
+    : viewedFile(gitPath, at.root, at.path, blob, copies);
+}
 
 const unnamedOnWindows = new RegExp(forbiddenCharacters.source, 'gu');
 

@@ -11,6 +11,6 @@ export function filteredItems(
   return items.filter(
     (item) =>
       !('separator' in item) &&
-      matchesFilter(filter, item.label, item.keywords),
+      matchesFilter(filter, item.label, item.keywords, ...(item.details ?? [])),
   );
 }

@@ -40,7 +40,12 @@ export class Viewers {
     private readonly viewed: (tab: string, file: string) => void,
   ) {}
 
-  async startViewing(page: Page, tab: string, file: string): Promise<void> {
+  async startViewing(
+    page: Page,
+    tab: string,
+    file: string,
+    read = file,
+  ): Promise<void> {
     const showing = this.pages.shown.get(page);
     if (showing === undefined) {
       return;
@@ -56,11 +61,11 @@ export class Viewers {
     let detected: TextEncoding | undefined;
     let hidden: readonly boolean[];
     try {
-      const stats = await fs.promises.stat(file);
+      const stats = await fs.promises.stat(read);
       hidden = await this.hiddenParts(file);
       size = stats.size;
-      version = await sampledVersion(file, stats);
-      const first = await firstBytes(file);
+      version = await sampledVersion(read, stats);
+      const first = await firstBytes(read);
       binary = looksBinary(first);
       detected =
         byteOrderMarkOf(first) ??
@@ -82,16 +87,16 @@ export class Viewers {
     }
     const viewing = {
       tab,
-      file,
+      file: read,
       size,
       binary,
       blocks: blockCache(),
-      stop: this.access.watch(file, () => {
+      stop: this.access.watch(read, () => {
         void fs.promises
-          .stat(file)
+          .stat(read)
           .then(async (stats) => ({
             stats,
-            changed: await sampledVersion(file, stats),
+            changed: await sampledVersion(read, stats),
           }))
           .then(
             ({ stats, changed }) => {

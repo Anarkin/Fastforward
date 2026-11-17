@@ -15,6 +15,38 @@ import { tagsWith } from '../../../helpers/markup';
 import { named, sentence } from '../../../../lib/shared/sentences';
 
 suite('Menu items', () => {
+  test('draws the details of an item before its label, each in a column of its own, marking the words of the filter in them too', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <MenuItems
+          scrolling={defaultScrolling}
+          items={[
+            { label: 'docs: one', details: ['917d84c', '2026-10-12 01:44'] },
+          ]}
+          filter={plainFilter('917d')}
+          onClose={noop}
+        />,
+      ),
+    ).window.document;
+    const item = document.querySelector('.menu-item');
+    assert.deepStrictEqual(
+      [...(item?.children ?? [])].map((child) => [
+        child.className,
+        child.textContent,
+      ]),
+      [
+        ['menu-check', ''],
+        ['menu-detail', '917d84c'],
+        ['menu-detail', '2026-10-12 01:44'],
+        ['', 'docs: one'],
+      ].filter(([className]) => className !== ''),
+    );
+    assert.strictEqual(
+      item?.querySelector('.menu-detail .match')?.textContent,
+      '917d',
+    );
+  });
+
   test('marks every word of the filter wherever the label of an item shows it, in a name or a sentence too, in the yellow of every filter, and nothing found only in the keywords of an item', () => {
     const document = new JSDOM(
       renderToStaticMarkup(

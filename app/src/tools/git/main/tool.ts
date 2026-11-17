@@ -47,6 +47,8 @@ import type { GitMessages } from './messages';
 import { buildParts } from './parts';
 import { needsGit, type GitLocator } from './gitLocator';
 import { inFolderWithGit } from './repository';
+import { versionCopy, type ViewedFile } from './viewedFiles';
+import { fileHistory, type FileHistory } from './fileHistory';
 
 export const refreshDelays = { delay: 100, gitDirDelay: 300, maxDelay: 1500 };
 export type FolderPurpose = 'init' | 'clone';
@@ -342,6 +344,20 @@ export class GitTool implements Tool<'git'> {
 
   image(url: URL): Promise<Response> {
     return this.diffImages.image(url);
+  }
+
+  versionCopy(file: string, rev: string): Promise<ViewedFile> {
+    const gitPath = this.locator.path;
+    return gitPath === undefined
+      ? Promise.resolve({ kind: 'missing' })
+      : versionCopy(gitPath, file, rev, this.host.viewedFiles);
+  }
+
+  fileHistory(file: string): Promise<FileHistory | undefined> {
+    const gitPath = this.locator.path;
+    return gitPath === undefined
+      ? Promise.resolve(undefined)
+      : fileHistory(gitPath, file);
   }
 
   async initRepositoryIn(folder: string): Promise<void> {

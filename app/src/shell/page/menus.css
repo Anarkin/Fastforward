@@ -99,6 +99,14 @@
   width: 24px;
 }
 
+.menu-detail {
+  margin-right: 12px;
+  white-space: pre;
+  color: var(--muted-foreground);
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+}
+
 .menu-access-key {
   display: inline-block;
   width: 1.6em;

@@ -130,28 +130,56 @@ export function createViewerStore(
             set((state) => ({
               tab: message.tab,
               file: message.file,
+              version: message.version,
               caches: recentFirst(
                 state.caches,
                 message.tab,
                 state.caches.get(message.tab) ?? {},
               ),
               viewed:
-                state.tab === message.tab && state.file === message.file
-                  ? state.viewed
-                  : state.keptViewed.get(message.tab),
+                state.tab !== message.tab
+                  ? state.keptViewed.get(message.tab)
+                  : state.file === message.file &&
+                      state.version === message.version
+                    ? state.viewed
+                    : undefined,
             }));
             break;
           }
           case 'hide':
             viewer.awaitViewing(undefined);
-            set({ tab: undefined, file: undefined, viewed: undefined });
+            set({
+              tab: undefined,
+              file: undefined,
+              version: undefined,
+              viewed: undefined,
+            });
             break;
           case 'closed':
             if (get().tab === message.tab) {
-              set({ tab: undefined, file: undefined, viewed: undefined });
+              set({
+                tab: undefined,
+                file: undefined,
+                version: undefined,
+                viewed: undefined,
+              });
             }
+            set((state) => ({
+              versions: without(state.versions, message.tab),
+            }));
             tabs.closed(message.tab);
             break;
+          case 'versions': {
+            set((state) => ({
+              versions: new Map(state.versions).set(message.tab, {
+                versions: message.versions,
+                staged: message.staged,
+                changed: message.changed,
+                onDisk: message.onDisk,
+              }),
+            }));
+            break;
+          }
           case 'viewing': {
             const viewed = viewingOf(message);
             if (!sameViewing(get().viewed, viewed)) {
@@ -180,6 +208,16 @@ export function createViewerStore(
           }),
         }));
         changed(tab);
+      },
+      chooseVersion: (rev) => {
+        const { tab } = get();
+        if (tab !== undefined) {
+          post({
+            type: 'chooseVersion',
+            tab,
+            ...(rev !== undefined && { rev }),
+          });
+        }
       },
       editViewed: (tab, at, encoding) =>
         post({
