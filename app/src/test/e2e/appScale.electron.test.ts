@@ -34,6 +34,32 @@ async function pixelsOf(
   );
 }
 
+async function pointedThumb(
+  page: Page,
+  bar: Locator,
+  pointer: { readonly x: number; readonly y: number },
+  nudge = 0,
+): Promise<void> {
+  for (let moved = 0; moved < 10; moved++) {
+    await page.mouse.move(pointer.x + nudge - (moved % 2), pointer.y);
+    const shown = await bar.waitFor({ timeout: 1000 }).then(
+      () => true,
+      () => false,
+    );
+    if (shown) {
+      return;
+    }
+  }
+  const under = await page.evaluate(
+    ({ x, y }) => {
+      const element = document.elementFromPoint(x, y);
+      return `${element?.tagName ?? 'nothing'}.${element?.className ?? ''}, thumbs ${[...document.querySelectorAll('.overlay-scrollbar')].map((each) => each.className).join()}, focused ${String(document.hasFocus())}, ${document.visibilityState}`;
+    },
+    { x: pointer.x + nudge, y: pointer.y },
+  );
+  assert.fail(`no thumb shown for the pointer moved over ${under}`);
+}
+
 async function shotWithThumb(
   page: Page,
   bar: Locator,
@@ -43,8 +69,7 @@ async function shotWithThumb(
   readonly thumb: { x: number; y: number; width: number; height: number };
 }> {
   for (let nudge = 0; nudge < 5; nudge++) {
-    await page.mouse.move(pointer.x + nudge, pointer.y);
-    await bar.waitFor();
+    await pointedThumb(page, bar, pointer, nudge);
     await page.waitForTimeout(400);
     const shown = await page.screenshot();
     const [thumb] = await bar.evaluateAll((elements) =>
@@ -388,8 +413,10 @@ suite('App at a scale of 125%', () => {
     const box = await pane.boundingBox();
     assert.ok(box, 'the shortcuts have no box');
     const bar = page.locator('.overlay-scrollbar.vertical.shown');
-    await page.mouse.move(box.x + box.width - 4, box.y + box.height - 20);
-    await bar.waitFor();
+    await pointedThumb(page, bar, {
+      x: box.x + box.width - 4,
+      y: box.y + box.height - 20,
+    });
     const corner = await page.evaluate(() => {
       const window = document.querySelector('.shortcuts-window');
       const thumb = document.querySelector<HTMLElement>(
