@@ -3,8 +3,7 @@ import { suite, test } from 'vitest';
 import { dotLook } from '../../../../../lib/page/dotLook';
 import {
   dotsBand,
-  dotsPath,
-  dotsStroke,
+  dotFills,
   fittingRun,
   holds,
   runsOfLine,
@@ -34,41 +33,40 @@ suite('The dots the editor draws for spaces', () => {
     });
   });
 
-  test('draws a square dot in each advance of a run of spaces, from its left edge and halfway down it, on whole device pixels of the window, as one path drawn where the layer starts rather than a mark around each run, as each mark was an element laid out and painted again and made paging through a long wrapped line twice as slow, and each run as one stroke dashed a dot an advance rather than a square a space, as the path of a table of 75,000 spaces in sight was two megabytes built and parsed again as the editor scrolled, stalling it for 40 ms', () => {
+  test('covers each run of spaces with one strip a dot tall, from its left edge and halfway down its row, on whole device pixels of the window, all the strips one path filled with stripes a dot wide an advance apart, which leave a square dot in each advance, the stripes starting where the runs do, as a stroke dashed a dot an advance was cut into its 75,000 dashes again wherever a table padded with spaces was dragged to in the editor, two thirds of its frames coming late', () => {
     const look = dotLook(14, 8, 1);
-    assert.strictEqual(
-      dotsPath(
+    assert.deepStrictEqual(
+      dotFills(
         [
           { left: 110, top: 220, height: 16, length: 2 },
           { left: 150.4, top: 237.6, height: 16, length: 1 },
+          { left: 113, top: 254, height: 16, length: 3 },
         ],
         look,
         { left: 100, top: 200 },
       ),
-      'M13 28h10M53 46h2',
+      [
+        { phase: 2, path: 'M10 27h16v2h-16zM50 45h8v2h-8z' },
+        { phase: 5, path: 'M13 61h24v2h-24z' },
+      ],
     );
-    assert.strictEqual(dotsPath([], look, { left: 0, top: 0 }), '');
-    assert.deepStrictEqual(dotsStroke(look), { width: 2, dashes: '2 6' });
-    assert.deepStrictEqual(dotsStroke(dotLook(4, 1, 1)), {
-      width: 1,
-      dashes: '1 0',
-    });
+    assert.deepStrictEqual(dotFills([], look, { left: 0, top: 0 }), []);
   });
 
   test('keeps the dots on whole device pixels however far the layer starts off them', () => {
     const look = dotLook(15, 8, 0.5);
-    assert.strictEqual(
-      dotsPath([{ left: 10.3, top: 20.1, height: 16, length: 1 }], look, {
+    assert.deepStrictEqual(
+      dotFills([{ left: 10.3, top: 20.1, height: 16, length: 1 }], look, {
         left: 0.2,
         top: 0.1,
       }),
-      'M12.8 28.15h2.5',
+      [{ phase: 2.3, path: 'M10.3 26.9h8v2.5h-8z' }],
     );
   });
 
   test('snaps a run lying on half a device pixel to the right, as the browser snaps the box of a run, though the window reports its place a hair short of it', () => {
-    assert.strictEqual(
-      dotsPath(
+    assert.deepStrictEqual(
+      dotFills(
         [
           {
             left: 127.5999984741211,
@@ -80,7 +78,7 @@ suite('The dots the editor draws for spaces', () => {
         dotLook(12, 7.2, 0.8),
         { left: 8, top: 95.4000015258789 },
       ),
-      'M122.4 8.6h1.6',
+      [{ phase: 4.8, path: 'M120 7.8h7.2v1.6h-7.2z' }],
     );
   });
 

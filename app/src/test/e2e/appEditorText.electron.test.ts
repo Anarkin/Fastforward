@@ -284,23 +284,34 @@ function blanksOf(element: Element): {
 function editorBlanksOf(element: Element): readonly string[] {
   const svg = element.closest('.cm-editor')?.querySelector('.space-dots svg');
   const origin = svg?.getBoundingClientRect() ?? { left: 0, top: 0 };
-  const path = svg?.querySelector('path');
-  const [dash = 1, gap = 0] = (path?.getAttribute('stroke-dasharray') ?? '')
-    .split(' ')
-    .map(Number);
-  const dots = [
-    ...(path?.getAttribute('d') ?? '').matchAll(
-      /M(-?[\d.]+) (-?[\d.]+)h(-?[\d.]+)/g,
-    ),
-  ].flatMap(([, x, y, run]) =>
-    Array.from(
-      { length: Math.round((Number(run) - dash) / (dash + gap)) + 1 },
-      (_, index) => ({
-        x: origin.left + Number(x) + dash / 2 + index * (dash + gap),
-        y: origin.top + Number(y),
-      }),
-    ),
-  );
+  const dots = [...(svg?.querySelectorAll('path') ?? [])].flatMap((path) => {
+    const pattern = svg?.querySelector(
+      (path.getAttribute('fill') ?? '').slice(4, -1) || 'pattern',
+    );
+    const stripe = pattern?.querySelector('rect');
+    const advance = Number(pattern?.getAttribute('width'));
+    const phase = Number(
+      /translate\((-?[\d.]+)/.exec(
+        pattern?.getAttribute('patternTransform') ?? '',
+      )?.[1],
+    );
+    const start = Number(stripe?.getAttribute('x'));
+    const dot = Number(stripe?.getAttribute('width'));
+    return [
+      ...(path.getAttribute('d') ?? '').matchAll(
+        /M(-?[\d.]+) (-?[\d.]+)h(-?[\d.]+)v(-?[\d.]+)/g,
+      ),
+    ].flatMap(([, x, y, wide, tall]) => {
+      const first = Math.ceil((Number(x) - phase - start) / advance - 0.001);
+      return Array.from(
+        { length: Math.round(Number(wide) / advance) },
+        (_, index) => ({
+          x: origin.left + phase + start + (first + index) * advance + dot / 2,
+          y: origin.top + Number(y) + Number(tall) / 2,
+        }),
+      );
+    });
+  });
   const range = document.createRange();
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   const marked: string[] = [];

@@ -35,34 +35,34 @@ interface Point {
 
 const figure = (value: number) => String(Math.round(value * 1000) / 1000);
 
-export function dotsPath(
+export interface DotFill {
+  readonly phase: number;
+  readonly path: string;
+}
+
+export function dotFills(
   runs: readonly SpaceRun[],
   look: DotLook,
   origin: Point,
-): string {
-  const { advance, dot, start, pixel } = look;
-  const parts: string[] = [];
+): DotFill[] {
+  const { advance, dot, pixel } = look;
+  const fills = new Map<string, string[]>();
   for (const run of runs) {
     if (run.length > 0) {
-      const left = snapTo(run.left, pixel) + start - origin.left;
-      const middle =
-        snapTo(run.top + (run.height - dot) / 2, pixel) - origin.top + dot / 2;
+      const left = snapTo(run.left, pixel) - origin.left;
+      const top = snapTo(run.top + (run.height - dot) / 2, pixel) - origin.top;
+      const phase = figure(((left % advance) + advance) % advance);
+      const parts = fills.get(phase) ?? [];
+      fills.set(phase, parts);
       parts.push(
-        `M${figure(left)} ${figure(middle)}h${figure((run.length - 1) * advance + dot)}`,
+        `M${figure(left)} ${figure(top)}h${figure(run.length * advance)}v${figure(dot)}h${figure(-run.length * advance)}z`,
       );
     }
   }
-  return parts.join('');
-}
-
-export function dotsStroke({ advance, dot }: DotLook): {
-  readonly width: number;
-  readonly dashes: string;
-} {
-  return {
-    width: dot,
-    dashes: `${figure(dot)} ${figure(Math.max(0, advance - dot))}`,
-  };
+  return [...fills].map(([phase, parts]) => ({
+    phase: Number(phase),
+    path: parts.join(''),
+  }));
 }
 
 export interface Band {
@@ -293,51 +293,64 @@ ${text}`,
   return runs;
 }
 
+let patterns = 0;
+
+const svgSpace = 'http://www.w3.org/2000/svg';
+
 class DotsMarker implements LayerMarker {
-  private readonly width: string;
-  private readonly dashes: string;
+  private readonly drawn: string;
 
   constructor(
-    private readonly path: string,
-    look: DotLook,
+    private readonly fills: readonly DotFill[],
+    private readonly look: DotLook,
   ) {
-    const stroke = dotsStroke(look);
-    this.width = figure(stroke.width);
-    this.dashes = stroke.dashes;
+    this.drawn = JSON.stringify([fills, look]);
   }
 
   eq(other: LayerMarker): boolean {
-    return (
-      other instanceof DotsMarker &&
-      other.path === this.path &&
-      other.width === this.width &&
-      other.dashes === this.dashes
-    );
+    return other instanceof DotsMarker && other.drawn === this.drawn;
   }
 
-  private stroke(path: SVGPathElement): void {
-    path.setAttribute('d', this.path);
-    path.setAttribute('stroke-width', this.width);
-    path.setAttribute('stroke-dasharray', this.dashes);
+  private fill(svg: Element): void {
+    const { advance, dot, start } = this.look;
+    svg.replaceChildren(
+      ...this.fills.flatMap(({ phase, path }) => {
+        patterns += 1;
+        const id = `space-dots-${patterns}`;
+        const pattern = document.createElementNS(svgSpace, 'pattern');
+        pattern.setAttribute('id', id);
+        pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+        pattern.setAttribute('width', figure(advance));
+        pattern.setAttribute('height', '1');
+        pattern.setAttribute('patternTransform', `translate(${phase} 0)`);
+        const stripe = document.createElementNS(svgSpace, 'rect');
+        stripe.setAttribute('x', figure(start));
+        stripe.setAttribute('width', figure(dot));
+        stripe.setAttribute('height', '1');
+        pattern.append(stripe);
+        const filled = document.createElementNS(svgSpace, 'path');
+        filled.setAttribute('d', path);
+        filled.setAttribute('fill', `url(#${id})`);
+        return [pattern, filled];
+      }),
+    );
   }
 
   draw(): HTMLElement {
     const box = document.createElement('div');
     box.className = 'space-dots';
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    this.stroke(path);
-    svg.append(path);
+    const svg = document.createElementNS(svgSpace, 'svg');
+    this.fill(svg);
     box.append(svg);
     return box;
   }
 
   update(dom: HTMLElement): boolean {
-    const path = dom.querySelector('path');
-    if (path === null) {
+    const svg = dom.querySelector('svg');
+    if (svg === null) {
       return false;
     }
-    this.stroke(path);
+    this.fill(svg);
     return true;
   }
 }
@@ -377,7 +390,7 @@ function dotMarkers(
   );
   return runs.length === 0
     ? []
-    : [new DotsMarker(dotsPath(runs, look, origin), look)];
+    : [new DotsMarker(dotFills(runs, look, origin), look)];
 }
 
 class ScrollWatch implements PluginValue {

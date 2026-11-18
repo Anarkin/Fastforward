@@ -129,7 +129,7 @@ for (const smooth of [true, false]) {
           () => dragged(page, from, { x: 0, y: room }),
         );
         await page.mouse.up();
-        assert.ok(result.frames.updates > 0);
+        assert.ok(result.frames.updates > 100, String(result.frames.updates));
       });
 
       const { across } = view;
@@ -162,7 +162,7 @@ for (const smooth of [true, false]) {
               }),
           );
           await page.mouse.up();
-          assert.ok(result.frames.updates > 0);
+          assert.ok(result.frames.updates > 100, String(result.frames.updates));
         });
       }
     }
