@@ -25,15 +25,19 @@ let checking: ReturnType<typeof setTimeout> | undefined;
 function check(): void {
   checking = undefined;
   const now = performance.now();
-  const rested = sinceScrolled() >= iconWait;
+  const quiet = sinceScrolled();
+  let soonest = Infinity;
   for (const [ask, since] of waiting) {
-    if (rested && now - since >= iconWait) {
+    const left = Math.max(iconWait - quiet, iconWait - (now - since));
+    if (left <= 0) {
       waiting.delete(ask);
       ask();
+    } else {
+      soonest = Math.min(soonest, left);
     }
   }
   if (waiting.size > 0) {
-    checking = setTimeout(check, iconWait / 2);
+    checking = setTimeout(check, Math.max(1, Math.ceil(soonest)));
   }
 }
 
