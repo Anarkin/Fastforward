@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { waitForFocus } from './waits';
+import { untilSettled, waitForFocus } from './waits';
 import {
   opened,
   profile,
@@ -91,13 +91,9 @@ suite('App commander', () => {
       await page.keyboard.down('Shift');
       await page.mouse.wheel(0, 300);
       await page.keyboard.up('Shift');
-      let glidedTo = 0;
-      await waitFor(async () => {
-        const { left } = await across();
-        const still = left > 0 && left === glidedTo;
-        glidedTo = left;
-        return still;
-      }, 'the wheel sideways, glided onto its column');
+      await untilSettled(across, 'the wheel sideways, glided onto its column', {
+        accepted: ({ left }) => left > 0,
+      });
       assert.ok((await firstViewerRow()).startsWith('start'));
 
       const before = await across();
