@@ -442,10 +442,13 @@ suite('App', () => {
     const report = reportPage(16_000);
     const data = report.split('\n')[reportDataLine - 1];
     assert.ok(data.length > 1024 * 1024);
-    await writeWhenFree(file, report);
     try {
       await page.locator('.commit', { hasText: 'second' }).click();
       await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await clickView('Side by Side')();
+      await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
+      await page.locator('.diff-view.wrap.side-by-side').waitFor();
+      await writeWhenFree(file, report);
       const changed = page.locator('.commit.working-tree', {
         hasText: '1 uncommitted change',
       });
@@ -456,8 +459,6 @@ suite('App', () => {
       });
       await changed.click();
       await page.locator('.row.file', { hasText: 'report.html' }).click();
-      await clickView('Side by Side')();
-      await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
       await page.locator('.diff-view.wrap.side-by-side').waitFor();
       const list = page.locator('.diff-view .virtual-rows');
       await list.locator('.diff-row .split-line').first().waitFor();
