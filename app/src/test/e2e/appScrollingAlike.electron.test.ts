@@ -530,15 +530,19 @@ suite('App scrolling alike', () => {
           }
           return keyed(name, 'ArrowDown');
         }),
-        end: await inEvery(ended, (name) =>
-          keyed(name, name === 'editor' ? 'ControlOrMeta+End' : 'End'),
-        ),
+        end: await inEvery(ended, async (name) => {
+          const { moved, whole } = await keyed(
+            name,
+            name === 'editor' ? 'ControlOrMeta+End' : 'End',
+          );
+          return { moved, whole };
+        }),
       },
       {
         wheel: alike(everyView, glided),
         pageDown: alike(everyView, glided),
         arrowDown: alike(arrowed, glided),
-        end: alike(ended, glided),
+        end: alike(ended, { moved: true, whole: true }),
       },
     );
   });
