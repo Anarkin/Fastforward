@@ -256,12 +256,27 @@ export function replaceAll(view: EditorView, replacement: string): number {
   return found.length;
 }
 
-export function countOf(state: EditorState): {
+export interface FindCount {
   readonly current: number;
   readonly matches: number;
   readonly capped: boolean;
   readonly invalid: boolean;
-} {
+}
+
+export function keptCount(
+  before: FindCount | undefined,
+  next: FindCount,
+): FindCount {
+  return before !== undefined &&
+    before.current === next.current &&
+    before.matches === next.matches &&
+    before.capped === next.capped &&
+    before.invalid === next.invalid
+    ? before
+    : next;
+}
+
+export function countOf(state: EditorState): FindCount {
   const { found, capped, invalid } = findingOf(state);
   return {
     current: currentOf(state) + 1,

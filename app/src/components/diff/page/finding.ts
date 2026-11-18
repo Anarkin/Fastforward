@@ -20,6 +20,7 @@ export interface DiffTab {
   readonly keepFind: (find: KeptFind) => void;
   readonly closeFind: () => void;
   readonly place: DiffPlace | undefined;
+  readonly placeNow: () => DiffPlace | undefined;
   readonly keepPlace: (change: PlaceChange) => void;
 }
 

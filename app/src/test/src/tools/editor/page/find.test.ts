@@ -3,6 +3,7 @@ import { Text } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import {
   foundIn,
+  keptCount,
   replacedText,
   type FindQuery,
 } from '../../../../../tools/editor/page/find';
@@ -26,6 +27,22 @@ const places = (found: ReturnType<typeof foundIn>) =>
   found.found.map(({ from, to }) => doc.sliceString(from, to));
 
 suite('Finding in the editor', () => {
+  test('keeps the count it had while a newer one says the same, so the editor is not drawn again each time it scrolls or its colors come, and takes one that differs', () => {
+    const had = { current: 2, matches: 5, capped: false, invalid: false };
+    assert.strictEqual(keptCount(had, { ...had }), had);
+    for (const change of [
+      { current: 3 },
+      { matches: 6 },
+      { capped: true },
+      { invalid: true },
+    ]) {
+      const next = { ...had, ...change };
+      assert.strictEqual(keptCount(had, next), next);
+    }
+    const first = { ...had };
+    assert.strictEqual(keptCount(undefined, first), first);
+  });
+
   test('finds the text typed in any case, in its case once told to, as whole words only once told to', () => {
     assert.deepStrictEqual(places(foundIn(doc, query('let'))), [
       'Let',

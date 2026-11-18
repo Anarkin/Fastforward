@@ -1,4 +1,11 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { type Side } from '../shared/sides';
 import { menuTargetOf } from './fileMenu';
 import { copiedText } from './copiedText';
@@ -212,28 +219,46 @@ export function Pane({
     }
   }, [shownList, active, tab]);
 
-  const itemOf = (row: Row, index: number) => ({
-    side,
-    row,
-    index,
-    filter: matching,
-    dropInto,
-    pairsClick,
-    onMenu: openMenu,
+  const menuOpener = useRef(openMenu);
+  useLayoutEffect(() => {
+    menuOpener.current = openMenu;
   });
-
-  const renderRow = (index: number) => (
-    <PaneLine {...itemOf(rows[index], index)} />
+  const onMenu = useCallback<typeof openMenu>(
+    (key, at) => menuOpener.current(key, at),
+    [],
+  );
+  const itemOf = useCallback(
+    (row: Row, index: number) => ({
+      side,
+      row,
+      index,
+      filter: matching,
+      dropTarget: row.key === dropInto,
+      pairsClick,
+      onMenu,
+    }),
+    [side, matching, dropInto, pairsClick, onMenu],
   );
 
-  const renderTiles = (gridRow: number) => (
-    <div className="commander-tiles">
-      {rows
-        .slice(gridRow * across, (gridRow + 1) * across)
-        .map((row, offset) => (
-          <PaneTile key={row.key} {...itemOf(row, gridRow * across + offset)} />
-        ))}
-    </div>
+  const renderRow = useCallback(
+    (index: number) => <PaneLine {...itemOf(rows[index], index)} />,
+    [rows, itemOf],
+  );
+
+  const renderTiles = useCallback(
+    (gridRow: number) => (
+      <div className="commander-tiles">
+        {rows
+          .slice(gridRow * across, (gridRow + 1) * across)
+          .map((row, offset) => (
+            <PaneTile
+              key={row.key}
+              {...itemOf(row, gridRow * across + offset)}
+            />
+          ))}
+      </div>
+    ),
+    [rows, across, itemOf],
   );
 
   const act = (action: PaneAct) =>

@@ -9,7 +9,7 @@ import {
   replace,
   replaceAll,
   step,
-  type countOf,
+  type FindCount,
   type FindQuery,
 } from './find';
 import type { EditorFinding } from './finding';
@@ -23,7 +23,7 @@ export function EditorFindBar({
 }: {
   view: RefObject<EditorView | undefined>;
   finder: EditorFinding;
-  findCount: ReturnType<typeof countOf> | undefined;
+  findCount: FindCount | undefined;
   children: ReactNode;
 }) {
   const {

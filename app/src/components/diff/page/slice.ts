@@ -92,10 +92,35 @@ export const diffFindOf =
   ({ diffFinds }: DiffSource): KeptFind =>
     diffFinds.get(scope) ?? closedFind;
 
-export const diffPlaceFor =
+const diffPlaceFor =
   (scope: string, selection: string) =>
   ({ diffPlaces }: DiffSource): DiffPlace | undefined =>
     diffPlaces.get(diffPlaceKey(scope, selection));
+
+const drawnAlike = (one: DiffPlace, other: DiffPlace) =>
+  one.toggled === other.toggled &&
+  one.sideways === other.sideways &&
+  one.current === other.current &&
+  one.currentFor === other.currentFor;
+
+export function drawnPlaceFor(
+  scope: string,
+  selection: string,
+): (source: DiffSource) => DiffPlace | undefined {
+  const placeOf = diffPlaceFor(scope, selection);
+  let drawn: DiffPlace | undefined;
+  return (source) => {
+    const place = placeOf(source);
+    if (
+      drawn === undefined ||
+      place === undefined ||
+      !drawnAlike(drawn, place)
+    ) {
+      drawn = place;
+    }
+    return drawn;
+  };
+}
 
 function languageScopeOf(key: string): string {
   const [scope]: unknown[] = JSON.parse(key);

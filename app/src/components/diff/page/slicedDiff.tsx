@@ -1,11 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useStore, type StoreApi } from 'zustand';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { Diff, type DiffProps } from './column';
 import { DiffLanguage } from './language';
 import {
   diffFindOf,
-  diffPlaceFor,
+  drawnPlaceFor,
   pickedFor,
   type DiffActions,
   type DiffSource,
@@ -113,7 +113,16 @@ export function SlicedDiff({
   const keepWrapColumns = useStore(store, (state) => state.keepWrapColumns);
   const keepDiffFind = useStore(store, (state) => state.keepDiffFind);
   const closeDiffFind = useStore(store, (state) => state.closeDiffFind);
-  const place = useStore(store, diffPlaceFor(scope, selection));
+  const drawnPlace = useMemo(
+    () => drawnPlaceFor(scope, selection),
+    [scope, selection],
+  );
+  const place = useStore(store, drawnPlace);
+  const diffPlaceOf = useStore(store, (state) => state.diffPlaceOf);
+  const placeNow = useCallback(
+    () => diffPlaceOf(scope, selection),
+    [diffPlaceOf, scope, selection],
+  );
   const keepDiffPlace = useStore(store, (state) => state.keepDiffPlace);
   const keepPlace = useCallback(
     (change: PlaceChange) => keepDiffPlace(scope, selection, change),
@@ -152,6 +161,7 @@ export function SlicedDiff({
         keepFind: (next) => keepDiffFind(scope, next),
         closeFind: () => closeDiffFind(scope),
         place,
+        placeNow,
         keepPlace,
       }}
     />

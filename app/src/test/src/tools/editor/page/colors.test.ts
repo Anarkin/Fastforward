@@ -5,6 +5,7 @@ import {
   coloredLinesOf,
   keepColoredLines,
   lineEdit,
+  linesMeet,
   tokensIn,
 } from '../../../../../tools/editor/page/colors';
 
@@ -31,6 +32,23 @@ suite('Colors of the part of a line in view', () => {
     );
     assert.deepStrictEqual(tokensIn(tokens, 600_000, 600_010), []);
     assert.deepStrictEqual(tokensIn([], 0, 10), []);
+  });
+});
+
+suite('Colors that came for lines of the editor', () => {
+  test('draws the editor anew for the colors of lines it shows, the first and last of them too, and leaves it alone for those of lines out of view, as the colors of a long file coming part by part drew it anew with each part while it scrolled', () => {
+    const shown = { first: 100, last: 180 };
+    assert.deepStrictEqual(
+      [
+        linesMeet({ from: 0, count: 100 }, shown),
+        linesMeet({ from: 0, count: 101 }, shown),
+        linesMeet({ from: 120, count: 10 }, shown),
+        linesMeet({ from: 180, count: 500 }, shown),
+        linesMeet({ from: 181, count: 500 }, shown),
+        linesMeet({ from: 150, count: 0 }, shown),
+      ],
+      [false, true, true, true, false, false],
+    );
   });
 });
 

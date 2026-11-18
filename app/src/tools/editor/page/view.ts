@@ -15,7 +15,13 @@ import { EditorView } from '@codemirror/view';
 import { useShell } from '../../../shell/page/store';
 import { blanksShown } from './text';
 import { useCellTable } from '../../../lib/page/cellTable';
-import { countOf, findAskOf, type FindAsk } from './find';
+import {
+  countOf,
+  findAskOf,
+  keptCount,
+  type FindAsk,
+  type FindCount,
+} from './find';
 import { savingFixes } from './saving';
 import { endingsChanged, endingsField, endingsSent } from './endings';
 import { endingsShownOf, type EndingsShown } from './endingsLabel';
@@ -69,7 +75,7 @@ export function useEditorView(language: string | undefined) {
   const { closeTab } = useShellActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
   const [status, setStatus] = useState<string>();
-  const [findCount, setFindCount] = useState<ReturnType<typeof countOf>>();
+  const [findCount, setFindCount] = useState<FindCount>();
   const [findAsk, setFindAsk] = useState<FindAsk>();
   const goingToLine = useEditor(
     (state) =>
@@ -185,7 +191,8 @@ export function useEditorView(language: string | undefined) {
           keepState(update.state);
           setStatus(statusOf(update.state, table));
         }
-        setFindCount(countOf(update.state));
+        const count = countOf(update.state);
+        setFindCount((before) => keptCount(before, count));
       },
     });
     const kept = keptEditor(tab);

@@ -448,6 +448,10 @@ export function useCommander<T>(select: (state: CommanderState) => T): T {
   return useStore(useCommanderStore(), select);
 }
 
+export function useCommanderNow(): () => CommanderState {
+  return useCommanderStore().getState;
+}
+
 export function useCommanderActions(): CommanderActions {
   return useCommanderStore().getState();
 }

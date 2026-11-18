@@ -5,7 +5,9 @@ import {
   dotsBand,
   dotsPath,
   holds,
+  runsOfLine,
   textRows,
+  type LineRuns,
 } from '../../../../../tools/editor/page/spaces';
 
 suite('The dots the editor draws for spaces', () => {
@@ -83,6 +85,50 @@ suite('The dots the editor draws for spaces', () => {
     assert.strictEqual(holds(band, 1200, 2000), true);
     assert.strictEqual(holds(band, 1200, 2001), false);
     assert.strictEqual(holds(band, 799, 1600), false);
+  });
+
+  test('measures the spaces of a line once and places them by where the line is drawn from then on, as measuring every text of every line in view again each time the lines in view changed took a third of those frames, and measures a line again once its text is another', () => {
+    const kept = new WeakMap<object, LineRuns>();
+    const line = {};
+    let measured = 0;
+    const measure = (left: number, top: number) => () => {
+      measured++;
+      return [
+        { left: left + 16, top, height: 20, length: 2 },
+        { left: left + 8, top: top + 20, height: 20, length: 1 },
+      ];
+    };
+    const first = runsOfLine(
+      kept,
+      line,
+      'a  b c',
+      { left: 100, top: 300 },
+      measure(100, 300),
+    );
+    const scrolled = runsOfLine(
+      kept,
+      line,
+      'a  b c',
+      { left: 90, top: 140.5 },
+      measure(0, 0),
+    );
+    assert.deepStrictEqual(
+      [first, scrolled, measured],
+      [
+        [
+          { left: 116, top: 300, height: 20, length: 2 },
+          { left: 108, top: 320, height: 20, length: 1 },
+        ],
+        [
+          { left: 106, top: 140.5, height: 20, length: 2 },
+          { left: 98, top: 160.5, height: 20, length: 1 },
+        ],
+        1,
+      ],
+    );
+    runsOfLine(kept, line, 'a  b cd', { left: 90, top: 140.5 }, measure(0, 0));
+    runsOfLine(kept, {}, 'a  b c', { left: 90, top: 140.5 }, measure(0, 0));
+    assert.strictEqual(measured, 3);
   });
 
   test('places the spaces of a text of single cells by the rows it is drawn on, measured once, a cell an advance, rather than measuring each run of spaces, as each measure walks every row of a long line', () => {

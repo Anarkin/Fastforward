@@ -9,7 +9,7 @@ function stem(file: string): string {
   return file.slice(0, file.lastIndexOf('.'));
 }
 
-suite('Frames of the commander, the viewer and the editor', () => {
+function commanderWith(smooth: boolean) {
   const { files } = perfData();
   const perf = launchedForPerf(
     {
@@ -17,7 +17,7 @@ suite('Frames of the commander, the viewer and the editor', () => {
         tabs: [{ id: '1', tool: 'commander', root: files }],
         activeTab: '1',
       },
-      settings: { scrolling: { smooth: true } },
+      settings: { scrolling: { smooth } },
     },
     (page) =>
       page
@@ -49,6 +49,12 @@ suite('Frames of the commander, the viewer and the editor', () => {
     await page().keyboard.press('Backspace');
     await row(manyFolder).waitFor();
   };
+  return { perf, page, right, row, select, openFolder, backUp };
+}
+
+suite('Frames of the commander, the viewer and the editor', () => {
+  const { perf, page, right, row, select, openFolder, backUp } =
+    commanderWith(true);
 
   test('scrolling a folder of 20,000 files with a mouse wheel', async () => {
     await openFolder(manyFolder, 'file-');
@@ -139,5 +145,28 @@ suite('Frames of the commander, the viewer and the editor', () => {
       await page().keyboard.press('Control+Z');
       return false;
     }, 'the typing to be undone');
+  });
+});
+
+suite('Frames of the commander without gliding', () => {
+  const { perf, page, right, openFolder } = commanderWith(false);
+
+  test('scrolling a folder of 20,000 files with a mouse wheel, ten rows a notch at once', async () => {
+    await openFolder(manyFolder, 'file-');
+    const result = await measure(
+      perf(),
+      'commander: 20,000 files, wheel, no glide',
+      () => wheelNotches(page(), right(), 40),
+    );
+    assert.ok(result.frames.updates > 0);
+  });
+
+  test('paging down a folder of 20,000 files with PageDown held, a page at once', async () => {
+    const result = await measure(
+      perf(),
+      'commander: 20,000 files, PageDown held, no glide',
+      () => heldKey(page(), 'PageDown', 30),
+    );
+    assert.ok(result.frames.updates > 0);
   });
 });

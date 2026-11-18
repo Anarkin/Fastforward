@@ -112,6 +112,76 @@ suite('Overlay scrollbars', () => {
     }
   });
 
+  test('reads where both scrollbars of an area scrolled go before it moves either, and of one a pointer came over alike, as a read after a scrollbar moved had the browser lay the page out again each frame of a scroll', () => {
+    const { dom, list, scrollTo, frame, close } = framedList();
+    try {
+      const log: string[] = [];
+      const read = getComputedStyle;
+      Object.assign(globalThis, {
+        getComputedStyle: (...asked: Parameters<typeof getComputedStyle>) => {
+          log.push('read');
+          return read(...asked);
+        },
+      });
+      const { document } = dom.window;
+      for (const bar of document.querySelectorAll<HTMLElement>(
+        `.${overlayScrollbarClass}`,
+      )) {
+        const { style, classList } = bar;
+        Object.defineProperties(bar, {
+          style: {
+            value: new Proxy(style, {
+              set: (target, name, value) => {
+                log.push('write');
+                return Reflect.set(target, name, value);
+              },
+              get: (target, name) => {
+                const found: unknown = Reflect.get(target, name);
+                return typeof found === 'function'
+                  ? (...given: unknown[]) => {
+                      log.push('write');
+                      return Reflect.apply(found, target, given);
+                    }
+                  : found;
+              },
+            }),
+          },
+          classList: {
+            value: {
+              contains: (name: string) => classList.contains(name),
+              add: (name: string) => {
+                log.push('write');
+                classList.add(name);
+              },
+              remove: (name: string) => {
+                log.push('write');
+                classList.remove(name);
+              },
+            },
+          },
+        });
+      }
+      const readsAfterWrites = () => {
+        const seen = log.splice(0);
+        return seen.slice(seen.indexOf('write')).filter((at) => at === 'read')
+          .length;
+      };
+
+      scrollTo(450);
+      frame();
+      const scrolled = readsAfterWrites();
+      list.dispatchEvent(
+        new dom.window.MouseEvent('pointermove', { bubbles: true }),
+      );
+      frame();
+      vi.advanceTimersByTime(0);
+
+      assert.deepStrictEqual([scrolled, readsAfterWrites()], [0, 0]);
+    } finally {
+      close();
+    }
+  });
+
   test('takes the height of an area between pixels, as the browser measures it while its whole pixels round it, so the thumb of an area scrolled to its end reaches its end', () => {
     const { bar, scrollTo, frame, close } = framedList(100.4);
     try {

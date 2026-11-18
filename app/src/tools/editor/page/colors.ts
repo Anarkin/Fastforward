@@ -75,6 +75,27 @@ export function lineEdit(
   };
 }
 
+interface LineSpan {
+  readonly from: number;
+  readonly count: number;
+}
+
+export function linesMeet(
+  { from, count }: LineSpan,
+  shown: { readonly first: number; readonly last: number },
+): boolean {
+  return count > 0 && from <= shown.last && from + count > shown.first;
+}
+
+function shownLines(view: EditorView): { first: number; last: number } {
+  const { doc } = view.state;
+  const { from, to } = view.viewport;
+  return {
+    first: doc.lineAt(from).number - 1,
+    last: doc.lineAt(to).number - 1,
+  };
+}
+
 const uncolored: EditedColors = { edit: () => {}, stop: () => {} };
 
 type ColoredLines = (readonly SyntaxRange[] | undefined)[];
@@ -135,10 +156,15 @@ class Colors implements PluginValue {
         if (part === undefined) {
           return;
         }
-        partLines(part).forEach((ranges, index) => {
+        const lines = partLines(part);
+        lines.forEach((ranges, index) => {
           this.lines[part.from + index] = ranges;
         });
-        view.dispatch({ effects: recolored.of(null) });
+        if (
+          linesMeet({ from: part.from, count: lines.length }, shownLines(view))
+        ) {
+          view.dispatch({ effects: recolored.of(null) });
+        }
       },
     );
   }

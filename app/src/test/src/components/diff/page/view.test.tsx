@@ -24,6 +24,7 @@ suite('A diff shown anew', () => {
       <DiffView
         error={null}
         keptPlace={undefined}
+        placeNow={() => undefined}
         onPlace={noop}
         files={[]}
         whole={undefined}

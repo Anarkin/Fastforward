@@ -146,53 +146,123 @@ function placeOf(
       };
 }
 
-function spaceRunsIn(
+export interface LineRuns {
+  readonly key: string;
+  readonly runs: readonly SpaceRun[];
+}
+
+export function runsOfLine<Line extends object>(
+  kept: WeakMap<Line, LineRuns>,
+  line: Line,
+  key: string,
+  at: Point,
+  measure: () => readonly SpaceRun[],
+): SpaceRun[] {
+  let held = kept.get(line);
+  if (held?.key !== key) {
+    held = {
+      key,
+      runs: measure().map((run) => ({
+        ...run,
+        left: run.left - at.left,
+        top: run.top - at.top,
+      })),
+    };
+    kept.set(line, held);
+  }
+  return held.runs.map((run) => ({
+    ...run,
+    left: run.left + at.left,
+    top: run.top + at.top,
+  }));
+}
+
+function spaceRunsOf(
   view: EditorView,
-  band: Band,
+  line: Element,
   advance: number,
 ): SpaceRun[] {
-  const content = view.contentDOM.getBoundingClientRect();
-  const top = Math.max(band.top, content.top);
-  const bottom = Math.min(band.bottom, content.bottom - 1);
-  if (bottom <= top) {
-    return [];
-  }
-  const from = view.posAtCoords({ x: content.left, y: top }, false);
-  const to = view.posAtCoords({ x: content.right - 1, y: bottom }, false);
   const runs: SpaceRun[] = [];
   const range = document.createRange();
-  const walker = document.createTreeWalker(
-    view.contentDOM,
-    NodeFilter.SHOW_TEXT,
-  );
-  const start = view.domAtPos(from).node;
-  walker.currentNode = start;
+  const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
   for (
-    let node = start instanceof Text ? start : walker.nextNode();
+    let node = walker.nextNode();
     node instanceof Text;
     node = walker.nextNode()
   ) {
-    const at = view.posAtDOM(node, 0);
-    if (at > to) {
-      break;
+    if (!node.data.includes(' ')) {
+      continue;
     }
-    if (
-      !node.data.includes(' ') ||
-      view.state.sliceDoc(at, at + node.length) !== node.data
-    ) {
+    const at = view.posAtDOM(node, 0);
+    if (view.state.sliceDoc(at, at + node.length) !== node.data) {
       continue;
     }
     const rows = measuredRows(range, node, advance);
     for (const found of node.data.matchAll(spaces)) {
       const place = placeOf(range, node, found.index, rows, advance);
-      if (
-        place !== undefined &&
-        place.top + place.height > band.top &&
-        place.top < band.bottom
-      ) {
+      if (place !== undefined) {
         runs.push({ ...place, length: found[0].length });
       }
     }
+  }
+  return runs;
+}
+
+function lineOf(view: EditorView, pos: number): Element | undefined {
+  const { contentDOM } = view;
+  let node: Node | null = view.domAtPos(pos).node;
+  while (node !== null && node.parentNode !== contentDOM) {
+    node = node.parentNode;
+  }
+  return node instanceof Element ? node : undefined;
+}
+
+const wholeLine = 2000;
+
+const keptRuns = new WeakMap<EditorView, WeakMap<Element, LineRuns>>();
+
+function spaceRunsIn(
+  view: EditorView,
+  band: Band,
+  look: DotLook,
+  laidOut: number,
+): SpaceRun[] {
+  let kept = keptRuns.get(view);
+  if (kept === undefined) {
+    kept = new WeakMap();
+    keptRuns.set(view, kept);
+  }
+  const shape = `${laidOut}:${view.lineWrapping}:${view.contentDOM.clientWidth}:${look.advance}:${look.dot}:${look.pixel}`;
+  const runs: SpaceRun[] = [];
+  const seen = new Set<Element>();
+  for (const block of view.viewportLineBlocks) {
+    const line = lineOf(view, block.from);
+    if (line === undefined || seen.has(line)) {
+      continue;
+    }
+    seen.add(line);
+    const { left, top, bottom, height } = line.getBoundingClientRect();
+    if (bottom <= band.top || top >= band.bottom) {
+      continue;
+    }
+    if (block.length > wholeLine) {
+      runs.push(...spaceRunsOf(view, line, look.advance));
+      continue;
+    }
+    const text = view.state.sliceDoc(block.from, block.to);
+    if (!text.includes(' ')) {
+      continue;
+    }
+    runs.push(
+      ...runsOfLine(
+        kept,
+        line,
+        `${shape}:${height}
+${text}`,
+        { left, top },
+        () => spaceRunsOf(view, line, look.advance),
+      ),
+    );
   }
   return runs;
 }
@@ -235,6 +305,7 @@ function lookOf(view: EditorView): DotLook {
 function dotMarkers(
   view: EditorView,
   shown: (state: EditorState) => boolean,
+  laidOut: number,
 ): LayerMarker[] {
   const { scrollDOM } = view;
   if (!shown(view.state) || scrollDOM.clientHeight === 0) {
@@ -251,7 +322,8 @@ function dotMarkers(
   const runs = spaceRunsIn(
     view,
     { top: origin.top + band.top, bottom: origin.top + band.bottom },
-    look.advance,
+    look,
+    laidOut,
   );
   return runs.length === 0
     ? []
@@ -284,18 +356,31 @@ const redrawn = (update: ViewUpdate) =>
     transaction.effects.some((effect) => effect.is(redraw)),
   );
 
-export function spaceDots(shown: (state: EditorState) => boolean): Extension {
+export function spaceDots(
+  shown: (state: EditorState) => boolean,
+  laidOut: (view: EditorView) => number,
+): Extension {
   return [
     Prec.lowest(
       layer({
         above: true,
         class: 'space-dot-layer',
-        markers: (view) => dotMarkers(view, shown),
-        update: (update) =>
-          update.docChanged ||
-          update.viewportChanged ||
-          shown(update.startState) !== shown(update.state) ||
-          redrawn(update),
+        markers: (view) => dotMarkers(view, shown, laidOut(view)),
+        update: (update) => {
+          const toggled = shown(update.startState) !== shown(update.state);
+          if (
+            toggled ||
+            update.transactions.some((transaction) => transaction.reconfigured)
+          ) {
+            keptRuns.delete(update.view);
+          }
+          return (
+            update.docChanged ||
+            update.viewportChanged ||
+            toggled ||
+            redrawn(update)
+          );
+        },
       }),
     ),
     ViewPlugin.define((view) => new ScrollWatch(view)),

@@ -111,6 +111,11 @@ function zIndexesAround(element: Element): string[] {
   return found;
 }
 
+interface Place {
+  readonly box: NonNullable<ReturnType<typeof thumbBox>>;
+  readonly layer: number;
+}
+
 class Bar {
   readonly element = document.createElement('div');
   scroller: Element | null = null;
@@ -128,32 +133,34 @@ class Bar {
   }
 
   show(scroller: Element | null): void {
+    this.put(this.placeFor(scroller));
+  }
+
+  placeFor(scroller: Element | null): Place | undefined {
     this.scroller = followedScroller(this.dragging, this.scroller, scroller);
-    if (!this.place()) {
+    const followed = this.scroller;
+    if (!followed?.isConnected) {
+      return undefined;
+    }
+    const box = thumbBox(this.axis, metricsOf(followed, this.axis), barSize());
+    return box && { box, layer: layerOver(zIndexesAround(followed)) };
+  }
+
+  put(place: Place | undefined): void {
+    if (!place) {
       this.hide();
       return;
     }
-    this.element.classList.add('shown');
-    this.hideLater();
-  }
-
-  place(): boolean {
-    const { scroller } = this;
-    if (!scroller?.isConnected) {
-      return false;
-    }
-    const box = thumbBox(this.axis, metricsOf(scroller, this.axis), barSize());
-    if (!box) {
-      return false;
-    }
+    const { box, layer } = place;
     const { style } = this.element;
     style.left = `${box.left}px`;
     style.top = `${box.top}px`;
     style.width = `${box.width}px`;
     style.height = `${box.height}px`;
     style.setProperty('clip-path', clipPathOf(this.axis, box.clip));
-    style.zIndex = String(layerOver(zIndexesAround(scroller)));
-    return true;
+    style.zIndex = String(layer);
+    this.element.classList.add('shown');
+    this.hideLater();
   }
 
   hide(): void {
@@ -258,8 +265,10 @@ export function installOverlayScrollbars(): void {
     ) {
       return;
     }
-    bars[0].show(scrollerOf(target, 'vertical'));
-    bars[1].show(scrollerOf(target, 'horizontal'));
+    const places = bars.map((bar) =>
+      bar.placeFor(scrollerOf(target, bar.axis)),
+    );
+    bars.forEach((bar, index) => bar.put(places[index]));
   };
   let pointed: EventTarget | null = null;
   const pointing = afterPaint(() => showFor(pointed));
@@ -276,14 +285,17 @@ export function installOverlayScrollbars(): void {
   let scrolled: EventTarget | null = null;
   const scrolling = inNextFrame(() => onScroll(scrolled));
   const onScroll = (target: EventTarget | null) => {
-    for (const bar of bars) {
+    const puts = bars.flatMap((bar) => {
       const scroller = scrolledScroller(bar.scroller, bar.shown, target, () =>
         scrollerOf(target, bar.axis),
       );
-      if (scroller !== undefined) {
-        bar.show(scroller);
+      if (scroller === undefined) {
+        return [];
       }
-    }
+      const place = bar.placeFor(scroller);
+      return [() => bar.put(place)];
+    });
+    puts.forEach((put) => put());
   };
   for (const type of ['scroll', sidewaysScrollEvent]) {
     document.addEventListener(

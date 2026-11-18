@@ -70,6 +70,9 @@ const isUncapped = () => process.env.FASTFORWARD_PERF_UNCAPPED === '1';
 
 const isSampled = () => process.env.FASTFORWARD_PERF_PROFILE === '1';
 
+const asked = () =>
+  (process.env.FASTFORWARD_PERF_CATEGORIES ?? '').split(',').filter(Boolean);
+
 export function perfData(): PerfData {
   return inject('perfData');
 }
@@ -211,6 +214,7 @@ export async function measure(
   const stopTracing = await startTracing(page, [
     ...categories,
     ...(isSampled() ? sampled : []),
+    ...asked(),
   ]);
   const startedAt = Date.now();
   await page.evaluate((mark) => performance.mark(mark), startMark);

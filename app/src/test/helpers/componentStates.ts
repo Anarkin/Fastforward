@@ -143,6 +143,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: true only while the thumb of the viewer is dragged',
   'tools/git/page/addressBar.tsx asked':
     'a trigger: counts the find key presses only to mount the search anew; the search itself is kept per repository',
+  'tools/git/page/cappedVirtualizer.ts placed':
+    'made once: a function made once to tell the capped scroll where the list was moved to',
   'tools/git/page/cappedVirtualizer.ts redraw':
     'a trigger: counts the redraws forced as the capped scroll moves its base',
   'tools/git/page/cappedVirtualizer.ts resized':

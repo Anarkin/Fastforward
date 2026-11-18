@@ -18,6 +18,7 @@ export class CappedScroll {
   private drawn = 0;
   private redraw = () => {};
   private followResize = () => {};
+  private followPlace: (real: number) => void = () => {};
 
   drawnAt(shift: number): void {
     this.drawn = shift;
@@ -29,6 +30,14 @@ export class CappedScroll {
 
   followResizeWith(followResize: () => void): void {
     this.followResize = followResize;
+  }
+
+  followPlaceWith(followPlace: (real: number) => void): void {
+    this.followPlace = followPlace;
+  }
+
+  placed(real: number): void {
+    this.followPlace(real);
   }
 
   resized(): boolean {
@@ -95,10 +104,12 @@ export function cappedScrolling<T extends Element>(scroll: CappedScroll) {
           follow(element.scrollTop, false);
         }
       });
-      return observeElementOffset(instance, (real, isScrolling) => {
+      const moved = (real: number, isScrolling: boolean) => {
         follow(real, isScrolling);
         scroll.moved();
-      });
+      };
+      scroll.followPlaceWith((real) => moved(real, true));
+      return observeElementOffset(instance, moved);
     },
     scrollToFn: (
       offset: number,
@@ -134,6 +145,7 @@ export function useCappedScroll<T extends Element>() {
   const [scrollTop] = useState(
     () => (element: Element | null) => scroll.top(element),
   );
+  const [placed] = useState(() => (real: number) => scroll.placed(real));
   const [, redraw] = useReducer((count: number) => count + 1, 0);
   useLayoutEffect(() => {
     scroll.redrawWith(() => flushSync(redraw));
@@ -147,5 +159,5 @@ export function useCappedScroll<T extends Element>() {
       redraw();
     }
   });
-  return { scrolling, shift, scrollTop, resized };
+  return { scrolling, shift, scrollTop, resized, placed };
 }

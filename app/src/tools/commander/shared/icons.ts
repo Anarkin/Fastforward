@@ -9,11 +9,14 @@ export interface IconSource {
   readonly name: string;
 }
 
+const part = (name: string, value: string) =>
+  `${name}=${encodeURIComponent(value.toWellFormed())}`;
+
 export function iconUrl(
   { tab, side, folder, name }: IconSource,
   ticket?: string,
 ): string {
-  return `${iconRoute}?${new URLSearchParams({ tab, side, folder, name, ...(ticket === undefined ? {} : { ticket }) })}`;
+  return `${iconRoute}?${part('tab', tab)}&${part('side', side)}&${part('folder', folder)}&${part('name', name)}${ticket === undefined ? '' : `&${part('ticket', ticket)}`}`;
 }
 
 export function iconTicketOf(url: URL): string | undefined {

@@ -1,8 +1,4 @@
-import {
-  observeElementOffset,
-  useVirtualizer,
-  type Virtualizer,
-} from '@tanstack/react-virtual';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   useCallback,
   useDeferredValue,
@@ -19,6 +15,7 @@ import { type FindMatch } from './find';
 import { lineKey } from './lines';
 import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
+import { useSeenOffsets } from '../../../lib/page/seenOffsets';
 import { shortcutsEntryAttribute } from '../../../lib/page/shortcutsEntry';
 import { useSyntax, noSyntaxInput } from './syntax';
 import { useTextsToLoad } from './textsToLoad';
@@ -98,9 +95,11 @@ export function DiffView({
   measures,
   measuring,
   keptPlace,
+  placeNow,
   onPlace,
 }: {
   keptPlace: DiffPlace | undefined;
+  placeNow: () => DiffPlace | undefined;
   onPlace: (change: PlaceChange) => void;
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -192,19 +191,8 @@ export function DiffView({
 
   const wrapping = wordWrap ? columns : undefined;
   const [dragged, setDragged] = useState(false);
-  const offsetSeen = useRef<(offset: number) => void>(undefined);
-  const laidOut = useRef<Virtualizer<HTMLDivElement, Element>>(undefined);
-  const observeOffset = useCallback(
-    (
-      instance: Virtualizer<HTMLDivElement, Element>,
-      seen: (offset: number, isScrolling: boolean) => void,
-    ) => {
-      laidOut.current = instance;
-      offsetSeen.current = (offset) => seen(offset, true);
-      return observeElementOffset(instance, seen);
-    },
-    [],
-  );
+  const { observeOffset, offsetSeen, laidOut } =
+    useSeenOffsets<HTMLDivElement>();
   const shownRow = useRef(0);
   const heights = rowMeasures(
     rows,
@@ -251,7 +239,7 @@ export function DiffView({
         }
       });
     },
-    [virtualizer, lineHeight, scrolling.smooth],
+    [virtualizer, lineHeight, scrolling.smooth, offsetSeen],
   );
   useEffect(
     () => () => {
@@ -518,7 +506,7 @@ export function DiffView({
   });
   useKeptPlace({
     list,
-    place: keptPlace,
+    place: placeNow(),
     onPlace,
     settled:
       !loading &&

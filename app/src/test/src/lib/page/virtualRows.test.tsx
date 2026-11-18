@@ -6,6 +6,7 @@ import { estimatedRowHeight } from '../../../../lib/page/listRows';
 import { VirtualRows } from '../../../../lib/page/virtualRows';
 import { noop } from '../../../helpers/fixtures';
 import { defaultScrolling } from '../../../../lib/page/scrollSettings';
+import { rowScrollerOf } from '../../../../lib/page/scrollbarLinks';
 
 suite('Virtual rows', () => {
   test('draws only the rows in view of a long list, not every row', () => {
@@ -154,6 +155,89 @@ suite('Virtual rows', () => {
         'the list kept',
       );
       assert.deepStrictEqual(placed, [120, 0]);
+      await act(async () => root.unmount());
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('draws the rows of the place a list of whole rows is moved to as it is moved, by its wheel, its keys or its scrollbar, not a frame later once the browser tells of the scroll, as a page down showed half a list for a frame', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>', {
+      pretendToBeVisual: true,
+    });
+    for (const [side, size] of [
+      ['offsetWidth', 400],
+      ['offsetHeight', 240],
+      ['clientWidth', 400],
+      ['clientHeight', 240],
+    ] as const) {
+      Object.defineProperty(dom.window.HTMLElement.prototype, side, {
+        get: () => size,
+      });
+    }
+    dom.window.HTMLElement.prototype.getBoundingClientRect = function (
+      this: HTMLElement,
+    ) {
+      const height = this.classList.contains('virtual-row')
+        ? estimatedRowHeight
+        : 240;
+      return new dom.window.DOMRect(0, 0, 400, height);
+    };
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      Element: dom.window.Element,
+      HTMLElement: dom.window.HTMLElement,
+      requestAnimationFrame: dom.window.requestAnimationFrame.bind(dom.window),
+      cancelAnimationFrame: dom.window.cancelAnimationFrame.bind(dom.window),
+      ResizeObserver: class {
+        observe = noop;
+        unobserve = noop;
+        disconnect = noop;
+      },
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { act } = await import('react');
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const keys = Array.from({ length: 1000 }, (_, index) => `row:${index}`);
+      await act(async () =>
+        root.render(
+          <VirtualRows
+            scrolling={{ ...defaultScrolling, smooth: false }}
+            rows={{
+              count: keys.length,
+              keyOf: (index: number) => keys[index],
+              indexOf: (key: string) => keys.indexOf(key),
+            }}
+            renderRow={(index) => keys[index]}
+            selectedKey={undefined}
+            initialRect={{ width: 400, height: 240 }}
+            wholeRows
+          />,
+        ),
+      );
+      const scroller = main.querySelector('.virtual-rows');
+      assert.ok(scroller);
+      const moveTo = rowScrollerOf(scroller);
+      assert.ok(moveTo);
+      const row = 500;
+      act(() => moveTo(row * estimatedRowHeight));
+
+      assert.strictEqual(scroller.scrollTop, row * estimatedRowHeight);
+      assert.ok(
+        main.querySelector(`.virtual-row[data-index="${row}"]`),
+        [...main.querySelectorAll('.virtual-row')]
+          .map((shown) => shown.getAttribute('data-index'))
+          .join(' '),
+      );
       await act(async () => root.unmount());
     } finally {
       Object.assign(globalThis, saved);

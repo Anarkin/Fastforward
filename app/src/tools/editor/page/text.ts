@@ -222,6 +222,7 @@ class LineLook implements PluginValue {
   private widths: TextWidths | undefined;
   private columns: number | undefined;
   private wrapping: boolean;
+  shape = 0;
   sets: LookSets;
 
   constructor(
@@ -244,6 +245,9 @@ class LineLook implements PluginValue {
     this.wrapping = this.view.lineWrapping;
     const reblanked =
       update.startState.facet(blanksShown) !== update.state.facet(blanksShown);
+    if (measured || rewrapped || reblanked) {
+      this.shape += 1;
+    }
     if (
       measured ||
       rewrapped ||
@@ -373,7 +377,7 @@ export function appTextLook(table: CellTable): Extension {
   });
   return [
     EditorView.editorAttributes.of({ class: 'editor-text' }),
-    spaceDots(blanksOf),
+    spaceDots(blanksOf, (view) => view.plugin(look)?.shape ?? 0),
     breakMarks((view) => view.plugin(look)?.wrapMeasure, blanksOf),
     look,
   ];

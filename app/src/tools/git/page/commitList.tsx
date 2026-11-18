@@ -157,7 +157,7 @@ export function Commits({
     (index: number) => rowKeyOf(history, offset, index),
     [history, offset],
   );
-  const { scrolling, shift, scrollTop, resized } =
+  const { scrolling, shift, scrollTop, resized, placed } =
     useCappedScroll<HTMLDivElement>();
   const [places] = useState(() => new ReportedPlaces());
   const [scrollToFn] = useState(() =>
@@ -202,6 +202,7 @@ export function Commits({
       perNotch,
       smooth,
       snapTo,
+      onPlace: placed,
     });
     measure();
     const observer = new ResizeObserver(measure);
@@ -210,7 +211,7 @@ export function Commits({
       following.stop();
       observer.disconnect();
     };
-  }, []);
+  }, [placed]);
   useLayoutEffect(() => virtualizer.measure(), [virtualizer, line]);
   const rows = drawnRows(virtualizer, rowKey);
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);

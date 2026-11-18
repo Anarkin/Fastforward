@@ -152,6 +152,25 @@ suite('Capped virtualizer', () => {
     assert.strictEqual(redrawn(), 1);
   });
 
+  test('draws the rows of the place a list is moved to as it is told of the move, before the browser tells of the scroll a frame later, a list too long to lay out too', () => {
+    for (const [rows, from] of [
+      [1000, 600],
+      [1_300_000, 700_000],
+    ] as const) {
+      const { scroller, scroll, virtualizer, shown } = list(rows);
+      virtualizer.scrollToIndex(from, { align: 'start' });
+      scroller.frame();
+      scroller.scrollTop += 30 * rowHeight;
+      scroll.placed(scroller.scrollTop);
+      assert.strictEqual(
+        virtualizer.scrollOffset,
+        (from + 30) * rowHeight,
+        String(rows),
+      );
+      assert.strictEqual(shown()[0], from + 30, String(rows));
+    }
+  });
+
   test('keeps drawing the rows in view when a list too long to lay out gets shorter, which the browser scrolls only once it clamps its top, as a new history does', () => {
     for (const rows of [100_000, 200_000]) {
       const { scroller, scroll, virtualizer, shown, resize } = list(1_300_000);

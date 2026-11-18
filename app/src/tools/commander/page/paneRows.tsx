@@ -9,7 +9,7 @@ import { opens, pointedKeys, rangeKeys } from './rowKeys';
 import { TileName } from './tileName';
 import type { Filter } from '../../../lib/shared/filter';
 import { shownRowsOf } from './shownRows';
-import { useCommander, useCommanderActions } from './store';
+import { useCommander, useCommanderActions, useCommanderNow } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
 import { fileColorOf } from '../../../lib/page/fileColors';
@@ -34,7 +34,7 @@ interface PaneItemProps {
   row: Row;
   index: number;
   filter: Filter;
-  dropInto: string | null | undefined;
+  dropTarget: boolean;
   pairsClick: (key: string, count: number) => boolean;
   onMenu: (
     key: string | undefined,
@@ -46,7 +46,7 @@ function usePaneItem({
   side,
   row,
   index,
-  dropInto,
+  dropTarget,
   pairsClick,
   onMenu,
 }: PaneItemProps) {
@@ -55,16 +55,32 @@ function usePaneItem({
   const onMark = (keys: readonly string[], marked: boolean) =>
     actions.mark(side, keys, marked);
   const onOpen = (name: string) => actions.open(side, name);
+  const now = useCommanderNow();
+  const shown = () => {
+    const state = now();
+    const pane = state.view.panes[side];
+    return {
+      rows: shownRowsOf(state, side).rows,
+      marked: pane?.marked,
+      selected: pane?.selected,
+    };
+  };
   const tab = useCommander((state) => state.view.tab);
   const folder = useCommander((state) => state.view.panes[side]?.folder);
-  const selected = useCommander((state) => state.view.panes[side]?.selected);
-  const marked = useCommander((state) => state.view.panes[side]?.marked);
-  const { rows, starts } = useCommander((state) => shownRowsOf(state, side));
+  const selected = useCommander(
+    (state) => state.view.panes[side]?.selected === row.key,
+  );
+  const marked = useCommander(
+    (state) => state.view.panes[side]?.marked?.has(row.key) === true,
+  );
+  const startsGroup = useCommander(
+    (state) => shownRowsOf(state, side).starts?.has(row.key) === true,
+  );
   const fileColors = useCommander((state) => state.view.fileColors);
   const dateFormat = useShell((state) => state.dateFormat);
   const fileColor =
     row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);
-  const rowClass = `row commander-row${row.key === selected ? ' selected' : ''}${marked?.has(row.key) ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${row.key === dropInto ? ' drop-target' : ''}${fileColor === undefined ? '' : ' colored'}${starts?.has(row.key) === true ? ' group-start' : ''}`;
+  const rowClass = `row commander-row${selected ? ' selected' : ''}${marked ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${dropTarget ? ' drop-target' : ''}${fileColor === undefined ? '' : ' colored'}${startsGroup ? ' group-start' : ''}`;
   const colorStyle: CSSProperties =
     fileColor === undefined ? {} : { '--file-color': fileColor };
   const iconSource: IconSource | undefined =
@@ -84,7 +100,8 @@ function usePaneItem({
     draggable: row.entry !== undefined,
     onDragStart: (event: React.DragEvent) => {
       event.preventDefault();
-      const names = pointedKeys(rows, row.key, marked);
+      const { rows, marked: marks } = shown();
+      const names = pointedKeys(rows, row.key, marks);
       if (names.length > 0) {
         onSelect(row.key);
         actions.drag(side, names);
@@ -92,11 +109,12 @@ function usePaneItem({
     },
     onClick: (event: React.MouseEvent) => {
       const marking = clicked(commanderKeymap.markClick, event);
+      const { rows, marked: marks, selected: selectedKey } = shown();
       if (marking === 'toggle') {
-        onMark([row.key], !marked?.has(row.key));
+        onMark([row.key], !marks?.has(row.key));
       } else if (marking === 'range') {
         const selectedIndex = rows.findIndex(
-          (each) => each.key === (selected ?? ''),
+          (each) => each.key === (selectedKey ?? ''),
         );
         if (selectedIndex !== -1) {
           onMark(rangeKeys(rows, selectedIndex, index), true);
@@ -113,9 +131,10 @@ function usePaneItem({
       const at = { x: event.clientX, y: event.clientY };
       onSelect(row.key);
       if (menuOfClick(event) === 'system') {
+        const { rows, marked: marks } = shown();
         actions.shellMenu(
           side,
-          row.key === parentFolder ? [] : pointedKeys(rows, row.key, marked),
+          row.key === parentFolder ? [] : pointedKeys(rows, row.key, marks),
           at,
           true,
         );
@@ -124,7 +143,7 @@ function usePaneItem({
       }
     },
   };
-  const toggleMark = () => onMark([row.key], !marked?.has(row.key));
+  const toggleMark = () => onMark([row.key], !shown().marked?.has(row.key));
   return { rowClass, colorStyle, iconSource, date, itemEvents, toggleMark };
 }
 

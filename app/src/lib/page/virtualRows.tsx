@@ -19,6 +19,7 @@ import {
   type RowFollower,
 } from './rowScroll';
 import type { ScrollSettings } from './scrollSettings';
+import { useSeenOffsets } from './seenOffsets';
 
 import {
   endCovered,
@@ -93,6 +94,7 @@ export function VirtualRows({
   const list = useRef<HTMLDivElement>(null);
   const listId = useId();
   const [fixedHeight, setFixedHeight] = useState<number>();
+  const { observeOffset, offsetSeen } = useSeenOffsets<HTMLDivElement>();
   const virtualizer = useVirtualizer({
     count: rows.count,
     getScrollElement: () => list.current,
@@ -113,6 +115,7 @@ export function VirtualRows({
     getItemKey: rows.keyOf,
     overscan,
     initialRect,
+    observeElementOffset: observeOffset,
   });
 
   useLayoutEffect(() => {
@@ -141,6 +144,7 @@ export function VirtualRows({
       step: stepOf,
       perNotch,
       smooth,
+      onPlace: (top) => offsetSeen.current?.(top),
     });
     follower.current = following;
     const measure = () => setRoomHeight(room());
@@ -152,7 +156,7 @@ export function VirtualRows({
       follower.current = undefined;
       observer.disconnect();
     };
-  }, [wholeRows]);
+  }, [wholeRows, offsetSeen]);
 
   const restored = useRef(initialOffset === 0);
   const placed = useRef(placeKey);

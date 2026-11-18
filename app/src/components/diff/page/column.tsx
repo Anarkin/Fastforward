@@ -202,6 +202,7 @@ export function Diff({
         viewOf={viewOf}
         key={shownAt}
         keptPlace={tab.place}
+        placeNow={tab.placeNow}
         onPlace={tab.keepPlace}
         error={errorRow}
         files={diffFiles}
