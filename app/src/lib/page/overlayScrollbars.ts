@@ -8,6 +8,7 @@ import {
   type ScrollbarDrag,
 } from './scrollbarLinks';
 import { followDrag } from './followDrag';
+import { scrollToColumn } from './columnScroll';
 import { afterPaint, inNextFrame } from './afterPaint';
 import { elementMetrics } from './scrollerMetrics';
 import { frameOf, framedMetrics } from './scrollbarFrames';
@@ -251,7 +252,7 @@ class Bar {
     } else if (sideways) {
       sideways.scrollTo(scroll);
     } else {
-      scroller.scrollLeft = scroll;
+      scrollToColumn(scroller, scroll);
     }
   }
 }

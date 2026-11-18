@@ -42,8 +42,19 @@
   --viewer-inset: calc(var(--line-number-width) + var(--line-number-gap));
 }
 
-.viewer-rows.numbered {
-  min-height: 100%;
+.viewer-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  width: 8px;
+  background: var(--color-panel-background);
+  pointer-events: none;
+}
+
+.viewer-gutter.numbered {
+  width: calc(var(--line-number-width) + var(--line-number-gap));
   background-image: linear-gradient(var(--color-border), var(--color-border));
   background-position: calc(var(--line-number-width) - var(--hairline)) 0;
   background-size: var(--hairline) 100%;
@@ -68,6 +79,10 @@
 
 .viewer-row .dot-rows {
   --dot-row: var(--viewer-row-height);
+}
+
+.viewer-rows.wrapped .viewer-row .dot-rows {
+  right: calc(-1 * var(--text-advance));
 }
 
 .viewer-break,

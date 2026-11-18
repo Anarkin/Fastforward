@@ -1,10 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
-  codePadding,
   gapWidth,
-  lineWidth,
-  numberWidth,
   wordPadding,
 } from '../../../../../components/diff/page/textLayout';
 
@@ -14,14 +11,6 @@ function layoutSteps(padding: number, scale: number): number[] {
 }
 
 suite('Drawing code', () => {
-  test('widens a line by its line numbers, the padding on either side and its columns rounded up to a pixel', () => {
-    assert.strictEqual(
-      lineWidth(13, 2, 7.5),
-      2 * numberWidth + 2 * codePadding + 98,
-    );
-    assert.strictEqual(lineWidth(3, 1, 8), numberWidth + 2 * codePadding + 24);
-  });
-
   test('pads changed words up to the top and down to the bottom of their line, apart as the text sits off center at scales like 125%, and not before the text is measured', () => {
     const line = { top: 154, bottom: 176 };
     const even = wordPadding(line, { top: 157, bottom: 173 }, 1);

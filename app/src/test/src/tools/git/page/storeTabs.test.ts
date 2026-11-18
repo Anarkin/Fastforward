@@ -139,7 +139,7 @@ suite('Git store, for each tab', () => {
     const store = createGitStore(noop);
     const { diffPlaceOf, keepDiffPlace } = store.getState();
     assert.strictEqual(diffPlaceOf('/repo', 'one'), undefined);
-    keepDiffPlace('/repo', 'one', { top: 120, left: 8 });
+    keepDiffPlace('/repo', 'one', { top: 120, sideways: 8 });
     keepDiffPlace('/repo', 'one', { current: 3 });
     keepDiffPlace('/repo', 'two', { toggled: new Map([['a.txt', false]]) });
     keepDiffPlace('/other', 'one', { sideways: 40 });
@@ -147,8 +147,7 @@ suite('Git store, for each tab', () => {
     assert.deepStrictEqual(diffPlaceOf('/repo', 'one'), {
       top: 120,
       anchor: undefined,
-      sideways: 0,
-      left: 8,
+      sideways: 8,
       toggled: new Map(),
       current: 3,
       currentFor: { query: '', options: plainSearch },

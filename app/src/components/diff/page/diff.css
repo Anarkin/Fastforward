@@ -11,13 +11,8 @@
 }
 
 .virtual-row.diff-row {
-  min-width: max(100%, var(--diff-content-width, 0px) + var(--minimap-width));
-  width: max-content;
-  contain: layout style;
-}
-
-.virtual-row.diff-row.split-row {
   width: 100%;
+  contain: layout style;
 }
 
 .split-line {
@@ -72,6 +67,16 @@
 
 .split-code .code {
   display: inline-block;
+}
+
+.diff-view:not(.wrap) .split-code {
+  overflow: clip;
+  overflow-clip-margin: content-box;
+  padding-left: var(--diff-code-padding);
+}
+
+.diff-view:not(.wrap) .split-code .code {
+  padding-left: 0;
 }
 
 .hunk-divider {
@@ -132,7 +137,6 @@
   tab-size: var(--diff-tab-size);
 }
 
-.diff-line > .code,
 .diff-line > .split-code {
   box-shadow: inset var(--hairline) 0 var(--color-border);
 }

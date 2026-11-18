@@ -401,11 +401,18 @@ suite('App with lists longer than their columns', () => {
     const diff = page.locator('.diff-view .virtual-rows');
     const stuck = page.locator('.diff-stuck-header');
     await scrollsOnWheelOver(page, diff, stuck);
-    await diff.evaluate((element) => {
-      element.scrollLeft = 300;
-    });
+    const across = () =>
+      diff
+        .locator('.split-code .code')
+        .first()
+        .evaluate((element) => getComputedStyle(element).transform);
+    const rest = await across();
+    await diff.hover();
+    await page.keyboard.down('Shift');
+    await page.mouse.wheel(0, 100);
+    await page.keyboard.up('Shift');
     await waitFor(
-      async () => (await diff.evaluate((element) => element.scrollLeft)) > 0,
+      async () => (await across()) !== rest,
       'the diff to scroll sideways',
     );
     const header = await stuck.locator('.file-header').boundingBox();

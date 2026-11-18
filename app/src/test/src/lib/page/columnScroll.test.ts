@@ -1,7 +1,11 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
-import { followColumns, snappedLeft } from '../../../../lib/page/columnScroll';
+import {
+  followColumns,
+  scrollToColumn,
+  snappedLeft,
+} from '../../../../lib/page/columnScroll';
 
 function scrolledAcross(smooth: boolean) {
   const dom = new JSDOM('<!doctype html><div id="wide"></div>');
@@ -54,6 +58,7 @@ function scrolledAcross(smooth: boolean) {
         run();
       }
     },
+    stop,
     close: () => {
       stop();
       Object.assign(globalThis, saved);
@@ -110,6 +115,22 @@ suite('Scrolling sideways by whole columns', () => {
       assert.strictEqual(atOnce, 0);
       assert.ok(under > 0 && under < 80, String(under));
       assert.strictEqual(left(), 160);
+    } finally {
+      close();
+    }
+  });
+
+  test('lands a scrollbar dragged sideways on a whole column of the element whose wheel it follows, as the wheel lands, on its end though that falls between columns, and wherever it is dragged to once nothing follows the element', () => {
+    const { element, left, stop, close } = scrolledAcross(false);
+    try {
+      scrollToColumn(element, 83);
+      const dragged = left();
+      scrollToColumn(element, 5000);
+      const end = left();
+      stop();
+      scrollToColumn(element, 83);
+
+      assert.deepStrictEqual([dragged, end, left()], [80, 1603, 83]);
     } finally {
       close();
     }

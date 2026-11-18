@@ -78,20 +78,14 @@ suite('A diff shown anew', () => {
     );
   });
 
-  test('moves the code of both sides of a side by side diff sideways by a rule of its own for their code alone, not by a variable every element under the diff inherits, as the browser worked out the style of every element of the diff again each time the variable changed, 31 ms a frame of a scroll sideways', () => {
-    const split = shown(true, false);
-    const [, id] = /data-split="([^"]+)"/.exec(split) ?? [];
-    assert.ok(id);
-    assert.ok(
-      split.includes(
-        `<style>.diff-view[data-split="${id}"] .split-code .code{transform:translateX(-40px)}</style>`,
-      ),
-      split.slice(0, 600),
-    );
-    for (const html of [split, shown(false, false), shown(true, true)]) {
-      assert.doesNotMatch(html, /--split-scroll/);
+  test('draws a diff with no rule and no variable for where it is scrolled sideways, inline or side by side, as a variable every element under the diff inherits had the browser work out the style of every element of the diff again each step, 31 ms a frame, and a rule for the code of every line 3.4 ms, the code of each line being moved on its own element instead', () => {
+    for (const html of [
+      shown(true, false),
+      shown(false, false),
+      shown(true, true),
+      shown(false, true),
+    ]) {
+      assert.doesNotMatch(html, /--split-scroll|<style>|data-split/);
     }
-    assert.doesNotMatch(shown(false, false), /<style>/);
-    assert.doesNotMatch(shown(true, true), /<style>/);
   });
 });

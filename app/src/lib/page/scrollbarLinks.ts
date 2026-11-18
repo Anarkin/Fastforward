@@ -30,6 +30,23 @@ export function sidewaysScrollerOf(
   return sidewaysScrollers.get(element);
 }
 
+const columnWidths = new WeakMap<Element, () => number>();
+
+export function setColumnWidth(
+  element: Element,
+  width: (() => number) | undefined,
+): void {
+  if (width) {
+    columnWidths.set(element, width);
+  } else {
+    columnWidths.delete(element);
+  }
+}
+
+export function columnWidthOf(element: Element): number {
+  return columnWidths.get(element)?.() ?? 0;
+}
+
 const rowScrollers = new WeakMap<Element, (scrollTop: number) => void>();
 
 export function setRowScroller(

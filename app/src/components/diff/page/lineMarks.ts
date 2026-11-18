@@ -33,6 +33,7 @@ export interface CodeProps {
   readonly columnsIn?: ColumnsIn;
   readonly dotLook?: DotLook | undefined;
   readonly dotColumns?: readonly [number, number] | undefined;
+  readonly placed?: ((code: HTMLElement | null) => void) | undefined;
 }
 
 const unmarked: readonly never[] = [];

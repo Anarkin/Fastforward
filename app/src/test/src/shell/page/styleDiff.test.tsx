@@ -66,7 +66,7 @@ suite('Style', () => {
     );
   });
 
-  test('widens every row of an inline diff to its widest line and past it by the minimap, so short lines stay tinted, the strips between files and hunks reach across when scrolled sideways, and the widest line ends before the minimap', () => {
+  test('makes every row of an inline diff as wide as the diff, as those of one side by side are, so short lines stay tinted and the strips between files and hunks reach across, the code alone moving sideways within its row', () => {
     const rows = allWithClass(
       diffView(
         <DiffViewShown />,
@@ -81,11 +81,7 @@ suite('Style', () => {
     );
     assert.strictEqual(rows.length, 3);
     for (const row of rows) {
-      looks(row, {
-        'min-width':
-          'max(100%, var(--diff-content-width, 0px) + var(--minimap-width))',
-        width: 'max-content',
-      });
+      looks(row, { width: '100%' });
     }
   });
 
@@ -186,7 +182,6 @@ suite('Style', () => {
       display: 'flex',
       height: '100%',
       width: '100%',
-      'margin-left': 'var(--visible-left, 0px)',
     });
     const panes = allWithClass(view, 'image-pane');
     for (const pane of panes) {

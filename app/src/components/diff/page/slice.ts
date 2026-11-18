@@ -99,7 +99,6 @@ const diffPlaceFor =
 
 const drawnAlike = (one: DiffPlace, other: DiffPlace) =>
   one.toggled === other.toggled &&
-  one.sideways === other.sideways &&
   one.current === other.current &&
   one.currentFor === other.currentFor;
 

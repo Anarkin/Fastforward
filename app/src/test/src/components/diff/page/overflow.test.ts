@@ -3,12 +3,11 @@ import { suite, test } from 'vitest';
 import {
   areaColumns,
   hiddenChanges,
-  inlineArea,
   revealChange,
   revealFound,
   revealScroll,
   dottedColumns,
-  shownSideways,
+  sidewaysRoom,
   sideArea,
   textColumn,
   visibleColumns,
@@ -35,19 +34,34 @@ const drawnWidths: TextWidths = {
 };
 
 suite('Overflow', () => {
-  test('dots the spaces of an unwrapped line only in the columns in sight and a stretch either side, in steps of 128 columns so scrolling sideways draws them anew only now and then, each new set of dots taking some 38 ms to draw for the rows in view, as a line of thousands of characters took the browser longer to dot whole than to show', () => {
+  test('dots the spaces of an unwrapped line only in the columns in sight and two stretches of 128 columns either side, as a line of thousands of characters took the browser longer to dot whole than to show, and keeps those very columns until the ones in sight come within 64 of their end, so scrolling sideways draws the dots anew some 200 columns apart, each new set taking some 30 ms to draw for the rows in view, rather than twice every 128', () => {
     const view = { scrolled: 720, width: 800, room: 5000, minimap: 40 };
-    assert.deepStrictEqual(dottedColumns(view, 8), [-128, 384]);
+    const first = dottedColumns(view, 8);
+    assert.deepStrictEqual(first, [-256, 512]);
+    assert.strictEqual(
+      dottedColumns({ ...view, scrolled: 724 }, 8, first),
+      first,
+    );
+    assert.strictEqual(
+      dottedColumns({ ...view, scrolled: 2776 }, 8, first),
+      first,
+    );
+    const further = dottedColumns({ ...view, scrolled: 2792 }, 8, first);
+    assert.deepStrictEqual(further, [0, 768]);
+    assert.strictEqual(
+      dottedColumns({ ...view, scrolled: 520 }, 8, further),
+      further,
+    );
     assert.deepStrictEqual(
-      dottedColumns({ ...view, scrolled: 724 }, 8),
-      [-128, 384],
+      dottedColumns({ ...view, scrolled: 400 }, 8, further),
+      [-256, 512],
     );
     assert.deepStrictEqual(
       dottedColumns({ ...view, scrolled: 0 }, 8),
-      [-128, 256],
+      [-256, 384],
     );
-    assert.strictEqual(dottedColumns(undefined, 8), undefined);
-    assert.strictEqual(dottedColumns(view, 0), undefined);
+    assert.strictEqual(dottedColumns(undefined, 8, first), undefined);
+    assert.strictEqual(dottedColumns(view, 0, first), undefined);
   });
 
   test('counts the columns before an index, a tab reaching the next stop of 4', () => {
@@ -149,14 +163,14 @@ suite('Overflow', () => {
       { left: undefined, right: word },
     );
     const view = { scrolled: 0, width: 600, room: 3000, minimap: 40 };
-    const area = inlineArea(view, 2);
+    const area = sideArea(view, true);
     assert.strictEqual(
       revealChange(view, area, text, word, drawnWidths),
-      118 + 211 * 8 + 16 - 280,
+      6 + 211 * 8 + 16 - 280,
     );
     assert.strictEqual(
       revealFound(view, area, text, word, drawnWidths),
-      118 + 211 * 8 + 16 - 280,
+      6 + 211 * 8 + 16 - 280,
     );
   });
 
@@ -183,13 +197,15 @@ suite('Overflow', () => {
     assert.strictEqual(revealScroll(1150, 1160, 200, 1000), 1000);
   });
 
-  test('takes the sideways scroll of side by side sides from the latest state, not from when they were measured', () => {
-    const measured = { scrolled: 120, width: 600, room: 900, minimap: 40 };
-    assert.deepStrictEqual(shownSideways(measured, true, 0), {
-      ...measured,
-      scrolled: 0,
-    });
-    assert.strictEqual(shownSideways(measured, false, 0), measured);
+  test('leaves as much room to scroll sideways as the widest line of the whole diff reaches past the text shown, with its padding on either side and the minimap, whatever rows are drawn, so scrolling down to shorter lines moves nothing sideways, and none while every line fits', () => {
+    assert.deepStrictEqual(
+      [
+        sidewaysRoom(200, 7.5, 600, 40),
+        sidewaysRoom(13, 7.5, 600, 40),
+        sidewaysRoom(100, 7.2, 600, 40),
+      ],
+      [2 * 6 + 1500 + 40 - 600, 0, 2 * 6 + 720 + 40 - 600],
+    );
   });
 
   test('marks a place words were inserted on the other line, though it has no width', () => {
@@ -217,12 +233,6 @@ suite('Overflow', () => {
 
   test('leaves out the line numbers, the padding, the minimap and room for a marker on each edge', () => {
     const view = { scrolled: 200, width: 600, room: 900, minimap: 40 };
-    const inline = inlineArea(view, 2);
-    assert.deepStrictEqual(inline, { origin: 118, visible: 560 });
-    assert.deepStrictEqual(areaColumns(view, inline, 10), {
-      first: 10,
-      last: 62.4,
-    });
     assert.deepStrictEqual(sideArea(view, false), { origin: 6, visible: 600 });
     assert.deepStrictEqual(sideArea(view, true), { origin: 6, visible: 560 });
     assert.deepStrictEqual(areaColumns(view, sideArea(view, false), 10), {
@@ -236,12 +246,12 @@ suite('Overflow', () => {
     assert.strictEqual(
       revealChange(
         view,
-        inlineArea(view, 2),
+        sideArea(view, true),
         'a'.repeat(100),
         { start: 80, end: 84 },
         monospace(10),
       ),
-      118 + 820 - 280,
+      6 + 820 - 280,
     );
   });
 
@@ -252,22 +262,22 @@ suite('Overflow', () => {
       const shown = { ...view, scrolled };
       return revealFound(
         shown,
-        inlineArea(shown, 2),
+        sideArea(shown, true),
         text,
         { start, end },
         monospace(8),
       );
     };
-    assert.strictEqual(reveal(0, 300, 304), 118 + 2416 - 280);
+    assert.strictEqual(reveal(0, 300, 304), 6 + 2416 - 280);
     assert.strictEqual(reveal(2000, 0, 4), 0);
     assert.strictEqual(reveal(0, 10, 14), 0);
     assert.strictEqual(reveal(50, 10, 14), 50);
-    assert.strictEqual(reveal(0, 55, 59), 118 + 456 - 280);
+    assert.strictEqual(reveal(0, 69, 73), 6 + 568 - 280);
   });
 });
 
 suite('Diff row heights', () => {
-  test('measures how far the widest line of an inline diff reaches, a tab to its next stop, to widen every row to it', () => {
+  test('measures how far the widest line of a diff reaches, a tab to its next stop, on either side of one side by side, as that is how far it scrolls sideways', () => {
     const files = parsePatch(
       [
         'diff --git a/a.ts b/a.ts',
@@ -281,6 +291,10 @@ suite('Diff row heights', () => {
     );
     assert.strictEqual(
       widestColumns(diffRows(files, new Map(), undefined)),
+      13,
+    );
+    assert.strictEqual(
+      widestColumns(diffRows(files, new Map(), undefined, undefined, true)),
       13,
     );
     assert.strictEqual(

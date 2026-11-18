@@ -120,7 +120,6 @@ function leftAsWorked(store: StoreApi<GitState>): void {
   state().keepFocus(scope, { name: 'diff-find', selection: [1, 2, 'forward'] });
   state().keepDiffPlace(scope, at, {
     top: 120,
-    left: 8,
     sideways: 4,
     anchor: { shows: ['a.txt', '3'], fraction: 0.5 },
     toggled: new Map([['a.txt', false]]),
@@ -180,9 +179,7 @@ suite('Git store, keeping the view of each tab', () => {
     const focused = { ...located, focus: { name: 'files' } };
     const placed = {
       ...focused,
-      places: [
-        [at, { top: 120, sideways: 0, left: 0, toggled: [], current: 0 }],
-      ],
+      places: [[at, { top: 120, sideways: 0, toggled: [], current: 0 }]],
     };
     assert.deepStrictEqual(
       keptSent(shell).map((sent) => sent.view),
@@ -329,7 +326,6 @@ suite('Git store, keeping the view of each tab', () => {
                   {
                     top: 5,
                     sideways: 0,
-                    left: 0,
                     toggled: [['a.txt', true]],
                     current: 1,
                   },
@@ -370,7 +366,6 @@ suite('Git store, keeping the view of each tab', () => {
           top: 5,
           anchor: undefined,
           sideways: 0,
-          left: 0,
           toggled: new Map([['a.txt', true]]),
           current: 1,
         },

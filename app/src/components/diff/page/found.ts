@@ -1,5 +1,5 @@
 import type { FindMatch } from './find';
-import { inlineArea, revealFound, sideArea, type Sideways } from './overflow';
+import { revealFound, sideArea, type Sideways } from './overflow';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { DiffRow } from './rows';
 import type { Edges } from './textLayout';
@@ -14,13 +14,13 @@ export function foundScroll(
     case 'line':
       return revealFound(
         view,
-        inlineArea(view, 2),
+        sideArea(view, true),
         row.line.text,
         found,
         widths,
       );
     case 'wholeLine':
-      return revealFound(view, inlineArea(view, 1), row.text, found, widths);
+      return revealFound(view, sideArea(view, true), row.text, found, widths);
     case 'split': {
       const right = row.right?.index === found.line;
       const cell = right ? row.right : row.left;

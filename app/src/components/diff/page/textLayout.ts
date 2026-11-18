@@ -9,7 +9,6 @@ declare module 'react' {
     readonly '--diff-number-width'?: string;
     readonly '--diff-code-padding'?: string;
     readonly '--diff-marker-width'?: string;
-    readonly '--diff-content-width'?: string;
     readonly '--diff-word-padding-top'?: string;
     readonly '--diff-gap-width'?: string;
     readonly '--diff-word-padding-bottom'?: string;
@@ -18,8 +17,6 @@ declare module 'react' {
     readonly '--diff-snap-right'?: string;
     readonly '--diff-side-snap'?: string;
     readonly '--wrap-indent'?: string;
-    readonly '--visible-left'?: string;
-    readonly '--visible-right'?: string;
   }
 }
 
@@ -27,16 +24,6 @@ export const numberWidth = 56;
 export const codePadding = 6;
 export const markerWidth = 14;
 export const markerInset = 2;
-
-export function lineWidth(
-  columns: number,
-  numbers: number,
-  charWidth: number,
-): number {
-  return (
-    numbers * numberWidth + 2 * codePadding + Math.ceil(columns * charWidth)
-  );
-}
 
 export const unmeasured: WrapColumns = { left: Infinity, right: Infinity };
 

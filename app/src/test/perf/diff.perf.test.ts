@@ -225,4 +225,19 @@ suite('Frames of the diff tool on a table padded with spaces', () => {
     await page.keyboard.up('Shift');
     assert.ok(result.frames.updates > 0);
   });
+
+  test('scrolling the padded table sideways inline, unwrapped', async () => {
+    const { page } = perf();
+    await page.locator('.compare-view .segmented button').first().click();
+    await diff().focus();
+    await sleep(500);
+    await page.keyboard.down('Shift');
+    const result = await measure(
+      perf(),
+      'diff: padded table, inline, unwrapped, sideways',
+      () => wheelNotches(page, diff(), 40),
+    );
+    await page.keyboard.up('Shift');
+    assert.ok(result.frames.updates > 0);
+  });
 });

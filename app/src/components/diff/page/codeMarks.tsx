@@ -162,6 +162,7 @@ export const Code = memo(function Code({
   columnsIn,
   dotLook,
   dotColumns,
+  placed,
 }: CodeProps) {
   const layered = whitespace && dotLook !== undefined && breaksMarked(text);
   const draw = (from?: number, to?: number) => (
@@ -183,6 +184,7 @@ export const Code = memo(function Code({
   return (
     <span
       className="code"
+      ref={placed}
       style={
         indent
           ? { '--wrap-indent': `calc(${indent} * var(--diff-advance))` }
@@ -213,7 +215,7 @@ export const Code = memo(function Code({
                 ),
           )}
           look={dotLook}
-          left="var(--diff-code-padding)"
+          left="0"
           alone
         />
       )}

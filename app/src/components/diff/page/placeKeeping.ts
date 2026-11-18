@@ -13,7 +13,6 @@ export function useKeptPlace({
   settled,
   virtualizer,
   anchors,
-  scrollsSides,
   reveal,
   line,
 }: {
@@ -23,7 +22,6 @@ export function useKeptPlace({
   readonly settled: boolean;
   readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
   readonly anchors: readonly (readonly string[])[];
-  readonly scrollsSides: boolean;
   readonly reveal: (scrolled: number) => void;
   readonly line: number;
 }): void {
@@ -41,7 +39,7 @@ export function useKeptPlace({
           )) ??
         target.top;
       virtualizer.scrollToOffset(top);
-      reveal(scrollsSides ? target.sideways : target.left);
+      reveal(target.sideways);
     },
     { key: list, on: list, within: placeWithin, beforePaint: true },
   );
@@ -52,7 +50,6 @@ export function useKeptPlace({
     }
     onPlace({
       top: element.scrollTop,
-      left: element.scrollLeft,
       anchor: scrollAnchor(
         virtualizer.measurementsCache,
         anchors,

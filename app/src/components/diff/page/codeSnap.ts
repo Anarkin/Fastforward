@@ -56,7 +56,7 @@ export function codeStarts(list: HTMLElement): {
   return {
     inline: codeStart(
       row,
-      row?.querySelector('.code'),
+      row?.querySelector('.split-code'),
       row?.parentElement?.getBoundingClientRect().left ?? 0,
     ),
     left: codeStart(left, left?.querySelector('.split-code'), splitLeft),

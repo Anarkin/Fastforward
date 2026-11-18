@@ -131,7 +131,7 @@ suite('Style', () => {
     );
   });
 
-  test('draws a line in the color of the line over the status of a column at the end of the column of line numbers, in the editor, the diff, side by side too, and the viewer, so the numbers stand apart from the text', () => {
+  test('draws a line in the color of the line over the status of a column at the end of the column of line numbers, in the editor, the diff, side by side too, and the viewer, on a strip of its own there that stays put over the text scrolled sideways, so the numbers stand apart from the text', () => {
     const status = rendered(<div className="column-status" />);
     const line = cascaded(status, 'box-shadow')?.split(' ').at(-1);
     assert.strictEqual(line, 'var(--color-border)');
@@ -140,10 +140,13 @@ suite('Style', () => {
       <div className="diff-line">
         <span className="number">1</span>
         <span className="number">1</span>
-        <span className="code">a</span>
+        <span className="split-code">
+          <span className="code">a</span>
+        </span>
       </div>,
     );
-    looks(withClass(inline, 'code'), { 'box-shadow': edge });
+    looks(withClass(inline, 'split-code'), { 'box-shadow': edge });
+    looks(withClass(inline, 'code'), { 'box-shadow': undefined });
     const split = rendered(
       <div className="diff-line split-side">
         <span className="number">1</span>
@@ -166,9 +169,12 @@ suite('Style', () => {
     looks(withClass(editor, 'cm-lineNumbers'), {
       'box-shadow': `inset calc(-1 * var(--hairline)) 0 ${line}`,
     });
-    const viewer = rendered(<div className="viewer-rows numbered" />);
+    const viewer = rendered(<div className="viewer-gutter numbered" />);
     looks(viewer, {
-      'min-height': '100%',
+      position: 'absolute',
+      top: '0',
+      bottom: '0',
+      width: 'calc(var(--line-number-width) + var(--line-number-gap))',
       'background-image': `linear-gradient(${line}, ${line})`,
       'background-position':
         'calc(var(--line-number-width) - var(--hairline)) 0',

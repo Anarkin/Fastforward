@@ -1,4 +1,6 @@
+import { useSyncExternalStore } from 'react';
 import type { DiffLine } from './diff';
+import type { SidewaysShown } from './sidewaysShown';
 import type { FindRange } from './find';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
@@ -130,11 +132,13 @@ export function DiffSkeleton({
   );
 }
 
+const edges = ['left', 'right'] as const;
+
 export function HiddenChangeMarks({
   text,
   words,
   kind,
-  view,
+  shown,
   area,
   widths,
   place,
@@ -143,19 +147,28 @@ export function HiddenChangeMarks({
   text: string;
   words: readonly FindRange[];
   kind: DiffLine['kind'];
-  view: Sideways;
-  area: TextArea;
+  shown: SidewaysShown;
+  area: (view: Sideways) => TextArea;
   widths: TextWidths;
   place: (edge: 'left' | 'right') => React.CSSProperties;
   onReveal: (scrolled: number) => void;
 }) {
-  const columns = areaColumns(view, area, widths.char);
-  if (!columns || words.length === 0 || kind === 'context') {
-    return null;
-  }
-  const hidden = hiddenChanges(text, words, columns, widths);
-  return (['left', 'right'] as const).map((edge) => {
-    const word = hidden[edge];
+  const hiddenNow = () => {
+    const view = shown.read();
+    const columns =
+      view && words.length > 0 && kind !== 'context'
+        ? areaColumns(view, area(view), widths.char)
+        : undefined;
+    const hidden = columns && hiddenChanges(text, words, columns, widths);
+    return edges
+      .map((edge) => (hidden?.[edge] ? words.indexOf(hidden[edge]) : -1))
+      .join(' ');
+  };
+  const hidden = useSyncExternalStore(shown.subscribe, hiddenNow, hiddenNow)
+    .split(' ')
+    .map((index) => words[Number(index)]);
+  return edges.map((edge, side) => {
+    const word = hidden[side];
     return (
       word && (
         <button
@@ -165,7 +178,12 @@ export function HiddenChangeMarks({
           tabIndex={-1}
           style={place(edge)}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => onReveal(revealChange(view, area, text, word, widths))}
+          onClick={() => {
+            const view = shown.read();
+            if (view) {
+              onReveal(revealChange(view, area(view), text, word, widths));
+            }
+          }}
         >
           {edge === 'left'
             ? strings.symbols.hiddenLeft

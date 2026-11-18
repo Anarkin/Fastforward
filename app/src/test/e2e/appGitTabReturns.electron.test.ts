@@ -358,6 +358,25 @@ suite('App git tabs shown again', () => {
     await page.locator('.locations-popup').waitFor({ state: 'detached' });
   });
 
+  test('brings a compare tab back scrolled as it was left with nothing found in it, once another tab was shown and once the settings are saved, as its files compared anew arriving after its view sent it back to its first change, as showing the whole file does', async () => {
+    await showTab(page, compareTab);
+    await page
+      .locator('.compare-view .diff-view .diff-line.added', {
+        hasText: 'row row',
+      })
+      .first()
+      .waitFor();
+    await settledLooks(page);
+    await scrolledAround(page);
+    const top = () =>
+      page
+        .locator('.compare-view .diff-view .virtual-rows')
+        .evaluate((element) => element.scrollTop);
+    assert.ok((await top()) > 100, `the diff scrolled to ${await top()}`);
+    await comesBackAsLeft(page, 0, 'A compare tab scrolled, shown again');
+    await comesBackReloaded('A compare tab scrolled');
+  });
+
   test('brings a compare tab back as it was left once the settings are saved, its diff found in and scrolled', async () => {
     await showTab(page, compareTab);
     await findInDiff(

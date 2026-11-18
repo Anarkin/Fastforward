@@ -1,13 +1,14 @@
 import {
+  startTransition,
   useCallback,
   useEffect,
   useEffectEvent,
+  useLayoutEffect,
   useRef,
   useState,
   type RefObject,
 } from 'react';
-import { afterPaint } from '../../../lib/page/afterPaint';
-import { followColumns } from '../../../lib/page/columnScroll';
+import { followColumns, snappedLeft } from '../../../lib/page/columnScroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { elementMetrics } from '../../../lib/page/scrollerMetrics';
 import {
@@ -16,76 +17,148 @@ import {
 } from '../../../lib/page/scrollbarLinks';
 import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
 import {
-  sideRoom,
+  codeShift,
   sideScroll,
+  sideWidth,
   swipedSideways,
   wheelsSideways,
 } from './sidewaysScroll';
-import type { Sideways } from './overflow';
+import { dottedColumns, sidewaysRoom, type Sideways } from './overflow';
+import { sidewaysShown, type SidewaysShown } from './sidewaysShown';
 
-export function readSideways(
-  element: HTMLElement,
-  scrollsSides: boolean,
-): Sideways {
-  const minimap =
-    parseFloat(getComputedStyle(element).getPropertyValue('--minimap-width')) ||
-    0;
-  if (scrollsSides) {
-    const { side, widest } = sideRoom(element);
-    return { scrolled: 0, width: side, room: widest, minimap };
-  }
+export interface SideBox {
+  readonly width: number;
+  readonly minimap: number;
+}
+
+export function readSideBox(element: HTMLElement): SideBox {
   return {
-    scrolled: element.scrollLeft,
-    width: element.clientWidth,
-    room: element.scrollWidth - element.clientWidth,
-    minimap,
+    width: sideWidth(element),
+    minimap:
+      parseFloat(
+        getComputedStyle(element).getPropertyValue('--minimap-width'),
+      ) || 0,
   };
 }
 
-const sameSideways = (a: Sideways | undefined, b: Sideways) =>
-  a?.scrolled === b.scrolled &&
-  a.width === b.width &&
-  a.room === b.room &&
-  a.minimap === b.minimap;
+type DotColumns = readonly [number, number] | undefined;
+
+const sameColumns = (one: DotColumns, other: DotColumns) =>
+  one?.[0] === other?.[0] && one?.[1] === other?.[1];
+
+const movedCode = '.diff-row .split-code > .code';
 
 export function useSideways(
   listRef: RefObject<HTMLDivElement | null>,
-  scrollsSides: boolean,
   wordWrap: boolean,
-  sideways: number,
-  setSideways: (sideways: number) => void,
+  kept: number,
+  keep: (sideways: number) => void,
   advance: number,
+  scale: number,
   scrolling: ScrollSettings,
+  widest: number,
 ): {
-  readonly measured: Sideways | undefined;
+  readonly shown: SidewaysShown;
+  readonly dotColumns: DotColumns;
+  readonly room: number | undefined;
+  readonly placeCode: (code: HTMLElement | null) => void;
+  readonly scrolledNow: () => number;
+  readonly scrollTo: (left: number) => void;
   readonly measureSideways: () => void;
 } {
-  const scrolledSideways = useRef(sideways);
-  const advanceNow = useEffectEvent(() => advance);
+  const scrolled = useRef(kept);
+  const [shown] = useState(() => sidewaysShown());
+  const [box, setBox] = useState<SideBox>();
+  const [dotColumns, setDotColumns] = useState<DotColumns>();
+  const dotted = useRef<DotColumns>(undefined);
+  const room =
+    box && !wordWrap
+      ? sidewaysRoom(widest, advance, box.width, box.minimap)
+      : undefined;
+  const now = useRef({ wordWrap, scale, advance, box, room });
+  const viewNow = useCallback((): Sideways | undefined => {
+    const { box: side, room: most } = now.current;
+    return side && most !== undefined
+      ? {
+          scrolled: scrolled.current,
+          width: side.width,
+          room: most,
+          minimap: side.minimap,
+        }
+      : undefined;
+  }, []);
+  const dotAround = useCallback(
+    (atOnce: boolean) => {
+      const next = dottedColumns(
+        viewNow(),
+        now.current.advance,
+        dotted.current,
+      );
+      if (sameColumns(next, dotted.current)) {
+        return;
+      }
+      dotted.current = next;
+      if (atOnce) {
+        setDotColumns(next);
+      } else {
+        startTransition(() => setDotColumns(next));
+      }
+    },
+    [viewNow],
+  );
+  const scrollTo = useCallback(
+    (left: number) => {
+      if (left === scrolled.current) {
+        return;
+      }
+      scrolled.current = left;
+      const shift = now.current.wordWrap
+        ? ''
+        : codeShift(left, now.current.scale);
+      for (const code of listRef.current?.querySelectorAll<HTMLElement>(
+        movedCode,
+      ) ?? []) {
+        code.style.transform = shift;
+      }
+      shown.set(viewNow());
+      dotAround(false);
+      listRef.current?.dispatchEvent(new Event(sidewaysScrollEvent));
+      keep(left);
+    },
+    [listRef, shown, keep, viewNow, dotAround],
+  );
+  const placeCode = useCallback(
+    (code: HTMLElement | null) => {
+      if (code) {
+        code.style.transform = wordWrap
+          ? ''
+          : codeShift(scrolled.current, scale);
+      }
+    },
+    [wordWrap, scale],
+  );
+  useLayoutEffect(() => {
+    now.current = { wordWrap, scale, advance, box, room };
+    shown.set(viewNow());
+    dotAround(true);
+  }, [wordWrap, scale, advance, box, room, shown, viewNow, dotAround]);
   const perNotch = useEffectEvent(() => scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);
-  const [measured, setMeasured] = useState<Sideways>();
   useEffect(() => {
     const element = listRef.current;
     if (!element || wordWrap) {
       return undefined;
     }
-    if (!scrollsSides) {
-      return followColumns(element, {
-        turned: wheelsSideways,
-        advance: advanceNow,
-        perNotch,
-        smooth,
-      });
-    }
+    const roomNow = () => now.current.room ?? 0;
+    const sideNow = () => now.current.box?.width ?? 0;
     const following = followColumns(element, {
       turned: wheelsSideways,
-      advance: advanceNow,
+      advance: () => now.current.advance,
       perNotch,
       smooth,
-      scrolled: () => scrolledSideways.current,
-      room: () => sideRoom(element).widest,
-      scrollTo: setSideways,
+      scrolled: () => scrolled.current,
+      room: roomNow,
+      scrollTo,
     });
     const onWheel = (event: WheelEvent) => {
       const delta = swipedSideways(event);
@@ -93,48 +166,43 @@ export function useSideways(
         return;
       }
       event.preventDefault();
-      setSideways(
-        sideScroll(scrolledSideways.current + delta, sideRoom(element).widest),
-      );
+      scrollTo(sideScroll(scrolled.current + delta, roomNow()));
     };
     element.addEventListener('wheel', onWheel, { passive: false });
     setSidewaysScroller(element, {
-      metrics: () => {
-        const { side, widest } = sideRoom(element);
-        return sidewaysMetrics(
+      metrics: () =>
+        sidewaysMetrics(
           elementMetrics(element),
-          side,
-          widest,
-          scrolledSideways.current,
-        );
-      },
-      scrollTo: (scrollLeft) => {
-        const { side, widest } = sideRoom(element);
-        const left = sidewaysScroll(scrollLeft, element.clientWidth, side);
-        setSideways(Math.max(0, Math.min(widest, left)));
-      },
+          sideNow(),
+          roomNow(),
+          scrolled.current,
+        ),
+      scrollTo: (scrollLeft) =>
+        scrollTo(
+          snappedLeft(
+            sidewaysScroll(scrollLeft, element.clientWidth, sideNow()),
+            now.current.advance,
+            roomNow(),
+          ),
+        ),
     });
     return () => {
       following();
       element.removeEventListener('wheel', onWheel);
       setSidewaysScroller(element, undefined);
     };
-  }, [listRef, scrollsSides, wordWrap, setSideways]);
-  useEffect(() => {
-    if (scrolledSideways.current !== sideways) {
-      scrolledSideways.current = sideways;
-      listRef.current?.dispatchEvent(new Event(sidewaysScrollEvent));
-    }
-  }, [listRef, sideways]);
+  }, [listRef, wordWrap, scrollTo]);
   const measureSideways = useCallback(() => {
     const element = listRef.current;
     if (!element || wordWrap) {
-      setMeasured(undefined);
+      setBox(undefined);
       return;
     }
-    const next = readSideways(element, scrollsSides);
-    setMeasured((last) => (sameSideways(last, next) ? last : next));
-  }, [listRef, wordWrap, scrollsSides]);
+    const next = readSideBox(element);
+    setBox((last) =>
+      last?.width === next.width && last.minimap === next.minimap ? last : next,
+    );
+  }, [listRef, wordWrap]);
   useEffect(() => {
     const element = listRef.current;
     if (!element) {
@@ -142,13 +210,16 @@ export function useSideways(
     }
     const observer = new ResizeObserver(measureSideways);
     observer.observe(element);
-    const painted = afterPaint(measureSideways);
-    element.addEventListener('scroll', painted.ask, { passive: true });
-    return () => {
-      observer.disconnect();
-      element.removeEventListener('scroll', painted.ask);
-      painted.cancel();
-    };
+    return () => observer.disconnect();
   }, [listRef, measureSideways]);
-  return { measured, measureSideways };
+  const scrolledNow = useCallback(() => scrolled.current, []);
+  return {
+    shown,
+    dotColumns,
+    room,
+    placeCode,
+    scrolledNow,
+    scrollTo,
+    measureSideways,
+  };
 }

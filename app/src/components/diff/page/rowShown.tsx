@@ -19,8 +19,8 @@ import { lineKey } from './lines';
 import { imagePanes } from './imagePanes';
 import { ImageDiff } from './imagePreview';
 import { wholeImageUrl, type ImageOrigin } from './images';
-import { inlineArea, sideArea, type Sideways, type TextArea } from './overflow';
-import { markerInset, markerWidth, numberWidth } from './textLayout';
+import { sideArea, type Sideways, type TextArea } from './overflow';
+import { markerInset, numberWidth } from './textLayout';
 import type { WrapColumns } from './rowMeasures';
 import { sideSnaps } from './codeSnap';
 import type { WordRanges } from './wordDiff';
@@ -202,12 +202,14 @@ export function DiffRowShown({
         >
           <span className="number">{row.line.oldNumber}</span>
           <span className="number">{row.line.newNumber}</span>
-          {code(
-            keys[index].at(0),
-            row.line.text,
-            row.line.kind,
-            wrapping?.left,
-          )}
+          <span className="split-code">
+            {code(
+              keys[index].at(0),
+              row.line.text,
+              row.line.kind,
+              wrapping?.left,
+            )}
+          </span>
           <WrapMarks
             text={row.line.text}
             columns={wrapping?.left}
@@ -220,13 +222,11 @@ export function DiffRowShown({
           {hiddenMarks(
             keys[index].at(0),
             row.line,
-            (shown) => inlineArea(shown, 2),
+            (shown) => sideArea(shown, true),
             (edge) =>
               edge === 'left'
-                ? { left: `calc(var(--visible-left) + ${markerInset}px)` }
-                : {
-                    left: `calc(var(--visible-right) - ${markerInset + markerWidth}px)`,
-                  },
+                ? { left: 2 * numberWidth + markerInset }
+                : { right: `calc(var(--minimap-width) + ${markerInset}px)` },
           )}
         </div>
       );
@@ -285,7 +285,9 @@ export function DiffRowShown({
       return (
         <div className="diff-line text-line">
           <span className="number">{row.number}</span>
-          {code(keys[index].at(0), row.text, undefined, wrapping?.left)}
+          <span className="split-code">
+            {code(keys[index].at(0), row.text, undefined, wrapping?.left)}
+          </span>
           <WrapMarks
             text={row.text}
             columns={wrapping?.left}

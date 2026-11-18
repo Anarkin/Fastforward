@@ -103,15 +103,17 @@ export function InlineLine({
       >
         <span className="number">1</span>
         <span className="number">1</span>
-        <span className="code">
-          <MarkedCode
-            text={'a b c'}
-            syntax={[]}
-            words={words}
-            wordClass={kind === 'removed' ? 'word-removed' : 'word-added'}
-            found={finds}
-            foundNow={current}
-          />
+        <span className="split-code">
+          <span className="code">
+            <MarkedCode
+              text={'a b c'}
+              syntax={[]}
+              words={words}
+              wordClass={kind === 'removed' ? 'word-removed' : 'word-added'}
+              found={finds}
+              foundNow={current}
+            />
+          </span>
         </span>
         {marker && <button className={`hidden-change left ${kind}`} />}
       </div>

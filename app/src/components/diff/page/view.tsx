@@ -3,7 +3,6 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -25,17 +24,10 @@ import { ownScrollbarAttribute } from '../../../lib/page/overlayScrollbars';
 import { type ImageOrigin } from './images';
 import { useSkeleton } from '../../../lib/page/skeletonDelay';
 import { wrapIndent } from '../../../lib/page/wordWrap';
-import { snapOffset } from '../../../lib/page/devicePixels';
 import { snappedTop, type RowFollower } from '../../../lib/page/rowScroll';
 import type { DiffLook } from './look';
 import type { DiffMeasures, DiffMeasuring } from './measures';
-import {
-  dottedColumns,
-  shownSideways,
-  widestColumns,
-  type Sideways,
-  type TextArea,
-} from './overflow';
+import { widestColumns, type Sideways, type TextArea } from './overflow';
 import { cellWidthsOf } from '../../../lib/page/textWidths';
 import {
   type WholeFile,
@@ -48,7 +40,6 @@ import {
 import { showsSideBySide, splitPairs } from './sideBySideRows';
 import { rowMeasures, rowHeight } from './rowMeasures';
 import { RowContent, rowsAround, rowsRoom } from './rowContent';
-import { sideScroll, sideRoom } from './sidewaysScroll';
 import { rowAnchors, useScrollAnchor } from './scrollAnchor';
 import { unplaced, type DiffPlace } from './place';
 import type { PlaceChange } from './slice';
@@ -62,12 +53,12 @@ import {
 } from './lineMarks';
 import { useDiffMinimapMarks } from './minimapChanges';
 import { Code } from './codeMarks';
-import { unmeasured, gapWidth, layoutVariables, lineWidth } from './textLayout';
+import { unmeasured, gapWidth, layoutVariables } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
 import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './rowShown';
 import { useSideways } from './sideways';
-import { splitShift } from './sidewaysScroll';
+import { snappedLeft } from '../../../lib/page/columnScroll';
 import { useFoundJumps, useRevealFound } from './jumps';
 import { useLargeFileLoads } from './largeFiles';
 import { diffRowClass, diffRowPlace } from './rowClasses';
@@ -134,9 +125,7 @@ export function DiffView({
     wholePaths,
   } = look;
   const list = useRef<HTMLDivElement>(null);
-  const splitId = useId();
   const split = showsSideBySide(sideBySide, whole);
-  const scrollsSides = split && !wordWrap;
   const columns = measures.wrapColumns;
   const { keepWrapColumns } = measuring;
   const {
@@ -152,28 +141,10 @@ export function DiffView({
     snap,
   } = useDiffText(list, measures, measuring);
   const dots = showWhitespace ? dotLook : undefined;
-  const sideways = keptPlace?.sideways ?? unplaced.sideways;
+  const keptSideways = keptPlace?.sideways ?? unplaced.sideways;
   const setSideways = useCallback(
     (scrolled: number) => onPlace({ sideways: scrolled }),
     [onPlace],
-  );
-  const { measured, measureSideways } = useSideways(
-    list,
-    scrollsSides,
-    wordWrap,
-    sideways,
-    setSideways,
-    charWidth,
-    scrolling,
-  );
-  const view = measured && shownSideways(measured, scrollsSides, sideways);
-  const [dotsFrom, dotsTo] = dottedColumns(view, charWidth) ?? [];
-  const dotColumns = useMemo(
-    () =>
-      dotsFrom === undefined || dotsTo === undefined
-        ? undefined
-        : ([dotsFrom, dotsTo] as const),
-    [dotsFrom, dotsTo],
   );
   const changeColumns = keepWrapColumns;
   const toggled = keptPlace?.toggled ?? unplaced.toggled;
@@ -270,10 +241,26 @@ export function DiffView({
   const keys = useMemo(() => lineKeys(rows), [rows]);
   const widest = useMemo(
     () =>
-      split || wordWrap
-        ? 0
-        : widestColumns(rows, widths.char > 0 ? widths : undefined),
-    [rows, split, wordWrap, widths],
+      wordWrap ? 0 : widestColumns(rows, widths.char > 0 ? widths : undefined),
+    [rows, wordWrap, widths],
+  );
+  const {
+    shown,
+    dotColumns,
+    room,
+    placeCode,
+    scrolledNow,
+    scrollTo,
+    measureSideways,
+  } = useSideways(
+    list,
+    wordWrap,
+    keptSideways,
+    setSideways,
+    charWidth,
+    scale,
+    scrolling,
+    widest,
   );
   const words = useMemo(
     () =>
@@ -373,37 +360,31 @@ export function DiffView({
       columnsIn={columnsIn}
       dotLook={dots}
       dotColumns={dotColumns}
+      placed={placeCode}
     />
   );
 
   const reveal = useCallback(
-    (scrolled: number) => {
-      if (scrollsSides) {
-        setSideways(scrolled);
-      } else if (list.current) {
-        list.current.scrollLeft = scrolled;
-      }
-    },
-    [scrollsSides, setSideways],
+    (scrolled: number) => scrollTo(snappedLeft(scrolled, charWidth, Infinity)),
+    [scrollTo, charWidth],
   );
   const hiddenMarks = (
     key: string | undefined,
     line: DiffLine,
     area: (shown: Sideways) => TextArea,
     place: (edge: 'left' | 'right') => React.CSSProperties,
-  ) =>
-    view && (
-      <HiddenChangeMarks
-        text={line.text}
-        words={changedWords(words, key)}
-        kind={line.kind}
-        view={view}
-        area={area(view)}
-        widths={widths}
-        place={place}
-        onReveal={reveal}
-      />
-    );
+  ) => (
+    <HiddenChangeMarks
+      text={line.text}
+      words={changedWords(words, key)}
+      kind={line.kind}
+      shown={shown}
+      area={area}
+      widths={widths}
+      place={place}
+      onReveal={reveal}
+    />
+  );
 
   const rowParts: DiffRowParts = {
     error,
@@ -445,16 +426,12 @@ export function DiffView({
     showWhitespace,
     dots,
     dotColumns,
+    placeCode,
     wrapping,
     lineHeight,
     columnsIn,
     widths,
     reveal,
-    view === undefined,
-    view?.scrolled,
-    view?.width,
-    view?.room,
-    view?.minimap,
   ];
 
   const items = virtualizer.getVirtualItems();
@@ -462,15 +439,12 @@ export function DiffView({
     shownRow.current = items[0]?.index ?? 0;
   }, [items]);
   useLayoutEffect(() => {
-    const element = list.current;
-    if (element && scrollsSides && sideways > 0) {
-      const within = sideScroll(sideways, sideRoom(element).widest);
-      if (within !== sideways) {
-        setSideways(within);
-      }
+    if (room !== undefined && scrolledNow() > room) {
+      scrollTo(room);
     }
-  }, [items, rows, scrollsSides, sideways, setSideways]);
-  useLayoutEffect(measureSideways, [measureSideways, items, rows]);
+  }, [room, scrolledNow, scrollTo]);
+  const drawsRows = items.length > 0;
+  useLayoutEffect(measureSideways, [measureSideways, drawsRows, rows]);
   useRevealFound({
     list,
     revealing,
@@ -482,8 +456,8 @@ export function DiffView({
     rows,
     wordWrap,
     widths,
-    scrollsSides,
-    sideways,
+    room: room ?? 0,
+    scrolledNow,
     reveal,
     virtualizer,
     lineHeight,
@@ -523,7 +497,6 @@ export function DiffView({
       ),
     virtualizer,
     anchors,
-    scrollsSides,
     reveal,
     line: lineHeight,
   });
@@ -531,7 +504,6 @@ export function DiffView({
   return (
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
-      data-split={splitId}
       onMouseDown={(event) => {
         const side = selectionSide(
           event.target instanceof Element ? event.target : null,
@@ -550,23 +522,8 @@ export function DiffView({
         '--diff-word-padding-top': `${padding.top}px`,
         '--diff-word-padding-bottom': `${padding.bottom}px`,
         '--diff-gap-width': `${gapWidth(scale)}px`,
-        ...(!split &&
-          !wordWrap &&
-          charWidth > 0 && {
-            '--diff-content-width': `${lineWidth(widest, whole ? 1 : 2, charWidth)}px`,
-          }),
-        ...(view &&
-          !scrollsSides && {
-            '--visible-left': `${view.scrolled}px`,
-            '--visible-right': `${view.scrolled + view.width - view.minimap}px`,
-          }),
       }}
     >
-      {scrollsSides && (
-        <style>
-          {splitShift(splitId, sideways + snapOffset(sideways, scale))}
-        </style>
-      )}
       <Minimap
         marks={marks}
         scroller={list}
@@ -587,9 +544,9 @@ export function DiffView({
         }}
         onKeyDown={(event) =>
           diffKeyDown(event, {
-            scrollsSides,
-            sideways,
-            setSideways,
+            sideways: scrolledNow(),
+            room,
+            setSideways: scrollTo,
             widths,
             follower,
             virtualizer,

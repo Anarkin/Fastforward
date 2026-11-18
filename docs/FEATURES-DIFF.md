@@ -51,7 +51,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Next change | Move from change to change | J, K | Common | ✅ Yes | J and K, from the files too |
 | Find in the diff | Search the diff's text | Mod+F | Common | ✅ Yes | Mod+F; Aa matches the case, W whole words and .* a regular expression within a line, as every search of the app |
-| Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | While lines are not wrapped; the wheel with Shift moves `scrolling.wheelRows` columns a notch onto whole columns, gliding with `scrolling.smooth`, as it moves rows, in the viewer and the editor too |
+| Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | While lines are not wrapped; the wheel with Shift moves `scrolling.wheelRows` columns a notch onto whole columns, gliding with `scrolling.smooth`, as it moves rows, and the scrollbar dragged lands on whole columns too, the line numbers and the gap after them staying where they are, inline as side by side, the text cut where its first column starts, in the viewer and the editor too |
 
 ## Not text
 

@@ -86,6 +86,10 @@ suite('App diff filler', () => {
         activeTab: '1',
       }),
     );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ text: { wordWrap: true } }),
+    );
     app = await launchApp(profile);
     page = await app.firstWindow();
     await page.locator('.commit', { hasText: 'second' }).click();

@@ -7,13 +7,13 @@ import type { TextWidths } from '../../../lib/page/textWidths';
 import { diffKeymap } from './keymap';
 import type { DiffRow } from './rows';
 import { changeStarts, keyedScrollTop } from './scrolling';
-import { diffScrollLeft, sideRoom } from './sidewaysScroll';
+import { diffScrollLeft } from './sidewaysScroll';
 
 export function diffKeyDown(
   event: KeyboardEvent<HTMLDivElement>,
   {
-    scrollsSides,
     sideways,
+    room,
     setSideways,
     widths,
     follower,
@@ -21,8 +21,8 @@ export function diffKeyDown(
     rows,
     lineHeight,
   }: {
-    readonly scrollsSides: boolean;
     readonly sideways: number;
+    readonly room: number | undefined;
     readonly setSideways: (sideways: number) => void;
     readonly widths: TextWidths;
     readonly follower: RefObject<RowFollower | undefined>;
@@ -33,28 +33,12 @@ export function diffKeyDown(
 ): void {
   const side = keyPressed(diffKeymap.sideways, event);
   const left =
-    side === undefined
+    side === undefined || room === undefined
       ? undefined
-      : scrollsSides
-        ? diffScrollLeft(
-            side,
-            sideways,
-            sideRoom(event.currentTarget).widest,
-            widths.char,
-          )
-        : diffScrollLeft(
-            side,
-            event.currentTarget.scrollLeft,
-            undefined,
-            widths.char,
-          );
+      : diffScrollLeft(side, sideways, room, widths.char);
   if (left !== undefined) {
     event.preventDefault();
-    if (scrollsSides) {
-      setSideways(left);
-    } else {
-      event.currentTarget.scrollLeft = left;
-    }
+    setSideways(left);
     return;
   }
   const step = keyPressed(diffKeymap.change, event);

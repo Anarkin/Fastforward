@@ -19,7 +19,6 @@ export interface DiffPlace {
   readonly top: number;
   readonly anchor: ScrollAnchor | undefined;
   readonly sideways: number;
-  readonly left: number;
   readonly toggled: ReadonlyMap<string, boolean>;
   readonly current: number;
   readonly currentFor?: Search;
@@ -29,7 +28,6 @@ export const unplaced: DiffPlace = {
   top: 0,
   anchor: undefined,
   sideways: 0,
-  left: 0,
   toggled: new Map(),
   current: 0,
 };
@@ -61,7 +59,6 @@ const placeFields = record({
     record({ shows: list(text(), { whole: true }), fraction: count() }),
   ),
   sideways: count({ min: 0 }),
-  left: count({ min: 0 }),
   toggled: keyed(text(), flag(), { max: 1000 }),
   current: count({ min: 0, integer: true }),
   currentFor: optional(searchSchema),

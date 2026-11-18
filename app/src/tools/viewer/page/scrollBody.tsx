@@ -15,7 +15,7 @@ import { wheeled } from '../../../lib/shared/keymap';
 import { viewerKeymap } from './keymap';
 import { sidewaysColumns } from '../../../lib/page/scrollSettings';
 import { wheelTurn } from '../../../lib/page/wheelTurns';
-import { followColumns } from '../../../lib/page/columnScroll';
+import { followColumns, scrollToColumn } from '../../../lib/page/columnScroll';
 import { useShell } from '../../../shell/page/store';
 import { hideAfter } from '../../../lib/page/scrollbarGeometry';
 import { wrapColumns } from '../../../lib/page/wordWrap';
@@ -136,9 +136,10 @@ export function ScrollBody({
   }, []);
   useEffect(() => () => clearTimeout(hiding.current), []);
   useEffect(() => body.current?.focus(), []);
+  const failed = error !== undefined;
   useEffect(() => {
-    const element = body.current;
-    if (element === null) {
+    const element = sideways.current;
+    if (element === null || failed) {
       return undefined;
     }
     return followColumns(element, {
@@ -147,17 +148,8 @@ export function ScrollBody({
       advance: () => advance.current,
       perNotch,
       smooth,
-      scrolled: () => sideways.current?.scrollLeft ?? 0,
-      room: () =>
-        (sideways.current?.scrollWidth ?? 0) -
-        (sideways.current?.clientWidth ?? 0),
-      scrollTo: (left) => {
-        if (sideways.current) {
-          sideways.current.scrollLeft = left;
-        }
-      },
     });
-  }, []);
+  }, [failed]);
 
   useLayoutEffect(() => {
     const element = body.current;
@@ -238,9 +230,13 @@ export function ScrollBody({
         const across = keyPressed(viewerKeymap.scrollSideways, event);
         if (across !== undefined) {
           event.preventDefault();
-          sideways.current?.scrollBy({
-            left: across * sidewaysColumns * advance.current,
-          });
+          if (sideways.current) {
+            scrollToColumn(
+              sideways.current,
+              sideways.current.scrollLeft +
+                across * sidewaysColumns * advance.current,
+            );
+          }
           return;
         }
         const step = keyPressed(viewerKeymap.scroll, event);
@@ -278,6 +274,9 @@ export function ScrollBody({
       >
         {probeText}
       </div>
+      {error === undefined && (
+        <div className={`viewer-gutter${numbered ? ' numbered' : ''}`} />
+      )}
       {error === undefined ? (
         <div
           className="viewer-sideways"

@@ -11,9 +11,8 @@ import type { DiffRow } from './rows';
 import { changeMargin, changeStarts, firstChangeTop } from './scrolling';
 import { foundEdges, foundMiddle, foundScroll } from './found';
 import { jumpStep, type FindMatch } from './find';
-import { shownSideways } from './overflow';
 import { rowLines } from './rowMeasures';
-import { readSideways } from './sideways';
+import { readSideBox } from './sideways';
 
 export function useFoundJumps({
   jump,
@@ -78,6 +77,7 @@ export function useFoundJumps({
   }, [jump, found, foundKey, loading, rows, keys, virtualizer, setToggled]);
 
   const changeJumped = useRef(placed ? firstChange : undefined);
+  const cameBackPlaced = useRef(placed);
   useEffect(() => {
     if (
       firstChange === undefined ||
@@ -86,8 +86,10 @@ export function useFoundJumps({
     ) {
       return;
     }
+    const keptPlace =
+      cameBackPlaced.current && changeJumped.current === undefined;
     changeJumped.current = firstChange;
-    if (found !== undefined) {
+    if (found !== undefined || keptPlace) {
       return;
     }
     const top = firstChangeTop(
@@ -114,8 +116,8 @@ export function useRevealFound({
   rows,
   wordWrap,
   widths,
-  scrollsSides,
-  sideways,
+  room,
+  scrolledNow,
   reveal,
   virtualizer,
   lineHeight,
@@ -130,8 +132,8 @@ export function useRevealFound({
   readonly rows: readonly DiffRow[];
   readonly wordWrap: boolean;
   readonly widths: TextWidths;
-  readonly scrollsSides: boolean;
-  readonly sideways: number;
+  readonly room: number;
+  readonly scrolledNow: () => number;
   readonly reveal: (scrolled: number) => void;
   readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
   readonly lineHeight: number;
@@ -177,11 +179,7 @@ export function useRevealFound({
     if (widths.char === 0) {
       return;
     }
-    const shown = shownSideways(
-      readSideways(element, scrollsSides),
-      scrollsSides,
-      sideways,
-    );
+    const shown = { ...readSideBox(element), scrolled: scrolledNow(), room };
     const scrolled = foundScroll(rows[index], found, shown, widths);
     if (scrolled !== undefined && scrolled !== shown.scrolled) {
       reveal(scrolled);
@@ -197,8 +195,8 @@ export function useRevealFound({
     rows,
     wordWrap,
     widths,
-    scrollsSides,
-    sideways,
+    room,
+    scrolledNow,
     reveal,
     virtualizer,
     lineHeight,

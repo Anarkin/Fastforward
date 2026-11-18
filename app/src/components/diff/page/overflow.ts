@@ -2,12 +2,7 @@ import type { FindRange } from './find';
 import type { DiffRow } from './rows';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type TextWidths } from '../../../lib/page/textWidths';
-import {
-  codePadding,
-  markerInset,
-  markerWidth,
-  numberWidth,
-} from './textLayout';
+import { codePadding, markerInset, markerWidth } from './textLayout';
 
 export interface Columns {
   readonly first: number;
@@ -33,8 +28,15 @@ export function widestColumns(
 ): number {
   let widest = 0;
   for (const row of rows) {
-    if (row.kind === 'line' || row.kind === 'wholeLine') {
-      const text = row.kind === 'line' ? row.line.text : row.text;
+    const texts =
+      row.kind === 'line'
+        ? [row.line.text]
+        : row.kind === 'wholeLine'
+          ? [row.text]
+          : row.kind === 'split'
+            ? [row.left?.line.text ?? '', row.right?.line.text ?? '']
+            : [];
+    for (const text of texts) {
       widest = Math.max(widest, textColumn(text, text.length, widths));
     }
   }
@@ -89,37 +91,43 @@ export interface Sideways {
 }
 
 const dotStretch = 128;
+const dotStretches = 2;
+const dotsLeft = dotStretch / 2;
 
 export function dottedColumns(
   view: Sideways | undefined,
   charWidth: number,
+  last?: readonly [number, number],
 ): readonly [number, number] | undefined {
   if (view === undefined || !(charWidth > 0)) {
     return undefined;
   }
-  const from = Math.floor(view.scrolled / charWidth / dotStretch);
-  const to = Math.ceil((view.scrolled + view.width) / charWidth / dotStretch);
-  return [(from - 1) * dotStretch, (to + 1) * dotStretch];
+  const first = view.scrolled / charWidth;
+  const end = (view.scrolled + view.width) / charWidth;
+  if (last && first - dotsLeft >= last[0] && end + dotsLeft <= last[1]) {
+    return last;
+  }
+  return [
+    (Math.floor(first / dotStretch) - dotStretches) * dotStretch,
+    (Math.ceil(end / dotStretch) + dotStretches) * dotStretch,
+  ];
 }
 
-export function shownSideways(
-  measured: Sideways,
-  scrollsSides: boolean,
-  sideways: number,
-): Sideways {
-  return scrollsSides ? { ...measured, scrolled: sideways } : measured;
+export function sidewaysRoom(
+  columns: number,
+  charWidth: number,
+  width: number,
+  minimap: number,
+): number {
+  return Math.max(
+    0,
+    2 * codePadding + Math.ceil(columns * charWidth) + minimap - width,
+  );
 }
 
 export interface TextArea {
   readonly origin: number;
   readonly visible: number;
-}
-
-export function inlineArea(view: Sideways, numbers: number): TextArea {
-  return {
-    origin: numbers * numberWidth + codePadding,
-    visible: view.width - view.minimap,
-  };
 }
 
 export function sideArea(view: Sideways, last: boolean): TextArea {

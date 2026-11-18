@@ -282,7 +282,7 @@ suite('Drawing code', () => {
     const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} text={'a b  c\t'} />),
-      `<span class="code">a b  c${tab}<span class="dot-rows" aria-hidden="true" style="left:var(--diff-code-padding);background-image:linear-gradient(to right,${dot(0)},${dot(2)},${dot(3)},transparent 0);background-position:8px var(--dot-top);background-size:32px var(--space-dot)"></span></span>`,
+      `<span class="code">a b  c${tab}<span class="dot-rows" aria-hidden="true" style="left:0;background-image:linear-gradient(to right,${dot(0)},${dot(2)},${dot(3)},transparent 0);background-position:8px var(--dot-top);background-size:32px var(--space-dot)"></span></span>`,
     );
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} text="ab" />),

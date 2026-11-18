@@ -199,8 +199,12 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the height of the diff, measured anew by a resize observer once mounted',
   'components/diff/page/jumps.ts revealing':
     'a moment: the match brought into view after a jump, set only until it is drawn',
-  'components/diff/page/sideways.ts measured':
-    'a measure: the sideways room of the diff, measured anew from its layout once mounted',
+  'components/diff/page/sideways.ts box':
+    'a measure: how wide a side of the diff and its minimap are, measured anew from its layout once mounted',
+  'components/diff/page/sideways.ts dotColumns':
+    'a measure: the columns of an unwrapped diff whose spaces are dotted, worked out anew from where it is scrolled sideways once mounted',
+  'components/diff/page/sideways.ts shown':
+    'made once: where the diff is scrolled sideways, for the marks of hidden changes to follow without their lines drawn anew, set from the kept place once mounted',
   'components/diff/page/view.tsx dragged':
     'a moment: true only while the thumb of the minimap is dragged',
   'tools/git/page/filesColumn.tsx filterAsked':

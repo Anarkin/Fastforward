@@ -1,5 +1,6 @@
 import { glideAt, glideEnded, type Glide } from './glide';
 import { rowGlide } from './rowScroll';
+import { columnWidthOf, setColumnWidth } from './scrollbarLinks';
 import { wheelTurn } from './wheelTurns';
 
 export function snappedLeft(
@@ -10,6 +11,14 @@ export function snappedLeft(
   const end = Math.max(0, room);
   const snapped = advance > 0 ? Math.round(left / advance) * advance : left;
   return Math.max(0, Math.min(end, snapped));
+}
+
+export function scrollToColumn(element: Element, left: number): void {
+  element.scrollLeft = snappedLeft(
+    left,
+    columnWidthOf(element),
+    element.scrollWidth - element.clientWidth,
+  );
 }
 
 type SidewaysWheel = WheelEvent & {
@@ -109,8 +118,10 @@ export function followColumns(
     frame ??= requestAnimationFrame(animate);
   };
   element.addEventListener('wheel', onWheel, { passive: false });
+  setColumnWidth(element, advance);
   return () => {
     settle();
     element.removeEventListener('wheel', onWheel);
+    setColumnWidth(element, undefined);
   };
 }

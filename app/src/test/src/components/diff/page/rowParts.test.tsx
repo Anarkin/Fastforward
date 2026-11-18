@@ -1,12 +1,20 @@
 import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
+import { act } from 'react';
 import {
   FileNote,
   FileHeader,
   DiffSkeleton,
+  HiddenChangeMarks,
   HunkDivider,
 } from '../../../../../components/diff/page/rowParts';
+import {
+  revealChange,
+  sideArea,
+} from '../../../../../components/diff/page/overflow';
+import { sidewaysShown } from '../../../../../components/diff/page/sidewaysShown';
+import { clicked, mounted } from '../../../../helpers/mounted';
 import { tagsWith } from '../../../../helpers/markup';
 import { PathLooksContext } from '../../../../../lib/page/pathLooks';
 import { fileColorsOf } from '../../../../../lib/page/fileColors';
@@ -157,5 +165,62 @@ suite('Files to view', () => {
       viewHeader(() => {}),
       /<button class="nav-button file-header-button" title="View the File in a Tab of Its Own">/,
     );
+  });
+});
+
+suite('Changes hidden off to the side', () => {
+  test('marks a change scrolled out of sight on a step sideways, and unmarks it once back, without the line it is on being drawn anew, as a step drew every row of the diff again to move its marks, and scrolls to the change from where the diff is scrolled to by then', async () => {
+    const view = { scrolled: 0, width: 600, room: 3000, minimap: 0 };
+    const shown = sidewaysShown(view);
+    const widths = { char: 8, of: () => 8 };
+    const text = 'a'.repeat(400);
+    const word = { start: 2, end: 6 };
+    const revealed: number[] = [];
+    let lines = 0;
+    function Line() {
+      lines++;
+      return (
+        <HiddenChangeMarks
+          text={text}
+          words={[word]}
+          kind="added"
+          shown={shown}
+          area={(seen) => sideArea(seen, false)}
+          widths={widths}
+          place={() => ({})}
+          onReveal={(scrolled) => revealed.push(scrolled)}
+        />
+      );
+    }
+    await mounted(<Line />, (main) => {
+      const marks = () =>
+        [...main.querySelectorAll('.hidden-change')].map(
+          (mark) => mark.className,
+        );
+      const atRest = marks();
+      act(() => shown.set({ ...view, scrolled: 800 }));
+      const scrolledAway = marks();
+      clicked(main.querySelector('.hidden-change'));
+      act(() => shown.set({ ...view, scrolled: 0 }));
+
+      assert.deepStrictEqual(
+        [atRest, scrolledAway, marks(), lines, revealed],
+        [
+          [],
+          ['hidden-change left added'],
+          [],
+          1,
+          [
+            revealChange(
+              { ...view, scrolled: 800 },
+              sideArea(view, false),
+              text,
+              word,
+              widths,
+            ),
+          ],
+        ],
+      );
+    });
   });
 });
