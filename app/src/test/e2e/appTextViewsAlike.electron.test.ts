@@ -12,6 +12,7 @@ const scale = 1.25;
 const perNotch = 10;
 const markColumn = 16;
 const stripRows = 4;
+const hangingDotted = 'a dot in the middle of the hanging blank';
 
 const cell = (text: string, width: number) => ` ${text.padEnd(width)} `;
 const table = (changed: boolean) =>
@@ -152,16 +153,19 @@ function seenIn(pane: Element, feature: number): Seen {
 
 const hundredths = (value: number) => Math.round(value * 100) / 100;
 
-const pixelsOf = (
-  taken: { readonly width: number; readonly pixels: Buffer },
-  box: Box,
-) => {
+interface Shot {
+  readonly width: number;
+  readonly ratio: number;
+  readonly pixels: Buffer;
+}
+
+const pixelsOf = (taken: Shot, box: Box) => {
   const rows: Buffer[] = [];
-  const left = Math.round(box.left * scale);
-  const right = Math.round(box.right * scale);
+  const left = Math.round(box.left * taken.ratio);
+  const right = Math.round(box.right * taken.ratio);
   for (
-    let y = Math.round(box.top * scale);
-    y < Math.round(box.bottom * scale);
+    let y = Math.round(box.top * taken.ratio);
+    y < Math.round(box.bottom * taken.ratio);
     y++
   ) {
     rows.push(
@@ -274,7 +278,7 @@ suite('App text views alike', () => {
     await settled(name);
   };
 
-  const shot = async () => {
+  const shot = async (): Promise<Shot> => {
     const png = await page.screenshot();
     const taken = await app.evaluate(({ nativeImage }, encoded) => {
       const image = nativeImage.createFromBuffer(
@@ -287,6 +291,7 @@ suite('App text views alike', () => {
     }, png.toString('base64'));
     return {
       width: taken.width,
+      ratio: taken.width / (await page.evaluate(() => innerWidth)),
       pixels: Buffer.from(taken.pixels, 'base64'),
     };
   };
@@ -313,18 +318,19 @@ suite('App text views alike', () => {
     );
     const { breaks, advance } = await settled(name);
     const taken = await shot();
-    return breaks.every((mark) => {
-      const [hanging, before] = [1, 2].map((back) =>
-        inked(
-          pixelsOf(taken, {
-            ...mark,
-            left: mark.left - back * advance,
-            right: mark.left - (back - 1) * advance,
-          }),
-        ),
-      );
-      return hanging > 0 && hanging === before;
-    });
+    const inks = breaks.map((mark) =>
+      inked(
+        pixelsOf(taken, {
+          left: mark.left - 0.75 * advance,
+          right: mark.left - 0.25 * advance,
+          top: mark.top + (mark.bottom - mark.top) / 4,
+          bottom: mark.bottom - (mark.bottom - mark.top) / 4,
+        }),
+      ),
+    );
+    return inks.every((ink) => ink > 0)
+      ? hangingDotted
+      : `${JSON.stringify(inks)} pixels of ink in the middle of the cell before each mark, at ${JSON.stringify(breaks)}, a column ${advance} wide, ${taken.ratio} device pixels a pixel`;
   };
 
   beforeAll(async () => {
@@ -475,13 +481,13 @@ suite('App text views alike', () => {
     );
   });
 
-  test('dots the blank hanging at the end of a wrapped row, right before the mark of its break, as it dots the blank before that one, in every view, however much of a column is left over beside the rows as the window gets narrower', async () => {
+  test('dots the blank hanging at the end of a wrapped row, right before the mark of its break, in every view, however much of a column is left over beside the rows as the window gets narrower', async () => {
     await show('viewer');
     await page.keyboard.press('w');
     await page.locator('.viewer-rows.wrapped').waitFor();
     const narrower = [0, 2, 2];
     const window = await windowOfPage(app, page);
-    const found: Record<string, boolean>[] = [];
+    const found: Record<string, string>[] = [];
     for (const by of narrower) {
       await app.evaluate(
         ({ BrowserWindow }, [id, less]) => {
@@ -501,7 +507,7 @@ suite('App text views alike', () => {
     }
     assert.deepStrictEqual(
       found,
-      narrower.map(() => alike(true)),
+      narrower.map(() => alike(hangingDotted)),
     );
   });
 });

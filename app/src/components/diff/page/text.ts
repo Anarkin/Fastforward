@@ -5,6 +5,7 @@ import {
   useLayoutEffect,
   useMemo,
   type RefObject,
+  useRef,
 } from 'react';
 import type { ColumnsIn } from '../../../lib/page/rowBreaks';
 import { textWidths, type TextWidths } from '../../../lib/page/textWidths';
@@ -19,8 +20,49 @@ import { uniformHeight } from './rowMeasures';
 import { unpadded, type Edges } from './textLayout';
 import { codeSnapOf, codeStarts, sameSnap, type CodeSnap } from './codeSnap';
 
-export function useDiffText(
+export function useCodeSnap(
   listRef: RefObject<HTMLDivElement | null>,
+  snapDiffCode: DiffMeasuring['snapCode'],
+  laidOut: readonly unknown[],
+): void {
+  const snapCode = useCallback(() => {
+    const element = listRef.current;
+    if (!element) {
+      return false;
+    }
+    const starts = codeStarts(element);
+    snapDiffCode((last) => {
+      const next = codeSnapOf(starts, devicePixelRatio, last);
+      return sameSnap(last, next) ? last : next;
+    });
+    return (
+      starts.inline !== undefined ||
+      (starts.left !== undefined && starts.right !== undefined)
+    );
+  }, [listRef, snapDiffCode]);
+  const snapped = useRef<readonly unknown[]>(undefined);
+  useLayoutEffect(() => {
+    const kept = snapped.current;
+    if (
+      kept?.length === laidOut.length &&
+      kept.every((part, at) => Object.is(part, laidOut[at]))
+    ) {
+      return;
+    }
+    snapped.current = snapCode() ? laidOut : undefined;
+  });
+  useEffect(() => {
+    const element = listRef.current;
+    if (!element) {
+      return undefined;
+    }
+    const observer = new ResizeObserver(snapCode);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [listRef, snapCode]);
+}
+
+export function useDiffText(
   measures: DiffMeasures,
   measuring: DiffMeasuring,
 ): {
@@ -43,7 +85,7 @@ export function useDiffText(
   readonly snap: CodeSnap;
 } {
   const measuredText = measures.text;
-  const { measureText: measureDiffText, snapCode: snapDiffCode } = measuring;
+  const { measureText: measureDiffText } = measuring;
   const charWidth = measuredText?.charWidth ?? 0;
   const font = measuredText?.font ?? '';
   const spacing = measuredText?.spacing ?? 0;
@@ -84,26 +126,6 @@ export function useDiffText(
     [measureDiffText],
   );
   const { snap } = measures;
-  const snapCode = useCallback(() => {
-    const element = listRef.current;
-    if (!element) {
-      return;
-    }
-    snapDiffCode((last) => {
-      const next = codeSnapOf(codeStarts(element), devicePixelRatio, last);
-      return sameSnap(last, next) ? last : next;
-    });
-  }, [listRef, snapDiffCode]);
-  useLayoutEffect(snapCode);
-  useEffect(() => {
-    const element = listRef.current;
-    if (!element) {
-      return undefined;
-    }
-    const observer = new ResizeObserver(snapCode);
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, [listRef, snapCode]);
   return {
     table,
     charWidth,

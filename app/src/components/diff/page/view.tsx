@@ -59,11 +59,12 @@ import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './rowShown';
 import { useSideways } from './sideways';
 import { snappedLeft } from '../../../lib/page/columnScroll';
+import { useLaterRows } from '../../../lib/page/laterRows';
 import { useFoundJumps, useRevealFound } from './jumps';
 import { useLargeFileLoads } from './largeFiles';
 import { diffRowClass, diffRowPlace } from './rowClasses';
 import { FileHeader, HiddenChangeMarks } from './rowParts';
-import { useDiffText } from './text';
+import { useCodeSnap, useDiffText } from './text';
 import { useDiffFollow } from './follow';
 import { diffKeyDown } from './keys';
 
@@ -139,7 +140,7 @@ export function DiffView({
     lineHeight,
     measureText,
     snap,
-  } = useDiffText(list, measures, measuring);
+  } = useDiffText(measures, measuring);
   const dots = showWhitespace ? dotLook : undefined;
   const keptSideways = keptPlace?.sideways ?? unplaced.sideways;
   const setSideways = useCallback(
@@ -165,6 +166,13 @@ export function DiffView({
     [files, toggled, whole, skeleton, sideBySide, table],
   );
 
+  useCodeSnap(list, measuring.snapCode, [
+    rows,
+    split,
+    wordWrap,
+    charWidth,
+    scale,
+  ]);
   const wrapping = wordWrap ? columns : undefined;
   const [dragged, setDragged] = useState(false);
   const { observeOffset, offsetSeen, laidOut } =
@@ -179,18 +187,20 @@ export function DiffView({
     shownRow,
     Boolean(error),
   );
+  const rowsNow = useLaterRows((range) =>
+    rowsAround(
+      range,
+      (index) =>
+        laidOut.current?.measurementsCache[index]?.size ??
+        heights.estimateSize(index),
+      rowsRoom(dragged, laidOut.current?.scrollRect?.height ?? 0),
+    ),
+  );
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
     ...heights,
-    rangeExtractor: (range) =>
-      rowsAround(
-        range,
-        (index) =>
-          laidOut.current?.measurementsCache[index]?.size ??
-          heights.estimateSize(index),
-        rowsRoom(dragged, laidOut.current?.scrollRect?.height ?? 0),
-      ),
+    rangeExtractor: rowsNow,
     observeElementOffset: observeOffset,
   });
   const scrollTarget = useRef<number>(undefined);

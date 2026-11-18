@@ -1,4 +1,9 @@
-import { useVirtualizer, type Rect } from '@tanstack/react-virtual';
+import {
+  defaultRangeExtractor,
+  useVirtualizer,
+  type Rect,
+} from '@tanstack/react-virtual';
+import { useLaterRows } from './laterRows';
 import {
   memo,
   useCallback,
@@ -95,9 +100,11 @@ export function VirtualRows({
   const listId = useId();
   const [fixedHeight, setFixedHeight] = useState<number>();
   const { observeOffset, offsetSeen } = useSeenOffsets<HTMLDivElement>();
+  const rowsNow = useLaterRows(defaultRangeExtractor);
   const virtualizer = useVirtualizer({
     count: rows.count,
     getScrollElement: () => list.current,
+    rangeExtractor: rowsNow,
     estimateSize: useCallback(
       () => fixedHeight ?? estimatedRowHeight,
       [fixedHeight],

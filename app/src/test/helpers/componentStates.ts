@@ -9,6 +9,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the line, column and selection, read from the editor state as the view is made and as it changes',
   'tools/viewer/page/pdfPreview.ts match':
     'made once: the helper that steps back to the match a tab kept, handed that match from the store once mounted',
+  'lib/page/laterRows.ts extended':
+    'a moment: the rows around the view a list is to draw once the frame that scrolled it is painted, worked out anew from where it is scrolled to once mounted',
   'lib/page/cellTable.ts table':
     'made once: the table of cell widths, loaded once for the page and read from the module as mounted',
   'lib/page/dialogDrag.ts place':
