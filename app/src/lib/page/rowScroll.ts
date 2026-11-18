@@ -62,6 +62,7 @@ const moveSteps: Readonly<Record<ListMove, (page: number) => number>> = {
 
 export interface RowFollower extends HeldScroller {
   readonly aim: () => number;
+  readonly glidingTo: () => number | undefined;
   readonly scrollTo: (top: number, glides: boolean) => void;
   readonly reveals: () => void;
   readonly stop: () => void;
@@ -267,6 +268,7 @@ export function followRows(
   }
   return {
     aim,
+    glidingTo: () => glide?.to,
     scrollTo,
     reveals,
     dragTo,

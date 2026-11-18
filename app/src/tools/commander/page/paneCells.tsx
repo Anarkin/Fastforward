@@ -5,6 +5,7 @@ import { ThumbnailImage } from './thumbnails';
 import { type Entry } from '../shared/protocol';
 import { formatSize } from './format';
 import { cutClass } from './cellFit';
+import { iconWait, sinceScrolled } from './iconAsks';
 import { type Row } from './listing';
 import { HighlightWords } from '../../../lib/page/highlight';
 import type { Filter } from '../../../lib/shared/filter';
@@ -38,14 +39,37 @@ function SystemIcon({
   const [ticket] = useState(() => tickets?.iconTicketOf(url) ?? id);
   const came = useRef(ticket !== id);
   const [shown, setShown] = useState(ticket !== id);
+  const [asked, setAsked] = useState(ticket !== id);
+  useEffect(() => {
+    if (asked) {
+      return undefined;
+    }
+    let staying: ReturnType<typeof setTimeout>;
+    const wait = (time: number) => {
+      staying = setTimeout(() => {
+        const rested = sinceScrolled();
+        if (rested < iconWait) {
+          wait(iconWait - rested);
+        } else {
+          setAsked(true);
+        }
+      }, time);
+    };
+    sinceScrolled();
+    wait(iconWait);
+    return () => clearTimeout(staying);
+  }, [asked]);
   useEffect(
     () => () => {
-      if (!came.current) {
+      if (asked && !came.current) {
         onDropIcon(ticket);
       }
     },
-    [ticket, onDropIcon],
+    [asked, ticket, onDropIcon],
   );
+  if (!asked) {
+    return generic;
+  }
   return (
     <>
       {!shown && generic}

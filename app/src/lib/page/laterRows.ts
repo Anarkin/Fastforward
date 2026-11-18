@@ -41,6 +41,33 @@ export function rowsDrawnNow(
     : [...around];
 }
 
+const rowBatch = 8;
+
+export function aimedRange<Range extends RowRange>(
+  range: Range,
+  aimStart: number | undefined,
+  batch = rowBatch,
+): Range {
+  if (range.count === 0) {
+    return range;
+  }
+  const away = (aimStart ?? range.startIndex) - range.startIndex;
+  if (Math.abs(away) > 5 * batch) {
+    return range;
+  }
+  const ahead = Math.max(-2 * batch, Math.min(2 * batch, away));
+  const start = range.startIndex + Math.min(0, ahead);
+  const end = range.endIndex + Math.max(0, ahead);
+  return {
+    ...range,
+    startIndex: Math.max(0, Math.floor(start / batch) * batch),
+    endIndex: Math.min(
+      range.count - 1,
+      Math.ceil((end + 1) / batch) * batch - 1,
+    ),
+  };
+}
+
 export function useLaterRows<Range extends RowRange>(
   around: (range: Range) => number[],
 ): (range: Range) => number[] {

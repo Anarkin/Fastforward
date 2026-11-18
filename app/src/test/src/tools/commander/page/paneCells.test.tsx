@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import { plainFilter } from '../../../../helpers/filters';
 import { act } from 'react';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
@@ -15,6 +15,20 @@ import {
   RowIcon,
   SizeCell,
 } from '../../../../../tools/commander/page/paneCells';
+import { iconWait } from '../../../../../tools/commander/page/iconAsks';
+
+const stayed = () =>
+  act(
+    () =>
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, iconWait + 30);
+      }),
+  );
+
+const later = (time: number) =>
+  act(async () => {
+    vi.advanceTimersByTime(time);
+  });
 
 const renderToStaticMarkup = (node: React.ReactNode) =>
   markupOf(withStores(node));
@@ -71,6 +85,7 @@ suite('Commander pane', () => {
           </>,
         );
       });
+      await stayed();
       const images = [...main.querySelectorAll('img')];
       const tickets = images.map((image) =>
         new URL(
@@ -92,6 +107,137 @@ suite('Commander pane', () => {
         tickets[images.indexOf(named('waiting') ?? images[0])],
       ]);
     } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('asks for the icon of a file only once its row has stayed a moment, showing the generic one meanwhile, so a row a list glides or pages past asks for none and has none to hand back, as each row of a folder of programs asked for its own icon and handed it back at every step, a fifth of the frames of a glide coming late', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const dropped: string[] = [];
+      const [row] = rowsOf(
+        [
+          {
+            name: 'tool.exe',
+            folder: false,
+            link: false,
+            hidden: false,
+            size: 1,
+            modified: 0,
+          },
+        ],
+        false,
+        true,
+        { column: 'name', descending: false, groupByColor: false },
+      );
+      assert.ok(row);
+      const drawn = () => (
+        <RowIcon
+          row={row}
+          source={{ tab: '1', side: 'left', folder: '/work', name: row.key }}
+          onDropIcon={(ticket) => dropped.push(ticket)}
+        />
+      );
+      const shows = () => ({
+        asked: main.querySelector('img') !== null,
+        generic: main.querySelector('svg') !== null,
+      });
+      await act(async () => root.render(drawn()));
+      const passing = shows();
+      await act(async () => root.render(<></>));
+      const passed = [...dropped];
+      await act(async () => root.render(drawn()));
+      await stayed();
+      const staying = shows();
+      await act(async () => root.unmount());
+
+      assert.deepStrictEqual(
+        { passing, passed, staying, dropped: dropped.length },
+        {
+          passing: { asked: false, generic: true },
+          passed: [],
+          staying: { asked: true, generic: true },
+          dropped: 1,
+        },
+      );
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('asks for the icons only once the list has rested as long, however long their rows have stayed, as the rows of a list scrolled by the wheel stay longer than a moment and each asked for its icon while the list still moved', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const [row] = rowsOf(
+        [
+          {
+            name: 'tool.exe',
+            folder: false,
+            link: false,
+            hidden: false,
+            size: 1,
+            modified: 0,
+          },
+        ],
+        false,
+        true,
+        { column: 'name', descending: false, groupByColor: false },
+      );
+      assert.ok(row);
+      const asked = () => main.querySelector('img') !== null;
+      await act(async () =>
+        root.render(
+          <RowIcon
+            row={row}
+            source={{ tab: '1', side: 'left', folder: '/work', name: row.key }}
+            onDropIcon={noop}
+          />,
+        ),
+      );
+      const seen: boolean[] = [];
+      for (let scroll = 0; scroll < 4; scroll++) {
+        await later(iconWait * 0.6);
+        main.dispatchEvent(new dom.window.Event('scroll'));
+        seen.push(asked());
+      }
+      await later(iconWait * 0.6);
+      seen.push(asked());
+      await later(iconWait * 0.5);
+      seen.push(asked());
+      await act(async () => root.unmount());
+
+      assert.deepStrictEqual(seen, [false, false, false, false, false, true]);
+    } finally {
+      vi.useRealTimers();
       Object.assign(globalThis, saved);
     }
   });
@@ -140,11 +286,13 @@ suite('Commander pane', () => {
           );
         });
       await show('/first');
+      await stayed();
       await act(async () => {
         main.querySelector('img')?.dispatchEvent(new dom.window.Event('error'));
       });
       assert.strictEqual(main.querySelector('img'), null);
       await show('/second');
+      await stayed();
       assert.ok(main.querySelector('img'));
       await act(async () => {
         root.unmount();
@@ -204,6 +352,7 @@ suite('Commander pane', () => {
           </>,
         );
       });
+      await stayed();
       const looks = (name: string) => {
         const icon = main.querySelector(`[data-name="${name}"]`);
         return {
@@ -436,6 +585,7 @@ suite('Commander pane counting the sizes of folders', () => {
         />
       );
       await act(async () => root.render(drawn()));
+      await stayed();
       const first = main.querySelector('img')?.getAttribute('src');
       await act(async () => {
         main.querySelector('img')?.dispatchEvent(new dom.window.Event('load'));

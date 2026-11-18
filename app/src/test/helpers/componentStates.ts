@@ -93,6 +93,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a trigger: counts the asks to focus the filter box; the focus of the tab is kept apart in view.focus',
   'tools/commander/page/pane.tsx pairsClick':
     'made once: a function made once that pairs the two clicks of a double click on one row',
+  'tools/commander/page/paneCells.tsx asked':
+    'a moment: true once the list has rested long enough for the system icon to be asked for, at once when its ticket came before',
   'tools/commander/page/paneCells.tsx failed':
     'a measure: the url of an icon that failed to load, tried again once remounted',
   'tools/commander/page/paneCells.tsx shown':

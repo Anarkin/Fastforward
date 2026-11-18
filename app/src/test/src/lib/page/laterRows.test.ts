@@ -1,6 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { rowsDrawnNow, sameRows } from '../../../../lib/page/laterRows';
+import {
+  aimedRange,
+  rowsDrawnNow,
+  sameRows,
+} from '../../../../lib/page/laterRows';
 
 const span = (first: number, last: number) =>
   Array.from({ length: last - first + 1 }, (_, index) => first + index);
@@ -42,6 +46,46 @@ suite('Rows drawn around a view', () => {
         span(0, 40),
       ),
       span(0, 40),
+    );
+  });
+
+  test('takes the rows a glide is heading for with the rows in view, up to two batches ahead, and both ends out to whole batches, so the rows of a notch of the wheel are drawn in one go and the rows drawn stay the same while the list glides over them, as a row drawn and one dropped at each row passed had a fifth of the frames of a glide come late', () => {
+    const range = { startIndex: 100, endIndex: 142, count: 20_000 };
+    assert.deepStrictEqual(
+      [
+        aimedRange(range, 110, 8),
+        aimedRange({ ...range, startIndex: 103, endIndex: 145 }, 110, 8),
+        aimedRange(range, 90, 8),
+        aimedRange(range, 130, 8),
+        aimedRange(range, undefined, 8),
+      ].map(({ startIndex, endIndex }) => [startIndex, endIndex]),
+      [
+        [96, 159],
+        [96, 159],
+        [88, 143],
+        [96, 159],
+        [96, 143],
+      ],
+    );
+  });
+
+  test('leaves the rows in view as they are for a glide heading far off, a page or more, where drawing ahead would draw a second page at once, and keeps to the rows there are at either end of the list', () => {
+    const range = { startIndex: 100, endIndex: 142, count: 20_000 };
+    assert.deepStrictEqual(
+      [
+        aimedRange(range, 142, 8),
+        aimedRange(range, 58, 8),
+        aimedRange({ startIndex: 0, endIndex: 42, count: 20_000 }, 0, 8),
+        aimedRange({ startIndex: 60, endIndex: 99, count: 100 }, 70, 8),
+        aimedRange({ startIndex: 0, endIndex: 0, count: 0 }, 5, 8),
+      ].map(({ startIndex, endIndex }) => [startIndex, endIndex]),
+      [
+        [100, 142],
+        [100, 142],
+        [0, 47],
+        [56, 99],
+        [0, 0],
+      ],
     );
   });
 

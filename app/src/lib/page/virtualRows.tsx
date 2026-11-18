@@ -3,7 +3,7 @@ import {
   useVirtualizer,
   type Rect,
 } from '@tanstack/react-virtual';
-import { useLaterRows } from './laterRows';
+import { aimedRange, useLaterRows } from './laterRows';
 import {
   memo,
   useCallback,
@@ -102,7 +102,20 @@ export function VirtualRows({
   const listId = useId();
   const [fixedHeight, setFixedHeight] = useState<number>();
   const { observeOffset, offsetSeen } = useSeenOffsets<HTMLDivElement>();
-  const rowsNow = useLaterRows(defaultRangeExtractor);
+  const follower = useRef<RowFollower>(undefined);
+  const rowsNow = useLaterRows(
+    (range: Parameters<typeof defaultRangeExtractor>[0]) => {
+      const to = follower.current?.glidingTo();
+      return defaultRangeExtractor(
+        aimedRange(
+          range,
+          to === undefined
+            ? undefined
+            : Math.floor(to / (fixedHeight ?? estimatedRowHeight)),
+        ),
+      );
+    },
+  );
   const virtualizer = useVirtualizer({
     count: rows.count,
     getScrollElement: () => list.current,
@@ -138,7 +151,6 @@ export function VirtualRows({
   const perNotch = useEffectEvent(() => notchRows ?? scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);
   const settles = useEffectEvent(() => scrolling.smoothSnap);
-  const follower = useRef<RowFollower>(undefined);
   const [roomHeight, setRoomHeight] = useState(0);
   const padding = wholeRows
     ? rowPadding(roomHeight, fixedHeight ?? estimatedRowHeight)

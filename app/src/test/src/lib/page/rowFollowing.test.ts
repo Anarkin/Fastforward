@@ -46,6 +46,7 @@ function followed(smooth: boolean, settles = true) {
   };
   return {
     top: () => top,
+    glidingTo: () => following.glidingTo(),
     revealed: async (reveal: (seen: number) => number | undefined) => {
       following.reveals();
       const to = reveal(top);
@@ -281,6 +282,33 @@ suite('Following a list scrolled by hand', () => {
     try {
       assert.strictEqual(await still.revealed(() => 60), 60);
       assert.deepStrictEqual(still.glided(), []);
+    } finally {
+      still.close();
+    }
+  });
+
+  test('tells where a glide under way is heading, and nothing once it has arrived or while scrolling does not glide, so a list can draw the rows there before it shows them', () => {
+    const { top, glidingTo, wheel, glided, close } = followed(true);
+    try {
+      wheel(100, 1);
+      const heading = glidingTo();
+      glided();
+
+      assert.deepStrictEqual(
+        [heading, top(), glidingTo()],
+        [200, 200, undefined],
+      );
+    } finally {
+      close();
+    }
+    const still = followed(false);
+    try {
+      still.wheel(100, 1);
+
+      assert.deepStrictEqual(
+        [still.top(), still.glidingTo()],
+        [200, undefined],
+      );
     } finally {
       still.close();
     }
