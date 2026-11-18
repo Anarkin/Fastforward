@@ -39,6 +39,51 @@ export function scrolled(
   };
 }
 
+function rowAt(rows: readonly Span[], byte: number): number {
+  let low = 0;
+  let high = rows.length - 1;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if ((rows[middle]?.start ?? Infinity) <= byte) {
+      low = middle;
+    } else {
+      high = middle - 1;
+    }
+  }
+  return low;
+}
+
+export function jumpedWithin(
+  loaded: Loaded,
+  byte: number,
+  screen: number,
+  size: number,
+):
+  | { readonly row: number; readonly top: number; readonly refill: boolean }
+  | undefined {
+  const first = loaded.rows[0];
+  const last = loaded.rows.at(-1);
+  if (first === undefined || last === undefined) {
+    return undefined;
+  }
+  const atStart = first.start === 0;
+  const atEnd = last.end >= size;
+  const lastTop = Math.max(0, loaded.rows.length - screen);
+  if (byte < first.start || (byte >= last.end && !atEnd)) {
+    return undefined;
+  }
+  const row = rowAt(loaded.rows, byte);
+  if (row > lastTop && !atEnd) {
+    return undefined;
+  }
+  const top = Math.min(row, lastTop);
+  return {
+    row,
+    top,
+    refill: (!atStart && top < screen) || (!atEnd && top > lastTop - screen),
+  };
+}
+
 export function bytesPerRow(rows: readonly Span[]): number | undefined {
   const first = rows[0];
   const last = rows.at(-1);

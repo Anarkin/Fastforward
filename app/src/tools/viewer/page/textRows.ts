@@ -24,6 +24,7 @@ import {
 import {
   topWithin,
   scrolled,
+  jumpedWithin,
   bytesPerRow,
   lastScreenStart,
 } from './textScroll';
@@ -236,6 +237,34 @@ export function useTextRows({
     [requests],
   );
 
+  const placeWithin = useCallback(
+    (
+      shown: Shown,
+      within: { readonly top: number; readonly refill: boolean },
+    ) => {
+      current.current = { ...shown, top: within.top };
+      const top = shown.rows[within.top];
+      setRead({ rows: shown.read, top: placeOf(top) });
+      if (within.refill && top !== undefined) {
+        requests.ask({
+          anchor: top.row.start,
+          exact: true,
+          before: screen * 2,
+          after: screen * 3,
+          follow: true,
+          refill: true,
+          topOf: (first, arrived) =>
+            topWithin(
+              rowWithChar(arrived, first, top.from),
+              arrived.length,
+              screen,
+            ),
+        });
+      }
+    },
+    [requests, screen, setRead],
+  );
+
   const move = useCallback(
     (by: number) => {
       const shown = current.current;
@@ -269,27 +298,9 @@ export function useTextRows({
         }
         return;
       }
-      current.current = { ...shown, top: within.top };
-      const top = shown.rows[within.top];
-      setRead({ rows: shown.read, top: placeOf(top) });
-      if (within.refill && top !== undefined) {
-        requests.ask({
-          anchor: top.row.start,
-          exact: true,
-          before: screen * 2,
-          after: screen * 3,
-          follow: true,
-          refill: true,
-          topOf: (first, arrived) =>
-            topWithin(
-              rowWithChar(arrived, first, top.from),
-              arrived.length,
-              screen,
-            ),
-        });
-      }
+      placeWithin(shown, within);
     },
-    [requests, askPlace, screen, size, setRead],
+    [askPlace, screen, size, placeWithin],
   );
 
   useEffect(
@@ -335,6 +346,21 @@ export function useTextRows({
         share *
           lastScreenStart(size ?? 0, screen, estimate?.perRow ?? 1, lastTop),
       );
+      const shown = current.current;
+      const within = jumpedWithin(shown, anchor, screen, size ?? 0);
+      if (within !== undefined) {
+        if (placing.current !== undefined) {
+          requests.restart();
+          placing.current = undefined;
+        }
+        part?.(
+          within.top === within.row
+            ? partOfRow(shown.rows, within.row, anchor)
+            : 0,
+        );
+        placeWithin(shown, within);
+        return;
+      }
       askPlace({
         anchor,
         exact: false,
@@ -348,7 +374,7 @@ export function useTextRows({
         },
       });
     },
-    [askPlace, screen, size, estimate?.perRow, lastTop],
+    [requests, askPlace, placeWithin, screen, size, estimate?.perRow, lastTop],
   );
 
   useEffect(() => {

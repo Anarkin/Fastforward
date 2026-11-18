@@ -221,6 +221,30 @@ suite('Overlay scrollbars', () => {
     }
   });
 
+  test('leaves the scrollbar of an area scrolled as it is while a pointer is dragged over something else with a button held, hiding it only once a pointer free again is there, as each step of the scrollbar of the viewer dragged scrolled its text, which showed the scrollbar of the text, and moved the pointer, which hid it again, its fade started and cancelled at every step', () => {
+    const { dom, bar, scrollTo, frame, close } = framedList();
+    try {
+      const moved = (buttons: number) => {
+        dom.window.document.body.dispatchEvent(
+          new dom.window.MouseEvent('pointermove', { bubbles: true, buttons }),
+        );
+        frame();
+        vi.advanceTimersByTime(0);
+      };
+      scrollTo(450);
+      frame();
+      assert.ok(bar.classList.contains('shown'));
+
+      moved(1);
+      assert.ok(bar.classList.contains('shown'));
+
+      moved(0);
+      assert.ok(!bar.classList.contains('shown'));
+    } finally {
+      close();
+    }
+  });
+
   test('follows what comes under a pointer that stays put, hiding the scrollbar of an area once something with nothing to scroll comes over it there, such as a message pinned by a click, once the frame is painted', async () => {
     const dom = new JSDOM(
       '<!doctype html><div id="list" style="overflow-y: auto"></div><div id="pinned"></div>',

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { wholeLineBytes } from '../shared/protocol';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import { columnsOf, shownWithin, widestColumns } from './columns';
+import { keptColumnsOf, shownWithin, widestColumns } from './columns';
 import { bytesOf } from './encodedBytes';
 import type { ScreenRow } from './screenRows';
 import type { WholeText } from './textColors';
@@ -50,7 +50,8 @@ export function useSideways({
     () =>
       whole
         ? rows.reduce(
-            (most, row) => Math.max(most, columnsOf(row.row.text, counting)),
+            (most, row) =>
+              Math.max(most, keptColumnsOf(row.row.text, counting)),
             widestLine,
           )
         : undefined,

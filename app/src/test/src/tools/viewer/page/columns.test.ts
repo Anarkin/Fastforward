@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   columnAt,
   columnsOf,
+  keptColumnsOf,
   shownWithin,
   widestColumns,
 } from '../../../../../tools/viewer/page/columns';
@@ -14,6 +15,25 @@ const whole = () => true;
 const lines = (...each: string[]) => each.join(String.fromCharCode(10));
 
 suite('Columns of the rows of a file viewed', () => {
+  test('counts the columns of a line once, however often the line is asked for again, as the widest of the rows read was counted anew at each step of a scrollbar dragged, character by character through every line that is not plain, a quarter of the work of a step through a table padded with a thousand spaces a line', () => {
+    let measured = 0;
+    const wide = {
+      char: 10,
+      of: (cluster: string) => {
+        measured++;
+        return /[中文]/.test(cluster) ? 20 : 10;
+      },
+    };
+
+    assert.strictEqual(keptColumnsOf('中文 kept once', wide), 14);
+    const once = measured;
+    assert.strictEqual(keptColumnsOf('中文 kept once', wide), 14);
+
+    assert.ok(once > 0, String(once));
+    assert.strictEqual(measured, once);
+    assert.strictEqual(keptColumnsOf(`${tab}x`, undefined), 5);
+  });
+
   test('finds the widest line of a whole text in columns, its tabs to their stops and its wide characters two, leaving out the lines longer than are kept whole, as those are shown in rows of their own, and measuring only the lines that could be wider than the widest plain one', () => {
     let measured = 0;
     const wide = {

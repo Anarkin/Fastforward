@@ -68,6 +68,7 @@ const playgroundFiles =
         'text/unicode.txt',
         'text/whitespace-tabs-and-spaces.txt',
         'text/whitespace-padded-table.md',
+        'compare/padded-table-v1.md',
         'syntax/limit-size-just-under-the-coloring-limit.ts',
         'syntax/limit-line-just-under-the-coloring-length.ts',
         'syntax/fastforward-strings.ts',
@@ -151,11 +152,10 @@ for (const wordWrap of [false, true]) {
           await page.mouse.move(from.x, from.y);
           await page.mouse.down();
           await sleep(300);
+          const room = Math.max(40, (box.height - thumb.height) / 2);
+          const lower = thumb.y + thumb.height / 2 > box.y + box.height / 2;
           const result = await measure(perf(), `${named}, drag`, () =>
-            dragged(page, from, {
-              x: 0,
-              y: Math.max(40, (box.height - thumb.height) / 2),
-            }),
+            dragged(page, from, { x: 0, y: lower ? -room : room }),
           );
           await page.mouse.up();
           assert.ok(result.frames.updates >= 0);

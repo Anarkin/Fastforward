@@ -1,4 +1,4 @@
-import { clicked } from '../shared/keymap';
+import { clicked, released } from '../shared/keymap';
 import { keymap } from './keymap';
 import {
   columnScrollerOf,
@@ -282,10 +282,13 @@ export function installOverlayScrollbars(): void {
   };
   let pointed: EventTarget | null = null;
   const pointing = afterPaint(() => showFor(pointed));
-  for (const type of ['pointermove', 'pointerover']) {
+  for (const type of ['pointermove', 'pointerover'] as const) {
     document.addEventListener(
       type,
       (event) => {
+        if (!released(event)) {
+          return;
+        }
         pointed = event.target;
         pointing.ask();
       },

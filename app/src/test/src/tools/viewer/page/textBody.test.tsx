@@ -212,6 +212,37 @@ suite('Text of a viewed file', () => {
     }
   });
 
+  test('goes to a place among the rows it holds at once, asking the main process for nothing, and asks for the rows around a place it holds few rows past, shown there meanwhile, as every step of a scrollbar dragged asked for the rows around it and showed them a frame or two behind the pointer', async () => {
+    await viewing(async ({ show, asked, answerAll, press, place }) => {
+      await show('1');
+      await answerAll(evenLines);
+      await press('PageDown');
+      assert.strictEqual(place(), page * 10);
+      assert.deepStrictEqual(asked(), []);
+
+      await press('Home');
+
+      assert.strictEqual(place(), 0);
+      assert.deepStrictEqual(asked(), []);
+    });
+    await viewing(async ({ show, asked, answerAll, press, place }) => {
+      await show('1');
+      await answerAll(evenLines);
+      await press('End');
+      await answerAll(evenLines);
+      const end = evenLines.size - screen * 10;
+      assert.strictEqual(place(), end);
+      await press('PageUp');
+      await answerAll(evenLines);
+      assert.strictEqual(place(), end - page * 10);
+
+      await press('End');
+
+      assert.strictEqual(place(), end);
+      assert.deepStrictEqual(asked(), []);
+    });
+  });
+
   test('stays where it was moved while more rows around an earlier place were asked for, as their answer took the place back there', async () => {
     await viewing(async ({ show, asked, answer, answerAll, press, place }) => {
       await show('1');

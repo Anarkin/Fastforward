@@ -50,6 +50,83 @@ const look = dotLook(14, 8, 1);
 const dot = (column: number) =>
   `transparent 0 ${column * 8 + 3}px,currentColor 0 ${column * 8 + 5}px`;
 
+const readAt = (line: string, index: number): ScreenRow => ({
+  start: 40,
+  end: 40 + line.length,
+  row: { start: 40, end: 40 + line.length, text: line },
+  index,
+  from: 0,
+  to: line.length,
+  indent: 0,
+  breakAt: undefined,
+  hanging: [],
+});
+
+interface Drawn {
+  readonly row: ScreenRow;
+  readonly to: number;
+}
+
+async function measuredOver(
+  once: Drawn,
+  again: Drawn,
+  other: Drawn,
+): Promise<{
+  readonly first: number;
+  readonly alike: number;
+  readonly changed: number;
+}> {
+  const dom = new JSDOM('<!doctype html><main></main>');
+  const globals = {
+    window: dom.window,
+    document: dom.window.document,
+    HTMLElement: dom.window.HTMLElement,
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  const saved = Object.fromEntries(
+    Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+  );
+  Object.assign(globalThis, globals);
+  try {
+    const { createRoot } = await import('react-dom/client');
+    const main = dom.window.document.querySelector('main');
+    assert.ok(main);
+    const root = createRoot(main);
+    let measured = 0;
+    const widths: TextWidths = {
+      char: 8,
+      of: () => 8,
+      boxed: () => {
+        measured += 1;
+        return 2;
+      },
+    };
+    const show = async ({ row: drawn, to }: Drawn) => {
+      await act(async () =>
+        root.render(
+          <TextRow
+            row={drawn}
+            part={{ from: 0, to, column: 0 }}
+            colored={undefined}
+            marks={[]}
+            showWhitespace
+            widths={widths}
+            dotLook={look}
+          />,
+        ),
+      );
+      return measured;
+    };
+    const first = await show(once);
+    const alike = await show(again);
+    const changed = await show(other);
+    await act(async () => root.unmount());
+    return { first, alike, changed };
+  } finally {
+    Object.assign(globalThis, saved);
+  }
+}
+
 suite('A row of a file viewed', () => {
   test('dots the spaces of a row on the one layer the diff dots its rows with, at the columns of its spaces from where its text starts, and only while whitespace is shown', () => {
     assert.strictEqual(
@@ -94,65 +171,34 @@ suite('A row of a file viewed', () => {
   });
 
   test('draws a row again only once what it shows has changed, not as the rows around it scroll, a part of it or its marks made anew but alike leaving it as it is, as every row in view was worked out again at each row a file scrolled by, a quarter of the frames of a glide through a table of long lines coming late', async () => {
-    const dom = new JSDOM('<!doctype html><main></main>');
-    const globals = {
-      window: dom.window,
-      document: dom.window.document,
-      HTMLElement: dom.window.HTMLElement,
-      IS_REACT_ACT_ENVIRONMENT: true,
+    const wide = '中 b c';
+    const drawn: ScreenRow = {
+      ...row,
+      end: wide.length,
+      row: { start: 0, end: wide.length, text: wide },
+      to: wide.length,
     };
-    const saved = Object.fromEntries(
-      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    const { first, alike, changed } = await measuredOver(
+      { row: drawn, to: wide.length },
+      { row: drawn, to: wide.length },
+      { row: drawn, to: wide.length - 2 },
     );
-    Object.assign(globalThis, globals);
-    try {
-      const { createRoot } = await import('react-dom/client');
-      const main = dom.window.document.querySelector('main');
-      assert.ok(main);
-      const root = createRoot(main);
-      let measured = 0;
-      const widths: TextWidths = {
-        char: 8,
-        of: () => 8,
-        boxed: () => {
-          measured += 1;
-          return 2;
-        },
-      };
-      const wide = '中 b c';
-      const drawn: ScreenRow = {
-        ...row,
-        end: wide.length,
-        row: { start: 0, end: wide.length, text: wide },
-        to: wide.length,
-      };
-      const show = (to: number) =>
-        act(async () =>
-          root.render(
-            <TextRow
-              row={drawn}
-              part={{ from: 0, to, column: 0 }}
-              colored={undefined}
-              marks={[]}
-              showWhitespace
-              widths={widths}
-              dotLook={look}
-            />,
-          ),
-        );
-      await show(wide.length);
-      const first = measured;
-      await show(wide.length);
-      const alike = measured;
-      await show(wide.length - 2);
-      const changed = measured;
-      await act(async () => root.unmount());
 
-      assert.ok(first > 0, String(first));
-      assert.strictEqual(alike, first);
-      assert.ok(changed > alike, String(changed));
-    } finally {
-      Object.assign(globalThis, saved);
-    }
+    assert.ok(first > 0, String(first));
+    assert.strictEqual(alike, first);
+    assert.ok(changed > alike, String(changed));
+  });
+
+  test('leaves a row as it is drawn when the file is read again around it and the same line comes back as a row made anew, at another place among the rows read, and draws it again once its text differs, as a scrollbar dragged reads the rows around the pointer at each step, and every row in view of a table padded with a thousand spaces a line was drawn again at each, 3.6 ms a step', async () => {
+    const wide = '中 b c';
+    const { first, alike, changed } = await measuredOver(
+      { row: readAt(wide, 3), to: wide.length },
+      { row: readAt(wide.slice(0, 2) + wide.slice(2), 7), to: wide.length },
+      { row: readAt('中 b d', 7), to: wide.length },
+    );
+
+    assert.ok(first > 0, String(first));
+    assert.strictEqual(alike, first);
+    assert.ok(changed > alike, String(changed));
   });
 });

@@ -66,9 +66,23 @@ function samePart(one: RowPart | undefined, other: RowPart | undefined) {
   );
 }
 
+function sameRow(one: ScreenRow, other: ScreenRow) {
+  return (
+    one === other ||
+    (one.row.start === other.row.start &&
+      one.row.text === other.row.text &&
+      one.row.cut === other.row.cut &&
+      one.from === other.from &&
+      one.to === other.to &&
+      one.breakAt === other.breakAt &&
+      (one.hanging === other.hanging ||
+        (one.hanging.length === 0 && other.hanging.length === 0)))
+  );
+}
+
 function drawnAlike(one: TextRowProps, other: TextRowProps): boolean {
   return (
-    one.row === other.row &&
+    sameRow(one.row, other.row) &&
     samePart(one.part, other.part) &&
     one.columns === other.columns &&
     one.colored === other.colored &&

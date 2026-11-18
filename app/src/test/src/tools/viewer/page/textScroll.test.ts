@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   bytesPerRow,
+  jumpedWithin,
   scrolled,
   textEnds,
   textThumb,
@@ -137,6 +138,54 @@ suite('Commander viewer', () => {
     });
     assert.strictEqual(scrolled(middle, 60, 10, 1_000_000), undefined);
     assert.strictEqual(scrolled(middle, -41, 10, 1_000_000), undefined);
+  });
+
+  test('finds the row a byte of the file is in among the rows held, with a screen of rows from it, so a jump there is shown at once rather than after the main process has read around it, as each step of a scrollbar dragged waited for its rows, a frame or two behind the pointer, while the editor moved with it', () => {
+    const middle = {
+      rows: Array.from({ length: 100 }, (_, index) => ({
+        start: 5000 + index * 10,
+        end: 5000 + (index + 1) * 10,
+      })),
+      top: 40,
+    };
+    assert.deepStrictEqual(jumpedWithin(middle, 5503, 10, 1_000_000), {
+      row: 50,
+      top: 50,
+      refill: false,
+    });
+    assert.deepStrictEqual(jumpedWithin(middle, 5000, 10, 1_000_000), {
+      row: 0,
+      top: 0,
+      refill: true,
+    });
+    assert.deepStrictEqual(jumpedWithin(middle, 5859, 10, 1_000_000), {
+      row: 85,
+      top: 85,
+      refill: true,
+    });
+    assert.strictEqual(jumpedWithin(middle, 5910, 10, 1_000_000), undefined);
+    assert.strictEqual(jumpedWithin(middle, 4999, 10, 1_000_000), undefined);
+    assert.strictEqual(jumpedWithin(middle, 6000, 10, 1_000_000), undefined);
+    assert.strictEqual(jumpedWithin({ rows: [], top: 0 }, 0, 10, 0), undefined);
+  });
+
+  test('keeps a screen full of rows where a jump lands in the last rows of the file, and takes a byte past its last row for that row, asking for nothing at either end', () => {
+    const whole = { rows: rows(30), top: 2 };
+    assert.deepStrictEqual(jumpedWithin(whole, 255, 10, 300), {
+      row: 25,
+      top: 20,
+      refill: false,
+    });
+    assert.deepStrictEqual(jumpedWithin(whole, 300, 10, 300), {
+      row: 29,
+      top: 20,
+      refill: false,
+    });
+    assert.deepStrictEqual(jumpedWithin(whole, 0, 10, 300), {
+      row: 0,
+      top: 0,
+      refill: false,
+    });
   });
 
   test('stops at the start and the end of the file, asking for nothing there', () => {

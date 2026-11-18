@@ -1,3 +1,4 @@
+import { onceAText } from '../../../lib/page/onceAText';
 import { tabSize, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 
@@ -67,6 +68,10 @@ export function columnAt(
 export function columnsOf(text: string, widths?: TextWidths): number {
   return columnAt(text, text.length, 0, widths);
 }
+
+export const keptColumnsOf = onceAText(
+  (text: string, widths: TextWidths | undefined) => columnsOf(text, widths),
+);
 
 const mostColumnsAUnit = tabSize;
 
