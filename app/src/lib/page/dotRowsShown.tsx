@@ -1,11 +1,14 @@
+import type { DotLook } from './dotLook';
 import { dotsStyle, hasDots, type DotRows } from './dotRows';
 
 export function DotRowsShown({
   rows,
+  look,
   left,
   alone = false,
 }: {
   readonly rows: DotRows;
+  readonly look: DotLook;
   readonly left: string;
   readonly alone?: boolean;
 }) {
@@ -13,7 +16,7 @@ export function DotRowsShown({
     <span
       className="dot-rows"
       aria-hidden={alone || undefined}
-      style={{ left, ...dotsStyle(rows) }}
+      style={{ left, ...dotsStyle(rows, look) }}
     />
   ) : null;
 }

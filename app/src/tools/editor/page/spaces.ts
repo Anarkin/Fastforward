@@ -13,36 +13,13 @@ import {
   type ViewUpdate,
 } from '@codemirror/view';
 import { layerOrigin } from './rows';
-
-export interface DotLook {
-  readonly advance: number;
-  readonly dot: number;
-  readonly start: number;
-  readonly pixel: number;
-}
-
-const onPixel = 1e-6;
-
-const roundTo = (value: number, step: number) =>
-  Math.round(value / step + onPixel) * step;
+import { dotLook, roundedTo, type DotLook } from '../../../lib/page/dotLook';
 
 const layoutUnits = 64;
 
 const snapTo = (value: number, pixel: number) =>
   Math.floor(Math.round((value / pixel) * layoutUnits) / layoutUnits + 0.5) *
   pixel;
-
-const floorTo = (value: number, step: number) =>
-  Math.floor(value / step + onPixel) * step;
-
-export function dotLook(
-  fontSize: number,
-  advance: number,
-  pixel: number,
-): DotLook {
-  const dot = Math.max(pixel, roundTo(0.16 * fontSize, pixel));
-  return { advance, dot, start: floorTo((advance - dot) / 2, pixel), pixel };
-}
 
 export interface SpaceRun {
   readonly left: number;
@@ -252,7 +229,7 @@ const drawnBands = new WeakMap<EditorView, Band>();
 function lookOf(view: EditorView): DotLook {
   const pixel = 1 / window.devicePixelRatio;
   const fontSize = parseFloat(getComputedStyle(view.contentDOM).fontSize);
-  return dotLook(fontSize, roundTo(view.defaultCharacterWidth, pixel), pixel);
+  return dotLook(fontSize, roundedTo(view.defaultCharacterWidth, pixel), pixel);
 }
 
 function dotMarkers(

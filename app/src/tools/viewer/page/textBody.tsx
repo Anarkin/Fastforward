@@ -1,3 +1,4 @@
+import { fontDotLook } from '../../../lib/page/dotLook';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { ScrollBody } from './scrollBody';
@@ -73,6 +74,10 @@ export function TextBody({
     [font, table],
   );
   const counting = widths ?? cellWidthsOf(table ?? plainCells);
+  const dotLook = useMemo(
+    () => fontDotLook(font.family, font.char, 1 / devicePixelRatio),
+    [font],
+  );
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const wrapAt =
@@ -216,6 +221,7 @@ export function TextBody({
             }
             showWhitespace={showWhitespace}
             widths={widths}
+            dotLook={dotLook}
           />
         ))}
     </ScrollBody>

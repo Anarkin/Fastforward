@@ -32,6 +32,7 @@ import { snappedTop, type RowFollower } from '../../../lib/page/rowScroll';
 import type { DiffLook } from './look';
 import type { DiffMeasures, DiffMeasuring } from './measures';
 import {
+  dottedColumns,
   shownSideways,
   widestColumns,
   type Sideways,
@@ -141,12 +142,14 @@ export function DiffView({
     charWidth,
     widths,
     columnsIn,
+    dotLook,
     padding,
     scale,
     lineHeight,
     measureText,
     snap,
   } = useDiffText(list, measures, measuring);
+  const dots = showWhitespace ? dotLook : undefined;
   const sideways = keptPlace?.sideways ?? unplaced.sideways;
   const setSideways = useCallback(
     (scrolled: number) => onPlace({ sideways: scrolled }),
@@ -160,6 +163,14 @@ export function DiffView({
     setSideways,
   );
   const view = measured && shownSideways(measured, scrollsSides, sideways);
+  const [dotsFrom, dotsTo] = dottedColumns(view, charWidth) ?? [];
+  const dotColumns = useMemo(
+    () =>
+      dotsFrom === undefined || dotsTo === undefined
+        ? undefined
+        : ([dotsFrom, dotsTo] as const),
+    [dotsFrom, dotsTo],
+  );
   const changeColumns = keepWrapColumns;
   const toggled = keptPlace?.toggled ?? unplaced.toggled;
   const setToggled = useCallback(
@@ -367,6 +378,8 @@ export function DiffView({
       columns={wrapsAt}
       lineHeight={lineHeight}
       columnsIn={columnsIn}
+      dotLook={dots}
+      dotColumns={dotColumns}
     />
   );
 
@@ -411,7 +424,7 @@ export function DiffView({
     lineHeight,
     columnsIn,
     widths,
-    dotted: showWhitespace,
+    dotLook: dots,
     header,
     toggle,
     code,
@@ -437,6 +450,8 @@ export function DiffView({
     foundKey,
     found,
     showWhitespace,
+    dots,
+    dotColumns,
     wrapping,
     lineHeight,
     columnsIn,

@@ -88,6 +88,20 @@ export interface Sideways {
   readonly minimap: number;
 }
 
+const dotStretch = 32;
+
+export function dottedColumns(
+  view: Sideways | undefined,
+  charWidth: number,
+): readonly [number, number] | undefined {
+  if (view === undefined || !(charWidth > 0)) {
+    return undefined;
+  }
+  const from = Math.floor(view.scrolled / charWidth / dotStretch);
+  const to = Math.ceil((view.scrolled + view.width) / charWidth / dotStretch);
+  return [(from - 1) * dotStretch, (to + 1) * dotStretch];
+}
+
 export function shownSideways(
   measured: Sideways,
   scrollsSides: boolean,

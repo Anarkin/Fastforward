@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
+import { dotLook } from '../../../../../lib/page/dotLook';
 import { codeProps } from '../../../../../components/diff/page/lineMarks';
 import {
   Code,
@@ -40,8 +41,10 @@ function wrapMarkup(
   );
 }
 
-const cell = (from: number, to = from + 1) =>
-  `transparent 0 ${from}%,currentColor 0 ${to}%`;
+const look = dotLook(14, 8, 1);
+
+const dot = (column: number) =>
+  `transparent 0 ${column * 8 + 3}px,currentColor 0 ${column * 8 + 5}px`;
 
 suite('Drawing code', () => {
   test('shows a carriage return, a non-breaking space and the spaces that draw nothing as signs of their own when asked, as a change to line endings or to a pasted space looked like none, but not the joiners inside emoji', () => {
@@ -274,15 +277,22 @@ suite('Drawing code', () => {
       finds: [],
       current: undefined,
       whitespace: true,
+      dotLook: look,
     };
     const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} text={'a b  c\t'} />),
-      `<span class="code">a b  c${tab}<span class="dot-rows" aria-hidden="true" style="left:var(--diff-code-padding);--dot-columns:100;background-image:linear-gradient(to right,${cell(1)},${cell(3, 5)},transparent 0);background-position:0 0%"></span></span>`,
+      `<span class="code">a b  c${tab}<span class="dot-rows" aria-hidden="true" style="left:var(--diff-code-padding);background-image:linear-gradient(to right,${dot(1)},${dot(3)},${dot(4)},transparent 0);background-position:0 var(--dot-top)"></span></span>`,
     );
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} text="ab" />),
       '<span class="code">ab</span>',
+    );
+    assert.match(
+      renderToStaticMarkup(
+        <Code {...props} text="a b  c d" dotColumns={[2, 4]} />,
+      ),
+      /background-image:linear-gradient\(to right,transparent 0 27px,currentColor 0 29px,transparent 0\);/,
     );
     assert.strictEqual(
       renderToStaticMarkup(

@@ -16,6 +16,7 @@ import {
 } from '../../../lib/page/rowBreaks';
 import { hasDots, type DotRows } from '../../../lib/page/dotRows';
 import { DotRowsShown } from '../../../lib/page/dotRowsShown';
+import type { DotLook } from '../../../lib/page/dotLook';
 import {
   breaksMarked,
   wrapIndent,
@@ -39,7 +40,7 @@ export function WrapMarks({
   lineHeight,
   columnsIn,
   widths,
-  dotted = false,
+  look,
 }: {
   text: string;
   columns: number | undefined;
@@ -47,7 +48,7 @@ export function WrapMarks({
   lineHeight: number;
   columnsIn?: ColumnsIn;
   widths?: TextWidths;
-  dotted?: boolean;
+  look?: DotLook | undefined;
 }) {
   const marks = useRef<HTMLSpanElement>(null);
   const expected = useMemo(
@@ -107,10 +108,10 @@ export function WrapMarks({
   const { starts } = laid;
   const dots = useMemo(
     () =>
-      dotted && columns !== undefined && starts !== undefined
+      look !== undefined && columns !== undefined && starts !== undefined
         ? dottedRows(text, starts, columns, columnsIn)
         : undefined,
-    [dotted, columns, starts, text, columnsIn],
+    [look, columns, starts, text, columnsIn],
   );
   if (columns === undefined) {
     return null;
@@ -120,6 +121,7 @@ export function WrapMarks({
       <BreakMarks
         breaks={laid.breaks}
         dots={dots}
+        look={look}
         numbers={numbers}
         lineHeight={lineHeight}
       />
@@ -165,6 +167,7 @@ const blockRows = 64;
 function MarksBlock({
   breaks,
   dots,
+  look,
   rows,
   top,
   numbers,
@@ -172,6 +175,7 @@ function MarksBlock({
 }: {
   breaks: readonly RowBreak[];
   dots: DotRows | undefined;
+  look: DotLook | undefined;
   rows: number;
   top: number;
   numbers: number;
@@ -201,6 +205,7 @@ function MarksBlock({
         <BreakMarks
           breaks={breaks}
           dots={dots}
+          look={look}
           numbers={numbers}
           lineHeight={lineHeight}
         />
@@ -212,11 +217,13 @@ function MarksBlock({
 export function BreakMarks({
   breaks,
   dots,
+  look,
   numbers,
   lineHeight,
 }: {
   breaks: readonly RowBreak[];
   dots?: DotRows | undefined;
+  look?: DotLook | undefined;
   numbers: number;
   lineHeight: number;
 }) {
@@ -233,6 +240,7 @@ export function BreakMarks({
           key={block}
           breaks={breaks.slice(from, to)}
           dots={dots?.slice(from, to)}
+          look={look}
           rows={to - from}
           top={from * lineHeight}
           numbers={numbers}
@@ -247,9 +255,10 @@ export function BreakMarks({
   });
   return (
     <>
-      {dots && (
+      {dots && look && (
         <DotRowsShown
           rows={dots}
+          look={look}
           left={`calc(${numbers * numberWidth}px + var(--diff-code-padding))`}
         />
       )}

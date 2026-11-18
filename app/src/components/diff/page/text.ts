@@ -1,3 +1,4 @@
+import { fontDotLook, type DotLook } from '../../../lib/page/dotLook';
 import {
   useCallback,
   useEffect,
@@ -27,6 +28,7 @@ export function useDiffText(
   readonly charWidth: number;
   readonly widths: TextWidths;
   readonly columnsIn: ColumnsIn | undefined;
+  readonly dotLook: DotLook | undefined;
   readonly padding: Edges;
   readonly scale: number;
   readonly lineHeight: number;
@@ -49,6 +51,10 @@ export function useDiffText(
   const widths = useMemo(
     () => textWidths(charWidth, font, spacing, table ?? plainCells),
     [charWidth, font, spacing, table],
+  );
+  const dotLook = useMemo(
+    () => fontDotLook(font, charWidth, 1 / (measuredText?.scale ?? 1)),
+    [font, charWidth, measuredText?.scale],
   );
   const columnsIn = useMemo<ColumnsIn | undefined>(
     () =>
@@ -103,6 +109,7 @@ export function useDiffText(
     charWidth,
     widths,
     columnsIn,
+    dotLook,
     padding,
     scale,
     lineHeight,

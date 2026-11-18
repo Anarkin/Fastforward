@@ -199,25 +199,7 @@ input {
   user-select: none;
   color: var(--muted-foreground);
   background-repeat: no-repeat;
-  background-size: calc(var(--dot-columns) * var(--text-advance)) var(--dot-row);
-  mask-image:
-    linear-gradient(
-      to right,
-      transparent var(--space-dot-start),
-      black 0 calc(var(--space-dot-start) + var(--space-dot)),
-      transparent 0
-    ),
-    linear-gradient(
-      to bottom,
-      transparent var(--dot-top),
-      black 0 calc(var(--dot-top) + var(--space-dot)),
-      transparent 0
-    );
-  mask-size:
-    var(--text-advance) 100%,
-    100% var(--dot-row);
-  mask-repeat: repeat;
-  mask-composite: intersect;
+  background-size: 100% var(--space-dot);
 }
 
 .cm-editor.editor-text .space-dot-layer {

@@ -1,6 +1,7 @@
 import { blankRuns, spaceColumnsAt } from '../../../lib/page/rowBreaks';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { DotRowsShown } from '../../../lib/page/dotRowsShown';
+import type { DotLook } from '../../../lib/page/dotLook';
 import { strings } from '../../../lib/shared/strings';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { MarkedText } from './findMarks';
@@ -44,6 +45,7 @@ export function TextRow({
   marks,
   showWhitespace,
   widths,
+  dotLook,
 }: {
   row: ScreenRow;
   part:
@@ -53,6 +55,7 @@ export function TextRow({
   marks: readonly FindMark[];
   showWhitespace: boolean;
   widths: TextWidths | undefined;
+  dotLook: DotLook | undefined;
 }) {
   const from = part?.from ?? row.from;
   const to = part?.to ?? row.to;
@@ -80,8 +83,9 @@ export function TextRow({
         blanks={showWhitespace}
         widths={widths}
       />
-      {showWhitespace && (
+      {showWhitespace && dotLook && (
         <DotRowsShown
+          look={dotLook}
           rows={spaceColumnsAt(
             row.row.text.slice(from, to),
             [0],

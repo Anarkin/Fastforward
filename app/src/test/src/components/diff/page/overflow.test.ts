@@ -7,6 +7,7 @@ import {
   revealChange,
   revealFound,
   revealScroll,
+  dottedColumns,
   shownSideways,
   sideArea,
   textColumn,
@@ -34,6 +35,21 @@ const drawnWidths: TextWidths = {
 };
 
 suite('Overflow', () => {
+  test('dots the spaces of an unwrapped line only in the columns in sight and a stretch either side, in steps of 32 columns so scrolling sideways draws them anew only now and then, as a line of thousands of characters took the browser longer to dot whole than to show', () => {
+    const view = { scrolled: 720, width: 800, room: 5000, minimap: 40 };
+    assert.deepStrictEqual(dottedColumns(view, 8), [32, 224]);
+    assert.deepStrictEqual(
+      dottedColumns({ ...view, scrolled: 724 }, 8),
+      [32, 224],
+    );
+    assert.deepStrictEqual(
+      dottedColumns({ ...view, scrolled: 0 }, 8),
+      [-32, 160],
+    );
+    assert.strictEqual(dottedColumns(undefined, 8), undefined);
+    assert.strictEqual(dottedColumns(view, 0), undefined);
+  });
+
   test('counts the columns before an index, a tab reaching the next stop of 4', () => {
     assert.strictEqual(textColumn('abc', 0), 0);
     assert.strictEqual(textColumn('abc', 2), 2);

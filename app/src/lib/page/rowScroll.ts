@@ -179,7 +179,10 @@ export function followRows(
     scrollTo(snap(snap(aim()) + rows * row, Math.sign(rows)), isPage(move));
   };
   element.addEventListener('wheel', onWheel, { passive: false });
-  element.addEventListener('scroll', onScroll, { passive: true });
+  element.addEventListener('scroll', onScroll, {
+    passive: true,
+    capture: true,
+  });
   setRowScroller(element, (top) => scrollTo(snap(top), true));
   if (keys) {
     element.addEventListener('keydown', onKeyDown);
@@ -191,7 +194,7 @@ export function followRows(
       settle();
       setRowScroller(element, undefined);
       element.removeEventListener('wheel', onWheel);
-      element.removeEventListener('scroll', onScroll);
+      element.removeEventListener('scroll', onScroll, { capture: true });
       element.removeEventListener('keydown', onKeyDown);
     },
   };

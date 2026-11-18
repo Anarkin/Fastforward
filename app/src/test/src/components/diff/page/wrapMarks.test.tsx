@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
+import { dotLook } from '../../../../../lib/page/dotLook';
 import {
   BreakMarks,
   WrapMarks,
@@ -18,8 +19,10 @@ function wrapMarksOf(html: string): string[][] {
   );
 }
 
-const cell = (from: number, to = from + 1) =>
-  `transparent 0 ${from}%,currentColor 0 ${to}%`;
+const look = dotLook(14, 8, 1);
+
+const dot = (column: number) =>
+  `transparent 0 ${column * 8 + 3}px,currentColor 0 ${column * 8 + 5}px`;
 
 const columnsIn = (row: string) => (index: number) =>
   Math.min(index, row.length);
@@ -32,7 +35,7 @@ const marks = (dotted: boolean) =>
       numbers={2}
       lineHeight={17}
       columnsIn={columnsIn}
-      dotted={dotted}
+      look={dotted ? look : undefined}
     />,
   );
 
@@ -73,24 +76,37 @@ suite('Diff row heights', () => {
           { end: 6, blanks: [] },
         ]}
         dots={[[1, 3], [], [0]]}
+        look={look}
         numbers={2}
         lineHeight={17}
       />,
     );
     assert.strictEqual(
       html.slice(0, html.indexOf('</span>') + '</span>'.length),
-      `<span class="dot-rows" style="left:calc(112px + var(--diff-code-padding));--dot-columns:100;background-image:linear-gradient(to right,${cell(1)},${cell(3)},transparent 0),linear-gradient(to right,${cell(0)},transparent 0);background-position:0 0%,0 100%"></span>`,
+      `<span class="dot-rows" style="left:calc(112px + var(--diff-code-padding));background-image:linear-gradient(to right,${dot(1)},${dot(3)},transparent 0),linear-gradient(to right,${dot(0)},transparent 0);background-position:0 var(--dot-top),0 calc(2 * var(--dot-row) + var(--dot-top))"></span>`,
     );
     assert.strictEqual(wrapMarksOf(html).length, 2);
     assert.match(
       renderToStaticMarkup(
-        <BreakMarks breaks={[]} dots={[[4]]} numbers={1} lineHeight={17} />,
+        <BreakMarks
+          breaks={[]}
+          dots={[[4]]}
+          look={look}
+          numbers={1}
+          lineHeight={17}
+        />,
       ),
-      /^<span class="dot-rows" style="left:calc\(56px \+ var\(--diff-code-padding\)\);--dot-columns:100;background-image:linear-gradient\(to right,transparent 0 4%,currentColor 0 5%,transparent 0\);background-position:0 0%"/,
+      /^<span class="dot-rows" style="left:calc\(56px \+ var\(--diff-code-padding\)\);background-image:linear-gradient\(to right,transparent 0 35px,currentColor 0 37px,transparent 0\);background-position:0 var\(--dot-top\)"/,
     );
     assert.strictEqual(
       renderToStaticMarkup(
-        <BreakMarks breaks={[]} dots={[[]]} numbers={1} lineHeight={17} />,
+        <BreakMarks
+          breaks={[]}
+          dots={[[]]}
+          look={look}
+          numbers={1}
+          lineHeight={17}
+        />,
       ),
       '',
     );
@@ -101,6 +117,7 @@ suite('Diff row heights', () => {
       <BreakMarks
         breaks={Array.from({ length: 128 }, () => ({ end: 6, blanks: [] }))}
         dots={Array.from({ length: 129 }, () => [1])}
+        look={look}
         numbers={2}
         lineHeight={17}
       />,
@@ -123,20 +140,23 @@ suite('Diff row heights', () => {
         numbers={2}
         lineHeight={17}
         columnsIn={columnsIn}
-        dotted
+        look={look}
       />,
     );
     assert.deepStrictEqual(
       wrapMarksOf(html).map(([kind]) => kind),
       ['wrap-spaces', 'wrap-break'],
     );
-    assert.match(html, /class="dot-rows"[^>]*background-position:0 0%,0 100%/);
+    assert.match(
+      html,
+      /class="dot-rows"[^>]*background-position:0 var\(--dot-top\),0 calc\(1 \* var\(--dot-row\) \+ var\(--dot-top\)\)/,
+    );
   });
 
   test('dots the spaces of a line that fits on one row without laying it out, and of no line while whitespace is hidden', () => {
     assert.match(
       marks(true),
-      /class="dot-rows"[^>]*transparent 0 1%,currentColor 0 2%/,
+      /class="dot-rows"[^>]*transparent 0 11px,currentColor 0 13px/,
     );
     assert.doesNotMatch(marks(false), /dot-rows/);
   });

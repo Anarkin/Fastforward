@@ -25,6 +25,7 @@ import type { WrapColumns } from './rowMeasures';
 import { sideSnaps } from './codeSnap';
 import type { WordRanges } from './wordDiff';
 import { WrapMarks } from './wrapMarks';
+import type { DotLook } from '../../../lib/page/dotLook';
 
 export interface DiffRowParts {
   readonly error: ReactNode;
@@ -38,7 +39,7 @@ export interface DiffRowParts {
   readonly lineHeight: number;
   readonly columnsIn: ColumnsIn | undefined;
   readonly widths: TextWidths;
-  readonly dotted: boolean;
+  readonly dotLook: DotLook | undefined;
   readonly header: (row: FileHeaderRow) => ReactNode;
   readonly toggle: (path: string, open: boolean) => void;
   readonly code: (
@@ -70,7 +71,7 @@ export function DiffRowShown({
     lineHeight,
     columnsIn,
     widths,
-    dotted,
+    dotLook,
     header,
     toggle,
     code,
@@ -213,7 +214,7 @@ export function DiffRowShown({
             numbers={2}
             lineHeight={lineHeight}
             columnsIn={columnsIn}
-            dotted={dotted}
+            look={dotLook}
             widths={widths}
           />
           {hiddenMarks(
@@ -257,7 +258,7 @@ export function DiffRowShown({
                   numbers={1}
                   lineHeight={lineHeight}
                   columnsIn={columnsIn}
-                  dotted={dotted}
+                  look={dotLook}
                   widths={widths}
                 />
               )}
@@ -291,7 +292,7 @@ export function DiffRowShown({
             numbers={1}
             lineHeight={lineHeight}
             columnsIn={columnsIn}
-            dotted={dotted}
+            look={dotLook}
             widths={widths}
           />
         </div>

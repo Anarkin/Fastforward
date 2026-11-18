@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
+import { dotLook } from '../../../../lib/page/dotLook';
 import { cascaded } from '../../../helpers/cascade';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { compact, looks, noop } from './stylesheetFixtures';
@@ -259,7 +260,7 @@ suite('Style', () => {
     });
   });
 
-  test('draws the spaces shown in the diff and the viewer as square dots on one layer over the line, the cells of its spaces cut down by one mask to a dot each, as wide as it is tall in whole device pixels and starting on a whole device pixel in the middle of its advance and of its row, with no element over each space or run, as an element a space of a line of prose slowed scrolling down', () => {
+  test('draws the spaces shown in the diff and the viewer as square dots on one layer over the line, each as tall as it is wide in whole device pixels and starting on a whole device pixel in the middle of its row, where the layer puts it across, with no element over each space or run, as an element a space of a line of prose slowed scrolling down', () => {
     const layer = withClass(
       shownRow(
         diffView(
@@ -270,6 +271,7 @@ suite('Style', () => {
                 <BreakMarks
                   breaks={[]}
                   dots={[[0, 1]]}
+                  look={dotLook(14, 8, 1)}
                   numbers={2}
                   lineHeight={17}
                 />
@@ -287,17 +289,10 @@ suite('Style', () => {
       bottom: '0',
       'pointer-events': 'none',
       color: 'var(--muted-foreground)',
-      'background-size':
-        'calc(var(--dot-columns) * var(--text-advance)) var(--dot-row)',
+      'background-size': '100% var(--space-dot)',
       'background-repeat': 'no-repeat',
-      'mask-size': 'var(--text-advance) 100%, 100% var(--dot-row)',
-      'mask-repeat': 'repeat',
-      'mask-composite': 'intersect',
+      'mask-image': undefined,
     });
-    assert.strictEqual(
-      compact(cascaded(layer, 'mask-image')),
-      'linear-gradient(to right, transparent var(--space-dot-start), black 0 calc(var(--space-dot-start) + var(--space-dot)), transparent 0), linear-gradient(to bottom, transparent var(--dot-top), black 0 calc(var(--dot-top) + var(--space-dot)), transparent 0)',
-    );
     assert.deepStrictEqual(
       ['--dot-row', '--dot-top'].map((name) => compact(cascaded(layer, name))),
       [

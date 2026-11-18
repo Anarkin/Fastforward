@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { dotLook } from '../../../../../lib/page/dotLook';
 import {
-  dotLook,
   dotsBand,
   dotsPath,
   holds,

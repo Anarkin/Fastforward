@@ -189,7 +189,13 @@ async function misplacedLines(wrapping: boolean): Promise<Misplaced[]> {
   return found;
 }
 
-function blanksOf(element: Element): readonly string[] {
+function blanksOf(element: Element): {
+  readonly marked: readonly string[];
+  readonly seen: number;
+} {
+  const edge =
+    element.closest('.virtual-rows')?.getBoundingClientRect().right ?? Infinity;
+  let seen = 0;
   const dots = [
     ...(element.closest('.diff-line')?.querySelectorAll('.dot-rows') ?? []),
   ]
@@ -197,37 +203,22 @@ function blanksOf(element: Element): readonly string[] {
     .flatMap((layer) => {
       const box = layer.getBoundingClientRect();
       const style = getComputedStyle(layer);
-      const [width = 0, height = 0] = style.backgroundSize
-        .split(' ')
-        .map(parseFloat);
-      const advance = parseFloat(style.maskSize);
-      const rows = Math.round(box.height / height);
+      const size = parseFloat(style.backgroundSize.split(' ').at(-1) ?? '');
       const places = style.backgroundPosition.split(', ');
       return style.backgroundImage
         .split('linear-gradient(')
         .slice(1)
         .flatMap((image, shown) => {
-          const row = Math.round(
-            (parseFloat((places[shown] ?? '').split(' ').at(-1) ?? '') / 100) *
-              (rows - 1),
-          );
-          const stops = [
-            ...image.matchAll(/((?:rgba?|color)\([^)]*\))\s+(-?[\d.]+)%/g),
-          ].map(([, color, percent = '']) => ({
-            clear: color === 'rgba(0, 0, 0, 0)',
-            at: (parseFloat(percent) / 100) * width,
-          }));
-          const starts = stops.filter((stop) => stop.clear).map(({ at }) => at);
-          const ends = stops.filter((stop) => !stop.clear).map(({ at }) => at);
-          return ends.flatMap((end, run) =>
-            Array.from(
-              { length: Math.round((end - (starts[run] ?? 0)) / advance) },
-              (_, cell) => ({
-                x: box.left + (starts[run] ?? 0) + (cell + 0.5) * advance,
-                y: box.top + (row + 0.5) * height,
-              }),
-            ),
-          );
+          const top = parseFloat((places[shown] ?? '').split(' ').at(-1) ?? '');
+          return [
+            ...image.matchAll(/((?:rgba?|color)\([^)]*\))\s+(-?[\d.]+)px/g),
+          ]
+            .filter(([, color]) => color !== 'rgba(0, 0, 0, 0)')
+            .filter((_, stop) => stop % 2 === 1)
+            .map(([, , end = '']) => ({
+              x: box.left + parseFloat(end) - size / 2,
+              y: box.top + top + size / 2,
+            }));
         });
     });
   const range = document.createRange();
@@ -238,6 +229,13 @@ function blanksOf(element: Element): readonly string[] {
     const mark = node.parentElement?.closest('.blank, .spaces');
     const length = node.textContent?.length ?? 0;
     for (let index = 0; index < length; index++) {
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+      const rect = range.getBoundingClientRect();
+      if (rect.right > edge) {
+        continue;
+      }
+      seen = at + index + 1;
       if (mark !== null && mark !== undefined && element.contains(mark)) {
         marked.push(
           `${at + index} ${
@@ -248,9 +246,6 @@ function blanksOf(element: Element): readonly string[] {
         );
         continue;
       }
-      range.setStart(node, index);
-      range.setEnd(node, index + 1);
-      const rect = range.getBoundingClientRect();
       if (
         dots.some(
           (dot) =>
@@ -265,7 +260,7 @@ function blanksOf(element: Element): readonly string[] {
     }
     at += length;
   }
-  return marked;
+  return { marked, seen };
 }
 
 function editorBlanksOf(element: Element): readonly string[] {
@@ -452,7 +447,7 @@ suite('App', () => {
     assert.deepStrictEqual(await misplacedLines(true), []);
   });
 
-  test('marks the whitespace in the editor as the diff marks it while it is shown, as it is by default, every space dotted and every tab and other blank signed in a box like the diff, every character still where the diff draws it', async () => {
+  test('marks the whitespace in the editor as the diff marks it while it is shown, as it is by default, every space in sight in the diff dotted and every tab and other blank signed in a box like the diff, every character still where the diff draws it', async () => {
     await openLines();
     await page.locator('.diff-view .dot-rows').first().waitFor();
     const wrapping = (await page.locator('.diff-view.wrap').count()) > 0;
@@ -461,7 +456,7 @@ suite('App', () => {
     for (const number of editorLines.keys()) {
       const code = (await diffLineNumbered(number + 1)).locator('.code');
       const { laidOut, width } = await diffLine(number + 1);
-      const inDiff = await code.evaluate(blanksOf);
+      const { marked: inDiff, seen } = await code.evaluate(blanksOf);
       const shown = await editorLine(
         editor,
         laidOut.text,
@@ -469,9 +464,9 @@ suite('App', () => {
         wrapping,
         true,
       );
-      const inEditor = await page
-        .locator('.editor-probe .cm-line')
-        .evaluate(editorBlanksOf);
+      const inEditor = (
+        await page.locator('.editor-probe .cm-line').evaluate(editorBlanksOf)
+      ).filter((mark) => parseInt(mark, 10) < seen);
       const moved = misplaced(number + 1, laidOut, shown);
       if (moved !== undefined) {
         wrong.push(JSON.stringify(moved));

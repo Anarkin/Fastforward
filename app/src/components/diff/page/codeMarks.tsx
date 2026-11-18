@@ -160,8 +160,10 @@ export const Code = memo(function Code({
   columns,
   lineHeight,
   columnsIn,
+  dotLook,
+  dotColumns,
 }: CodeProps) {
-  const layered = whitespace && breaksMarked(text);
+  const layered = whitespace && dotLook !== undefined && breaksMarked(text);
   const draw = (from?: number, to?: number) => (
     <MarkedCode
       text={text}
@@ -203,7 +205,14 @@ export const Code = memo(function Code({
       )}
       {layered && indent === undefined && (
         <DotRowsShown
-          rows={spaceColumnsAt(text, [0], Infinity, columnsIn)}
+          rows={spaceColumnsAt(text, [0], Infinity, columnsIn).map((spaces) =>
+            dotColumns === undefined
+              ? spaces
+              : spaces.filter(
+                  (column) => column >= dotColumns[0] && column < dotColumns[1],
+                ),
+          )}
+          look={dotLook}
           left="var(--diff-code-padding)"
           alone
         />
