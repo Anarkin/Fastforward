@@ -8,6 +8,7 @@ import { tempRepository } from '../helpers/repositories';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { writeSettings } from './settingsWritten';
+import { untilSettled } from './waits';
 
 const perNotch = 10;
 const touched = 13;
@@ -175,15 +176,17 @@ function recordPainted(
   rows: string,
   moved: string | null,
 ): void {
-  const seen: string[] = [];
+  const seen: { readonly state: string; readonly at: number }[] = [];
   Reflect.set(window, 'placesPainted', seen);
   Reflect.set(window, 'placesWatched', true);
   const read = () => {
     const element = document.querySelector(moved ?? pane);
     if (element !== null) {
-      seen.push(
-        moved === null ? down(element, rows).state : sideways(element).state,
-      );
+      seen.push({
+        state:
+          moved === null ? down(element, rows).state : sideways(element).state,
+        at: performance.now(),
+      });
     }
   };
   const frame = () => {
@@ -200,10 +203,33 @@ function recordPainted(
   requestAnimationFrame(frame);
 }
 
-function paintedPlaces(): string[] {
+function paintedPlaces(): { state: string; at: number }[] {
   Reflect.set(window, 'placesWatched', false);
   const seen: unknown = Reflect.get(window, 'placesPainted');
-  return Array.isArray(seen) ? seen.map(String) : [];
+  return Array.isArray(seen)
+    ? seen.map((each: unknown) => ({
+        state: String(Reflect.get(Object(each), 'state')),
+        at: Number(Reflect.get(Object(each), 'at')),
+      }))
+    : [];
+}
+
+const longestFrame = 100;
+
+function stalled(painted: readonly { state: string; at: number }[]): boolean {
+  const first = painted.findIndex((each) => each.state !== painted[0]?.state);
+  const last = painted.findLastIndex(
+    (each, index) => index > 0 && each.state !== painted[index - 1]?.state,
+  );
+  return (
+    first !== -1 &&
+    painted
+      .slice(first, last + 1)
+      .some(
+        (each, index) =>
+          each.at - (painted[first + index - 1]?.at ?? each.at) > longestFrame,
+      )
+  );
 }
 
 suite('App scrolling alike', () => {
@@ -405,18 +431,39 @@ suite('App scrolling alike', () => {
     act: () => Promise<void>,
   ) => {
     const { pane, rows, across: moved } = views[name];
-    await page.evaluate(
-      `(${String(recordPainted)})(${String(placeDown)}, ${String(placeAcross)}, ${JSON.stringify(pane)}, ${JSON.stringify(rows)}, ${JSON.stringify(sideways ? moved : null)})`,
-    );
-    await act();
-    await pause(700);
-    const samples = await page.evaluate(paintedPlaces);
-    const last = await (sideways ? across(name) : down(name));
-    return {
-      moved: samples.at(-1) !== samples[0],
-      glides: between(samples),
-      whole: last.onRow,
+    const once = async () => {
+      await page.evaluate(
+        `(${String(recordPainted)})(${String(placeDown)}, ${String(placeAcross)}, ${JSON.stringify(pane)}, ${JSON.stringify(rows)}, ${JSON.stringify(sideways ? moved : null)})`,
+      );
+      await act();
+      const last = await untilSettled(
+        () => (sideways ? across(name) : down(name)),
+        `the ${name} to rest`,
+      );
+      const painted = await page.evaluate(paintedPlaces);
+      const samples = painted.map((each) => each.state);
+      return {
+        seen: {
+          moved: samples.at(-1) !== samples[0],
+          glides: between(samples),
+          whole: last.onRow,
+        },
+        unclear: stalled(painted),
+      };
     };
+    let shown = await once();
+    for (
+      let again = 0;
+      again < 2 && shown.unclear && shown.seen.moved && !shown.seen.glides;
+      again++
+    ) {
+      const next = await once();
+      if (!next.seen.moved) {
+        break;
+      }
+      shown = next;
+    }
+    return shown.seen;
   };
 
   const wheeled = async (name: ViewName) => {
@@ -438,7 +485,7 @@ suite('App scrolling alike', () => {
     delta: { readonly deltaX?: number; readonly deltaY?: number },
   ) => {
     const before = await read();
-    const { parts, samples, last } = await sampled(read, () =>
+    const { parts, samples } = await sampled(read, () =>
       page
         .locator(`${views[name].pane} ${views[name].rows}`)
         .nth(3)
@@ -455,13 +502,14 @@ suite('App scrolling alike', () => {
         }, delta),
     );
     const part = (before.part + 2 * touched) % before.row;
+    const rested = await untilSettled(read, `the ${name} to rest`);
     return {
       moved: samples.at(-1) !== samples[0],
       followed: parts.some(
         (seen) =>
           Math.abs(seen - part) < 1 && part > 1.5 && part < before.row - 1.5,
       ),
-      whole: last.onRow,
+      whole: rested.onRow,
     };
   };
 
@@ -495,12 +543,12 @@ suite('App scrolling alike', () => {
       places.push(await read());
     }
     await page.mouse.up();
-    await pause(500);
+    const rested = await untilSettled(read, `the ${name} to rest once let go`);
     return {
       moved: held.last.state !== before.state,
       still: still(held.samples),
       between: places.some((place) => !place.onRow),
-      whole: (await read()).onRow,
+      whole: rested.onRow,
     };
   };
 
