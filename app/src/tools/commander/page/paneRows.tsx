@@ -8,7 +8,8 @@ import { type Row } from './listing';
 import { opens, pointedKeys, rangeKeys } from './rowKeys';
 import { TileName } from './tileName';
 import type { Filter } from '../../../lib/shared/filter';
-import { shownRowsOf } from './shownRows';
+import { shownColumns, shownRowsOf } from './shownRows';
+import { cutClass } from './cellFit';
 import { useCommander, useCommanderActions, useCommanderNow } from './store';
 import { formatDate } from '../../../lib/page/dates';
 import { useShell } from '../../../shell/page/store';
@@ -157,6 +158,7 @@ export function PaneLine(props: PaneItemProps) {
     : (name: string) => actions.openRepository(side, name);
   const { rowClass, colorStyle, iconSource, date, itemEvents, toggleMark } =
     usePaneItem(props);
+  const columns = useCommander(shownColumns);
   return (
     <div
       className={`${rowClass} commander-line`}
@@ -176,10 +178,13 @@ export function PaneLine(props: PaneItemProps) {
       <ExtensionCell
         row={row}
         filter={filter}
+        columns={columns.extension}
         onOpenRepository={onOpenRepository}
       />
-      <SizeCell entry={entry} />
-      <span className="commander-date">{date}</span>
+      <SizeCell entry={entry} columns={columns.size} />
+      <span className={`commander-date${cutClass(date, columns.date)}`}>
+        {date}
+      </span>
     </div>
   );
 }

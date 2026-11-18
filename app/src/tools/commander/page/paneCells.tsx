@@ -4,6 +4,7 @@ import { imageType, vectorType } from '../../../lib/shared/images';
 import { ThumbnailImage } from './thumbnails';
 import { type Entry } from '../shared/protocol';
 import { formatSize } from './format';
+import { cutClass } from './cellFit';
 import { type Row } from './listing';
 import { HighlightWords } from '../../../lib/page/highlight';
 import type { Filter } from '../../../lib/shared/filter';
@@ -100,22 +101,27 @@ export function RowIcon({
 export function ExtensionCell({
   row,
   filter,
+  columns,
   onOpenRepository,
 }: {
   row: Row;
   filter: Filter;
+  columns: number;
   onOpenRepository: ((name: string) => void) | undefined;
 }) {
+  const open = row.repository ? onOpenRepository : undefined;
   return (
-    <span className="commander-extension">
-      {row.repository && onOpenRepository !== undefined ? (
+    <span
+      className={`commander-extension${open === undefined ? cutClass(row.extension, columns) : ' cut'}`}
+    >
+      {open !== undefined ? (
         <button
           className="commander-mark"
           title={strings.commander.openRepository}
           tabIndex={-1}
           onClick={(event) => {
             event.stopPropagation();
-            onOpenRepository(row.key);
+            open(row.key);
           }}
         >
           <ToolIcon tool="git" />
@@ -151,12 +157,15 @@ export function NameCell({ row, filter }: { row: Row; filter: Filter }) {
 
 export function SizeCell({
   entry,
+  columns,
   tile = false,
 }: {
   entry: Entry | undefined;
+  columns?: number;
   tile?: boolean;
 }) {
-  const className = `${tile ? 'commander-tile-size' : 'commander-size'}${entry?.counting === true ? ' counting' : ''}`;
+  const size = formatSize(entry?.size);
+  const className = `${tile ? 'commander-tile-size' : 'commander-size'}${entry?.counting === true ? ' counting' : ''}${columns === undefined ? '' : cutClass(size, columns)}`;
   const title =
     entry?.unreadFolders === undefined
       ? undefined
@@ -164,7 +173,7 @@ export function SizeCell({
   const Cell = tile ? 'div' : 'span';
   return (
     <Cell className={className} title={title}>
-      {formatSize(entry?.size)}
+      {size}
     </Cell>
   );
 }

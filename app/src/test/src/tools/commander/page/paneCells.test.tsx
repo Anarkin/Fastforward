@@ -284,11 +284,12 @@ suite('Commander pane', () => {
       'app',
       'notes.txt',
     ].map((key) => rows.find((row) => row.key === key) ?? rows[0]);
-    const cell = (row: typeof parent) =>
+    const cell = (row: typeof parent, columns = 5) =>
       renderToStaticMarkup(
         <ExtensionCell
           row={row}
           filter={plainFilter('')}
+          columns={columns}
           onOpenRepository={noop}
         />,
       );
@@ -304,12 +305,16 @@ suite('Commander pane', () => {
     assert.match(
       cell(repository),
       new RegExp(
-        `^<span class="commander-extension"><button class="commander-mark" title="${strings.commander.openRepository}" tabindex="-1"><svg class="icon tool-icon tool-git"`,
+        `^<span class="commander-extension cut"><button class="commander-mark" title="${strings.commander.openRepository}" tabindex="-1"><svg class="icon tool-icon tool-git"`,
       ),
     );
     assert.match(
       cell(file),
       /^<span class="commander-extension">.*txt.*<\/span>$/,
+    );
+    assert.match(
+      cell(file, 2),
+      /^<span class="commander-extension cut">.*txt.*<\/span>$/,
     );
   });
 });

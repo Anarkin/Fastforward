@@ -267,6 +267,32 @@ suite('App commander', () => {
     );
   });
 
+  test('clips the cells of a row only where their text may not fit: the name, which takes the room left, but not an extension, a size or a date that fits its column, as a clip for every cell of every row had each frame of a scroll paint a thousand of them', async () => {
+    const row = right().locator('.commander-row', { hasText: 'notes' });
+    await row.waitFor();
+    assert.deepStrictEqual(
+      await row.evaluate((element) =>
+        Object.fromEntries(
+          ['name', 'extension', 'size', 'date'].map((cell) => {
+            const found = element.querySelector(`.commander-${cell}`);
+            return [
+              cell,
+              found === null
+                ? 'missing'
+                : `${getComputedStyle(found).overflowX}${found.scrollWidth > found.clientWidth ? ', too long' : ''}`,
+            ];
+          }),
+        ),
+      ),
+      {
+        name: 'hidden',
+        extension: 'visible',
+        size: 'visible',
+        date: 'visible',
+      },
+    );
+  });
+
   test('starts each row where the one above it ends, leaving no seam between their backgrounds', async () => {
     const names = ['seam1.txt', 'seam2.txt', 'seam3.txt', 'seam4.txt'];
     for (const name of names) {

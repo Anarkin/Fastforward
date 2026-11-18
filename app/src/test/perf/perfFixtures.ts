@@ -73,6 +73,25 @@ const isSampled = () => process.env.FASTFORWARD_PERF_PROFILE === '1';
 const asked = () =>
   (process.env.FASTFORWARD_PERF_CATEGORIES ?? '').split(',').filter(Boolean);
 
+function withGlidingAsked(settings: unknown): unknown {
+  const gliding = process.env.FASTFORWARD_PERF_SMOOTH;
+  if (
+    gliding === undefined ||
+    typeof settings !== 'object' ||
+    settings === null
+  ) {
+    return settings;
+  }
+  const scrolling: unknown = Reflect.get(settings, 'scrolling');
+  return {
+    ...settings,
+    scrolling: {
+      ...(typeof scrolling === 'object' ? scrolling : {}),
+      smooth: gliding === '1',
+    },
+  };
+}
+
 export function perfData(): PerfData {
   return inject('perfData');
 }
@@ -91,7 +110,7 @@ export function launchedForPerf(
     fs.writeFileSync(path.join(profile, 'state.json'), JSON.stringify(state));
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify(settings),
+      JSON.stringify(withGlidingAsked(settings)),
     );
     const app = await _electron.launch({
       args: [

@@ -69,8 +69,13 @@
 
 .commander-line > * {
   min-width: 0;
-  overflow: hidden;
   white-space: pre;
+}
+
+.commander-header > *,
+.commander-line > .commander-name,
+.commander-line > .cut {
+  overflow: hidden;
   text-overflow: ellipsis;
 }
 
