@@ -81,6 +81,33 @@ export function dotsBand(top: number, bottom: number): Band {
 export const holds = (band: Band, top: number, bottom: number): boolean =>
   band.top <= top && bottom <= band.bottom;
 
+export interface Span {
+  readonly from: number;
+  readonly to: number;
+}
+
+export function dotsSpan(left: number, right: number): Span {
+  const margin = Math.max(leastMargin, (right - left) / 2);
+  return { from: left - margin, to: right + margin };
+}
+
+export function clippedRun(
+  run: SpaceRun,
+  span: Span | undefined,
+  advance: number,
+): SpaceRun | undefined {
+  if (span === undefined) {
+    return run;
+  }
+  const skipped = Math.max(0, Math.floor((span.from - run.left) / advance));
+  const left = run.left + skipped * advance;
+  const length = Math.min(
+    run.length - skipped,
+    Math.ceil((span.to - left) / advance),
+  );
+  return length > 0 ? { ...run, left, length } : undefined;
+}
+
 const spaces = / +/g;
 
 const singleCells = /^[\x20-\x7e]*$/;
@@ -204,6 +231,7 @@ function spaceRunsOf(
   view: EditorView,
   line: Element,
   advance: number,
+  across: Span | undefined,
 ): SpaceRun[] {
   const edge = rowEdge(view);
   const runs: SpaceRun[] = [];
@@ -222,11 +250,28 @@ function spaceRunsOf(
       continue;
     }
     const rows = measuredRows(range, node, advance);
-    for (const found of node.data.matchAll(spaces)) {
-      const place = placeOf(range, node, found.index, rows, advance);
-      const run =
+    const [row] = rows ?? [];
+    const first =
+      across === undefined || rows?.length !== 1 || row === undefined
+        ? 0
+        : Math.max(0, Math.floor((across.from - row.left) / advance));
+    const last =
+      across === undefined || rows?.length !== 1 || row === undefined
+        ? node.length
+        : Math.min(node.length, Math.ceil((across.to - row.left) / advance));
+    if (last <= first) {
+      continue;
+    }
+    const text =
+      first === 0 && last === node.length
+        ? node.data
+        : node.data.slice(first, last);
+    for (const found of text.matchAll(spaces)) {
+      const place = placeOf(range, node, first + found.index, rows, advance);
+      const fitting =
         place &&
         fittingRun({ ...place, length: found[0].length }, edge, advance);
+      const run = fitting && clippedRun(fitting, across, advance);
       if (run !== undefined) {
         runs.push(run);
       }
@@ -251,6 +296,7 @@ const keptRuns = new WeakMap<EditorView, WeakMap<Element, LineRuns>>();
 function spaceRunsIn(
   view: EditorView,
   band: Band,
+  across: Span | undefined,
   look: DotLook,
   laidOut: number,
 ): SpaceRun[] {
@@ -273,7 +319,7 @@ function spaceRunsIn(
       continue;
     }
     if (block.length > wholeLine) {
-      runs.push(...spaceRunsOf(view, line, look.advance));
+      runs.push(...spaceRunsOf(view, line, look.advance, across));
       continue;
     }
     const text = view.state.sliceDoc(block.from, block.to);
@@ -284,10 +330,10 @@ function spaceRunsIn(
       ...runsOfLine(
         kept,
         line,
-        `${shape}:${height}
+        `${shape}:${height}:${across === undefined ? '' : `${across.from - left}:${across.to - left}`}
 ${text}`,
         { left, top },
-        () => spaceRunsOf(view, line, look.advance),
+        () => spaceRunsOf(view, line, look.advance, across),
       ),
     );
   }
@@ -358,7 +404,10 @@ class DotsMarker implements LayerMarker {
 
 const redraw = StateEffect.define();
 
-const drawnBands = new WeakMap<EditorView, Band>();
+const drawnBands = new WeakMap<
+  EditorView,
+  { readonly band: Band; readonly across: Span | undefined }
+>();
 
 function lookOf(view: EditorView): DotLook {
   const pixel = 1 / window.devicePixelRatio;
@@ -380,12 +429,22 @@ function dotMarkers(
     scrollDOM.scrollTop,
     scrollDOM.scrollTop + scrollDOM.clientHeight,
   );
-  drawnBands.set(view, band);
+  const across = view.lineWrapping
+    ? undefined
+    : dotsSpan(
+        scrollDOM.scrollLeft,
+        scrollDOM.scrollLeft + scrollDOM.clientWidth,
+      );
+  drawnBands.set(view, { band, across });
   const origin = layerOrigin(view);
   const look = lookOf(view);
   const runs = spaceRunsIn(
     view,
     { top: origin.top + band.top, bottom: origin.top + band.bottom },
+    across && {
+      from: origin.left + across.from,
+      to: origin.left + across.to,
+    },
     look,
     laidOut,
   );
@@ -400,11 +459,15 @@ class ScrollWatch implements PluginValue {
   }
 
   private readonly scrolled = () => {
-    const band = drawnBands.get(this.view);
-    const { scrollTop, clientHeight } = this.view.scrollDOM;
+    const drawn = drawnBands.get(this.view);
+    const { scrollTop, clientHeight, scrollLeft, clientWidth } =
+      this.view.scrollDOM;
     if (
-      band !== undefined &&
-      !holds(band, scrollTop, scrollTop + clientHeight)
+      drawn !== undefined &&
+      (!holds(drawn.band, scrollTop, scrollTop + clientHeight) ||
+        (drawn.across !== undefined &&
+          (scrollLeft < drawn.across.from ||
+            scrollLeft + clientWidth > drawn.across.to)))
     ) {
       this.view.dispatch({ effects: redraw.of(null) });
     }

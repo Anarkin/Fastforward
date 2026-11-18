@@ -222,4 +222,57 @@ suite('App editor', () => {
       `${inViewer} in the viewer, ${inEditor} in the editor`,
     );
   });
+
+  test('dots the spaces of a line of thousands of columns only around the columns in sight, and around those it is scrolled sideways to once it is, as every run of the line was measured and drawn wherever the editor scrolled', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'wide.txt'),
+      Array.from({ length: 3 }, () =>
+        Array.from({ length: 3000 }, (_, at) => `w${at}`).join(' '),
+      ).join(String.fromCharCode(10)),
+    );
+    await backToCommander();
+    await edit('wide.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('w0 w1 '),
+      'the text',
+    );
+    await toStart();
+    const scroller = page.locator('.editor .cm-scroller');
+    const dotted = () =>
+      scroller.evaluate((element) => {
+        const starts = [
+          ...(
+            element.querySelector('.space-dots path')?.getAttribute('d') ?? ''
+          ).matchAll(/M(-?[\d.]+) /g),
+        ].map(([, x]) => Number(x));
+        return {
+          runs: starts.length,
+          from: Math.min(...starts),
+          to: Math.max(...starts),
+          left: element.scrollLeft,
+          wide: element.clientWidth,
+        };
+      });
+    await waitFor(async () => (await dotted()).runs > 0, 'the dots');
+    const atStart = await dotted();
+    await scroller.evaluate((element) => {
+      element.scrollLeft = element.scrollWidth / 2;
+    });
+    await waitFor(async () => {
+      const now = await dotted();
+      return now.left > 0 && now.from > atStart.to;
+    }, 'the dots of the columns scrolled to');
+    const scrolled = await dotted();
+
+    assert.ok(
+      atStart.to - atStart.from < 3 * atStart.wide,
+      JSON.stringify(atStart),
+    );
+    assert.ok(
+      scrolled.from < scrolled.left + scrolled.wide &&
+        scrolled.to > scrolled.left &&
+        scrolled.to - scrolled.from < 3 * scrolled.wide,
+      JSON.stringify(scrolled),
+    );
+  });
 });

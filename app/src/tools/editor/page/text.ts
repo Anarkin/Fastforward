@@ -24,6 +24,7 @@ import {
 import {
   blank,
   blankSignOf,
+  signedBlank,
   spacesBlanksAndText,
 } from '../../../lib/page/blankSigns';
 import { spaceDots } from './spaces';
@@ -379,8 +380,10 @@ class LineLook implements PluginValue {
             }
           }
         }
-        if (showsBlanks) {
-          const shown = line.text.slice(window.from, window.to);
+        const shown = showsBlanks
+          ? line.text.slice(window.from, window.to)
+          : '';
+        if (signedBlank.test(shown)) {
           for (const found of shown.matchAll(spacesBlanksAndText)) {
             const [part] = found;
             const index = window.from + found.index;

@@ -2,7 +2,9 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { dotLook } from '../../../../../lib/page/dotLook';
 import {
+  clippedRun,
   dotsBand,
+  dotsSpan,
   dotFills,
   fittingRun,
   holds,
@@ -179,5 +181,30 @@ suite('The dots the editor draws for spaces', () => {
     assert.strictEqual(textRows([rect], 'a	b', 8), undefined);
     assert.strictEqual(textRows([rect], 'aé ', 8), undefined);
     assert.strictEqual(textRows([], '', 8), undefined);
+  });
+
+  test('dots only the part of a run of spaces within the columns in sight and a view to either side of them, cutting a run that reaches past them and dropping one outside, and draws anew once the text is scrolled sideways past that room, as lines of thousands of columns had every run of theirs measured and drawn wherever the editor scrolled, a third of its work under a scrollbar dragged', () => {
+    const span = dotsSpan(1000, 1800);
+    assert.deepStrictEqual(span, { from: 600, to: 2200 });
+    assert.deepStrictEqual(dotsSpan(0, 300), { from: -200, to: 500 });
+    const run = { left: 500, top: 10, height: 16, length: 30 };
+    assert.deepStrictEqual(
+      [
+        clippedRun(run, span, 8),
+        clippedRun({ ...run, left: 2100 }, span, 8),
+        clippedRun({ ...run, left: 700 }, span, 8),
+        clippedRun({ ...run, left: 100 }, span, 8),
+        clippedRun({ ...run, left: 2200 }, span, 8),
+        clippedRun(run, undefined, 8),
+      ],
+      [
+        { left: 596, top: 10, height: 16, length: 18 },
+        { left: 2100, top: 10, height: 16, length: 13 },
+        { left: 700, top: 10, height: 16, length: 30 },
+        undefined,
+        undefined,
+        run,
+      ],
+    );
   });
 });
