@@ -143,6 +143,22 @@ export function rowWithByte(
   return lastFrom(rows, first, (row) => row.start <= byte);
 }
 
+export function partOfRow(
+  rows: readonly ScreenRow[],
+  index: number,
+  byte: number,
+): number {
+  const row = rows[index];
+  const next = rows[index + 1];
+  if (row === undefined || next === undefined || next.start <= row.start) {
+    return 0;
+  }
+  return Math.max(
+    0,
+    Math.min(1, (byte - row.start) / (next.start - row.start)),
+  );
+}
+
 export function piecesWithin(
   pieces: readonly CodeSegment[],
   from: number,

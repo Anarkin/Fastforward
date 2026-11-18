@@ -64,7 +64,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Commit list | List the commits, newest first | `git log` | Core | ✅ Yes | `git rev-list --date-order`, read whole, so the list knows its size and jumps anywhere; scrolled by whole commits, `scrolling.wheelRows` lines a notch settling on the start of a commit, and the files by whole rows, as the diff and the commander scroll; a line under it counts the commits shown, or says Reading… once the history has been read for half a second |
+| Commit list | List the commits, newest first | `git log` | Core | ✅ Yes | `git rev-list --date-order`, read whole, so the list knows its size and jumps anywhere; scrolled by whole commits, `scrolling.wheelRows` lines a notch settling on the start of a commit, and the files by whole rows, as the diff and the commander scroll, the keys gliding to a commit as the wheel does with `scrolling.smooth`; a line under it counts the commits shown, or says Reading… once the history has been read for half a second |
 | Graph | Draw the lanes of branches and merges | `git log --graph` | Core | ✅ Yes | Up to 12 lanes in 8 colors, folding the rest into the last |
 | All branches or one | Show every ref's history, or HEAD's only | `git log --all`, `git log HEAD` | Common | ✅ Yes | Solo, remembered per worktree |
 | Chosen branches | Show the history of chosen branches only | `git log <ref>...` | Common | ❌ No | Solo shows HEAD's only |

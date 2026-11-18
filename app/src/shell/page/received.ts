@@ -35,7 +35,11 @@ export function received(
       return { partLooks: knownWith(state.partLooks, message.looks) };
     case 'scrolling':
       return {
-        scrolling: { wheelRows: message.wheelRows, smooth: message.smooth },
+        scrolling: {
+          wheelRows: message.wheelRows,
+          smooth: message.smooth,
+          smoothSnap: message.smoothSnap,
+        },
       };
     case 'textView':
       return { textView: message.view };

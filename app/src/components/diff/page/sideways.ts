@@ -8,7 +8,10 @@ import {
   useState,
   type RefObject,
 } from 'react';
-import { followColumns, snappedLeft } from '../../../lib/page/columnScroll';
+import {
+  followColumns,
+  type ColumnFollower,
+} from '../../../lib/page/columnScroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { elementMetrics } from '../../../lib/page/scrollerMetrics';
 import {
@@ -16,13 +19,7 @@ import {
   sidewaysScrollEvent,
 } from '../../../lib/page/scrollbarLinks';
 import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
-import {
-  codeShift,
-  sideScroll,
-  sideWidth,
-  swipedSideways,
-  wheelsSideways,
-} from './sidewaysScroll';
+import { codeShift, sideWidth, wheelsSideways } from './sidewaysScroll';
 import { dottedColumns, sidewaysRoom, type Sideways } from './overflow';
 import { sidewaysShown, type SidewaysShown } from './sidewaysShown';
 
@@ -64,9 +61,11 @@ export function useSideways(
   readonly placeCode: (code: HTMLElement | null) => void;
   readonly scrolledNow: () => number;
   readonly scrollTo: (left: number) => void;
+  readonly glideTo: (left: number) => void;
   readonly measureSideways: () => void;
 } {
   const scrolled = useRef(kept);
+  const across = useRef<ColumnFollower>(undefined);
   const [shown] = useState(() => sidewaysShown());
   const [box, setBox] = useState<SideBox>();
   const [dotColumns, setDotColumns] = useState<DotColumns>();
@@ -144,6 +143,7 @@ export function useSideways(
   }, [wordWrap, scale, advance, box, room, shown, viewNow, dotAround]);
   const perNotch = useEffectEvent(() => scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);
+  const settles = useEffectEvent(() => scrolling.smoothSnap);
   useEffect(() => {
     const element = listRef.current;
     if (!element || wordWrap) {
@@ -156,19 +156,12 @@ export function useSideways(
       advance: () => now.current.advance,
       perNotch,
       smooth,
+      settles,
       scrolled: () => scrolled.current,
       room: roomNow,
       scrollTo,
     });
-    const onWheel = (event: WheelEvent) => {
-      const delta = swipedSideways(event);
-      if (delta === 0) {
-        return;
-      }
-      event.preventDefault();
-      scrollTo(sideScroll(scrolled.current + delta, roomNow()));
-    };
-    element.addEventListener('wheel', onWheel, { passive: false });
+    across.current = following;
     setSidewaysScroller(element, {
       metrics: () =>
         sidewaysMetrics(
@@ -178,17 +171,14 @@ export function useSideways(
           scrolled.current,
         ),
       scrollTo: (scrollLeft) =>
-        scrollTo(
-          snappedLeft(
-            sidewaysScroll(scrollLeft, element.clientWidth, sideNow()),
-            now.current.advance,
-            roomNow(),
-          ),
+        following.dragTo(
+          sidewaysScroll(scrollLeft, element.clientWidth, sideNow()),
         ),
+      dragEnd: following.dragEnd,
     });
     return () => {
-      following();
-      element.removeEventListener('wheel', onWheel);
+      following.stop();
+      across.current = undefined;
       setSidewaysScroller(element, undefined);
     };
   }, [listRef, wordWrap, scrollTo]);
@@ -213,6 +203,16 @@ export function useSideways(
     return () => observer.disconnect();
   }, [listRef, measureSideways]);
   const scrolledNow = useCallback(() => scrolled.current, []);
+  const glideTo = useCallback(
+    (left: number) => {
+      if (across.current) {
+        across.current.scrollTo(left, true);
+      } else {
+        scrollTo(left);
+      }
+    },
+    [scrollTo],
+  );
   return {
     shown,
     dotColumns,
@@ -220,6 +220,7 @@ export function useSideways(
     placeCode,
     scrolledNow,
     scrollTo,
+    glideTo,
     measureSideways,
   };
 }

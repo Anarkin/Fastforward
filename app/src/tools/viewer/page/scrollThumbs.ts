@@ -5,6 +5,15 @@ export interface Thumb {
   readonly length: number;
 }
 
+export interface Ends {
+  readonly atStart: boolean;
+  readonly atEnd: boolean;
+}
+
+export function rowEnds(top: number, lastTop: number): Ends {
+  return { atStart: top <= 0, atEnd: top >= lastTop };
+}
+
 const minThumb = 24;
 
 export function thumbBox(

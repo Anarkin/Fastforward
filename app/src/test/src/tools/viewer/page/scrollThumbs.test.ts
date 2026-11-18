@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   grabbedAt,
   matchTicks,
+  rowEnds,
   thumbBox,
 } from '../../../../../tools/viewer/page/scrollThumbs';
 
@@ -32,6 +33,18 @@ suite('Scroll thumbs', () => {
       ],
     );
     assert.deepStrictEqual(matchTicks([{ start: 0, end: 8 }], 0, 1 / 64), []);
+  });
+
+  test('knows the first and the last screen of the rows of bytes, and rows that fit their view as both, where nothing is left to scroll', () => {
+    assert.deepStrictEqual(
+      [rowEnds(0, 90), rowEnds(45, 90), rowEnds(90, 90), rowEnds(0, 0)],
+      [
+        { atStart: true, atEnd: false },
+        { atStart: false, atEnd: false },
+        { atStart: false, atEnd: true },
+        { atStart: true, atEnd: true },
+      ],
+    );
   });
 
   test('draws the thumb never smaller than it can be grabbed, in the room the track leaves it', () => {

@@ -35,7 +35,7 @@ suite('Scrolling by whole rows', () => {
     assert.strictEqual(glideAt(further, 1000 + rowGlide * 1.5), 400);
   });
 
-  test('glides to a row revealed more than a row and at most a view away, as a page key moves, and jumps a row or far, as the arrows, Home, End and finding do', () => {
+  test('glides to a row revealed without a key more than a row and at most a view away, and jumps a row or far, as a click on a row half in view and finding do, a row revealed by a key gliding however far it is', () => {
     assert.strictEqual(revealGlides(0, 380, 20, 400), true);
     assert.strictEqual(revealGlides(380, 0, 20, 400), true);
     assert.strictEqual(revealGlides(0, 400, 20, 400), true);

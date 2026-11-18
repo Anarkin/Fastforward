@@ -19,6 +19,7 @@ import {
   rowWithChar,
   screenRows,
   type ScreenRow,
+  partOfRow,
 } from './screenRows';
 import {
   topWithin,
@@ -329,7 +330,7 @@ export function useTextRows({
   );
 
   const jump = useCallback(
-    (share: number) => {
+    (share: number, part?: (fraction: number) => void) => {
       const anchor = Math.round(
         share *
           lastScreenStart(size ?? 0, screen, estimate?.perRow ?? 1, lastTop),
@@ -339,12 +340,12 @@ export function useTextRows({
         exact: false,
         before: screen,
         after: screen + 1,
-        topOf: (first, arrived) =>
-          topWithin(
-            rowWithByte(arrived, first, anchor),
-            arrived.length,
-            screen,
-          ),
+        topOf: (first, arrived) => {
+          const row = rowWithByte(arrived, first, anchor);
+          const top = topWithin(row, arrived.length, screen);
+          part?.(top === row ? partOfRow(arrived, row, anchor) : 0);
+          return top;
+        },
       });
     },
     [askPlace, screen, size, estimate?.perRow, lastTop],

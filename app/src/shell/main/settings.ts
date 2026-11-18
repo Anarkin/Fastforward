@@ -18,6 +18,7 @@ export interface Settings {
   readonly scrolling: {
     readonly wheelRows: number;
     readonly smooth: boolean;
+    readonly smoothSnap: boolean;
   };
   readonly cursor: CursorLook;
   readonly text: TextView;

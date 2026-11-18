@@ -47,6 +47,11 @@ const longFile = [
   ...shortLines(574, '<p>after'),
 ];
 
+const selectedLines = () =>
+  editorPage.evaluate(() =>
+    (getSelection()?.toString() ?? '').split('\n').filter(Boolean),
+  );
+
 interface TopRow {
   readonly text: string;
   readonly offset: number;
@@ -611,6 +616,82 @@ suite('App editor', () => {
       'moved above the rows',
     );
     await editorPage.keyboard.press('Control+s');
+  });
+
+  test('moves the cursor a page up as many rows as a page down, a row less than the view shows, the cursor staying on the row of the view it was on, selecting as far with Shift, and to the last line of the file on Ctrl+End and the first on Ctrl+Home, as the caret of the browser went up no further than the lines drawn above the view, to the top row on Page Down, and on Ctrl+End to the last line drawn rather than the last of the file', async () => {
+    const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
+    fs.writeFileSync(path.join(editorOpened, 'paged.txt'), lines.join('\n'));
+    await backToCommander();
+    await editorEdit('paged.txt');
+    await waitFor(
+      async () => (await editedText()).startsWith('line 1\n'),
+      'the text',
+    );
+    await toStart();
+    const scroller = editorPage.locator('.editor .cm-scroller');
+    const page = await scroller.evaluate((element) => {
+      const row =
+        element.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
+      return Math.floor(element.clientHeight / row) - 1;
+    });
+    const cursor = () =>
+      untilSettled(
+        () =>
+          scroller.evaluate((element) => {
+            const node = getSelection()?.focusNode;
+            const line = (
+              node instanceof Element ? node : node?.parentElement
+            )?.closest('.cm-line');
+            const row =
+              element.querySelector('.cm-line')?.getBoundingClientRect()
+                .height ?? 1;
+            const top = element.getBoundingClientRect().top;
+            return {
+              line: line?.textContent ?? '',
+              row:
+                line === null || line === undefined
+                  ? NaN
+                  : Math.round(
+                      ((line.getBoundingClientRect().top - top) / row) * 100,
+                    ) / 100,
+            };
+          }),
+        'the cursor to stop moving',
+        { quiet: 300 },
+      );
+    const pressed = async (key: string) => {
+      await editorPage.keyboard.press(key);
+      return cursor();
+    };
+    assert.ok(page > 5, `a page of ${page} rows`);
+    await editorPage.keyboard.press('ArrowDown');
+
+    assert.deepStrictEqual(
+      {
+        down: await pressed('ArrowDown'),
+        pageDown: await pressed('PageDown'),
+        again: await pressed('PageDown'),
+        pageUp: await pressed('PageUp'),
+        end: (await pressed('Control+End')).line,
+        home: await pressed('Control+Home'),
+        selectedDown: await pressed('Shift+PageDown'),
+        selectedOn: await pressed('Shift+ArrowDown'),
+        selectedUp: await pressed('Shift+PageUp'),
+        left: await selectedLines(),
+      },
+      {
+        down: { line: 'line 3', row: 2 },
+        pageDown: { line: `line ${3 + page}`, row: 2 },
+        again: { line: `line ${3 + 2 * page}`, row: 2 },
+        pageUp: { line: `line ${3 + page}`, row: 2 },
+        end: 'line 400',
+        home: { line: 'line 1', row: 0 },
+        selectedDown: { line: `line ${1 + page}`, row: 0 },
+        selectedOn: { line: `line ${2 + page}`, row: 1 },
+        selectedUp: { line: 'line 2', row: 1 },
+        left: ['line 1'],
+      },
+    );
   });
 
   test('shows the text where it was scrolled to and the cursor where it was once its tab is shown again', async () => {

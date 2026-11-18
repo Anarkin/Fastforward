@@ -59,6 +59,39 @@ export const editorKeymap = {
     { 'Alt+ArrowUp': -1, 'Alt+ArrowDown': 1 } as const,
     typing,
   ),
+  cursorRow: bind(
+    'Moving',
+    strings.actions.cursorRow,
+    {
+      ArrowUp: 'up',
+      ArrowDown: 'down',
+      'Shift+ArrowUp': 'selectUp',
+      'Shift+ArrowDown': 'selectDown',
+    } as const,
+    typing,
+  ),
+  cursorPage: bind(
+    'Moving',
+    strings.actions.cursorPage,
+    {
+      PageUp: 'up',
+      PageDown: 'down',
+      'Shift+PageUp': 'selectUp',
+      'Shift+PageDown': 'selectDown',
+    } as const,
+    typing,
+  ),
+  cursorFileEnd: bind(
+    'Moving',
+    strings.actions.cursorFileEnd,
+    {
+      'Mod+Home': 'up',
+      'Mod+End': 'down',
+      'Mod+Shift+Home': 'selectUp',
+      'Mod+Shift+End': 'selectDown',
+    } as const,
+    typing,
+  ),
   rowEnd: bind(
     'Moving',
     strings.actions.rowEnd,

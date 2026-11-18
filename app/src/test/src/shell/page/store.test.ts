@@ -86,7 +86,12 @@ suite('Shell store', () => {
     const { receive } = store.getState();
     receive({ type: 'tabs', tabs: [terminal, git], active: '2' });
     receive({ type: 'dateFormat', format: 'DD.MM.YYYY' });
-    receive({ type: 'scrolling', wheelRows: 3, smooth: true });
+    receive({
+      type: 'scrolling',
+      wheelRows: 3,
+      smooth: true,
+      smoothSnap: false,
+    });
     receive({
       type: 'textView',
       view: { wordWrap: false, showWhitespace: true, highlightSyntax: false },
@@ -98,7 +103,11 @@ suite('Shell store', () => {
     assert.deepStrictEqual(state.tabs, [terminal, git]);
     assert.strictEqual(state.active, '2');
     assert.strictEqual(state.dateFormat, 'DD.MM.YYYY');
-    assert.deepStrictEqual(state.scrolling, { wheelRows: 3, smooth: true });
+    assert.deepStrictEqual(state.scrolling, {
+      wheelRows: 3,
+      smooth: true,
+      smoothSnap: false,
+    });
     assert.deepStrictEqual(state.textView, {
       wordWrap: false,
       showWhitespace: true,

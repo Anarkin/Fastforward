@@ -11,13 +11,15 @@ export async function scrollPlaces(
     const places: number[] = [];
     Reflect.set(window, 'scrollPlaces', places);
     Reflect.set(window, 'scrollRested', false);
+    let moved = performance.now();
     const record = () => {
+      if (element.scrollTop !== places.at(-1)) {
+        moved = performance.now();
+      }
       places.push(element.scrollTop);
-      const resting = places.slice(-12);
       if (
         places.some((place) => place !== places[0]) &&
-        resting.length === 12 &&
-        resting.every((place) => place === resting[0])
+        performance.now() - moved > 300
       ) {
         Reflect.set(window, 'scrollRested', true);
         return;

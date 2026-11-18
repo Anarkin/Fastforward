@@ -74,6 +74,18 @@ suite('Storage', () => {
     );
   });
 
+  test('settles a list on a whole row once a scrollbar or a touchpad that moved it by pixels is let go, as scrolling that glides does unless the settings turn that off', () => {
+    assert.strictEqual(storageOf().smoothSnap, true);
+    const settings = new UserSettings({
+      ...defaultSettings(),
+      scrolling: { ...defaultSettings().scrolling, smoothSnap: false },
+    });
+    assert.strictEqual(
+      new Storage(settings, new FakeStore()).smoothSnap,
+      false,
+    );
+  });
+
   test('reads state of the wrong shape, as a hand edit can leave it, as never saved', async () => {
     const store = new FakeStore();
     await store.update(tabsKey, 5);

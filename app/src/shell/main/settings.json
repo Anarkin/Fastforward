@@ -6,7 +6,8 @@
   "dateFormat": "YYYY-MM-DD HH:mm",
   "scrolling": {
     "wheelRows": 10,
-    "smooth": false
+    "smooth": false,
+    "smoothSnap": true
   },
   "cursor": {
     "style": "block",

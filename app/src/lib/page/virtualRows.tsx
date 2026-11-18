@@ -57,6 +57,8 @@ const noAncestors = () => [];
 
 const noValues: readonly unknown[] = [];
 
+const keyReveals = 100;
+
 export function VirtualRows({
   rows,
   renderRow,
@@ -135,6 +137,7 @@ export function VirtualRows({
   const stepOf = useEffectEvent(() => wheelStep?.() ?? rowHeight());
   const perNotch = useEffectEvent(() => notchRows ?? scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);
+  const settles = useEffectEvent(() => scrolling.smoothSnap);
   const follower = useRef<RowFollower>(undefined);
   const [roomHeight, setRoomHeight] = useState(0);
   const padding = wholeRows
@@ -151,6 +154,7 @@ export function VirtualRows({
       step: stepOf,
       perNotch,
       smooth,
+      settles,
       onPlace: (top) => offsetSeen.current?.(top),
     });
     follower.current = following;
@@ -223,12 +227,14 @@ export function VirtualRows({
     if (follower.current) {
       follower.current.scrollTo(
         offset,
-        revealGlides(scrolled, offset, rowHeight(), element.clientHeight),
+        performance.now() - keyed.current < keyReveals ||
+          revealGlides(scrolled, offset, rowHeight(), element.clientHeight),
       );
     } else {
       virtualizer.scrollToOffset(offset);
     }
   });
+  const keyed = useRef(-Infinity);
   useEffect(() => {
     if (
       revealAgain(revealed.current, reveal) &&
@@ -277,6 +283,7 @@ export function VirtualRows({
             tabIndex: 0,
             [columnFocusAttribute]: '',
             onKeyDown: (event: React.KeyboardEvent) => {
+              keyed.current = performance.now();
               const covered = pinned.reduce(
                 (sum, index) => sum + heightOf(index),
                 0,

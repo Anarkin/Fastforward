@@ -40,6 +40,7 @@ export function ViewerScrollbar({
   shown,
   onShow,
   jump,
+  onLetGo,
   matches,
   size,
 }: {
@@ -49,6 +50,7 @@ export function ViewerScrollbar({
   shown: boolean;
   onShow: () => void;
   jump: (share: number) => void;
+  onLetGo: () => void;
   matches: readonly ByteRange[];
   size: number;
 }) {
@@ -76,6 +78,7 @@ export function ViewerScrollbar({
           (pointer: PointerEvent) => at(pointer.clientY),
           () => {
             setDragging(false);
+            onLetGo();
             onShow();
           },
         );

@@ -19,7 +19,7 @@ import {
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('scrolls the list by whole rows, the rows of the setting for each notch of the wheel, ten unless set, as far as a touchpad goes, a page on Page Down, gliding there once set to, and with the scrollbar alike, gliding after its thumb and coming to rest on a row', async () => {
+  test('scrolls the list by whole rows, the rows of the setting for each notch of the wheel, ten unless set, by the pixels of a touchpad, a page on Page Down, gliding there once set to, and with the scrollbar alike, following its thumb between rows and coming to rest on a row once let go', async () => {
     const many = path.join(opened, 'many');
     fs.mkdirSync(many);
     for (let index = 0; index < 400; index++) {
@@ -143,7 +143,7 @@ suite('App commander', () => {
     assert.ok(offs.length > 20, String(offs.length));
     assert.ok(
       offs.some((off) => off >= 0.01),
-      'the list to glide after the thumb',
+      'the list to follow the thumb between rows',
     );
     await waitFor(
       async () => (await offRow()).off < 0.01,
@@ -212,7 +212,7 @@ suite('App commander', () => {
     }
   });
 
-  test('scrolls thumbnails a row of tiles for each notch of the wheel, and for as little touchpad as a row of text, gliding there once set to', async () => {
+  test('scrolls thumbnails a row of tiles for each notch of the wheel, and settles a row of tiles on for as little touchpad as a row of text, once it rests', async () => {
     const many = path.join(opened, 'many tiles');
     fs.mkdirSync(many);
     for (let index = 0; index < 200; index++) {

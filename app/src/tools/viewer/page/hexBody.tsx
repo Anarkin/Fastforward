@@ -12,6 +12,7 @@ import { MarkedText } from './findMarks';
 
 const rowsAboveMatch = 2;
 import { ScrollBody } from './scrollBody';
+import { rowEnds } from './scrollThumbs';
 import {
   byteText,
   bytesToAsk,
@@ -144,7 +145,12 @@ export function ByteBody({
     [lastTop, rowBytes, placeOf, tab, setTopByte],
   );
   const jump = useCallback(
-    (share: number) => setTopByte(Math.round(share * lastTop) * rowBytes),
+    (share: number, part?: (fraction: number) => void) => {
+      const row = share * lastTop;
+      const whole = part ? Math.floor(row) : Math.round(row);
+      setTopByte(whole * rowBytes);
+      part?.(row - whole);
+    },
     [lastTop, rowBytes, setTopByte],
   );
 
@@ -192,13 +198,14 @@ export function ByteBody({
       matches={find?.matches}
       size={size}
       thumb={
-        rowCount === 0
+        lastTop === 0
           ? undefined
           : {
               start: lastTop === 0 ? 0 : top / lastTop,
               length: Math.min(1, screen / rowCount),
             }
       }
+      ends={rowEnds(top, lastTop)}
       onScreen={setScreen}
       onColumns={setColumns}
       move={move}

@@ -15,6 +15,7 @@ function scrollBody(
   return renderToStaticMarkup(
     <ScrollBody
       thumb={{ start: 0.5, length: 0.1 }}
+      ends={{ atStart: false, atEnd: false }}
       onScreen={() => {}}
       move={() => {}}
       jump={() => {}}

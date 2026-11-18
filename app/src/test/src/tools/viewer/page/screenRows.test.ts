@@ -4,6 +4,7 @@ import {
   firstOf,
   marksWithin,
   piecesWithin,
+  partOfRow,
   rowWithByte,
   rowWithChar,
   screenRows,
@@ -195,6 +196,17 @@ suite('Rows of a file viewed as the screen shows them', () => {
       [0, 1, 2, 2, 2],
     );
     assert.strictEqual(rowWithByte(rows, 3, 20), 3);
+    const [, second, third] = rows;
+    assert.ok(second && third);
+    assert.deepStrictEqual(
+      [
+        partOfRow(rows, 1, second.start),
+        partOfRow(rows, 1, (second.start + third.start) / 2),
+        partOfRow(rows, 1, third.start + 40),
+        partOfRow(rows, rows.length - 1, 99),
+      ],
+      [0, 0.5, 1, 0],
+    );
   });
 
   test('cuts the colored pieces and the marks of a row read to the part of it a row on screen shows', () => {

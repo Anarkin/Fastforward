@@ -1,4 +1,4 @@
-import { type Thumb } from './scrollThumbs';
+import { type Ends, type Thumb } from './scrollThumbs';
 
 interface Span {
   readonly start: number;
@@ -56,6 +56,18 @@ export function lastScreenStart(
   return known ?? Math.max(0, size - screen * perRow);
 }
 
+export function textEnds(loaded: Loaded, screen: number, size: number): Ends {
+  const first = loaded.rows[0];
+  const last = loaded.rows.at(-1);
+  if (first === undefined || last === undefined) {
+    return { atStart: true, atEnd: true };
+  }
+  return {
+    atStart: first.start === 0 && loaded.top <= 0,
+    atEnd: last.end >= size && loaded.top >= loaded.rows.length - screen,
+  };
+}
+
 export function textThumb(
   loaded: Loaded,
   screen: number,
@@ -64,7 +76,8 @@ export function textThumb(
   lastTop: number | undefined,
 ): Thumb | undefined {
   const first = loaded.rows[loaded.top];
-  if (first === undefined || size <= 0) {
+  const ends = textEnds(loaded, screen, size);
+  if (first === undefined || size <= 0 || (ends.atStart && ends.atEnd)) {
     return undefined;
   }
   const bytes = perRow ?? bytesPerRow(loaded.rows) ?? 1;

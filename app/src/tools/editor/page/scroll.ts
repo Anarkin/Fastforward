@@ -11,9 +11,13 @@ import {
   type RowFollower,
 } from '../../../lib/page/rowScroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
-import { followColumns } from '../../../lib/page/columnScroll';
+import {
+  followColumns,
+  type ColumnFollower,
+} from '../../../lib/page/columnScroll';
 import { wheeled } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
+import { cursorKeys } from './cursorKeys';
 
 export interface Leading {
   readonly above: number;
@@ -81,8 +85,8 @@ function measuredLeading(view: EditorView): Leading | undefined {
 }
 
 class RowScrolling implements PluginValue {
-  private readonly following: RowFollower;
-  private readonly across: () => void;
+  readonly following: RowFollower;
+  private readonly across: ColumnFollower;
   private padded: number | undefined;
   leading: Leading = { above: 0, below: 0 };
   private readonly sizes = {
@@ -112,6 +116,7 @@ class RowScrolling implements PluginValue {
       limit: () => scroller.scrollHeight - scroller.clientHeight,
       perNotch: () => scrolling().wheelRows,
       smooth: () => scrolling().smooth,
+      settles: () => scrolling().smoothSnap,
     });
     this.across = followColumns(scroller, {
       turned: (event) =>
@@ -119,6 +124,7 @@ class RowScrolling implements PluginValue {
       advance: () => view.defaultCharacterWidth,
       perNotch: () => scrolling().wheelRows,
       smooth: () => scrolling().smooth,
+      settles: () => scrolling().smoothSnap,
     });
     view.requestMeasure(this.sizes);
     view.requestMeasure(this.gaps);
@@ -136,7 +142,7 @@ class RowScrolling implements PluginValue {
 
   destroy(): void {
     this.following.stop();
-    this.across();
+    this.across.stop();
   }
 }
 
@@ -152,5 +158,12 @@ export function rowScrolling(scrolling: () => ScrollSettings): Extension {
       return { top: above, bottom: below };
     }),
     EditorView.cursorScrollMargin.of({ x: 5, y: 0 }),
+    EditorView.scrollHandler.of((view, _, { y }) => {
+      if (y === 'nearest') {
+        view.plugin(rows)?.following.reveals();
+      }
+      return false;
+    }),
+    cursorKeys((view) => view.plugin(rows)?.following),
   ];
 }

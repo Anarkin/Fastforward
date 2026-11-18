@@ -167,6 +167,10 @@ export class Storage {
     return this.settings.scrolling.smooth;
   }
 
+  get smoothSnap(): boolean {
+    return this.settings.scrolling.smoothSnap;
+  }
+
   get textView(): TextView {
     return this.settings.text;
   }

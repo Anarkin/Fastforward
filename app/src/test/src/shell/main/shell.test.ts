@@ -238,7 +238,7 @@ suite('Shell with no tab open', () => {
     );
   });
 
-  test('tells the page how many rows a notch of the mouse wheel scrolls and whether scrolling glides, which every list that scrolls by rows and the terminal follow', async () => {
+  test('tells the page how many rows a notch of the mouse wheel scrolls and whether scrolling glides and settles on whole rows, which every list that scrolls by rows and the terminal follow', async () => {
     await withView(
       log,
       [],
@@ -247,6 +247,7 @@ suite('Shell with no tab open', () => {
           type: 'scrolling',
           wheelRows: 10,
           smooth: false,
+          smoothSnap: true,
         });
       },
       true,

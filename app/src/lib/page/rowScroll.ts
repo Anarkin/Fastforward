@@ -1,8 +1,9 @@
 import { wheeledAlone } from '../shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
+import { holdRest } from './scrollSettings';
 import { glideAt, glideEnded, type Glide } from './glide';
-import { setRowScroller } from './scrollbarLinks';
-import { wheelTurn } from './wheelTurns';
+import { setRowScroller, type HeldScroller } from './scrollbarLinks';
+import { notchesOf, wheelTurn } from './wheelTurns';
 
 const onRow = 0.01;
 
@@ -14,6 +15,8 @@ export function snappedTop(top: number, row: number, max: number): number {
 }
 
 export const rowGlide = 150;
+
+const farViews = 2;
 
 export function glideRows(
   glide: Glide | undefined,
@@ -57,13 +60,12 @@ const moveSteps: Readonly<Record<ListMove, (page: number) => number>> = {
   last: () => Infinity,
 };
 
-export interface RowFollower {
+export interface RowFollower extends HeldScroller {
   readonly aim: () => number;
   readonly scrollTo: (top: number, glides: boolean) => void;
+  readonly reveals: () => void;
   readonly stop: () => void;
 }
-
-const isPage = (move: ListMove) => move === 'pageUp' || move === 'pageDown';
 
 export function followRows(
   element: HTMLElement,
@@ -74,6 +76,7 @@ export function followRows(
     step = rowHeight,
     perNotch = () => 1,
     smooth = () => false,
+    settles = () => true,
     onPlace = () => {},
     snapTo,
   }: {
@@ -82,6 +85,7 @@ export function followRows(
     readonly step?: () => number;
     readonly perNotch?: () => number;
     readonly smooth?: () => boolean;
+    readonly settles?: () => boolean;
     readonly onPlace?: (top: number) => void;
     readonly snapTo?: (top: number, toward: number, max: number) => number;
   } = {},
@@ -90,6 +94,9 @@ export function followRows(
   let glide: Glide | undefined;
   let frame: number | undefined;
   let placed: number | undefined;
+  let held = false;
+  let heldFrom = 0;
+  let rest: ReturnType<typeof setTimeout> | undefined;
   let seen = element.scrollTop;
   const max = () => Math.max(0, limit());
   const snap = (top: number, toward = 0) =>
@@ -129,16 +136,83 @@ export function followRows(
       place(to);
       return;
     }
-    glide = glideRows(glide, element.scrollTop, performance.now(), snap(to));
+    const target = snap(to);
+    const away = target - element.scrollTop;
+    const view = element.clientHeight;
+    if (Math.abs(away) > farViews * view) {
+      settle();
+      place(target - Math.sign(away) * view);
+    }
+    glide = glideRows(glide, element.scrollTop, performance.now(), target);
     frame ??= requestAnimationFrame(animate);
   };
   const aim = () => glide?.to ?? element.scrollTop;
+  const reveals = () => {
+    if (!smooth()) {
+      return;
+    }
+    const from = element.scrollTop;
+    if (glide) {
+      element.scrollTop = glide.to;
+    }
+    queueMicrotask(() => {
+      const to = element.scrollTop;
+      const away = to - from;
+      if (Math.abs(away) <= onRow) {
+        return;
+      }
+      const view = element.clientHeight;
+      place(
+        Math.abs(away) > farViews * view ? to - Math.sign(away) * view : from,
+      );
+      scrollTo(to, true);
+    });
+  };
+  const hold = (top: number) => {
+    clearTimeout(rest);
+    rest = undefined;
+    if (!held) {
+      heldFrom = element.scrollTop;
+    }
+    held = true;
+    settle();
+    place(Math.max(0, Math.min(max(), top)));
+  };
+  const letGo = () => {
+    clearTimeout(rest);
+    rest = undefined;
+    if (!held) {
+      return;
+    }
+    held = false;
+    const top = element.scrollTop;
+    const snapped =
+      top < heldFrom ? snap(Math.max(0, top - rowHeight()), -1) : snap(top, 1);
+    if (Math.abs(snapped - top) <= onRow) {
+      return;
+    }
+    if (settles()) {
+      scrollTo(snapped, true);
+    }
+  };
+  const dragTo = (top: number) => {
+    if (smooth()) {
+      hold(top);
+    } else {
+      scrollTo(snap(top), false);
+    }
+  };
   const onWheel = (event: WheelEvent) => {
     const row = rowHeight();
     if (!wheeledAlone(event) || event.deltaY === 0 || row <= 0) {
       return;
     }
     event.preventDefault();
+    if (smooth() && notchesOf(event) === undefined && event.deltaMode === 0) {
+      hold(element.scrollTop + event.deltaY);
+      rest = setTimeout(letGo, holdRest);
+      return;
+    }
     const turned = wheelTurn(pending, event, {
       row,
       step: step() > 0 ? step() : row,
@@ -154,6 +228,10 @@ export function followRows(
     }
   };
   const onScroll = () => {
+    if (held) {
+      seen = element.scrollTop;
+      return;
+    }
     if (glide) {
       if (placed !== undefined && Math.abs(element.scrollTop - placed) <= 1) {
         return;
@@ -176,21 +254,25 @@ export function followRows(
     event.preventDefault();
     const page = Math.max(1, Math.floor(element.clientHeight / row) - 1);
     const rows = moveSteps[move](page);
-    scrollTo(snap(snap(aim()) + rows * row, Math.sign(rows)), isPage(move));
+    scrollTo(snap(snap(aim()) + rows * row, Math.sign(rows)), true);
   };
   element.addEventListener('wheel', onWheel, { passive: false });
   element.addEventListener('scroll', onScroll, {
     passive: true,
     capture: true,
   });
-  setRowScroller(element, (top) => scrollTo(snap(top), true));
+  setRowScroller(element, { dragTo, dragEnd: letGo });
   if (keys) {
     element.addEventListener('keydown', onKeyDown);
   }
   return {
     aim,
     scrollTo,
+    reveals,
+    dragTo,
+    dragEnd: letGo,
     stop: () => {
+      clearTimeout(rest);
       settle();
       setRowScroller(element, undefined);
       element.removeEventListener('wheel', onWheel);

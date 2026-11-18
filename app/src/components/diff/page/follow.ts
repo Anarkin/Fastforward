@@ -28,6 +28,7 @@ export function useDiffFollow({
   const totalOf = useEffectEvent(() => virtualizer.getTotalSize());
   const perNotch = useEffectEvent(() => scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);
+  const settles = useEffectEvent(() => scrolling.smoothSnap);
   useEffect(() => {
     const element = list.current;
     if (!element) {
@@ -38,6 +39,7 @@ export function useDiffFollow({
       limit: () => totalOf() + rowPadding(viewport(), lineOf()) - viewport(),
       perNotch,
       smooth,
+      settles,
       onPlace: (top) => offsetSeen.current?.(top),
     });
     followerRef.current = following;

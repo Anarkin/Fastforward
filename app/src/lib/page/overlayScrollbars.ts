@@ -1,14 +1,15 @@
 import { clicked } from '../shared/keymap';
 import { keymap } from './keymap';
 import {
+  columnScrollerOf,
   rowScrollerOf,
   scrollbarDrags,
   sidewaysScrollEvent,
   sidewaysScrollerOf,
+  type HeldScroller,
   type ScrollbarDrag,
 } from './scrollbarLinks';
 import { followDrag } from './followDrag';
-import { scrollToColumn } from './columnScroll';
 import { afterPaint, inNextFrame } from './afterPaint';
 import { elementMetrics } from './scrollerMetrics';
 import { frameOf, framedMetrics } from './scrollbarFrames';
@@ -235,6 +236,7 @@ class Bar {
       (pointer: PointerEvent) => this.scroll(scroller, scrollAt(pointer)),
       () => {
         this.dragging = false;
+        this.held(scroller)?.dragEnd();
         scrollbarDrags.delete(scroller);
         this.element.classList.remove('dragging');
         this.hideLater();
@@ -242,17 +244,24 @@ class Bar {
     );
   }
 
-  private scroll(scroller: Element, scroll: number): void {
+  private held(scroller: Element): HeldScroller | undefined {
+    if (this.axis === 'vertical') {
+      return rowScrollerOf(scroller);
+    }
     const sideways = sidewaysScrollerOf(scroller);
-    const rows = rowScrollerOf(scroller);
-    if (this.axis === 'vertical' && rows) {
-      rows(scroll);
+    return sideways
+      ? { dragTo: sideways.scrollTo, dragEnd: sideways.dragEnd }
+      : columnScrollerOf(scroller);
+  }
+
+  private scroll(scroller: Element, scroll: number): void {
+    const held = this.held(scroller);
+    if (held) {
+      held.dragTo(scroll);
     } else if (this.axis === 'vertical') {
       scroller.scrollTop = scroll;
-    } else if (sideways) {
-      sideways.scrollTo(scroll);
     } else {
-      scrollToColumn(scroller, scroll);
+      scroller.scrollLeft = scroll;
     }
   }
 }

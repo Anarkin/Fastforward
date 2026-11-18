@@ -39,7 +39,7 @@ import { useCappedScroll } from './cappedVirtualizer';
 import { SearchButton } from '../../../lib/page/search';
 import { realHeight, scrollCap } from './cappedScroll';
 import { endPaddingToStart, snappedToStart } from '../../../lib/page/rowStarts';
-import { followRows } from '../../../lib/page/rowScroll';
+import { followRows, type RowFollower } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
 import { rowPlace } from '../../../lib/page/rowPlace';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
@@ -191,6 +191,8 @@ export function Commits({
   const lineStep = useEffectEvent(() => (capped ? 0 : line));
   const perNotch = useEffectEvent(() => scrollSettings.wheelRows);
   const smooth = useEffectEvent(() => scrollSettings.smooth);
+  const settles = useEffectEvent(() => scrollSettings.smoothSnap);
+  const follower = useRef<RowFollower>(undefined);
   useEffect(() => {
     const element = list.current;
     if (!element) {
@@ -201,14 +203,17 @@ export function Commits({
     const following = followRows(element, lineStep, {
       perNotch,
       smooth,
+      settles,
       snapTo,
       onPlace: placed,
     });
+    follower.current = following;
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => {
       following.stop();
+      follower.current = undefined;
       observer.disconnect();
     };
   }, [placed]);
@@ -320,7 +325,16 @@ export function Commits({
     if (hash) {
       onSelect(hash, true, event.repeat);
     }
-    virtualizer.scrollToIndex(offset + position, { align: 'auto' });
+    const [glideTo] =
+      (!capped &&
+        scrollSettings.smooth &&
+        virtualizer.getOffsetForIndex(offset + position, 'auto')) ||
+      [];
+    if (glideTo !== undefined && follower.current) {
+      follower.current.scrollTo(glideTo, true);
+    } else {
+      virtualizer.scrollToIndex(offset + position, { align: 'auto' });
+    }
   };
 
   const graphOf = (index: number) => {

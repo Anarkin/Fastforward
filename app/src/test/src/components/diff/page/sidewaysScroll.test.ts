@@ -4,11 +4,7 @@ import { suite, test } from 'vitest';
 import {
   codeShift,
   diffScrollLeft,
-  sideScroll,
-  swipedSideways,
-  wheelsSideways,
 } from '../../../../../components/diff/page/sidewaysScroll';
-import { noModifiers } from '../../../../helpers/keys';
 
 suite('Diff keys', () => {
   test('scrolls back left with the left arrow while scrolled right, as many columns of the text a press as the viewer does, onto a whole column though it started between two, leaving it to move between the columns only then', () => {
@@ -48,31 +44,5 @@ suite('Diff code moved sideways', () => {
         'translateX(-40px)',
       ],
     );
-  });
-});
-
-suite('Side-by-side diff', () => {
-  test('scrolls both sides sideways at once by a sideways swipe, leaving the wheel held with Shift to the columns it scrolls by and a swipe mostly down to the rows', () => {
-    assert.deepStrictEqual(
-      [
-        swipedSideways({ deltaX: 20, deltaY: 5, ...noModifiers }),
-        swipedSideways({ deltaX: 5, deltaY: 20, ...noModifiers }),
-        swipedSideways({
-          deltaX: 20,
-          deltaY: 5,
-          ...noModifiers,
-          shiftKey: true,
-        }),
-        wheelsSideways({ ...noModifiers, shiftKey: true }),
-        wheelsSideways(noModifiers),
-      ],
-      [20, 0, 0, true, false],
-    );
-  });
-
-  test('keeps the sideways scroll within the widest line shown, once narrower lines replace wider ones', () => {
-    assert.strictEqual(sideScroll(800, 0), 0);
-    assert.strictEqual(sideScroll(800, 300), 300);
-    assert.strictEqual(sideScroll(50, 300), 50);
   });
 });

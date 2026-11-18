@@ -209,7 +209,7 @@ export function DiffView({
   const scrollToTop = useCallback(
     (top: number) => {
       if (scrolling.smooth && follower.current) {
-        follower.current.scrollTo(top, true);
+        follower.current.dragTo(top);
         return;
       }
       scrollTarget.current = snappedTop(top, lineHeight, Infinity);
@@ -236,6 +236,12 @@ export function DiffView({
     [],
   );
 
+  const dragMinimap = useCallback((dragging: boolean) => {
+    setDragged(dragging);
+    if (!dragging) {
+      follower.current?.dragEnd();
+    }
+  }, []);
   const endPadding = useDiffFollow({
     list,
     followerRef: follower,
@@ -261,6 +267,7 @@ export function DiffView({
     placeCode,
     scrolledNow,
     scrollTo,
+    glideTo,
     measureSideways,
   } = useSideways(
     list,
@@ -540,7 +547,7 @@ export function DiffView({
         viewport={virtualizer.scrollRect?.height ?? 0}
         total={virtualizer.getTotalSize()}
         pinned={finding}
-        onDrag={setDragged}
+        onDrag={dragMinimap}
         onScroll={scrollToTop}
       />
       <div
@@ -556,7 +563,7 @@ export function DiffView({
           diffKeyDown(event, {
             sideways: scrolledNow(),
             room,
-            setSideways: scrollTo,
+            setSideways: glideTo,
             widths,
             follower,
             virtualizer,

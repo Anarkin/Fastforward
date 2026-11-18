@@ -49,7 +49,11 @@ export function rowStep(heights: readonly number[]): number {
 function followWholeRows(
   element: HTMLElement,
   rows: string,
-  settings: { readonly perNotch: () => number; readonly smooth: () => boolean },
+  settings: {
+    readonly perNotch: () => number;
+    readonly smooth: () => boolean;
+    readonly settles: () => boolean;
+  },
 ): () => void {
   const view = element.ownerDocument.defaultView ?? window;
   const styleOf = () => view.getComputedStyle(element);
@@ -134,10 +138,11 @@ export function useWholeRows(
 ): void {
   const perNotch = useEffectEvent(() => scrolling.wheelRows);
   const smooth = useEffectEvent(() => scrolling.smooth);
+  const settles = useEffectEvent(() => scrolling.smoothSnap);
   useEffect(() => {
     const scroller = element.current;
     return scroller && rows !== undefined
-      ? followWholeRows(scroller, rows, { perNotch, smooth })
+      ? followWholeRows(scroller, rows, { perNotch, smooth, settles })
       : undefined;
   }, [element, rows]);
 }

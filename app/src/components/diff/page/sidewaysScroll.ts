@@ -4,10 +4,6 @@ import { sidewaysColumns } from '../../../lib/page/scrollSettings';
 import { snappedLeft } from '../../../lib/page/columnScroll';
 import { snapOffset } from '../../../lib/page/devicePixels';
 
-export function sideScroll(scroll: number, widest: number): number {
-  return Math.max(0, Math.min(widest, scroll));
-}
-
 export function codeShift(by: number, scale: number): string {
   const snapped = by + snapOffset(by, scale);
   return `translateX(${snapped === 0 ? 0 : -snapped}px)`;
@@ -15,15 +11,6 @@ export function codeShift(by: number, scale: number): string {
 
 export const wheelsSideways = (event: Modifiers): boolean =>
   wheeled(diffKeymap.wheelSideways, event) === true;
-
-export function swipedSideways(
-  event: Modifiers & Pick<WheelEvent, 'deltaX' | 'deltaY'>,
-): number {
-  return !wheelsSideways(event) &&
-    Math.abs(event.deltaX) > Math.abs(event.deltaY)
-    ? event.deltaX
-    : 0;
-}
 
 export function diffScrollLeft(
   step: 1 | -1,

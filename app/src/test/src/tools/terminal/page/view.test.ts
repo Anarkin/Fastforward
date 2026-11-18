@@ -119,7 +119,7 @@ suite('Terminal view', () => {
         windowsPty: undefined,
         post: noop,
         onCopy: noop,
-        scrolling: () => ({ wheelRows: 3, smooth: false }),
+        scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
         cursor: defaultCursorLook,
       });
       done.length = 0;
@@ -172,7 +172,7 @@ suite('Terminal view', () => {
         windowsPty: undefined,
         post: (message) => posted.push(message),
         onCopy: noop,
-        scrolling: () => ({ wheelRows: 3, smooth: false }),
+        scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
         cursor: defaultCursorLook,
       });
       assert.deepStrictEqual(posted, [
@@ -228,7 +228,7 @@ suite('Terminal view', () => {
         windowsPty: undefined,
         post: noop,
         onCopy: noop,
-        scrolling: () => ({ wheelRows: 3, smooth: false }),
+        scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
         cursor: defaultCursorLook,
       });
 

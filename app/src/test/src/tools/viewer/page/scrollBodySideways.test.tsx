@@ -65,6 +65,7 @@ async function inDom(
 const body = (lefts: number[], { wrapped = false, settled = false } = {}) => (
   <ScrollBody
     thumb={undefined}
+    ends={{ atStart: true, atEnd: true }}
     onScreen={() => {}}
     move={() => {}}
     jump={() => {}}

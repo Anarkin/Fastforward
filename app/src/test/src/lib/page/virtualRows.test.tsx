@@ -245,7 +245,7 @@ suite('Virtual rows', () => {
       const moveTo = rowScrollerOf(scroller);
       assert.ok(moveTo);
       const row = 500;
-      act(() => moveTo(row * estimatedRowHeight));
+      act(() => moveTo.dragTo(row * estimatedRowHeight));
 
       assert.strictEqual(scroller.scrollTop, row * estimatedRowHeight);
       assert.ok(

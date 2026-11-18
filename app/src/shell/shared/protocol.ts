@@ -150,6 +150,7 @@ export type ToWebview =
       readonly type: 'scrolling';
       readonly wheelRows: number;
       readonly smooth: boolean;
+      readonly smoothSnap: boolean;
     }
   | { readonly type: 'textView'; readonly view: TextView }
   | { readonly type: 'imageView'; readonly view: ImageView }

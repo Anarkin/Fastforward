@@ -4,9 +4,15 @@ export type ScrollbarDrag = 'thumb' | 'track';
 
 export const scrollbarDrags = new WeakMap<Element, ScrollbarDrag>();
 
+export interface HeldScroller {
+  readonly dragTo: (place: number) => void;
+  readonly dragEnd: () => void;
+}
+
 export interface SidewaysScroller {
   readonly metrics: () => ScrollerMetrics;
   readonly scrollTo: (scrollLeft: number) => void;
+  readonly dragEnd: () => void;
 }
 
 const sidewaysScrollers = new WeakMap<Element, SidewaysScroller>();
@@ -30,38 +36,36 @@ export function sidewaysScrollerOf(
   return sidewaysScrollers.get(element);
 }
 
-const columnWidths = new WeakMap<Element, () => number>();
+const columnScrollers = new WeakMap<Element, HeldScroller>();
 
-export function setColumnWidth(
+export function setColumnScroller(
   element: Element,
-  width: (() => number) | undefined,
+  scroller: HeldScroller | undefined,
 ): void {
-  if (width) {
-    columnWidths.set(element, width);
+  if (scroller) {
+    columnScrollers.set(element, scroller);
   } else {
-    columnWidths.delete(element);
+    columnScrollers.delete(element);
   }
 }
 
-export function columnWidthOf(element: Element): number {
-  return columnWidths.get(element)?.() ?? 0;
+export function columnScrollerOf(element: Element): HeldScroller | undefined {
+  return columnScrollers.get(element);
 }
 
-const rowScrollers = new WeakMap<Element, (scrollTop: number) => void>();
+const rowScrollers = new WeakMap<Element, HeldScroller>();
 
 export function setRowScroller(
   element: Element,
-  dragTo: ((scrollTop: number) => void) | undefined,
+  scroller: HeldScroller | undefined,
 ): void {
-  if (dragTo) {
-    rowScrollers.set(element, dragTo);
+  if (scroller) {
+    rowScrollers.set(element, scroller);
   } else {
     rowScrollers.delete(element);
   }
 }
 
-export function rowScrollerOf(
-  element: Element,
-): ((scrollTop: number) => void) | undefined {
+export function rowScrollerOf(element: Element): HeldScroller | undefined {
   return rowScrollers.get(element);
 }

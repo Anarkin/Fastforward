@@ -11,7 +11,7 @@ import { cellWidthsOf, textWidths } from '../../../lib/page/textWidths';
 import { plainCells, useCellTable } from '../../../lib/page/cellTable';
 import { useViewer, useViewerActions } from './store';
 import type { ViewerTabView } from './tabParts';
-import { textThumb } from './textScroll';
+import { textEnds, textThumb } from './textScroll';
 import { TextRow } from './textRow';
 import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
@@ -178,6 +178,7 @@ export function TextBody({
       matches={find?.matches}
       size={size}
       thumb={textThumb(loaded, screen, size ?? 0, perRow, lastTop)}
+      ends={textEnds(loaded, screen, size ?? 0)}
       onScreen={setMeasured}
       onColumns={setColumns}
       onFont={onFont}

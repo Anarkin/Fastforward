@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   bytesPerRow,
   scrolled,
+  textEnds,
   textThumb,
   topWithin,
 } from '../../../../../tools/viewer/page/textScroll';
@@ -35,13 +36,52 @@ suite('Commander viewer', () => {
       textThumb({ rows: rows(100), top: 90 }, 10, 1000, 10, 900),
       { start: 1, length: 0.1 },
     );
-    assert.deepStrictEqual(
-      textThumb({ rows: rows(5), top: 0 }, 10, 50, 10, 0),
-      { start: 0, length: 1 },
-    );
     assert.strictEqual(
       textThumb({ rows: [], top: 0 }, 10, 0, 10, undefined),
       undefined,
+    );
+  });
+
+  test('knows the first and the last screen of a file from the rows read, rather than from where the thumb is reckoned to be, a file that fits its view at both at once, and one with no rows read yet too, so nothing is moved where no row is left to move to', () => {
+    const middle = rows(30).map((row) => ({
+      ...row,
+      start: row.start + 5000,
+      end: row.end + 5000,
+    }));
+    assert.deepStrictEqual(
+      [
+        textEnds({ rows: rows(100), top: 0 }, 10, 1000),
+        textEnds({ rows: rows(100), top: 45 }, 10, 1000),
+        textEnds({ rows: rows(100), top: 90 }, 10, 1000),
+        textEnds({ rows: middle, top: 0 }, 10, 100_000),
+        textEnds({ rows: middle, top: 20 }, 10, 100_000),
+        textEnds({ rows: rows(5), top: 0 }, 10, 50),
+        textEnds({ rows: [], top: 0 }, 10, 0),
+      ],
+      [
+        { atStart: true, atEnd: false },
+        { atStart: false, atEnd: false },
+        { atStart: false, atEnd: true },
+        { atStart: false, atEnd: false },
+        { atStart: false, atEnd: false },
+        { atStart: true, atEnd: true },
+        { atStart: true, atEnd: true },
+      ],
+    );
+  });
+
+  test('draws no thumb for a file that fits its view, as one as long as the view showed for a file with nothing to scroll', () => {
+    assert.strictEqual(
+      textThumb({ rows: rows(5), top: 0 }, 10, 50, 10, 0),
+      undefined,
+    );
+    assert.strictEqual(
+      textThumb({ rows: rows(10), top: 0 }, 10, 100, 10, undefined),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      textThumb({ rows: rows(11), top: 0 }, 10, 110, 10, 10),
+      { start: 0, length: 10 / 11 },
     );
   });
 

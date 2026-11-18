@@ -60,10 +60,7 @@ export function diffKeyDown(
   }
   event.preventDefault();
   if (follower.current) {
-    follower.current.scrollTo(
-      top,
-      step === undefined && (move === 'pageUp' || move === 'pageDown'),
-    );
+    follower.current.scrollTo(top, true);
   } else {
     virtualizer.scrollToOffset(top);
   }

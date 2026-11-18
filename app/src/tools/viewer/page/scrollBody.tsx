@@ -14,13 +14,17 @@ import { keyPressed } from '../../../lib/page/shortcuts';
 import { wheeled } from '../../../lib/shared/keymap';
 import { viewerKeymap } from './keymap';
 import { sidewaysColumns } from '../../../lib/page/scrollSettings';
-import { wheelTurn } from '../../../lib/page/wheelTurns';
-import { followColumns, scrollToColumn } from '../../../lib/page/columnScroll';
+import { notchesOf, wheelTurn } from '../../../lib/page/wheelTurns';
+import { glideRowsOf, type RowGlider } from './rowGlide';
+import {
+  followColumns,
+  type ColumnFollower,
+} from '../../../lib/page/columnScroll';
 import { useShell } from '../../../shell/page/store';
 import { hideAfter } from '../../../lib/page/scrollbarGeometry';
 import { wrapColumns } from '../../../lib/page/wordWrap';
 import { boxColumns } from '../../../lib/page/wrapBox';
-import { type Thumb } from './scrollThumbs';
+import { type Ends, type Thumb } from './scrollThumbs';
 import { copiedRows, type RowText } from './rowCopy';
 import { ViewerScrollbar } from './scrollbar';
 
@@ -32,6 +36,7 @@ const noMatches: readonly ByteRange[] = [];
 
 export function ScrollBody({
   thumb,
+  ends,
   onScreen,
   onColumns,
   onFont,
@@ -53,11 +58,12 @@ export function ScrollBody({
   children,
 }: {
   thumb: Thumb | undefined;
+  ends: Ends;
   onScreen: (screen: number) => void;
   onColumns?: (columns: number) => void;
   onFont?: (char: number, font: string, spacing: number) => void;
   move: (by: number) => void;
-  jump: (share: number) => void;
+  jump: (share: number, part?: (fraction: number) => void) => void;
   error: Sentence | undefined;
   width?: number;
   wrapped?: boolean;
@@ -127,6 +133,8 @@ export function ScrollBody({
   const gliding = useShell((state) => state.scrolling.smooth);
   const perNotch = useEffectEvent(() => wheelRows);
   const smooth = useEffectEvent(() => gliding);
+  const snaps = useShell((state) => state.scrolling.smoothSnap);
+  const settles = useEffectEvent(() => snaps);
   const [barShown, setBarShown] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showBar = useCallback(() => {
@@ -137,18 +145,51 @@ export function ScrollBody({
   useEffect(() => () => clearTimeout(hiding.current), []);
   useEffect(() => body.current?.focus(), []);
   const failed = error !== undefined;
+  const glider = useRef<RowGlider>(undefined);
+  const edges = useRef(ends);
+  useLayoutEffect(() => {
+    edges.current = ends;
+  });
+  const moveBy = useEffectEvent((by: number) => move(by));
+  useEffect(() => {
+    const made = glideRowsOf({
+      move: (by) => moveBy(by),
+      shift: (part) => {
+        const height = probe.current?.getBoundingClientRect().height ?? 0;
+        if (rowsBox.current) {
+          rowsBox.current.style.transform =
+            part === 0 ? '' : `translateY(${-part * height}px)`;
+        }
+      },
+      atStart: () => edges.current.atStart,
+      atEnd: () => edges.current.atEnd,
+      settles,
+    });
+    glider.current = made;
+    return () => {
+      made.stop();
+      glider.current = undefined;
+    };
+  }, []);
+  const across = useRef<ColumnFollower>(undefined);
   useEffect(() => {
     const element = sideways.current;
     if (element === null || failed) {
       return undefined;
     }
-    return followColumns(element, {
+    const following = followColumns(element, {
       turned: (event) =>
         wheeled(viewerKeymap.wheelSideways, event) !== undefined,
       advance: () => advance.current,
       perNotch,
       smooth,
+      settles,
     });
+    across.current = following;
+    return () => {
+      following.stop();
+      across.current = undefined;
+    };
   }, [failed]);
 
   useLayoutEffect(() => {
@@ -189,7 +230,20 @@ export function ScrollBody({
 
   const moved = (by: number) => {
     showBar();
-    move(by);
+    if (gliding && glider.current) {
+      glider.current.glideBy(by);
+    } else {
+      move(by);
+    }
+  };
+  const jumped = (share: number, held = false) => {
+    const gliders = glider.current;
+    if (held && gliding && gliders) {
+      jump(share, gliders.holdAt);
+    } else {
+      gliders?.reset();
+      jump(share);
+    }
   };
 
   return (
@@ -215,7 +269,18 @@ export function ScrollBody({
           return;
         }
         const height = probe.current?.getBoundingClientRect().height || 1;
-        const { rows, pending } = wheelTurn(wheel.current, event.nativeEvent, {
+        const turned = event.nativeEvent;
+        if (
+          gliding &&
+          glider.current &&
+          notchesOf(turned) === undefined &&
+          turned.deltaMode === 0
+        ) {
+          showBar();
+          glider.current.holdBy(turned.deltaY / height);
+          return;
+        }
+        const { rows, pending } = wheelTurn(wheel.current, turned, {
           row: height,
           step: height,
           page: event.currentTarget.clientHeight,
@@ -227,14 +292,14 @@ export function ScrollBody({
         }
       }}
       onKeyDown={(event) => {
-        const across = keyPressed(viewerKeymap.scrollSideways, event);
-        if (across !== undefined) {
+        const sidestep = keyPressed(viewerKeymap.scrollSideways, event);
+        if (sidestep !== undefined) {
           event.preventDefault();
           if (sideways.current) {
-            scrollToColumn(
-              sideways.current,
+            across.current?.scrollTo(
               sideways.current.scrollLeft +
-                across * sidewaysColumns * advance.current,
+                sidestep * sidewaysColumns * advance.current,
+              true,
             );
           }
           return;
@@ -258,10 +323,10 @@ export function ScrollBody({
             moved(Math.max(1, screen - 1));
             return;
           case 'first':
-            jump(0);
+            jumped(0);
             return;
           case 'last':
-            jump(1);
+            jumped(1);
             return;
           default:
             step satisfies never;
@@ -314,7 +379,8 @@ export function ScrollBody({
         track={track}
         shown={barShown || barPinned}
         onShow={showBar}
-        jump={jump}
+        jump={(share) => jumped(share, true)}
+        onLetGo={() => glider.current?.letGo()}
         matches={matches}
         size={size}
       />

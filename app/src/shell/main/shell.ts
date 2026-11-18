@@ -549,6 +549,7 @@ export class Shell {
       type: 'scrolling',
       wheelRows: storage.wheelRows,
       smooth: storage.smoothScrolling,
+      smoothSnap: storage.smoothSnap,
     });
     page.post({ type: 'textView', view: storage.textView });
     page.post({ type: 'imageView', view: storage.imageView });
