@@ -1,6 +1,4 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines } from '../../lib/page/wordWrap';
@@ -36,6 +34,7 @@ import {
   paddedLine,
   longLines,
 } from './wrappingSamples';
+import { writeSettings } from './settingsWritten';
 
 const spacedLine = `one two three four five ${'x'.repeat(3000)}`;
 
@@ -248,12 +247,10 @@ suite('App', () => {
   });
 
   test('makes each line of the diff as tall as the font size of code times the line height set, rounded to whole device pixels, placing the rows and the marks of wrapped ones that far apart, the file header a line tall too', async () => {
-    const reloaded = page.waitForEvent('load');
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify({ ...baseSettings, fonts: { monospaceLineHeight: 2.1 } }),
-    );
-    await reloaded;
+    await writeSettings(page, profile, {
+      ...baseSettings,
+      fonts: { monospaceLineHeight: 2.1 },
+    });
     await openChangedFile();
     const rows = await page
       .locator('.diff-view .diff-row')

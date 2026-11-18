@@ -455,6 +455,7 @@ suite('Architecture', () => {
           ? ![
               'architecture.test.ts',
               'components.test.ts',
+              'lessons.test.ts',
               'setup.ts',
             ].includes(file)
           : grouped.includes(top)

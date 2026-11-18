@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { strings } from '../../lib/shared/strings';
@@ -21,6 +21,7 @@ import {
   sizedWindow,
   tabs,
 } from './tabReturns';
+import { writeSettings } from './settingsWritten';
 
 suite('App tabs shown again once scrolled around while searching', () => {
   sharedEveryToolApp();
@@ -51,12 +52,9 @@ suite('App tabs shown again once scrolled around while searching', () => {
         await comesBackAfter(
           page,
           async () => {
-            const loaded = page.waitForEvent('load');
-            fs.writeFileSync(
-              settingsFile,
-              JSON.stringify({ tabs: { recentFolders: 16 + index } }),
-            );
-            await loaded;
+            await writeSettings(page, path.dirname(settingsFile), {
+              tabs: { recentFolders: 16 + index },
+            });
             return page;
           },
           `The ${kind} tab once the settings are saved`,

@@ -18,6 +18,7 @@ import {
   cursorLine,
   sharedEditorApp,
 } from './editorAppFixtures';
+import { writeSettings } from './settingsWritten';
 
 const status = () => page.locator('.editor .column-status-text').textContent();
 
@@ -216,16 +217,11 @@ suite('App editor', () => {
     await waitFor(async () => (await editedText()) === 'a(\n', 'one bracket');
     await page.keyboard.press('ControlOrMeta+Z');
     await waitFor(async () => (await editedText()) === '\n', 'undone');
-    const reloaded = page.waitForEvent('load');
-    fs.writeFileSync(
-      settings,
-      JSON.stringify({
+    try {
+      await writeSettings(page, profile, {
         scrolling: { smooth: true },
         tools: { editor: { closeBrackets: true } },
-      }),
-    );
-    try {
-      await reloaded;
+      });
       await content().waitFor();
       await toStart();
       await page.keyboard.type('f([');
@@ -241,9 +237,7 @@ suite('App editor', () => {
       await page.keyboard.press('ControlOrMeta+S');
       await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     } finally {
-      const restored = page.waitForEvent('load');
-      fs.writeFileSync(settings, before);
-      await restored;
+      await writeSettings(page, profile, Object(JSON.parse(before)));
       await content().waitFor();
     }
   });

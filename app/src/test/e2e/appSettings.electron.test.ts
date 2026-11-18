@@ -11,6 +11,7 @@ import {
   sharedApp,
 } from './appFixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { writeSettings } from './settingsWritten';
 
 const dark = (page: Page) =>
   page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
@@ -77,14 +78,9 @@ suite('App', () => {
 
   test('applies settings edited by hand while it runs, and says what is wrong with them', async () => {
     const file = path.join(sharedProfile, 'settings.user.json');
-    const colored = sharedPage.waitForEvent('load');
-    fs.writeFileSync(
-      file,
-      JSON.stringify({
-        colors: { light: { focus: '#123456' }, dark: { focus: '#123456' } },
-      }),
-    );
-    await colored;
+    await writeSettings(sharedPage, sharedProfile, {
+      colors: { light: { focus: '#123456' }, dark: { focus: '#123456' } },
+    });
     await sharedPage.waitForFunction(
       () =>
         getComputedStyle(document.documentElement)
@@ -92,15 +88,11 @@ suite('App', () => {
           .trim() === '#123456',
     );
     assert.strictEqual(await focusColor(), '#123456');
-    const broken = sharedPage.waitForEvent('load');
     fs.writeFileSync(file, '{ "showAllFiles": tru');
-    await broken;
     await sharedPage
       .locator('.notice.error', { hasText: 'not valid JSON' })
       .waitFor();
-    const emptied = sharedPage.waitForEvent('load');
-    fs.writeFileSync(file, '{}');
-    await emptied;
+    await writeSettings(sharedPage, sharedProfile, {});
     await sharedPage.waitForFunction(
       () =>
         getComputedStyle(document.documentElement)

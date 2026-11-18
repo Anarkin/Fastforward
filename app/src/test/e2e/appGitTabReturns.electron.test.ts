@@ -19,6 +19,7 @@ import {
   type TabLooks,
 } from './tabReturns';
 import { waitForCount, waitForFocus } from './waits';
+import { writeSettings } from './settingsWritten';
 
 const lines = (count: number, line: (index: number) => string) =>
   Array.from({ length: count }, (_, index) => line(index)).join('\n');
@@ -155,13 +156,11 @@ suite('App git tabs shown again', () => {
     comesBackAfter(
       page,
       async () => {
-        const loaded = page.waitForEvent('load');
         saves += 1;
-        fs.writeFileSync(
-          settingsFile,
-          `${JSON.stringify({ ...baseSettings, tabs: { recentFolders: 16 + saves } })}\n`,
-        );
-        await loaded;
+        await writeSettings(page, path.dirname(settingsFile), {
+          ...baseSettings,
+          tabs: { recentFolders: 16 + saves },
+        });
         return page;
       },
       `${what} once the settings are saved`,

@@ -22,6 +22,7 @@ import {
 } from './editorAppFixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { onceDrawn, untilSettled } from './waits';
+import { writeSettings } from './settingsWritten';
 
 const shortLines = (count: number, name: string) =>
   Array.from({ length: count }, (_, at) => `${name} ${at + 1}`);
@@ -436,12 +437,7 @@ suite('App editor, long lines and places shown again', () => {
     await page.addInitScript({
       content: `(${recordTopRows.toString()})(600);`,
     });
-    const reloaded = page.waitForEvent('load');
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify({ dateFormat: 'DD.MM.YYYY' }),
-    );
-    await reloaded;
+    await writeSettings(page, profile, { dateFormat: 'DD.MM.YYYY' });
     await content().waitFor();
     await waitFor(
       async () => JSON.stringify(await topRow()) === JSON.stringify(scrolledTo),
@@ -669,12 +665,10 @@ suite('App editor', () => {
     );
     const scrolledTo = await scrolledDown(120);
     await new Promise((resolve) => setTimeout(resolve, 500));
-    const reloaded = editorPage.waitForEvent('load');
-    fs.writeFileSync(
-      path.join(editorProfile, 'settings.user.json'),
-      JSON.stringify({ scrolling: { smooth: true }, dateFormat: 'DD.MM.YYYY' }),
-    );
-    await reloaded;
+    await writeSettings(editorPage, editorProfile, {
+      scrolling: { smooth: true },
+      dateFormat: 'DD.MM.YYYY',
+    });
     await waitFor(
       async () => (await editedText()).startsWith('reread 1\n'),
       'the text read again',

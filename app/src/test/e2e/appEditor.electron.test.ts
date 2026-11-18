@@ -23,6 +23,7 @@ import {
   notices,
   sharedEditorApp,
 } from './editorAppFixtures';
+import { writeSettings } from './settingsWritten';
 
 const tabCount = () => page.locator('.tabs [role="tab"]').count();
 
@@ -97,12 +98,10 @@ suite('App editor', () => {
       'the edit',
     );
     await new Promise((resolve) => setTimeout(resolve, 500));
-    const reloaded = page.waitForEvent('load');
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify({ scrolling: { smooth: true }, dateFormat: 'YYYY-MM-DD' }),
-    );
-    await reloaded;
+    await writeSettings(page, profile, {
+      scrolling: { smooth: true },
+      dateFormat: 'YYYY-MM-DD',
+    });
     await content().waitFor();
     await waitFor(
       async () => (await editedText()) === 'one\ntwo\nthree',
