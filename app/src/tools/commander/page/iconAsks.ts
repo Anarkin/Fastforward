@@ -24,6 +24,9 @@ let checking: ReturnType<typeof setTimeout> | undefined;
 
 function check(): void {
   checking = undefined;
+  if (waiting.size === 0) {
+    return;
+  }
   const now = performance.now();
   const quiet = sinceScrolled();
   let soonest = Infinity;

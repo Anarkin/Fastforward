@@ -311,6 +311,25 @@ suite('Commander pane', () => {
     }
   });
 
+  test('looks at the page no more once every row that waited has gone, as the timer of rows gone looked for the page after it, where a test had taken its page away, and failed the run of a commit that changed none of it', () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const saved: unknown = Reflect.get(globalThis, 'document');
+    Object.assign(globalThis, { document: dom.window.document });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      const asked: number[] = [];
+      const drops = [1, 2, 3].map((row) => whenStayed(() => asked.push(row)));
+      drops.forEach((drop) => drop());
+      Object.assign(globalThis, { document: undefined });
+
+      assert.doesNotThrow(() => vi.advanceTimersByTime(iconWait * 2));
+      assert.deepStrictEqual(asked, []);
+    } finally {
+      vi.useRealTimers();
+      Object.assign(globalThis, { document: saved });
+    }
+  });
+
   test('tries the icon of a file again once its row shows a file of the same name in another folder, after the icon of the first failed', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
     const globals = {
