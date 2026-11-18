@@ -98,7 +98,7 @@ export async function dragged(
   page: Page,
   from: { readonly x: number; readonly y: number },
   by: { readonly x: number; readonly y: number },
-  steps = 150,
+  steps = Number(process.env.FASTFORWARD_PERF_STEPS ?? 150),
   gapMs = 8,
 ): Promise<void> {
   await paced(steps, gapMs, (index) =>

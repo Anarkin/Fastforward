@@ -65,6 +65,8 @@ async function viewing(
     readonly answerAll: (file: File) => Promise<void>;
     readonly press: (key: string) => Promise<void>;
     readonly place: () => number | undefined;
+    readonly lead: () => string | undefined;
+    readonly rest: () => Promise<void>;
   }) => Promise<void>,
   from = 0,
 ): Promise<void> {
@@ -159,6 +161,14 @@ async function viewing(
             );
         }),
       place: () => places.at(-1),
+      lead: () =>
+        main
+          .querySelector<HTMLElement>('.viewer-rows')
+          ?.style.getPropertyValue('--viewer-lead'),
+      rest: () =>
+        act(async () => {
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }),
     });
     await act(async () => root.unmount());
   } finally {
@@ -240,6 +250,24 @@ suite('Text of a viewed file', () => {
 
       assert.strictEqual(place(), end);
       assert.deepStrictEqual(asked(), []);
+    });
+  });
+
+  test('leaves its rows where they are in their box as it moves by whole rows, the box scrolled by instead, and gives the box its room of 64 rows above them back only once it has rested, as every row was laid out and painted again at each step of a scrollbar dragged, a wheel turned or a key held without gliding, 3 ms of paint a step rather than 0.75', async () => {
+    await viewing(async ({ show, answerAll, press, place, lead, rest }) => {
+      await show('1');
+      await answerAll(evenLines);
+      assert.strictEqual(lead(), '64');
+
+      await press('PageDown');
+
+      assert.strictEqual(place(), page * 10);
+      assert.strictEqual(lead(), String(64 + page));
+
+      await rest();
+
+      assert.strictEqual(place(), page * 10);
+      assert.strictEqual(lead(), '64');
     });
   });
 

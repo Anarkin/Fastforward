@@ -36,6 +36,8 @@ const noMatches: readonly ByteRange[] = [];
 
 const leadRoom = 64;
 
+const leadRest = 150;
+
 const barRenewal = 200;
 
 declare module 'react' {
@@ -189,17 +191,30 @@ export function ScrollBody({
       area.scrollTop = top;
     }
   });
-  const settleLead = useEffectEvent(() => {
-    if (led !== since || (partNow.current === 0 && since !== leadRoom)) {
+  const resting = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const restLead = useEffectEvent(() => {
+    if (partNow.current === 0 && since !== leadRoom) {
       setLeadFrom(lead - leadRoom);
     }
   });
-  useLayoutEffect(() => {
-    if (led !== since || (partNow.current === 0 && since !== leadRoom)) {
+  const settleLead = useEffectEvent(() => {
+    clearTimeout(resting.current);
+    if (led !== since) {
       setLeadFrom(lead - leadRoom);
+    } else if (partNow.current === 0 && since !== leadRoom) {
+      resting.current = setTimeout(restLead, leadRest);
+    }
+  });
+  useLayoutEffect(() => {
+    clearTimeout(resting.current);
+    if (led !== since) {
+      setLeadFrom(lead - leadRoom);
+    } else if (partNow.current === 0 && since !== leadRoom) {
+      resting.current = setTimeout(restLead, leadRest);
     }
     placeRows();
   }, [lead, led, since]);
+  useEffect(() => () => clearTimeout(resting.current), []);
   useEffect(() => {
     const made = glideRowsOf({
       move: (by) => moveBy(by),
