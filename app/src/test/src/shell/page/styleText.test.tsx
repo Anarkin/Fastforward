@@ -259,9 +259,80 @@ suite('Style', () => {
     });
   });
 
-  test('draws a run of spaces shown as square dots in its own background, each as wide as it is tall in whole device pixels and starting on a whole device pixel in the middle of each advance of the text, with no box over each space, as a box over every space of a padded table slowed scrolling down and let the browser break a run onto rows of its own', () => {
+  test('draws the spaces shown in the diff and the viewer as square dots on one layer over the line, the cells of its spaces cut down by one mask to a dot each, as wide as it is tall in whole device pixels and starting on a whole device pixel in the middle of its advance and of its row, with no element over each space or run, as an element a space of a line of prose slowed scrolling down', () => {
+    const layer = withClass(
+      shownRow(
+        diffView(
+          <DiffViewShown wordWrap />,
+          <DiffRow>
+            <div className="diff-line text-line added">
+              <span className="wrap-marks">
+                <BreakMarks
+                  breaks={[]}
+                  dots={[[0, 1]]}
+                  numbers={2}
+                  lineHeight={17}
+                />
+              </span>
+            </div>
+          </DiffRow>,
+        ),
+      ),
+      'dot-rows',
+    );
+    looks(layer, {
+      position: 'absolute',
+      top: '0',
+      right: '0',
+      bottom: '0',
+      'pointer-events': 'none',
+      color: 'var(--muted-foreground)',
+      'background-size':
+        'calc(var(--dot-columns) * var(--text-advance)) var(--dot-row)',
+      'background-repeat': 'no-repeat',
+      'mask-size': 'var(--text-advance) 100%, 100% var(--dot-row)',
+      'mask-repeat': 'repeat',
+      'mask-composite': 'intersect',
+    });
+    assert.strictEqual(
+      compact(cascaded(layer, 'mask-image')),
+      'linear-gradient(to right, transparent var(--space-dot-start), black 0 calc(var(--space-dot-start) + var(--space-dot)), transparent 0), linear-gradient(to bottom, transparent var(--dot-top), black 0 calc(var(--dot-top) + var(--space-dot)), transparent 0)',
+    );
+    assert.deepStrictEqual(
+      ['--dot-row', '--dot-top'].map((name) => compact(cascaded(layer, name))),
+      [
+        'var(--diff-line-height)',
+        'round(down, (var(--dot-row) - var(--space-dot)) / 2, var(--device-pixel, 1px))',
+      ],
+    );
+    assert.strictEqual(compact(cascaded(layer, '--space-dot')), spaceDotSize);
+    assert.strictEqual(
+      compact(cascaded(layer, '--space-dot-start')),
+      spaceDotStart,
+    );
+    assert.strictEqual(
+      cascaded(
+        withClass(
+          rendered(
+            <div className="viewer-row">
+              <span className="dot-rows" />
+            </div>,
+          ),
+          'dot-rows',
+        ),
+        '--dot-row',
+      ),
+      'var(--viewer-row-height)',
+    );
+  });
+
+  test('keeps the run of spaces of a line too long to dot on one layer dotted in its own background, each dot as on the layer', () => {
     const run = withClass(
-      shownRow(diffView(<DiffViewShown wordWrap />, <IndentedLine />)),
+      rendered(
+        <div className="diff-view show-whitespace">
+          <span className="spaces"> </span>
+        </div>,
+      ),
       'spaces',
     );
     looks(run, {

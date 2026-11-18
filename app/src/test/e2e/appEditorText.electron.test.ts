@@ -190,20 +190,80 @@ async function misplacedLines(wrapping: boolean): Promise<Misplaced[]> {
 }
 
 function blanksOf(element: Element): readonly string[] {
+  const dots = [
+    ...(element.closest('.diff-line')?.querySelectorAll('.dot-rows') ?? []),
+  ]
+    .filter((layer) => layer.getClientRects().length > 0)
+    .flatMap((layer) => {
+      const box = layer.getBoundingClientRect();
+      const style = getComputedStyle(layer);
+      const [width = 0, height = 0] = style.backgroundSize
+        .split(' ')
+        .map(parseFloat);
+      const advance = parseFloat(style.maskSize);
+      const rows = Math.round(box.height / height);
+      const places = style.backgroundPosition.split(', ');
+      return style.backgroundImage
+        .split('linear-gradient(')
+        .slice(1)
+        .flatMap((image, shown) => {
+          const row = Math.round(
+            (parseFloat((places[shown] ?? '').split(' ').at(-1) ?? '') / 100) *
+              (rows - 1),
+          );
+          const stops = [
+            ...image.matchAll(/((?:rgba?|color)\([^)]*\))\s+(-?[\d.]+)%/g),
+          ].map(([, color, percent = '']) => ({
+            clear: color === 'rgba(0, 0, 0, 0)',
+            at: (parseFloat(percent) / 100) * width,
+          }));
+          const starts = stops.filter((stop) => stop.clear).map(({ at }) => at);
+          const ends = stops.filter((stop) => !stop.clear).map(({ at }) => at);
+          return ends.flatMap((end, run) =>
+            Array.from(
+              { length: Math.round((end - (starts[run] ?? 0)) / advance) },
+              (_, cell) => ({
+                x: box.left + (starts[run] ?? 0) + (cell + 0.5) * advance,
+                y: box.top + (row + 0.5) * height,
+              }),
+            ),
+          );
+        });
+    });
+  const range = document.createRange();
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   const marked: string[] = [];
   let at = 0;
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     const mark = node.parentElement?.closest('.blank, .spaces');
-    if (mark !== null && mark !== undefined && element.contains(mark)) {
-      const kind = mark.classList.contains('spaces')
-        ? 'spaces'
-        : `${mark.getAttribute('data-glyph') ?? ''} ${mark.className}`;
-      for (let index = 0; index < (node.textContent?.length ?? 0); index++) {
-        marked.push(`${at + index} ${kind}`);
+    const length = node.textContent?.length ?? 0;
+    for (let index = 0; index < length; index++) {
+      if (mark !== null && mark !== undefined && element.contains(mark)) {
+        marked.push(
+          `${at + index} ${
+            mark.classList.contains('spaces')
+              ? 'spaces'
+              : `${mark.getAttribute('data-glyph') ?? ''} ${mark.className}`
+          }`,
+        );
+        continue;
+      }
+      range.setStart(node, index);
+      range.setEnd(node, index + 1);
+      const rect = range.getBoundingClientRect();
+      if (
+        dots.some(
+          (dot) =>
+            dot.x >= rect.left &&
+            dot.x < rect.right &&
+            dot.y >= rect.top &&
+            dot.y < rect.bottom,
+        )
+      ) {
+        marked.push(`${at + index} spaces`);
       }
     }
-    at += node.textContent?.length ?? 0;
+    at += length;
   }
   return marked;
 }
@@ -394,7 +454,7 @@ suite('App', () => {
 
   test('marks the whitespace in the editor as the diff marks it while it is shown, as it is by default, every space dotted and every tab and other blank signed in a box like the diff, every character still where the diff draws it', async () => {
     await openLines();
-    await page.locator('.diff-view .spaces').first().waitFor();
+    await page.locator('.diff-view .dot-rows').first().waitFor();
     const wrapping = (await page.locator('.diff-view.wrap').count()) > 0;
     const editor = await editorInPage();
     const wrong: string[] = [];

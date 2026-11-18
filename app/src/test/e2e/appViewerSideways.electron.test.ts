@@ -180,9 +180,13 @@ suite('App commander', () => {
       const widthAndAdvance = () =>
         sideways.evaluate((element) => {
           const range = document.createRange();
-          range.selectNodeContents(
-            element.querySelector('.viewer-rows .viewer-row') ?? element,
-          );
+          const row =
+            element.querySelector('.viewer-rows .viewer-row') ?? element;
+          range.selectNodeContents(row);
+          const dots = row.querySelector('.dot-rows');
+          if (dots !== null) {
+            range.setEndBefore(dots);
+          }
           return {
             width: element.scrollWidth,
             char: range.getBoundingClientRect().width / 'row 0'.length,

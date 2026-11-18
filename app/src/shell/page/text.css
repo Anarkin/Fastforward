@@ -157,7 +157,8 @@ input {
 
 .spaces,
 .wrap-spaces,
-.viewer-wrap-spaces {
+.viewer-wrap-spaces,
+.dot-rows {
   --space-dot: max(
     var(--device-pixel, 1px),
     round(0.16em, var(--device-pixel, 1px))
@@ -167,6 +168,11 @@ input {
     (var(--text-advance) - var(--space-dot)) / 2,
     var(--device-pixel, 1px)
   );
+}
+
+.spaces,
+.wrap-spaces,
+.viewer-wrap-spaces {
   background-image: linear-gradient(
     to right,
     transparent var(--space-dot-start),
@@ -177,6 +183,41 @@ input {
   background-size: var(--text-advance) var(--space-dot);
   background-position: 0 50%;
   background-repeat: repeat-x;
+}
+
+.dot-rows {
+  --dot-top: round(
+    down,
+    (var(--dot-row) - var(--space-dot)) / 2,
+    var(--device-pixel, 1px)
+  );
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  user-select: none;
+  color: var(--muted-foreground);
+  background-repeat: no-repeat;
+  background-size: calc(var(--dot-columns) * var(--text-advance)) var(--dot-row);
+  mask-image:
+    linear-gradient(
+      to right,
+      transparent var(--space-dot-start),
+      black 0 calc(var(--space-dot-start) + var(--space-dot)),
+      transparent 0
+    ),
+    linear-gradient(
+      to bottom,
+      transparent var(--dot-top),
+      black 0 calc(var(--dot-top) + var(--space-dot)),
+      transparent 0
+    );
+  mask-size:
+    var(--text-advance) 100%,
+    100% var(--dot-row);
+  mask-repeat: repeat;
+  mask-composite: intersect;
 }
 
 .cm-editor.editor-text .space-dot-layer {

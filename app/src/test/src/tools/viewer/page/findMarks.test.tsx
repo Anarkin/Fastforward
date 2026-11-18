@@ -4,7 +4,7 @@ import { suite, test } from 'vitest';
 import { MarkedText } from '../../../../../tools/viewer/page/findMarks';
 
 suite('Matches marked in a file viewed', () => {
-  test('draws the spaces and tabs of a row as the diff does once whitespace is shown, in its pieces and marks alike, and leaves them plain otherwise', () => {
+  test('signs the tabs of a row as the diff does once whitespace is shown, in its pieces and marks alike, leaving its spaces plain for the layer of the row to dot, and leaves them all plain otherwise', () => {
     const tab = String.fromCharCode(9);
     const pieces = [
       { text: 'a b' },
@@ -21,12 +21,7 @@ suite('Matches marked in a file viewed', () => {
     const shown = renderToStaticMarkup(
       <MarkedText pieces={pieces} marks={marks} blanks />,
     );
-    assert.ok(
-      shown.includes(
-        '<mark class="find-match"><span class="spaces"> </span></mark>',
-      ),
-      shown,
-    );
+    assert.ok(shown.includes('<mark class="find-match"> </mark>'), shown);
     assert.ok(
       shown.includes(
         `<span class="syntax-keyword"><span class="blank" data-glyph="→">${tab}</span>c</span>`,
@@ -37,7 +32,7 @@ suite('Matches marked in a file viewed', () => {
       renderToStaticMarkup(
         <MarkedText pieces={[{ text: 'a   b' }]} marks={[]} blanks />,
       ),
-      'a<span class="spaces">   </span>b',
+      'a   b',
     );
   });
 

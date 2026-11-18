@@ -59,7 +59,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes |  |
 | Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
-| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for |
+| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for; only the rows a view either way of those in sight are drawn, however many rows each line wraps onto, and the spaces of a line are dotted on one layer, so long lines of prose scroll as code does |
 
 ## Changing
 

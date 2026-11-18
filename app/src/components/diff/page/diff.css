@@ -210,6 +210,18 @@
   color: var(--muted-foreground);
 }
 
+.diff-view .dot-rows {
+  --dot-row: var(--diff-line-height);
+}
+
+.diff-view:not(.wrap) .diff-line .code {
+  position: relative;
+}
+
+.diff-view.wrap .code > .dot-rows {
+  display: none;
+}
+
 .show-whitespace .wrap-blank,
 .show-whitespace .wrap-spaces {
   display: none;

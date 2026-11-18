@@ -49,6 +49,28 @@ function countedColumns(row: string): (index: number) => number {
   };
 }
 
+export function spaceColumnsAt(
+  text: string,
+  starts: readonly number[],
+  columns: number,
+  columnsIn: ColumnsIn = countedColumns,
+  indent = 0,
+): number[][] {
+  return starts.map((from, index) => {
+    const row = text.slice(from, starts[index + 1]);
+    const start = index === 0 ? 0 : indent;
+    const columnIn = columnsIn(row);
+    const found: number[] = [];
+    for (let at = row.indexOf(' '); at !== -1; at = row.indexOf(' ', at + 1)) {
+      const column = start + columnIn(at);
+      if (column <= columns) {
+        found.push(column);
+      }
+    }
+    return found;
+  });
+}
+
 export function rowBreaksAt(
   text: string,
   starts: readonly number[],

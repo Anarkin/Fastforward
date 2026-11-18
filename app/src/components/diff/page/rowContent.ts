@@ -25,8 +25,35 @@ export const RowContent = memo(function RowContent({
   return render(row, index);
 }, sameRowInput);
 
-const overscan = 30;
+export function rowsRoom(dragged: boolean, viewHeight: number): number {
+  return dragged ? 0 : viewHeight;
+}
 
-export function rowOverscan(dragged: boolean): number {
-  return dragged ? 1 : overscan;
+export function rowsAround(
+  {
+    startIndex,
+    endIndex,
+    count,
+  }: {
+    readonly startIndex: number;
+    readonly endIndex: number;
+    readonly count: number;
+  },
+  heightOf: (index: number) => number,
+  room: number,
+): number[] {
+  if (count === 0) {
+    return [];
+  }
+  let start = startIndex;
+  for (let above = 0; start > 0 && (above < room || start === startIndex);) {
+    start--;
+    above += heightOf(start);
+  }
+  let end = endIndex;
+  for (let below = 0; end < count - 1 && (below < room || end === endIndex);) {
+    end++;
+    below += heightOf(end);
+  }
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }

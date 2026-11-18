@@ -238,8 +238,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'made once: the git store, made once for the page; it keeps what each git tab shows through tab changes',
   'tools/git/page/worktreeBar.tsx cycle':
     'made once: the worktrees stepped to ahead of the one shown while the key repeats, made once for the bar',
-  'components/diff/page/wrapMarks.tsx breaks':
-    'a measure: the breaks of a wrapped line, read from those remembered by rememberBreaks or measured anew',
+  'components/diff/page/wrapMarks.tsx laid':
+    'a measure: the rows a wrapped line is laid out on and their breaks, read from those remembered by rememberBreaks or measured anew',
   'components/diff/page/wrapMarks.tsx near':
     'a measure: whether a block of marks is near the view, observed anew by an intersection observer once mounted',
   'tools/terminal/page/tool.tsx store':

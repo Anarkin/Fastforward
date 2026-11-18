@@ -48,7 +48,7 @@ import {
 } from './rows';
 import { showsSideBySide, splitPairs } from './sideBySideRows';
 import { rowMeasures, rowHeight } from './rowMeasures';
-import { RowContent, rowOverscan } from './rowContent';
+import { RowContent, rowsAround, rowsRoom } from './rowContent';
 import { sideScroll, sideRoom } from './sidewaysScroll';
 import { rowAnchors, useScrollAnchor } from './scrollAnchor';
 import { unplaced, type DiffPlace } from './place';
@@ -182,30 +182,40 @@ export function DiffView({
   const wrapping = wordWrap ? columns : undefined;
   const [dragged, setDragged] = useState(false);
   const offsetSeen = useRef<(offset: number) => void>(undefined);
+  const laidOut = useRef<Virtualizer<HTMLDivElement, Element>>(undefined);
   const observeOffset = useCallback(
     (
       instance: Virtualizer<HTMLDivElement, Element>,
       seen: (offset: number, isScrolling: boolean) => void,
     ) => {
+      laidOut.current = instance;
       offsetSeen.current = (offset) => seen(offset, true);
       return observeElementOffset(instance, seen);
     },
     [],
   );
   const shownRow = useRef(0);
+  const heights = rowMeasures(
+    rows,
+    wordWrap ? (columns ?? unmeasured) : undefined,
+    lineHeight,
+    scale,
+    wordWrap && table !== undefined ? cellWidthsOf(table) : undefined,
+    shownRow,
+    Boolean(error),
+  );
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => list.current,
-    ...rowMeasures(
-      rows,
-      wordWrap ? (columns ?? unmeasured) : undefined,
-      lineHeight,
-      scale,
-      wordWrap && table !== undefined ? cellWidthsOf(table) : undefined,
-      shownRow,
-      Boolean(error),
-    ),
-    overscan: rowOverscan(dragged),
+    ...heights,
+    rangeExtractor: (range) =>
+      rowsAround(
+        range,
+        (index) =>
+          laidOut.current?.measurementsCache[index]?.size ??
+          heights.estimateSize(index),
+        rowsRoom(dragged, laidOut.current?.scrollRect?.height ?? 0),
+      ),
     observeElementOffset: observeOffset,
   });
   const scrollTarget = useRef<number>(undefined);
@@ -356,6 +366,7 @@ export function DiffView({
       indent={wrapsAt === undefined ? undefined : wrapIndent(text, wrapsAt)}
       columns={wrapsAt}
       lineHeight={lineHeight}
+      columnsIn={columnsIn}
     />
   );
 
@@ -400,6 +411,7 @@ export function DiffView({
     lineHeight,
     columnsIn,
     widths,
+    dotted: showWhitespace,
     header,
     toggle,
     code,

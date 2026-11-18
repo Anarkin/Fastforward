@@ -165,7 +165,7 @@ suite('App commander', () => {
         'the wrapping left to the default',
       );
 
-      const spaces = page.locator('.viewer-rows .spaces');
+      const spaces = page.locator('.viewer-rows .dot-rows');
       const hanging = page.locator('.viewer-rows .viewer-wrap-spaces');
       await waitFor(
         async () => (await spaces.count()) > 0,
@@ -295,16 +295,16 @@ suite('App commander', () => {
         async () => (await rows.count()) > 5,
         'the padded line to wrap',
       );
-      await page.locator('.viewer-rows .spaces').first().waitFor();
+      await page.locator('.viewer-rows .dot-rows').first().waitFor();
       assert.deepStrictEqual(await overflow(), { wider: false, left: 0 });
       await page.keyboard.press('.');
       await page
-        .locator('.viewer-rows .spaces')
+        .locator('.viewer-rows .dot-rows')
         .first()
         .waitFor({ state: 'detached' });
       assert.deepStrictEqual(await overflow(), { wider: false, left: 0 });
       await page.keyboard.press('.');
-      await page.locator('.viewer-rows .spaces').first().waitFor();
+      await page.locator('.viewer-rows .dot-rows').first().waitFor();
       await page.keyboard.press('w');
       await waitFor(
         async () => (await overflow()).wider,

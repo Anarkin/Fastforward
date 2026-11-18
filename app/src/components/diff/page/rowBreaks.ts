@@ -4,7 +4,8 @@ import type { ColumnsIn, RowBreak } from '../../../lib/page/rowBreaks';
 export function laidOutRowStarts(
   code: HTMLElement,
   lineHeight: number,
-): number[] | undefined {
+  expected?: readonly number[],
+): readonly number[] | undefined {
   const box = code.getBoundingClientRect();
   const rows = Math.round(box.height / lineHeight);
   if (rows < 2) {
@@ -44,17 +45,23 @@ export function laidOutRowStarts(
     const rect = range.getBoundingClientRect();
     return Math.floor((rect.top + rect.height / 2 - box.top) / lineHeight);
   };
-  return markedRowStarts(length, rows, rowOf);
+  return markedRowStarts(length, rows, rowOf, expected);
 }
 
-export const noBreaks: readonly RowBreak[] = [];
+export interface LaidRows {
+  readonly breaks: readonly RowBreak[];
+  readonly starts: readonly number[] | undefined;
+}
+
+const noBreaks: readonly RowBreak[] = [];
+
+export const unlaid: LaidRows = { breaks: noBreaks, starts: undefined };
+
+const oneRow: LaidRows = { breaks: noBreaks, starts: [0] };
 
 const mostRememberedBreaks = 20_000;
 
-const rememberedBreaks = new WeakMap<
-  ColumnsIn,
-  Map<string, readonly RowBreak[]>
->();
+const rememberedBreaks = new WeakMap<ColumnsIn, Map<string, LaidRows>>();
 
 const breaksKey = (text: string, columns: number, lineHeight: number) =>
   `${columns}\0${lineHeight}\0${text}`;
@@ -64,12 +71,12 @@ export function knownBreaks(
   columns: number,
   lineHeight: number,
   columnsIn: ColumnsIn | undefined,
-): readonly RowBreak[] | undefined {
+): LaidRows | undefined {
   if (columnsIn === undefined) {
     return undefined;
   }
   if (columnsIn(text)(text.length) < columns) {
-    return noBreaks;
+    return oneRow;
   }
   return rememberedBreaks
     .get(columnsIn)
@@ -81,14 +88,14 @@ export function rememberBreaks(
   columns: number,
   lineHeight: number,
   columnsIn: ColumnsIn,
-  breaks: readonly RowBreak[],
+  laid: LaidRows,
 ): void {
   let remembered = rememberedBreaks.get(columnsIn);
   if (remembered === undefined) {
     remembered = new Map();
     rememberedBreaks.set(columnsIn, remembered);
   }
-  remembered.set(breaksKey(text, columns, lineHeight), breaks);
+  remembered.set(breaksKey(text, columns, lineHeight), laid);
   if (remembered.size > mostRememberedBreaks) {
     const [oldest] = remembered.keys();
     remembered.delete(oldest);

@@ -1,6 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { blankRuns, rowBreaksAt } from '../../../../lib/page/rowBreaks';
+import {
+  blankRuns,
+  rowBreaksAt,
+  spaceColumnsAt,
+} from '../../../../lib/page/rowBreaks';
 
 function space(column: number) {
   return { column, tab: false };
@@ -36,6 +40,23 @@ suite('Row breaks', () => {
     assert.deepStrictEqual(rowBreaksAt('        one', [0, 8], 4), [
       { end: 5, blanks: [space(0), space(1), space(2), space(3), space(4)] },
     ]);
+  });
+
+  test('finds the column of every space on each row a line is broken into, past the indentation of the rows it wraps onto and by the width its characters are drawn, leaving out those hanging further than one past the edge of a full row, which are out of sight', () => {
+    assert.deepStrictEqual(spaceColumnsAt('a b  c d', [0, 5], 6), [
+      [1, 3, 4],
+      [1],
+    ]);
+    assert.deepStrictEqual(
+      spaceColumnsAt('a b  c d', [0, 5], 6, undefined, 2),
+      [[1, 3, 4], [3]],
+    );
+    assert.deepStrictEqual(spaceColumnsAt('ab    cd', [0, 6], 3), [[2, 3], []]);
+    assert.deepStrictEqual(spaceColumnsAt(' a ', [0], Infinity), [[0, 2]]);
+    assert.deepStrictEqual(spaceColumnsAt('\u4e2d a b', [0], Infinity, drawn), [
+      [2, 4],
+    ]);
+    assert.deepStrictEqual(spaceColumnsAt('abc', [0], Infinity), [[]]);
   });
 
   test('ends each row a line wraps onto past the indentation it starts at', () => {

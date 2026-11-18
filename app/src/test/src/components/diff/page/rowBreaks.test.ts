@@ -15,8 +15,11 @@ const otherFontColumnsIn = (row: string) => (index: number) =>
   Math.min(index, row.length);
 
 suite('Diff row heights', () => {
-  test('knows a line that fits in the columns it wraps at has no breaks without laying it out, as laying out every line scrolled into view made dragging the scrollbar slow', () => {
-    assert.deepStrictEqual(knownBreaks('fits', 8, 22, wideColumnsIn), []);
+  test('knows a line that fits in the columns it wraps at is on one row, with no breaks, without laying it out, as laying out every line scrolled into view made dragging the scrollbar slow', () => {
+    assert.deepStrictEqual(knownBreaks('fits', 8, 22, wideColumnsIn), {
+      breaks: [],
+      starts: [0],
+    });
     assert.strictEqual(
       knownBreaks('it may wrap', 8, 22, wideColumnsIn),
       undefined,
@@ -28,15 +31,15 @@ suite('Diff row heights', () => {
     assert.strictEqual(knownBreaks('fits', 8, 22, undefined), undefined);
   });
 
-  test('lays out a line that may wrap only once for its text, the columns it wraps at, its line height and font, so a line scrolled back into view is not laid out again', () => {
+  test('lays out a line that may wrap, for the rows it starts and their breaks, only once for its text, the columns it wraps at, its line height and font, so a line scrolled back into view is not laid out again', () => {
     const columnsIn = narrowColumnsIn;
     const otherFont = otherFontColumnsIn;
     const text = 'a line long enough to wrap, remembered';
-    const breaks = [{ end: 9, blanks: [] }];
+    const laid = { breaks: [{ end: 9, blanks: [] }], starts: [0, 9] };
 
-    rememberBreaks(text, 10, 22, columnsIn, breaks);
+    rememberBreaks(text, 10, 22, columnsIn, laid);
 
-    assert.strictEqual(knownBreaks(text, 10, 22, columnsIn), breaks);
+    assert.strictEqual(knownBreaks(text, 10, 22, columnsIn), laid);
     assert.strictEqual(knownBreaks(text, 11, 22, columnsIn), undefined);
     assert.strictEqual(knownBreaks(text, 10, 23, columnsIn), undefined);
     assert.strictEqual(knownBreaks(text, 10, 22, otherFont), undefined);

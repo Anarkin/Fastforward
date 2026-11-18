@@ -1,4 +1,6 @@
-import { blankRuns } from '../../../lib/page/rowBreaks';
+import { blankRuns, spaceColumnsAt } from '../../../lib/page/rowBreaks';
+import { columnsOf } from '../../../lib/page/textColumns';
+import { DotRowsShown } from '../../../lib/page/dotRowsShown';
 import { strings } from '../../../lib/shared/strings';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { MarkedText } from './findMarks';
@@ -52,6 +54,8 @@ export function TextRow({
   showWhitespace: boolean;
   widths: TextWidths | undefined;
 }) {
+  const from = part?.from ?? row.from;
+  const to = part?.to ?? row.to;
   return (
     <div
       className="viewer-row"
@@ -69,13 +73,25 @@ export function TextRow({
     >
       <RowText
         shown={row}
-        from={part?.from ?? row.from}
-        to={part?.to ?? row.to}
+        from={from}
+        to={to}
         colored={colored}
         marks={marks}
         blanks={showWhitespace}
         widths={widths}
       />
+      {showWhitespace && (
+        <DotRowsShown
+          rows={spaceColumnsAt(
+            row.row.text.slice(from, to),
+            [0],
+            Infinity,
+            widths && ((text) => columnsOf(text, widths)),
+          )}
+          left={`calc(${part?.column ?? 0} * var(--text-advance))`}
+          alone
+        />
+      )}
       {!showWhitespace &&
         blankRuns(row.hanging).map(({ column, columns: run, tab: isTab }) => {
           const left = `calc(${column} * var(--text-advance))`;

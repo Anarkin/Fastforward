@@ -38,6 +38,7 @@ export interface DiffRowParts {
   readonly lineHeight: number;
   readonly columnsIn: ColumnsIn | undefined;
   readonly widths: TextWidths;
+  readonly dotted: boolean;
   readonly header: (row: FileHeaderRow) => ReactNode;
   readonly toggle: (path: string, open: boolean) => void;
   readonly code: (
@@ -69,6 +70,7 @@ export function DiffRowShown({
     lineHeight,
     columnsIn,
     widths,
+    dotted,
     header,
     toggle,
     code,
@@ -211,6 +213,7 @@ export function DiffRowShown({
             numbers={2}
             lineHeight={lineHeight}
             columnsIn={columnsIn}
+            dotted={dotted}
             widths={widths}
           />
           {hiddenMarks(
@@ -254,6 +257,7 @@ export function DiffRowShown({
                   numbers={1}
                   lineHeight={lineHeight}
                   columnsIn={columnsIn}
+                  dotted={dotted}
                   widths={widths}
                 />
               )}
@@ -287,6 +291,7 @@ export function DiffRowShown({
             numbers={1}
             lineHeight={lineHeight}
             columnsIn={columnsIn}
+            dotted={dotted}
             widths={widths}
           />
         </div>

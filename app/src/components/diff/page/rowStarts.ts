@@ -4,15 +4,19 @@ export function markedRowStarts(
   length: number,
   rows: number,
   rowOf: (offset: number) => number,
-): number[] | undefined {
-  return rows > maxMarkedRows ? undefined : rowStarts(length, rows, rowOf);
+  expected?: readonly number[],
+): readonly number[] | undefined {
+  return rows > maxMarkedRows
+    ? undefined
+    : rowStarts(length, rows, rowOf, expected);
 }
 
 export function rowStarts(
   length: number,
   rows: number,
   rowOf: (offset: number) => number,
-): number[] {
+  expected?: readonly number[],
+): readonly number[] {
   const read = new Map<number, number>();
   const rowAt = (offset: number) => {
     let row = read.get(offset);
@@ -22,6 +26,16 @@ export function rowStarts(
     }
     return row;
   };
+  if (
+    expected?.length === rows &&
+    expected.every((start, row) =>
+      row === 0
+        ? start === 0
+        : rowAt(start) === row && rowAt(start - 1) === row - 1,
+    )
+  ) {
+    return expected;
+  }
   const starts = [0];
   for (let row = 1; row < rows; row++) {
     const previous = starts[row - 1];

@@ -66,6 +66,10 @@
   tab-size: 4;
 }
 
+.viewer-row .dot-rows {
+  --dot-row: var(--viewer-row-height);
+}
+
 .viewer-break,
 .viewer-wrap-blank {
   position: absolute;

@@ -12,6 +12,8 @@ import { type CodeProps } from './lineMarks';
 import { codePieces, piecesWithin } from './codePieces';
 import { CodeBlocks } from './codeBlocks';
 import { keptWrapStarts } from '../../../lib/page/wrapStarts';
+import { spaceColumnsAt } from '../../../lib/page/rowBreaks';
+import { DotRowsShown } from '../../../lib/page/dotRowsShown';
 
 function firstFrom(offsets: readonly number[], at: number): number {
   let low = 0;
@@ -81,6 +83,7 @@ export function MarkedCode({
   found,
   foundNow,
   whitespace = false,
+  spaceSpans = true,
   indent,
   widths,
   from = 0,
@@ -93,13 +96,19 @@ export function MarkedCode({
   readonly found: readonly FindRange[];
   readonly foundNow: FindRange | undefined;
   readonly whitespace?: boolean;
+  readonly spaceSpans?: boolean;
   readonly indent?: number;
   readonly widths?: TextWidths;
   readonly from?: number;
   readonly to?: number;
 }): React.ReactNode {
   const shown = breakable(text, indent, (piece) => (
-    <DrawnText text={piece} blanks={whitespace} widths={widths} />
+    <DrawnText
+      text={piece}
+      blanks={whitespace}
+      spaces={spaceSpans}
+      widths={widths}
+    />
   ));
   const { pieces, gapAfter } = codePieces(text, syntax, words, found, foundNow);
   if (pieces === undefined) {
@@ -150,7 +159,9 @@ export const Code = memo(function Code({
   widths,
   columns,
   lineHeight,
+  columnsIn,
 }: CodeProps) {
+  const layered = whitespace && breaksMarked(text);
   const draw = (from?: number, to?: number) => (
     <MarkedCode
       text={text}
@@ -160,6 +171,7 @@ export const Code = memo(function Code({
       found={finds}
       foundNow={current}
       whitespace={whitespace}
+      spaceSpans={!layered}
       indent={indent}
       widths={widths}
       from={from}
@@ -187,6 +199,13 @@ export const Code = memo(function Code({
           lineHeight={lineHeight}
           current={current}
           draw={draw}
+        />
+      )}
+      {layered && indent === undefined && (
+        <DotRowsShown
+          rows={spaceColumnsAt(text, [0], Infinity, columnsIn)}
+          left="var(--diff-code-padding)"
+          alone
         />
       )}
     </span>

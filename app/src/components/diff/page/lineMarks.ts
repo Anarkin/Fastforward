@@ -4,6 +4,7 @@ import { lineKey } from './lines';
 import type { SyntaxRange } from '../../syntax/page/engine';
 import type { WordRanges } from './wordDiff';
 import { type TextWidths } from '../../../lib/page/textWidths';
+import type { ColumnsIn } from '../../../lib/page/rowBreaks';
 import { beyondAscii } from './rowMeasures';
 
 export interface LineMarks {
@@ -28,6 +29,7 @@ export interface CodeProps {
   readonly widths?: TextWidths;
   readonly columns?: number;
   readonly lineHeight?: number;
+  readonly columnsIn?: ColumnsIn;
 }
 
 const unmarked: readonly never[] = [];

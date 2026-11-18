@@ -15,7 +15,7 @@ export function MarkedText({
   widths?: TextWidths;
 }) {
   const drawn = (text: string) => (
-    <DrawnText text={text} blanks={blanks} widths={widths} />
+    <DrawnText text={text} blanks={blanks} spaces={false} widths={widths} />
   );
   if (marks.length === 0 && pieces.every((piece) => piece.kind === undefined)) {
     return <>{drawn(pieces.map((piece) => piece.text).join(''))}</>;

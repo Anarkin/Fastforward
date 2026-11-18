@@ -40,6 +40,9 @@ function wrapMarkup(
   );
 }
 
+const cell = (from: number, to = from + 1) =>
+  `transparent 0 ${from}%,currentColor 0 ${to}%`;
+
 suite('Drawing code', () => {
   test('shows a carriage return, a non-breaking space and the spaces that draw nothing as signs of their own when asked, as a change to line endings or to a pasted space looked like none, but not the joiners inside emoji', () => {
     assert.strictEqual(
@@ -260,6 +263,42 @@ suite('Drawing code', () => {
         long.slice(at + 4, to),
         '</span></span></span>',
       ].join(''),
+    );
+  });
+
+  test('draws the spaces of a line as plain text while they are shown, dotted by one layer over the line rather than a span around each run, in a line not wrapped by a layer of its own at the columns of its spaces, in a wrapped one by its wrap marks, keeping the signs of tabs, and the spans in a line too long to mark', () => {
+    const props = {
+      syntax: [],
+      words: [],
+      wordClass: 'word-added',
+      finds: [],
+      current: undefined,
+      whitespace: true,
+    };
+    const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} text={'a b  c\t'} />),
+      `<span class="code">a b  c${tab}<span class="dot-rows" aria-hidden="true" style="left:var(--diff-code-padding);--dot-columns:100;background-image:linear-gradient(to right,${cell(1)},${cell(3, 5)},transparent 0);background-position:0 0%"></span></span>`,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} text="ab" />),
+      '<span class="code">ab</span>',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <Code {...props} text="a b" indent={0} columns={10} lineHeight={17} />,
+      ),
+      '<span class="code">a b</span>',
+    );
+    assert.match(
+      renderToStaticMarkup(
+        <Code {...props} text={`a b${'x'.repeat(64 * 1024)}`} />,
+      ),
+      /^<span class="code">a<span class="spaces"> <\/span>bx/,
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} whitespace={false} text="a b" />),
+      '<span class="code">a b</span>',
     );
   });
 

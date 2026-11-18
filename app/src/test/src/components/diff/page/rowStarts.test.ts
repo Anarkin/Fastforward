@@ -27,6 +27,33 @@ suite('Row starts', () => {
     assert.ok(reads < 100, `${reads} reads`);
   });
 
+  test('takes the row starts the app expects once the browser laid each of them out first on its row, reading two characters a row rather than searching for each start, and searches for them where the browser broke a row elsewhere', () => {
+    const laidOut = [0, 93, 201, 287, 400, 512, 590, 701, 799, 910];
+    let reads = 0;
+    const rowOf = (offset: number) => {
+      reads++;
+      return laidOut.findLastIndex((start) => start <= offset);
+    };
+    assert.strictEqual(rowStarts(1000, 10, rowOf, laidOut), laidOut);
+    assert.strictEqual(reads, 18);
+    reads = 0;
+    assert.deepStrictEqual(rowStarts(1000, 10, rowOf), laidOut);
+    assert.ok(reads > 36, `${reads} reads`);
+    assert.deepStrictEqual(
+      rowStarts(1000, 10, rowOf, [0, 93, 201, 290, 400]),
+      laidOut,
+    );
+    assert.deepStrictEqual(
+      rowStarts(
+        1000,
+        10,
+        rowOf,
+        [0, 93, 201, 287, 400, 512, 590, 701, 799, 905],
+      ),
+      laidOut,
+    );
+  });
+
   test('finds the rows of a long line in a few reads each, looking near where the row before would end, as each read asks the browser where a character is', () => {
     let reads = 0;
     const rowOf = (offset: number) => {
