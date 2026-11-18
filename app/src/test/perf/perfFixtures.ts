@@ -15,6 +15,7 @@ import {
   frameSummary,
   framesIn,
   inputLatency,
+  inputSteps,
   mainThreadSummary,
   moduleAt,
   spanBetween,
@@ -257,6 +258,7 @@ export async function measure(
     frames: frameSummary(framesIn(traced, pid, span)),
     mainThread: mainThreadSummary(traced, pid, span, 1000 / hz),
     input: inputLatency(traced, pid, span),
+    steps: inputSteps(traced, pid, span),
     scripts: topScripts(traced, pid, span, 3, bundledSource),
     longAnimationFrames: longAnimationFrames.length,
   };

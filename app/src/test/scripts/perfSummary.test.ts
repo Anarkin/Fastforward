@@ -54,6 +54,7 @@ function scenario(
       frameWork: { p50: 5, p95, max: p95 },
     },
     input: { p50: 30, p95: 40, max: 50 },
+    steps: { count: 300, work: p95 / 2 },
     scripts: [],
     longAnimationFrames: 0,
   };
@@ -79,6 +80,34 @@ suite('Summing up the runs of the perf scenarios', () => {
     );
     assert.strictEqual(p95Column(table, 'git: diff, wheel'), '10 (8–12)');
     assert.match(table, /\| git: diff, wheel \| 3 \|/);
+  });
+
+  test('sums up the work of the main thread a step of input, the measure that tells views apart when the work of their frames does not, and leaves it out of a scenario without input', async () => {
+    const { summaryTable } = await perfSummary();
+    const table = summaryTable(
+      [
+        ...ran('base', [12, 14, 16], 'drag'),
+        ...ran('current', [6, 8, 10], 'drag'),
+        {
+          variant: 'current',
+          result: { ...scenario('idle'), steps: undefined },
+        },
+      ],
+      ['base', 'current'],
+    );
+    const column = table
+      .split('\n')[0]
+      ?.split(' | ')
+      .indexOf('Main work a step ms');
+    const cell = (row: string) =>
+      table
+        .split('\n')
+        .find((each) => each.startsWith(`| ${row} `))
+        ?.split(' | ')[column ?? -1];
+
+    assert.ok(column !== undefined && column > 0, table);
+    assert.strictEqual(cell('drag'), '7 → 4 (−43%)');
+    assert.strictEqual(cell('idle'), '—');
   });
 
   test('compares the median of each build with that of the build compared with, calling the change clear only once five runs or more of each do not overlap, as three runs of a build miss three of the very same build one time in ten', async () => {

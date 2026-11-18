@@ -9,6 +9,7 @@
 - @docs/FEATURES-GIT.md
 - @docs/FEATURES-TERMINAL.md
 - @docs/FEATURES-VIEWER.md
+- @docs/PERFORMANCE.md
 
 ## Protected files
 

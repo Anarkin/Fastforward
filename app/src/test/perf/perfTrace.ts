@@ -49,6 +49,11 @@ export interface MainThreadSummary {
   readonly frameWork: Quantiles;
 }
 
+export interface Steps {
+  readonly count: number;
+  readonly work: number;
+}
+
 export interface Script {
   readonly name: string;
   readonly ms: number;
@@ -245,6 +250,31 @@ export function mainThreadSummary(
         .map((frame) => (frame.dur ?? 0) / microseconds),
     ),
   };
+}
+
+const stepInputs = ['pointermove', 'wheel', 'keydown'];
+
+export function inputSteps(
+  events: readonly TraceEvent[],
+  pid: number,
+  span: Span,
+): Steps | undefined {
+  const dispatched = completeOnMain(events, pid, 'EventDispatch')
+    .filter((event) => within(event.ts, span))
+    .map((event) => field(field(event.args, 'data'), 'type'));
+  const count = Math.max(
+    ...stepInputs.map(
+      (kind) => dispatched.filter((type) => type === kind).length,
+    ),
+  );
+  if (count === 0) {
+    return undefined;
+  }
+  const busy = completeOnMain(events, pid, 'RunTask').reduce(
+    (sum, task) => sum + overlap(task, span),
+    0,
+  );
+  return { count, work: tenths(busy / microseconds / count) };
 }
 
 const awaitedInputs = new Set([

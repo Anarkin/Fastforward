@@ -20,6 +20,7 @@ const metrics: readonly (readonly [string, Metric])[] = [
   ['Long tasks', (result) => result.mainThread.longTasks],
   ['Longest task ms', (result) => result.mainThread.longestTask],
   ['Main busy %', (result) => result.mainThread.busyPercent],
+  ['Main work a step ms', (result) => result.steps?.work],
   ['Input p50 ms', (result) => result.input?.p50],
 ];
 

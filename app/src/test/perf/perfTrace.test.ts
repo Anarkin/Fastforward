@@ -5,6 +5,7 @@ import {
   frameSummary,
   framesIn,
   inputLatency,
+  inputSteps,
   mainThreadSummary,
   moduleAt,
   percentile,
@@ -284,6 +285,56 @@ suite('Summing up the main thread of the page', () => {
       longestTask: 20,
       frameWork: { p50: 3, p95: 18, max: 18 },
     });
+  });
+});
+
+const moved = (ts: number, type = 'pointermove', options = {}) =>
+  complete('EventDispatch', ts, 100, {
+    args: { data: { type } },
+    ...options,
+  });
+
+suite('Counting the work of a step of input', () => {
+  test('counts the steps of the kind of input a scenario gave most, a pointer moved, a wheel turned or a key pressed, on the main thread of the page within the span, and shares the time its main thread was busy among them, as a scrollbar of the viewer dragged took 6.4 ms a step between its frames while their work measured 1 ms', () => {
+    assert.deepStrictEqual(
+      inputSteps(
+        [
+          ...threadNames,
+          complete('RunTask', 10_000, 4000),
+          complete('RunTask', 20_000, 6000),
+          complete('RunTask', 30_000, 2000),
+          complete('RunTask', 30_000, 50_000, { tid: compositor }),
+          moved(10_100),
+          moved(20_100),
+          moved(30_100),
+          moved(500),
+          moved(40_000, 'pointermove', { pid: other }),
+          moved(40_000, 'pointermove', { tid: compositor }),
+          moved(50_000, 'wheel'),
+          moved(60_000, 'keydown'),
+          moved(61_000, 'keyup'),
+          moved(62_000, 'scroll'),
+        ],
+        page,
+        span,
+      ),
+      { count: 3, work: 4 },
+    );
+  });
+
+  test('says nothing of a scenario without input, as one that only waits', () => {
+    assert.strictEqual(
+      inputSteps(
+        [
+          ...threadNames,
+          complete('RunTask', 10_000, 4000),
+          moved(20_000, 'scroll'),
+        ],
+        page,
+        span,
+      ),
+      undefined,
+    );
   });
 });
 

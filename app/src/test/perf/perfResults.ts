@@ -3,6 +3,7 @@ import type {
   MainThreadSummary,
   Quantiles,
   Script,
+  Steps,
 } from './perfTrace';
 
 export interface ScenarioResult {
@@ -12,6 +13,7 @@ export interface ScenarioResult {
   readonly frames: FrameSummary;
   readonly mainThread: MainThreadSummary;
   readonly input: Quantiles | undefined;
+  readonly steps: Steps | undefined;
   readonly scripts: readonly Script[];
   readonly longAnimationFrames: number;
 }
@@ -44,6 +46,7 @@ const columns = [
   'Long tasks',
   'Longest task ms',
   'Main busy',
+  'Main work a step ms',
   'Input to screen p50 / p95 / max ms',
   'LoAF',
   'Top scripts ms',
@@ -59,7 +62,16 @@ export function resultsTable(results: readonly ScenarioResult[]): string {
     row(columns),
     row(columns.map(() => '---')),
     ...results.map(
-      ({ name, hz, frames, mainThread, input, scripts, longAnimationFrames }) =>
+      ({
+        name,
+        hz,
+        frames,
+        mainThread,
+        input,
+        steps,
+        scripts,
+        longAnimationFrames,
+      }) =>
         row([
           name,
           hz,
@@ -75,6 +87,7 @@ export function resultsTable(results: readonly ScenarioResult[]): string {
           mainThread.longTasks,
           mainThread.longestTask,
           `${mainThread.busyPercent}%`,
+          steps === undefined ? '—' : `${steps.work} of ${steps.count} steps`,
           quantileCell(input),
           longAnimationFrames,
           scripts.map((script) => `${script.name} ${script.ms}`).join(', '),
