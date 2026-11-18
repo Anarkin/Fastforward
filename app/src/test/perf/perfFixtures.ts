@@ -7,7 +7,7 @@ import {
   type Page,
 } from 'playwright-core';
 import { afterAll, beforeAll, inject } from 'vitest';
-import { appFolder, closeOrKill } from '../e2e/appLaunch';
+import { appFolder, closeOrKill, schemeAsked } from '../e2e/appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { perfBuild, type PerfData } from './perfData';
 import { sleep } from './perfInput';
@@ -120,6 +120,7 @@ export function launchedForPerf(
         `--user-data-dir=${profile}`,
       ],
       cwd: appFolder,
+      ...schemeAsked(),
     });
     const page = await app.firstWindow();
     launched = { app, page };

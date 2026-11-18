@@ -104,6 +104,12 @@ export function savedTabs(
   };
 }
 
+export function schemeAsked(): { colorScheme?: 'dark' } {
+  return process.env.FASTFORWARD_TEST_DARK === '1'
+    ? { colorScheme: 'dark' }
+    : {};
+}
+
 export function appArguments(profile: string, ...after: string[]): string[] {
   return [appFolder, `--user-data-dir=${profile}`, ...after];
 }
@@ -123,6 +129,7 @@ export async function launchApp(
   const app = await _electron.launch({
     args: [...before, ...appArguments(profile, ...after)],
     cwd: appFolder,
+    ...schemeAsked(),
     ...(env === undefined ? {} : { env }),
   });
   if (process.platform !== 'linux') {
