@@ -38,3 +38,14 @@
 - After committing to `main`, run `npm --prefix app run push` in the background, never through a pipe; it pushes without force, then watches the CI run of the pushed commit, exiting with 1 when the push fails or as soon as a job of the run has failed, naming the job and the command that reads its log while the other jobs still run, and 2 when it pushed but could not watch CI; when it says a job never got a machine from GitHub, no commit caused it: run the job again as it says, once the run has ended
 - When CI fails because of one of your commits, read the failed job's log, run what failed locally by path, and fix it in a new commit; a failure only on macOS or Linux may pass here, so fix it from the log
 - Reproduce a flaky test with `npx vitest run <file> -t '<name>' --repeats 20`, or an end-to-end one, whose file starts the app once, by running its file again and again, never by rerunning its project or its CI run; one that fails only in CI, or on a system not at hand, with `gh workflow run stress.yml --ref <branch> -f os=<ubuntu-latest, macos-latest or windows-latest> -f files=<files> -f times=<count>`, which runs the files that many times on that system, from a branch pushed for it and deleted after
+
+### Lessons from past mistakes
+
+- Those a test can check are the tests of `app/src/test/lessons.test.ts`: add a lesson there rather than here when a test can check it
+- Change the settings of a running app with `writeSettings`, never by waiting for its page to load again
+- Write over a file the app watches with `writeOver` or `writeWhenFree`, never by emptying it first
+- Press a key only once what handles it has the focus
+- Take what a page shows for settled with `untilSettled`, never after a sleep or two reads alike
+- Start no installed program a test doesn't need, as `gh`, whose first start took 9 seconds in CI
+- Rely on no window width, frame rate or speed of the machine
+- Reproduce a flaky test before fixing it: a first guess at its cause was wrong twice
