@@ -207,7 +207,9 @@ suite('App scrolling alike', () => {
       .locator(name === 'editor' ? '.editor .cm-content' : pane)
       .first()
       .focus();
-    await page.keyboard.press(name === 'editor' ? 'Control+Home' : 'Home');
+    await page.keyboard.press(
+      name === 'editor' ? 'ControlOrMeta+Home' : 'Home',
+    );
     await waitFor(async () => {
       const first = await down(name);
       await pause(300);
@@ -484,7 +486,7 @@ suite('App scrolling alike', () => {
           return keyed(name, 'ArrowDown');
         }),
         end: await inEvery(ended, (name) =>
-          keyed(name, name === 'editor' ? 'Control+End' : 'End'),
+          keyed(name, name === 'editor' ? 'ControlOrMeta+End' : 'End'),
         ),
       },
       {
