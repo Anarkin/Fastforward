@@ -29,6 +29,7 @@ import {
 import { spaceDots } from './spaces';
 import { wrapColumnsOf } from './rows';
 import { breakMarks, type WrapMeasure } from './breaks';
+import { scratchRange } from '../../../lib/page/scratchRange';
 
 type LinePart =
   | {
@@ -179,7 +180,7 @@ function textBeside(widget: Node, after: boolean): Edge | null {
   if (found === undefined) {
     return null;
   }
-  const range = document.createRange();
+  const range = scratchRange();
   range.setStart(found, after ? 0 : found.length - 1);
   range.setEnd(found, after ? 1 : found.length);
   const rects = range.getClientRects();

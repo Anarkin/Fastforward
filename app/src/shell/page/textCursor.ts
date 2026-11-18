@@ -10,6 +10,7 @@ import {
 } from '../../lib/page/cursor';
 import { pixelBox, placedBox, type Box } from '../../lib/page/pixelBoxes';
 import { fieldSelection, paintSelection } from './fieldSelection';
+import { scratchRange } from '../../lib/page/scratchRange';
 
 const textCursorClass = 'text-cursor';
 
@@ -98,7 +99,6 @@ class TextCursor {
   private readonly measure = document.createElement('span');
   private readonly textNode = document.createTextNode('');
   private readonly digit = document.createElement('span');
-  private readonly range = document.createRange();
   private readonly watched = new ResizeObserver(() => this.schedule());
   private readonly moved = new MutationObserver(() => this.schedule());
   private field: HTMLInputElement | undefined;
@@ -235,9 +235,10 @@ class TextCursor {
     this.prepare(style, text);
     const origin = this.measure.getBoundingClientRect().left;
     const at = (from: number, to: number) => {
-      this.range.setStart(this.textNode, from);
-      this.range.setEnd(this.textNode, to);
-      return this.range.getBoundingClientRect();
+      const range = scratchRange();
+      range.setStart(this.textNode, from);
+      range.setEnd(this.textNode, to);
+      return range.getBoundingClientRect();
     };
     const offsetOf = (index: number) =>
       index === 0 ? 0 : at(0, index).right - origin;
@@ -270,9 +271,10 @@ class TextCursor {
     const ratio = devicePixelRatio;
     const from = Math.min(field.selectionStart ?? 0, field.selectionEnd ?? 0);
     const to = Math.max(field.selectionStart ?? 0, field.selectionEnd ?? 0);
-    this.range.setStart(this.textNode, from);
-    this.range.setEnd(this.textNode, to);
-    const pieces = to > from ? [...this.range.getClientRects()] : [];
+    const range = scratchRange();
+    range.setStart(this.textNode, from);
+    range.setEnd(this.textNode, to);
+    const pieces = to > from ? [...range.getClientRects()] : [];
     const selected = pieces.flatMap((piece) => {
       const box = fieldSelection(
         line,

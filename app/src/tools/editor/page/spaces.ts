@@ -14,6 +14,7 @@ import {
 } from '@codemirror/view';
 import { layerOrigin, rowEdge } from './rows';
 import { dotLook, roundedTo, type DotLook } from '../../../lib/page/dotLook';
+import { scratchRange } from '../../../lib/page/scratchRange';
 
 const layoutUnits = 64;
 
@@ -206,7 +207,7 @@ function spaceRunsOf(
 ): SpaceRun[] {
   const edge = rowEdge(view);
   const runs: SpaceRun[] = [];
-  const range = document.createRange();
+  const range = scratchRange();
   const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
   for (
     let node = walker.nextNode();

@@ -1,10 +1,12 @@
+import { scratchRange } from '../../../lib/page/scratchRange';
+
 export interface RowText {
   readonly text: string;
   readonly from: number;
 }
 
 function charsBefore(row: Element, container: Node, offset: number): number {
-  const before = document.createRange();
+  const before = scratchRange();
   before.selectNodeContents(row);
   before.setEnd(container, offset);
   return before.toString().length;

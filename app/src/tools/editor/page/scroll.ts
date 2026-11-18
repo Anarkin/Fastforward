@@ -18,6 +18,7 @@ import {
 import { wheeled } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
 import { cursorKeys } from './cursorKeys';
+import { scratchRange } from '../../../lib/page/scratchRange';
 
 export interface Leading {
   readonly above: number;
@@ -69,7 +70,7 @@ function measuredLeading(view: EditorView): Leading | undefined {
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
     const line = node.parentElement?.closest('.cm-line');
     if (node.parentElement?.closest('.cell') === null && line) {
-      const range = document.createRange();
+      const range = scratchRange();
       range.selectNodeContents(node);
       const [rect] = range.getClientRects();
       if (rect !== undefined && rect.height > 0) {

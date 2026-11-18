@@ -1,5 +1,6 @@
 import { markedRowStarts } from './rowStarts';
 import type { ColumnsIn, RowBreak } from '../../../lib/page/rowBreaks';
+import { scratchRange } from '../../../lib/page/scratchRange';
 
 export function laidOutRowStarts(
   code: HTMLElement,
@@ -20,7 +21,7 @@ export function laidOutRowStarts(
       length += node.length;
     }
   }
-  const range = document.createRange();
+  const range = scratchRange();
   const textAt = (offset: number) => {
     let low = 0;
     let high = texts.length - 1;

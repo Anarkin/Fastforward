@@ -74,4 +74,13 @@ suite('Lessons from past mistakes', () => {
       fixedSleeps,
     );
   });
+
+  test('measures text with the one range of the page, scratchRange, never with a range made for a measure, as every range made stays tied to the page until it is collected and is moved along at each change of the page, the editor making one a line at each redraw until dropping the lines of a scroll took 40 ms of a step under its scrollbar', () => {
+    assert.deepStrictEqual(
+      ['tools', 'lib', 'components', 'shell', 'boot'].flatMap((folder) =>
+        filesWith(folder, /\bcreateRange\(/),
+      ),
+      ['lib/page/scratchRange.ts'],
+    );
+  });
 });
