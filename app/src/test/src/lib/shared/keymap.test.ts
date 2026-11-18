@@ -14,6 +14,7 @@ import {
   setKeyPlatform,
   shortcutOf,
   wheeled,
+  wheeledAlone,
   type KeyPress,
 } from '../../../../lib/shared/keymap';
 import { keyLabels } from '../../../../lib/page/keyLabels';
@@ -367,6 +368,13 @@ suite('Keymap', () => {
     assert.ok(pressedAlone({ ...noModifiers, shiftKey: true }));
     for (const held of ['ctrlKey', 'metaKey', 'altKey']) {
       assert.ok(!pressedAlone({ ...noModifiers, [held]: true }), held);
+    }
+  });
+
+  test('tells a wheel turned alone from one turned with Shift, Ctrl, Cmd or Alt held, so the wheel with Shift scrolls a list, a diff or the editor sideways alone, not down as well, as it scrolled a diff both ways at once', () => {
+    assert.ok(wheeledAlone(noModifiers));
+    for (const held of ['shiftKey', 'ctrlKey', 'metaKey', 'altKey']) {
+      assert.ok(!wheeledAlone({ ...noModifiers, [held]: true }), held);
     }
   });
 

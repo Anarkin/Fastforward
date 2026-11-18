@@ -14,7 +14,7 @@
     "blink": true
   },
   "text": {
-    "wordWrap": true,
+    "wordWrap": false,
     "showWhitespace": true,
     "highlightSyntax": true
   },

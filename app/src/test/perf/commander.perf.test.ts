@@ -1,7 +1,13 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { codeFile, imagesFolder, logFile, manyFolder } from './perfData';
+import {
+  codeFile,
+  imagesFolder,
+  logFile,
+  manyFolder,
+  tableFile,
+} from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { heldKey, sleep, wheelNotches } from './perfInput';
 
@@ -17,7 +23,7 @@ function commanderWith(smooth: boolean) {
         tabs: [{ id: '1', tool: 'commander', root: files }],
         activeTab: '1',
       },
-      settings: { scrolling: { smooth } },
+      settings: { scrolling: { smooth }, text: { wordWrap: true } },
     },
     (page) =>
       page
@@ -110,6 +116,63 @@ suite('Frames of the commander, the viewer and the editor', () => {
       .first()
       .waitFor();
     const result = await measure(perf(), 'viewer: 30 MB log, wheel', () =>
+      wheelNotches(page(), page().locator('.viewer-body'), 40),
+    );
+    assert.ok(result.frames.updates > 0);
+    await page().keyboard.press('Escape');
+    await page().locator('.viewer').waitFor({ state: 'detached' });
+  });
+
+  test('scrolling a Markdown table padded with a thousand spaces a line in the viewer with a mouse wheel', async () => {
+    await select(stem(tableFile));
+    await page().keyboard.press('F3');
+    await page().locator('.viewer').waitFor();
+    await page().keyboard.press('2');
+    await page()
+      .locator('.viewer .viewer-row:not(.viewer-probe)')
+      .first()
+      .waitFor();
+    const result = await measure(perf(), 'viewer: padded table, wheel', () =>
+      wheelNotches(page(), page().locator('.viewer-body'), 40),
+    );
+    assert.ok(result.frames.updates > 0);
+  });
+
+  test('scrolling it unwrapped', async () => {
+    await page().keyboard.press('Control+Home');
+    await page().keyboard.press('w');
+    await page().locator('.viewer-rows:not(.wrapped)').waitFor();
+    const result = await measure(
+      perf(),
+      'viewer: padded table, unwrapped, wheel',
+      () => wheelNotches(page(), page().locator('.viewer-body'), 40),
+    );
+    assert.ok(result.frames.updates > 0);
+    await page().keyboard.press('w');
+    await page().locator('.viewer-rows.wrapped').waitFor();
+    await page().keyboard.press('Escape');
+    await page().locator('.viewer').waitFor({ state: 'detached' });
+  });
+
+  test('scrolling it in the editor', async () => {
+    await page().keyboard.press('F4');
+    await page().locator('.editor .cm-line').first().waitFor();
+    const result = await measure(perf(), 'editor: padded table, wheel', () =>
+      wheelNotches(page(), page().locator('.editor .cm-scroller'), 40),
+    );
+    assert.ok(result.frames.updates > 0);
+    await page().keyboard.press('Escape');
+    await page().locator('.editor').waitFor({ state: 'detached' });
+  });
+
+  test('scrolling a file of 20,000 lines of code in the viewer with a mouse wheel', async () => {
+    await select(stem(codeFile));
+    await page().keyboard.press('F3');
+    await page()
+      .locator('.viewer .viewer-row:not(.viewer-probe)')
+      .first()
+      .waitFor();
+    const result = await measure(perf(), 'viewer: 20,000 lines, wheel', () =>
       wheelNotches(page(), page().locator('.viewer-body'), 40),
     );
     assert.ok(result.frames.updates > 0);

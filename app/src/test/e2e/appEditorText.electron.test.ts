@@ -205,20 +205,38 @@ function blanksOf(element: Element): {
       const style = getComputedStyle(layer);
       const size = parseFloat(style.backgroundSize.split(' ').at(-1) ?? '');
       const places = style.backgroundPosition.split(', ');
+      const sizes = style.backgroundSize.split(', ');
       return style.backgroundImage
         .split('linear-gradient(')
         .slice(1)
-        .flatMap((image, shown) => {
-          const top = parseFloat((places[shown] ?? '').split(' ').at(-1) ?? '');
-          return [
+        .flatMap((image, shown, images) => {
+          const [across = '', down = ''] = (places[shown] ?? '').split(' ');
+          const top = parseFloat(down);
+          const stops = [
             ...image.matchAll(/((?:rgba?|color)\([^)]*\))\s+(-?[\d.]+)px/g),
-          ]
+          ];
+          const ends = stops
             .filter(([, color]) => color !== 'rgba(0, 0, 0, 0)')
             .filter((_, stop) => stop % 2 === 1)
-            .map(([, , end = '']) => ({
-              x: box.left + parseFloat(end) - size / 2,
+            .map(([, , end = '']) => parseFloat(end));
+          const repeats =
+            shown > 0
+              ? (images[shown - 1] ?? '').endsWith('repeating-')
+              : style.backgroundImage.startsWith('repeating-');
+          const period = parseFloat(stops.at(-1)?.[2] ?? '');
+          const wide = parseFloat(sizes[shown] ?? sizes[0] ?? '');
+          const starts = repeats
+            ? Array.from(
+                { length: Math.round(wide / period) },
+                (_, cell) => parseFloat(across) + cell * period,
+              )
+            : [parseFloat(across)];
+          return starts.flatMap((start) =>
+            ends.map((end) => ({
+              x: box.left + start + end - size / 2,
               y: box.top + top + size / 2,
-            }));
+            })),
+          );
         });
     });
   const range = document.createRange();

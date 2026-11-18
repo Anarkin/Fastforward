@@ -13,6 +13,7 @@ import {
   rowNames,
   select,
   sharedCommanderApp,
+  wrapLongLines,
 } from './commanderAppFixtures';
 import { firstViewerRow } from './viewerAppFixtures';
 
@@ -327,6 +328,7 @@ suite('App', () => {
         'the first row',
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await wrapLongLines();
       await page.locator('.viewer-break').first().waitFor();
       const viewed = rounded(await viewerLayout());
       await showWhitespace();

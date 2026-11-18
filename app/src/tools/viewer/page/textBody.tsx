@@ -206,6 +206,7 @@ export function TextBody({
             key={`${row.row.start}:${row.from}`}
             row={row}
             part={parts[index]}
+            columns={wrapAt}
             colored={colored}
             marks={
               find === undefined

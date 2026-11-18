@@ -83,7 +83,7 @@ suite('Diff row heights', () => {
     );
     assert.strictEqual(
       html.slice(0, html.indexOf('</span>') + '</span>'.length),
-      `<span class="dot-rows" style="left:calc(112px + var(--diff-code-padding));background-image:linear-gradient(to right,${dot(1)},${dot(3)},transparent 0),linear-gradient(to right,${dot(0)},transparent 0);background-position:0 var(--dot-top),0 calc(2 * var(--dot-row) + var(--dot-top))"></span>`,
+      `<span class="dot-rows" style="left:calc(112px + var(--diff-code-padding));background-image:linear-gradient(to right,${dot(0)},${dot(2)},transparent 0),linear-gradient(to right,${dot(0)},transparent 0);background-position:8px var(--dot-top),0px calc(2 * var(--dot-row) + var(--dot-top));background-size:24px var(--space-dot),8px var(--space-dot)"></span>`,
     );
     assert.strictEqual(wrapMarksOf(html).length, 2);
     assert.match(
@@ -96,7 +96,7 @@ suite('Diff row heights', () => {
           lineHeight={17}
         />,
       ),
-      /^<span class="dot-rows" style="left:calc\(56px \+ var\(--diff-code-padding\)\);background-image:linear-gradient\(to right,transparent 0 35px,currentColor 0 37px,transparent 0\);background-position:0 var\(--dot-top\)"/,
+      /^<span class="dot-rows" style="left:calc\(56px \+ var\(--diff-code-padding\)\);background-image:linear-gradient\(to right,transparent 0 3px,currentColor 0 5px,transparent 0\);background-position:32px var\(--dot-top\);background-size:8px var\(--space-dot\)"/,
     );
     assert.strictEqual(
       renderToStaticMarkup(
@@ -149,14 +149,14 @@ suite('Diff row heights', () => {
     );
     assert.match(
       html,
-      /class="dot-rows"[^>]*background-position:0 var\(--dot-top\),0 calc\(1 \* var\(--dot-row\) \+ var\(--dot-top\)\)/,
+      /class="dot-rows"[^>]*background-position:[\d.]+px var\(--dot-top\),[\d.]+px calc\(1 \* var\(--dot-row\) \+ var\(--dot-top\)\)/,
     );
   });
 
   test('dots the spaces of a line that fits on one row without laying it out, and of no line while whitespace is hidden', () => {
     assert.match(
       marks(true),
-      /class="dot-rows"[^>]*transparent 0 11px,currentColor 0 13px/,
+      /class="dot-rows"[^>]*transparent 0 3px,currentColor 0 5px[^>]*background-position:8px var/,
     );
     assert.doesNotMatch(marks(false), /dot-rows/);
   });

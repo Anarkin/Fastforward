@@ -6,18 +6,19 @@ export function sideScroll(scroll: number, widest: number): number {
   return Math.max(0, Math.min(widest, scroll));
 }
 
-export const wheelGlide = 120;
+export const splitShift = (id: string, by: number): string =>
+  `.diff-view[data-split="${id}"] .split-code .code{transform:translateX(${-by}px)}`;
 
-export function wheelSideways(
+export const wheelsSideways = (event: Modifiers): boolean =>
+  wheeled(diffKeymap.wheelSideways, event) === true;
+
+export function swipedSideways(
   event: Modifiers & Pick<WheelEvent, 'deltaX' | 'deltaY'>,
-): { delta: number; duration: number } {
-  if (wheeled(diffKeymap.wheelSideways, event)) {
-    return { delta: event.deltaX || event.deltaY, duration: wheelGlide };
-  }
-  return {
-    delta: Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : 0,
-    duration: 0,
-  };
+): number {
+  return !wheelsSideways(event) &&
+    Math.abs(event.deltaX) > Math.abs(event.deltaY)
+    ? event.deltaX
+    : 0;
 }
 
 export function diffScrollLeft(

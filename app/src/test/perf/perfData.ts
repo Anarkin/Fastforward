@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { pngChunk } from '../e2e/images';
 
-const version = 1;
+const version = 2;
 
 export const perfBuild = path.resolve(
   __dirname,
@@ -27,6 +27,7 @@ export const manyFolder = 'many';
 export const imagesFolder = 'images';
 export const logFile = 'big.log';
 export const codeFile = 'code.ts';
+export const tableFile = 'padded.md';
 export const floodReady = 'ready';
 export const floodDone = 'done';
 
@@ -191,6 +192,33 @@ function makeFiles(root: string): void {
     path.join(root, codeFile),
     `${sourceLines(20_000).join('\n')}\n`,
   );
+  fs.writeFileSync(
+    path.join(root, tableFile),
+    `${paddedTable(400).join('\n')}\n`,
+  );
+}
+
+const cell = (text: string, width: number) => ` ${text.padEnd(width)} `;
+
+export function paddedTable(rows: number, changedEvery = 0): string[] {
+  return Array.from({ length: rows }, (_, row) => {
+    const changed = changedEvery > 0 && row % changedEvery === 3;
+    return [
+      '',
+      cell(`Feature ${row}`, 11),
+      cell(`What feature ${row} does, in a few words`, 36),
+      cell(`git command-${row} --flag`, 23),
+      cell(['Core', 'Common', 'Advanced', 'Niche'][row % 4] ?? '', 8),
+      cell(['Yes', 'Partial', 'No'][row % 3] ?? '', 11),
+      cell(
+        row % 4 === 0 || changed
+          ? `A ${changed ? 'changed' : 'shorter'} note on feature ${row}`
+          : '',
+        1100,
+      ),
+      '',
+    ].join('|');
+  });
 }
 
 const floodScript = `import { writeFileSync } from 'node:fs';

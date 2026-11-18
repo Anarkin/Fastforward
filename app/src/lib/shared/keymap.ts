@@ -254,6 +254,10 @@ export function pressedAlone(press: Modifiers): boolean {
   return !press.ctrlKey && !press.metaKey && !press.altKey;
 }
 
+export function wheeledAlone(wheel: Modifiers): boolean {
+  return pressedAlone(wheel) && !wheel.shiftKey;
+}
+
 export function released(pointer: { readonly buttons: number }): boolean {
   return pointer.buttons === 0;
 }

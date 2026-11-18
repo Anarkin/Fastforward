@@ -12,7 +12,7 @@ import {
   type PluginValue,
   type ViewUpdate,
 } from '@codemirror/view';
-import { layerOrigin } from './rows';
+import { layerOrigin, rowEdge } from './rows';
 import { dotLook, roundedTo, type DotLook } from '../../../lib/page/dotLook';
 
 const layoutUnits = 64;
@@ -177,11 +177,24 @@ export function runsOfLine<Line extends object>(
   }));
 }
 
+export function fittingRun(
+  run: SpaceRun,
+  edge: number | undefined,
+  advance: number,
+): SpaceRun | undefined {
+  if (edge === undefined) {
+    return run;
+  }
+  const length = Math.min(run.length, Math.round((edge - run.left) / advance));
+  return length > 0 ? { ...run, length } : undefined;
+}
+
 function spaceRunsOf(
   view: EditorView,
   line: Element,
   advance: number,
 ): SpaceRun[] {
+  const edge = rowEdge(view);
   const runs: SpaceRun[] = [];
   const range = document.createRange();
   const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
@@ -200,8 +213,11 @@ function spaceRunsOf(
     const rows = measuredRows(range, node, advance);
     for (const found of node.data.matchAll(spaces)) {
       const place = placeOf(range, node, found.index, rows, advance);
-      if (place !== undefined) {
-        runs.push({ ...place, length: found[0].length });
+      const run =
+        place &&
+        fittingRun({ ...place, length: found[0].length }, edge, advance);
+      if (run !== undefined) {
+        runs.push(run);
       }
     }
   }

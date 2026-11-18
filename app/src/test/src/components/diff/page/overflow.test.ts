@@ -35,16 +35,16 @@ const drawnWidths: TextWidths = {
 };
 
 suite('Overflow', () => {
-  test('dots the spaces of an unwrapped line only in the columns in sight and a stretch either side, in steps of 32 columns so scrolling sideways draws them anew only now and then, as a line of thousands of characters took the browser longer to dot whole than to show', () => {
+  test('dots the spaces of an unwrapped line only in the columns in sight and a stretch either side, in steps of 128 columns so scrolling sideways draws them anew only now and then, each new set of dots taking some 38 ms to draw for the rows in view, as a line of thousands of characters took the browser longer to dot whole than to show', () => {
     const view = { scrolled: 720, width: 800, room: 5000, minimap: 40 };
-    assert.deepStrictEqual(dottedColumns(view, 8), [32, 224]);
+    assert.deepStrictEqual(dottedColumns(view, 8), [-128, 384]);
     assert.deepStrictEqual(
       dottedColumns({ ...view, scrolled: 724 }, 8),
-      [32, 224],
+      [-128, 384],
     );
     assert.deepStrictEqual(
       dottedColumns({ ...view, scrolled: 0 }, 8),
-      [-32, 160],
+      [-128, 256],
     );
     assert.strictEqual(dottedColumns(undefined, 8), undefined);
     assert.strictEqual(dottedColumns(view, 0), undefined);

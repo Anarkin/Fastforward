@@ -96,6 +96,16 @@ export const betweenRows = (places: readonly number[], row: number) =>
     (place) => Math.abs(place / row - Math.round(place / row)) > 0.01,
   );
 
+export const wrapLongLines = async (wrap = true) => {
+  const button = page.getByRole('button', { name: 'Wrap Long Lines' });
+  if ((await button.getAttribute('aria-pressed')) !== String(wrap)) {
+    await button.click();
+  }
+  await page
+    .getByRole('button', { name: 'Wrap Long Lines', pressed: wrap })
+    .waitFor();
+};
+
 export const right = () => page.locator('.commander-pane').nth(1);
 export const rowNames = (pane = right()) =>
   pane

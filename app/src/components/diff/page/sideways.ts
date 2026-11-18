@@ -1,19 +1,26 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
   type RefObject,
 } from 'react';
 import { afterPaint } from '../../../lib/page/afterPaint';
-import { glideAt, glideEnded, type Glide } from '../../../lib/page/glide';
+import { followColumns } from '../../../lib/page/columnScroll';
+import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { elementMetrics } from '../../../lib/page/scrollerMetrics';
 import {
   setSidewaysScroller,
   sidewaysScrollEvent,
 } from '../../../lib/page/scrollbarLinks';
 import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
-import { sideRoom, wheelSideways } from './sidewaysScroll';
+import {
+  sideRoom,
+  sideScroll,
+  swipedSideways,
+  wheelsSideways,
+} from './sidewaysScroll';
 import type { Sideways } from './overflow';
 
 export function readSideways(
@@ -41,73 +48,54 @@ const sameSideways = (a: Sideways | undefined, b: Sideways) =>
   a.room === b.room &&
   a.minimap === b.minimap;
 
-export function glideBy(
-  glide: Glide | undefined,
-  scrolled: number,
-  now: number,
-  delta: number,
-  duration: number,
-  widest: number,
-): Glide {
-  const within = (at: number) => Math.max(0, Math.min(widest, at));
-  return {
-    from: within(glide ? glideAt(glide, now) : scrolled),
-    to: within((glide?.to ?? scrolled) + delta),
-    start: now,
-    duration,
-  };
-}
-
 export function useSideways(
   listRef: RefObject<HTMLDivElement | null>,
   scrollsSides: boolean,
   wordWrap: boolean,
   sideways: number,
   setSideways: (sideways: number) => void,
+  advance: number,
+  scrolling: ScrollSettings,
 ): {
   readonly measured: Sideways | undefined;
   readonly measureSideways: () => void;
 } {
   const scrolledSideways = useRef(sideways);
+  const advanceNow = useEffectEvent(() => advance);
+  const perNotch = useEffectEvent(() => scrolling.wheelRows);
+  const smooth = useEffectEvent(() => scrolling.smooth);
   const [measured, setMeasured] = useState<Sideways>();
   useEffect(() => {
     const element = listRef.current;
-    if (!element || !scrollsSides) {
+    if (!element || wordWrap) {
       return undefined;
     }
-    let glide: Glide | undefined;
-    let frameWidest: number | undefined;
-    let frame: number | undefined;
-    const scroll = () => {
-      frame = undefined;
-      frameWidest = undefined;
-      if (!glide) {
-        return;
-      }
-      const now = performance.now();
-      setSideways(glideAt(glide, now));
-      if (glideEnded(glide, now)) {
-        glide = undefined;
-      } else {
-        frame = requestAnimationFrame(scroll);
-      }
-    };
+    if (!scrollsSides) {
+      return followColumns(element, {
+        turned: wheelsSideways,
+        advance: advanceNow,
+        perNotch,
+        smooth,
+      });
+    }
+    const following = followColumns(element, {
+      turned: wheelsSideways,
+      advance: advanceNow,
+      perNotch,
+      smooth,
+      scrolled: () => scrolledSideways.current,
+      room: () => sideRoom(element).widest,
+      scrollTo: setSideways,
+    });
     const onWheel = (event: WheelEvent) => {
-      const { delta, duration } = wheelSideways(event);
+      const delta = swipedSideways(event);
       if (delta === 0) {
         return;
       }
       event.preventDefault();
-      frameWidest ??= sideRoom(element).widest;
-      glide = glideBy(
-        glide,
-        scrolledSideways.current,
-        performance.now(),
-        delta,
-        duration,
-        frameWidest,
+      setSideways(
+        sideScroll(scrolledSideways.current + delta, sideRoom(element).widest),
       );
-      frame ??= requestAnimationFrame(scroll);
     };
     element.addEventListener('wheel', onWheel, { passive: false });
     setSidewaysScroller(element, {
@@ -127,13 +115,11 @@ export function useSideways(
       },
     });
     return () => {
+      following();
       element.removeEventListener('wheel', onWheel);
       setSidewaysScroller(element, undefined);
-      if (frame !== undefined) {
-        cancelAnimationFrame(frame);
-      }
     };
-  }, [listRef, scrollsSides, setSideways]);
+  }, [listRef, scrollsSides, wordWrap, setSideways]);
   useEffect(() => {
     if (scrolledSideways.current !== sideways) {
       scrolledSideways.current = sideways;

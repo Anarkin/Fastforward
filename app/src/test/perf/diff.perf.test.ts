@@ -4,8 +4,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { paddedTable } from './perfData';
 import { launchedForPerf, measure } from './perfFixtures';
-import { wheelNotches } from './perfInput';
+import { sleep, wheelNotches } from './perfInput';
 
 const words = [
   'the',
@@ -79,9 +80,21 @@ const before = git(folder, ['rev-parse', 'HEAD']);
 fs.writeFileSync(file, features(40));
 git(folder, ['commit', '-q', '-am', 'Change a few features']);
 const after = git(folder, ['rev-parse', 'HEAD']);
+const padded = path.join(folder, 'padded.md');
+fs.writeFileSync(padded, `${paddedTable(300).join('\n')}\n`);
+git(folder, ['add', '.']);
+git(folder, ['commit', '-q', '-m', 'Add a padded table']);
+const paddedBefore = git(folder, ['rev-parse', 'HEAD']);
+fs.writeFileSync(padded, `${paddedTable(300, 40).join('\n')}\n`);
+git(folder, ['commit', '-q', '-am', 'Change a few rows']);
+const paddedAfter = git(folder, ['rev-parse', 'HEAD']);
 
-suite('Frames of the diff tool', () => {
-  afterAll(() => removeFolder(folder));
+function comparedForPerf(
+  compared: string,
+  old: string,
+  changed: string,
+  settings: unknown,
+) {
   const perf = launchedForPerf(
     {
       state: {
@@ -90,16 +103,16 @@ suite('Frames of the diff tool', () => {
             id: '1',
             tool: 'diff',
             compare: {
-              old: file,
-              new: file,
-              oldVersion: { rev: before, file },
-              newVersion: { rev: after, file },
+              old: compared,
+              new: compared,
+              oldVersion: { rev: old, file: compared },
+              newVersion: { rev: changed, file: compared },
             },
           },
         ],
         activeTab: '1',
       },
-      settings: { scrolling: { smooth: false } },
+      settings,
     },
     (page) =>
       page.locator('.compare-view .diff-view .virtual-row').nth(10).waitFor(),
@@ -117,6 +130,21 @@ suite('Frames of the diff tool', () => {
     );
     assert.ok(result.frames.updates > 0);
   };
+  return { perf, diff, scrolled };
+}
+
+const notGliding = {
+  scrolling: { smooth: false },
+  text: { wordWrap: true },
+};
+
+suite('Frames of the diff tool', () => {
+  const { perf, diff, scrolled } = comparedForPerf(
+    file,
+    before,
+    after,
+    notGliding,
+  );
 
   test('scrolling a Markdown file of long lines compared whole, side by side, wrapped, its whitespace shown and colored', async () => {
     await scrolled('long lines, side by side, wrapped');
@@ -152,5 +180,49 @@ suite('Frames of the diff tool', () => {
     await diff().focus();
     await perf().page.keyboard.press('w');
     await scrolled('long lines, side by side, unwrapped, plain text');
+  });
+});
+
+suite('Frames of the diff tool on a table padded with spaces', () => {
+  afterAll(() => removeFolder(folder));
+  const { perf, diff, scrolled } = comparedForPerf(
+    padded,
+    paddedBefore,
+    paddedAfter,
+    notGliding,
+  );
+
+  test('scrolling a Markdown table padded with a thousand spaces a line, side by side, wrapped', async () => {
+    await scrolled('padded table, side by side, wrapped');
+  });
+
+  test('scrolling the padded table inline', async () => {
+    await perf()
+      .page.locator('.compare-view .segmented button')
+      .first()
+      .click();
+    await scrolled('padded table, inline, wrapped');
+    await perf().page.locator('.compare-view .segmented button').last().click();
+  });
+
+  test('scrolling the padded table unwrapped', async () => {
+    await diff().focus();
+    await perf().page.keyboard.press('w');
+    await scrolled('padded table, side by side, unwrapped');
+  });
+
+  test('scrolling the padded table sideways, unwrapped', async () => {
+    const { page } = perf();
+    await diff().focus();
+    await page.keyboard.press('Control+Home');
+    await sleep(500);
+    await page.keyboard.down('Shift');
+    const result = await measure(
+      perf(),
+      'diff: padded table, side by side, unwrapped, sideways',
+      () => wheelNotches(page, diff(), 40),
+    );
+    await page.keyboard.up('Shift');
+    assert.ok(result.frames.updates > 0);
   });
 });

@@ -1,4 +1,4 @@
-import { pressedAlone } from '../shared/keymap';
+import { wheeledAlone } from '../shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 import { glideAt, glideEnded, type Glide } from './glide';
 import { setRowScroller } from './scrollbarLinks';
@@ -135,7 +135,7 @@ export function followRows(
   const aim = () => glide?.to ?? element.scrollTop;
   const onWheel = (event: WheelEvent) => {
     const row = rowHeight();
-    if (!pressedAlone(event) || event.deltaY === 0 || row <= 0) {
+    if (!wheeledAlone(event) || event.deltaY === 0 || row <= 0) {
       return;
     }
     event.preventDefault();

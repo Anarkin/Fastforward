@@ -282,7 +282,7 @@ suite('Drawing code', () => {
     const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} text={'a b  c\t'} />),
-      `<span class="code">a b  c${tab}<span class="dot-rows" aria-hidden="true" style="left:var(--diff-code-padding);background-image:linear-gradient(to right,${dot(1)},${dot(3)},${dot(4)},transparent 0);background-position:0 var(--dot-top)"></span></span>`,
+      `<span class="code">a b  c${tab}<span class="dot-rows" aria-hidden="true" style="left:var(--diff-code-padding);background-image:linear-gradient(to right,${dot(0)},${dot(2)},${dot(3)},transparent 0);background-position:8px var(--dot-top);background-size:32px var(--space-dot)"></span></span>`,
     );
     assert.strictEqual(
       renderToStaticMarkup(<Code {...props} text="ab" />),
@@ -292,7 +292,7 @@ suite('Drawing code', () => {
       renderToStaticMarkup(
         <Code {...props} text="a b  c d" dotColumns={[2, 4]} />,
       ),
-      /background-image:linear-gradient\(to right,transparent 0 27px,currentColor 0 29px,transparent 0\);/,
+      /background-image:linear-gradient\(to right,transparent 0 3px,currentColor 0 5px,transparent 0\);background-position:24px var\(--dot-top\);/,
     );
     assert.strictEqual(
       renderToStaticMarkup(

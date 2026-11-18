@@ -26,11 +26,14 @@ const shown = (
     readonly to: number;
     readonly column: number;
   },
+  columns?: number,
+  drawn = row,
 ) =>
   renderToStaticMarkup(
     <TextRow
-      row={row}
+      row={drawn}
       part={part}
+      columns={columns}
       colored={undefined}
       marks={[]}
       showWhitespace={showWhitespace}
@@ -48,7 +51,7 @@ suite('A row of a file viewed', () => {
   test('dots the spaces of a row on the one layer the diff dots its rows with, at the columns of its spaces from where its text starts, and only while whitespace is shown', () => {
     assert.strictEqual(
       shown(true),
-      `<div class="viewer-row" data-key="0:0">${text}<span class="dot-rows" aria-hidden="true" style="left:calc(0 * var(--text-advance));background-image:linear-gradient(to right,${dot(2)},${dot(3)},${dot(5)},transparent 0);background-position:0 var(--dot-top)"></span></div>`,
+      `<div class="viewer-row" data-key="0:0">${text}<span class="dot-rows" aria-hidden="true" style="left:calc(0 * var(--text-advance));background-image:linear-gradient(to right,${dot(0)},${dot(1)},${dot(3)},transparent 0);background-position:16px var(--dot-top);background-size:32px var(--space-dot)"></span></div>`,
     );
     assert.ok(
       shown(true, { from: 3, to: 7, column: 4 }).includes(
@@ -58,6 +61,32 @@ suite('A row of a file viewed', () => {
     assert.strictEqual(
       shown(false),
       `<div class="viewer-row" data-key="0:0">${text}</div>`,
+    );
+  });
+
+  test('dots the spaces of a wrapped row only as far as the row is wide and the one column a blank hangs in past it, counted from where a row hanging in starts, as the diff does, not every space hanging off its end, as a table padded with a thousand spaces a line drew a thousand dots out of sight for each row and took 44 ms a frame to scroll', () => {
+    const padded = `ab c${' '.repeat(1000)}`;
+    const hanging: ScreenRow = {
+      ...row,
+      end: padded.length,
+      row: { start: 0, end: padded.length, text: padded },
+      to: padded.length,
+    };
+    assert.ok(
+      shown(true, undefined, 6, hanging).includes(
+        `background-image:linear-gradient(to right,${dot(0)},${dot(2)},${dot(3)},${dot(4)},transparent 0);background-position:16px var(--dot-top);`,
+      ),
+      shown(true, undefined, 6, hanging).slice(0, 2000),
+    );
+    assert.ok(
+      shown(
+        true,
+        { from: 0, to: padded.length, column: 2 },
+        6,
+        hanging,
+      ).includes(
+        `left:calc(2 * var(--text-advance));background-image:linear-gradient(to right,${dot(0)},${dot(2)},transparent 0);background-position:16px var(--dot-top);`,
+      ),
     );
   });
 });

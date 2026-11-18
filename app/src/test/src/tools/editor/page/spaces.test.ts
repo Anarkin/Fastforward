@@ -4,6 +4,7 @@ import { dotLook } from '../../../../../lib/page/dotLook';
 import {
   dotsBand,
   dotsPath,
+  fittingRun,
   holds,
   runsOfLine,
   textRows,
@@ -32,7 +33,7 @@ suite('The dots the editor draws for spaces', () => {
     });
   });
 
-  test('draws a square dot in each advance of a run of spaces, from its left edge and halfway down it, on whole device pixels of the window, as one path drawn where the layer starts', () => {
+  test('draws a square dot in each advance of a run of spaces, from its left edge and halfway down it, on whole device pixels of the window, as one path drawn where the layer starts rather than a mark around each run, as each mark was an element laid out and painted again and made paging through a long wrapped line twice as slow', () => {
     const look = dotLook(14, 8, 1);
     assert.strictEqual(
       dotsPath(
@@ -85,6 +86,28 @@ suite('The dots the editor draws for spaces', () => {
     assert.strictEqual(holds(band, 1200, 2000), true);
     assert.strictEqual(holds(band, 1200, 2001), false);
     assert.strictEqual(holds(band, 799, 1600), false);
+  });
+
+  test('dots the spaces hanging at the end of a wrapped row only in the one column kept for them before the mark of its break, as the viewer and the diff do, not on past the mark to the edge of the editor, and every space of a row that is not wrapped', () => {
+    const run = { left: 100, top: 0, height: 20, length: 1000 };
+    assert.deepStrictEqual(
+      [
+        fittingRun(run, 124, 8),
+        fittingRun(run, 108, 8),
+        fittingRun({ ...run, left: 116 }, 124.2, 8),
+        fittingRun({ ...run, left: 124 }, 124, 8),
+        fittingRun({ ...run, length: 2 }, 124, 8),
+        fittingRun(run, undefined, 8),
+      ],
+      [
+        { ...run, length: 3 },
+        { ...run, length: 1 },
+        { ...run, left: 116, length: 1 },
+        undefined,
+        { ...run, length: 2 },
+        run,
+      ],
+    );
   });
 
   test('measures the spaces of a line once and places them by where the line is drawn from then on, as measuring every text of every line in view again each time the lines in view changed took a third of those frames, and measures a line again once its text is another', () => {

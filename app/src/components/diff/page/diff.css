@@ -72,7 +72,6 @@
 
 .split-code .code {
   display: inline-block;
-  transform: translateX(calc(-1 * var(--split-scroll)));
 }
 
 .hunk-divider {

@@ -12,6 +12,7 @@ import {
   rowNames,
   select,
   sharedCommanderApp,
+  wrapLongLines,
 } from './commanderAppFixtures';
 import { firstViewerRow } from './viewerAppFixtures';
 
@@ -41,7 +42,7 @@ suite('App commander', () => {
         'the first row',
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
-      await page.keyboard.press('w');
+      await wrapLongLines(false);
       await waitFor(async () => {
         const { width, shown } = await across();
         return width > shown + 100;
@@ -90,10 +91,13 @@ suite('App commander', () => {
       await page.keyboard.down('Shift');
       await page.mouse.wheel(0, 300);
       await page.keyboard.up('Shift');
-      await waitFor(
-        async () => (await across()).left > 0,
-        'the wheel sideways',
-      );
+      let glidedTo = 0;
+      await waitFor(async () => {
+        const { left } = await across();
+        const still = left > 0 && left === glidedTo;
+        glidedTo = left;
+        return still;
+      }, 'the wheel sideways, glided onto its column');
       assert.ok((await firstViewerRow()).startsWith('start'));
 
       const before = await across();
@@ -176,7 +180,7 @@ suite('App commander', () => {
         'the first row',
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
-      await page.keyboard.press('w');
+      await wrapLongLines(false);
       const widthAndAdvance = () =>
         sideways.evaluate((element) => {
           const range = document.createRange();
@@ -197,11 +201,7 @@ suite('App commander', () => {
         return char > 0 && width >= long.length * char;
       }, 'the width of the last line');
       assert.strictEqual(await firstViewerRow(), 'row 0');
-      await page.keyboard.press('w');
-      await waitFor(
-        () => savedText(profile, 'wordWrap') === undefined,
-        'the wrapping left to the default',
-      );
+      assert.strictEqual(savedText(profile, 'wordWrap'), undefined);
     } finally {
       if (await page.locator('.viewer').isVisible()) {
         await page.keyboard.press('Escape');

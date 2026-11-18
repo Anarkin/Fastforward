@@ -41,6 +41,7 @@ function RowText({
 export function TextRow({
   row,
   part,
+  columns = Infinity,
   colored,
   marks,
   showWhitespace,
@@ -51,6 +52,7 @@ export function TextRow({
   part:
     | { readonly from: number; readonly to: number; readonly column: number }
     | undefined;
+  columns?: number | undefined;
   colored: ColoredText | undefined;
   marks: readonly FindMark[];
   showWhitespace: boolean;
@@ -89,7 +91,7 @@ export function TextRow({
           rows={spaceColumnsAt(
             row.row.text.slice(from, to),
             [0],
-            Infinity,
+            columns - (part?.column ?? 0),
             widths && ((text) => columnsOf(text, widths)),
           )}
           left={`calc(${part?.column ?? 0} * var(--text-advance))`}

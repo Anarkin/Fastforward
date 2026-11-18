@@ -4,8 +4,8 @@ import { suite, test } from 'vitest';
 import {
   diffScrollLeft,
   sideScroll,
-  wheelGlide,
-  wheelSideways,
+  swipedSideways,
+  wheelsSideways,
 } from '../../../../../components/diff/page/sidewaysScroll';
 import { noModifiers } from '../../../../helpers/keys';
 
@@ -33,19 +33,21 @@ suite('Diff keys', () => {
 });
 
 suite('Side-by-side diff', () => {
-  test('scrolls both sides sideways together, gliding with the wheel held with Shift, at once with a sideways swipe', () => {
+  test('scrolls both sides sideways at once by a sideways swipe, leaving the wheel held with Shift to the columns it scrolls by and a swipe mostly down to the rows', () => {
     assert.deepStrictEqual(
-      wheelSideways({ deltaX: 0, deltaY: 30, ...noModifiers, shiftKey: true }),
-      { delta: 30, duration: wheelGlide },
-    );
-    assert.deepStrictEqual(
-      wheelSideways({ deltaX: 20, deltaY: 5, ...noModifiers, shiftKey: false }),
-      { delta: 20, duration: 0 },
-    );
-    assert.strictEqual(
-      wheelSideways({ deltaX: 5, deltaY: 20, ...noModifiers, shiftKey: false })
-        .delta,
-      0,
+      [
+        swipedSideways({ deltaX: 20, deltaY: 5, ...noModifiers }),
+        swipedSideways({ deltaX: 5, deltaY: 20, ...noModifiers }),
+        swipedSideways({
+          deltaX: 20,
+          deltaY: 5,
+          ...noModifiers,
+          shiftKey: true,
+        }),
+        wheelsSideways({ ...noModifiers, shiftKey: true }),
+        wheelsSideways(noModifiers),
+      ],
+      [20, 0, 0, true, false],
     );
   });
 

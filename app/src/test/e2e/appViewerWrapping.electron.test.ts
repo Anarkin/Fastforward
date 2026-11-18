@@ -15,6 +15,7 @@ import {
   rowNames,
   select,
   sharedCommanderApp,
+  wrapLongLines,
 } from './commanderAppFixtures';
 import { firstViewerRow } from './viewerAppFixtures';
 
@@ -109,6 +110,7 @@ suite('App commander', () => {
         'the first row',
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await wrapLongLines();
       await waitFor(async () => (await rows.count()) > 4, 'the line to wrap');
       const wrapped = await rows.allTextContents();
       assert.strictEqual(wrapped.slice(1, -1).join(''), line);
@@ -154,15 +156,15 @@ suite('App commander', () => {
       assert.strictEqual((await layout()).fits, false);
       assert.strictEqual(await page.locator('.viewer-break').count(), 0);
       await waitFor(
-        () => savedText(profile, 'wordWrap') === false,
-        'no wrapping saved',
+        () => savedText(profile, 'wordWrap') === undefined,
+        'the wrapping left to the default',
       );
 
       await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
       await waitFor(async () => (await rows.count()) > 4, 'the line wrapped');
       await waitFor(
-        () => savedText(profile, 'wordWrap') === undefined,
-        'the wrapping left to the default',
+        () => savedText(profile, 'wordWrap') === true,
+        'the wrapping saved',
       );
 
       const spaces = page.locator('.viewer-rows .dot-rows');
@@ -184,7 +186,7 @@ suite('App commander', () => {
         () => savedText(profile, 'showWhitespace') === false,
         'whitespace hidden saved',
       );
-      assert.strictEqual(savedText(profile, 'wordWrap'), undefined);
+      assert.strictEqual(savedText(profile, 'wordWrap'), true);
       await page.keyboard.press('.');
       await waitFor(
         async () => (await spaces.count()) > 0,
@@ -227,6 +229,7 @@ suite('App commander', () => {
         'the first row',
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await wrapLongLines();
       await page.keyboard.press('End');
       await waitFor(
         async () => (await rows.allTextContents()).at(-1) === 'after',
@@ -254,8 +257,8 @@ suite('App commander', () => {
       );
       await page.keyboard.press('w');
       await waitFor(
-        () => savedText(profile, 'wordWrap') === undefined,
-        'the wrapping left to the default',
+        () => savedText(profile, 'wordWrap') === true,
+        'the wrapping saved',
       );
     } finally {
       if (await page.locator('.viewer').isVisible()) {
@@ -291,6 +294,7 @@ suite('App commander', () => {
         'the first row',
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await wrapLongLines();
       await waitFor(
         async () => (await rows.count()) > 5,
         'the padded line to wrap',
@@ -320,8 +324,8 @@ suite('App commander', () => {
       await waitFor(
         () =>
           savedText(profile, 'showWhitespace') === undefined &&
-          savedText(profile, 'wordWrap') === undefined,
-        'the choices left to the defaults',
+          savedText(profile, 'wordWrap') === true,
+        'whitespace left to the default and the wrapping saved',
       );
     } finally {
       if (await page.locator('.viewer').isVisible()) {
@@ -350,6 +354,7 @@ suite('App commander', () => {
         async () => (await firstViewerRow()) === 'short',
         'the first row',
       );
+      await wrapLongLines();
       await waitFor(async () => (await rows.count()) > 4, 'the line to wrap');
       const shown = await laidOut();
       assert.deepStrictEqual(

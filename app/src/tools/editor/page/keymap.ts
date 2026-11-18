@@ -71,6 +71,9 @@ export const editorKeymap = {
     { 'Ctrl+G': true },
     { fields: true },
   ),
+  wheelSideways: bind('Moving', strings.actions.wheelSideways, {
+    'Shift+Wheel': true,
+  }),
   addCursor: bind('Cursors', strings.actions.addCursor, {
     'Alt+Click': true,
   }),

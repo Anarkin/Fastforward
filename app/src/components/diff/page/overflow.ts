@@ -88,7 +88,7 @@ export interface Sideways {
   readonly minimap: number;
 }
 
-const dotStretch = 32;
+const dotStretch = 128;
 
 export function dottedColumns(
   view: Sideways | undefined,

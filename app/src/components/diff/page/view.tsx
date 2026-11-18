@@ -3,6 +3,7 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -66,6 +67,7 @@ import { WrapProbe, TextProbe } from './textProbes';
 import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './rowShown';
 import { useSideways } from './sideways';
+import { splitShift } from './sidewaysScroll';
 import { useFoundJumps, useRevealFound } from './jumps';
 import { useLargeFileLoads } from './largeFiles';
 import { diffRowClass, diffRowPlace } from './rowClasses';
@@ -132,6 +134,7 @@ export function DiffView({
     wholePaths,
   } = look;
   const list = useRef<HTMLDivElement>(null);
+  const splitId = useId();
   const split = showsSideBySide(sideBySide, whole);
   const scrollsSides = split && !wordWrap;
   const columns = measures.wrapColumns;
@@ -160,6 +163,8 @@ export function DiffView({
     wordWrap,
     sideways,
     setSideways,
+    charWidth,
+    scrolling,
   );
   const view = measured && shownSideways(measured, scrollsSides, sideways);
   const [dotsFrom, dotsTo] = dottedColumns(view, charWidth) ?? [];
@@ -526,6 +531,7 @@ export function DiffView({
   return (
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
+      data-split={splitId}
       onMouseDown={(event) => {
         const side = selectionSide(
           event.target instanceof Element ? event.target : null,
@@ -538,7 +544,6 @@ export function DiffView({
       }}
       style={{
         ...layoutVariables,
-        '--split-scroll': `${sideways + snapOffset(sideways, scale)}px`,
         '--diff-snap-inline': `${snap.inline}px`,
         '--diff-snap-left': `${snap.left}px`,
         '--diff-snap-right': `${snap.right}px`,
@@ -557,6 +562,11 @@ export function DiffView({
           }),
       }}
     >
+      {scrollsSides && (
+        <style>
+          {splitShift(splitId, sideways + snapOffset(sideways, scale))}
+        </style>
+      )}
       <Minimap
         marks={marks}
         scroller={list}

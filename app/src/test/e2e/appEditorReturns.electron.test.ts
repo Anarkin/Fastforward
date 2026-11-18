@@ -61,6 +61,10 @@ suite('App editor tabs shown again', () => {
         activeTab: '2',
       }),
     );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ text: { wordWrap: true } }),
+    );
     app = await launchApp(profile);
     page = await app.firstWindow();
     await waitFor(async () => (await tabs(page).count()) === 4, 'every tab');

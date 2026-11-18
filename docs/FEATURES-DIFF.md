@@ -32,7 +32,7 @@
 | Moved lines | Mark lines moved rather than removed and added | — | Advanced | ❌ No |  |
 | Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |
 | Context | Show more lines around the changes, or the whole file | — | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
-| Line wrapping | Wrap long lines | W | Common | ✅ Yes | On by default; W |
+| Line wrapping | Wrap long lines | W | Common | ✅ Yes | Off by default; W |
 | Minimap | Mark the changes on a strip beside the diff | — | Advanced | ✅ Yes | Marks the changes of a file shown whole, and what a find matches |
 
 ## Whitespace and text
@@ -51,7 +51,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Next change | Move from change to change | J, K | Common | ✅ Yes | J and K, from the files too |
 | Find in the diff | Search the diff's text | Mod+F | Common | ✅ Yes | Mod+F; Aa matches the case, W whole words and .* a regular expression within a line, as every search of the app |
-| Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | While lines are not wrapped |
+| Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | While lines are not wrapped; the wheel with Shift moves `scrolling.wheelRows` columns a notch onto whole columns, gliding with `scrolling.smooth`, as it moves rows, in the viewer and the editor too |
 
 ## Not text
 

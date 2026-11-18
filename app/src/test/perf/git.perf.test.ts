@@ -12,7 +12,7 @@ suite('Frames of the git tool', () => {
         tabs: [{ id: '1', tool: 'git', root: repository }],
         activeTab: '1',
       },
-      settings: { scrolling: { smooth: true } },
+      settings: { scrolling: { smooth: true }, text: { wordWrap: true } },
     },
     (page) => page.locator('.commit').nth(30).waitFor(),
   );

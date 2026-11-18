@@ -300,6 +300,10 @@ suite('App editor, long lines and places shown again', () => {
         activeTab: '1',
       }),
     );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify({ text: { wordWrap: true } }),
+    );
     app = await launchApp(profile);
     page = await app.firstWindow();
     await right().locator('.commander-row').first().waitFor();

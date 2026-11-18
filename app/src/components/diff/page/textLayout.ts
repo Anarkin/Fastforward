@@ -13,7 +13,6 @@ declare module 'react' {
     readonly '--diff-word-padding-top'?: string;
     readonly '--diff-gap-width'?: string;
     readonly '--diff-word-padding-bottom'?: string;
-    readonly '--split-scroll'?: string;
     readonly '--diff-snap-inline'?: string;
     readonly '--diff-snap-left'?: string;
     readonly '--diff-snap-right'?: string;

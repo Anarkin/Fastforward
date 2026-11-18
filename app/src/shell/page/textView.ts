@@ -1,7 +1,7 @@
 import type { TextView } from '../shared/views';
 
 export const defaultTextView: TextView = {
-  wordWrap: true,
+  wordWrap: false,
   showWhitespace: true,
   highlightSyntax: true,
 };

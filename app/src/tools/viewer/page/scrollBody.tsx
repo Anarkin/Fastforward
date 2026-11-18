@@ -4,6 +4,7 @@ import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useRef,
   useState,
@@ -14,6 +15,7 @@ import { wheeled } from '../../../lib/shared/keymap';
 import { viewerKeymap } from './keymap';
 import { sidewaysColumns } from '../../../lib/page/scrollSettings';
 import { wheelTurn } from '../../../lib/page/wheelTurns';
+import { followColumns } from '../../../lib/page/columnScroll';
 import { useShell } from '../../../shell/page/store';
 import { hideAfter } from '../../../lib/page/scrollbarGeometry';
 import { wrapColumns } from '../../../lib/page/wordWrap';
@@ -122,6 +124,9 @@ export function ScrollBody({
   const [screen, setScreen] = useState(1);
   const wheel = useRef(0);
   const wheelRows = useShell((state) => state.scrolling.wheelRows);
+  const gliding = useShell((state) => state.scrolling.smooth);
+  const perNotch = useEffectEvent(() => wheelRows);
+  const smooth = useEffectEvent(() => gliding);
   const [barShown, setBarShown] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
   const showBar = useCallback(() => {
@@ -136,15 +141,22 @@ export function ScrollBody({
     if (element === null) {
       return undefined;
     }
-    const onWheel = (event: WheelEvent) => {
-      if (wheeled(viewerKeymap.wheelSideways, event) === undefined) {
-        return;
-      }
-      event.preventDefault();
-      sideways.current?.scrollBy({ left: event.deltaX || event.deltaY });
-    };
-    element.addEventListener('wheel', onWheel, { passive: false });
-    return () => element.removeEventListener('wheel', onWheel);
+    return followColumns(element, {
+      turned: (event) =>
+        wheeled(viewerKeymap.wheelSideways, event) !== undefined,
+      advance: () => advance.current,
+      perNotch,
+      smooth,
+      scrolled: () => sideways.current?.scrollLeft ?? 0,
+      room: () =>
+        (sideways.current?.scrollWidth ?? 0) -
+        (sideways.current?.clientWidth ?? 0),
+      scrollTo: (left) => {
+        if (sideways.current) {
+          sideways.current.scrollLeft = left;
+        }
+      },
+    });
   }, []);
 
   useLayoutEffect(() => {

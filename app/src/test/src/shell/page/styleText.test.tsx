@@ -289,7 +289,6 @@ suite('Style', () => {
       bottom: '0',
       'pointer-events': 'none',
       color: 'var(--muted-foreground)',
-      'background-size': '100% var(--space-dot)',
       'background-repeat': 'no-repeat',
       'mask-image': undefined,
     });

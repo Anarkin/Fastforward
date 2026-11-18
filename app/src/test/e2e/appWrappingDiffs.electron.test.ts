@@ -9,6 +9,7 @@ import {
   page,
   profile,
   savedSetting,
+  app,
   sharedApp,
   whitespaceShownSaved,
   wrapsSaved,
@@ -36,6 +37,31 @@ import {
   longLines,
 } from './wrappingSamples';
 
+const spacedLine = `one two three four five ${'x'.repeat(3000)}`;
+
+function spaceCenters(code: Element): { x: number; y: number }[] {
+  const range = document.createRange();
+  const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+  const centers: { x: number; y: number }[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.textContent ?? '';
+    for (
+      let at = text.indexOf(' ');
+      at !== -1;
+      at = text.indexOf(' ', at + 1)
+    ) {
+      range.setStart(node, at);
+      range.setEnd(node, at + 1);
+      const { left, right, top, bottom } = range.getBoundingClientRect();
+      centers.push({
+        x: Math.floor(((left + right) / 2) * devicePixelRatio),
+        y: Math.floor(((top + bottom) / 2) * devicePixelRatio),
+      });
+    }
+  }
+  return centers;
+}
+
 suite('App', () => {
   sharedApp({
     'long.txt': `${longLines.join('\n')}\n`,
@@ -47,6 +73,7 @@ suite('App', () => {
     'minified.txt': `${minifiedLine}\n`,
     'grid.txt': `${gridLines.join('\n')}\n`,
     'grid.js': `${gridLines.join('\n')}\n`,
+    'spaced.txt': `${spacedLine}\n`,
   });
 
   test('scrolls a wrapped diff to each match found in a line wrapped onto more rows than the view holds, rather than to the middle of the line, as stepping between the matches of such a line left them out of view', async () => {
@@ -334,5 +361,47 @@ suite('App', () => {
       () => wrapsSaved() && savedSetting('diff', 'diffLayout') === 'inline',
       'the last choices to be saved',
     );
+  });
+
+  test('paints a dot in each space of a line of thousands of characters not wrapped, read from the pixels of the window, as a gradient as wide as such a line painted none of the few dots it held while its styles said they were there', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'spaced.txt' }).click();
+    const dots = page
+      .locator('.diff-view:not(.wrap) .code > .dot-rows')
+      .first();
+    await dots.waitFor();
+    const code = dots.locator('..');
+    const centers = await code.evaluate(spaceCenters);
+    assert.strictEqual(centers.length, 5);
+    const painted = async () => {
+      const shot = await app.evaluate(async ({ BrowserWindow, screen }) => {
+        const [window] = BrowserWindow.getAllWindows().toSorted(
+          (a, b) => a.id - b.id,
+        );
+        if (window === undefined) {
+          throw new Error('The app has no window.');
+        }
+        const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+        const image = await window.webContents.capturePage();
+        return {
+          width: image.getSize(scale).width,
+          pixels: image.toBitmap({ scaleFactor: scale }).toString('base64'),
+        };
+      });
+      const pixels = Buffer.from(shot.pixels, 'base64');
+      const at = (x: number, y: number) =>
+        pixels.subarray((y * shot.width + x) * 4, (y * shot.width + x) * 4 + 3);
+      const row = Math.round(((centers[1]?.x ?? 0) - (centers[0]?.x ?? 0)) / 8);
+      return centers.map(
+        ({ x, y }) => !at(x, y).equals(at(x, y - Math.max(4, row))),
+      );
+    };
+    await waitFor(
+      async () => (await painted()).every(Boolean),
+      'a dot painted in each of the five spaces',
+      5000,
+    ).catch(async (error: unknown) => {
+      throw new Error(`${String(error)}: ${JSON.stringify(await painted())}`);
+    });
   });
 });

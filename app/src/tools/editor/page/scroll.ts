@@ -11,6 +11,9 @@ import {
   type RowFollower,
 } from '../../../lib/page/rowScroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
+import { followColumns } from '../../../lib/page/columnScroll';
+import { wheeled } from '../../../lib/shared/keymap';
+import { editorKeymap } from './keymap';
 
 export interface Leading {
   readonly above: number;
@@ -79,6 +82,7 @@ function measuredLeading(view: EditorView): Leading | undefined {
 
 class RowScrolling implements PluginValue {
   private readonly following: RowFollower;
+  private readonly across: () => void;
   private padded: number | undefined;
   leading: Leading = { above: 0, below: 0 };
   private readonly sizes = {
@@ -109,6 +113,13 @@ class RowScrolling implements PluginValue {
       perNotch: () => scrolling().wheelRows,
       smooth: () => scrolling().smooth,
     });
+    this.across = followColumns(scroller, {
+      turned: (event) =>
+        wheeled(editorKeymap.wheelSideways, event) !== undefined,
+      advance: () => view.defaultCharacterWidth,
+      perNotch: () => scrolling().wheelRows,
+      smooth: () => scrolling().smooth,
+    });
     view.requestMeasure(this.sizes);
     view.requestMeasure(this.gaps);
   }
@@ -125,6 +136,7 @@ class RowScrolling implements PluginValue {
 
   destroy(): void {
     this.following.stop();
+    this.across();
   }
 }
 
