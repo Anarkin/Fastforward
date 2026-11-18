@@ -5,7 +5,7 @@ import { ThumbnailImage } from './thumbnails';
 import { type Entry } from '../shared/protocol';
 import { formatSize } from './format';
 import { cutClass } from './cellFit';
-import { iconWait, sinceScrolled } from './iconAsks';
+import { whenStayed } from './iconAsks';
 import { type Row } from './listing';
 import { HighlightWords } from '../../../lib/page/highlight';
 import type { Filter } from '../../../lib/shared/filter';
@@ -44,20 +44,7 @@ function SystemIcon({
     if (asked) {
       return undefined;
     }
-    let staying: ReturnType<typeof setTimeout>;
-    const wait = (time: number) => {
-      staying = setTimeout(() => {
-        const rested = sinceScrolled();
-        if (rested < iconWait) {
-          wait(iconWait - rested);
-        } else {
-          setAsked(true);
-        }
-      }, time);
-    };
-    sinceScrolled();
-    wait(iconWait);
-    return () => clearTimeout(staying);
+    return whenStayed(() => setAsked(true));
   }, [asked]);
   useEffect(
     () => () => {

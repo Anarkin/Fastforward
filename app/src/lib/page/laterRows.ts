@@ -24,10 +24,23 @@ export function sameRows(
   );
 }
 
+const jumpRest = 120;
+
+function covers(
+  drawn: readonly number[] | undefined,
+  { startIndex, endIndex }: RowRange,
+): boolean {
+  return (
+    (drawn?.[0] ?? Infinity) <= startIndex &&
+    (drawn?.at(-1) ?? -Infinity) >= endIndex
+  );
+}
+
 export function rowsDrawnNow(
   drawn: readonly number[] | undefined,
   { startIndex, endIndex, count }: RowRange,
   around: readonly number[],
+  alike = false,
 ): number[] {
   const [aroundFirst] = around;
   const aroundLast = around.at(-1);
@@ -36,8 +49,17 @@ export function rowsDrawnNow(
   }
   const first = Math.max(drawn?.[0] ?? Infinity, aroundFirst);
   const last = Math.min(drawn?.at(-1) ?? -Infinity, aroundLast);
-  return first <= startIndex && last >= endIndex
-    ? Array.from({ length: last - first + 1 }, (_, index) => first + index)
+  if (first <= startIndex && last >= endIndex) {
+    return Array.from(
+      { length: last - first + 1 },
+      (_, index) => first + index,
+    );
+  }
+  return alike
+    ? Array.from(
+        { length: endIndex - startIndex + 1 },
+        (_, index) => startIndex + index,
+      )
     : [...around];
 }
 
@@ -70,6 +92,7 @@ export function aimedRange<Range extends RowRange>(
 
 export function useLaterRows<Range extends RowRange>(
   around: (range: Range) => number[],
+  alike = false,
 ): (range: Range) => number[] {
   const [extended, setExtended] = useState<readonly number[]>();
   const applied = useRef<readonly number[]>(undefined);
@@ -77,7 +100,11 @@ export function useLaterRows<Range extends RowRange>(
   const last = useRef<{
     readonly now: readonly number[];
     readonly around: readonly number[];
+    readonly jump: number;
   }>(undefined);
+  const jumps = useRef(0);
+  const rested = useRef(0);
+  const resting = useRef<ReturnType<typeof setTimeout>>(undefined);
   useLayoutEffect(() => {
     committed.current = last.current?.now;
     applied.current = extended;
@@ -91,21 +118,35 @@ export function useLaterRows<Range extends RowRange>(
       }
     });
     painted.current = later;
-    return later.cancel;
+    return () => {
+      later.cancel();
+      clearTimeout(resting.current);
+    };
   }, []);
   useEffect(() => {
-    if (!sameRows(last.current?.around, committed.current)) {
+    const jump = last.current?.jump ?? 0;
+    if (jump !== rested.current) {
+      rested.current = jump;
+      clearTimeout(resting.current);
+      resting.current = setTimeout(() => {
+        resting.current = undefined;
+        painted.current?.ask();
+      }, jumpRest);
+    } else if (
+      resting.current === undefined &&
+      !sameRows(last.current?.around, committed.current)
+    ) {
       painted.current?.ask();
     }
   });
   return (range) => {
     const wanted = around(range);
-    const now = rowsDrawnNow(
-      extended === applied.current ? committed.current : extended,
-      range,
-      wanted,
-    );
-    last.current = { now, around: wanted };
+    const drawn = extended === applied.current ? committed.current : extended;
+    const now = rowsDrawnNow(drawn, range, wanted, alike);
+    if (alike && range.count > 0 && !covers(drawn, range)) {
+      jumps.current += 1;
+    }
+    last.current = { now, around: wanted, jump: jumps.current };
     return now;
   };
 }

@@ -93,3 +93,24 @@ export function heldKey(
 ): Promise<void> {
   return paced(presses, gapMs, () => page.keyboard.press(key));
 }
+
+export async function dragged(
+  page: Page,
+  from: { readonly x: number; readonly y: number },
+  by: { readonly x: number; readonly y: number },
+  steps = 150,
+  gapMs = 8,
+): Promise<void> {
+  await paced(steps, gapMs, (index) =>
+    page.mouse.move(
+      from.x + (by.x * (index + 1)) / steps,
+      from.y + (by.y * (index + 1)) / steps,
+    ),
+  );
+  await paced(steps, gapMs, (index) =>
+    page.mouse.move(
+      from.x + (by.x * (steps - index - 1)) / steps,
+      from.y + (by.y * (steps - index - 1)) / steps,
+    ),
+  );
+}

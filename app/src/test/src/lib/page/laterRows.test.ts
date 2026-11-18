@@ -89,6 +89,33 @@ suite('Rows drawn around a view', () => {
     );
   });
 
+  test('draws only the rows in view at once after a jump in a list whose rows are all of one known height, leaving every row around them for once the list rests, as a page key held or a scrollbar dragged drew twice the rows it showed at each step, the half out of sight thrown away at the next', () => {
+    const drawn = span(20, 80);
+    assert.deepStrictEqual(
+      [
+        rowsDrawnNow(
+          drawn,
+          { startIndex: 300, endIndex: 320, count: 500 },
+          span(280, 340),
+          true,
+        ),
+        rowsDrawnNow(
+          undefined,
+          { startIndex: 0, endIndex: 20, count: 500 },
+          span(0, 40),
+          true,
+        ),
+        rowsDrawnNow(
+          drawn,
+          { startIndex: 50, endIndex: 70, count: 500 },
+          span(30, 90),
+          true,
+        ),
+      ],
+      [span(300, 320), span(0, 20), span(30, 80)],
+    );
+  });
+
   test('draws nothing of a list without rows, and keeps to the rows there are once the list got shorter than what was drawn', () => {
     assert.deepStrictEqual(
       rowsDrawnNow(span(0, 40), { startIndex: 0, endIndex: 0, count: 0 }, []),

@@ -30,6 +30,8 @@ body {
   --wrap-gap: 8px;
   --check-size: 12px;
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2 7 10.7l4.5-5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --folder-outline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 4.5a1 1 0 0 1 1-1h3l1 1h5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z'/%3E%3C/svg%3E");
+  --file-outline: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 1.5h5l3 3v9a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z'/%3E%3Cpath d='M9.5 1.5v3h3'/%3E%3C/svg%3E");
   --button-size: round(26px, var(--device-pixel, 1px));
   --button-gap: round(2px, var(--device-pixel, 1px));
   --arrowed-button-width: round(44px, var(--device-pixel, 1px));
@@ -160,6 +162,22 @@ body {
 .icon {
   display: block;
   flex: none;
+}
+
+.folder-icon,
+.file-icon {
+  width: 16px;
+  height: 16px;
+  background: currentColor;
+  mask: center / 16px 16px no-repeat;
+}
+
+.folder-icon {
+  mask-image: var(--folder-outline);
+}
+
+.file-icon {
+  mask-image: var(--file-outline);
 }
 
 .title-bar {

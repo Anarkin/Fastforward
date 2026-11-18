@@ -15,7 +15,10 @@ import {
   RowIcon,
   SizeCell,
 } from '../../../../../tools/commander/page/paneCells';
-import { iconWait } from '../../../../../tools/commander/page/iconAsks';
+import {
+  iconWait,
+  whenStayed,
+} from '../../../../../tools/commander/page/iconAsks';
 
 const stayed = () =>
   act(
@@ -154,7 +157,7 @@ suite('Commander pane', () => {
       );
       const shows = () => ({
         asked: main.querySelector('img') !== null,
-        generic: main.querySelector('svg') !== null,
+        generic: main.querySelector('.file-icon') !== null,
       });
       await act(async () => root.render(drawn()));
       const passing = shows();
@@ -239,6 +242,72 @@ suite('Commander pane', () => {
     } finally {
       vi.useRealTimers();
       Object.assign(globalThis, saved);
+    }
+  });
+
+  test('draws the generic icon of a file or a folder as one element, an outline cut out of its color, rather than a drawing of three or four elements in every row, as a list scrolled by its scrollbar draws a screen of new rows at each step, each element of them styled, laid out and painted', () => {
+    const [folder, file] = rowsOf(
+      [
+        {
+          name: 'docs',
+          folder: true,
+          link: false,
+          hidden: false,
+          size: undefined,
+          modified: 0,
+        },
+        {
+          name: 'notes.txt',
+          folder: false,
+          link: false,
+          hidden: false,
+          size: 1,
+          modified: 0,
+        },
+      ],
+      false,
+      true,
+      { column: 'name', descending: false, groupByColor: false },
+    );
+    assert.ok(folder && file);
+    assert.deepStrictEqual(
+      [folder, file].map((row) =>
+        renderToStaticMarkup(
+          <RowIcon row={row} source={undefined} onDropIcon={noop} />,
+        ),
+      ),
+      [
+        '<span class="icon folder-icon" aria-hidden="true"></span>',
+        '<span class="icon file-icon" aria-hidden="true"></span>',
+      ],
+    );
+  });
+
+  test('waits for every row on one timer between them, rather than on a timer a row set as it is drawn and cleared as it goes, as a list dragged by its scrollbar draws and drops a screen of rows at every step and their timers took two thirds of its script', () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const saved: unknown = Reflect.get(globalThis, 'document');
+    Object.assign(globalThis, { document: dom.window.document });
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'performance'] });
+    try {
+      const set = vi.spyOn(globalThis, 'setTimeout');
+      const cleared = vi.spyOn(globalThis, 'clearTimeout');
+      const asked: number[] = [];
+      const dropped = Array.from({ length: 40 }, (_, row) =>
+        whenStayed(() => asked.push(row)),
+      );
+      dropped.slice(0, 30).forEach((drop) => drop());
+      vi.advanceTimersByTime(iconWait * 2);
+
+      assert.deepStrictEqual(
+        asked,
+        Array.from({ length: 10 }, (_, row) => 30 + row),
+      );
+      assert.ok(set.mock.calls.length <= 4, String(set.mock.calls.length));
+      assert.strictEqual(cleared.mock.calls.length, 0);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+      Object.assign(globalThis, { document: saved });
     }
   });
 
@@ -356,7 +425,7 @@ suite('Commander pane', () => {
       const looks = (name: string) => {
         const icon = main.querySelector(`[data-name="${name}"]`);
         return {
-          generic: icon?.querySelector('svg') !== null,
+          generic: icon?.querySelector('.file-icon') !== null,
           loading: icon?.querySelector('img')?.classList.contains('loading'),
         };
       };

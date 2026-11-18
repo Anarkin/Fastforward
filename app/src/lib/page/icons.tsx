@@ -150,20 +150,11 @@ export function SevenZipIcon() {
 }
 
 export function FolderIcon() {
-  return (
-    <Icon className="folder-icon">
-      <path d="M2.5 4.5a1 1 0 0 1 1-1h3l1 1h5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1Z" />
-    </Icon>
-  );
+  return <span className="icon folder-icon" aria-hidden="true" />;
 }
 
 export function FileIcon() {
-  return (
-    <Icon className="file-icon">
-      <path d="M4.5 1.5h5l3 3v9a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Z" />
-      <path d="M9.5 1.5v3h3" />
-    </Icon>
-  );
+  return <span className="icon file-icon" aria-hidden="true" />;
 }
 
 export function ImageIcon() {

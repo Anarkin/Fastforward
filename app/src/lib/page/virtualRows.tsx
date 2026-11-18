@@ -115,6 +115,7 @@ export function VirtualRows({
         ),
       );
     },
+    wholeRows && fixedHeight !== undefined,
   );
   const virtualizer = useVirtualizer({
     count: rows.count,
