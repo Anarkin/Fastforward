@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { blankRuns, spaceColumnsAt } from '../../../lib/page/rowBreaks';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { DotRowsShown } from '../../../lib/page/dotRowsShown';
@@ -38,7 +39,49 @@ function RowText({
   );
 }
 
-export function TextRow({
+interface RowPart {
+  readonly from: number;
+  readonly to: number;
+  readonly column: number;
+}
+
+interface TextRowProps {
+  row: ScreenRow;
+  part: RowPart | undefined;
+  columns?: number | undefined;
+  colored: ColoredText | undefined;
+  marks: readonly FindMark[];
+  showWhitespace: boolean;
+  widths: TextWidths | undefined;
+  dotLook: DotLook | undefined;
+}
+
+function samePart(one: RowPart | undefined, other: RowPart | undefined) {
+  return (
+    one === other ||
+    (one !== undefined &&
+      other !== undefined &&
+      one.from === other.from &&
+      one.to === other.to &&
+      one.column === other.column)
+  );
+}
+
+function drawnAlike(one: TextRowProps, other: TextRowProps): boolean {
+  return (
+    one.row === other.row &&
+    samePart(one.part, other.part) &&
+    one.columns === other.columns &&
+    one.colored === other.colored &&
+    (one.marks === other.marks ||
+      (one.marks.length === 0 && other.marks.length === 0)) &&
+    one.showWhitespace === other.showWhitespace &&
+    one.widths === other.widths &&
+    one.dotLook === other.dotLook
+  );
+}
+
+export const TextRow = memo(function TextRow({
   row,
   part,
   columns = Infinity,
@@ -47,18 +90,7 @@ export function TextRow({
   showWhitespace,
   widths,
   dotLook,
-}: {
-  row: ScreenRow;
-  part:
-    | { readonly from: number; readonly to: number; readonly column: number }
-    | undefined;
-  columns?: number | undefined;
-  colored: ColoredText | undefined;
-  marks: readonly FindMark[];
-  showWhitespace: boolean;
-  widths: TextWidths | undefined;
-  dotLook: DotLook | undefined;
-}) {
+}: TextRowProps) {
   const from = part?.from ?? row.from;
   const to = part?.to ?? row.to;
   return (
@@ -130,4 +162,4 @@ export function TextRow({
       )}
     </div>
   );
-}
+}, drawnAlike);

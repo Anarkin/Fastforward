@@ -1,9 +1,12 @@
 import * as assert from 'node:assert';
+import { act } from 'react';
+import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { TextRow } from '../../../../../tools/viewer/page/textRow';
 import { dotLook } from '../../../../../lib/page/dotLook';
 import type { ScreenRow } from '../../../../../tools/viewer/page/screenRows';
+import type { TextWidths } from '../../../../../lib/page/textWidths';
 
 const text = 'ab  c d';
 
@@ -88,5 +91,68 @@ suite('A row of a file viewed', () => {
         `left:calc(2 * var(--text-advance));background-image:linear-gradient(to right,${dot(0)},${dot(2)},transparent 0);background-position:16px var(--dot-top);`,
       ),
     );
+  });
+
+  test('draws a row again only once what it shows has changed, not as the rows around it scroll, a part of it or its marks made anew but alike leaving it as it is, as every row in view was worked out again at each row a file scrolled by, a quarter of the frames of a glide through a table of long lines coming late', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      let measured = 0;
+      const widths: TextWidths = {
+        char: 8,
+        of: () => 8,
+        boxed: () => {
+          measured += 1;
+          return 2;
+        },
+      };
+      const wide = '中 b c';
+      const drawn: ScreenRow = {
+        ...row,
+        end: wide.length,
+        row: { start: 0, end: wide.length, text: wide },
+        to: wide.length,
+      };
+      const show = (to: number) =>
+        act(async () =>
+          root.render(
+            <TextRow
+              row={drawn}
+              part={{ from: 0, to, column: 0 }}
+              colored={undefined}
+              marks={[]}
+              showWhitespace
+              widths={widths}
+              dotLook={look}
+            />,
+          ),
+        );
+      await show(wide.length);
+      const first = measured;
+      await show(wide.length);
+      const alike = measured;
+      await show(wide.length - 2);
+      const changed = measured;
+      await act(async () => root.unmount());
+
+      assert.ok(first > 0, String(first));
+      assert.strictEqual(alike, first);
+      assert.ok(changed > alike, String(changed));
+    } finally {
+      Object.assign(globalThis, saved);
+    }
   });
 });
