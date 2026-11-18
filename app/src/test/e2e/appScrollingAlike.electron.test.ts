@@ -163,17 +163,43 @@ const fittingFrom = Object.keys(views).length;
 const alike = <T>(names: readonly ViewName[], value: T) =>
   Object.fromEntries(names.map((name) => [name, value]));
 
-const pressed = async (
-  read: () => Promise<Place>,
-  act: () => Promise<void>,
-) => {
-  const { samples, last } = await sampled(read, act);
-  return {
-    moved: samples.at(-1) !== samples[0],
-    glides: between(samples),
-    whole: last.onRow,
+function recordPainted(
+  down: typeof placeDown,
+  sideways: typeof placeAcross,
+  pane: string,
+  rows: string,
+  moved: string | null,
+): void {
+  const seen: string[] = [];
+  Reflect.set(window, 'placesPainted', seen);
+  Reflect.set(window, 'placesWatched', true);
+  const read = () => {
+    const element = document.querySelector(moved ?? pane);
+    if (element !== null) {
+      seen.push(
+        moved === null ? down(element, rows).state : sideways(element).state,
+      );
+    }
   };
-};
+  const frame = () => {
+    if (Reflect.get(window, 'placesWatched') !== true) {
+      return;
+    }
+    const painted = new MessageChannel();
+    painted.port1.addEventListener('message', read, { once: true });
+    painted.port1.start();
+    painted.port2.postMessage(0);
+    requestAnimationFrame(frame);
+  };
+  read();
+  requestAnimationFrame(frame);
+}
+
+function paintedPlaces(): string[] {
+  Reflect.set(window, 'placesWatched', false);
+  const seen: unknown = Reflect.get(window, 'placesPainted');
+  return Array.isArray(seen) ? seen.map(String) : [];
+}
 
 suite('App scrolling alike', () => {
   let app: ElectronApplication;
@@ -368,12 +394,29 @@ suite('App scrolling alike', () => {
     };
   };
 
+  const pressed = async (
+    name: ViewName,
+    sideways: boolean,
+    act: () => Promise<void>,
+  ) => {
+    const { pane, rows, across: moved } = views[name];
+    await page.evaluate(
+      `(${String(recordPainted)})(${String(placeDown)}, ${String(placeAcross)}, ${JSON.stringify(pane)}, ${JSON.stringify(rows)}, ${JSON.stringify(sideways ? moved : null)})`,
+    );
+    await act();
+    await pause(700);
+    const samples = await page.evaluate(paintedPlaces);
+    const last = await (sideways ? across(name) : down(name));
+    return {
+      moved: samples.at(-1) !== samples[0],
+      glides: between(samples),
+      whole: last.onRow,
+    };
+  };
+
   const wheeled = async (name: ViewName) => {
     await center(name);
-    return pressed(
-      () => down(name),
-      () => page.mouse.wheel(0, 100),
-    );
+    return pressed(name, false, () => page.mouse.wheel(0, 100));
   };
 
   const keyed = async (name: ViewName, key: string, times = 1) => {
@@ -381,10 +424,7 @@ suite('App scrolling alike', () => {
       await page.keyboard.press(key);
       await pause(400);
     }
-    return pressed(
-      () => down(name),
-      () => page.keyboard.press(key),
-    );
+    return pressed(name, false, () => page.keyboard.press(key));
   };
 
   const swiped = async (
@@ -529,20 +569,14 @@ suite('App scrolling alike', () => {
       {
         wheel: await inEvery(textViews, async (name) => {
           await center(name);
-          return pressed(
-            () => across(name),
-            async () => {
-              await page.keyboard.down('Shift');
-              await page.mouse.wheel(0, 100);
-              await page.keyboard.up('Shift');
-            },
-          );
+          return pressed(name, true, async () => {
+            await page.keyboard.down('Shift');
+            await page.mouse.wheel(0, 100);
+            await page.keyboard.up('Shift');
+          });
         }),
         right: await inEvery(acrossViews, (name) =>
-          pressed(
-            () => across(name),
-            () => page.keyboard.press('ArrowRight'),
-          ),
+          pressed(name, true, () => page.keyboard.press('ArrowRight')),
         ),
         scrollbar: await inEvery(textViews, (name) =>
           barHeld(name, () => across(name), horizontalBar, true),
@@ -618,14 +652,11 @@ suite('App scrolling alike', () => {
         ),
         wheelAcross: await inEvery(textViews, async (name) => {
           await center(name);
-          return pressed(
-            () => across(name),
-            async () => {
-              await page.keyboard.down('Shift');
-              await page.mouse.wheel(0, 100);
-              await page.keyboard.up('Shift');
-            },
-          );
+          return pressed(name, true, async () => {
+            await page.keyboard.down('Shift');
+            await page.mouse.wheel(0, 100);
+            await page.keyboard.up('Shift');
+          });
         }),
         scrollbarAcross: await inEvery(textViews, (name) =>
           barHeld(name, () => across(name), horizontalBar, true),
