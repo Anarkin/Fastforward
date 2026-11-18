@@ -104,6 +104,51 @@ export function lineParts(
   ];
 }
 
+const keptLines = 4000;
+
+export function keptLineParts(): {
+  readonly of: (
+    text: string,
+    indent: number | undefined,
+    widths: TextWidths | undefined,
+    window?: LineWindow,
+  ) => LinePart[];
+  readonly forget: () => void;
+} {
+  const kept = new Map<number, Map<string, LinePart[]>>();
+  let known: TextWidths | undefined;
+  let count = 0;
+  const forget = () => {
+    kept.clear();
+    count = 0;
+  };
+  return {
+    of: (text, indent, widths, window) => {
+      if (
+        window !== undefined &&
+        (window.from !== 0 || window.to !== text.length)
+      ) {
+        return lineParts(text, indent, widths, window);
+      }
+      if (widths !== known || count >= keptLines) {
+        forget();
+        known = widths;
+      }
+      const key = indent ?? -1;
+      const lines = kept.get(key) ?? new Map<string, LinePart[]>();
+      kept.set(key, lines);
+      let parts = lines.get(text);
+      if (parts === undefined) {
+        parts = lineParts(text, indent, widths);
+        lines.set(text, parts);
+        count += 1;
+      }
+      return parts;
+    },
+    forget,
+  };
+}
+
 interface Edge {
   readonly left: number;
   readonly right: number;
@@ -222,6 +267,7 @@ class LineLook implements PluginValue {
   private widths: TextWidths | undefined;
   private columns: number | undefined;
   private wrapping: boolean;
+  private readonly parts = keptLineParts();
   shape = 0;
   sets: LookSets;
 
@@ -268,7 +314,9 @@ class LineLook implements PluginValue {
     const columns = widths === undefined ? undefined : wrapColumnsOf(this.view);
     const changed =
       columns !== this.columns || widths?.char !== this.widths?.char;
-    this.widths = widths;
+    if (widths?.char !== this.widths?.char) {
+      this.widths = widths;
+    }
     this.columns = columns;
     return changed;
   }
@@ -299,7 +347,12 @@ class LineLook implements PluginValue {
           lines.push(hangingLine(indent).range(line.from));
         }
         const boxed = new Set<number>();
-        for (const part of lineParts(line.text, indent, this.widths, window)) {
+        for (const part of this.parts.of(
+          line.text,
+          indent,
+          this.widths,
+          window,
+        )) {
           const partFrom = line.from + part.from;
           const partTo = line.from + part.to;
           if (part.kind === 'lead') {

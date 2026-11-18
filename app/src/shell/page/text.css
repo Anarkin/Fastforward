@@ -233,7 +233,8 @@ input {
   height: 1px;
   overflow: visible;
   shape-rendering: crispEdges;
-  fill: var(--muted-foreground);
+  fill: none;
+  stroke: var(--muted-foreground);
 }
 
 ::selection {

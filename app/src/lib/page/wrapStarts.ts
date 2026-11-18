@@ -4,16 +4,17 @@ import type { TextWidths } from './textWidths';
 const beyondAscii = /[^\0-\x7f]/;
 
 interface Kept {
-  readonly text: string;
   readonly columns: number;
   readonly indent: number;
   readonly widths: TextWidths | undefined;
   readonly starts: readonly number[];
 }
 
-const mostKept = 16;
+const mostCharacters = 1_000_000;
 
-const kept: Kept[] = [];
+const kept = new Map<string, Kept[]>();
+
+let characters = 0;
 
 export function keptWrapStarts(
   text: string,
@@ -25,26 +26,31 @@ export function keptWrapStarts(
     widths !== undefined && widths.char > 0 && beyondAscii.test(text)
       ? widths
       : undefined;
-  const at = kept.findIndex(
+  const ways = kept.get(text) ?? [];
+  let found = ways.find(
     (one) =>
       one.columns === columns &&
       one.indent === indent &&
-      one.widths === measuring &&
-      one.text === text,
+      one.widths === measuring,
   );
-  const found =
-    at === -1
-      ? {
-          text,
-          columns,
-          indent,
-          widths: measuring,
-          starts: wrapStarts(text, columns, indent, measuring),
-        }
-      : kept.splice(at, 1)[0];
-  kept.push(found);
-  if (kept.length > mostKept) {
-    kept.shift();
+  if (found === undefined) {
+    found = {
+      columns,
+      indent,
+      widths: measuring,
+      starts: wrapStarts(text, columns, indent, measuring),
+    };
+    ways.push(found);
+    characters += text.length;
+  }
+  kept.delete(text);
+  kept.set(text, ways);
+  for (const [oldest, old] of kept) {
+    if (characters <= mostCharacters || oldest === text) {
+      break;
+    }
+    kept.delete(oldest);
+    characters -= oldest.length * old.length;
   }
   return found.starts;
 }

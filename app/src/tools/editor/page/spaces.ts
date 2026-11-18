@@ -41,18 +41,28 @@ export function dotsPath(
   origin: Point,
 ): string {
   const { advance, dot, start, pixel } = look;
-  const square = `h${figure(dot)}v${figure(dot)}h${figure(-dot)}z`;
   const parts: string[] = [];
   for (const run of runs) {
-    const left = snapTo(run.left, pixel) + start - origin.left;
-    const top = figure(
-      snapTo(run.top + (run.height - dot) / 2, pixel) - origin.top,
-    );
-    for (let at = 0; at < run.length; at++) {
-      parts.push(`M${figure(left + at * advance)} ${top}${square}`);
+    if (run.length > 0) {
+      const left = snapTo(run.left, pixel) + start - origin.left;
+      const middle =
+        snapTo(run.top + (run.height - dot) / 2, pixel) - origin.top + dot / 2;
+      parts.push(
+        `M${figure(left)} ${figure(middle)}h${figure((run.length - 1) * advance + dot)}`,
+      );
     }
   }
   return parts.join('');
+}
+
+export function dotsStroke({ advance, dot }: DotLook): {
+  readonly width: number;
+  readonly dashes: string;
+} {
+  return {
+    width: dot,
+    dashes: `${figure(dot)} ${figure(Math.max(0, advance - dot))}`,
+  };
 }
 
 export interface Band {
@@ -284,10 +294,31 @@ ${text}`,
 }
 
 class DotsMarker implements LayerMarker {
-  constructor(private readonly path: string) {}
+  private readonly width: string;
+  private readonly dashes: string;
+
+  constructor(
+    private readonly path: string,
+    look: DotLook,
+  ) {
+    const stroke = dotsStroke(look);
+    this.width = figure(stroke.width);
+    this.dashes = stroke.dashes;
+  }
 
   eq(other: LayerMarker): boolean {
-    return other instanceof DotsMarker && other.path === this.path;
+    return (
+      other instanceof DotsMarker &&
+      other.path === this.path &&
+      other.width === this.width &&
+      other.dashes === this.dashes
+    );
+  }
+
+  private stroke(path: SVGPathElement): void {
+    path.setAttribute('d', this.path);
+    path.setAttribute('stroke-width', this.width);
+    path.setAttribute('stroke-dasharray', this.dashes);
   }
 
   draw(): HTMLElement {
@@ -295,7 +326,7 @@ class DotsMarker implements LayerMarker {
     box.className = 'space-dots';
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', this.path);
+    this.stroke(path);
     svg.append(path);
     box.append(svg);
     return box;
@@ -303,8 +334,11 @@ class DotsMarker implements LayerMarker {
 
   update(dom: HTMLElement): boolean {
     const path = dom.querySelector('path');
-    path?.setAttribute('d', this.path);
-    return path !== null;
+    if (path === null) {
+      return false;
+    }
+    this.stroke(path);
+    return true;
   }
 }
 
@@ -343,7 +377,7 @@ function dotMarkers(
   );
   return runs.length === 0
     ? []
-    : [new DotsMarker(dotsPath(runs, look, origin))];
+    : [new DotsMarker(dotsPath(runs, look, origin), look)];
 }
 
 class ScrollWatch implements PluginValue {

@@ -4,6 +4,7 @@ import { dotLook } from '../../../../../lib/page/dotLook';
 import {
   dotsBand,
   dotsPath,
+  dotsStroke,
   fittingRun,
   holds,
   runsOfLine,
@@ -33,7 +34,7 @@ suite('The dots the editor draws for spaces', () => {
     });
   });
 
-  test('draws a square dot in each advance of a run of spaces, from its left edge and halfway down it, on whole device pixels of the window, as one path drawn where the layer starts rather than a mark around each run, as each mark was an element laid out and painted again and made paging through a long wrapped line twice as slow', () => {
+  test('draws a square dot in each advance of a run of spaces, from its left edge and halfway down it, on whole device pixels of the window, as one path drawn where the layer starts rather than a mark around each run, as each mark was an element laid out and painted again and made paging through a long wrapped line twice as slow, and each run as one stroke dashed a dot an advance rather than a square a space, as the path of a table of 75,000 spaces in sight was two megabytes built and parsed again as the editor scrolled, stalling it for 40 ms', () => {
     const look = dotLook(14, 8, 1);
     assert.strictEqual(
       dotsPath(
@@ -44,9 +45,14 @@ suite('The dots the editor draws for spaces', () => {
         look,
         { left: 100, top: 200 },
       ),
-      'M13 27h2v2h-2zM21 27h2v2h-2zM53 45h2v2h-2z',
+      'M13 28h10M53 46h2',
     );
     assert.strictEqual(dotsPath([], look, { left: 0, top: 0 }), '');
+    assert.deepStrictEqual(dotsStroke(look), { width: 2, dashes: '2 6' });
+    assert.deepStrictEqual(dotsStroke(dotLook(4, 1, 1)), {
+      width: 1,
+      dashes: '1 0',
+    });
   });
 
   test('keeps the dots on whole device pixels however far the layer starts off them', () => {
@@ -56,7 +62,7 @@ suite('The dots the editor draws for spaces', () => {
         left: 0.2,
         top: 0.1,
       }),
-      'M12.8 26.9h2.5v2.5h-2.5z',
+      'M12.8 28.15h2.5',
     );
   });
 
@@ -74,7 +80,7 @@ suite('The dots the editor draws for spaces', () => {
         dotLook(12, 7.2, 0.8),
         { left: 8, top: 95.4000015258789 },
       ),
-      'M122.4 7.8h1.6v1.6h-1.6z',
+      'M122.4 8.6h1.6',
     );
   });
 

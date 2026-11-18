@@ -284,14 +284,23 @@ function blanksOf(element: Element): {
 function editorBlanksOf(element: Element): readonly string[] {
   const svg = element.closest('.cm-editor')?.querySelector('.space-dots svg');
   const origin = svg?.getBoundingClientRect() ?? { left: 0, top: 0 };
+  const path = svg?.querySelector('path');
+  const [dash = 1, gap = 0] = (path?.getAttribute('stroke-dasharray') ?? '')
+    .split(' ')
+    .map(Number);
   const dots = [
-    ...(svg?.querySelector('path')?.getAttribute('d') ?? '').matchAll(
+    ...(path?.getAttribute('d') ?? '').matchAll(
       /M(-?[\d.]+) (-?[\d.]+)h(-?[\d.]+)/g,
     ),
-  ].map(([, x, y, size]) => ({
-    x: origin.left + Number(x) + Number(size) / 2,
-    y: origin.top + Number(y) + Number(size) / 2,
-  }));
+  ].flatMap(([, x, y, run]) =>
+    Array.from(
+      { length: Math.round((Number(run) - dash) / (dash + gap)) + 1 },
+      (_, index) => ({
+        x: origin.left + Number(x) + dash / 2 + index * (dash + gap),
+        y: origin.top + Number(y),
+      }),
+    ),
+  );
   const range = document.createRange();
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
   const marked: string[] = [];

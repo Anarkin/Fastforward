@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { lineParts } from '../../../../../tools/editor/page/text';
+import {
+  keptLineParts,
+  lineParts,
+} from '../../../../../tools/editor/page/text';
 import type { TextWidths } from '../../../../../lib/page/textWidths';
 
 const boxing: TextWidths = {
@@ -74,5 +77,36 @@ suite('Parts of a line of the editor', () => {
       { kind: 'cell', from: 4, to: 5, cells: 2, scale: undefined },
       { kind: 'break', from: 6, to: 6 },
     ]);
+  });
+
+  test('keeps the parts of a line drawn whole for as long as its text, its indent and the widths stay, working them out anew only for another line, another indent or once forgotten, as every line in view was cut into its characters again at each scroll of the editor, a table of long lines stalling for 25 to 45 ms; and keeps none of a line drawn in part', () => {
+    const kept = keptLineParts();
+    const text = `| ${'中'.repeat(3)} | ${' '.repeat(40)}x |`;
+    const first = kept.of(text, 2, boxing);
+    const window = { from: 4, to: 20 };
+
+    assert.deepStrictEqual(first, lineParts(text, 2, boxing));
+    assert.strictEqual(kept.of(text, 2, boxing), first);
+    assert.strictEqual(
+      kept.of(text, 2, boxing, { from: 0, to: text.length }),
+      first,
+    );
+    assert.notStrictEqual(kept.of(text, undefined, boxing), first);
+    assert.deepStrictEqual(
+      kept.of(text, undefined, boxing),
+      lineParts(text, undefined, boxing),
+    );
+    assert.notStrictEqual(kept.of(`${text} `, 2, boxing), first);
+    assert.deepStrictEqual(
+      kept.of(text, 2, boxing, window),
+      lineParts(text, 2, boxing, window),
+    );
+    assert.notStrictEqual(
+      kept.of(text, 2, boxing, window),
+      kept.of(text, 2, boxing, window),
+    );
+    kept.forget();
+    assert.notStrictEqual(kept.of(text, 2, boxing), first);
+    assert.deepStrictEqual(kept.of(text, 2, boxing), first);
   });
 });
