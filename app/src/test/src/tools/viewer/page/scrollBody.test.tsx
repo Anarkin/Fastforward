@@ -11,6 +11,7 @@ function scrollBody(
   barPinned: boolean,
   matches: readonly ByteRange[] = [],
   wrapped = false,
+  lead?: number,
 ): string {
   return renderToStaticMarkup(
     <ScrollBody
@@ -24,6 +25,7 @@ function scrollBody(
       matches={matches}
       size={1024}
       wrapped={wrapped}
+      lead={lead}
     >
       text
     </ScrollBody>,
@@ -50,5 +52,20 @@ suite('Commander scroll body', () => {
       /class="minimap-mark match" style="top:50%;height:3.125%"/,
     );
     assert.doesNotMatch(scrollBody(false), /minimap-mark/);
+  });
+
+  test('leaves the room of 64 rows above the rows of a file at rest, wherever it is scrolled to, for the rows to stay where they are in their box as it glides either way and the box to scroll by instead, so only the row that comes into view is painted', () => {
+    assert.match(
+      scrollBody(false, [], false, 37),
+      /class="viewer-rows" style="--viewer-lead:64"/,
+    );
+    assert.match(
+      scrollBody(false, [], false, 70_000_000),
+      /class="viewer-rows" style="--viewer-lead:64"/,
+    );
+    assert.match(
+      scrollBody(false),
+      /class="viewer-rows" style="--viewer-lead:64"/,
+    );
   });
 });

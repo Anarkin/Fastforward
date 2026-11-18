@@ -103,7 +103,7 @@ export function TextBody({
   const whole = wrapAt === undefined;
   const text = useWholeText(viewing, language !== undefined || whole, encoding);
   const colored = useColors(tab, language, encoding, text);
-  const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 1);
+  const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 2);
   const { width, parts } = useSideways({
     whole,
     text,
@@ -179,6 +179,7 @@ export function TextBody({
       size={size}
       thumb={textThumb(loaded, screen, size ?? 0, perRow, lastTop)}
       ends={textEnds(loaded, screen, size ?? 0)}
+      lead={loaded.top}
       onScreen={setMeasured}
       onColumns={setColumns}
       onFont={onFont}

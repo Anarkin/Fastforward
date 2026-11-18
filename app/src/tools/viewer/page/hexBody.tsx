@@ -177,7 +177,7 @@ export function ByteBody({
 
   const digits = offsetDigits(size);
   const rows = Array.from(
-    { length: Math.max(0, Math.min(rowCount - top, screen + 1)) },
+    { length: Math.max(0, Math.min(rowCount - top, screen + 2)) },
     (_, index) => {
       const offset = (top + index) * rowBytes;
       const from = bytes === undefined ? -1 : offset - bytes.start;
@@ -206,6 +206,7 @@ export function ByteBody({
             }
       }
       ends={rowEnds(top, lastTop)}
+      lead={top}
       onScreen={setScreen}
       onColumns={setColumns}
       move={move}

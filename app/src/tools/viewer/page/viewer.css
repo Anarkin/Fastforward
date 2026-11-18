@@ -24,6 +24,13 @@
   inset: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  background: var(--color-panel-background);
+}
+
+@property --viewer-lead {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
 }
 
 .viewer-rows {
@@ -34,7 +41,9 @@
   min-width: 100%;
   --viewer-inset: 8px;
   padding: 0 calc(var(--scrollbar-size) + 8px) 0 var(--viewer-inset);
+  padding-top: calc(var(--viewer-lead) * var(--viewer-row-height));
   box-sizing: border-box;
+  min-height: calc(100% + (var(--viewer-lead) + 1) * var(--viewer-row-height));
 }
 
 .viewer-rows.numbered,

@@ -93,8 +93,13 @@ function placeDown(pane: Element, rows: string): Place {
   const [first] = boxes;
   const row = first?.box.height ?? 1;
   const lists = pane.querySelector('.viewer-rows');
+  const turned = lists
+    ? (pane.querySelector('.viewer-sideways')?.scrollTop ?? 0) / row
+    : 0;
   const shifted = lists
-    ? -new DOMMatrix(getComputedStyle(lists).transform).m42
+    ? Math.abs(turned - Math.round(turned)) < 0.001
+      ? 0
+      : (turned - Math.floor(turned)) * row
     : pane.scrollTop % row;
   const offset = first ? first.box.top - top - covered : 0;
   return {

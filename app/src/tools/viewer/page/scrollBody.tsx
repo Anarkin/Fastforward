@@ -34,6 +34,16 @@ const revealColumns = 8;
 
 const noMatches: readonly ByteRange[] = [];
 
+const leadRoom = 64;
+
+const barRenewal = 200;
+
+declare module 'react' {
+  interface CSSProperties {
+    readonly '--viewer-lead'?: number;
+  }
+}
+
 export function ScrollBody({
   thumb,
   ends,
@@ -55,6 +65,7 @@ export function ScrollBody({
   barPinned = false,
   matches = noMatches,
   size = 0,
+  lead = 0,
   children,
 }: {
   thumb: Thumb | undefined;
@@ -77,6 +88,7 @@ export function ScrollBody({
   barPinned?: boolean;
   matches?: readonly ByteRange[];
   size?: number;
+  lead?: number;
   children: React.ReactNode;
 }) {
   const body = useRef<HTMLDivElement>(null);
@@ -88,6 +100,7 @@ export function ScrollBody({
   const inset = useRef(0);
   const revealed = useRef(0);
   const leftBack = useRef(keptLeft);
+  const leftSeen = useRef(0);
   useLayoutEffect(() => {
     const area = sideways.current;
     if (area === null || leftBack.current === 0) {
@@ -137,10 +150,19 @@ export function ScrollBody({
   const settles = useEffectEvent(() => snaps);
   const [barShown, setBarShown] = useState(false);
   const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const shownAt = useRef(-Infinity);
   const showBar = useCallback(() => {
+    const now = performance.now();
+    if (now - shownAt.current < barRenewal) {
+      return;
+    }
+    shownAt.current = now;
     clearTimeout(hiding.current);
     setBarShown(true);
-    hiding.current = setTimeout(() => setBarShown(false), hideAfter);
+    hiding.current = setTimeout(() => {
+      shownAt.current = -Infinity;
+      setBarShown(false);
+    }, hideAfter);
   }, []);
   useEffect(() => () => clearTimeout(hiding.current), []);
   useEffect(() => body.current?.focus(), []);
@@ -151,15 +173,40 @@ export function ScrollBody({
     edges.current = ends;
   });
   const moveBy = useEffectEvent((by: number) => move(by));
+  const partNow = useRef(0);
+  const rowHeight = useRef(0);
+  const [leadFrom, setLeadFrom] = useState(lead - leadRoom);
+  const since = lead - leadFrom;
+  const led = since >= 0 && since <= 2 * leadRoom ? since : leadRoom;
+  const placeRows = useEffectEvent((strayed = false) => {
+    const area = sideways.current;
+    const top = (led + partNow.current) * rowHeight.current;
+    if (
+      area !== null &&
+      rowHeight.current > 0 &&
+      (!strayed || Math.abs(area.scrollTop - top) > 1)
+    ) {
+      area.scrollTop = top;
+    }
+  });
+  const settleLead = useEffectEvent(() => {
+    if (led !== since || (partNow.current === 0 && since !== leadRoom)) {
+      setLeadFrom(lead - leadRoom);
+    }
+  });
+  useLayoutEffect(() => {
+    if (led !== since || (partNow.current === 0 && since !== leadRoom)) {
+      setLeadFrom(lead - leadRoom);
+    }
+    placeRows();
+  }, [lead, led, since]);
   useEffect(() => {
     const made = glideRowsOf({
       move: (by) => moveBy(by),
       shift: (part) => {
-        const height = probe.current?.getBoundingClientRect().height ?? 0;
-        if (rowsBox.current) {
-          rowsBox.current.style.transform =
-            part === 0 ? '' : `translateY(${-part * height}px)`;
-        }
+        partNow.current = part;
+        placeRows();
+        settleLead();
       },
       atStart: () => edges.current.atStart,
       atEnd: () => edges.current.atEnd,
@@ -171,6 +218,15 @@ export function ScrollBody({
       glider.current = undefined;
     };
   }, []);
+  useEffect(() => {
+    const area = sideways.current;
+    if (area === null || failed) {
+      return undefined;
+    }
+    const keep = () => placeRows(true);
+    area.addEventListener('scroll', keep, { passive: true });
+    return () => area.removeEventListener('scroll', keep);
+  }, [failed]);
   const across = useRef<ColumnFollower>(undefined);
   useEffect(() => {
     const element = sideways.current;
@@ -199,7 +255,10 @@ export function ScrollBody({
       return undefined;
     }
     const measure = () => {
-      const height = row.getBoundingClientRect().height || 1;
+      const measured = row.getBoundingClientRect().height;
+      const height = measured || 1;
+      rowHeight.current = measured;
+      placeRows();
       const rows = Math.max(1, Math.floor(element.clientHeight / height));
       setScreen(rows);
       onScreen(rows);
@@ -348,6 +407,10 @@ export function ScrollBody({
           ref={sideways}
           onScroll={(event) => {
             const { scrollLeft } = event.currentTarget;
+            if (scrollLeft === leftSeen.current) {
+              return;
+            }
+            leftSeen.current = scrollLeft;
             onSideways?.(Math.floor(scrollLeft / advance.current));
             if (leftBack.current === 0) {
               onLeft?.(scrollLeft);
@@ -357,13 +420,12 @@ export function ScrollBody({
           <div
             className={`viewer-rows${wrapped ? ' wrapped' : ''}${numbered ? ' numbered' : ''}`}
             ref={rowsBox}
-            style={
-              width === undefined
-                ? undefined
-                : {
-                    minWidth: `calc(${width} * var(--text-advance) + var(--viewer-inset) + 8px + var(--scrollbar-size))`,
-                  }
-            }
+            style={{
+              '--viewer-lead': led,
+              ...(width !== undefined && {
+                minWidth: `calc(${width} * var(--text-advance) + var(--viewer-inset) + 8px + var(--scrollbar-size))`,
+              }),
+            }}
           >
             {children}
           </div>

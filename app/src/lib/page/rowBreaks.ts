@@ -1,5 +1,7 @@
 import { tabStop } from './tabStops';
 import { isBlank } from './wordWrap';
+import { columnsOf } from './textColumns';
+import type { TextWidths } from './textWidths';
 
 interface Blank {
   readonly column: number;
@@ -69,6 +71,54 @@ export function spaceColumnsAt(
     }
     return found;
   });
+}
+
+interface KeptSpaces {
+  readonly columns: number;
+  readonly widths: TextWidths | undefined;
+  readonly found: readonly number[];
+}
+
+const mostCharacters = 1_000_000;
+
+const keptSpaces = new Map<string, KeptSpaces[]>();
+
+let characters = 0;
+
+export function keptSpaceColumns(
+  text: string,
+  columns: number,
+  widths: TextWidths | undefined,
+): readonly number[] {
+  const ways = keptSpaces.get(text) ?? [];
+  let kept = ways.find(
+    (one) => one.columns === columns && one.widths === widths,
+  );
+  if (kept === undefined) {
+    kept = {
+      columns,
+      widths,
+      found:
+        spaceColumnsAt(
+          text,
+          [0],
+          columns,
+          widths && ((part: string) => columnsOf(part, widths)),
+        )[0] ?? [],
+    };
+    ways.push(kept);
+    characters += text.length;
+  }
+  keptSpaces.delete(text);
+  keptSpaces.set(text, ways);
+  for (const [oldest, old] of keptSpaces) {
+    if (characters <= mostCharacters || oldest === text) {
+      break;
+    }
+    keptSpaces.delete(oldest);
+    characters -= oldest.length * old.length;
+  }
+  return kept.found;
 }
 
 export function rowBreaksAt(

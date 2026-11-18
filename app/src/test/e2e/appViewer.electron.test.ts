@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { clippedCorner } from './scrollProbes';
-import { waitForFocus } from './waits';
+import { untilSettled, waitForFocus } from './waits';
 import {
   opened,
   profile,
@@ -44,6 +44,42 @@ const placesOf = () =>
       start: Math.round(start.left - header.left),
       actions: Math.round(header.right - actions.right),
     };
+  });
+
+function watchKeptRow(text: string): void {
+  const seen: { inBox: number; shown: number }[] = [];
+  Reflect.set(window, 'keptRowSeen', seen);
+  Reflect.set(window, 'keptRowWatched', true);
+  const frame = () => {
+    const rows = document.querySelector('.viewer-rows');
+    const row = [...(rows?.querySelectorAll('.viewer-row') ?? [])].find(
+      (each) => each.textContent === text,
+    );
+    if (row instanceof HTMLElement) {
+      seen.push({
+        inBox: row.offsetTop,
+        shown: Math.round(row.getBoundingClientRect().top),
+      });
+    }
+    if (Reflect.get(window, 'keptRowWatched') === true) {
+      requestAnimationFrame(frame);
+    }
+  };
+  frame();
+}
+
+function keptRowSeen(): { inBox: number; shown: number }[] {
+  Reflect.set(window, 'keptRowWatched', false);
+  const seen: unknown = Reflect.get(window, 'keptRowSeen');
+  return Array.isArray(seen) ? seen : [];
+}
+
+const restingAt = () =>
+  page.locator('.viewer-sideways').evaluate((box) => {
+    const row = box.querySelector('.viewer-row')?.getBoundingClientRect();
+    return row === undefined
+      ? NaN
+      : Math.round((box.scrollTop / row.height) * 100) / 100;
   });
 
 suite('App commander', () => {
@@ -419,5 +455,41 @@ suite('App commander', () => {
       async () => !(await rowNames()).includes('rows.txt'),
       'the file to be gone from the list',
     );
+  });
+
+  test('keeps each row of a file viewed where it is in its box while the file glides, the box scrolling by instead, so only the rows that come into view are painted, as every row was painted again at each row glided by, a quarter of the frames of a glide through long lines coming late; and leaves the box scrolled by the same 64 rows whenever it rests, wherever in the file', async () => {
+    const lines = Array.from({ length: 200 }, (_, index) => `kept ${index}`);
+    fs.writeFileSync(
+      path.join(opened, 'kept.txt'),
+      lines.join(String.fromCharCode(10)),
+    );
+    await select('kept');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () => (await firstRowText()) === 'kept 0',
+      'the first row',
+    );
+    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+    const atFirst = await restingAt();
+    const body = await page.locator('.viewer-body').boundingBox();
+    assert.ok(body);
+    await page.mouse.move(body.x + body.width / 2, body.y + body.height / 2);
+    await page.evaluate(watchKeptRow, 'kept 14');
+    await page.mouse.wheel(0, 100);
+    await waitFor(
+      async () => (await firstRowText()) !== 'kept 0',
+      'the file to scroll',
+    );
+    const rested = await untilSettled(restingAt, 'the rows to rest');
+    const seen = await page.evaluate(keptRowSeen);
+    const places = (key: 'inBox' | 'shown') => [
+      ...new Set(seen.map((each) => each[key])),
+    ];
+
+    assert.deepStrictEqual([atFirst, rested], [64, 64]);
+    assert.ok(places('shown').length >= 2, JSON.stringify(seen));
+    assert.ok(places('inBox').length <= 2, JSON.stringify(seen));
+    await page.keyboard.press('Escape');
+    await page.locator('.viewer').waitFor({ state: 'detached' });
   });
 });

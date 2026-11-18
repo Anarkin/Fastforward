@@ -2,9 +2,12 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   blankRuns,
+  keptSpaceColumns,
   rowBreaksAt,
   spaceColumnsAt,
 } from '../../../../lib/page/rowBreaks';
+import { columnsOf } from '../../../../lib/page/textColumns';
+import type { TextWidths } from '../../../../lib/page/textWidths';
 
 function space(column: number) {
   return { column, tab: false };
@@ -110,5 +113,30 @@ suite('Row breaks', () => {
       { end: 4, blanks: [] },
     ]);
     assert.deepStrictEqual(rowBreaksAt('one', [0], 7), []);
+  });
+
+  test('keeps the columns of the spaces of a row for as long as its text, its columns and the widths stay, as a file dragged through shows the same rows again and again and the columns of each were counted anew at every step', () => {
+    let measured = 0;
+    const counting: TextWidths = {
+      char: 10,
+      of: (cluster) => {
+        measured += 1;
+        return cluster === '中' ? 20 : 10;
+      },
+    };
+    const text = '中 a  b';
+    const first = keptSpaceColumns(text, 40, counting);
+    const once = measured;
+    const again = keptSpaceColumns(text, 40, counting);
+
+    assert.deepStrictEqual(
+      first,
+      spaceColumnsAt(text, [0], 40, (part) => columnsOf(part, counting))[0],
+    );
+    assert.ok(once > 0, String(once));
+    assert.strictEqual(again, first);
+    assert.notStrictEqual(keptSpaceColumns(text, 3, counting), first);
+    assert.deepStrictEqual(keptSpaceColumns(text, 3, counting), [2]);
+    assert.deepStrictEqual(keptSpaceColumns('a b', 40, undefined), [1]);
   });
 });

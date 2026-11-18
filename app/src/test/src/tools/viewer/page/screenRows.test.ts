@@ -1,5 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import type { TextWidths } from '../../../../../lib/page/textWidths';
+import type { TextRow } from '../../../../../tools/viewer/shared/protocol';
 import {
   firstOf,
   marksWithin,
@@ -234,5 +236,49 @@ suite('Rows of a file viewed as the screen shows them', () => {
       ),
       [{ start: 0, end: 4, current: true }],
     );
+  });
+
+  test('keeps how a line wraps, where its rows break and how many bytes each takes, for as long as its text, the columns, the encoding and the widths stay, so the lines that arrive again as a file is dragged through are not worked out again, as every line around the place dragged to was wrapped anew at each step of the scrollbar, a table of long lines stalling for 75 ms at a time', () => {
+    let measured = 0;
+    const counting: TextWidths = {
+      char: 10,
+      of: (cluster) => {
+        measured += 1;
+        return cluster === '中' ? 20 : 10;
+      },
+    };
+    const text = `中 ${'word '.repeat(40)}`;
+    const arrived = (start: number): TextRow[] => [
+      { start, end: start + 300, text },
+      { start: start + 300, end: start + 600, text: `${text}more` },
+    ];
+    const first = screenRows(arrived(0), 20, 'utf-8', counting);
+    const once = measured;
+    const again = screenRows(arrived(1000), 20, 'utf-8', counting);
+    const twice = measured;
+    const narrower = screenRows(arrived(1000), 18, 'utf-8', counting);
+
+    assert.ok(once > 0, String(once));
+    assert.strictEqual(twice, once);
+    assert.ok(measured > twice, String(measured));
+    assert.deepStrictEqual(
+      again.map(({ start, end, from, to, breakAt, hanging }) => [
+        start - 1000,
+        end - 1000,
+        from,
+        to,
+        breakAt,
+        hanging,
+      ]),
+      first.map(({ start, end, from, to, breakAt, hanging }) => [
+        start,
+        end,
+        from,
+        to,
+        breakAt,
+        hanging,
+      ]),
+    );
+    assert.notStrictEqual(narrower.length, first.length);
   });
 });

@@ -20,6 +20,82 @@ export interface ScreenRow {
   readonly hanging: RowBreak['blanks'];
 }
 
+interface Wrapping {
+  readonly columns: number;
+  readonly encoding: TextEncoding;
+  readonly widths: TextWidths | undefined;
+  readonly continued: boolean;
+  readonly cut: boolean;
+  readonly indent: number;
+  readonly starts: readonly number[];
+  readonly breaks: readonly RowBreak[];
+  readonly sizes: readonly number[];
+}
+
+const mostCharacters = 1_000_000;
+
+const wrappings = new Map<string, Wrapping[]>();
+
+let characters = 0;
+
+function wrappingOf(
+  { text, cut }: TextRow,
+  columns: number,
+  encoding: TextEncoding,
+  continued: boolean,
+  widths: TextWidths | undefined,
+): Wrapping {
+  const ways = wrappings.get(text) ?? [];
+  let found = ways.find(
+    (one) =>
+      one.columns === columns &&
+      one.encoding === encoding &&
+      one.widths === widths &&
+      one.continued === continued &&
+      one.cut === (cut === true),
+  );
+  if (found === undefined) {
+    const indent = continued ? 0 : wrapIndent(text, columns);
+    const starts = wrapStarts(text, columns, indent, widths);
+    found = {
+      columns,
+      encoding,
+      widths,
+      continued,
+      cut: cut === true,
+      indent,
+      starts,
+      breaks:
+        starts.length === 1 && cut !== true
+          ? []
+          : rowBreaksAt(
+              text,
+              cut === true ? [...starts, text.length] : starts,
+              columns,
+              widths && ((part: string) => columnsOf(part, widths)),
+              indent,
+            ),
+      sizes: starts
+        .slice(0, -1)
+        .map((from, part) => bytesOf(text, from, starts[part + 1], encoding)),
+    };
+    ways.push(found);
+    characters += text.length;
+  }
+  wrappings.delete(text);
+  wrappings.set(text, ways);
+  for (const [oldest, old] of wrappings) {
+    if (characters <= mostCharacters || oldest === text) {
+      break;
+    }
+    wrappings.delete(oldest);
+    characters -= oldest.length * old.length;
+  }
+  return found;
+}
+
+const unwrapped = { indent: 0, starts: [0], breaks: [], sizes: [] };
+
 function rowsOf(
   row: TextRow,
   index: number,
@@ -29,27 +105,15 @@ function rowsOf(
   widths: TextWidths | undefined,
 ): ScreenRow[] {
   const { text } = row;
-  const indent =
-    columns === undefined || continued ? 0 : wrapIndent(text, columns);
-  const starts =
-    columns === undefined ? [0] : wrapStarts(text, columns, indent, widths);
-  const breaks =
-    columns === undefined || (starts.length === 1 && row.cut !== true)
-      ? []
-      : rowBreaksAt(
-          text,
-          row.cut === true ? [...starts, text.length] : starts,
-          columns,
-          widths && ((part: string) => columnsOf(part, widths)),
-          indent,
-        );
+  const { indent, starts, breaks, sizes } =
+    columns === undefined
+      ? unwrapped
+      : wrappingOf(row, columns, encoding, continued, widths);
   let start = row.start;
   return starts.map((from, part) => {
     const to = starts[part + 1] ?? text.length;
     const last = part === starts.length - 1;
-    const end = last
-      ? row.end
-      : Math.min(row.end, start + bytesOf(text, from, to, encoding));
+    const end = last ? row.end : Math.min(row.end, start + (sizes[part] ?? 0));
     const shown: ScreenRow = {
       start,
       end,

@@ -1,6 +1,5 @@
 import { memo } from 'react';
-import { blankRuns, spaceColumnsAt } from '../../../lib/page/rowBreaks';
-import { columnsOf } from '../../../lib/page/textColumns';
+import { blankRuns, keptSpaceColumns } from '../../../lib/page/rowBreaks';
 import { DotRowsShown } from '../../../lib/page/dotRowsShown';
 import type { DotLook } from '../../../lib/page/dotLook';
 import { strings } from '../../../lib/shared/strings';
@@ -120,12 +119,13 @@ export const TextRow = memo(function TextRow({
       {showWhitespace && dotLook && (
         <DotRowsShown
           look={dotLook}
-          rows={spaceColumnsAt(
-            row.row.text.slice(from, to),
-            [0],
-            columns - (part?.column ?? 0),
-            widths && ((text) => columnsOf(text, widths)),
-          )}
+          rows={[
+            keptSpaceColumns(
+              row.row.text.slice(from, to),
+              columns - (part?.column ?? 0),
+              widths,
+            ),
+          ]}
           left={`calc(${part?.column ?? 0} * var(--text-advance))`}
           alone
         />

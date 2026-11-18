@@ -107,6 +107,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the tiles that fit across, measured anew by a resize observer once mounted',
   'tools/viewer/page/pdfView.tsx failure':
     'a measure: why a pdf could not be shown, found again as it opens anew',
+  'tools/viewer/page/scrollBody.tsx leadFrom':
+    'a moment: the row the rows are counted from while they glide, set anew once they rest',
   'tools/viewer/page/scrollBody.tsx barShown':
     'a moment: true for a moment after the body moves or the pointer moves over it',
   'tools/viewer/page/scrollBody.tsx screen':

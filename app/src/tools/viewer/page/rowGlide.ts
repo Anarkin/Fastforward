@@ -89,39 +89,42 @@ export function glideRowsOf({
       glideTo(Math.round(at));
     }
   };
-  return {
-    glideBy: (rows) => {
+  const unrest = () => {
+    if (rest !== undefined) {
       clearTimeout(rest);
       rest = undefined;
+    }
+  };
+  return {
+    glideBy: (rows) => {
+      unrest();
       glideTo(Math.round(glide?.to ?? at) + rows);
     },
     holdBy: (rows) => {
-      clearTimeout(rest);
+      unrest();
       settle();
       place(at + rows);
       rest = setTimeout(letGo, holdRest);
     },
     holdAt: (part) => {
-      clearTimeout(rest);
-      rest = undefined;
+      unrest();
       settle();
       at = moved + Math.max(0, Math.min(1 - onRow, part));
       shift(at - moved < onRow ? 0 : at - moved);
     },
     letGo: () => {
-      clearTimeout(rest);
+      unrest();
       letGo();
     },
     reset: () => {
-      clearTimeout(rest);
-      rest = undefined;
+      unrest();
       settle();
       at = 0;
       moved = 0;
       shift(0);
     },
     stop: () => {
-      clearTimeout(rest);
+      unrest();
       settle();
     },
   };
