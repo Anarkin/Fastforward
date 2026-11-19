@@ -252,6 +252,17 @@ export function SoloIcon() {
   );
 }
 
+export function CollapseMergesIcon() {
+  return (
+    <Icon>
+      <path d="M6.5 1.5v3M6.5 11.5v3" />
+      <circle cx="6.5" cy="8" r="3.4" />
+      <circle cx="6.5" cy="8" r="1.1" fill="currentColor" stroke="none" />
+      <path d="M11.5 2v1.6c0 1.6-0.9 2.6-2.3 3.1" opacity="0.35" />
+    </Icon>
+  );
+}
+
 export function MoreIcon() {
   return (
     <Icon>

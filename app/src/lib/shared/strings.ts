@@ -522,7 +522,6 @@ export const strings = {
           ? '1 uncommitted change'
           : `${count} uncommitted changes`,
     list: 'Commits',
-    settings: 'Commit list settings',
     collapseMerges: 'Collapse merge commits',
     moreLines: (count: number) =>
       count === 1 ? '1 more line' : `${count} more lines`,

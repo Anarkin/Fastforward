@@ -69,7 +69,7 @@
 | All branches or one | Show every ref's history, or HEAD's only | `git log --all`, `git log HEAD` | Common | ✅ Yes | Solo, remembered per worktree |
 | Chosen branches | Show the history of chosen branches only | `git log <ref>...` | Common | ❌ No | Solo shows HEAD's only |
 | Hidden branches | Leave chosen branches out of the graph | `git log --exclude=<pattern> --all` | Advanced | ❌ No |  |
-| Collapsed merges | Fold the commits a merge brought in into its row | — | Advanced | ✅ Yes | On by default; Space or a click expands one |
+| Collapsed merges | Fold the commits a merge brought in into its row | — | Advanced | ✅ Yes | On by default, by the button above the commits; Space or a click expands one |
 | First parent | Follow the mainline only | `git log --first-parent` | Advanced | 🟡 Partial | Collapsed merges come close; Mod+Down selects the first parent |
 | Sort order | Sort by date or topology | `--date-order`, `--topo-order`, `--author-date-order` | Advanced | 🟡 Partial | Date order only |
 | Ref labels | Show branches, remote branches, tags and HEAD on their commits | `git log --decorate` | Core | ✅ Yes | Bubbles, tags shaped as tags, remote tags, bookmarked hashes |

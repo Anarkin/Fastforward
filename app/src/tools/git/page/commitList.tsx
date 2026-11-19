@@ -1,3 +1,4 @@
+import { CollapseMergesButton } from './collapseMergesButton';
 import {
   useCallback,
   useEffect,
@@ -24,7 +25,6 @@ import {
 } from './selectors';
 import { useGit, useGitActions } from './store';
 import { listError } from './columnsShown';
-import { MenuButton } from '../../../lib/page/menu';
 import { MessagePeek } from './messagePeek';
 import { MessageBody } from './messagePanel';
 import { useSkeleton } from '../../../lib/page/skeletonDelay';
@@ -105,7 +105,6 @@ export function Commits({
   const workingTree = useGit((state) => state.tab.workingTree);
   const stashes = useGit((state) => state.stashCommits);
   const selected = useGit((state) => state.tab.hash);
-  const collapseMerges = useGit((state) => state.collapseMerges);
   const headCommit = useGit((state) => state.tab.repository?.headCommit);
   const searching = useGit(searchingOf);
   const error = useGit((state) =>
@@ -115,7 +114,6 @@ export function Commits({
     selectCommit: onSelect,
     compareCommit: onCompare,
     toggleMerge: onToggleMerge,
-    changeCollapseMerges: onCollapseMerges,
     scrolled: reportScrolled,
     loadCommits: onLoad,
     search: openSearch,
@@ -426,17 +424,7 @@ export function Commits({
       actions={
         <>
           <SoloButton />
-          <MenuButton
-            scrolling={scrollSettings}
-            title={strings.commits.settings}
-            items={[
-              {
-                label: strings.commits.collapseMerges,
-                checked: collapseMerges,
-                onClick: () => onCollapseMerges(!collapseMerges),
-              },
-            ]}
-          />
+          <CollapseMergesButton />
         </>
       }
     >

@@ -25,7 +25,7 @@ const kinds = ['commander', 'commander', 'git', 'git', 'terminal'] as const;
 
 const toolMenus = {
   commander: `.commander-pane button[data-tip="${strings.commander.bookmarks}"]`,
-  git: `button[data-tip="${strings.commits.settings}"]`,
+  git: undefined,
   terminal: undefined,
 } as const;
 
