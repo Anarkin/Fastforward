@@ -330,9 +330,13 @@ suite('App', () => {
     await waitForCount(page.locator(bars), 2, 'sideways scrollbars');
     const thumbBelow = async (side: number) => {
       const { box } = await barOf(page, `${bars} >> nth=${side}`, 'horizontal');
-      const { thumb } = await barParts(page, box, 'horizontal');
+      const { thumb, end } = await barParts(page, box, 'horizontal');
       assert.ok(thumb, `the scrollbar below side ${side} has no thumb`);
-      return { thumb, along: thumb.left - box.left };
+      return {
+        thumb,
+        along: thumb.left - box.left,
+        room: end.left - thumb.left - thumb.width,
+      };
     };
     const code = page.locator('.split-row .split-code').nth(1).locator('.code');
     const before = await code.boundingBox();
@@ -352,15 +356,18 @@ suite('App', () => {
       const after = await code.boundingBox();
       return after !== null && after.x < before.x - 100;
     }, 'the code to scroll sideways');
+    const far = Math.min(90, left.room - 2);
     let moved = [left.along, right.along];
     await waitFor(async () => {
       moved = [(await thumbBelow(0)).along, (await thumbBelow(1)).along];
       return moved.every(
         (along) =>
-          along > left.along + 90 && Math.abs(along - (moved[0] ?? 0)) <= 1,
+          along > left.along + far && Math.abs(along - (moved[0] ?? 0)) <= 1,
       );
     }, 'both scrollbars to move along together').catch((error: unknown) => {
-      throw new Error(`${String(error)}: ${JSON.stringify(moved)}`);
+      throw new Error(
+        `${String(error)}: ${JSON.stringify({ moved, from: left.along, far })}`,
+      );
     });
 
     await page.keyboard.press('w');

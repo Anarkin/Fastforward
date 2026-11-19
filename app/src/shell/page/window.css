@@ -173,7 +173,8 @@ body {
   display: none;
 }
 
-::-webkit-scrollbar-button:single-button {
+::-webkit-scrollbar-button:start:decrement,
+::-webkit-scrollbar-button:end:increment {
   display: block;
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
@@ -181,11 +182,12 @@ body {
     calc(var(--scrollbar-arrow) / 2);
 }
 
-::-webkit-scrollbar-button:single-button:horizontal {
+::-webkit-scrollbar-button:horizontal:start:decrement,
+::-webkit-scrollbar-button:horizontal:end:increment {
   background-size: calc(var(--scrollbar-arrow) / 2) var(--scrollbar-arrow);
 }
 
-::-webkit-scrollbar-button:single-button:vertical:decrement {
+::-webkit-scrollbar-button:vertical:start:decrement {
   background-image: conic-gradient(
     from 135deg at 50% 0,
     var(--scrollbar-arrow-color) 90deg,
@@ -193,7 +195,7 @@ body {
   );
 }
 
-::-webkit-scrollbar-button:single-button:vertical:increment {
+::-webkit-scrollbar-button:vertical:end:increment {
   background-image: conic-gradient(
     from -45deg at 50% 100%,
     var(--scrollbar-arrow-color) 90deg,
@@ -201,7 +203,7 @@ body {
   );
 }
 
-::-webkit-scrollbar-button:single-button:horizontal:decrement {
+::-webkit-scrollbar-button:horizontal:start:decrement {
   background-image: conic-gradient(
     from 45deg at 0 50%,
     var(--scrollbar-arrow-color) 90deg,
@@ -209,7 +211,7 @@ body {
   );
 }
 
-::-webkit-scrollbar-button:single-button:horizontal:increment {
+::-webkit-scrollbar-button:horizontal:end:increment {
   background-image: conic-gradient(
     from -135deg at 100% 50%,
     var(--scrollbar-arrow-color) 90deg,
@@ -217,30 +219,30 @@ body {
   );
 }
 
-::-webkit-scrollbar-button:single-button:vertical:decrement {
+::-webkit-scrollbar-button:vertical:start:decrement {
   border-top-right-radius: var(--scrollbar-round-start, 0px);
 }
 
-::-webkit-scrollbar-button:single-button:vertical:increment {
+::-webkit-scrollbar-button:vertical:end:increment {
   border-bottom-right-radius: var(--scrollbar-round-end, 0px);
 }
 
-::-webkit-scrollbar-button:single-button:horizontal:decrement {
+::-webkit-scrollbar-button:horizontal:start:decrement {
   border-bottom-left-radius: var(--scrollbar-round-start, 0px);
 }
 
-::-webkit-scrollbar-button:single-button:horizontal:increment {
+::-webkit-scrollbar-button:horizontal:end:increment {
   border-bottom-right-radius: var(--scrollbar-round-end, 0px);
 }
 
 ::-webkit-scrollbar:vertical:corner-present,
 ::-webkit-scrollbar:horizontal:corner-present,
-::-webkit-scrollbar-button:single-button:vertical:increment:corner-present,
-::-webkit-scrollbar-button:single-button:horizontal:increment:corner-present {
+::-webkit-scrollbar-button:vertical:end:increment:corner-present,
+::-webkit-scrollbar-button:horizontal:end:increment:corner-present {
   border-bottom-right-radius: 0;
 }
 
-::-webkit-scrollbar-button:single-button:disabled {
+::-webkit-scrollbar-button:disabled {
   --scrollbar-arrow-color: var(--scrollbar-button-hover-background);
 }
 

@@ -189,11 +189,11 @@ suite('Style', () => {
       '::-webkit-scrollbar, ::-webkit-scrollbar-button { --scrollbar-round-start: inherit; --scrollbar-round-end: inherit; }',
       '::-webkit-scrollbar:vertical { border-radius: 0 var(--scrollbar-round-start, 0px) var(--scrollbar-round-end, 0px) 0; }',
       '::-webkit-scrollbar:horizontal { border-radius: 0 0 var(--scrollbar-round-end, 0px) var(--scrollbar-round-start, 0px); }',
-      '::-webkit-scrollbar:vertical:corner-present, ::-webkit-scrollbar:horizontal:corner-present, ::-webkit-scrollbar-button:single-button:vertical:increment:corner-present, ::-webkit-scrollbar-button:single-button:horizontal:increment:corner-present { border-bottom-right-radius: 0; }',
+      '::-webkit-scrollbar:vertical:corner-present, ::-webkit-scrollbar:horizontal:corner-present, ::-webkit-scrollbar-button:vertical:end:increment:corner-present, ::-webkit-scrollbar-button:horizontal:end:increment:corner-present { border-bottom-right-radius: 0; }',
       '::-webkit-scrollbar-corner { background: none; }',
       '::-webkit-scrollbar-thumb { min-width: 24px; min-height: 24px; background: var(--scrollbar-background); }',
       '::-webkit-scrollbar-button { display: none; }',
-      '::-webkit-scrollbar-button:single-button:disabled { --scrollbar-arrow-color: var(--scrollbar-button-hover-background); }',
+      '::-webkit-scrollbar-button:disabled { --scrollbar-arrow-color: var(--scrollbar-button-hover-background); }',
       "[data-scrollbar-hover='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-hover='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-hover-background); }",
       "[data-scrollbar-held='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-held='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-active-background); }",
     ]) {
@@ -201,7 +201,7 @@ suite('Style', () => {
     }
     assert.match(
       rules,
-      /::-webkit-scrollbar-button:single-button \{ display: block; width: var\(--scrollbar-size\); height: var\(--scrollbar-size\);/,
+      /::-webkit-scrollbar-button:start:decrement, ::-webkit-scrollbar-button:end:increment \{ display: block; width: var\(--scrollbar-size\); height: var\(--scrollbar-size\);/,
     );
     assert.strictEqual(rules.match(/::-webkit-scrollbar \{/g)?.length, 1);
     assert.strictEqual(
@@ -216,6 +216,34 @@ suite('Style', () => {
         ),
         held,
       );
+    }
+  });
+
+  test('names the buttons of a scrollbar by where they stand and which way they move, the one before the track that moves back and the one after it that moves on, never as a single or a double button, which the browser matches only where the scrollbars of the system have buttons, so macOS, whose own have none, drew no button at all', () => {
+    const rules = stylesheet().replace(/\s+/g, ' ');
+    assert.doesNotMatch(rules, /:single-button|:double-button/);
+    for (const [axis, start, end] of [
+      ['vertical', 'top-right', 'bottom-right'],
+      ['horizontal', 'bottom-left', 'bottom-right'],
+    ]) {
+      for (const [button, corner, round] of [
+        ['start:decrement', start, 'start'],
+        ['end:increment', end, 'end'],
+      ]) {
+        assert.match(
+          rules,
+          new RegExp(
+            `::-webkit-scrollbar-button:${axis}:${button} \\{ background-image: conic-gradient\\(`,
+          ),
+          `${axis} ${button}`,
+        );
+        assert.ok(
+          rules.includes(
+            `::-webkit-scrollbar-button:${axis}:${button} { border-${corner}-radius: var(--scrollbar-round-${round}, 0px); }`,
+          ),
+          `${axis} ${button} rounded`,
+        );
+      }
     }
   });
 
