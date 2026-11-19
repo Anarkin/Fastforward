@@ -1,13 +1,8 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { tempRepository } from '../helpers/repositories';
-import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { pdfOf } from './pdfs';
 import {
   barOf,
   barParts,
@@ -29,21 +24,11 @@ import {
   type ViewName,
 } from './scrollbarViews';
 import { rounded as roundedApp } from './rounding';
-
-const size = 24;
-
-const lines = (changed: boolean) =>
-  Array.from(
-    { length: 400 },
-    (_, row) =>
-      `line ${row}${changed && row % 50 === 7 ? ' changed' : ''} ${'of words that reach far past the right edge of the window '.repeat(6)}end`,
-  ).join('\n');
-
-const settingsWith = (smooth: boolean, wordWrap = false) => ({
-  scrolling: { smooth },
-  sizes: { scrollbar: `${size}px` },
-  text: { wordWrap },
-});
+import {
+  barSize as size,
+  scrollbarProfile,
+  settingsWith,
+} from './scrollbarFixture';
 
 const gutterOf = (name: ViewName) =>
   name === 'editor'
@@ -57,63 +42,7 @@ suite('App scrollbars alike', () => {
   let profile: string;
 
   beforeAll(async () => {
-    const folder = tempFolder('scrollbars');
-    profile = path.join(folder, 'profile');
-    const opened = path.join(folder, 'opened');
-    fs.mkdirSync(profile, { recursive: true });
-    fs.mkdirSync(opened);
-    for (let index = 0; index < 400; index++) {
-      fs.writeFileSync(path.join(opened, `file-${index}.txt`), '');
-    }
-    const one = path.join(folder, 'one.txt');
-    const two = path.join(folder, 'two.txt');
-    fs.writeFileSync(one, lines(false));
-    fs.writeFileSync(two, lines(true));
-    const markdown = path.join(folder, 'long.md');
-    fs.writeFileSync(
-      markdown,
-      [
-        `    ${'code that reaches far past the right edge '.repeat(12)}`,
-        [
-          `| ${Array.from({ length: 40 }, (_, index) => `column ${index}`).join(' | ')} |`,
-          `| ${Array.from({ length: 40 }, () => '---').join(' | ')} |`,
-          `| ${Array.from({ length: 40 }, (_, index) => `a cell ${index}`).join(' | ')} |`,
-        ].join('\n'),
-        ...Array.from({ length: 200 }, (_, index) => `Paragraph ${index}.`),
-      ].join('\n\n'),
-    );
-    const pdf = path.join(folder, 'long.pdf');
-    fs.writeFileSync(
-      pdf,
-      pdfOf(Array.from({ length: 6 }, (_, index) => [`Page ${index}`])),
-    );
-    const repository = await tempRepository(path.join(folder, 'repository'));
-    await repository.git('commit', '--allow-empty', '-m', 'start');
-    for (let index = 0; index < 60; index++) {
-      await repository.git('branch', `topic/branch-${index}`);
-    }
-    for (let index = 0; index < 120; index++) {
-      await repository.git('commit', '--allow-empty', '-m', `step ${index}`);
-    }
-    fs.writeFileSync(
-      path.join(profile, 'state.json'),
-      JSON.stringify({
-        tabs: [
-          { id: '1', tool: 'commander', root: opened },
-          { id: '2', tool: 'viewer', root: one },
-          { id: '3', tool: 'editor', root: one },
-          { id: '4', tool: 'diff', compare: { old: one, new: two } },
-          { id: '5', tool: 'git', root: repository.root },
-          { id: '6', tool: 'viewer', root: markdown },
-          { id: '7', tool: 'viewer', root: pdf },
-        ],
-        activeTab: '1',
-      }),
-    );
-    fs.writeFileSync(
-      path.join(profile, 'settings.user.json'),
-      JSON.stringify(settingsWith(true)),
-    );
+    profile = await scrollbarProfile();
     app = await launchApp(profile);
     page = await app.firstWindow();
   });
@@ -253,7 +182,7 @@ suite('App scrollbars alike', () => {
   const rested = (name: ViewName) =>
     untilSettled(() => firstRow(name), `the ${name} to rest`);
 
-  test('gives every view a scrollbar of the browser that takes a strip of its own beside what it scrolls, as wide as the settings say, shown whether pointed at or not, drawn alike in every view, a button at either end with its arrow, the track and the thumb, the page knowing each part where the browser draws it', async () => {
+  test('gives every view a scrollbar of the browser that takes a strip of its own beside what it scrolls, as wide as the settings say, shown whether pointed at or not, drawn alike in every view, a button at either end with its arrow, muted on the one that can scroll no further, the track and the thumb, the page knowing each part where the browser draws it', async () => {
     const seen = await inEvery(everyView, async (name) => {
       const { box } = await bar(name, 'vertical');
       const parts = await barParts(page, box, 'vertical');
@@ -274,10 +203,15 @@ suite('App scrollbars alike', () => {
           { x: box.left - 6, y: track.y },
         ],
       );
+      const atStart = await page
+        .locator(views[name].vertical)
+        .first()
+        .evaluate((scroller) => scroller.scrollTop <= 0);
       return {
         wide: box.width,
         buttons: [parts.start.height, parts.end.height],
-        look: [arrowUp, arrowDown, thumb, plain],
+        look: [arrowDown, thumb, plain],
+        mutedAtStart: near(arrowUp, arrowDown) !== atStart,
         apart:
           !near(arrowUp, plain) && !near(thumb, plain) && !near(plain, beside),
       };
@@ -291,7 +225,6 @@ suite('App scrollbars alike', () => {
           {
             ...rest,
             alike: look.every((color, part) => near(color, first.look[part])),
-            sameArrows: near(look[0], look[1]),
           },
         ]),
       ),
@@ -300,7 +233,7 @@ suite('App scrollbars alike', () => {
         buttons: [size, size],
         apart: true,
         alike: true,
-        sameArrows: true,
+        mutedAtStart: true,
       }),
       JSON.stringify(seen),
     );
@@ -459,6 +392,45 @@ suite('App scrollbars alike', () => {
         `gliding ${String(smooth)}: ${JSON.stringify(seen)}`,
       );
     }
+  });
+
+  test('draws the button of a scrollbar that can scroll no further as a disabled button, its arrow muted: the one at the top of a list at its start, the one at the bottom once the list is at its end, and the other as a button that scrolls, in the list of a folder and beside a file viewed, which stands a scroller of the browser in for its scrollbar, as both buttons looked alike wherever the list was', async () => {
+    const focused: Partial<Record<ViewName, string>> = {
+      viewer: '.viewer-body',
+    };
+    const seen = await inEvery(['commander', 'viewer'], async (name) => {
+      const arrows = async () => {
+        await page.mouse.move(2, 2);
+        const { box } = await bar(name, 'vertical');
+        const across = box.left + box.width / 2;
+        const [up, down] = await paintedAt(app, page, [
+          { x: across, y: box.top + box.width / 2 },
+          { x: across, y: box.top + box.height - box.width / 2 },
+        ]);
+        return { up, down };
+      };
+      await page
+        .locator(focused[name] ?? views[name].vertical)
+        .first()
+        .focus();
+      await page.keyboard.press('Home');
+      await rested(name);
+      const start = await untilSettled(arrows, `the arrows of the ${name}`);
+      await page.keyboard.press('End');
+      await rested(name);
+      const end = await untilSettled(arrows, `the arrows of the ${name}`);
+      await page.keyboard.press('Home');
+      await rested(name);
+      return {
+        apart: !near(start.up, start.down) && !near(end.up, end.down),
+        swapped: near(start.up, end.down) && near(start.down, end.up),
+      };
+    });
+    assert.deepStrictEqual(
+      seen,
+      alike(['commander', 'viewer'], { apart: true, swapped: true }),
+      JSON.stringify(seen),
+    );
   });
 
   test('marks what changed in a diff and what a find matched on the track of the scrollbar itself, between its buttons, where the thumb comes to stand at them, in the diff and in the file viewed alike, as a strip of its own beside the scrollbar stood off its track and took the room of the text', async () => {

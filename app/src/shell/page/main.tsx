@@ -8,6 +8,7 @@ import { ErrorBoundary } from './errorBoundary';
 import { windowButtonColor } from './windowButtons';
 import { errorText } from '../../lib/page/errors';
 import { installScrollbars } from '../../lib/page/scrollbars';
+import { watchScrollEnds } from './scrollEnds';
 import { watchDevicePixels } from '../../lib/page/devicePixels';
 import { showGenericIcons } from './genericIcons';
 import { installTextCursors } from './textCursor';
@@ -55,6 +56,7 @@ window.addEventListener('unhandledrejection', (event) =>
 );
 
 installScrollbars();
+watchScrollEnds(document);
 watchDevicePixels(() => undefined);
 showGenericIcons();
 installTextHeights();

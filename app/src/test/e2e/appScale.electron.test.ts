@@ -107,7 +107,7 @@ async function partAgainstLine(
   );
   return {
     reached: without[reached],
-    before: without[reached - 1],
+    before: pointedAt[reached - 1],
     line: without[without.length - 1],
   };
 }

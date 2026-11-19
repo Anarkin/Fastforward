@@ -45,34 +45,20 @@ body {
     var(--color-focus) var(--color-focus-selected),
     transparent
   );
-  --scrollbar-background: color-mix(
+  --scrollbar-background: var(--button-background);
+  --scrollbar-track-background: color-mix(
     in srgb,
-    var(--color-scrollbar) var(--color-scrollbar-rest),
+    var(--button-background) var(--color-foreground-muted),
     transparent
   );
-  --scrollbar-track-background: var(--color-border);
-  --scrollbar-button-hover-background: color-mix(
-    in srgb,
-    var(--color-scrollbar) calc(var(--color-scrollbar-rest) / 4),
-    transparent
-  );
-  --scrollbar-button-held-background: color-mix(
-    in srgb,
-    var(--color-scrollbar) calc(var(--color-scrollbar-rest) / 2),
-    transparent
-  );
-  --scrollbar-arrow-color: var(--scrollbar-background);
+  --scrollbar-arrow-color: var(--color-foreground);
   --scrollbar-arrow: round(calc(var(--scrollbar-size) * 0.4), 2px);
   --scrollbar-hover-background: color-mix(
     in srgb,
-    var(--color-scrollbar) var(--color-scrollbar-hover),
-    transparent
+    var(--color-focus) var(--color-focus-hover),
+    var(--button-background)
   );
-  --scrollbar-active-background: color-mix(
-    in srgb,
-    var(--color-scrollbar) var(--color-scrollbar-drag),
-    transparent
-  );
+  --scrollbar-active-background: var(--scrollbar-hover-background);
   --hover-background: color-mix(
     in srgb,
     var(--color-focus) var(--color-focus-hover),
@@ -178,8 +164,8 @@ body {
   display: block;
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
-  background: no-repeat center / var(--scrollbar-arrow)
-    calc(var(--scrollbar-arrow) / 2);
+  background: var(--scrollbar-background) no-repeat center /
+    var(--scrollbar-arrow) calc(var(--scrollbar-arrow) / 2);
 }
 
 ::-webkit-scrollbar-button:horizontal:start:decrement,
@@ -242,10 +228,6 @@ body {
   border-bottom-right-radius: 0;
 }
 
-::-webkit-scrollbar-button:disabled {
-  --scrollbar-arrow-color: var(--scrollbar-button-hover-background);
-}
-
 [data-scrollbar-hover='vertical-thumb']::-webkit-scrollbar-thumb:vertical,
 [data-scrollbar-hover='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal {
   background: var(--scrollbar-hover-background);
@@ -256,20 +238,32 @@ body {
   background: var(--scrollbar-active-background);
 }
 
-[data-scrollbar-hover='vertical-start']::-webkit-scrollbar-button:vertical:decrement,
-[data-scrollbar-hover='vertical-end']::-webkit-scrollbar-button:vertical:increment,
-[data-scrollbar-hover='horizontal-start']::-webkit-scrollbar-button:horizontal:decrement,
-[data-scrollbar-hover='horizontal-end']::-webkit-scrollbar-button:horizontal:increment {
-  --scrollbar-arrow-color: var(--scrollbar-hover-background);
-  background-color: var(--scrollbar-button-hover-background);
+[data-scrollbar-hover='vertical-start']::-webkit-scrollbar-button:vertical:decrement:enabled,
+[data-scrollbar-hover='vertical-end']::-webkit-scrollbar-button:vertical:increment:enabled,
+[data-scrollbar-hover='horizontal-start']::-webkit-scrollbar-button:horizontal:decrement:enabled,
+[data-scrollbar-hover='horizontal-end']::-webkit-scrollbar-button:horizontal:increment:enabled {
+  background-color: var(--scrollbar-hover-background);
 }
 
-[data-scrollbar-held='vertical-start']::-webkit-scrollbar-button:vertical:decrement,
-[data-scrollbar-held='vertical-end']::-webkit-scrollbar-button:vertical:increment,
-[data-scrollbar-held='horizontal-start']::-webkit-scrollbar-button:horizontal:decrement,
-[data-scrollbar-held='horizontal-end']::-webkit-scrollbar-button:horizontal:increment {
-  --scrollbar-arrow-color: var(--scrollbar-active-background);
-  background-color: var(--scrollbar-button-held-background);
+[data-scrollbar-held='vertical-start']::-webkit-scrollbar-button:vertical:decrement:enabled,
+[data-scrollbar-held='vertical-end']::-webkit-scrollbar-button:vertical:increment:enabled,
+[data-scrollbar-held='horizontal-start']::-webkit-scrollbar-button:horizontal:decrement:enabled,
+[data-scrollbar-held='horizontal-end']::-webkit-scrollbar-button:horizontal:increment:enabled {
+  background-color: var(--scrollbar-active-background);
+}
+
+::-webkit-scrollbar-button:start:decrement:disabled,
+::-webkit-scrollbar-button:end:increment:disabled,
+:not(
+    [data-scrolled-vertical]
+  )::-webkit-scrollbar-button:vertical:start:decrement,
+[data-scrolled-vertical='end']::-webkit-scrollbar-button:vertical:end:increment,
+:not(
+    [data-scrolled-horizontal]
+  )::-webkit-scrollbar-button:horizontal:start:decrement,
+[data-scrolled-horizontal='end']::-webkit-scrollbar-button:horizontal:end:increment {
+  --scrollbar-arrow-color: var(--muted-foreground);
+  background-color: var(--scrollbar-track-background);
 }
 
 .scrollbar-cover {

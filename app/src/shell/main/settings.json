@@ -536,11 +536,6 @@
       "search-match": "#fe6",
       "search-match-foreground": "#000",
 
-      "scrollbar": "#666",
-      "scrollbar-rest": "75%",
-      "scrollbar-hover": "82%",
-      "scrollbar-drag": "88%",
-
       "change-added": "#0a0",
       "change-added-line": "20%",
       "change-added-row": "8%",
@@ -588,11 +583,6 @@
 
       "search-match": "#fc0",
       "search-match-foreground": "#000",
-
-      "scrollbar": "#999",
-      "scrollbar-rest": "75%",
-      "scrollbar-hover": "82%",
-      "scrollbar-drag": "88%",
 
       "change-added": "#0c0",
       "change-added-line": "20%",

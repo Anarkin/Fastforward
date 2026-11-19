@@ -164,23 +164,31 @@ suite('Style', () => {
     }
   });
 
-  test('draws every scrollbar by one set of rules for the scrollbars of the browser, as wide as the scrollbar size, so no part of the app can draw its own another way: a track in the border color with a button at either end, a thumb as see-through as the theme says at rest, hovered and held, never shorter than 24 pixels, an arrow on each button drawn from the color of the theme, dimmer where there is nothing to scroll to, the ends rounded where what it scrolls says so, which what scrolls inside it never takes over from it, none of them next to the square between two scrollbars, which is filled as their tracks are', () => {
-    for (const [name, state] of [
-      ['scrollbar-background', 'rest'],
-      ['scrollbar-hover-background', 'hover'],
-      ['scrollbar-active-background', 'drag'],
-    ]) {
-      assert.strictEqual(
-        bodyVariable(name),
-        `color-mix( in srgb, var(--color-scrollbar) var(--color-scrollbar-${state}), transparent )`,
-        name,
-      );
-    }
-    assert.strictEqual(
-      bodyVariable('scrollbar-track-background'),
-      'var(--color-border)',
+  test('draws every scrollbar by one set of rules for the scrollbars of the browser, as wide as the scrollbar size, so no part of the app can draw its own another way: a track in the gray of a disabled button with a button at either end, the thumb and the buttons in the gray of a button, tinted as a button is under the pointer and while held, the thumb never shorter than 24 pixels, an arrow on each button in the color of an icon, a button that can scroll no further drawn as a disabled button is, its ground and its arrow both, at the end a scrollbar is scrolled to and at both of one with nothing to scroll, the ends rounded where what it scrolls says so, which what scrolls inside it never takes over from it, none of them next to the square between two scrollbars, which is filled as their tracks are', () => {
+    assert.deepStrictEqual(
+      Object.fromEntries(
+        [
+          'scrollbar-background',
+          'scrollbar-track-background',
+          'scrollbar-hover-background',
+          'scrollbar-active-background',
+          'scrollbar-arrow-color',
+          'button-background',
+        ].map((name) => [name, bodyVariable(name)]),
+      ),
+      {
+        'scrollbar-background': 'var(--button-background)',
+        'scrollbar-track-background':
+          'color-mix( in srgb, var(--button-background) var(--color-foreground-muted), transparent )',
+        'scrollbar-hover-background':
+          'color-mix( in srgb, var(--color-focus) var(--color-focus-hover), var(--button-background) )',
+        'scrollbar-active-background': 'var(--scrollbar-hover-background)',
+        'scrollbar-arrow-color': 'var(--color-foreground)',
+        'button-background': 'var(--color-border)',
+      },
     );
     const rules = stylesheet().replace(/\s+/g, ' ');
+    assert.doesNotMatch(rules, /--color-scrollbar/);
     for (const rule of [
       '::-webkit-scrollbar { width: var(--scrollbar-size); height: var(--scrollbar-size); background: var(--scrollbar-track-background); }',
       "@property --scrollbar-round-start { syntax: '<length>'; inherits: false; initial-value: 0px; }",
@@ -192,30 +200,33 @@ suite('Style', () => {
       '::-webkit-scrollbar-corner { background: var(--scrollbar-track-background); }',
       '::-webkit-scrollbar-thumb { min-width: 24px; min-height: 24px; background: var(--scrollbar-background); }',
       '::-webkit-scrollbar-button { display: none; }',
-      '::-webkit-scrollbar-button:disabled { --scrollbar-arrow-color: var(--scrollbar-button-hover-background); }',
+      '::-webkit-scrollbar-button:start:decrement, ::-webkit-scrollbar-button:end:increment { display: block; width: var(--scrollbar-size); height: var(--scrollbar-size); background: var(--scrollbar-background) no-repeat center / var(--scrollbar-arrow) calc(var(--scrollbar-arrow) / 2); }',
+      "::-webkit-scrollbar-button:start:decrement:disabled, ::-webkit-scrollbar-button:end:increment:disabled, :not( [data-scrolled-vertical] )::-webkit-scrollbar-button:vertical:start:decrement, [data-scrolled-vertical='end']::-webkit-scrollbar-button:vertical:end:increment, :not( [data-scrolled-horizontal] )::-webkit-scrollbar-button:horizontal:start:decrement, [data-scrolled-horizontal='end']::-webkit-scrollbar-button:horizontal:end:increment { --scrollbar-arrow-color: var(--muted-foreground); background-color: var(--scrollbar-track-background); }",
       "[data-scrollbar-hover='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-hover='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-hover-background); }",
       "[data-scrollbar-held='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-held='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-active-background); }",
     ]) {
       assert.ok(rules.includes(rule), rule);
     }
-    assert.match(
-      rules,
-      /::-webkit-scrollbar-button:start:decrement, ::-webkit-scrollbar-button:end:increment \{ display: block; width: var\(--scrollbar-size\); height: var\(--scrollbar-size\);/,
-    );
     assert.strictEqual(rules.match(/::-webkit-scrollbar \{/g)?.length, 1);
     assert.strictEqual(
       rules.match(/var\(--scrollbar-arrow-color\) 90deg/g)?.length,
       4,
     );
-    for (const held of ['hover', 'held']) {
-      assert.match(
-        rules,
-        new RegExp(
-          `\\[data-scrollbar-${held}='horizontal-end'\\]::-webkit-scrollbar-button:horizontal:increment \\{ --scrollbar-arrow-color: var\\(--scrollbar-${held === 'hover' ? 'hover' : 'active'}-background\\); background-color: var\\(--scrollbar-button-${held}-background\\); \\}`,
+    for (const [held, color] of [
+      ['hover', 'hover'],
+      ['held', 'active'],
+    ]) {
+      assert.ok(
+        rules.includes(
+          `[data-scrollbar-${held}='horizontal-end']::-webkit-scrollbar-button:horizontal:increment:enabled { background-color: var(--scrollbar-${color}-background); }`,
         ),
         held,
       );
     }
+    assert.ok(
+      rules.indexOf('::-webkit-scrollbar-button:start:decrement:disabled') >
+        rules.indexOf("[data-scrollbar-held='horizontal-end']"),
+    );
   });
 
   test('fills the square between the scrollbar beside a text and the one below it as their tracks are, in the viewer, the editor and the diff alike while their lines are not wrapped, inside the lines of their column and rounded with its corner, and draws none once they are wrapped and have no scrollbar below, as the square stood empty, a hole in the corner of the two', () => {
