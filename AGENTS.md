@@ -22,6 +22,7 @@
 
 ## Tests
 
+- Look at what you changed in the running app before committing: a screenshot of every state the change branches on, at 100%, 125% and 150%, compared pixel by pixel with the build of the commit before where it should look the same
 - Run the tests in `app/`; the tests of `src/<path>` are in `src/test/src/<path>`, and those of `scripts/<path>` in `src/test/scripts/<path>`
 - While working, run only the test files of what changed, by path: `npx vitest run <files>`; a test written for a fix runs first, and fails
 - Commit only once the checks pass, about 70 seconds, chaining the commit to them from the repo root, naming only your own files: `npm --prefix app run verify:fast && npm --prefix app run build && git add <paths> && git commit -m '<message>' -- <paths>`, never through a pipe such as `tail`, `grep`, `head` or `Select-Object`, as a pipe ends with the code of its last command and hides a failure, and their output is short as it is; for most changes nothing else is needed
