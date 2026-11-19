@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { keymap } from './keymap';
+import { scrollbarCovered } from './scrollbarLinks';
 import { scrollbarCoverClass } from './scrollbars';
 import { isKeyPress, keyPressed } from './shortcuts';
 
@@ -11,8 +12,8 @@ export interface DismissOptions {
 
 const layers: object[] = [];
 
-function isNode(target: EventTarget | null): target is Node {
-  return target !== null && 'nodeType' in target;
+function isNode(target: object | null | undefined): target is Node {
+  return target !== null && target !== undefined && 'nodeType' in target;
 }
 
 function isElement(target: EventTarget | null): target is Element {
@@ -41,7 +42,10 @@ export function listenForDismiss(
     }
   };
   const onWheel = (event: Event) => {
-    const { target: scrolled } = event;
+    const cover = isElement(event.target)
+      ? event.target.closest(`.${scrollbarCoverClass}`)
+      : null;
+    const scrolled = (cover && scrollbarCovered.get(cover)) ?? event.target;
     if (!(isNode(scrolled) && element.current?.contains(scrolled))) {
       onClose();
     }

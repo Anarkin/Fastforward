@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { listenForDismiss } from '../../../../lib/page/dismiss';
+import { scrollbarCovered } from '../../../../lib/page/scrollbarLinks';
 import { noModifiers } from '../../../helpers/keys';
 
 function keyDown(key: string): Event {
@@ -122,6 +123,24 @@ suite('Dismissing menus and popups', () => {
       Object.defineProperty(inside, 'target', { value: menu.element });
       window.dispatchEvent(inside);
       assert.strictEqual(menu.closed, 0);
+    } finally {
+      stop();
+    }
+  });
+
+  test('stays open while the wheel turns over its own scrollbar, which the cover of the page lies over, and closes on a wheel over the scrollbar of anything else, as a menu taller than the window closed once the wheel turned over its scrollbar', () => {
+    const window = new EventTarget();
+    const { menu, stop } = open(window, { onScroll: true });
+    try {
+      const cover = element('scrollbar-cover');
+      const over = new Event('wheel');
+      Object.defineProperty(over, 'target', { value: cover });
+      scrollbarCovered.set(cover, menu.element);
+      window.dispatchEvent(over);
+      assert.strictEqual(menu.closed, 0);
+      scrollbarCovered.set(cover, element('list'));
+      window.dispatchEvent(over);
+      assert.strictEqual(menu.closed, 1);
     } finally {
       stop();
     }

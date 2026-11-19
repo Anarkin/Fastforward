@@ -46,6 +46,9 @@ const fontOf = (element: MarkupElement) => [
   cascaded(element, 'font-size'),
 ];
 
+const below = (shown: React.ReactElement) =>
+  withClass(rendered(shown), 'scroll-proxy-frame');
+
 suite('Style', () => {
   test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {
     const row = shownRow(
@@ -307,6 +310,18 @@ suite('Style', () => {
       bottom: 'calc(var(--diff-bar-below) + var(--scrollbar-size))',
       width: 'var(--scrollbar-size)',
       'pointer-events': 'none',
+    });
+  });
+
+  test('starts the scrollbar below a diff where its text starts, after the two columns of line numbers of an inline diff, after the one of each side of one side by side, and after the one of a file shown whole, as the scrollbar below such a file started a column of numbers too far in', () => {
+    looks(below(<DiffViewShown />), {
+      left: 'calc(2 * var(--diff-number-width))',
+    });
+    looks(below(<DiffViewShown sideBySide />), {
+      left: 'var(--diff-number-width)',
+    });
+    looks(below(<DiffViewShown whole />), {
+      left: 'var(--diff-number-width)',
     });
   });
 

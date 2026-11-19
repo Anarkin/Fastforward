@@ -28,7 +28,10 @@ export function afterPaint(run: () => void): {
   };
 }
 
-export function inNextFrame(run: () => void): { readonly ask: () => void } {
+export function inNextFrame(run: () => void): {
+  readonly ask: () => void;
+  readonly cancel: () => void;
+} {
   let frame: number | undefined;
   return {
     ask: () => {
@@ -36,6 +39,12 @@ export function inNextFrame(run: () => void): { readonly ask: () => void } {
         frame = undefined;
         run();
       });
+    },
+    cancel: () => {
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+      }
+      frame = undefined;
     },
   };
 }

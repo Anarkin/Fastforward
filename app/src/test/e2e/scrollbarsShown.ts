@@ -149,3 +149,35 @@ export async function paintedAt(
     { png: shot.toString('base64'), at: [...points], across: wide },
   );
 }
+
+export function barsShown(
+  page: Page,
+): Promise<{ readonly of: string; readonly wide: number }[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('body *')].flatMap((element) => {
+      const style = getComputedStyle(element);
+      const { width, height } = element.getBoundingClientRect();
+      if (width === 0 || height === 0 || style.visibility === 'hidden') {
+        return [];
+      }
+      const down = ['auto', 'scroll'].includes(style.overflowY)
+        ? width -
+          element.clientLeft -
+          element.clientWidth -
+          (parseFloat(style.borderRightWidth) || 0)
+        : 0;
+      const across = ['auto', 'scroll'].includes(style.overflowX)
+        ? height -
+          element.clientTop -
+          element.clientHeight -
+          (parseFloat(style.borderBottomWidth) || 0)
+        : 0;
+      return [down, across]
+        .filter((wide) => wide >= 1)
+        .map((wide) => ({
+          of: element.classList.item(0) ?? element.tagName,
+          wide: Math.round(wide * 100) / 100,
+        }));
+    }),
+  );
+}

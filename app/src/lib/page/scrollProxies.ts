@@ -31,10 +31,17 @@ export function proxyRatio(shown: Shown | undefined): number {
     : Math.min(longest, 1 / Math.max(shown.length, 1 / longest));
 }
 
-export function proxyScroll(shown: Shown | undefined, long: number): number {
+export function proxyScroll(shown: Shown | undefined, room: number): number {
   return shown === undefined
     ? 0
-    : Math.max(0, Math.min(1, shown.at)) * long * (proxyRatio(shown) - 1);
+    : Math.max(0, Math.min(1, shown.at)) * Math.max(0, room);
+}
+
+export function proxyShare(scrolled: number, room: number): number {
+  if (room <= 0) {
+    return 0;
+  }
+  return scrolled >= room - 1 ? 1 : Math.max(0, scrolled / room);
 }
 
 export function proxyElements(axis: Axis): {
@@ -56,33 +63,44 @@ export function scrollProxy(
   element: HTMLElement,
   axis: Axis,
   held: ProxyHeld,
-  view?: Element,
+  view?: () => Element | null | undefined,
 ): ScrollProxy {
   const size = element.querySelector<HTMLElement>('.scroll-proxy-size');
   let shown: Shown | undefined;
-  let long = 0;
+  let ratio = 0;
+  let room: number | undefined;
   let placed = 0;
   const scrolled = () =>
     axis === 'vertical' ? element.scrollTop : element.scrollLeft;
+  const roomNow = () =>
+    axis === 'vertical'
+      ? element.scrollHeight - element.clientHeight
+      : element.scrollWidth - element.clientWidth;
   const place = () => {
-    size?.style.setProperty(
-      axis === 'vertical' ? 'height' : 'width',
-      `${proxyRatio(shown) * 100}%`,
-    );
-    placed = proxyScroll(shown, long);
-    if (axis === 'vertical') {
-      element.scrollTop = placed;
-    } else {
-      element.scrollLeft = placed;
+    const next = proxyRatio(shown);
+    if (next !== ratio) {
+      ratio = next;
+      size?.style.setProperty(
+        axis === 'vertical' ? 'height' : 'width',
+        `${ratio * 100}%`,
+      );
+      room = undefined;
     }
+    room ??= roomNow();
+    const wanted = proxyScroll(shown, room);
+    if (axis === 'vertical') {
+      element.scrollTop = wanted;
+    } else {
+      element.scrollLeft = wanted;
+    }
+    placed = scrolled();
   };
   const measure = () => {
-    long = axis === 'vertical' ? element.clientHeight : element.clientWidth;
+    room = undefined;
     place();
   };
   const dragTo = (native: number) => {
-    const range = long * (proxyRatio(shown) - 1);
-    held.onDrag(range > 0 ? Math.max(0, Math.min(1, native / range)) : 0);
+    held.onDrag(proxyShare(native, room ?? roomNow()));
   };
   const onWheel = (event: WheelEvent) => {
     for (const turn of wheeledAround(element)) {
@@ -109,7 +127,14 @@ export function scrollProxy(
     }
   };
   const link = axis === 'vertical' ? setRowScroller : setColumnScroller;
-  link(element, { dragTo, dragEnd: letGo, stepBy: held.onStep });
+  link(element, {
+    dragTo,
+    dragEnd: letGo,
+    stepBy: (steps) => {
+      held.onStep(steps);
+      return true;
+    },
+  });
   setStoodFor(element, view);
   const observer = new ResizeObserver(measure);
   observer.observe(element);

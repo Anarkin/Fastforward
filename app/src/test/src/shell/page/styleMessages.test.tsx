@@ -18,6 +18,7 @@ import {
 import { createElement } from 'react';
 import { scrollbarCoverClass } from '../../../../lib/page/scrollbars';
 import { keyOf, popupOf } from '../../../helpers/styleMarkup';
+import { stylesheet } from '../../../helpers/pageSources';
 import {
   rendered,
   withClass,
@@ -29,13 +30,12 @@ import {
   MessagePanelShown,
 } from '../../../helpers/styleHistoryFixtures';
 
-function shownScrollbar(message?: string): MarkupElement {
+function shownScrollbar(peeking = false): MarkupElement {
   return withClass(
     rendered(
       createElement(
         'body',
-        null,
-        message !== undefined && createElement('div', { className: message }),
+        { className: peeking ? 'peeking' : undefined },
         createElement('div', {
           className: `${scrollbarCoverClass} vertical shown`,
         }),
@@ -46,10 +46,10 @@ function shownScrollbar(message?: string): MarkupElement {
 }
 
 suite('Style', () => {
-  test("takes no press on a scrollbar under a commit's whole message peeked at, which is drawn over the list and its scrollbar, but does while one is pinned, which scrolls by its own", () => {
-    looks(shownScrollbar('message-peek'), { display: 'none' });
-    looks(shownScrollbar('message-peek pinned'), { display: 'block' });
+  test("takes no press on a scrollbar while the page says a commit's whole message is peeked at, which is drawn over the list and its scrollbar, by a class of the page rather than by looking for the message, which every row drawn anywhere was then matched against", () => {
+    looks(shownScrollbar(true), { display: 'none' });
     looks(shownScrollbar(), { display: 'block' });
+    assert.doesNotMatch(stylesheet(), /(?<![\w-])body:has\(/);
   });
 
   test('puts the pin and the keys pinning a message peeked at, or the button closing a pinned one, beside the subject at the top right, on its first line and muted like the author, the keys drawn like the shortcuts screen draws them', () => {

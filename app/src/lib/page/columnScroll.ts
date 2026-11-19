@@ -179,6 +179,7 @@ export function followColumns(
     if (column > 0) {
       moveTo((glide?.to ?? scrolled()) + steps * column, true);
     }
+    return column > 0;
   };
   setColumnScroller(element, { dragTo, dragEnd: letGo, stepBy });
   setWheeled(element, 'columns', onWheel);

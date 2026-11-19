@@ -35,7 +35,7 @@ export function ScrollProxy({
       element.current,
       axis,
       { onDrag: dragged, onLetGo: letGo, onStep: stepped },
-      view?.current ?? undefined,
+      view && (() => view.current),
     );
     proxy.current = made;
     return () => {

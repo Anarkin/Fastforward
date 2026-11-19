@@ -185,7 +185,7 @@ class RowScrolling implements PluginValue {
         onLetGo: () => this.across.dragEnd(),
         onStep: (steps) => this.across.stepBy?.(steps),
       },
-      scroller,
+      () => scroller,
     );
     scroller.addEventListener('scroll', this.onScroll, { passive: true });
     view.requestMeasure(this.sizes);

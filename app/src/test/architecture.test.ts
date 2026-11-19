@@ -680,6 +680,42 @@ suite('Architecture', () => {
     );
   });
 
+  test('draws every scrollbar by the rules of the stylesheet of the window alone, so no tool gives its own another look: no other stylesheet names a part of a scrollbar, but for the text edited taking away the one below it, which a stand-in draws; and lists the stylesheets that make something scroll, so what scrolls anew is given the scrollbar of the app on purpose, held to it by the tests of every scrollbar alike', () => {
+    const styles = sourceFiles.filter((file) => file.endsWith('.css'));
+    assert.deepStrictEqual(
+      styles.filter((file) => read(file).includes('::-webkit-scrollbar')),
+      ['shell/page/text.css', 'shell/page/window.css'],
+    );
+    assert.deepStrictEqual(
+      read('shell/page/text.css')
+        .split('}')
+        .filter((rule) => rule.includes('::-webkit-scrollbar'))
+        .map((rule) => rule.replace(/\s+/g, ' ').trim()),
+      [
+        '.cm-editor.editor-text .cm-scroller::-webkit-scrollbar:horizontal { height: 0;',
+      ],
+    );
+    assert.deepStrictEqual(
+      styles.filter((file) =>
+        /overflow[a-z-]*:[^;]*\b(?:auto|scroll)\b/.test(read(file)),
+      ),
+      [
+        'shell/page/columns.css',
+        'shell/page/markdown.css',
+        'shell/page/menus.css',
+        'shell/page/notices.css',
+        'shell/page/pdf.css',
+        'shell/page/rows.css',
+        'shell/page/shortcuts.css',
+        'shell/page/text.css',
+        'tools/git/page/clone.css',
+        'tools/git/page/locations.css',
+        'tools/git/page/messagePeek.css',
+        'tools/viewer/page/viewer.css',
+      ],
+    );
+  });
+
   test('draws every box people search in with the SearchBar, so every search looks and works alike: the classes of the boxes before it are gone, and no other page code draws an input but the dialogs that ask for a text and the replace box of the editor', () => {
     const before =
       /\b(?:find-field|search-field|search-input|locations-search|menu-filter|commander-filter-input)\b/;

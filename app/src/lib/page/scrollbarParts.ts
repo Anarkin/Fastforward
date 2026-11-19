@@ -23,32 +23,42 @@ export type Part = 'start' | 'before' | 'thumb' | 'after' | 'end';
 const rangeOf = ({ scrollSize, clientSize }: Scrolled) =>
   Math.max(0, scrollSize - clientSize);
 
-function thumbIn(track: Extent, scrolled: Scrolled): Extent | undefined {
+function thumbIn(
+  track: Extent,
+  scrolled: Scrolled,
+  scale: number,
+): Extent | undefined {
   const range = rangeOf(scrolled);
-  if (range < 1 || track.length < shortestThumb) {
+  const room = Math.round(track.length * scale);
+  const least = Math.round(shortestThumb * scale);
+  if (range < 1 || room < least) {
     return undefined;
   }
   const length = Math.min(
-    track.length,
+    room,
     Math.max(
-      shortestThumb,
-      Math.round((track.length * scrolled.clientSize) / scrolled.scrollSize),
+      least,
+      Math.round((room * scrolled.clientSize) / scrolled.scrollSize),
     ),
   );
   const at = Math.max(0, Math.min(range, scrolled.scrolled));
-  return {
-    from: track.from + Math.round(((track.length - length) * at) / range),
-    length,
-  };
+  const along = Math.fround(Math.fround(at * (room - length)) / range);
+  const cut = along > 0 && along < 1 ? 1 : Math.trunc(along);
+  return { from: track.from + cut / scale, length: length / scale };
 }
 
-export function partsOf(bar: number, size: number, scrolled: Scrolled): Parts {
+export function partsOf(
+  bar: number,
+  size: number,
+  scrolled: Scrolled,
+  scale = 1,
+): Parts {
   const button = Math.min(size, bar / 2);
   const track = { from: button, length: Math.max(0, bar - 2 * button) };
   return {
     start: { from: 0, length: button },
     track,
-    thumb: thumbIn(track, scrolled),
+    thumb: thumbIn(track, scrolled, scale),
     end: { from: bar - button, length: button },
   };
 }

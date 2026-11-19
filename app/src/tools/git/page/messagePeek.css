@@ -1,4 +1,4 @@
-body:has(.message-peek:not(.pinned)) .scrollbar-cover {
+body.peeking .scrollbar-cover {
   display: none;
 }
 

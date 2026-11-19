@@ -207,10 +207,13 @@ interface DiffWrap {
 
 const diffWraps = (): Promise<readonly DiffWrap[]> =>
   page.locator('.compare-view .diff-view').evaluate((view) => {
-    const minimap = view
-      .closest('.column-body')
-      ?.querySelector('.diff-minimap')
-      ?.getBoundingClientRect();
+    const rows = view.querySelector(':scope > .virtual-rows');
+    const bar =
+      rows === null
+        ? undefined
+        : rows.getBoundingClientRect().left +
+          rows.clientLeft +
+          rows.clientWidth;
     const range = document.createRange();
     return [
       ...view.querySelectorAll<HTMLElement>('.virtual-row .diff-line .code'),
@@ -270,9 +273,7 @@ const diffWraps = (): Promise<readonly DiffWrap[]> =>
               mark.getBoundingClientRect().right <=
               contentRight + 2 * char + 0.5,
           ),
-          clear:
-            minimap === undefined ||
-            contentRight + 2 * char <= minimap.left + 0.5,
+          clear: bar !== undefined && contentRight + 2 * char <= bar + 0.5,
         };
       });
   });
@@ -313,7 +314,7 @@ async function closeTabShown(what: Locator): Promise<void> {
 suite('App', () => {
   sharedCommanderApp();
 
-  test('wraps a file viewed and the same file edited alike in one window, every row starting at the same character in the same place, the text ending as far from the edge and every break and every blank hanging at it while whitespace is hidden marked in the same place, and the diff of it inline and side by side where its text box says, the marks of its breaks left of the minimap', async () => {
+  test('wraps a file viewed and the same file edited alike in one window, every row starting at the same character in the same place, the text ending as far from the edge and every break and every blank hanging at it while whitespace is hidden marked in the same place, and the diff of it inline and side by side where its text box says, the marks of its breaks left of the scrollbar', async () => {
     const text = wrappedLines.join(String.fromCharCode(10));
     fs.writeFileSync(path.join(opened, 'wrapped.txt'), text);
     fs.writeFileSync(

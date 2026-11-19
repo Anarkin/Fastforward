@@ -8,11 +8,14 @@ import {
   scrollbarHeldAttribute,
   scrollbarHoverAttribute,
 } from '../../../../lib/page/scrollbars';
-import { setRowScroller } from '../../../../lib/page/scrollbarLinks';
+import {
+  setRowScroller,
+  setWheeled,
+} from '../../../../lib/page/scrollbarLinks';
 
 const bar = 20;
 
-function scrolledList() {
+function scrolledList(tall = 300) {
   const dom = new JSDOM(
     '<!doctype html><body><div id="list" style="overflow-y: scroll"><p id="row"></p></div><div id="other"></div></body>',
   );
@@ -25,6 +28,7 @@ function scrolledList() {
     Element: dom.window.Element,
     Node: dom.window.Node,
     getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    devicePixelRatio: 1,
     requestAnimationFrame: (run: () => void) => frames.push(run),
     cancelAnimationFrame: () => {},
     ResizeObserver: class {
@@ -48,7 +52,7 @@ function scrolledList() {
   let scrollTop = 0;
   Object.defineProperties(list, {
     scrollHeight: { value: 1000 },
-    clientHeight: { value: 300 },
+    clientHeight: { value: tall },
     clientWidth: { value: 380 },
     clientLeft: { value: 0 },
     clientTop: { value: 0 },
@@ -59,7 +63,13 @@ function scrolledList() {
       },
     },
   });
-  list.getBoundingClientRect = () => new dom.window.DOMRect(10, 50, 400, 300);
+  list.getBoundingClientRect = () => new dom.window.DOMRect(10, 50, 400, tall);
+  const scrolledBy: number[][] = [];
+  list.scrollBy = (...by: unknown[]) => {
+    scrolledBy.push(by.map(Number));
+  };
+  let under: Element = list;
+  document.elementsFromPoint = () => [under];
   list.setPointerCapture = () => {};
   dom.window.Element.prototype.setPointerCapture = () => {};
   installScrollbars();
@@ -72,11 +82,18 @@ function scrolledList() {
     assert.ok(found, name);
     return found;
   };
-  cover.getBoundingClientRect = () => new dom.window.DOMRect(390, 50, bar, 300);
+  cover.getBoundingClientRect = () =>
+    new dom.window.DOMRect(390, 50, bar, tall);
   const pointer = (
     type: string,
     target: Element,
-    at: { clientX?: number; clientY?: number; buttons?: number } = {},
+    at: {
+      clientX?: number;
+      clientY?: number;
+      button?: number;
+      buttons?: number;
+      ctrlKey?: boolean;
+    } = {},
   ) =>
     target.dispatchEvent(
       new dom.window.MouseEvent(type, {
@@ -102,6 +119,26 @@ function scrolledList() {
     pointer,
     painted,
     scrolled: () => scrollTop,
+    scrollTo: (to: number) => {
+      scrollTop = to;
+    },
+    scrolledBy,
+    lieOver: (element: Element) => {
+      under = element;
+    },
+    wheel: (
+      target: Element,
+      deltaY: number,
+      held: { ctrlKey?: boolean; shiftKey?: boolean } = {},
+    ) =>
+      target.dispatchEvent(
+        new dom.window.WheelEvent('wheel', {
+          bubbles: true,
+          cancelable: true,
+          deltaY,
+          ...held,
+        }),
+      ),
     resized: () => watched.forEach((changed) => changed()),
     close: () => {
       vi.useRealTimers();
@@ -144,8 +181,8 @@ suite('Scrollbars', () => {
     }
   });
 
-  test('takes the cover away once what it scrolls is gone or the pointer comes over something that scrolls nowhere, as the cover of a menu closed stayed where the menu had been and took the presses meant for what was under it', () => {
-    const { cover, list, row, other, pointer, painted, resized, close } =
+  test('takes the cover away once what it scrolls is gone, as the cover of a menu closed stayed where the menu had been and took the presses meant for what was under it', () => {
+    const { cover, list, row, pointer, painted, resized, close } =
       scrolledList();
     try {
       pointer('pointermove', row);
@@ -155,10 +192,132 @@ suite('Scrollbars', () => {
       list.remove();
       resized();
       assert.ok(!cover.classList.contains('shown'));
+    } finally {
+      close();
+    }
+  });
+
+  test('takes the cover away once the pointer comes over something that scrolls nowhere', () => {
+    const { cover, row, other, pointer, painted, close } = scrolledList();
+    try {
+      pointer('pointermove', row);
+      painted();
+      assert.ok(cover.classList.contains('shown'));
 
       pointer('pointermove', other);
       painted();
       assert.ok(!cover.classList.contains('shown'));
+    } finally {
+      close();
+    }
+  });
+
+  test('takes a press or a wheel only while its scrollbar is what lies under the pointer, and goes once something else has come to lie over it, as a popup opened by a key over a scrollbar pointed at left its presses and its wheel to the list under it', () => {
+    const {
+      cover,
+      row,
+      other,
+      pointer,
+      painted,
+      scrolled,
+      lieOver,
+      wheel,
+      scrolledBy,
+      close,
+    } = scrolledList();
+    try {
+      pointer('pointermove', row);
+      painted();
+      lieOver(other);
+      pointer('pointerdown', cover, { clientY: 50 + 200, buttons: 1 });
+      assert.deepStrictEqual(
+        [scrolled(), cover.classList.contains('shown')],
+        [0, false],
+      );
+      pointer('pointerup', cover, { buttons: 0 });
+
+      lieOver(row.parentElement ?? other);
+      pointer('pointermove', row);
+      painted();
+      assert.ok(cover.classList.contains('shown'));
+      lieOver(other);
+      wheel(cover, 120);
+      assert.deepStrictEqual(
+        [scrolledBy, cover.classList.contains('shown')],
+        [[], false],
+      );
+    } finally {
+      close();
+    }
+  });
+
+  test('leaves a press of any button but the main one, or one with a modifier, without scrolling anything, yet keeps it from the browser, which took the keyboard from what had it on a press of what cannot have it', () => {
+    const { cover, list, row, pointer, painted, scrolled, close } =
+      scrolledList();
+    try {
+      pointer('pointermove', row);
+      painted();
+      const taken = [
+        pointer('pointerdown', cover, {
+          clientY: 50 + 200,
+          button: 2,
+          buttons: 2,
+        }),
+        pointer('pointerdown', cover, {
+          clientY: 50 + 200,
+          buttons: 1,
+          ctrlKey: true,
+        }),
+      ];
+      assert.deepStrictEqual(
+        [taken, scrolled(), list.getAttribute(scrollbarHeldAttribute)],
+        [[false, false], 0, null],
+      );
+    } finally {
+      close();
+    }
+  });
+
+  test('scrolls nowhere on a press of a track too short for a thumb, as such a press took what it scrolls back to its start', () => {
+    const { cover, row, pointer, painted, scrolled, scrollTo, close } =
+      scrolledList(50);
+    try {
+      scrollTo(200);
+      pointer('pointermove', row);
+      painted();
+      pointer('pointerdown', cover, { clientY: 50 + 25, buttons: 1 });
+      pointer('pointerup', cover, { buttons: 0 });
+      assert.strictEqual(scrolled(), 200);
+    } finally {
+      close();
+    }
+  });
+
+  test('hands a wheel turned over a scrollbar to what scrolls its view by the wheel, and scrolls it as the browser would once that left the wheel alone, as a list too long for whole rows did, its scrollbar then scrolling nothing, yet not while a modifier but Shift is held, which asks for something else', () => {
+    const { cover, list, row, pointer, painted, wheel, scrolledBy, close } =
+      scrolledList();
+    try {
+      pointer('pointermove', row);
+      painted();
+      const seen: string[] = [];
+      setWheeled(list, 'rows', () => seen.push('left alone'));
+      assert.strictEqual(wheel(cover, 120), false);
+      assert.deepStrictEqual([seen, scrolledBy], [['left alone'], [[0, 120]]]);
+      assert.strictEqual(wheel(cover, 120, { ctrlKey: true }), false);
+      assert.deepStrictEqual(scrolledBy, [[0, 120]]);
+      wheel(cover, 60, { shiftKey: true });
+      assert.deepStrictEqual(scrolledBy, [
+        [0, 120],
+        [0, 60],
+      ]);
+
+      setWheeled(list, 'rows', (event) => {
+        seen.push('taken');
+        event.preventDefault();
+      });
+      wheel(cover, 120);
+      assert.deepStrictEqual([seen.at(-1), scrolledBy.length], ['taken', 2]);
+      setWheeled(list, 'rows', undefined);
     } finally {
       close();
     }
@@ -191,7 +350,7 @@ suite('Scrollbars', () => {
       setRowScroller(list, {
         dragTo: () => {},
         dragEnd: () => {},
-        stepBy: (by) => steps.push(by),
+        stepBy: (by) => steps.push(by) > 0,
       });
       pointer('pointerdown', cover, { clientY: 50 + 290, buttons: 1 });
       assert.deepStrictEqual(steps, [1]);
@@ -204,6 +363,26 @@ suite('Scrollbars', () => {
       pointer('pointerdown', cover, { clientY: 50 + 5, buttons: 1 });
       pointer('pointerup', cover, { buttons: 0 });
       assert.deepStrictEqual(steps, [1, 1, 1, -1]);
+      setRowScroller(list, undefined);
+    } finally {
+      close();
+    }
+  });
+
+  test('moves a plain step on a button of a scrollbar whose view cannot step by its rows, as the buttons of a list of commits too long for whole rows did nothing', () => {
+    const { cover, list, row, pointer, painted, scrolled, close } =
+      scrolledList();
+    try {
+      pointer('pointermove', row);
+      painted();
+      setRowScroller(list, {
+        dragTo: () => {},
+        dragEnd: () => {},
+        stepBy: () => false,
+      });
+      pointer('pointerdown', cover, { clientY: 50 + 290, buttons: 1 });
+      pointer('pointerup', cover, { buttons: 0 });
+      assert.strictEqual(scrolled(), 40);
       setRowScroller(list, undefined);
     } finally {
       close();

@@ -25,6 +25,7 @@ import {
   scrollProxy,
   type ScrollProxy,
 } from '../../../lib/page/scrollProxies';
+import { inNextFrame } from '../../../lib/page/afterPaint';
 import { setWheeled } from '../../../lib/page/scrollbarLinks';
 import { lineAt, scrolledBack } from './scrolledBack';
 
@@ -155,7 +156,7 @@ export class TerminalView {
         onLetGo: () => undefined,
         onStep: (steps) => this.terminal.scrollLines(steps),
       },
-      element,
+      () => element,
     );
     setWheeled(element, 'rows', this.wheel);
     this.terminal.onScroll(this.showBar);
@@ -184,10 +185,13 @@ export class TerminalView {
     }
   }
 
-  private readonly showBar = () =>
+  private readonly barShown = inNextFrame(() =>
     this.bar.show(
       scrolledBack(this.terminal.buffer.active, this.terminal.rows),
-    );
+    ),
+  );
+
+  private readonly showBar = () => this.barShown.ask();
 
   private readonly wheel = (event: WheelEvent) => {
     const lines = wheelLines(
@@ -249,6 +253,7 @@ export class TerminalView {
     removeEventListener('resize', this.snapToPixels);
     this.place.dispose();
     this.cursor.dispose();
+    this.barShown.cancel();
     this.terminal.dispose();
     this.bar.stop();
     setWheeled(this.element, 'rows', undefined);

@@ -271,6 +271,7 @@ export function followRows(
     if (row > 0) {
       scrollTo(snap(snap(aim()) + steps * row, Math.sign(steps)), true);
     }
+    return row > 0;
   };
   setRowScroller(element, { dragTo, dragEnd: letGo, stepBy });
   setWheeled(element, 'rows', onWheel);

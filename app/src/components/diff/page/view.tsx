@@ -496,7 +496,7 @@ export function DiffView({
 
   return (
     <div
-      className={`diff-view ${split ? 'side-by-side' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
+      className={`diff-view ${split ? 'side-by-side' : ''} ${whole && !split ? 'whole-file' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
       onMouseDown={(event) => {
         const side = selectionSide(
           event.target instanceof Element ? event.target : null,

@@ -17,24 +17,35 @@ function posingAsXterm(fake: object): Xterm {
 
 const quiet = () => ({ dispose: noop });
 
+const scrolls: (() => void)[] = [];
+
 class QuietTerminal {
   readonly parser = {
     registerCsiHandler: quiet,
     registerEscHandler: quiet,
   };
-  readonly buffer = {
-    active: { cursorX: 0, cursorY: 0, baseY: 0, viewportY: 0, getLine: noop },
-    onBufferChange: quiet,
+  readonly active = {
+    cursorX: 0,
+    cursorY: 0,
+    baseY: 0,
+    viewportY: 0,
+    getLine: noop,
   };
+  readonly buffer = { active: this.active, onBufferChange: quiet };
   onWriteParsed = quiet;
   onRender = quiet;
   onCursorMove = quiet;
-  onScroll = quiet;
+  onScroll = (scrolled: () => void) => {
+    scrolls.push(scrolled);
+    return quiet();
+  };
   onSelectionChange = quiet;
   refresh = quiet;
 }
 
-function withPage(run: (screen: HTMLElement) => void): void {
+function withPage(
+  run: (screen: HTMLElement, painted: () => void) => void,
+): void {
   const dom = new JSDOM('<!doctype html><main><div></div></main>');
   dom.window.matchMedia = () =>
     Object.assign(new dom.window.EventTarget(), {
@@ -44,7 +55,10 @@ function withPage(run: (screen: HTMLElement) => void): void {
       addListener: noop,
       removeListener: noop,
     });
+  const frames: (() => void)[] = [];
   const globals = {
+    requestAnimationFrame: (frame: () => void) => frames.push(frame),
+    cancelAnimationFrame: noop,
     window: dom.window,
     document: dom.window.document,
     getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
@@ -69,7 +83,11 @@ function withPage(run: (screen: HTMLElement) => void): void {
   try {
     const screen = dom.window.document.querySelector('div');
     assert.ok(screen);
-    run(screen);
+    run(screen, () => {
+      for (const frame of frames.splice(0)) {
+        frame();
+      }
+    });
   } finally {
     Object.assign(globalThis, saved);
   }
@@ -181,6 +199,70 @@ suite('Terminal view', () => {
         { type: 'open', tab: '1', columns: 1000, rows: 1000 },
       ]);
       view.dispose();
+    });
+  });
+
+  test('places its scrollbar once a frame, however many lines were printed in it, as each line printed changed how much there is to scroll back and laid the page out once more, a third of a second or more for every ten thousand lines', () => {
+    withPage((screen, painted) => {
+      const terminals: QuietTerminal[] = [];
+      scrolls.length = 0;
+      const xterm = posingAsXterm({
+        Terminal: class extends QuietTerminal {
+          readonly cols = 80;
+          readonly rows = 24;
+          readonly options = {};
+          constructor() {
+            super();
+            terminals.push(this);
+            Object.assign(this.active, { baseY: 10, viewportY: 10 });
+          }
+          loadAddon() {}
+          attachCustomKeyEventHandler() {}
+          onData() {}
+          onResize() {}
+          open() {}
+          focus() {}
+          dispose() {}
+        },
+        FitAddon: class {
+          fit() {}
+        },
+        UnicodeGraphemesAddon: class {
+          dispose() {}
+        },
+      });
+      const view = new TerminalView(xterm, screen, {
+        tab: '1',
+        renderer: 'dom',
+        scrollback: 1000,
+        minimumContrastRatio: 4.5,
+        windowsPty: undefined,
+        post: noop,
+        onCopy: noop,
+        scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
+        cursor: defaultCursorLook,
+      });
+      painted();
+      const size =
+        screen.parentElement?.querySelector<HTMLElement>('.scroll-proxy-size');
+      assert.ok(size);
+      const first = size.style.height;
+      const lengths = new Set<string>();
+      const [terminal] = terminals;
+      assert.ok(terminal);
+      const printed = () => scrolls.forEach((scrolled) => scrolled());
+      for (let line = 0; line < 100; line++) {
+        terminal.active.baseY += 1;
+        terminal.active.viewportY += 1;
+        printed();
+        lengths.add(size.style.height);
+      }
+      assert.deepStrictEqual([...lengths], [first]);
+      painted();
+      assert.notStrictEqual(size.style.height, first);
+      view.dispose();
+      printed();
+      painted();
     });
   });
 

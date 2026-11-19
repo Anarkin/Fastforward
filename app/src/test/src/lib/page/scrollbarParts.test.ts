@@ -9,6 +9,9 @@ import {
 
 const long = { scrollSize: 5000, clientSize: 286, scrolled: 1500 };
 
+const thumbAt = (scrolled: number, scale?: number) =>
+  partsOf(286, 14, { ...long, scrolled }, scale).thumb;
+
 suite('The parts of a scrollbar', () => {
   test('gives a scrollbar a button as long as it is wide at either end, the track between them and the thumb where the browser draws it, as long as the share of what shows and no shorter than 24 pixels, so a press lands on the part it is seen on', () => {
     assert.deepStrictEqual(partsOf(286, 14, long), {
@@ -26,6 +29,21 @@ suite('The parts of a scrollbar', () => {
         end: { from: 280, length: 20 },
       },
     );
+  });
+
+  test('stands the thumb on the device pixel the browser cuts its place down to rather than the nearest, a pixel in once it is scrolled at all, at any scale, as a press on the first row of pixels of a thumb drawn a pixel higher than the page took it to be jumped as a press of the track', () => {
+    assert.deepStrictEqual(thumbAt(1530), { from: 14 + 75, length: 24 });
+    assert.deepStrictEqual(thumbAt(1), { from: 14 + 1, length: 24 });
+    assert.deepStrictEqual(thumbAt(0), { from: 14, length: 24 });
+    assert.deepStrictEqual(thumbAt(4714), { from: 14 + 234, length: 24 });
+    assert.deepStrictEqual(thumbAt(1500, 1.5), {
+      from: 14 + 111 / 1.5,
+      length: 24,
+    });
+    assert.deepStrictEqual(thumbAt(1500, 2), {
+      from: 14 + 148 / 2,
+      length: 24,
+    });
   });
 
   test('gives no thumb to a scrollbar with nothing to scroll or no room for one, and halves the buttons of a bar too short for both', () => {

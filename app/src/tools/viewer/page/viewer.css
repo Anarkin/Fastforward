@@ -28,7 +28,7 @@
   background: var(--color-panel-background);
 }
 
-.viewer-sideways:has(> .viewer-rows.wrapped) {
+.viewer-body.wrapped > .viewer-sideways {
   overflow-x: hidden;
 }
 
@@ -37,15 +37,15 @@
   --viewer-bar-below: var(--line-below, 0px);
 }
 
-.viewer-body:has(.viewer-rows.numbered) {
+.viewer-body.numbered {
   --viewer-inset: calc(var(--line-number-width) + var(--line-number-gap));
 }
 
-.viewer-body:has(.viewer-rows:not(.wrapped)) {
+.viewer-body:not(.wrapped) {
   --viewer-bar-below: calc(var(--line-below, 0px) + var(--scrollbar-size));
 }
 
-.viewer-body:has(.viewer-rows.wrapped) .scroll-proxy.vertical {
+.viewer-body.wrapped .scroll-proxy.vertical {
   --scrollbar-round-end: var(--corner-round, 0px);
 }
 

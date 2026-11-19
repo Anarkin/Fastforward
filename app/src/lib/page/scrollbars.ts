@@ -1,8 +1,10 @@
-import { clicked, released } from '../shared/keymap';
+import { clicked, pressedAlone, released } from '../shared/keymap';
 import { keymap } from './keymap';
 import {
   columnScrollerOf,
+  plainStep,
   rowScrollerOf,
+  scrollbarCovered,
   scrollbarDrags,
   wheeledAround,
   type HeldScroller,
@@ -27,7 +29,6 @@ export const scrollbarHeldAttribute = 'data-scrollbar-held';
 
 const stepWait = 400;
 const stepEvery = 60;
-const plainStep = 40;
 
 interface Box {
   readonly left: number;
@@ -149,10 +150,10 @@ function scrollTo(axis: Axis, scroller: Element, to: number): void {
 }
 
 function stepBy(axis: Axis, scroller: Element, steps: number): void {
-  const held = heldOf(axis, scroller);
-  if (held?.stepBy) {
-    held.stepBy(steps);
-  } else if (axis === 'vertical') {
+  if (heldOf(axis, scroller)?.stepBy?.(steps) === true) {
+    return;
+  }
+  if (axis === 'vertical') {
     scroller.scrollTop += steps * plainStep;
   } else {
     scroller.scrollLeft += steps * plainStep;
@@ -164,6 +165,7 @@ class Cover {
   scroller: Element | null = null;
   private readonly parts = new Map<Named, HTMLElement>();
   private dragging = false;
+  private from = 0;
   private hovered: Named | undefined;
   private stepping: ReturnType<typeof setTimeout> | undefined;
 
@@ -264,14 +266,18 @@ class Cover {
       this.scroller = scroller;
       if (scroller) {
         this.watching.observe(scroller);
+        scrollbarCovered.set(this.element, scroller);
+      } else {
+        scrollbarCovered.delete(this.element);
       }
     }
   }
 
   private partsIn(box: Box, scroller: Element): Parts {
+    const scrolled = scrolledOf(this.axis, scroller);
     return this.axis === 'vertical'
-      ? partsOf(box.height, box.width, scrolledOf(this.axis, scroller))
-      : partsOf(box.width, box.height, scrolledOf(this.axis, scroller));
+      ? partsOf(box.height, box.width, scrolled, devicePixelRatio)
+      : partsOf(box.width, box.height, scrolled, devicePixelRatio);
   }
 
   private mark(part: Named | undefined): void {
@@ -300,10 +306,16 @@ class Cover {
   }
 
   private along(pointer: { clientX: number; clientY: number }): number {
-    const box = this.element.getBoundingClientRect();
-    return this.axis === 'vertical'
-      ? pointer.clientY - box.top
-      : pointer.clientX - box.left;
+    return (
+      (this.axis === 'vertical' ? pointer.clientY : pointer.clientX) - this.from
+    );
+  }
+
+  private lies(pointer: { clientX: number; clientY: number }): boolean {
+    const under = document
+      .elementsFromPoint(pointer.clientX, pointer.clientY)
+      .find((element) => !element.closest(`.${scrollbarCoverClass}`));
+    return under === this.scroller;
   }
 
   private readonly onWheel = (event: WheelEvent) => {
@@ -311,28 +323,40 @@ class Cover {
     if (!scroller) {
       return;
     }
-    const turns = wheeledAround(scroller);
-    for (const turn of turns) {
+    if (!this.busy && !this.lies(event)) {
+      this.hide();
+      return;
+    }
+    for (const turn of wheeledAround(scroller)) {
       if (!event.defaultPrevented) {
         turn(event);
       }
     }
-    if (turns.length === 0) {
-      event.preventDefault();
+    if (event.defaultPrevented) {
+      return;
+    }
+    event.preventDefault();
+    if (pressedAlone(event)) {
       scroller.scrollBy(event.deltaX, event.deltaY);
     }
   };
 
   private readonly onPointerDown = (event: PointerEvent) => {
     const { scroller } = this;
+    event.preventDefault();
     if (!scroller || !clicked(keymap.drag, event)) {
       return;
     }
-    event.preventDefault();
+    if (!this.lies(event)) {
+      this.hide();
+      return;
+    }
     const box = barBox(this.axis, scroller);
     if (!box) {
       return;
     }
+    const own = this.element.getBoundingClientRect();
+    this.from = this.axis === 'vertical' ? own.top : own.left;
     const parts = this.partsIn(box, scroller);
     const scrolled = scrolledOf(this.axis, scroller);
     const along = this.along(event);
@@ -347,7 +371,7 @@ class Cover {
         (pointer) => drag(this.along(pointer)),
         'thumb',
       );
-    } else {
+    } else if (parts.thumb !== undefined) {
       const jump = (pointer: { clientX: number; clientY: number }) =>
         jumpedTo(parts, scrolled, this.along(pointer));
       scrollTo(this.axis, scroller, jump(event));
@@ -443,6 +467,11 @@ export function installScrollbars(): void {
   };
   let pointed: EventTarget | null = null;
   const pointing = afterPaint(() => showFor(pointed));
+  const cameOver = (event: PointerEvent) => {
+    const came = event.target !== pointed;
+    pointed = event.target;
+    return came && overBar(event);
+  };
   for (const type of ['pointermove', 'pointerover'] as const) {
     document.addEventListener(
       type,
@@ -450,8 +479,7 @@ export function installScrollbars(): void {
         if (!released(event)) {
           return;
         }
-        pointed = event.target;
-        if (overBar(event)) {
+        if (cameOver(event)) {
           showFor(pointed);
         } else {
           pointing.ask();

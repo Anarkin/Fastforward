@@ -185,7 +185,7 @@ export function useSideways(
     () => ({
       dragTo: (left) => across.current?.dragTo(left),
       dragEnd: () => across.current?.dragEnd(),
-      stepBy: (steps) => across.current?.stepBy?.(steps),
+      stepBy: (steps) => across.current?.stepBy?.(steps) === true,
     }),
     [],
   );

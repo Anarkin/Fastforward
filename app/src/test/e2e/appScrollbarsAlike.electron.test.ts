@@ -11,6 +11,7 @@ import { pdfOf } from './pdfs';
 import {
   barOf,
   barParts,
+  barsShown,
   paintedAt,
   type Axis,
   type Box,
@@ -18,7 +19,7 @@ import {
 import { writeSettings } from './settingsWritten';
 import { untilSettled } from './waits';
 
-const size = 20;
+const size = 24;
 
 const lines = (changed: boolean) =>
   Array.from(
@@ -145,6 +146,10 @@ suite('App scrollbars alike', () => {
       pdfOf(Array.from({ length: 6 }, (_, index) => [`Page ${index}`])),
     );
     const repository = await tempRepository(path.join(folder, 'repository'));
+    await repository.git('commit', '--allow-empty', '-m', 'start');
+    for (let index = 0; index < 60; index++) {
+      await repository.git('branch', `topic/branch-${index}`);
+    }
     for (let index = 0; index < 120; index++) {
       await repository.git('commit', '--allow-empty', '-m', `step ${index}`);
     }
@@ -180,6 +185,52 @@ suite('App scrollbars alike', () => {
     await page.locator(views[name].rows).nth(5).waitFor();
     await page.locator(views[name].vertical).first().waitFor();
     await page.mouse.move(2, 2);
+    await untilSettled(
+      () =>
+        page
+          .locator(views[name].vertical)
+          .first()
+          .evaluate((scroller) => {
+            const { top, bottom, left, right } =
+              scroller.getBoundingClientRect();
+            return [
+              top,
+              bottom,
+              left,
+              right,
+              scroller.scrollHeight,
+              scroller.scrollTop,
+            ];
+          }),
+      `the ${name} to rest`,
+      { quiet: 200 },
+    );
+  };
+
+  const searchCommits = async () => {
+    await show('commit list');
+    await page
+      .locator('.columns > .column')
+      .first()
+      .locator('.column-actions > .search-button')
+      .click();
+    await page.locator('.locations-popup .search-box-input').waitFor();
+    await page.keyboard.type('topic');
+    await waitFor(
+      () =>
+        page
+          .locator('.locations-groups')
+          .evaluate(
+            (scroller) => scroller.scrollHeight > scroller.clientHeight,
+          ),
+      'the branches found to outgrow their list',
+    );
+  };
+
+  const stopSearching = async () => {
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.locator('.locations-popup').waitFor({ state: 'detached' });
   };
 
   const inEvery = async <T>(
@@ -387,7 +438,7 @@ suite('App scrollbars alike', () => {
         meets: Math.abs(down.top + down.height - across.top) < 1,
         empty: !near(corner, plain) && !near(corner, thumb),
         steps: (moved?.left ?? 0) > parts.thumb.left,
-        text: before !== null,
+        text: typeof before === 'string' && before.length > 0,
       };
     });
     assert.deepStrictEqual(
@@ -533,9 +584,12 @@ suite('App scrollbars alike', () => {
       );
       seen[name] = await keptInside(vertical);
     }
+    await searchCommits();
+    seen['commit search'] = await keptInside('.locations-groups');
+    await stopSearching();
     assert.deepStrictEqual(
       seen,
-      alike([...everyView, 'Markdown', 'PDF'], {
+      alike([...everyView, 'Markdown', 'PDF', 'commit search'], {
         wide: size,
         beside: 0,
         within: true,
@@ -572,6 +626,148 @@ suite('App scrollbars alike', () => {
         preview: { scrolls: true, round: true },
         code: { scrolls: true, round: 0 },
       },
+    );
+  });
+
+  test('gives everything that scrolls, in every tab, in the shortcuts, in a menu and in the search of the commits, the one scrollbar as wide as the settings say, so nothing that scrolls anywhere draws another', async () => {
+    const seen: Record<string, { of: string; wide: number }[]> = {};
+    for (const name of everyView) {
+      await show(name);
+      seen[name] = await barsShown(page);
+    }
+    for (const [name, { tab, vertical }] of Object.entries(previews)) {
+      await page.locator('.tabs .tab').nth(tab).click();
+      await waitFor(
+        () =>
+          page
+            .locator(vertical)
+            .evaluate(
+              (scroller) => scroller.scrollHeight > scroller.clientHeight,
+            )
+            .catch(() => false),
+        `the preview of ${name} to outgrow its column`,
+      );
+      seen[name] = await barsShown(page);
+    }
+    await show('commander');
+    await page.keyboard.press('F1');
+    await page.locator('.shortcuts-pane').waitFor();
+    seen.shortcuts = await barsShown(page);
+    await page.keyboard.press('F1');
+    await page.locator('.shortcuts-pane').waitFor({ state: 'detached' });
+    await show('viewer');
+    await page.locator('.viewer-body').first().focus();
+    await page.keyboard.press('L');
+    await page.locator('.menu.filtered-menu').waitFor();
+    seen.menu = await barsShown(page);
+    await page.keyboard.press('Escape');
+    await page.locator('.menu.filtered-menu').waitFor({ state: 'detached' });
+    await searchCommits();
+    seen.search = await barsShown(page);
+    await stopSearching();
+
+    const shown = (state: string) => (seen[state] ?? []).map(({ of }) => of);
+    assert.deepStrictEqual(
+      {
+        others: Object.values(seen)
+          .flat()
+          .filter(({ wide }) => Math.abs(wide - size) > 0.5),
+        commander: shown('commander').includes('virtual-rows'),
+        viewer: shown('viewer').filter((of) => of === 'scroll-proxy').length,
+        editor: shown('editor').includes('cm-scroller'),
+        diff: shown('diff').filter((of) => of === 'scroll-proxy').length,
+        commits: shown('commit list').includes('virtual-rows'),
+        Markdown: shown('Markdown').includes('column-body'),
+        PDF: shown('PDF').includes('pdf-scroll'),
+        shortcuts: shown('shortcuts').includes('shortcuts-pane'),
+        menu: shown('menu').includes('menu'),
+        search: shown('search').includes('locations-groups'),
+      },
+      {
+        others: [],
+        commander: true,
+        viewer: 1,
+        editor: true,
+        diff: 2,
+        commits: true,
+        Markdown: true,
+        PDF: true,
+        shortcuts: true,
+        menu: true,
+        search: true,
+      },
+      JSON.stringify(seen),
+    );
+  });
+
+  test('moves every view as far on a notch of the wheel turned over its scrollbar as over what it scrolls, down over the one beside it and, with Shift, across over the one below a text, as the wheel over the scrollbar below a diff went nowhere', async () => {
+    await writeSettings(page, profile, settingsWith(true));
+    const down = await inEvery(everyView, async (name) => {
+      const { box } = await bar(name, 'vertical');
+      const content = { x: box.left - 120, y: box.top + box.height / 2 };
+      const from = await rested(name);
+      await page.mouse.move(content.x, content.y);
+      await page.mouse.wheel(0, 120);
+      await movedFrom(name, from.text);
+      const over = await rested(name);
+      await page.mouse.wheel(0, -120);
+      await movedFrom(name, over.text);
+      const back = await rested(name);
+      const parts = await barParts(page, box, 'vertical');
+      await page.mouse.move(middle(box).x, parts.end.top - 6);
+      await page.mouse.wheel(0, 120);
+      await movedFrom(name, back.text);
+      const onBar = await rested(name);
+      await page.mouse.wheel(0, -120);
+      await movedFrom(name, onBar.text);
+      await rested(name);
+      return {
+        moved: over.text !== from.text,
+        back: back.text === from.text,
+        alike: onBar.text === over.text,
+      };
+    });
+    assert.deepStrictEqual(
+      down,
+      alike(everyView, { moved: true, back: true, alike: true }),
+      JSON.stringify(down),
+    );
+
+    const across = await inEvery(textViews, async (name) => {
+      const below = (await bar(name, 'horizontal')).box;
+      const beside = (await bar(name, 'vertical')).box;
+      const thumbAt = async () => {
+        const { thumb } = await barParts(page, below, 'horizontal');
+        assert.ok(thumb, `the ${name} shows no thumb below`);
+        return Math.round(thumb.left);
+      };
+      const restedAt = () => untilSettled(thumbAt, `the ${name} to rest`);
+      const turn = async (x: number, y: number, by: number) => {
+        await page.mouse.move(x, y);
+        await page.keyboard.down('Shift');
+        await page.mouse.wheel(0, by);
+        await page.keyboard.up('Shift');
+        return restedAt();
+      };
+      const content = {
+        x: below.left + below.width / 2,
+        y: beside.top + beside.height / 2,
+      };
+      const from = await restedAt();
+      const over = await turn(content.x, content.y, 120);
+      const back = await turn(content.x, content.y, -120);
+      const onBar = await turn(
+        below.left + below.width - size - 6,
+        middle(below).y,
+        120,
+      );
+      await turn(content.x, content.y, -120);
+      return { moved: over > from, back: back === from, alike: onBar === over };
+    });
+    assert.deepStrictEqual(
+      across,
+      alike(textViews, { moved: true, back: true, alike: true }),
+      JSON.stringify(across),
     );
   });
 });

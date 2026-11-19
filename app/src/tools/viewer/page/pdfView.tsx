@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import { wheeled, type Binding } from '../../../lib/shared/keymap';
+import { setWheeled } from '../../../lib/page/scrollbarLinks';
 import type { PdfPlace } from '../shared/pdf';
 import type { ShownPdf } from './pdfDocument';
 import type { PdfFound } from './pdfFinds';
@@ -105,8 +106,10 @@ export function PdfPane({
       shown.current?.zoomBy(event.deltaY < 0 ? 1 : -1);
     };
     element.addEventListener('wheel', zoom, { passive: false });
+    setWheeled(element, 'rows', zoom);
     return () => {
       element.removeEventListener('wheel', zoom);
+      setWheeled(element, 'rows', undefined);
       leaving.abort();
       shown.current = undefined;
       shownEvent(undefined);

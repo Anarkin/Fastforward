@@ -28,6 +28,10 @@
   bottom: var(--line-below, 0px);
 }
 
+.diff-view.whole-file > .scroll-proxy-frame {
+  left: var(--diff-number-width);
+}
+
 .diff-view.side-by-side > .scroll-proxy-frame {
   left: var(--diff-number-width);
   right: calc(50% + (var(--line-right, 0px) + var(--scrollbar-size)) / 2);

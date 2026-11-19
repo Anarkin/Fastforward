@@ -170,10 +170,12 @@ export function DiffViewShown({
   sideBySide = false,
   wordWrap = false,
   showWhitespace = false,
+  whole = false,
 }: {
   readonly sideBySide?: boolean;
   readonly wordWrap?: boolean;
   readonly showWhitespace?: boolean;
+  readonly whole?: boolean;
 }) {
   return (
     <DiffView
@@ -182,7 +184,7 @@ export function DiffViewShown({
       placeNow={() => undefined}
       onPlace={noop}
       files={[]}
-      whole={undefined}
+      whole={whole ? { path: 'a.txt', content: 'a', binary: false } : undefined}
       origin={undefined}
       loading={false}
       diff={1}

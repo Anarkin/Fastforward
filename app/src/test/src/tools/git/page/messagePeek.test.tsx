@@ -181,6 +181,8 @@ async function inList(
   }
 }
 
+const peeking = () => document.body.classList.contains('peeking');
+
 suite('Message peek', () => {
   test('shows the message of the commit under the pointer while Alt alone is held, even one its row shows whole, so holding Alt always answers, but not of the working tree, and hides it once Alt is let go, another key is pressed, the pointer leaves or the window loses focus', async () => {
     const commits = [
@@ -215,6 +217,21 @@ suite('Message peek', () => {
       assert.ok(panel());
       await leave();
       assert.strictEqual(panel(), null);
+    });
+  });
+
+  test('tells the page while a message is peeked at, by a class the page hides the cover of a scrollbar under, and no longer once it is hidden, as a rule looking for the message itself was matched against every row drawn anywhere', async () => {
+    const commits = [
+      commitInfo('w', { body: 'Working tree' }),
+      commitInfo('a', { subject: 'First', body: 'More of the first' }),
+    ];
+    await inList(commits, async ({ panel, key, point }) => {
+      await point(1, false);
+      assert.strictEqual(peeking(), false);
+      await key('keydown', 'Alt', true);
+      assert.deepStrictEqual([panel() !== null, peeking()], [true, true]);
+      await key('keyup', 'Alt', false);
+      assert.deepStrictEqual([panel(), peeking()], [null, false]);
     });
   });
 

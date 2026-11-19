@@ -297,7 +297,10 @@ export function ScrollBody({
   };
 
   const turned = (event: WheelEvent) => {
-    if (wheeled(viewerKeymap.wheelSideways, event) !== undefined) {
+    if (
+      event.defaultPrevented ||
+      wheeled(viewerKeymap.wheelSideways, event) !== undefined
+    ) {
       return;
     }
     const height = probe.current?.getBoundingClientRect().height || 1;
@@ -336,7 +339,7 @@ export function ScrollBody({
 
   return (
     <div
-      className="column-body viewer-body"
+      className={`column-body viewer-body${wrapped ? ' wrapped' : ''}${numbered ? ' numbered' : ''}`}
       ref={body}
       tabIndex={0}
       data-column-focus=""

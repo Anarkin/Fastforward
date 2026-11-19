@@ -24,7 +24,7 @@ const patch = [
 ].join('\n');
 
 suite('Find in diff', () => {
-  test('marks the changes on the minimap only when asked, as for a file shown entire, but the matches always', () => {
+  test('marks the changes on the scrollbar only when asked, as for a file shown entire, but the matches always', () => {
     const rows = diffRows(parsePatch(patch), new Map(), undefined);
     const keys = lineKeys(rows);
     const matched = new Map([['0:3', []]]);

@@ -314,6 +314,11 @@ export function MessagePeek({
     commit && commit.hash !== pinned?.commit.hash
       ? { commit, anchor: peek.anchor, byKeys: peek.byKeys }
       : undefined;
+  const peeking = peeked !== undefined;
+  useLayoutEffect(() => {
+    document.body.classList.toggle('peeking', peeking);
+    return () => document.body.classList.remove('peeking');
+  }, [peeking]);
   return (
     <>
       {pinned && (

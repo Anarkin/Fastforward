@@ -2,10 +2,14 @@ export type ScrollbarDrag = 'thumb' | 'track';
 
 export const scrollbarDrags = new WeakMap<Element, ScrollbarDrag>();
 
+export const scrollbarCovered = new WeakMap<object, object>();
+
+export const plainStep = 40;
+
 export interface HeldScroller {
   readonly dragTo: (place: number) => void;
   readonly dragEnd: () => void;
-  readonly stepBy?: (steps: number) => void;
+  readonly stepBy?: (steps: number) => boolean;
 }
 
 type Wheeled = (event: WheelEvent) => void;
@@ -26,9 +30,11 @@ export function setWheeled(
   wheeled.set(element, turns);
 }
 
-const stoodFor = new WeakMap<Element, Element>();
+type ViewOf = () => Element | null | undefined;
 
-export function setStoodFor(standIn: Element, view: Element | undefined): void {
+const stoodFor = new WeakMap<Element, ViewOf>();
+
+export function setStoodFor(standIn: Element, view: ViewOf | undefined): void {
   if (view) {
     stoodFor.set(standIn, view);
   } else {
@@ -39,7 +45,7 @@ export function setStoodFor(standIn: Element, view: Element | undefined): void {
 export function wheeledAround(element: Element): Wheeled[] {
   const found: Wheeled[] = [];
   for (
-    let at: Element | null = stoodFor.get(element) ?? element;
+    let at: Element | null = stoodFor.get(element)?.() ?? element;
     at !== null;
     at = at.parentElement
   ) {
