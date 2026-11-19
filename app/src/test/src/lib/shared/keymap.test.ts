@@ -4,6 +4,7 @@ import { shellKeymap } from '../../../../shell/shared/keymap';
 import {
   clicked,
   bind,
+  keyOf,
   letterTyped,
   menuFromKeyboard,
   modifierKey,
@@ -414,6 +415,31 @@ suite('Keymap', () => {
         false,
       ),
       undefined,
+    );
+  });
+
+  test('names the key of a binding for the tooltip of its button, the first it has on the keyboard rather than a click or a button of the mouse, and the one for a way where it has a key for each', () => {
+    const closeTab = bind('Tabs', 'Close', {
+      MiddleClick: true,
+      'Mod+W': true,
+      'Mod+Shift+W': true,
+    });
+    const history = bind('Moving', 'Back or forward', {
+      BackButton: -1,
+      ForwardButton: 1,
+      'Alt+ArrowLeft': -1,
+      'Alt+ArrowRight': 1,
+    });
+    const drag = bind(undefined, 'Drag', { Click: true });
+    assert.deepStrictEqual(
+      [
+        keyOf(closeTab),
+        keyOf(history, -1),
+        keyOf(history, 1),
+        keyOf(history, 2),
+        keyOf(drag),
+      ],
+      ['Mod+W', 'Alt+ArrowLeft', 'Alt+ArrowRight', undefined, undefined],
     );
   });
 });

@@ -240,6 +240,16 @@ export function isPointerKey(key: string): boolean {
   return key in buttons || pointerKeys.has(key);
 }
 
+export function keyOf<Value>(
+  binding: Binding<Value>,
+  way?: Value,
+): string | undefined {
+  return Object.entries(binding.keys).find(
+    ([keys, bound]) =>
+      (way === undefined || bound === way) && !isPointerKey(comboOf(keys).key),
+  )?.[0];
+}
+
 export function modifierKey(press: KeyPress): boolean {
   return modifierKeys.has(press.key);
 }

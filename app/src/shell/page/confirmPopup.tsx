@@ -1,4 +1,4 @@
-import { labelTip } from '../../lib/page/tips';
+import { closeTip } from '../../lib/page/closeTip';
 import { useLayoutEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
 import type { Line } from '../../lib/shared/sentences';
@@ -52,11 +52,7 @@ export function ConfirmPopup({
       >
         <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
           <span>{title}</span>
-          <button
-            className="nav-button"
-            {...labelTip(strings.common.close)}
-            onClick={onCancel}
-          >
+          <button className="nav-button" {...closeTip} onClick={onCancel}>
             <CloseIcon />
           </button>
         </div>

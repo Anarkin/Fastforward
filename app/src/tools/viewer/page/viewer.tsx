@@ -1,6 +1,7 @@
+import { keyOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ViewMode } from './keymap';
+import { viewerKeymap, type ViewMode } from './keymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { focusBack, useFocusKeeper } from '../../../lib/page/viewFocus';
 import { useRestore } from '../../../lib/page/restore';
@@ -262,6 +263,7 @@ export function Viewer() {
                 <MenuButton
                   scrolling={scrolling}
                   title={strings.encodings.encoding}
+                  keys={keyOf(viewerKeymap.encoding)}
                   trigger={encodingTrigger}
                   onChosen={focusBody}
                   label={strings.encodings.short[shown]}
@@ -287,7 +289,9 @@ export function Viewer() {
               <div className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${realSize ? 'active' : ''}`}
-                  {...labelTip(strings.viewer.realSize)}
+                  {...labelTip(strings.viewer.realSize, {
+                    keys: keyOf(viewerKeymap.realSize),
+                  })}
                   aria-pressed={realSize}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={toggleRealSize}
@@ -301,7 +305,9 @@ export function Viewer() {
               <div className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-                  {...labelTip(strings.common.showWhitespace)}
+                  {...labelTip(strings.common.showWhitespace, {
+                    keys: keyOf(viewerKeymap.showWhitespace),
+                  })}
                   aria-pressed={showWhitespace}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() =>
@@ -312,7 +318,9 @@ export function Viewer() {
                 </button>
                 <button
                   className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-                  {...labelTip(strings.common.wrap)}
+                  {...labelTip(strings.common.wrap, {
+                    keys: keyOf(viewerKeymap.wrap),
+                  })}
                   aria-pressed={wordWrap}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => changeTextView({ wordWrap: !wordWrap })}
@@ -325,6 +333,7 @@ export function Viewer() {
           <div className="column-actions">
             <SearchButton
               title={strings.textFile.findInFile}
+              keys={keyOf(viewerKeymap.find)}
               onClick={openFind}
             />
           </div>

@@ -1,3 +1,5 @@
+import { diffKeymap } from './keymap';
+import { keyOf } from '../../../lib/shared/keymap';
 import {
   useCallback,
   useEffect,
@@ -181,7 +183,13 @@ export function Diff({
       focusName="diff"
       start={options}
       title={heading}
-      search={<SearchButton title={strings.find.title} onClick={openFind} />}
+      search={
+        <SearchButton
+          title={strings.find.title}
+          keys={keyOf(diffKeymap.find)}
+          onClick={openFind}
+        />
+      }
       status={
         <ColumnStatus loading={loading} font="monospace">
           {lines}

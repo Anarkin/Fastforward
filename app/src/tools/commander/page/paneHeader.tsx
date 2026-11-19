@@ -1,3 +1,5 @@
+import { commanderKeymap } from './keymap';
+import { keyOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { type Side } from '../shared/sides';
 import { type Layout } from './layouts';
@@ -39,6 +41,7 @@ function BookmarkButton({
     <MenuButton
       scrolling={scrolling}
       title={strings.commander.bookmarks}
+      keys={keyOf(commanderKeymap.bookmarks)}
       icon={<BookmarkIcon filled={bookmark !== undefined} />}
       arrow
       trigger={trigger}
@@ -65,7 +68,9 @@ function FlatButton({ side }: { side: Side }) {
   return (
     <button
       className={`nav-button toggle${flat ? ' active' : ''}${reading ? ' running' : ''}`}
-      {...labelTip(strings.commander.flatView)}
+      {...labelTip(strings.commander.flatView, {
+        keys: keyOf(commanderKeymap.flatView),
+      })}
       aria-pressed={flat}
       onClick={() => onFlat(side)}
     >
@@ -115,7 +120,9 @@ export function PaneTitle({
       <div className="column-start nav-buttons">
         <button
           className="nav-button"
-          {...labelTip(strings.commander.back)}
+          {...labelTip(strings.commander.back, {
+            keys: keyOf(commanderKeymap.history, -1),
+          })}
           disabled={back !== true}
           onClick={() => onStep(-1)}
         >
@@ -123,7 +130,9 @@ export function PaneTitle({
         </button>
         <button
           className="nav-button"
-          {...labelTip(strings.commander.forward)}
+          {...labelTip(strings.commander.forward, {
+            keys: keyOf(commanderKeymap.history, 1),
+          })}
           disabled={forward !== true}
           onClick={() => onStep(1)}
         >
@@ -134,6 +143,7 @@ export function PaneTitle({
             <MenuButton
               scrolling={scrolling}
               title={strings.commander.chooseDrive}
+              keys={keyOf(commanderKeymap.drive, side)}
               label={current ?? ''}
               path
               trigger={driveTrigger}
@@ -167,6 +177,7 @@ export function PaneTitle({
         <FlatButton side={side} />
         <SearchButton
           title={strings.commander.filterFolder}
+          keys={keyOf(commanderKeymap.filter)}
           onClick={onFilter}
         />
       </div>

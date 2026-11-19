@@ -47,6 +47,7 @@ function thenChosen(
 
 export function MenuButton({
   title,
+  keys,
   items,
   marked = false,
   icon = <MoreIcon />,
@@ -59,6 +60,7 @@ export function MenuButton({
   scrolling,
 }: {
   title: string;
+  keys?: string | undefined;
   items: readonly ContextMenuItem[];
   marked?: boolean;
   icon?: React.ReactNode;
@@ -72,6 +74,7 @@ export function MenuButton({
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
+  const shortcut = { keys };
   const close = useCallback(() => setOpen(false), []);
   const shown = onChosen === undefined ? items : thenChosen(items, onChosen);
 
@@ -93,7 +96,9 @@ export function MenuButton({
       <button
         ref={trigger}
         className={`nav-button menu-button-trigger${label === undefined ? '' : ' labelled'}${arrow ? ' arrowed' : ''}${open ? ' open' : ''}`}
-        {...(label === undefined ? labelTip(title) : tip(title))}
+        {...(label === undefined
+          ? labelTip(title, shortcut)
+          : tip(title, shortcut))}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}

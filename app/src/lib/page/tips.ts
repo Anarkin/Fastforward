@@ -15,7 +15,7 @@ export type TipAt = (typeof places)[number];
 export interface TipOptions {
   readonly at?: TipAt;
   readonly cut?: boolean;
-  readonly keys?: string;
+  readonly keys?: string | undefined;
 }
 
 export interface TipProps {

@@ -57,13 +57,16 @@ suite('App tooltips', () => {
     removeFolder(folder);
   });
 
-  test('shows the tooltip of a button the pointer rests on as a card of the app, centered below the button, inside the window and on whole device pixels, the browser showing none of its own', async () => {
+  test('shows the tooltip of a button the pointer rests on as a card of the app, its words and the keys that do the same as a key cap after them, centered below the button, inside the window and on whole device pixels, the browser showing none of its own', async () => {
     await away();
     await flat().hover();
     await tooltip().waitFor();
-    assert.strictEqual(
-      await tooltip().textContent(),
-      strings.commander.flatView,
+    assert.deepStrictEqual(
+      [
+        await tooltip().locator('.card-message').textContent(),
+        await tooltip().locator('.shortcut-combo kbd').allTextContents(),
+      ],
+      [strings.commander.flatView, ['Ctrl', 'B']],
     );
     const placed = await page.evaluate((selector) => {
       const card = document.querySelector('.card.tip');

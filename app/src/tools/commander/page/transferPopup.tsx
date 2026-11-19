@@ -1,5 +1,6 @@
+import { closeTip } from '../../../lib/page/closeTip';
 import { namedFile } from '../../../lib/shared/sentences';
-import { labelTip, tip } from '../../../lib/page/tips';
+import { tip } from '../../../lib/page/tips';
 import { joinedPath } from '../../../lib/page/pathLooks';
 import { useEffect, useId, useRef } from 'react';
 import { strings } from '../../../lib/shared/strings';
@@ -223,11 +224,7 @@ function TransferDialog({ transfer }: { transfer: TransferView }) {
       >
         <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
           <span>{title}</span>
-          <button
-            className="nav-button"
-            {...labelTip(strings.common.close)}
-            onClick={hideTransfer}
-          >
+          <button className="nav-button" {...closeTip} onClick={hideTransfer}>
             <CloseIcon />
           </button>
         </div>

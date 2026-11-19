@@ -3,15 +3,17 @@ import { SearchIcon } from './icons';
 
 export function SearchButton({
   title,
+  keys,
   onClick,
 }: {
   title: string;
+  keys?: string | undefined;
   onClick: () => void;
 }) {
   return (
     <button
       className="nav-button search-button"
-      {...labelTip(title)}
+      {...labelTip(title, { keys })}
       onClick={onClick}
     >
       <SearchIcon />

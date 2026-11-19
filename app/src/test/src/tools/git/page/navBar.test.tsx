@@ -66,7 +66,10 @@ suite('Navigation bar', () => {
       back: [{ hash: 'a'.repeat(40), subject: 'a' }],
     });
     assert.match(html, /data-tip="Back[^"]*"(?![^>]*disabled)/);
-    assert.match(html, /data-tip="Forward[^"]*" disabled=""/);
+    assert.match(
+      html,
+      /data-tip="Forward[^"]*" data-tip-keys="Alt\+ArrowRight" disabled=""/,
+    );
   });
 
   test('opens the search popup anew in another tab, so it searches again there for the same query', () => {
@@ -206,11 +209,11 @@ suite('Navigation bar', () => {
     assert.deepStrictEqual(posted, [{ type: 'jump', hash: at, root: '/repo' }]);
     assert.match(
       buttons({}),
-      /data-tip="Forward[^"]*"[^>]*>.*?<\/button><\/div><button class="nav-button" aria-label="Select the checked-out commit" data-tip="Select the checked-out commit">/,
+      /data-tip="Forward[^"]*"[^>]*>.*?<\/button><\/div><button class="nav-button" aria-label="Select the checked-out commit" data-tip="Select the checked-out commit" data-tip-keys="H">/,
     );
     assert.match(
       buttons({ headCommit: undefined }),
-      /data-tip="Select the checked-out commit" disabled=""/,
+      /data-tip="Select the checked-out commit" data-tip-keys="H" disabled=""/,
     );
   });
 });

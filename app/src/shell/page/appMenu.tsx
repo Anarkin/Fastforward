@@ -1,3 +1,4 @@
+import { keyOf } from '../../lib/shared/keymap';
 import { useRef } from 'react';
 import { shellKeymap } from '../shared/keymap';
 import { strings } from '../../lib/shared/strings';
@@ -31,6 +32,7 @@ export function AppMenu() {
       scrolling={scrolling}
       trigger={trigger}
       title={strings.tabs.settings}
+      keys={keyOf(shellKeymap.mainMenu)}
       icon={<AppIcon />}
       marked={installs}
       items={[

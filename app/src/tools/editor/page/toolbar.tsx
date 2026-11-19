@@ -1,3 +1,5 @@
+import { editorKeymap } from './keymap';
+import { keyOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import type { ReactNode, RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
@@ -187,7 +189,11 @@ export function EditorToolbar({
           </div>
         </div>
         <div className="column-actions">
-          <SearchButton title={strings.textFile.findInFile} onClick={onFind} />
+          <SearchButton
+            title={strings.textFile.findInFile}
+            keys={keyOf(editorKeymap.find)}
+            onClick={onFind}
+          />
         </div>
       </header>
       {reopening !== undefined && tab !== undefined && (
