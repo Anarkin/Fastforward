@@ -78,4 +78,22 @@ suite('Frames of the git tool', () => {
     );
     assert.ok(result.frames.updates > 0);
   });
+
+  test('scrolling every change of a commit of 500 hunks, its lines wrapped, with a mouse wheel', async () => {
+    const { page } = perf();
+    const every = page.locator('.row.group', { hasText: 'All Changes' });
+    if ((await every.count()) === 0) {
+      await toTop();
+      await page.locator('.commit', { hasText: reworkSubject }).click();
+    }
+    await every.click();
+    await page.locator('.diff-view .hunk-divider').first().waitFor();
+    const diff = page.locator('.diff-view .virtual-rows').first();
+    const from = await diff.evaluate((list) => list.scrollTop);
+    const result = await measure(perf(), 'git: every change, wheel', () =>
+      wheelNotches(page, diff, 40),
+    );
+    assert.ok(result.frames.updates > 0);
+    assert.ok((await diff.evaluate((list) => list.scrollTop)) > from);
+  });
 });

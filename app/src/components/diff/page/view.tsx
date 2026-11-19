@@ -59,7 +59,7 @@ import { useSideways } from './sideways';
 import { SidewaysBars } from './sidewaysBars';
 import { ScrollbarMarks } from '../../../lib/page/scrollbarMarks';
 import { scrollbarHeldAttribute } from '../../../lib/page/scrollbars';
-import { marksScale } from './changeMarks';
+import { leastMark, marksScale } from './changeMarks';
 import { snappedLeft } from '../../../lib/page/columnScroll';
 import { useLaterRows } from '../../../lib/page/laterRows';
 import { useFoundJumps, useRevealFound } from './jumps';
@@ -79,7 +79,6 @@ export function DiffView({
   onLoad,
   texts,
   onLoadTexts,
-  changeMarks,
   matches,
   current,
   jump,
@@ -105,7 +104,6 @@ export function DiffView({
   onLoad: (path: string) => void;
   texts: ReadonlyMap<string, LoadedText>;
   onLoadTexts: (texts: TextRequest[]) => void;
-  changeMarks: boolean;
   matches: readonly FindMatch[];
   current: number;
   jump: number;
@@ -455,11 +453,13 @@ export function DiffView({
     virtualizer,
     lineHeight,
   });
+  const marked = virtualizer.getTotalSize();
+  const viewport = virtualizer.scrollRect?.height ?? 0;
   const marks = useDiffMarks({
     rows,
     keys,
     rangesByLine,
-    changeMarks,
+    least: leastMark(marked, viewport),
     virtualizer,
   });
 
@@ -525,13 +525,7 @@ export function DiffView({
           list={list}
         />
       )}
-      <ScrollbarMarks
-        marks={marks}
-        scale={marksScale(
-          virtualizer.getTotalSize(),
-          virtualizer.scrollRect?.height ?? 0,
-        )}
-      />
+      <ScrollbarMarks marks={marks} scale={marksScale(marked, viewport)} />
       <div
         className="virtual-rows"
         ref={list}

@@ -1,9 +1,8 @@
 import { memo, useMemo } from 'react';
 import { ScrollbarMarks } from '../../../lib/page/scrollbarMarks';
+import { leastTick } from '../../../lib/page/scrollbarTicks';
 import type { ByteRange } from '../shared/protocol';
 import { matchTicks } from './scrollThumbs';
-
-const minTick = 2;
 
 export const MatchTicks = memo(function MatchTicks({
   ticks,
@@ -18,7 +17,7 @@ export const MatchTicks = memo(function MatchTicks({
 }) {
   const marks = useMemo(
     () =>
-      matchTicks(matches, size, track > 0 ? minTick / track : 0).map(
+      matchTicks(matches, size, track > 0 ? leastTick / track : 0).map(
         (tick) => ({ kind: 'match', ...tick }),
       ),
     [matches, size, track],

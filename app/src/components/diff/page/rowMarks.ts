@@ -8,7 +8,7 @@ interface MarksInput {
   readonly rows: readonly DiffRow[];
   readonly keys: readonly (readonly string[])[];
   readonly matched: ReadonlyMap<string, unknown>;
-  readonly changeMarks: boolean;
+  readonly least: number;
   readonly measurements: readonly { readonly size: number }[];
 }
 
@@ -16,7 +16,7 @@ const noMarksInput: MarksInput = {
   rows: [],
   keys: [],
   matched: new Map(),
-  changeMarks: false,
+  least: 0,
   measurements: [],
 };
 
@@ -24,7 +24,7 @@ export function diffMarks(
   rows: readonly DiffRow[],
   keys: readonly (readonly string[])[],
   matchedLines: ReadonlyMap<string, unknown>,
-  changeMarks: boolean,
+  least: number,
   measured?: (index: number) => number | undefined,
 ): ChangeMark[] {
   const heights = markedRows(rows, measured);
@@ -34,8 +34,8 @@ export function diffMarks(
     ),
   );
   return [
-    ...(changeMarks ? changedMarks(heights) : []),
-    ...matchMarks(heights, matched),
+    ...changedMarks(heights, least),
+    ...matchMarks(heights, matched, least),
   ];
 }
 
@@ -43,13 +43,13 @@ export function useDiffMarks({
   rows,
   keys,
   rangesByLine,
-  changeMarks,
+  least,
   virtualizer,
 }: {
   readonly rows: readonly DiffRow[];
   readonly keys: readonly (readonly string[])[];
   readonly rangesByLine: ReadonlyMap<string, unknown>;
-  readonly changeMarks: boolean;
+  readonly least: number;
   readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
 }): ChangeMark[] {
   const measurements = virtualizer.measurementsCache;
@@ -59,10 +59,10 @@ export function useDiffMarks({
         rows,
         keys,
         matched: rangesByLine,
-        changeMarks,
+        least,
         measurements,
       }),
-      [rows, keys, rangesByLine, changeMarks, measurements],
+      [rows, keys, rangesByLine, least, measurements],
     ),
     noMarksInput,
   );
@@ -72,7 +72,7 @@ export function useDiffMarks({
         marksInput.rows,
         marksInput.keys,
         marksInput.matched,
-        marksInput.changeMarks,
+        marksInput.least,
         (index) => marksInput.measurements[index]?.size,
       ),
     [marksInput],

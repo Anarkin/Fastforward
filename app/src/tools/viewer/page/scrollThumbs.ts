@@ -1,3 +1,4 @@
+import { tickJoiner, type Tick } from '../../../lib/page/scrollbarTicks';
 import type { ByteRange } from '../shared/protocol';
 
 export interface Thumb {
@@ -14,11 +15,6 @@ export function rowEnds(top: number, lastTop: number): Ends {
   return { atStart: top <= 0, atEnd: top >= lastTop };
 }
 
-export interface Tick {
-  readonly top: number;
-  readonly height: number;
-}
-
 export function matchTicks(
   matches: readonly ByteRange[],
   size: number,
@@ -27,16 +23,9 @@ export function matchTicks(
   if (size <= 0) {
     return [];
   }
-  const ticks: { top: number; bottom: number }[] = [];
+  const joined = tickJoiner(least);
   for (const match of matches) {
-    const top = match.start / size;
-    const bottom = Math.max(match.end / size, top + least);
-    const last = ticks.at(-1);
-    if (last !== undefined && top <= last.bottom) {
-      last.bottom = Math.max(last.bottom, bottom);
-    } else {
-      ticks.push({ top, bottom });
-    }
+    joined.add(match.start / size, match.end / size);
   }
-  return ticks.map(({ top, bottom }) => ({ top, height: bottom - top }));
+  return joined.ticks();
 }

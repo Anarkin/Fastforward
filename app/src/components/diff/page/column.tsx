@@ -52,7 +52,6 @@ export interface DiffProps {
   readonly fileContent: WholeFile | undefined;
   readonly error: Sentence | undefined;
   readonly options: React.ReactNode;
-  readonly changeMarks: boolean;
   readonly entire: boolean;
   readonly origin: ImageOrigin | undefined;
   readonly findAsked: number;
@@ -84,7 +83,6 @@ export function Diff({
   fileContent,
   error,
   options,
-  changeMarks,
   entire,
   origin,
   findAsked,
@@ -212,7 +210,6 @@ export function Diff({
         onLoad={onLoadFile}
         texts={texts}
         onLoadTexts={onLoadTexts}
-        changeMarks={changeMarks}
         origin={origin}
         matches={matches}
         current={shown}

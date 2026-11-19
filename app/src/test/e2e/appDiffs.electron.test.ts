@@ -184,7 +184,7 @@ suite('App', () => {
     await page.locator('.search-count', { hasText: '1 of 2' }).waitFor();
     await marks.waitFor();
     await waitForCount(found, 2, 'match marks');
-    await waitForCount(added, 0, 'added marks');
+    await added.first().waitFor();
     await field.press('Escape');
     await count.waitFor({ state: 'detached' });
     await waitForCount(page.locator('.find-match'), 0, 'matches');

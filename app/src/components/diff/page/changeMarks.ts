@@ -1,3 +1,9 @@
+import {
+  leastTick,
+  tickJoiner,
+  type TickJoiner,
+} from '../../../lib/page/scrollbarTicks';
+
 export interface ChangeMark {
   readonly kind: 'added' | 'removed' | 'match';
   readonly top: number;
@@ -12,21 +18,20 @@ export interface MarkedRow {
 function runMarks(
   rows: readonly MarkedRow[],
   kindOf: (row: MarkedRow, index: number) => ChangeMark['kind'] | undefined,
+  least: number,
 ): ChangeMark[] {
   const total = rows.reduce((sum, row) => sum + row.height, 0);
   if (total === 0) {
     return [];
   }
-  const marks: ChangeMark[] = [];
+  const joiners = new Map<ChangeMark['kind'], TickJoiner>();
   let offset = 0;
   let run: { kind: ChangeMark['kind']; start: number; end: number } | undefined;
   const close = () => {
     if (run) {
-      marks.push({
-        kind: run.kind,
-        top: run.start / total,
-        height: (run.end - run.start) / total,
-      });
+      const joiner = joiners.get(run.kind) ?? tickJoiner(least);
+      joiners.set(run.kind, joiner);
+      joiner.add(run.start / total, run.end / total);
       run = undefined;
     }
   };
@@ -42,18 +47,35 @@ function runMarks(
     offset += row.height;
   });
   close();
-  return marks;
+  return [...joiners]
+    .flatMap(([kind, joiner]) =>
+      joiner.ticks().map((tick) => ({ kind, ...tick })),
+    )
+    .toSorted((one, other) => one.top - other.top);
 }
 
-export function changedMarks(rows: readonly MarkedRow[]): ChangeMark[] {
-  return runMarks(rows, (row) => row.change);
+export function changedMarks(
+  rows: readonly MarkedRow[],
+  least: number,
+): ChangeMark[] {
+  return runMarks(rows, (row) => row.change, least);
 }
 
 export function matchMarks(
   rows: readonly MarkedRow[],
   found: ReadonlySet<number>,
+  least: number,
 ): ChangeMark[] {
-  return runMarks(rows, (_, index) => (found.has(index) ? 'match' : undefined));
+  return runMarks(
+    rows,
+    (_, index) => (found.has(index) ? 'match' : undefined),
+    least,
+  );
+}
+
+export function leastMark(total: number, viewport: number): number {
+  const marked = Math.min(total, viewport);
+  return marked > 0 ? leastTick / marked : 0;
 }
 
 export function marksScale(total: number, viewport: number): number {

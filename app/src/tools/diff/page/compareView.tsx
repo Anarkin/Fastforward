@@ -119,7 +119,6 @@ export function CompareView({ tab }: { tab: string }) {
           onLoadTexts={loadTexts}
           fileContent={undefined}
           error={compare?.error}
-          changeMarks={compare?.entire ?? false}
           entire={compare?.entire ?? false}
           origin={origin}
           findAsked={findAsked}

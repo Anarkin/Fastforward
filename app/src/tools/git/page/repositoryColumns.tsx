@@ -119,7 +119,6 @@ const RepositoryDiff = memo(function RepositoryDiff() {
       findAsked={findAsked}
       filter={filter}
       languageKey={languageKey}
-      changeMarks={path !== undefined && entire}
       entire={entire}
     />
   );

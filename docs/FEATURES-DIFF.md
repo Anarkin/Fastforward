@@ -33,7 +33,7 @@
 | Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |
 | Context | Show more lines around the changes, or the whole file | — | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
 | Line wrapping | Wrap long lines | W | Common | ✅ Yes | Off by default; W |
-| Minimap | Mark the changes on a strip beside the diff | — | Advanced | ✅ Yes | On the track of the scrollbar itself rather than a strip of its own, so each mark stands where the thumb comes to it: the changes of a file shown whole, and what a find matches |
+| Minimap | Mark the changes on a strip beside the diff | — | Advanced | ✅ Yes | On the track of the scrollbar itself rather than a strip of its own, so each mark stands where the thumb comes to it: the changes of what is shown, a file whole or the hunks of every file of a commit, and what a find matches, marks closer than two pixels drawn as one |
 
 ## Whitespace and text
 

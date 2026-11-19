@@ -23,7 +23,6 @@ const shown = (sideBySide: boolean, wordWrap: boolean) =>
       onLoad={noop}
       texts={new Map()}
       onLoadTexts={noop}
-      changeMarks
       matches={[]}
       current={0}
       jump={0}
@@ -61,7 +60,6 @@ suite('A diff shown anew', () => {
         onLoad={noop}
         texts={new Map()}
         onLoadTexts={noop}
-        changeMarks
         matches={[]}
         current={0}
         jump={0}

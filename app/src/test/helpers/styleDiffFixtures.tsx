@@ -191,7 +191,6 @@ export function DiffViewShown({
       onLoad={noop}
       texts={new Map()}
       onLoadTexts={noop}
-      changeMarks
       matches={[]}
       current={0}
       jump={0}

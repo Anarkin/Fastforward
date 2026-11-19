@@ -24,19 +24,19 @@ const patch = [
 ].join('\n');
 
 suite('Find in diff', () => {
-  test('marks the changes on the scrollbar only when asked, as for a file shown entire, but the matches always', () => {
+  test('marks the changes on the scrollbar whatever is shown, the hunks of several files as a file shown entire, and the matches, each kind once where its marks are too close to tell apart', () => {
     const rows = diffRows(parsePatch(patch), new Map(), undefined);
     const keys = lineKeys(rows);
     const matched = new Map([['0:3', []]]);
-    const kinds = (changeMarks: boolean) =>
-      diffMarks(rows, keys, matched, changeMarks).map((mark) => mark.kind);
-    assert.deepStrictEqual(kinds(false), ['match']);
-    assert.deepStrictEqual(kinds(true), [
+    const kinds = (least: number) =>
+      diffMarks(rows, keys, matched, least).map((mark) => mark.kind);
+    assert.deepStrictEqual(kinds(0), [
       'removed',
       'added',
       'removed',
       'added',
       'match',
     ]);
+    assert.deepStrictEqual(kinds(1), ['removed', 'added', 'match']);
   });
 });
