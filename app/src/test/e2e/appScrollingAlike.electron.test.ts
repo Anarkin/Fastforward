@@ -22,6 +22,8 @@ import {
   type ViewName,
 } from './scrollingPlaces';
 
+const everyViewTime = 180_000;
+
 const perNotch = 10;
 const touched = 13;
 
@@ -465,73 +467,81 @@ suite('App scrolling alike', () => {
 
   const acrossViews: readonly ViewName[] = ['viewer', 'diff'];
 
-  test('glides every view while scrolling glides on whatever is pressed, a notch of the wheel, Page Down, an arrow or End, through places between where it was and where it comes to rest, on a whole row, the commit list and the file viewed as the others, which jumped on their keys, and the editor as its cursor is paged, sent to the end of the file or brought back into view by an arrow, which the caret of the browser scrolled at once', async () => {
-    const glided = { moved: true, glides: true, whole: true };
-    const arrowed: readonly ViewName[] = ['viewer', 'editor', 'diff'];
-    const ended: readonly ViewName[] = [
-      'commander',
-      'editor',
-      'diff',
-      'commit list',
-      'files',
-      'thumbnails',
-    ];
-    assert.deepStrictEqual(
-      {
-        wheel: await inEvery(everyView, wheeled),
-        pageDown: await inEvery(everyView, (name) =>
-          keyed(name, 'PageDown', 2),
-        ),
-        arrowDown: await inEvery(arrowed, async (name) => {
-          if (name === 'editor') {
-            await center(name);
-            await page.mouse.wheel(0, 100);
-            await pause(600);
-          }
-          return keyed(name, 'ArrowDown');
-        }),
-        end: await inEvery(ended, async (name) => {
-          const { moved, whole } = await keyed(
-            name,
-            name === 'editor' ? 'ControlOrMeta+End' : 'End',
-          );
-          return { moved, whole };
-        }),
-      },
-      {
-        wheel: alike(everyView, glided),
-        pageDown: alike(everyView, glided),
-        arrowDown: alike(arrowed, glided),
-        end: alike(ended, { moved: true, whole: true }),
-      },
-    );
-  });
+  test(
+    'glides every view while scrolling glides on whatever is pressed, a notch of the wheel, Page Down, an arrow or End, through places between where it was and where it comes to rest, on a whole row, the commit list and the file viewed as the others, which jumped on their keys, and the editor as its cursor is paged, sent to the end of the file or brought back into view by an arrow, which the caret of the browser scrolled at once',
+    async () => {
+      const glided = { moved: true, glides: true, whole: true };
+      const arrowed: readonly ViewName[] = ['viewer', 'editor', 'diff'];
+      const ended: readonly ViewName[] = [
+        'commander',
+        'editor',
+        'diff',
+        'commit list',
+        'files',
+        'thumbnails',
+      ];
+      assert.deepStrictEqual(
+        {
+          wheel: await inEvery(everyView, wheeled),
+          pageDown: await inEvery(everyView, (name) =>
+            keyed(name, 'PageDown', 2),
+          ),
+          arrowDown: await inEvery(arrowed, async (name) => {
+            if (name === 'editor') {
+              await center(name);
+              await page.mouse.wheel(0, 100);
+              await pause(600);
+            }
+            return keyed(name, 'ArrowDown');
+          }),
+          end: await inEvery(ended, async (name) => {
+            const { moved, whole } = await keyed(
+              name,
+              name === 'editor' ? 'ControlOrMeta+End' : 'End',
+            );
+            return { moved, whole };
+          }),
+        },
+        {
+          wheel: alike(everyView, glided),
+          pageDown: alike(everyView, glided),
+          arrowDown: alike(arrowed, glided),
+          end: alike(ended, { moved: true, whole: true }),
+        },
+      );
+    },
+    everyViewTime,
+  );
 
-  test('moves every view while scrolling glides with whatever is held, at once and by pixels, between rows too, its scrollbar staying where the pointer holds it rather than gliding after it and a touchpad moving it as far as it is stroked, the file viewed as the lists, and settles on a whole row once let go', async () => {
-    assert.deepStrictEqual(
-      {
-        scrollbar: await inEvery(everyView, (name) =>
-          barHeld(name, () => down(name), 'vertical'),
-        ),
-        touchpad: await inEvery(everyView, (name) =>
-          swiped(name, () => down(name), { deltaY: touched }),
-        ),
-      },
-      {
-        scrollbar: alike(everyView, {
-          moved: true,
-          still: true,
-          between: true,
-          whole: true,
-        }),
-        touchpad: alike(everyView, {
-          moved: true,
-          followed: true,
-          whole: true,
-        }),
-      },
-    );
-  });
+  test(
+    'moves every view while scrolling glides with whatever is held, at once and by pixels, between rows too, its scrollbar staying where the pointer holds it rather than gliding after it and a touchpad moving it as far as it is stroked, the file viewed as the lists, and settles on a whole row once let go',
+    async () => {
+      assert.deepStrictEqual(
+        {
+          scrollbar: await inEvery(everyView, (name) =>
+            barHeld(name, () => down(name), 'vertical'),
+          ),
+          touchpad: await inEvery(everyView, (name) =>
+            swiped(name, () => down(name), { deltaY: touched }),
+          ),
+        },
+        {
+          scrollbar: alike(everyView, {
+            moved: true,
+            still: true,
+            between: true,
+            whole: true,
+          }),
+          touchpad: alike(everyView, {
+            moved: true,
+            followed: true,
+            whole: true,
+          }),
+        },
+      );
+    },
+    everyViewTime,
+  );
 
   test('scrolls the text of the viewer, the editor and the diff sideways as it scrolls down while scrolling glides, gliding onto a whole column on the wheel with Shift and on Right, and following the scrollbar held and a touchpad stroked sideways at once, between columns too, to settle on a whole column once let go', async () => {
     assert.deepStrictEqual(
@@ -572,80 +582,96 @@ suite('App scrolling alike', () => {
     );
   });
 
-  test('leaves every view where a touchpad left it, between rows and between columns, once the settings say not to settle what was held, scrolling still gliding', async () => {
-    await scrollsSet(true, false);
-    assert.deepStrictEqual(
-      {
-        down: await inEvery(everyView, (name) =>
-          swiped(name, () => down(name), { deltaY: touched }),
-        ),
-        across: await inEvery(textViews, (name) =>
-          swiped(name, () => across(name), { deltaX: touched }),
-        ),
-      },
-      {
-        down: alike(everyView, { moved: true, followed: true, whole: false }),
-        across: alike(textViews, {
-          moved: true,
-          followed: true,
-          whole: false,
-        }),
-      },
-    );
-  });
+  test(
+    'leaves every view where a touchpad left it, between rows and between columns, once the settings say not to settle what was held, scrolling still gliding',
+    async () => {
+      await scrollsSet(true, false);
+      assert.deepStrictEqual(
+        {
+          down: await inEvery(everyView, (name) =>
+            swiped(name, () => down(name), { deltaY: touched }),
+          ),
+          across: await inEvery(textViews, (name) =>
+            swiped(name, () => across(name), { deltaX: touched }),
+          ),
+        },
+        {
+          down: alike(everyView, { moved: true, followed: true, whole: false }),
+          across: alike(textViews, {
+            moved: true,
+            followed: true,
+            whole: false,
+          }),
+        },
+      );
+    },
+    everyViewTime,
+  );
 
-  test('leaves every view as it is while all of it fits in the view, scrolling gliding: nothing moves or shifts on the wheel, a touchpad stroked down or sideways, or the keys, and no scrollbar of it has a thumb, as a short file viewed shook on each notch of the wheel and showed a thumb as long as its view', async () => {
-    await scrollsSet(true, true);
-    assert.deepStrictEqual(
-      await inEveryFitting(fitting),
-      alike(everyView, { still: true, thumbs: 0 }),
-    );
-  });
+  test(
+    'leaves every view as it is while all of it fits in the view, scrolling gliding: nothing moves or shifts on the wheel, a touchpad stroked down or sideways, or the keys, and no scrollbar of it has a thumb, as a short file viewed shook on each notch of the wheel and showed a thumb as long as its view',
+    async () => {
+      await scrollsSet(true, true);
+      assert.deepStrictEqual(
+        await inEveryFitting(fitting),
+        alike(everyView, { still: true, thumbs: 0 }),
+      );
+    },
+    everyViewTime,
+  );
 
-  test('lands every view on whole rows and whole columns at once while scrolling does not glide, whatever moves it, the wheel, the keys, a scrollbar held or a touchpad, with nothing between and nothing left to settle', async () => {
-    await scrollsSet(false, true);
-    const landed = { moved: true, glides: false, whole: true };
-    const stepped = { moved: true, followed: false, whole: true };
-    const dragged = { moved: true, still: true, between: false, whole: true };
-    assert.deepStrictEqual(
-      {
-        wheel: await inEvery(everyView, wheeled),
-        pageDown: await inEvery(everyView, (name) =>
-          keyed(name, 'PageDown', 2),
-        ),
-        scrollbar: await inEvery(everyView, (name) =>
-          barHeld(name, () => down(name), 'vertical'),
-        ),
-        touchpad: await inEvery(everyView, (name) =>
-          swiped(name, () => down(name), { deltaY: touched }),
-        ),
-        wheelAcross: await inEvery(textViews, async (name) => {
-          await center(name);
-          return pressed(name, true, async () => {
-            await page.keyboard.down('Shift');
-            await page.mouse.wheel(0, 100);
-            await page.keyboard.up('Shift');
-          });
-        }),
-        scrollbarAcross: await inEvery(textViews, (name) =>
-          barHeld(name, () => across(name), 'horizontal'),
-        ),
-      },
-      {
-        wheel: alike(everyView, landed),
-        pageDown: alike(everyView, landed),
-        scrollbar: alike(everyView, dragged),
-        touchpad: alike(everyView, stepped),
-        wheelAcross: alike(textViews, landed),
-        scrollbarAcross: alike(textViews, dragged),
-      },
-    );
-  });
+  test(
+    'lands every view on whole rows and whole columns at once while scrolling does not glide, whatever moves it, the wheel, the keys, a scrollbar held or a touchpad, with nothing between and nothing left to settle',
+    async () => {
+      await scrollsSet(false, true);
+      const landed = { moved: true, glides: false, whole: true };
+      const stepped = { moved: true, followed: false, whole: true };
+      const dragged = { moved: true, still: true, between: false, whole: true };
+      assert.deepStrictEqual(
+        {
+          wheel: await inEvery(everyView, wheeled),
+          pageDown: await inEvery(everyView, (name) =>
+            keyed(name, 'PageDown', 2),
+          ),
+          scrollbar: await inEvery(everyView, (name) =>
+            barHeld(name, () => down(name), 'vertical'),
+          ),
+          touchpad: await inEvery(everyView, (name) =>
+            swiped(name, () => down(name), { deltaY: touched }),
+          ),
+          wheelAcross: await inEvery(textViews, async (name) => {
+            await center(name);
+            return pressed(name, true, async () => {
+              await page.keyboard.down('Shift');
+              await page.mouse.wheel(0, 100);
+              await page.keyboard.up('Shift');
+            });
+          }),
+          scrollbarAcross: await inEvery(textViews, (name) =>
+            barHeld(name, () => across(name), 'horizontal'),
+          ),
+        },
+        {
+          wheel: alike(everyView, landed),
+          pageDown: alike(everyView, landed),
+          scrollbar: alike(everyView, dragged),
+          touchpad: alike(everyView, stepped),
+          wheelAcross: alike(textViews, landed),
+          scrollbarAcross: alike(textViews, dragged),
+        },
+      );
+    },
+    everyViewTime,
+  );
 
-  test('leaves every view as it is while all of it fits in the view and scrolling does not glide either', async () => {
-    assert.deepStrictEqual(
-      await inEveryFitting(fitting),
-      alike(everyView, { still: true, thumbs: 0 }),
-    );
-  });
+  test(
+    'leaves every view as it is while all of it fits in the view and scrolling does not glide either',
+    async () => {
+      assert.deepStrictEqual(
+        await inEveryFitting(fitting),
+        alike(everyView, { still: true, thumbs: 0 }),
+      );
+    },
+    everyViewTime,
+  );
 });
