@@ -10,6 +10,17 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { barOf, barParts, type Axis } from './scrollbarsShown';
 import { writeSettings } from './settingsWritten';
 import { untilSettled } from './waits';
+import {
+  paintedPlaces,
+  placeAcross,
+  placeDown,
+  recordPainted,
+  stalled,
+  thumbShownAt,
+  views,
+  type Place,
+  type ViewName,
+} from './scrollingPlaces';
 
 const perNotch = 10;
 const touched = 13;
@@ -21,123 +32,19 @@ const lines = (changed: boolean) =>
       `line ${row}${changed && row % 50 === 7 ? ' changed' : ''} ${'of words that reach far past the right edge of the window '.repeat(6)}end`,
   ).join('\n');
 
-const views = {
-  commander: {
-    tab: 0,
-    pane: '.commander-pane:not(.inactive) .virtual-rows',
-    rows: '.virtual-row',
-    vertical: '.commander-pane:not(.inactive) .virtual-rows',
-    horizontal: undefined,
-    across: undefined,
-  },
-  viewer: {
-    tab: 1,
-    pane: '.viewer-body',
-    rows: '.viewer-row:not(.viewer-probe)',
-    vertical: '.viewer-body .scroll-proxy.vertical',
-    horizontal: '.viewer-sideways',
-    across: '.viewer-sideways',
-  },
-  editor: {
-    tab: 2,
-    pane: '.editor .cm-scroller',
-    rows: '.cm-line',
-    vertical: '.editor .cm-scroller',
-    horizontal: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
-    across: '.editor .cm-scroller',
-  },
-  diff: {
-    tab: 3,
-    pane: '.diff-view .virtual-rows',
-    rows: '.virtual-row',
-    vertical: '.diff-view > .virtual-rows',
-    horizontal: '.diff-view .scroll-proxy.horizontal',
-    across: '.diff-row .split-code .code',
-  },
-  'commit list': {
-    tab: 4,
-    pane: '.virtual-rows.list',
-    rows: '.virtual-row',
-    vertical: '.virtual-rows.list',
-    horizontal: undefined,
-    across: undefined,
-  },
-} as const;
-
-type ViewName = keyof typeof views;
-
 const everyView: readonly ViewName[] = [
   'commander',
   'viewer',
   'editor',
   'diff',
   'commit list',
+  'files',
+  'thumbnails',
 ];
 
 const textViews: readonly ViewName[] = ['viewer', 'editor', 'diff'];
 
 const axes: readonly Axis[] = ['vertical', 'horizontal'];
-
-interface Place {
-  readonly state: string;
-  readonly part: number;
-  readonly onRow: boolean;
-  readonly row: number;
-}
-
-function placeDown(pane: Element, rows: string): Place {
-  const top = pane.getBoundingClientRect().top;
-  const header = pane.querySelector('.diff-stuck-header > *, .pinned-rows');
-  const covered =
-    (header?.getBoundingClientRect().bottom ?? top) -
-    top +
-    (parseFloat(getComputedStyle(pane).scrollPaddingTop) || 0);
-  const boxes = [...pane.querySelectorAll(rows)]
-    .map((row) => ({
-      box: row.getBoundingClientRect(),
-      text: (row.textContent ?? '').slice(0, 24),
-    }))
-    .filter(({ box }) => box.height > 0 && box.bottom > top + covered + 0.5)
-    .toSorted((one, other) => one.box.top - other.box.top);
-  const [first] = boxes;
-  const row = first?.box.height ?? 1;
-  const lists = pane.querySelector('.viewer-rows');
-  const turned = lists
-    ? (pane.querySelector('.viewer-sideways')?.scrollTop ?? 0) / row
-    : 0;
-  const shifted = lists
-    ? Math.abs(turned - Math.round(turned)) < 0.001
-      ? 0
-      : (turned - Math.floor(turned)) * row
-    : pane.scrollTop % row;
-  const offset = first ? first.box.top - top - covered : 0;
-  return {
-    state: `${Math.round(pane.scrollTop * 10)}|${first?.text ?? ''}|${Math.round(offset * 10)}`,
-    part: shifted,
-    onRow: boxes.some(({ box }) => Math.abs(box.top - top - covered) < 0.6),
-    row,
-  };
-}
-
-function placeAcross(moved: Element): Place {
-  const left =
-    moved.scrollWidth > moved.clientWidth + 1
-      ? moved.scrollLeft
-      : -new DOMMatrix(getComputedStyle(moved).transform).m41;
-  const probe = document.createElement('span');
-  probe.style.cssText =
-    'position: absolute; visibility: hidden; font-family: var(--monospace-font-family); font-size: var(--monospace-font-size); width: round(1ch, var(--device-pixel, 1px))';
-  (moved.closest('.diff-view, .viewer, .cm-editor') ?? moved).append(probe);
-  const column = probe.getBoundingClientRect().width || 1;
-  probe.remove();
-  const columns = left / column;
-  return {
-    state: String(Math.round(left * 10)),
-    part: left % column,
-    onRow: Math.abs(columns - Math.round(columns)) < 0.05,
-    row: column,
-  };
-}
 
 const between = (samples: readonly string[]) =>
   new Set(samples).size > 2 && samples.at(-1) !== samples[0];
@@ -172,89 +79,24 @@ const settingsWith = (smooth: boolean, smoothSnap: boolean) => ({
   text: { wordWrap: false },
 });
 
-const fittingFrom = Object.keys(views).length;
+const fittingFrom =
+  Math.max(...Object.values(views).map((view) => view.tab)) + 1;
+
+const rowUnder = (name: ViewName, fitting: boolean) =>
+  fitting ? (name === 'thumbnails' ? 0 : 1) : 5;
 
 const alike = <T>(names: readonly ViewName[], value: T) =>
   Object.fromEntries(names.map((name) => [name, value]));
 
-function recordPainted(
-  down: typeof placeDown,
-  sideways: typeof placeAcross,
-  pane: string,
-  rows: string,
-  moved: string | null,
-): void {
-  const seen: { readonly state: string; readonly at: number }[] = [];
-  Reflect.set(window, 'placesPainted', seen);
-  Reflect.set(window, 'placesWatched', true);
-  const read = () => {
-    const element = document.querySelector(moved ?? pane);
-    if (element !== null) {
-      seen.push({
-        state:
-          moved === null ? down(element, rows).state : sideways(element).state,
-        at: performance.now(),
-      });
-    }
-  };
-  const frame = () => {
-    if (Reflect.get(window, 'placesWatched') !== true) {
-      return;
-    }
-    const painted = new MessageChannel();
-    painted.port1.addEventListener('message', read, { once: true });
-    painted.port1.start();
-    painted.port2.postMessage(0);
-    requestAnimationFrame(frame);
-  };
-  read();
-  requestAnimationFrame(frame);
-}
-
-function paintedPlaces(): { state: string; at: number }[] {
-  Reflect.set(window, 'placesWatched', false);
-  const seen: unknown = Reflect.get(window, 'placesPainted');
-  return Array.isArray(seen)
-    ? seen.map((each: unknown) => ({
-        state: String(Reflect.get(Object(each), 'state')),
-        at: Number(Reflect.get(Object(each), 'at')),
-      }))
-    : [];
-}
-
-function thumbShownAt(bar: {
-  readonly axis: string;
-  readonly left: number;
-  readonly top: number;
-}): boolean | null {
-  const cover = document.querySelector(`.scrollbar-cover.${bar.axis}.shown`);
-  const thumb = cover?.querySelector<HTMLElement>('.scrollbar-thumb');
-  const box = cover?.getBoundingClientRect();
-  return !thumb ||
-    !box ||
-    Math.abs(box.left - bar.left) > 1 ||
-    Math.abs(box.top - bar.top) > 1
-    ? null
-    : !thumb.hidden;
-}
-
-const longestFrame = 100;
-
-function stalled(painted: readonly { state: string; at: number }[]): boolean {
-  const first = painted.findIndex((each) => each.state !== painted[0]?.state);
-  const last = painted.findLastIndex(
-    (each, index) => index > 0 && each.state !== painted[index - 1]?.state,
-  );
-  return (
-    first !== -1 &&
-    painted
-      .slice(first, last + 1)
-      .some(
-        (each, index) =>
-          each.at - (painted[first + index - 1]?.at ?? each.at) > longestFrame,
-      )
-  );
-}
+const inEveryFitting = async <T>(
+  check: (name: ViewName) => Promise<T>,
+): Promise<Record<string, T>> => {
+  const found: Record<string, T> = {};
+  for (const name of everyView) {
+    found[name] = await check(name);
+  }
+  return found;
+};
 
 suite('App scrolling alike', () => {
   let app: ElectronApplication;
@@ -279,10 +121,27 @@ suite('App scrolling alike', () => {
       .locator('.tabs .tab')
       .nth(tab + (fitting ? fittingFrom : 0))
       .click();
+    if (name === 'files') {
+      const commits = views['commit list'];
+      await page
+        .locator(`${commits.pane} ${commits.rows}`, { hasText: 'files' })
+        .first()
+        .waitFor();
+      await page.locator(commits.pane).first().focus();
+      await page.keyboard.press('h');
+    }
     await page.locator(pane).first().waitFor();
+    if (name === 'thumbnails') {
+      const tiles = page.locator(`${pane} .commander-tile`);
+      if ((await tiles.count()) === 0) {
+        await page.locator(pane).first().focus();
+        await page.keyboard.press('ControlOrMeta+2');
+      }
+      await tiles.first().waitFor();
+    }
     await page
       .locator(`${pane} ${rows}`)
-      .nth(fitting ? 1 : 5)
+      .nth(rowUnder(name, fitting))
       .waitFor();
     await page
       .locator(name === 'editor' ? '.editor .cm-content' : pane)
@@ -317,16 +176,6 @@ suite('App scrolling alike', () => {
     return found;
   };
 
-  const inEveryFitting = async <T>(
-    check: (name: ViewName) => Promise<T>,
-  ): Promise<Record<string, T>> => {
-    const found: Record<string, T> = {};
-    for (const name of everyView) {
-      found[name] = await check(name);
-    }
-    return found;
-  };
-
   beforeAll(async () => {
     const folder = tempFolder('scrolling-alike');
     profile = path.join(folder, 'profile');
@@ -347,6 +196,15 @@ suite('App scrolling alike', () => {
     for (let index = 0; index < 150; index++) {
       await repository.git('commit', '--allow-empty', '-m', `step ${index}`);
     }
+    const filed = await tempRepository(path.join(folder, 'filed'));
+    for (let file = 0; file < 300; file++) {
+      fs.writeFileSync(
+        path.join(filed.root, `added-${String(file).padStart(3, '0')}.txt`),
+        `file ${file}`,
+      );
+    }
+    await filed.git('add', '.');
+    await filed.git('commit', '-m', 'many files');
     const few = path.join(folder, 'few');
     fs.mkdirSync(few);
     for (const name of ['a.txt', 'b.txt', 'c.txt']) {
@@ -366,6 +224,12 @@ suite('App scrolling alike', () => {
     for (let index = 0; index < 3; index++) {
       await young.git('commit', '--allow-empty', '-m', `step ${index}`);
     }
+    const filedFew = await tempRepository(path.join(folder, 'filed-few'));
+    for (const name of ['a.txt', 'b.txt', 'c.txt']) {
+      fs.writeFileSync(path.join(filedFew.root, name), name);
+    }
+    await filedFew.git('add', '.');
+    await filedFew.git('commit', '-m', 'few files');
     fs.writeFileSync(
       path.join(profile, 'state.json'),
       JSON.stringify({
@@ -375,11 +239,15 @@ suite('App scrolling alike', () => {
           { id: '3', tool: 'editor', root: one },
           { id: '4', tool: 'diff', compare: { old: one, new: two } },
           { id: '5', tool: 'git', root: repository.root },
-          { id: '6', tool: 'commander', root: few },
-          { id: '7', tool: 'viewer', root: shortOne },
-          { id: '8', tool: 'editor', root: shortOne },
-          { id: '9', tool: 'diff', compare: { old: shortOne, new: shortTwo } },
-          { id: '10', tool: 'git', root: young.root },
+          { id: '6', tool: 'git', root: filed.root },
+          { id: '7', tool: 'commander', root: opened },
+          { id: '8', tool: 'commander', root: few },
+          { id: '9', tool: 'viewer', root: shortOne },
+          { id: '10', tool: 'editor', root: shortOne },
+          { id: '11', tool: 'diff', compare: { old: shortOne, new: shortTwo } },
+          { id: '12', tool: 'git', root: young.root },
+          { id: '13', tool: 'git', root: filedFew.root },
+          { id: '14', tool: 'commander', root: few },
         ],
         activeTab: '1',
       }),
@@ -433,9 +301,9 @@ suite('App scrolling alike', () => {
     await show(name, true);
     const { pane, rows, across: sideways } = views[name];
     const box = await center(name);
-    const under = page.locator(`${pane} ${rows}`).nth(1);
+    const stroked = page.locator(`${pane} ${rows}`).nth(rowUnder(name, true));
     const stroke = (by: { deltaX?: number; deltaY?: number }) =>
-      under.evaluate((row, delta) => {
+      stroked.evaluate((row, delta) => {
         for (let swipe = 0; swipe < 3; swipe++) {
           row.dispatchEvent(
             new WheelEvent('wheel', {
@@ -605,6 +473,8 @@ suite('App scrolling alike', () => {
       'editor',
       'diff',
       'commit list',
+      'files',
+      'thumbnails',
     ];
     assert.deepStrictEqual(
       {

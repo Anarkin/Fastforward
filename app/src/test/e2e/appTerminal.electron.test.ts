@@ -9,6 +9,7 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { barsOffGrid, gridLines } from './gridLines';
 import { barOf, barParts } from './scrollbarsShown';
 import { waitFor } from '../helpers/fixtures';
+import { writeSettings } from './settingsWritten';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const hundredLines =
@@ -20,6 +21,11 @@ const shell =
   process.platform === 'win32'
     ? { shell: '', shellArgs: ['-NoLogo', '-NoProfile'] }
     : { shell: '/bin/bash', shellArgs: ['--norc', '--noprofile'] };
+
+const settingsWith = (smooth: boolean) => ({
+  scrolling: { wheelRows: 2, smooth },
+  tools: { terminal: { ...shell, renderer: 'dom' } },
+});
 
 function luminance(color: string): number {
   const [red = 0, green = 0, blue = 0] = (color.match(/\d+/g) ?? []).map(
@@ -72,6 +78,7 @@ function sameFolder(told: string, expected: string): boolean {
 }
 
 let folder: string;
+let profile: string;
 let app: ElectronApplication;
 let page: Page;
 
@@ -101,7 +108,7 @@ async function run(command: string): Promise<void> {
 suite('Terminal', () => {
   beforeAll(async () => {
     folder = tempFolder('terminal');
-    const profile = path.join(folder, 'profile');
+    profile = path.join(folder, 'profile');
     const work = path.join(folder, 'work');
     fs.mkdirSync(profile, { recursive: true });
     fs.mkdirSync(work);
@@ -115,10 +122,7 @@ suite('Terminal', () => {
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify({
-        scrolling: { wheelRows: 2 },
-        tools: { terminal: { ...shell, renderer: 'dom' } },
-      }),
+      JSON.stringify(settingsWith(true)),
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
@@ -162,17 +166,22 @@ suite('Terminal', () => {
     await waitForRow((row) => row.includes('marker-file.txt'), 'the listing');
   });
 
-  test('scrolls back the rows of the setting for each notch of the wheel', async () => {
+  test('scrolls back the rows of the setting for each notch of the wheel, at once and gliding there as the settings say, coming to rest on the same rows either way', async () => {
     await run(hundredLines);
     await waitForRow((row) => row === 'line100', 'the last line');
-    const before = await rows();
-    await page.locator('.terminal-screen').hover();
-    await page.mouse.wheel(0, -100);
-    const expected = JSON.stringify(before.slice(0, before.length - 2));
-    await waitFor(
-      async () => JSON.stringify((await rows()).slice(2)) === expected,
-      'the terminal to scroll back two rows',
-    );
+    for (const smooth of [false, true]) {
+      await writeSettings(page, profile, settingsWith(smooth));
+      await page.locator('.terminal-screen .xterm-rows').waitFor();
+      await waitForRow((row) => /^line\d+$/.test(row), 'the lines again');
+      const before = await rows();
+      await page.locator('.terminal-screen').hover();
+      await page.mouse.wheel(0, -100);
+      const expected = JSON.stringify(before.slice(0, before.length - 2));
+      await waitFor(
+        async () => JSON.stringify((await rows()).slice(2)) === expected,
+        `the terminal to scroll back two rows, gliding ${String(smooth)}`,
+      );
+    }
   });
 
   test('gives the terminal the scrollbar every tool has, beside its screen, the lines scrolled off the top making its thumb: a press of the button at its top scrolls a line back, and a press of its track to where the pointer is', async () => {
