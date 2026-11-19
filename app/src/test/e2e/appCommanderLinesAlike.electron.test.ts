@@ -14,9 +14,14 @@ const many = 400;
 
 const manyName = (at: number) => `file-${String(at).padStart(3, '0')}.ts`;
 
-const fitting = 'a-name-of-24-characters-';
+const narrow = {
+  dateFormat: 'HH:mm',
+  tools: { commander: { columns: { extension: 2, size: 3, date: 5 } } },
+};
 
-const roomLeft = 12;
+const shortest = 9;
+
+const narrower = 4;
 
 const hair = 0.05;
 
@@ -106,7 +111,7 @@ for (const scale of [1, 1.25, 1.5]) {
       profile = path.join(folder, 'profile');
       opened = path.join(folder, 'opened');
       fs.mkdirSync(path.join(opened, 'docs'), { recursive: true });
-      for (const name of ['plain.md', 'cellé.md', `${fitting}.md`]) {
+      for (const name of ['plain.md', 'cellé.md']) {
         fs.writeFileSync(path.join(opened, name), '12345');
       }
       for (let at = 0; at < many; at++) {
@@ -122,7 +127,7 @@ for (const scale of [1, 1.25, 1.5]) {
       );
       fs.writeFileSync(
         path.join(profile, 'settings.user.json'),
-        JSON.stringify({ scrolling: { smooth: false } }),
+        JSON.stringify({ scrolling: { smooth: false }, ...narrow }),
       );
       app = await launchApp(profile, {
         before: [`--force-device-scale-factor=${scale}`],
@@ -176,7 +181,7 @@ for (const scale of [1, 1.25, 1.5]) {
       await alike('docs', 'cellé', ['name', 'date']);
     });
 
-    test('keeps them there as the side grows narrower, drawing a name that no longer fits its column with cells that cut it, and as one text again once the side is as wide as before', async () => {
+    test('keeps them there as the side grows narrower, drawing a name that no longer fits its column with cells that cut it, and as one text again once the side is as wide as before, whatever the width of the window, its columns set narrow and the name as long as the side has room for, as the test first took names a window on a smaller screen had no room for', async () => {
       const resizer = page.locator('.resizer').first();
       const handle = await resizer.boundingBox();
       assert.ok(handle !== null);
@@ -184,8 +189,7 @@ for (const scale of [1, 1.25, 1.5]) {
         x: handle.x + handle.width / 2,
         y: handle.y + handle.height / 2,
       };
-      assert.strictEqual((await places(fitting)).plain, true);
-      const by = await right().evaluate((side, left) => {
+      const room = await right().evaluate((side) => {
         const ruler = side.querySelector('.commander-ruler');
         const advance =
           ruler === null
@@ -194,9 +198,17 @@ for (const scale of [1, 1.25, 1.5]) {
         const names = parseFloat(
           getComputedStyle(side).getPropertyValue('--commander-name-width'),
         );
-        return Math.round(names - left * advance);
-      }, roomLeft);
-      assert.ok(by > 50, String(by));
+        return { advance, names, fits: Math.floor(names / advance + 0.001) };
+      });
+      assert.ok(
+        room.fits >= shortest,
+        `room for names of ${room.fits} characters`,
+      );
+      const fitting = 'f'.repeat(room.fits - 1);
+      fs.writeFileSync(path.join(opened, `${fitting}.md`), '12345');
+      await rowOf(fitting).waitFor();
+      assert.strictEqual((await places(fitting)).plain, true);
+      const by = Math.round(narrower * room.advance);
       await page.mouse.move(from.x, from.y);
       await page.mouse.down();
       await page.mouse.move(from.x + by, from.y, { steps: 8 });
@@ -349,7 +361,7 @@ for (const scale of [1, 1.25, 1.5]) {
         x: thumb.left + thumb.width / 2,
         y: thumb.top + Math.min(thumb.height / 2, 12),
       };
-      const down = box.height - start.height - end.height - thumb.height - 20;
+      const down = box.height - start.height - end.height - thumb.height + 40;
       await page.mouse.move(grip.x, grip.y);
       await page.mouse.down();
       await page.mouse.move(grip.x, grip.y + down);
@@ -417,9 +429,11 @@ for (const scale of [1, 1.25, 1.5]) {
       }
       assert.strictEqual(colors.size, 1, [...colors].join());
 
-      await page.mouse.move(grip.x, grip.y + down);
+      const lowered = (await barParts(page, box, 'vertical')).thumb;
+      assert.ok(lowered);
+      await page.mouse.move(grip.x, lowered.top + lowered.height / 2);
       await page.mouse.down();
-      await page.mouse.move(grip.x, grip.y - 20);
+      await page.mouse.move(grip.x, box.top - 40);
       await page.mouse.up();
       await waitFor(
         async () => (await shown()).some(({ name }) => name === 'plain'),
