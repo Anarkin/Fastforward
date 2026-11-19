@@ -208,6 +208,17 @@ suite('Overflow', () => {
     );
   });
 
+  test('leaves no room to scroll sideways while the diff has no text, the padding alone nothing to scroll to, as the diff of a git tab with nothing selected, no side of it drawn to measure, showed the thumb of a scrollbar that moved nothing', () => {
+    assert.deepStrictEqual(
+      [
+        sidewaysRoom(0, 7.5, 0),
+        sidewaysRoom(0, 7.5, 5),
+        sidewaysRoom(1, 7.5, 0),
+      ],
+      [0, 0, 2 * 6 + 8],
+    );
+  });
+
   test('marks a place words were inserted on the other line, though it has no width', () => {
     const text = 'x'.repeat(20);
     const left = { start: 1, end: 1 };

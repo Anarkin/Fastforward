@@ -123,6 +123,34 @@ suite('A scrollbar standing in for a view that scrolls by itself', () => {
     }
   });
 
+  test('goes back to where its view is once a scroll of the browser has ended, as a view that lands on whole columns may stay on the one it was on and say nothing, and the thumb stood where the browser left it until its tab was shown again', () => {
+    const { proxy, element, drags, scrolledTo, told, letGo, close } =
+      standIn(600);
+    try {
+      proxy.show({ at: 0.25, length: 0.25 });
+      const room = element.scrollHeight - element.clientHeight;
+      assert.strictEqual(element.scrollTop, room / 4);
+
+      scrolledTo(room / 2);
+      assert.deepStrictEqual([drags, element.scrollTop], [[0.5], room / 2]);
+      told('scrollend');
+      assert.deepStrictEqual(
+        [letGo, element.scrollTop, drags],
+        [[1], room / 4, [0.5]],
+      );
+
+      scrolledTo(room / 2);
+      proxy.show({ at: 0.75, length: 0.25 });
+      told('scrollend');
+      assert.deepStrictEqual(
+        [letGo, element.scrollTop],
+        [[1, 2], (3 * room) / 4],
+      );
+    } finally {
+      close();
+    }
+  });
+
   test('writes how long it is only once the share shown changes, so a view that scrolls restyles nothing', () => {
     const { proxy, sizeWritten, element, close } = standIn(300);
     try {

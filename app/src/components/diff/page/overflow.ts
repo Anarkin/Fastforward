@@ -117,7 +117,9 @@ export function sidewaysRoom(
   charWidth: number,
   width: number,
 ): number {
-  return Math.max(0, 2 * codePadding + Math.ceil(columns * charWidth) - width);
+  return columns > 0
+    ? Math.max(0, 2 * codePadding + Math.ceil(columns * charWidth) - width)
+    : 0;
 }
 
 export interface TextArea {

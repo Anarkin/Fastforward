@@ -127,6 +127,7 @@ export function scrollProxy(
     if (strayed) {
       strayed = false;
       letGo();
+      place();
     }
   };
   const link = axis === 'vertical' ? setRowScroller : setColumnScroller;

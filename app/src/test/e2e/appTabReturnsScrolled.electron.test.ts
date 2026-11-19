@@ -23,6 +23,15 @@ import {
 } from './tabReturns';
 import { writeSettings } from './settingsWritten';
 
+async function scrolledAroundEach(how: string): Promise<void> {
+  for (const [index, kind] of kinds.entries()) {
+    await showTab(page, index);
+    await settledLooks(page);
+    await scrolledAround(page);
+    await throughEveryOther(index, `The ${kind} tab ${how}`);
+  }
+}
+
 suite('App tabs shown again once scrolled around while searching', () => {
   sharedEveryToolApp();
 
@@ -33,13 +42,17 @@ suite('App tabs shown again once scrolled around while searching', () => {
 
   test(
     'brings back every tab scrolled around as it was left, every scroller of it where it was, from every other tab',
+    () => scrolledAroundEach('scrolled around'),
+    everyTab,
+  );
+
+  test(
+    'brings them back alike where the settings have scrolling not glide, as the tabs were only ever left and shown again in the one way of scrolling the settings had by default, and a file viewed stayed between two rows the day that became the other',
     async () => {
-      for (const [index, kind] of kinds.entries()) {
-        await showTab(page, index);
-        await settledLooks(page);
-        await scrolledAround(page);
-        await throughEveryOther(index, `The ${kind} tab scrolled around`);
-      }
+      await writeSettings(page, path.dirname(settingsFile), {
+        scrolling: { smooth: false },
+      });
+      await scrolledAroundEach('scrolled around without gliding');
     },
     everyTab,
   );
