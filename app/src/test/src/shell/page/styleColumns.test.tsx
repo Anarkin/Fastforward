@@ -134,10 +134,9 @@ suite('Style', () => {
     const gap = cascaded(withClass(files, 'toolbar'), 'gap');
     assert.ok(gap);
     const diff = columnTitle(<ColumnShown start={<DiffOptionsShown />} />);
-    for (const group of [
-      withClass(diff, 'toolbar'),
-      withClass(diff, 'segmented'),
-    ]) {
+    const groups = allWithClass(diff, 'toolbar');
+    assert.ok(groups.length >= 3, String(groups.length));
+    for (const group of groups) {
       looks(group, { gap, border: undefined, padding: undefined });
     }
     assert.ok(
@@ -175,35 +174,48 @@ suite('Style', () => {
     );
   });
 
-  test('fills a pinned pair as one undimmed switched-on toggle, its buttons unfilled, and fills the layout buttons as one, lifting the chosen and the hovered one onto the panel inside it', () => {
-    const fetching = withClass(
-      rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} fetching />),
-      'pin-pair',
+  test('draws every button of a bar alike, whatever group it stands in: the fetch button and its pin, the layout buttons and every other toggle filled as buttons are, switched on in the tint of a toggle and tinted under the pointer as every button, a group filling nothing behind its buttons, as a pinned pair was filled as one and the layout buttons stood in a ground of their own, the hovered one white', () => {
+    const nav = rendered(
+      <NavButtonsShown autoFetch autoFetchMinutes={5} fetching />,
     );
-    assert.ok(fetching.classes.includes('pinned'));
-    looks(fetching, { background: 'var(--toggle-on-background)' });
-    const [fetch, pin] = allWithClass(fetching, 'nav-button');
-    assert.ok(fetch.attributes.has('disabled'));
-    looks(fetch, { opacity: '1', background: 'none' });
-    for (const button of [fetch, pin]) {
-      looks(button, { background: 'none', color: 'var(--color-foreground)' });
+    const options = rendered(<DiffOptionsShown ignoreWhitespace={false} />);
+    for (const group of [
+      ...allWithClass(nav, 'toolbar'),
+      ...allWithClass(options, 'toolbar'),
+    ]) {
+      looks(group, { background: undefined, 'box-shadow': undefined });
     }
-    const options = rendered(<DiffOptionsShown />);
-    looks(withClass(options, 'segmented'), {
-      background: 'var(--button-background)',
-      'box-shadow': undefined,
-    });
-    const [chosen, other] = allWithClass(
-      withClass(options, 'segmented'),
-      'nav-button',
+    const buttons = [
+      ...allWithClass(nav, 'nav-button'),
+      ...allWithClass(options, 'nav-button'),
+    ];
+    assert.ok(buttons.length >= 11, String(buttons.length));
+    const switchedOn = buttons.filter((button) =>
+      button.classes.includes('active'),
     );
-    assert.ok(chosen.classes.includes('active'));
-    looks(chosen, {
-      background:
-        'linear-gradient(var(--toggle-on-background), var(--toggle-on-background)), var(--color-panel-background)',
-    });
-    looks(other, { background: 'none' });
-    looks(other, { background: 'var(--color-panel-background)' }, hovered);
+    assert.ok(switchedOn.length >= 3, String(switchedOn.length));
+    for (const button of buttons) {
+      looks(button, {
+        background: button.classes.includes('active')
+          ? 'var(--toggle-on-background)'
+          : 'var(--button-background)',
+        color: 'var(--color-foreground)',
+      });
+      if (!button.attributes.has('disabled')) {
+        looks(
+          button,
+          {
+            background: cascaded(button, 'background'),
+            'box-shadow':
+              'inset 0 0 0 calc(var(--button-size) / 2) var(--hover-background)',
+          },
+          hovered,
+        );
+      }
+    }
+    const [fetch] = allWithClass(withClass(nav, 'pin-pair'), 'nav-button');
+    assert.ok(fetch.attributes.has('disabled'));
+    looks(fetch, { opacity: '1' });
   });
 
   test('keeps the search fields clear of the active column edge, the title holding both fields at one height', () => {

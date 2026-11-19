@@ -181,7 +181,7 @@ suite('Diff options shown by a host holding the diff slice', () => {
     const html = optionsHtml();
     assert.match(
       html,
-      /^<div[^>]*><button[^>]*data-tip="Show the Entire File"[^>]*>.*?<\/button><span class="language-slot"><\/span><button[^>]*data-tip="Show Whitespace"[^>]*>.*?<\/button><button[^>]*data-tip="Show Whitespace Changes"[^>]*>.*?<\/button><button[^>]*data-tip="Wrap Long Lines"[^>]*>.*?<\/button><div class="toolbar segmented"/,
+      /^<div[^>]*><button[^>]*data-tip="Show the Entire File"[^>]*>.*?<\/button><span class="language-slot"><\/span><button[^>]*data-tip="Show Whitespace"[^>]*>.*?<\/button><button[^>]*data-tip="Show Whitespace Changes"[^>]*>.*?<\/button><button[^>]*data-tip="Wrap Long Lines"[^>]*>.*?<\/button><div class="toolbar" role="group"/,
     );
   });
 
@@ -212,7 +212,7 @@ suite('Diff options shown by a host holding the diff slice', () => {
     const html = optionsHtml();
     assert.match(
       html,
-      /<div class="toolbar segmented" role="group" aria-label="Layout"><button[^>]*data-tip="Inline"[^>]*>.*?<\/button><button[^>]*data-tip="Side by Side"[^>]*>.*?<\/button><\/div><\/div>$/,
+      /<div class="toolbar" role="group" aria-label="Layout"><button[^>]*data-tip="Inline"[^>]*>.*?<\/button><button[^>]*data-tip="Side by Side"[^>]*>.*?<\/button><\/div><\/div>$/,
     );
   });
 

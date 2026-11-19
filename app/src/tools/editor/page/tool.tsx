@@ -34,7 +34,7 @@ export function EditorTool({
   return (
     <EditorStore value={store}>
       <div className="repository">
-        <div className="columns viewer-columns">
+        <div className="columns single viewer-columns">
           {tab === undefined ? (
             <section className="column viewer editor" />
           ) : (

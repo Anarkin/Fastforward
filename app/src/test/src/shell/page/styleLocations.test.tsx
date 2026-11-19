@@ -45,7 +45,7 @@ suite('Style', () => {
         margin: undefined,
         'margin-top': undefined,
         'margin-bottom': undefined,
-        padding: `var(--column-line, 0px) ${edge} 0`,
+        padding: `var(--title-above) ${edge} var(--title-below)`,
       },
     );
   });

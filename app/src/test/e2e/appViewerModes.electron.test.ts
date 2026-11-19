@@ -16,7 +16,7 @@ import { firstViewerRow } from './viewerAppFixtures';
 
 const pressedMode = () =>
   page
-    .locator('.viewer .segmented [aria-pressed="true"]')
+    .locator('.viewer .toolbar[role="group"] [aria-pressed="true"]')
     .getAttribute('data-tip');
 
 suite('App commander', () => {
@@ -35,7 +35,7 @@ suite('App commander', () => {
         'the preview',
       );
       await page
-        .locator('.viewer .segmented')
+        .locator('.viewer .toolbar[role="group"]')
         .getByRole('button', { name: strings.viewer.viewText })
         .click();
       await waitFor(
@@ -140,7 +140,9 @@ suite('App commander', () => {
     );
     await page.keyboard.press('1');
     await waitFor(async () => (await pressedMode()) === 'Hex', 'the hex view');
-    await page.locator('.viewer .segmented [data-tip="Text"]').click();
+    await page
+      .locator('.viewer .toolbar[role="group"] [data-tip="Text"]')
+      .click();
     await waitFor(
       async () => (await pressedMode()) === 'Text',
       'the text view',

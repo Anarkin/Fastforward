@@ -33,6 +33,7 @@ interface Bar {
   readonly right: number;
   readonly searching: boolean;
   readonly fits: boolean;
+  readonly single: boolean;
 }
 
 function barsShown(): Bar[] {
@@ -75,6 +76,7 @@ function barsShown(): Bar[] {
         left: first?.left ?? 0,
         right: last?.right ?? 0,
         searching: bar.contains(document.activeElement),
+        single: bar.closest('.columns.single') !== null,
         fits:
           bar.scrollWidth <= bar.clientWidth &&
           ends.every(
@@ -90,14 +92,17 @@ const fitting = 5;
 const apart = (one: number, other: number) => Math.abs(one - other) > 0.1;
 
 function unlike(bar: Bar, model: Bar): string[] {
+  const space = model.above;
   const [height] = model.heights;
+  const around = bar.single ? 0 : space;
+  const tall = bar.single ? (height ?? 0) + space : model.tall;
   return [
-    apart(bar.tall, model.tall) && 'height',
-    apart(bar.above, model.above) && 'top',
-    apart(bar.below, model.above) && 'bottom',
-    apart(bar.before, model.above) && 'left',
-    apart(bar.after, model.above) && 'right',
-    bar.gaps.some((each) => apart(each, model.above)) && 'gaps',
+    apart(bar.tall, tall) && 'height',
+    apart(bar.above, around) && 'top',
+    apart(bar.below, space) && 'bottom',
+    apart(bar.before, around) && 'left',
+    apart(bar.after, around) && 'right',
+    bar.gaps.some((each) => apart(each, space)) && 'gaps',
     bar.heights.some((each) => height === undefined || apart(each, height)) &&
       'buttons',
   ].filter((part) => part !== false);
@@ -166,16 +171,18 @@ for (const scale of ['1', '1.25', '1.5']) {
       removeFolder(folder);
     });
 
-    test('stands the buttons of every header that has room for them as far from its top as from its bottom, from either end and from one another, all of one height in headers of one height, the same in every tool, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
+    test('stands the buttons of every header that has room for them as far from its top as from its bottom, from either end and from one another, all of one height in headers of one height, the same in every tool, and those of a tab of one block, the viewer, the editor and the diff of two files, at the top and at either end of their header with that space under them alone, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
       const [model] = await show('commander');
       assert.ok(model);
       assert.ok(model.above > 0, JSON.stringify(model));
       assert.ok(model.gaps.length > 0, JSON.stringify(model));
       const off: string[] = [];
       let seen = 0;
+      let single = 0;
       for (const tool of tools) {
         for (const bar of (await show(tool)).filter((each) => each.fits)) {
           seen += 1;
+          single += Number(bar.single);
           const parts = unlike(bar, model);
           if (parts.length > 0) {
             off.push(
@@ -186,9 +193,10 @@ for (const scale of ['1', '1.25', '1.5']) {
       }
       assert.deepStrictEqual(off, []);
       assert.ok(seen >= fitting, String(seen));
+      assert.strictEqual(single, 3);
     });
 
-    test('keeps the first and the last button of a header where they were as its search opens in their place, the field between them, the bar of the search spaced as every header is, wherever both have room, so no button moves under the pointer that opened it', async () => {
+    test('keeps the first and the last button of a header where they were as its search opens in their place, the field between them, the bar of the search spaced as its header is, wherever both have room, so no button moves under the pointer that opened it', async () => {
       const [model] = await show('commander');
       assert.ok(model);
       const moved: string[] = [];

@@ -18,7 +18,7 @@ import { grayPng } from './images';
 
 const pressedMode = () =>
   page
-    .locator('.viewer .segmented [aria-pressed="true"]')
+    .locator('.viewer .toolbar[role="group"] [aria-pressed="true"]')
     .getAttribute('data-tip');
 
 const imageWidth = (selector: string) =>
@@ -124,7 +124,7 @@ suite('App commander', () => {
     );
     assert.deepStrictEqual(
       await page
-        .locator('.viewer .segmented button')
+        .locator('.viewer .toolbar[role="group"] button')
         .evaluateAll((buttons) =>
           buttons.map((button) => button.getAttribute('data-tip')),
         ),
@@ -167,7 +167,9 @@ suite('App commander', () => {
       'the text view',
     );
     assert.strictEqual(
-      await page.locator('.viewer .segmented [data-tip="Preview"]').count(),
+      await page
+        .locator('.viewer .toolbar[role="group"] [data-tip="Preview"]')
+        .count(),
       0,
     );
     await page.keyboard.press('3');

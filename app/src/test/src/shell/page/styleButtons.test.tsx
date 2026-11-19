@@ -64,8 +64,7 @@ suite('Style', () => {
     for (const group of [
       withClass(nav, 'toolbar'),
       withClass(nav, 'pin-pair'),
-      withClass(options, 'toolbar'),
-      withClass(options, 'segmented'),
+      ...allWithClass(options, 'toolbar'),
       withClass(
         rendered(
           renderedBy(Column, {
@@ -101,7 +100,7 @@ suite('Style', () => {
     );
   });
 
-  test('shades a button of a bar on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
+  test('shades a button of a bar on hover over whatever fill it has, so an active toggle changes too', () => {
     const pinned = rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} />);
     const enabled = [
       pinned,
@@ -127,9 +126,6 @@ suite('Style', () => {
     for (const button of filled) {
       looksAlike(button, ['background'], hovered);
     }
-    looksAlike(withClass(pinned, 'pin-pair'), ['background'], {
-      hover: filled[0],
-    });
     const disabled = withClass(pinned, 'nav-button');
     assert.ok(disabled.attributes.has('disabled'));
     looks(disabled, { 'box-shadow': undefined }, hovered);
@@ -158,11 +154,10 @@ suite('Style', () => {
       },
     );
     const diff = rendered(<DiffOptionsShown />);
-    const laidOut = allWithClass(withClass(diff, 'segmented'), 'nav-button');
     for (const button of [
       ...allWithClass(rendered(<NavButtonsShown />), 'nav-button'),
       ...allWithClass(diff, 'nav-button').filter(
-        (option) => !laidOut.includes(option),
+        (option) => !option.classes.includes('active'),
       ),
       withClass(rendered(<MenuButtonShown />), 'nav-button'),
       withClass(popupOf(<ShortcutsPopupShown />), 'nav-button'),

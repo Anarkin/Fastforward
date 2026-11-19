@@ -75,11 +75,7 @@ export function DiffToggles({
       >
         <WordWrapIcon />
       </button>
-      <Toolbar
-        className="segmented"
-        role="group"
-        aria-label={strings.diff.layout}
-      >
+      <Toolbar role="group" aria-label={strings.diff.layout}>
         <button
           className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
           {...labelTip(strings.diff.inline)}

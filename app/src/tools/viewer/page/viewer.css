@@ -235,7 +235,7 @@
 
 .column-title:has(> .column-start.viewer-actions) {
   gap: var(--bar-space);
-  padding: var(--column-line, 0px) var(--bar-edge) 0;
+  padding: var(--title-above) var(--bar-edge) var(--title-below);
 }
 
 .column-title:has(> .column-start.viewer-actions) > .column-start,

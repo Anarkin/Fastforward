@@ -184,12 +184,12 @@ suite('Navigation bar', () => {
     }
   });
 
-  test('holds the pin together with the fetch button at the end, filling both as one while pinned', () => {
+  test('holds the pin together with the fetch button at the end, the pin alone switched on while pinned', () => {
     for (const autoFetch of [false, true]) {
       assert.match(
         buttons({ autoFetch }),
         new RegExp(
-          `<div class="toolbar pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*data-tip="Fetch[^"]*"[^>]*>.*?</button><button[^>]*data-tip="Fetch Every Minute"[^>]*>.*?</button></div></div>$`,
+          `<div class="toolbar pin-pair"><button class="nav-button "[^>]*data-tip="Fetch[^"]*"[^>]*>.*?</button><button class="nav-button toggle ${autoFetch ? 'active' : ''}"[^>]*data-tip="Fetch Every Minute"[^>]*>.*?</button></div></div>$`,
         ),
       );
     }

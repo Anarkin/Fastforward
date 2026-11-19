@@ -44,7 +44,7 @@ input[type='checkbox']:focus-visible {
 }
 
 .column-title.searching {
-  padding: var(--column-line, 0px) var(--bar-edge) 0;
+  padding: var(--title-above) var(--bar-edge) var(--title-below);
 }
 
 .search-bar {

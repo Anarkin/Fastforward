@@ -83,9 +83,7 @@ export function NavButtons() {
       >
         <HomeIcon />
       </button>
-      <Toolbar
-        className={`pin-pair ${autoFetch && autoFetchMinutes > 0 ? 'pinned' : ''}`}
-      >
+      <Toolbar className="pin-pair">
         <button
           className={`nav-button ${fetching ? 'running' : ''}`}
           {...labelTip(title)}

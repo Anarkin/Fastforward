@@ -30,6 +30,21 @@
   pointer-events: none;
 }
 
+.columns.single > .column {
+  --bar-edge: 0px;
+  --title-above: 0px;
+  --title-below: var(--bar-space);
+  --title-height: calc(var(--button-size) + var(--bar-space));
+}
+
+.columns.single > .column::after {
+  top: var(--title-height);
+}
+
+.columns.single > .column > .column-title {
+  border-bottom: none;
+}
+
 .columns[data-active-column='commits'] > .column:nth-child(1)::after,
 .columns[data-active-column='files'] > .column:nth-child(2)::after,
 .columns[data-active-column='diff'] > .column:nth-child(3)::after {
@@ -42,6 +57,8 @@
 
 .column {
   --bar-edge: calc(var(--column-line, 0px) + var(--bar-space));
+  --title-above: var(--column-line, 0px);
+  --title-below: 0px;
   --title-height: calc(
     var(--column-line, 0px) + 2 * var(--bar-space) + var(--button-size) +
       var(--hairline)
@@ -78,7 +95,7 @@ body.resizing {
   justify-content: center;
   box-sizing: border-box;
   height: var(--title-height);
-  padding: var(--column-line, 0px) 8px 0;
+  padding: var(--title-above) 8px var(--title-below);
   text-align: center;
   color: var(--muted-foreground);
   border-bottom: 1px solid var(--color-border);
@@ -103,9 +120,9 @@ body.resizing {
 
 .column-start {
   position: absolute;
-  top: var(--column-line, 0px);
+  top: var(--title-above);
   left: var(--bar-edge);
-  bottom: 0;
+  bottom: var(--title-below);
 }
 
 .column-start .menu {

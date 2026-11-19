@@ -4,7 +4,7 @@
 
 .compare-versions {
   position: absolute;
-  inset: var(--column-line, 0px) 0 0;
+  inset: var(--title-above) 0 var(--title-below);
   display: flex;
   align-items: center;
   justify-content: center;

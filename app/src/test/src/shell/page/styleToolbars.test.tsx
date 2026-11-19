@@ -107,6 +107,21 @@ function barsShown(): MarkupElement[] {
   ];
 }
 
+function blocks(className: string): MarkupElement {
+  return withClass(
+    rendered(
+      <div className={className}>
+        {renderedBy(Column, {
+          start: <span />,
+          actions: <span />,
+          children: null,
+        })}
+      </div>,
+    ),
+    'column',
+  );
+}
+
 suite('Style', () => {
   test('stands the buttons of a header the one space of a bar from the line around its column on every side, the header as tall as that line, the space, a button, the space and the line under it, an open search and the search over the commits alike, so its buttons are as far from its top and its bottom as from either end and none moves as a search opens', () => {
     assert.strictEqual(deviceRounded('bar-space'), 4);
@@ -136,7 +151,12 @@ suite('Style', () => {
       'align-items': 'center',
       'border-bottom': '1px solid var(--color-border)',
     });
-    const ends = { top: 'var(--column-line, 0px)', bottom: '0' };
+    assert.strictEqual(
+      cascaded(column, '--title-above'),
+      'var(--column-line, 0px)',
+    );
+    assert.strictEqual(cascaded(column, '--title-below'), '0px');
+    const ends = { top: 'var(--title-above)', bottom: 'var(--title-below)' };
     looks(withClass(title, 'column-start'), {
       ...ends,
       left: 'var(--bar-edge)',
@@ -145,7 +165,7 @@ suite('Style', () => {
       ...ends,
       right: 'var(--bar-edge)',
     });
-    const padding = 'var(--column-line, 0px) var(--bar-edge) 0';
+    const padding = 'var(--title-above) var(--bar-edge) var(--title-below)';
     looks(
       withClass(
         rendered(renderedBy(Column, { searching: <span />, children: null })),
@@ -162,6 +182,37 @@ suite('Style', () => {
         padding,
       },
     );
+  });
+
+  test('stands the buttons of the header of a tab of one block at its top and at either end of it, no line around them and the space of a bar under them alone, the line of the block starting under its header, as the frame that tells two or three columns apart, and which of them has the keyboard, stood around the buttons of the only one', () => {
+    const single = blocks('columns single');
+    assert.strictEqual(cascaded(single, '--bar-edge'), '0px');
+    assert.strictEqual(cascaded(single, '--title-above'), '0px');
+    assert.strictEqual(cascaded(single, '--title-below'), 'var(--bar-space)');
+    assert.strictEqual(
+      unwrapped(cascaded(single, '--title-height')),
+      'calc(var(--button-size) + var(--bar-space))',
+    );
+    const framed = { pseudoElement: '::after' };
+    looks(
+      single,
+      {
+        top: 'var(--title-height)',
+        'box-shadow': 'inset 0 0 0 var(--frame-line) var(--color-border)',
+      },
+      framed,
+    );
+    looks(withClass(single, 'column-title'), {
+      height: 'var(--title-height)',
+      padding: 'var(--title-above) 8px var(--title-below)',
+      'border-bottom': 'none',
+    });
+    const several = blocks('columns');
+    assert.strictEqual(
+      unwrapped(cascaded(several, '--bar-edge')),
+      'calc(var(--column-line, 0px) + var(--bar-space))',
+    );
+    looks(several, { top: undefined }, framed);
   });
 
   test('spaces what stands in a toolbar by the one space of a bar alone, as far apart as from the line around them, a toolbar inside another too: nothing in it has a margin, a padding or a gap of its own but the inside of a button and of a search field, and nothing empty stands in it but the space as wide as a button', () => {

@@ -247,7 +247,7 @@ suite('App', () => {
     const triggers = page.locator(
       '.compare-view .compare-version .menu-button-trigger',
     );
-    const layout = page.locator('.compare-view .segmented button');
+    const layout = page.locator('.compare-view .toolbar[role="group"] button');
     let wasInline = false;
     try {
       await waitFor(

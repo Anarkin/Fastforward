@@ -241,11 +241,7 @@ export function Viewer() {
       ) : (
         <header className="column-title">
           <Toolbar className="column-start viewer-actions">
-            <Toolbar
-              className="segmented"
-              role="group"
-              aria-label={strings.viewer.viewAs}
-            >
+            <Toolbar role="group" aria-label={strings.viewer.viewAs}>
               {shownModes.map(({ mode: each, title, icon }) => (
                 <button
                   key={each}

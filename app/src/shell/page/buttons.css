@@ -32,31 +32,12 @@
   opacity: var(--muted-opacity);
 }
 
-.segmented {
-  border-radius: var(--radius);
-  background: var(--button-background);
-}
-
 .column-actions {
   position: absolute;
-  top: var(--column-line, 0px);
+  top: var(--title-above);
   right: var(--bar-edge);
-  bottom: 0;
+  bottom: var(--title-below);
   text-align: left;
-}
-
-.segmented > .nav-button {
-  background: none;
-}
-
-.segmented > .nav-button:hover:not(:disabled) {
-  background: var(--color-panel-background);
-}
-
-.segmented > .nav-button.toggle.active {
-  background:
-    linear-gradient(var(--toggle-on-background), var(--toggle-on-background)),
-    var(--color-panel-background);
 }
 
 .nav-button.running {

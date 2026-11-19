@@ -158,7 +158,7 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
-  test('spaces the buttons of a header by the Toolbar they stand in, never by a spacer or a style of the header: the Toolbar and its ToolbarSpace alone write their classes, the start and the actions of a header are Toolbars, and no stylesheet but that of the buttons styles a toolbar, as every header had spacers and paddings of its own until its buttons stood apart by different amounts, closer to one edge than another, and moved as a search opened', () => {
+  test('spaces the buttons of a header by the Toolbar they stand in, never by a spacer or a style of the header: the Toolbar and its ToolbarSpace alone write their classes, the start and the actions of a header are Toolbars, no stylesheet but that of the buttons styles a toolbar, and the tabs of one block, the viewer, the editor and the diff of two files, say so, which stands their buttons outside the frame of the block, as every header had spacers and paddings of its own until its buttons stood apart by different amounts, closer to one edge than another, and moved as a search opened', () => {
     const pages = ['tools', 'lib', 'components', 'shell'];
     assert.deepStrictEqual(
       pages.flatMap((folder) =>
@@ -185,6 +185,24 @@ suite('Lessons from past mistakes', () => {
     assert.deepStrictEqual(
       pages.flatMap((folder) => stylesWith(folder, /\.toolbar\b/)),
       ['shell/page/buttons.css'],
+    );
+    const blocks = /className="columns([^"]*)"/g;
+    const tools = pages.flatMap((folder) =>
+      filesIn(folder).flatMap((file) =>
+        Array.from(textOf(file).matchAll(blocks), ([, classes]) => ({
+          file,
+          single: /\bsingle\b/.test(classes ?? ''),
+        })),
+      ),
+    );
+    assert.deepStrictEqual(
+      tools.filter((tool) => tool.single).map((tool) => tool.file),
+      [
+        'tools/diff/page/compareView.tsx',
+        'tools/diff/page/tool.tsx',
+        'tools/editor/page/tool.tsx',
+        'tools/viewer/page/tool.tsx',
+      ],
     );
   });
 

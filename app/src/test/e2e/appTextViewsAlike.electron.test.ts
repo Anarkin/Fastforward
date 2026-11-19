@@ -228,7 +228,7 @@ suite('App text views alike', () => {
         split
       ) {
         await page
-          .locator('.compare-view .segmented button')
+          .locator('.compare-view .toolbar[role="group"] button')
           .nth(split ? 1 : 0)
           .click();
         await waitFor(
