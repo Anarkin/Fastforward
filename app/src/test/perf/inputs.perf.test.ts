@@ -135,8 +135,17 @@ for (const wordWrap of [false, true]) {
           assert.ok(result.frames.updates >= 0);
         });
 
-        test(`${tool.name} drag`, async () => {
+        test(`${tool.name} drag`, async ({ skip }) => {
           const { page } = perf();
+          const scrolls = await page
+            .locator(tool.bar)
+            .first()
+            .evaluate(
+              (scroller) => scroller.scrollHeight > scroller.clientHeight,
+            );
+          if (!scrolls) {
+            skip('a file that fits its view has no scrollbar to drag');
+          }
           const { box } = await barOf(page, tool.bar, 'vertical');
           const { thumb, start, end } = await barParts(page, box, 'vertical');
           assert.ok(thumb);
