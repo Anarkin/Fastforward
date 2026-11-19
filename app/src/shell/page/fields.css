@@ -156,17 +156,3 @@ input[type='checkbox']:focus-visible {
 .search-toggle:disabled {
   opacity: var(--muted-opacity);
 }
-
-.search-button {
-  width: var(--search-height);
-  height: var(--search-height);
-  color: var(--muted-foreground);
-  background: var(--color-border);
-  border-radius: calc(var(--search-height) / 2);
-}
-
-.search-button:hover {
-  background:
-    linear-gradient(var(--hover-background), var(--hover-background)),
-    var(--color-border);
-}

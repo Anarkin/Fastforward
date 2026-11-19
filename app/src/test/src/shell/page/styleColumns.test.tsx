@@ -234,9 +234,9 @@ suite('Style', () => {
       looks(field, { height: 'var(--search-height)' });
     }
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      width: 'var(--search-height)',
-      height: 'var(--search-height)',
-      'border-radius': 'calc(var(--search-height) / 2)',
+      width: 'var(--button-size)',
+      height: 'var(--button-size)',
+      'border-radius': 'calc(var(--button-size) / 2)',
     });
   });
 
@@ -362,9 +362,9 @@ suite('Style', () => {
     }
   });
 
-  test('mutes the search placeholders and the magnifier of the search button like other muted text', () => {
+  test('mutes the search placeholders like other muted text, the magnifier of the search button in the color of every button', () => {
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      color: 'var(--muted-foreground)',
+      color: 'var(--color-foreground)',
     });
     for (const field of [
       withClass(rendered(<LocationsPopupShown query="" />), 'search-box-input'),

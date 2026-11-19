@@ -66,9 +66,12 @@ const found = (classes: string, current: boolean) =>
   );
 
 suite('Style', () => {
-  test('fills the search button in the border color, as the search fields are until used, and draws the strip between hunks in it', () => {
+  test('draws the search button as every round button is drawn, in its ground, its color and its size, as one in the border color with a muted icon stood apart from the buttons beside it, and draws the strip between hunks in the border color', () => {
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      background: 'var(--color-border)',
+      background: 'var(--button-background)',
+      color: 'var(--color-foreground)',
+      width: 'var(--button-size)',
+      height: 'var(--button-size)',
     });
     looks(
       withClass(
@@ -152,11 +155,7 @@ suite('Style', () => {
     ).find((tab) => !tab.classes.includes('active'));
     const tinted =
       'linear-gradient(var(--hover-background), var(--hover-background)), var(--color-border)';
-    for (const field of [
-      ...fields,
-      withClass(rendered(<SearchButtonShown />), 'search-button'),
-      chip,
-    ]) {
+    for (const field of [...fields, chip]) {
       looks(field, { background: 'var(--color-border)' });
       looks(field, { background: tinted }, hovered);
     }

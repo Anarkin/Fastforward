@@ -90,7 +90,7 @@ suite('Style', () => {
       });
     }
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      width: 'var(--search-height)',
+      width: 'var(--button-size)',
     });
     assert.strictEqual(
       cascaded(
