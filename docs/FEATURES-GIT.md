@@ -272,7 +272,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Keyboard | Work every list, column and popup by keyboard | — | Common | ✅ Yes | F1 lists the shortcuts of every tool, opening on the one in use, the diff's in an entry of their own it opens on in a comparison or the diff column, grouped by what they are for and narrowed to the words or keys typed, scrolled by whole rows below the heading stuck at the top |
+| Keyboard | Work every list, column and popup by keyboard | — | Common | ✅ Yes | F1 lists the shortcuts of every tool, their keys in monospace, opening on the one in use, the diff's in an entry of their own it opens on in a comparison or the diff column, grouped by what they are for and narrowed to the words or keys typed, scrolled by whole rows below the heading stuck at the top |
 | Command palette | Find any command by typing | — | Common | ❌ No |  |
 | Scrollbars | Show where a list or a text is scrolled to, and scroll it | — | Core | ✅ Yes | The scrollbars of the browser, drawn alike in every tool, always shown, in a strip of their own as wide as `sizes.scrollbar`, 18 pixels by default: a button at either end moves a row or a column, on and on while held, the track pressed moves there, the thumb centered on the pointer, and the thumb dragged follows it; one below a text too while it is not wrapped, from where the text starts after its line numbers; a menu, a popup or a preview shows one only while it has more than fits; rounded with the corners of what they stand in |
 | Themes | Light and dark, colors and fonts | — | Common | ✅ Yes | Following the system by default, or light or dark by the theme setting; every color and font in the settings |

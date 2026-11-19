@@ -159,7 +159,8 @@
   margin: -1px 0;
   padding: 0 5px;
   line-height: var(--row-line-height);
-  font: inherit;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
   text-align: center;
 }
 
@@ -177,6 +178,6 @@
   width: 11px;
   height: 11px;
   margin-right: 3px;
-  vertical-align: middle;
+  vertical-align: calc((1cap - 11px) / 2);
   color: var(--muted-foreground);
 }

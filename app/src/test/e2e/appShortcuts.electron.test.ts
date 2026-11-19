@@ -204,4 +204,39 @@ suite('App commander', () => {
     assert.ok(atFiltering, 'The group clicked is not at the top of the pane');
     assert.ok(focused, 'The filter lost the keyboard');
   });
+
+  test('stands the mouse of a key done with it in the middle of the capitals of its key, whatever its font, as it stood in the middle of its small letters, more than a pixel low beside the word after it', async () => {
+    await commanderPage.keyboard.press('F1');
+    const pane = commanderPage.locator('.shortcuts-pane');
+    await pane.locator('kbd.pointer .mouse-icon').first().waitFor();
+    const off = await pane.evaluate((element) =>
+      [...element.querySelectorAll<HTMLElement>('kbd.pointer')].map((key) => {
+        const line = document.createElement('span');
+        line.style.cssText =
+          'display: inline-block; width: 0; height: 0; vertical-align: baseline';
+        key.append(line);
+        const baseline = line.getBoundingClientRect().bottom;
+        line.remove();
+        const { fontWeight, fontSize, fontFamily } = getComputedStyle(key);
+        const context = document.createElement('canvas').getContext('2d');
+        if (!context) {
+          return Number.NaN;
+        }
+        context.font = `${fontWeight} ${fontSize} ${fontFamily}`;
+        const capitals = context.measureText('H').actualBoundingBoxAscent;
+        const mouse = key.querySelector('.mouse-icon')?.getBoundingClientRect();
+        return mouse
+          ? (mouse.top + mouse.bottom) / 2 - (baseline - capitals / 2)
+          : Number.NaN;
+      }),
+    );
+    await commanderPage.keyboard.press('F1');
+    await pane.waitFor({ state: 'detached' });
+    assert.ok(off.length > 0);
+    assert.deepStrictEqual(
+      off.filter((by) => !(Math.abs(by) < 0.6)),
+      [],
+      `The mice stand ${off.join()} pixels below the middle of the capitals`,
+    );
+  });
 });

@@ -303,7 +303,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws a shortcut as one key cap holding its keys inside its line, two pixels short of it and centered, its keys on the line of the words beside it, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted', () => {
+  test('draws a shortcut as one key cap holding its keys inside its line, two pixels short of it and centered, its keys on the line of the words beside it, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted, its middle on the middle of the capitals of its key rather than of its small letters, where it stood low', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     const combo = withClass(popup, 'shortcut-combo');
     looks(combo, {
@@ -335,7 +335,20 @@ suite('Style', () => {
     });
     looks(withClass(popup, 'mouse-icon'), {
       color: 'var(--muted-foreground)',
-      'vertical-align': 'middle',
+      height: '11px',
+      'vertical-align': 'calc((1cap - 11px) / 2)',
+    });
+  });
+
+  test('writes the keys of a shortcut in the monospace font at its size, as a path or a hash is written, so keys of as many characters are as wide in every shortcut, in the weight of the words beside them', () => {
+    const popup = popupOf(<ShortcutsPopupShown />);
+    const key = keyOf(withClass(popup, 'shortcut-combo'));
+    assert.ok(key);
+    looks(key, {
+      'font-family': 'var(--monospace-font-family)',
+      'font-size': 'var(--monospace-font-size)',
+      'font-weight': undefined,
+      'line-height': 'var(--row-line-height)',
     });
   });
 
