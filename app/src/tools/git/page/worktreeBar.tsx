@@ -1,3 +1,5 @@
+import { namedFolder } from '../../../lib/shared/sentences';
+import { tip } from '../../../lib/page/tips';
 import { useEffect, useMemo, useState } from 'react';
 import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
@@ -44,11 +46,11 @@ export function WorktreeBar() {
             aria-selected={worktree.root === active}
             aria-disabled={worktree.missing || undefined}
             className={`tab ${worktree.root === active ? 'active' : ''} ${worktree.missing ? 'missing' : ''}`}
-            title={
+            {...tip(
               worktree.missing
-                ? strings.common.gone(worktree.root)
-                : worktree.root
-            }
+                ? strings.common.folderGone(worktree.root)
+                : [namedFolder(worktree.root)],
+            )}
             onClick={
               worktree.missing
                 ? undefined

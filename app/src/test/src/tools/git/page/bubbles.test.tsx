@@ -119,7 +119,7 @@ function clicksOn(info: BookmarkRef): GitToHost[] {
 }
 
 function idleIn(markup: string, title: string): boolean {
-  return classesOf(tagWith(markup, `title="${title}`, 'bubble-action')).has(
+  return classesOf(tagWith(markup, `data-tip="${title}`, 'bubble-action')).has(
     'idle',
   );
 }
@@ -185,18 +185,18 @@ suite('Bubbles', () => {
     );
     assert.match(
       tagWith(html, '', 'badge', 'branch', 'checked-out'),
-      /title="main, checked out"/,
+      /data-tip="main, checked out"/,
     );
     assert.ok(!classesOf(tagWith(html, '', 'badge', 'tag')).has('checked-out'));
     tagWith(
       html,
-      'title="gone doesn&#x27;t exist anymore"',
+      'data-tip="gone doesn&#x27;t exist anymore"',
       'badge',
       'missing',
     );
     assert.match(
       html,
-      new RegExp(`title="Commit ${'b'.repeat(40)}">bbbbbbb</span>`),
+      new RegExp(`data-tip="Commit ${'b'.repeat(40)}">bbbbbbb</span>`),
     );
   });
 
@@ -211,10 +211,10 @@ suite('Bubbles', () => {
       'checked-out',
       'with-actions',
     );
-    assert.match(bubble, /title="main, checked out"/);
+    assert.match(bubble, /data-tip="main, checked out"/);
     assert.match(
       withActions,
-      /^<span[^>]*><span class="bubble-name">main<\/span><span class="bubble-actions"><button class="bubble-action[^"]*" title="Pull:[^"]*" tabindex="-1">.*?<\/button><button class="bubble-action[^"]*" title="Push:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
+      /^<span[^>]*><span class="bubble-name">main<\/span><span class="bubble-actions"><button class="bubble-action[^"]*" aria-label="Pull:[^"]*" data-tip="Pull:[^"]*" tabindex="-1">.*?<\/button><button class="bubble-action[^"]*" aria-label="Push:[^"]*" data-tip="Push:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
     );
     for (const without of [
       <RefBubble key="a" info={{ kind: 'branch', name: 'main' }} />,
@@ -232,12 +232,12 @@ suite('Bubbles', () => {
     const html = actionsWith(undefined);
     tagWith(
       html,
-      'title="Pull: fetch every remote, then fast-forward to the upstream"',
+      'data-tip="Pull: fetch every remote, then fast-forward to the upstream"',
       'bubble-action',
     );
     tagWith(
       html,
-      'title="Push: send the new commits to the upstream, or publish to the only remote when there is none"',
+      'data-tip="Push: send the new commits to the upstream, or publish to the only remote when there is none"',
       'bubble-action',
     );
   });
@@ -281,21 +281,25 @@ suite('Bubbles', () => {
     });
     assert.match(
       behind,
-      /title="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span><\/button>/,
+      /data-tip="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span><\/button>/,
     );
     assert.ok(
-      !classesOf(tagWith(behind, 'title="Pull:', 'bubble-action')).has('idle'),
+      !classesOf(tagWith(behind, 'data-tip="Pull:', 'bubble-action')).has(
+        'idle',
+      ),
     );
-    tagWith(behind, 'title="Push:', 'bubble-action', 'idle');
+    tagWith(behind, 'data-tip="Push:', 'bubble-action', 'idle');
     const ahead = actionsWith({ upstream: 'origin/main', ahead: 1, behind: 0 });
     assert.match(
       ahead,
-      /title="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">1<\/span><\/button>/,
+      /data-tip="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">1<\/span><\/button>/,
     );
     assert.ok(
-      !classesOf(tagWith(ahead, 'title="Push:', 'bubble-action')).has('idle'),
+      !classesOf(tagWith(ahead, 'data-tip="Push:', 'bubble-action')).has(
+        'idle',
+      ),
     );
-    tagWith(ahead, 'title="Pull:', 'bubble-action', 'idle');
+    tagWith(ahead, 'data-tip="Pull:', 'bubble-action', 'idle');
     const diverged = actionsWith({
       upstream: 'origin/main',
       ahead: 1,
@@ -308,11 +312,11 @@ suite('Bubbles', () => {
       assert.match(
         diverged,
         new RegExp(
-          `title="${title}[^"]*"[^>]*><svg.*?</svg><span class="bubble-count">${count}</span></button>`,
+          `data-tip="${title}[^"]*"[^>]*><svg.*?</svg><span class="bubble-count">${count}</span></button>`,
         ),
       );
       assert.doesNotMatch(
-        tagWith(diverged, `title="${title}`, 'bubble-action', 'idle'),
+        tagWith(diverged, `data-tip="${title}`, 'bubble-action', 'idle'),
         /disabled/,
       );
     }
@@ -324,7 +328,7 @@ suite('Bubbles', () => {
       for (const title of ['Pull:', 'Push:']) {
         const button = tagWith(
           markup,
-          `title="${title}`,
+          `data-tip="${title}`,
           'bubble-action',
           'idle',
         );
@@ -333,9 +337,9 @@ suite('Bubbles', () => {
       assert.doesNotMatch(markup, /bubble-count/);
     }
     const unpublished = actionsWith(undefined);
-    tagWith(unpublished, 'title="Pull:', 'bubble-action', 'idle');
+    tagWith(unpublished, 'data-tip="Pull:', 'bubble-action', 'idle');
     assert.ok(
-      !classesOf(tagWith(unpublished, 'title="Push:', 'bubble-action')).has(
+      !classesOf(tagWith(unpublished, 'data-tip="Push:', 'bubble-action')).has(
         'idle',
       ),
     );
@@ -350,11 +354,16 @@ suite('Bubbles', () => {
         { head: 'main', tab: running },
         <RefBubble info={{ kind: 'branch', name: 'main' }} actions />,
       );
-      const busy = tagWith(html, `title="${title}`, 'bubble-action', 'running');
+      const busy = tagWith(
+        html,
+        `data-tip="${title}`,
+        'bubble-action',
+        'running',
+      );
       assert.match(busy, /disabled=""/);
       const other = tagWith(
         html,
-        `title="${title === 'Pull:' ? 'Push:' : 'Pull:'}`,
+        `data-tip="${title === 'Pull:' ? 'Push:' : 'Pull:'}`,
         'bubble-action',
       );
       assert.ok(!classesOf(other).has('running'));
@@ -367,20 +376,20 @@ suite('Bubbles', () => {
     tagWith(missing, '', 'badge', 'tag', 'with-actions');
     const bright = tagWith(
       missing,
-      'title="Push v1 to origin"',
+      'data-tip="Push v1 to origin"',
       'bubble-action',
       'push',
     );
     assert.ok(!classesOf(bright).has('idle'));
     tagWith(
       tagged('v1', ['v1'], 'origin'),
-      'title="Push v1 to origin"',
+      'data-tip="Push v1 to origin"',
       'bubble-action',
       'idle',
     );
     tagWith(
       tagged('v1', [], undefined),
-      'title="Push v1"',
+      'data-tip="Push v1"',
       'bubble-action',
       'idle',
     );
@@ -408,7 +417,7 @@ suite('Bubbles', () => {
     );
     assert.match(
       behind,
-      /title="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span>/,
+      /data-tip="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span>/,
     );
     assert.ok(!idleIn(behind, 'Pull:'));
     assert.ok(idleIn(behind, 'Push:'));
@@ -480,7 +489,7 @@ suite('Bubbles', () => {
       { pulling: ['other', 'side'] },
     );
     assert.match(
-      tagWith(busy, 'title="Pull:', 'bubble-action', 'running'),
+      tagWith(busy, 'data-tip="Pull:', 'bubble-action', 'running'),
       /disabled=""/,
     );
     const calm = otherBranch(
@@ -489,7 +498,7 @@ suite('Bubbles', () => {
       { pulling: ['side'] },
     );
     assert.doesNotMatch(
-      tagWith(calm, 'title="Pull:', 'bubble-action'),
+      tagWith(calm, 'data-tip="Pull:', 'bubble-action'),
       /running|disabled/,
     );
   });
@@ -497,7 +506,7 @@ suite('Bubbles', () => {
   test('hides the dimmed buttons when asked, leaving a bubble without any its plain look', () => {
     tagWith(
       tagged('v1', [], 'origin', true),
-      'title="Push v1 to origin"',
+      'data-tip="Push v1 to origin"',
       'bubble-action',
     );
     for (const markup of [
@@ -511,14 +520,14 @@ suite('Bubbles', () => {
       { upstream: 'origin/main', ahead: 0, behind: 2 },
       true,
     );
-    tagWith(behind, 'title="Pull:', 'bubble-action', 'pull');
-    assert.doesNotMatch(behind, /title="Push:/);
+    tagWith(behind, 'data-tip="Pull:', 'bubble-action', 'pull');
+    assert.doesNotMatch(behind, /data-tip="Push:/);
     const shown = checkedOut(
       { upstream: 'origin/main', ahead: 0, behind: 0 },
       false,
     );
-    tagWith(shown, 'title="Pull:', 'bubble-action', 'idle');
-    tagWith(shown, 'title="Push:', 'bubble-action', 'idle');
+    tagWith(shown, 'data-tip="Pull:', 'bubble-action', 'idle');
+    tagWith(shown, 'data-tip="Push:', 'bubble-action', 'idle');
   });
 
   test('pushes the tag of its bubble without selecting its row or taking the keys from the list, marking only that tag as running while it pushes', () => {
@@ -560,11 +569,11 @@ suite('Bubbles', () => {
       </>,
     );
     assert.match(
-      tagWith(html, 'title="Push v1 to origin"', 'bubble-action', 'running'),
+      tagWith(html, 'data-tip="Push v1 to origin"', 'bubble-action', 'running'),
       /disabled=""/,
     );
     assert.doesNotMatch(
-      tagWith(html, 'title="Push v2 to origin"', 'bubble-action'),
+      tagWith(html, 'data-tip="Push v2 to origin"', 'bubble-action'),
       /disabled|running/,
     );
   });
@@ -599,7 +608,7 @@ suite('Bubbles', () => {
     );
     assert.match(
       renderToStaticMarkup(bubble),
-      new RegExp(`title="HEAD is detached at ${hash}">HEAD ccccccc<`),
+      new RegExp(`data-tip="HEAD is detached at ${hash}">HEAD ccccccc<`),
     );
     const kept: string[] = [];
     bubble?.props.onContextMenu({

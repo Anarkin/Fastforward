@@ -214,7 +214,7 @@ suite('App commander', () => {
 
   test('bookmarks the folder of the active side from the menu Ctrl+D opens, filling the star of the side and saving it to the user settings, and goes back to it by its key from another folder', async () => {
     const filledStar = right().locator(
-      `button[title="${strings.commander.bookmarks}"] .bookmark-icon.filled`,
+      `button[data-tip="${strings.commander.bookmarks}"] .bookmark-icon.filled`,
     );
     const bookmarked = await folderShown();
     await right().locator('.virtual-rows').focus();

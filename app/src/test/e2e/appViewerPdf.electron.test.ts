@@ -17,7 +17,7 @@ import {
 const count = () => page.locator('.viewer .search-count').textContent();
 
 const toggle = (title: string) =>
-  page.locator(`.viewer .search-toggle[title="${title}"]`);
+  page.locator(`.viewer .search-toggle[data-tip="${title}"]`);
 
 suite('App commander', () => {
   sharedCommanderApp();

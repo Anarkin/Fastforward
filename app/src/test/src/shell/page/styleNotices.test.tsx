@@ -15,7 +15,7 @@ suite('Style', () => {
       bottom: '0',
       'overflow-y': 'auto',
     });
-    const message = withClass(shown, 'notice-message');
+    const message = withClass(shown, 'card-message');
     looks(message, { 'overflow-y': 'auto' });
     assert.ok(cascaded(message, 'max-height'));
   });
@@ -39,7 +39,7 @@ suite('Style', () => {
         border: undefined,
         'border-left': undefined,
       });
-      looks(withClass(shown, 'notice-message'), {
+      looks(withClass(shown, 'card-message'), {
         padding: '6px 0 6px 12px',
       });
     }
@@ -47,8 +47,8 @@ suite('Style', () => {
 
   test("sets a notice's close button in as far as the message's first line, as it is shorter than the message's padding and line", () => {
     const shown = rendered(<NoticesShown />);
-    const message = withClass(shown, 'notice-message');
-    const close = withClass(shown, 'notice-close');
+    const message = withClass(shown, 'card-message');
+    const close = withClass(shown, 'card-close');
     assert.ok(message && close);
     const marginTop = (cascaded(close, 'margin') ?? '0').split(' ')[0];
     assert.strictEqual(
@@ -109,11 +109,11 @@ suite('Style', () => {
       matchingRules(withClass(rendered(<NoticesShown />), 'notice')).map(
         (rule) => rule.selector,
       ),
-      ['.notice'],
+      ['.card', '.card.notice'],
     );
     for (const level of ['info', 'error']) {
       looks(
-        withClass(rendered(<NoticesShown level={level} />), 'notice-message'),
+        withClass(rendered(<NoticesShown level={level} />), 'card-message'),
         { color: undefined },
       );
     }

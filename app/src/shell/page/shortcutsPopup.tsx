@@ -1,3 +1,4 @@
+import { labelTip } from '../../lib/page/tips';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { shellKeymap } from '../shared/keymap';
 import { KeyCombo } from '../../lib/page/keyCombo';
@@ -322,7 +323,7 @@ export function ShortcutsPopup() {
           <span>{strings.shortcuts.title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={onClose}
           >
             <CloseIcon />

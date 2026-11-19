@@ -9,6 +9,11 @@ import {
   type ScrollSettings,
 } from '../../lib/page/scrollSettings';
 import { defaultTextView } from './textView';
+import {
+  defaultNoticeTimes,
+  defaultTipDelay,
+  type NoticeTimes,
+} from '../shared/notices';
 import type {
   AboutInfo,
   TabInfo,
@@ -46,6 +51,8 @@ export interface ShellSource {
   readonly fileColors: FileColors;
   readonly partLooks: KnownLooks;
   readonly scrolling: ScrollSettings;
+  readonly tipDelay: number;
+  readonly noticeTimes: NoticeTimes;
   readonly textView: TextView;
   readonly imageView: ImageView;
   readonly choosing: ToWebviewOf<'chooseTool'> | undefined;
@@ -122,6 +129,8 @@ export const shellDefaults: ShellSource = {
   fileColors: noFileColors,
   partLooks: new Map(),
   scrolling: defaultScrolling,
+  tipDelay: defaultTipDelay,
+  noticeTimes: defaultNoticeTimes,
   textView: defaultTextView,
   imageView: defaultImageView,
   choosing: undefined,

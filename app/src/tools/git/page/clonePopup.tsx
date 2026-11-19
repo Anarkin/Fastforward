@@ -1,3 +1,5 @@
+import { namedFolder } from '../../../lib/shared/sentences';
+import { labelTip, tip } from '../../../lib/page/tips';
 import { useEffect, useId, useRef, useState } from 'react';
 import {
   cloneName,
@@ -95,7 +97,7 @@ function CloneForm({ form }: { form: Form }) {
           <button
             type="button"
             className="confirm-button"
-            title={strings.clone.chooseFolder}
+            {...tip(strings.clone.chooseFolder)}
             onClick={() => onChooseFolder(folder)}
           >
             {strings.tabs.browse}
@@ -114,7 +116,13 @@ function CloneForm({ form }: { form: Form }) {
         {folder !== '' && nameProblem(named) === undefined && (
           <>
             <label>{strings.clone.target}</label>
-            <div className="clone-target" title={targetPath(folder, named)}>
+            <div
+              className="clone-target"
+              {...tip([namedFolder(targetPath(folder, named))], {
+                at: 'over',
+                cut: true,
+              })}
+            >
               <NamedPath path={targetPath(folder, named)} />
             </div>
           </>
@@ -224,7 +232,7 @@ export function ClonePopup() {
           <span>{strings.clone.title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={onClose}
           >
             <CloseIcon />

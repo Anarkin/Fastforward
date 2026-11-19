@@ -1,3 +1,4 @@
+import { labelTip, tip } from '../../../lib/page/tips';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Direction, LastFetch, NavigationEntry } from '../shared/protocol';
 import { onMenuKeyDown, useMenuFocus } from '../../../lib/page/menuControls';
@@ -73,7 +74,7 @@ export function NavButtons() {
       <HistoryButton direction="forward" />
       <button
         className="nav-button"
-        title={strings.actions.head}
+        {...labelTip(strings.actions.head)}
         disabled={onHome === undefined}
         onClick={onHome}
       >
@@ -84,7 +85,7 @@ export function NavButtons() {
       >
         <button
           className={`nav-button ${fetching ? 'running' : ''}`}
-          title={title}
+          {...labelTip(title)}
           disabled={fetching}
           onClick={onFetch}
         >
@@ -98,7 +99,7 @@ export function NavButtons() {
         {autoFetchMinutes > 0 && (
           <button
             className={`nav-button toggle ${autoFetch ? 'active' : ''}`}
-            title={strings.navigation.fetchEvery(autoFetchMinutes)}
+            {...labelTip(strings.navigation.fetchEvery(autoFetchMinutes))}
             aria-pressed={autoFetch}
             onClick={() => onAutoFetch(!autoFetch)}
           >
@@ -132,7 +133,7 @@ function HistoryButton({ direction }: { direction: Direction }) {
     <div className="history-button" ref={container}>
       <button
         className="nav-button"
-        title={strings.navigation.history[direction]}
+        {...labelTip(strings.navigation.history[direction])}
         disabled={entries.length === 0}
         onPointerDown={() => {
           held.current = false;
@@ -201,7 +202,7 @@ export function HistoryMenu({
           <button
             className="menu-item history-item"
             role="menuitem"
-            title={entry.hash}
+            {...tip(entry.hash)}
             onMouseEnter={(event) => event.currentTarget.focus()}
             onClick={() => onPick(index + 1)}
           >

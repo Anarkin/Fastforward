@@ -16,7 +16,7 @@ export type ContextMenuItem =
       readonly sentence?: Sentence;
       readonly path?: boolean;
       readonly icon?: MenuIcon;
-      readonly title?: string;
+      readonly title?: Sentence;
       readonly onClick?: () => void;
       readonly submenu?: readonly ContextMenuItem[];
       readonly disabled?: boolean;

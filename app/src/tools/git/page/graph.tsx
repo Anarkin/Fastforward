@@ -1,3 +1,4 @@
+import { tip } from '../../../lib/page/tips';
 import { memo } from 'react';
 import { maxLanes, type GraphLine, type GraphRow } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
@@ -95,6 +96,7 @@ export const GraphCell = memo(function GraphCell({
       ) : row.merge ? (
         <g
           className="merge-dot"
+          {...tip(mergeTitle(row))}
           onClick={(event) => {
             event.stopPropagation();
             if (hash !== undefined) {
@@ -102,7 +104,6 @@ export const GraphCell = memo(function GraphCell({
             }
           }}
         >
-          <title>{mergeTitle(row)}</title>
           <circle cx={cx} cy={dotY} r={dotRadius + 4} fill="transparent" />
           <circle
             cx={cx}

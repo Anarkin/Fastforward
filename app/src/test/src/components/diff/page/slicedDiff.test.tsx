@@ -27,7 +27,7 @@ import { noop } from '../../../../helpers/fixtures';
 const language = <span className="language-slot" />;
 
 type OptionElement = React.ReactElement<{
-  title?: string;
+  'data-tip'?: string;
   'aria-pressed'?: boolean;
   onClick?: () => void;
   children?: OptionElement[];
@@ -59,7 +59,7 @@ function diffOptionButtons(shown: ShownOptions = {}, posted: unknown[] = []) {
 }
 
 function diffOptionTitles(shown: ShownOptions) {
-  return diffOptionButtons(shown).map((button) => button.props.title);
+  return diffOptionButtons(shown).map((button) => button.props['data-tip']);
 }
 
 function optionsHtml(shown: ShownOptions = {}) {
@@ -181,7 +181,7 @@ suite('Diff options shown by a host holding the diff slice', () => {
     const html = optionsHtml();
     assert.match(
       html,
-      /^<div[^>]*><button[^>]*title="Show the Entire File"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><span class="language-slot"><\/span><span class="nav-button-space"><\/span><button[^>]*title="Show Whitespace"[^>]*>.*?<\/button><button[^>]*title="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*title="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
+      /^<div[^>]*><button[^>]*data-tip="Show the Entire File"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><span class="language-slot"><\/span><span class="nav-button-space"><\/span><button[^>]*data-tip="Show Whitespace"[^>]*>.*?<\/button><button[^>]*data-tip="Show Whitespace Changes"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><button[^>]*data-tip="Wrap Long Lines"[^>]*>.*?<\/button><span class="nav-button-space"><\/span><div class="segmented"/,
     );
   });
 
@@ -212,7 +212,7 @@ suite('Diff options shown by a host holding the diff slice', () => {
     const html = optionsHtml();
     assert.match(
       html,
-      /<div class="segmented" role="group" aria-label="Layout"><button[^>]*title="Inline"[^>]*>.*?<\/button><button[^>]*title="Side by Side"[^>]*>.*?<\/button><\/div><\/div>$/,
+      /<div class="segmented" role="group" aria-label="Layout"><button[^>]*data-tip="Inline"[^>]*>.*?<\/button><button[^>]*data-tip="Side by Side"[^>]*>.*?<\/button><\/div><\/div>$/,
     );
   });
 
@@ -255,12 +255,12 @@ suite('Diff options shown by a host holding the diff slice', () => {
       const posted: unknown[] = [];
       const buttons = diffOptionButtons({ layout }, posted).filter(
         (button) =>
-          button.props.title === 'Inline' ||
-          button.props.title === 'Side by Side',
+          button.props['data-tip'] === 'Inline' ||
+          button.props['data-tip'] === 'Side by Side',
       );
       assert.deepStrictEqual(
         buttons.map((button) => [
-          button.props.title,
+          button.props['data-tip'],
           button.props['aria-pressed'],
         ]),
         [

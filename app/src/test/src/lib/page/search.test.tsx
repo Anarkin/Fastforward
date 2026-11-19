@@ -13,7 +13,7 @@ suite('Column search', () => {
     const html = renderToStaticMarkup(
       <SearchButton title="Search files" onClick={noop} />,
     );
-    tagWith(html, 'title="Search files"', 'nav-button', 'search-button');
+    tagWith(html, 'data-tip="Search files"', 'nav-button', 'search-button');
     const icon = page(html).querySelector('.search-button svg');
     assert.ok(icon);
     assert.ok(icon.querySelector('circle'));

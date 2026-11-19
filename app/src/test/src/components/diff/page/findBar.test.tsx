@@ -48,7 +48,7 @@ suite('The find of the diff', () => {
         const count = bar.querySelector('.search-count');
         assert.strictEqual(count?.textContent, '2 of 3');
         assert.strictEqual(
-          count.getAttribute('title'),
+          count.getAttribute('data-tip'),
           'Large files not shown yet are not searched: 2',
         );
         assert.deepStrictEqual(

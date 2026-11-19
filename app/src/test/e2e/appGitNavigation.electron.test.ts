@@ -98,7 +98,7 @@ suite('App', () => {
     await field.fill('SECOND');
     await popup.locator('.commit', { hasText: 'second' }).waitFor();
     await popup.locator('.search-count', { hasText: /^1 of \d+$/ }).waitFor();
-    const matchCase = popup.locator('.search-toggle[title="Match Case"]');
+    const matchCase = popup.locator('.search-toggle[data-tip="Match Case"]');
     await matchCase.click();
     await popup.locator('.search-count', { hasText: 'No matches' }).waitFor();
     assert.strictEqual(await popup.locator('.commit').count(), 0);
@@ -178,7 +178,7 @@ suite('App', () => {
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the search field');
     await field.fill('main');
-    await popup.locator('.row.result[title="main"]').click();
+    await popup.locator('.row.result[data-tip="main"]').click();
     await popup.waitFor({ state: 'detached' });
     await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
     await waitForFocus(list, 'the commit list');

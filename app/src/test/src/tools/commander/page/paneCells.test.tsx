@@ -542,7 +542,7 @@ suite('Commander pane', () => {
     assert.match(
       cell(repository),
       new RegExp(
-        `^<span class="commander-extension cut"><button class="commander-mark" title="${strings.commander.openRepository}" tabindex="-1"><svg class="icon tool-icon tool-git"`,
+        `^<span class="commander-extension cut"><button class="commander-mark" aria-label="${strings.commander.openRepository}" data-tip="${strings.commander.openRepository}" tabindex="-1"><svg class="icon tool-icon tool-git"`,
       ),
     );
     assert.match(
@@ -606,7 +606,11 @@ suite('Commander pane counting the sizes of folders', () => {
     const unread = new JSDOM(sizeCell(sized({ unreadFolders: 2 }))).window
       .document.body.firstElementChild;
     assert.deepStrictEqual(
-      [unread?.className, unread?.getAttribute('title'), unread?.textContent],
+      [
+        unread?.className,
+        unread?.getAttribute('data-tip'),
+        unread?.textContent,
+      ],
       ['commander-size', strings.commander.unreadUnder(2), '1,234'],
     );
     assert.strictEqual(

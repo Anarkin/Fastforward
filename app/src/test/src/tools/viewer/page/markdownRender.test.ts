@@ -167,6 +167,26 @@ suite('Markdown', () => {
     assert.match(html, /<img data-path="repo\/a\.png">/);
   });
 
+  test('hands the title a document gives a link, an image or an abbreviation to the tooltip of the app as plain words, rather than to the tooltip of the browser, and keeps no data attribute of the document, so a document tells that tooltip nothing but words', () => {
+    const html = render(
+      [
+        '[a link](https://example.com "where it goes")',
+        '',
+        '<abbr title="HyperText">HT</abbr>',
+        '',
+        `<span data-tip="mine" data-tip-said='["x"]' data-other="1" title="plain">t</span>`,
+      ].join('\n'),
+      noImages,
+    );
+    assert.match(
+      html,
+      /<a href="https:\/\/example\.com" data-tip="where it goes" target=/,
+    );
+    assert.match(html, /<abbr data-tip="HyperText">HT<\/abbr>/);
+    assert.match(html, /<span data-tip="plain">t<\/span>/);
+    assert.doesNotMatch(html, / title=|data-tip-said|data-other|mine/);
+  });
+
   test('keeps the language of a code block, and no other class', () => {
     const html = render(
       [

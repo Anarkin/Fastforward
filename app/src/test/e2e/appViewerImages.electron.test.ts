@@ -19,7 +19,7 @@ import { grayPng } from './images';
 const pressedMode = () =>
   page
     .locator('.viewer .segmented [aria-pressed="true"]')
-    .getAttribute('title');
+    .getAttribute('data-tip');
 
 const imageWidth = (selector: string) =>
   page
@@ -126,7 +126,7 @@ suite('App commander', () => {
       await page
         .locator('.viewer .segmented button')
         .evaluateAll((buttons) =>
-          buttons.map((button) => button.getAttribute('title')),
+          buttons.map((button) => button.getAttribute('data-tip')),
         ),
       ['Hex', 'Text', 'Preview'],
     );
@@ -167,7 +167,7 @@ suite('App commander', () => {
       'the text view',
     );
     assert.strictEqual(
-      await page.locator('.viewer .segmented [title="Preview"]').count(),
+      await page.locator('.viewer .segmented [data-tip="Preview"]').count(),
       0,
     );
     await page.keyboard.press('3');
@@ -189,7 +189,7 @@ suite('App commander', () => {
   test('shows an image previewed at its real size on F, a pixel of it on a pixel of the screen, from its middle, scrolled by the keys, saved for the next image, and fitted to the viewer again on its button', async () => {
     fs.writeFileSync(path.join(opened, 'huge.png'), grayPng(3000, 2000));
     const realSize = page.locator(
-      `.viewer button[title="${strings.viewer.realSize}"]`,
+      `.viewer button[data-tip="${strings.viewer.realSize}"]`,
     );
     const openHuge = async () => {
       await select('huge');
@@ -267,7 +267,7 @@ suite('App commander', () => {
     fs.writeFileSync(path.join(opened, 'small.png'), grayPng(400, 300));
     fs.writeFileSync(path.join(opened, 'huge.png'), grayPng(3000, 2000));
     const realSize = page.locator(
-      `.viewer button[title="${strings.viewer.realSize}"]`,
+      `.viewer button[data-tip="${strings.viewer.realSize}"]`,
     );
     const display = await page.evaluate(() => devicePixelRatio);
 

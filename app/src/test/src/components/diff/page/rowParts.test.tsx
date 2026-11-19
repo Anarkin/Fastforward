@@ -118,7 +118,7 @@ suite('Diff file header', () => {
     );
     assert.match(
       html,
-      /<span class="path" title="moved\/to-folder\.txt → elsewhere\/to-folder\.txt">\{<span class="path-piece"><span class="path-part">moved<\/span><\/span> → <span class="path-piece"><span class="path-part">elsewhere<\/span><\/span>\}\/<span class="path-piece"><span class="path-part colored" style="--file-color:light-dark\(blue, blue\)">to-folder\.txt<\/span><\/span><\/span>/,
+      /<span class="path" data-tip="moved\/to-folder\.txt → elsewhere\/to-folder\.txt" data-tip-said="[^"]*">\{<span class="path-piece"><span class="path-part">moved<\/span><\/span> → <span class="path-piece"><span class="path-part">elsewhere<\/span><\/span>\}\/<span class="path-piece"><span class="path-part colored" style="--file-color:light-dark\(blue, blue\)">to-folder\.txt<\/span><\/span><\/span>/,
     );
   });
 });
@@ -163,7 +163,7 @@ suite('Files to view', () => {
     assert.doesNotMatch(viewHeader(), /<button/);
     assert.match(
       viewHeader(() => {}),
-      /<button class="nav-button file-header-button" title="View the File in a Tab of Its Own">/,
+      /<button class="nav-button file-header-button" aria-label="View the File in a Tab of Its Own" data-tip="View the File in a Tab of Its Own">/,
     );
   });
 });

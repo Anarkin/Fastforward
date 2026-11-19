@@ -64,7 +64,7 @@ suite('Search bar', () => {
       'search-steps',
     ]);
     const back = shown?.firstElementChild;
-    assert.strictEqual(back?.getAttribute('title'), 'Close');
+    assert.strictEqual(back?.getAttribute('data-tip'), 'Close');
     assert.strictEqual(back?.innerHTML, renderToStaticMarkup(<BackIcon />));
     assert.deepStrictEqual(classesOf(document.querySelector('.search-box')), [
       'search-box-input',
@@ -78,7 +78,7 @@ suite('Search bar', () => {
     assert.deepStrictEqual(
       Array.from(document.querySelectorAll('.search-toggle'), (toggle) => [
         toggle.textContent,
-        toggle.getAttribute('title'),
+        toggle.getAttribute('data-tip'),
         toggle.className,
       ]),
       [
@@ -89,7 +89,7 @@ suite('Search bar', () => {
     );
     assert.deepStrictEqual(
       Array.from(document.querySelectorAll('.search-steps button'), (button) =>
-        button.getAttribute('title'),
+        button.getAttribute('data-tip'),
       ),
       ['Previous Match', 'Next Match'],
     );
@@ -115,7 +115,7 @@ suite('Search bar', () => {
     assert.strictEqual(
       page({ countTitle: 'Large files' })
         .querySelector('.search-count')
-        ?.getAttribute('title'),
+        ?.getAttribute('data-tip'),
       'Large files',
     );
     assert.strictEqual(
@@ -177,7 +177,7 @@ suite('Search bar', () => {
     });
     const regex = document.querySelectorAll('.search-toggle')[2];
     assert.strictEqual(regex.hasAttribute('disabled'), true);
-    assert.strictEqual(regex.getAttribute('title'), 'Not here');
+    assert.strictEqual(regex.getAttribute('data-tip'), 'Not here');
     assert.strictEqual(regex.getAttribute('aria-pressed'), 'false');
     assert.strictEqual(
       document.querySelector('.search-count')?.textContent,

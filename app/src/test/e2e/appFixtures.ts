@@ -79,7 +79,7 @@ async function resetApp(): Promise<void> {
       await page.locator(popup).waitFor({ state: 'detached' });
     }
   }
-  const notice = page.locator('.notice-close').first();
+  const notice = page.locator('.card-close').first();
   while ((await notice.count()) > 0) {
     await notice.click({ timeout: 1000 }).catch(() => undefined);
   }

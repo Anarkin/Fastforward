@@ -1,3 +1,4 @@
+import { namedFolder } from '../../../lib/shared/sentences';
 import type { RepositoryInfo } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
@@ -22,7 +23,7 @@ export function repositoryMenuItems(
     ...recent.map(({ root }) => ({
       label: root,
       path: true,
-      title: root,
+      title: [namedFolder(root)],
       onClick: () => onOpen(root),
       ...(onRemove && {
         onRemove: () => onRemove(root),

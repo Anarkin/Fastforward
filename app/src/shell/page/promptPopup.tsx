@@ -1,3 +1,4 @@
+import { labelTip, tip } from '../../lib/page/tips';
 import { useEffectEvent, useLayoutEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
 import type { Line, Sentence } from '../../lib/shared/sentences';
@@ -88,7 +89,7 @@ export function PromptPopup({
           <span>{title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={onCancel}
           >
             <CloseIcon />
@@ -104,7 +105,10 @@ export function PromptPopup({
           }}
         >
           {message !== undefined && (
-            <span className="prompt-message" title={message}>
+            <span
+              className="prompt-message"
+              {...tip(message, { at: 'over', cut: true })}
+            >
               {message}
             </span>
           )}

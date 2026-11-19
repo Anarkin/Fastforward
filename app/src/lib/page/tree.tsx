@@ -1,3 +1,5 @@
+import { namedFile, type Sentence } from '../shared/sentences';
+import { tip } from './tips';
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
@@ -26,7 +28,7 @@ export function FolderRow({
   children,
 }: {
   path: string;
-  title?: string;
+  title?: Sentence;
   depth: number;
   open: boolean;
   className: string;
@@ -40,7 +42,7 @@ export function FolderRow({
       {...itemProps}
       className={`row tree-row folder ${className}`}
       style={{ paddingLeft: treeIndent(depth), ...style }}
-      title={title}
+      {...tip(title)}
       onClick={() => onToggle(path)}
     >
       <Twisty open={open} />
@@ -74,7 +76,7 @@ export function FileRow({
     <div
       className={`row tree-row file ${marked ? 'selected' : ''}`}
       style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
-      title={change ? changeTitle(change) : path}
+      {...tip(change ? changeTitle(change, root) : [namedFile(path, root)])}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
       {change && <ChangeIcon kind={changeKind(change)} />}

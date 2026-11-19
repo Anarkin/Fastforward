@@ -188,6 +188,11 @@ export function markdownRenderer(
     }
   });
   purify.addHook('afterSanitizeAttributes', (node) => {
+    const title = node.getAttribute('title');
+    if (title !== null) {
+      node.removeAttribute('title');
+      node.setAttribute('data-tip', title);
+    }
     if (node.tagName === 'A') {
       const href = node.getAttribute('href');
       if (href !== null && !/^(?:https|mailto):/i.test(href)) {
@@ -212,6 +217,7 @@ export function markdownRenderer(
       fragment = purify.sanitize(markdown.render(text), {
         ALLOWED_TAGS: tagsGitHubKeeps,
         ALLOWED_ATTR: attributesGitHubKeeps,
+        ALLOW_DATA_ATTR: false,
         ALLOWED_URI_REGEXP: allowedUris,
         RETURN_DOM_FRAGMENT: true,
       });

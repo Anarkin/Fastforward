@@ -48,7 +48,7 @@ suite('App', () => {
     const middles = await Promise.all(
       [
         button.locator('.menu-button-trigger'),
-        page.locator('.diff-options [title="Show Whitespace"]'),
+        page.locator('.diff-options [data-tip="Show Whitespace"]'),
       ].map(async (each) => {
         const box = await each.boundingBox();
         return box && box.y + box.height / 2;
@@ -201,7 +201,7 @@ suite('App', () => {
       diff
         .locator(selector)
         .evaluateAll((buttons) =>
-          buttons.map((button) => button.getAttribute('title')),
+          buttons.map((button) => button.getAttribute('data-tip')),
         );
     assert.deepStrictEqual(await titles('.column-title .nav-button'), [
       'Close',
@@ -215,7 +215,7 @@ suite('App', () => {
     ]);
     await field.fill('T');
     await page.locator('.diff-line .find-match').first().waitFor();
-    const matchCase = diff.locator('.search-toggle[title="Match Case"]');
+    const matchCase = diff.locator('.search-toggle[data-tip="Match Case"]');
     await matchCase.click();
     await diff.locator('.search-count', { hasText: 'No matches' }).waitFor();
     assert.strictEqual(await matchCase.getAttribute('aria-pressed'), 'true');

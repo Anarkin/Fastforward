@@ -19,7 +19,7 @@ const toggles = (main: HTMLElement) =>
   Array.from(main.querySelectorAll('.search-toggle'), (toggle) => [
     toggle.getAttribute('aria-pressed'),
     toggle.hasAttribute('disabled'),
-    toggle.getAttribute('title'),
+    toggle.getAttribute('data-tip'),
   ]);
 
 suite('The find of the viewer', () => {

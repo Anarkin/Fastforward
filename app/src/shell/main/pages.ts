@@ -145,7 +145,7 @@ export class Pages {
         ...this.tools[tool].names(tabs.filter((tab) => tab.tool === tool)),
       ]),
     );
-    return tabs.map(({ id, tool, root }) => {
+    return tabs.map(({ id, tool, root, compare }) => {
       const name = names.get(id);
       return {
         id,
@@ -153,6 +153,9 @@ export class Pages {
         name: name?.name ?? strings.tools[tool],
         ...(name?.folder !== undefined && { folder: name.folder }),
         ...(root !== undefined && { root }),
+        ...(compare !== undefined && {
+          compared: { old: compare.old, new: compare.new },
+        }),
         ...(name?.unsaved === true && { unsaved: true as const }),
       };
     });

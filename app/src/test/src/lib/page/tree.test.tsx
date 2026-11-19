@@ -82,7 +82,12 @@ suite('File rows', () => {
       html,
       /<svg class="icon change-icon added".*?<\/svg><span class="path"><span class="path-piece"><span class="path-part">AGENTS\.md<\/span><\/span><\/span><svg class="icon link-icon"/,
     );
-    tagWith(html, 'title="Added symbolic link: AGENTS.md"', 'row', 'tree-row');
+    tagWith(
+      html,
+      'data-tip="Added symbolic link: AGENTS.md"',
+      'row',
+      'tree-row',
+    );
     assert.doesNotMatch(changedRow('A'), /link-icon/);
   });
 
@@ -113,7 +118,7 @@ suite('File rows', () => {
         onSelect={noop}
       />,
     );
-    tagWith(html, 'title="src/a.ts"', 'row', 'tree-row', 'file');
+    tagWith(html, 'data-tip="src/a.ts"', 'row', 'tree-row', 'file');
     tagWith(html, '', 'path', 'unchanged');
   });
 

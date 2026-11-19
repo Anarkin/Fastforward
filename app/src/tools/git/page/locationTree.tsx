@@ -1,3 +1,4 @@
+import { tip } from '../../../lib/page/tips';
 import type { RefKind } from '../shared/protocol';
 import { useOpenMenu, refMenuTarget } from './menus';
 import { FolderRow } from '../../../lib/page/tree';
@@ -80,7 +81,7 @@ function TreeChildren({
             {...(child.ref && rowProps(rows, refKey(child.ref), depth + 1))}
             className={`row tree-row leaf ${activeClass(rows, child.ref && refKey(child.ref))}`}
             style={{ paddingLeft: leafIndent(depth, withFolders) }}
-            title={child.ref?.name}
+            {...tip(child.ref?.name)}
             onClick={() => child.ref && onSelect(child.ref.commit)}
             onContextMenu={(event) =>
               child.ref && openMenu(event, refMenuTarget(child.ref))

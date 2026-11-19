@@ -97,7 +97,7 @@ suite('App commander', () => {
     );
     chosen.push(await focusIn(inList));
     const bookmarks = right().locator(
-      `button[title="${strings.commander.bookmarks}"]`,
+      `button[data-tip="${strings.commander.bookmarks}"]`,
     );
     const addOrRemove = page.locator('.menu-item', {
       hasText: new RegExp(

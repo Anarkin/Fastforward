@@ -4,6 +4,7 @@ import type { PathLooks } from '../../lib/shared/partLooks';
 import type { PathFacts } from '../../lib/shared/pathFacts';
 import type { FolderCommand } from '../../lib/shared/folderCommands';
 import type { ImageView, TextView } from './views';
+import type { NoticeTimes } from './notices';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
 export type PathCommand =
@@ -17,6 +18,7 @@ export interface TabInfo {
   readonly name: string;
   readonly folder?: string;
   readonly root?: string;
+  readonly compared?: { readonly old: string; readonly new: string };
   readonly unsaved?: true;
 }
 
@@ -151,6 +153,11 @@ export type ToWebview =
       readonly wheelRows: number;
       readonly smooth: boolean;
       readonly smoothSnap: boolean;
+    }
+  | {
+      readonly type: 'hints';
+      readonly tipDelay: number;
+      readonly noticeTimes: NoticeTimes;
     }
   | { readonly type: 'textView'; readonly view: TextView }
   | { readonly type: 'imageView'; readonly view: ImageView }

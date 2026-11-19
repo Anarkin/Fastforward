@@ -17,7 +17,7 @@ import { firstViewerRow } from './viewerAppFixtures';
 const pressedMode = () =>
   page
     .locator('.viewer .segmented [aria-pressed="true"]')
-    .getAttribute('title');
+    .getAttribute('data-tip');
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -140,7 +140,7 @@ suite('App commander', () => {
     );
     await page.keyboard.press('1');
     await waitFor(async () => (await pressedMode()) === 'Hex', 'the hex view');
-    await page.locator('.viewer .segmented [title="Text"]').click();
+    await page.locator('.viewer .segmented [data-tip="Text"]').click();
     await waitFor(
       async () => (await pressedMode()) === 'Text',
       'the text view',

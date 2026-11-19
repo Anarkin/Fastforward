@@ -31,6 +31,29 @@ const timesIn = (folder: string, pattern: RegExp) =>
 
 const fixedSleeps = 25;
 
+function titlesAnElement(text: string): boolean {
+  for (const opened of text.matchAll(/<[a-z][a-z0-9]*(?=[\s/>])/g)) {
+    let depth = 0;
+    for (let at = opened.index + opened[0].length; at < text.length; at++) {
+      const char = text[at];
+      if (char === '{') {
+        depth++;
+      } else if (char === '}') {
+        depth--;
+      } else if (depth === 0 && char === '>') {
+        break;
+      } else if (
+        depth === 0 &&
+        /\s/.test(text[at - 1] ?? '') &&
+        text.startsWith('title=', at)
+      ) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 suite('Lessons from past mistakes', () => {
   test('waits for a page to load again in no end-to-end test, as the app loads its pages again only for settings other than those it has and a save of its own under way replaces the settings a test wrote, so a test waited 30 seconds for a page that loaded no more; writeSettings writes them until the page shows them', () => {
     assert.deepStrictEqual(
@@ -81,6 +104,34 @@ suite('Lessons from past mistakes', () => {
         filesWith(folder, /\bcreateRange\(/),
       ),
       ['lib/page/scratchRange.ts'],
+    );
+  });
+
+  test('says what a control does, and shows text cut short, in the tooltip of the app, by tip or labelTip, never in the title of an element, as the tooltip of the browser took no path, no key and no setting, looked another way at each scale and would come back with every element that kept its title', () => {
+    assert.deepStrictEqual(
+      [
+        titlesAnElement('<span className="a" title={said}>'),
+        titlesAnElement('<svg>\n  <title>said</title>'),
+        titlesAnElement('<Menu title={said} />'),
+        titlesAnElement(
+          '<span {...tip(said)} onClick={() => <b title="x" />}>',
+        ),
+        titlesAnElement('const kept = useRef<string>(title);'),
+      ],
+      [true, false, false, true, false],
+    );
+    const pages = ['tools', 'lib', 'components', 'shell'];
+    assert.deepStrictEqual(
+      pages.flatMap((folder) =>
+        filesIn(folder).filter((file) => titlesAnElement(textOf(file))),
+      ),
+      [],
+    );
+    assert.deepStrictEqual(
+      pages.flatMap((folder) =>
+        filesWith(folder, /<title>|setAttribute\(\s*['"]title['"]/),
+      ),
+      [],
     );
   });
 });

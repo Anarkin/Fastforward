@@ -168,7 +168,7 @@ export const scrolledDown = async (rows: number) => {
 };
 export const notices = () => page.locator('.notice').allTextContents();
 const closeNotices = async () => {
-  const close = page.locator('.notice-close').first();
+  const close = page.locator('.card-close').first();
   while ((await close.count()) > 0) {
     await close.click({ timeout: 1000 }).catch(() => undefined);
   }

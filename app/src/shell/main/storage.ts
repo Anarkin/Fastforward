@@ -3,6 +3,11 @@ import type { FileColor } from '../../lib/shared/fileColors';
 import type { Settings } from './settings';
 import type { UserSettings } from './userSettings';
 import type { ImageView, TextView } from '../shared/views';
+import {
+  defaultNoticeTimes,
+  defaultTipDelay,
+  type NoticeTimes,
+} from '../shared/notices';
 import type { ToolId } from '../shared/tools';
 import type { Layout } from './windows';
 import type { Store } from './stateFile';
@@ -17,6 +22,15 @@ const commandOfferedKey = 'terminalCommandOffered';
 export const maxRecentItems = 50;
 
 const maxWheelRows = 50;
+
+const maxTipDelay = 10_000;
+
+const longestNotice = 3_600_000;
+
+const secondsOr = (seconds: number, otherwise: number) =>
+  Number.isFinite(seconds)
+    ? Math.min(longestNotice, Math.max(1000, Math.round(seconds * 1000)))
+    : otherwise;
 
 const textViewKeys = ['wordWrap', 'showWhitespace', 'highlightSyntax'] as const;
 
@@ -169,6 +183,34 @@ export class Storage {
 
   get smoothSnap(): boolean {
     return this.settings.scrolling.smoothSnap;
+  }
+
+  get tipDelay(): number {
+    const delay = this.settings.tooltips.delayMilliseconds;
+    return Number.isFinite(delay)
+      ? Math.min(maxTipDelay, Math.max(0, Math.round(delay)))
+      : defaultTipDelay;
+  }
+
+  get noticeTimes(): NoticeTimes {
+    const { info, error } = this.settings.notices;
+    const least = secondsOr(info.leastSeconds, defaultNoticeTimes.least);
+    const errorLeast = secondsOr(
+      error.leastSeconds,
+      defaultNoticeTimes.errorLeast,
+    );
+    return {
+      least,
+      most: Math.max(
+        least,
+        secondsOr(info.mostSeconds, defaultNoticeTimes.most),
+      ),
+      errorLeast,
+      errorMost: Math.max(
+        errorLeast,
+        secondsOr(error.mostSeconds, defaultNoticeTimes.errorMost),
+      ),
+    };
   }
 
   get textView(): TextView {

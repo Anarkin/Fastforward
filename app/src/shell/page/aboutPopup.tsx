@@ -1,3 +1,4 @@
+import { labelTip, tip } from '../../lib/page/tips';
 import {
   useCallback,
   useEffect,
@@ -28,7 +29,7 @@ export function CopyButton({
     <button
       ref={ref}
       className={`about-copy ${copied ? 'copied' : ''}`}
-      title={strings.about.copyTitle}
+      {...tip(strings.about.copyTitle)}
       onClick={onClick}
     >
       {copied ? strings.about.copied : strings.about.copy}
@@ -75,7 +76,7 @@ export function AboutPopup() {
           <span>{strings.about.title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={onClose}
           >
             <CloseIcon />

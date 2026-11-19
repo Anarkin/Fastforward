@@ -1,3 +1,4 @@
+import { plainOf } from '../../../../lib/shared/sentences';
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
@@ -98,33 +99,40 @@ suite('File status', () => {
     );
   });
 
-  test('names the status and both paths of a rename in the tooltip', () => {
-    assert.strictEqual(
-      changeTitle(change('new.ts', { status: 'R', oldPath: 'old.ts' })),
-      'Renamed: old.ts → new.ts',
+  test('names the status and both paths of a rename in the tooltip, each path as a file of its repository, so a tooltip draws them as every path is drawn', () => {
+    assert.deepStrictEqual(
+      changeTitle(change('new.ts', { status: 'R', oldPath: 'old.ts' }), '/r'),
+      [
+        'Renamed: ',
+        { name: 'old.ts', path: 'file', root: '/r' },
+        ' → ',
+        { name: 'new.ts', path: 'file', root: '/r' },
+      ],
     );
-    assert.strictEqual(
-      changeTitle(change('gone.ts', { status: 'D' })),
-      'Deleted: gone.ts',
-    );
+    assert.deepStrictEqual(changeTitle(change('gone.ts', { status: 'D' })), [
+      'Deleted: ',
+      { name: 'gone.ts', path: 'file' },
+    ]);
   });
 
   test('names a symbolic link as one in the tooltip, with each status', () => {
     assert.deepStrictEqual(
       (['A', 'M', 'D', 'T', 'U'] as const).map((status) =>
-        changeTitle(change('l', { status, link: true })),
+        plainOf(changeTitle(change('l', { status, link: true }))),
       ),
       [
-        'Added symbolic link: l',
-        'Modified symbolic link: l',
-        'Deleted symbolic link: l',
-        'Changed to a symbolic link: l',
-        'Untracked symbolic link: l',
+        'Added symbolic link: "l"',
+        'Modified symbolic link: "l"',
+        'Deleted symbolic link: "l"',
+        'Changed to a symbolic link: "l"',
+        'Untracked symbolic link: "l"',
       ],
     );
     assert.strictEqual(
-      changeTitle(change('b', { status: 'R', oldPath: 'a', link: true })),
-      'Renamed symbolic link: a → b',
+      plainOf(
+        changeTitle(change('b', { status: 'R', oldPath: 'a', link: true })),
+      ),
+      'Renamed symbolic link: "a" → "b"',
     );
   });
 });

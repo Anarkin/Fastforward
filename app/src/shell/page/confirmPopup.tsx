@@ -1,3 +1,4 @@
+import { labelTip } from '../../lib/page/tips';
 import { useLayoutEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
 import type { Line } from '../../lib/shared/sentences';
@@ -53,7 +54,7 @@ export function ConfirmPopup({
           <span>{title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={onCancel}
           >
             <CloseIcon />

@@ -127,6 +127,10 @@ export const strings = {
     reading: 'Reading…',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
+    fileFromTo: (from: string, to: string, root?: string) =>
+      sentence`${namedFile(from, root)} → ${namedFile(to, root)}`,
+    folderGone: (folder: string) =>
+      sentence`${namedFolder(folder)} doesn't exist anymore`,
     renamed: (from: Sentence | Value, to: Sentence | Value) =>
       sentence`${from} → ${to}`,
     renamedWithin: (
@@ -579,7 +583,7 @@ export const strings = {
       U: 'Untracked symbolic link',
       '?': 'Changed symbolic link',
     },
-    change: (status: string, path: string) => `${status}: ${path}`,
+    change: (status: string, path: Sentence) => sentence`${status}: ${path}`,
   },
   diff: {
     linesCounted: (added: number, removed: number) =>

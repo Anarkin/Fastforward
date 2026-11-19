@@ -1,3 +1,4 @@
+import { labelTip } from './tips';
 import { SearchIcon } from './icons';
 
 export function SearchButton({
@@ -10,7 +11,7 @@ export function SearchButton({
   return (
     <button
       className="nav-button search-button"
-      title={title}
+      {...labelTip(title)}
       onClick={onClick}
     >
       <SearchIcon />

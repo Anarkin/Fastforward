@@ -318,10 +318,10 @@ suite('Menu items', () => {
       isValidElement<{
         onClick: (event: { stopPropagation: () => void }) => void;
         onMouseDown: (event: { preventDefault: () => void }) => void;
-        title: string;
+        'data-tip': string;
       }>(remove),
     );
-    assert.strictEqual(remove.props.title, 'Remove a');
+    assert.strictEqual(remove.props['data-tip'], 'Remove a');
     remove.props.onMouseDown({ preventDefault: () => log.push('kept focus') });
     remove.props.onClick({ stopPropagation: () => log.push('kept to itself') });
     assert.ok(

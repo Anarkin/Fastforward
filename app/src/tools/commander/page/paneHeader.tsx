@@ -1,3 +1,4 @@
+import { labelTip } from '../../../lib/page/tips';
 import { type Side } from '../shared/sides';
 import { type Layout } from './layouts';
 import { useCommander, useCommanderActions } from './store';
@@ -64,7 +65,7 @@ function FlatButton({ side }: { side: Side }) {
   return (
     <button
       className={`nav-button toggle${flat ? ' active' : ''}${reading ? ' running' : ''}`}
-      title={strings.commander.flatView}
+      {...labelTip(strings.commander.flatView)}
       aria-pressed={flat}
       onClick={() => onFlat(side)}
     >
@@ -114,7 +115,7 @@ export function PaneTitle({
       <div className="column-start nav-buttons">
         <button
           className="nav-button"
-          title={strings.commander.back}
+          {...labelTip(strings.commander.back)}
           disabled={back !== true}
           onClick={() => onStep(-1)}
         >
@@ -122,7 +123,7 @@ export function PaneTitle({
         </button>
         <button
           className="nav-button"
-          title={strings.commander.forward}
+          {...labelTip(strings.commander.forward)}
           disabled={forward !== true}
           onClick={() => onStep(1)}
         >

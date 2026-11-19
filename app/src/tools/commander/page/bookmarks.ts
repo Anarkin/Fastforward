@@ -1,3 +1,4 @@
+import { namedFolder } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 import { folderKey } from '../shared/paths';
@@ -44,7 +45,7 @@ export function bookmarkMenu({
     ...bookmarks.map((folder, index) => ({
       label: folder,
       path: true,
-      title: folder,
+      title: [namedFolder(folder)],
       accessKey: bookmarkKey(index),
       showAccessKey: true,
       checked: folder === bookmark,

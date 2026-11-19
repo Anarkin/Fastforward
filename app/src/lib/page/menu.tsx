@@ -1,3 +1,4 @@
+import { labelTip, tip } from './tips';
 import { pathMenuClass } from './pathMenu';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { keymap } from './keymap';
@@ -92,7 +93,7 @@ export function MenuButton({
       <button
         ref={trigger}
         className={`nav-button menu-button-trigger${label === undefined ? '' : ' labelled'}${arrow ? ' arrowed' : ''}${open ? ' open' : ''}`}
-        title={title}
+        {...(label === undefined ? labelTip(title) : tip(title))}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}

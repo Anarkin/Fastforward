@@ -52,7 +52,7 @@ const drop = (onto: string | undefined, made: boolean) =>
 const choose = async (label: string, title: string) => {
   const item = page.locator('.context-menu .menu-item', { hasText: label });
   await item.waitFor();
-  assert.strictEqual(await item.getAttribute('title'), title);
+  assert.strictEqual(await item.getAttribute('data-tip'), title);
   await item.click();
 };
 

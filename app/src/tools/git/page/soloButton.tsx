@@ -1,3 +1,4 @@
+import { labelTip } from '../../../lib/page/tips';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
 import { SoloIcon } from '../../../lib/page/icons';
@@ -9,7 +10,7 @@ export function SoloButton() {
   return (
     <button
       className={`nav-button toggle ${solo ? 'active' : ''} ${applying ? 'running' : ''}`}
-      title={strings.commits.solo}
+      {...labelTip(strings.commits.solo)}
       aria-pressed={solo}
       disabled={applying}
       onClick={() => onSolo(!solo)}

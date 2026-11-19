@@ -1,3 +1,4 @@
+import { labelTip } from '../../../lib/page/tips';
 import {
   EntireFileIcon,
   WhitespaceChangesIcon,
@@ -38,7 +39,7 @@ export function DiffToggles({
     <div className="nav-buttons diff-options">
       <button
         className={`nav-button toggle ${entire ? 'active' : ''}`}
-        title={strings.diff.showEntireFile}
+        {...labelTip(strings.diff.showEntireFile)}
         aria-pressed={entire}
         onClick={() => onEntire(!entire)}
       >
@@ -49,7 +50,7 @@ export function DiffToggles({
       <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-        title={strings.common.showWhitespace}
+        {...labelTip(strings.common.showWhitespace)}
         aria-pressed={showWhitespace}
         onClick={() => onShowWhitespace(!showWhitespace)}
       >
@@ -57,7 +58,7 @@ export function DiffToggles({
       </button>
       <button
         className={`nav-button toggle ${ignoreWhitespace ? '' : 'active'}`}
-        title={strings.diff.showWhitespaceChanges}
+        {...labelTip(strings.diff.showWhitespaceChanges)}
         aria-pressed={!ignoreWhitespace}
         onClick={() => onIgnoreWhitespace(!ignoreWhitespace)}
       >
@@ -66,7 +67,7 @@ export function DiffToggles({
       <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-        title={strings.common.wrap}
+        {...labelTip(strings.common.wrap)}
         aria-pressed={wordWrap}
         onClick={() => onWordWrap(!wordWrap)}
       >
@@ -76,7 +77,7 @@ export function DiffToggles({
       <div className="segmented" role="group" aria-label={strings.diff.layout}>
         <button
           className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
-          title={strings.diff.inline}
+          {...labelTip(strings.diff.inline)}
           aria-pressed={layout === 'inline'}
           onClick={() => onLayout('inline')}
         >
@@ -84,7 +85,7 @@ export function DiffToggles({
         </button>
         <button
           className={`nav-button toggle ${layout === 'sideBySide' ? 'active' : ''}`}
-          title={strings.diff.sideBySide}
+          {...labelTip(strings.diff.sideBySide)}
           aria-pressed={layout === 'sideBySide'}
           onClick={() => onLayout('sideBySide')}
         >

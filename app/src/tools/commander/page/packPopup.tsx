@@ -1,3 +1,4 @@
+import { labelTip } from '../../../lib/page/tips';
 import { useEffect, useId, useRef } from 'react';
 import { strings } from '../../../lib/shared/strings';
 import { useDismiss } from '../../../lib/page/dismiss';
@@ -331,7 +332,7 @@ function PackDialog() {
           <span>{title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={cancelPack}
           >
             <CloseIcon />

@@ -17,23 +17,12 @@
   pointer-events: none;
 }
 
-.notice {
-  box-sizing: border-box;
-  max-width: 480px;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+.card.notice {
   padding: 8px;
-  color: var(--color-foreground);
-  background: var(--color-notice-background);
-  border-radius: var(--card-radius);
-  box-shadow: var(--popup-shadow);
   pointer-events: auto;
 }
 
-.notice-message {
-  flex: 1;
-  min-width: 0;
+.notice .card-message {
   padding: 6px 0 6px 12px;
   max-height: 50vh;
   overflow-y: auto;
@@ -42,8 +31,6 @@
     var(--color-foreground) 10%,
     transparent
   );
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
   user-select: text;
 }
 
@@ -53,7 +40,7 @@
   color: var(--color-error-foreground);
 }
 
-.notice-close {
+.card-close {
   flex: none;
   display: flex;
   align-items: center;
@@ -69,7 +56,7 @@
   opacity: var(--muted-opacity);
 }
 
-.notice-close:hover {
+.card-close:hover {
   opacity: 1;
   background: var(--hover-background);
 }

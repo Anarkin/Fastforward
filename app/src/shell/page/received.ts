@@ -41,6 +41,8 @@ export function received(
           smoothSnap: message.smoothSnap,
         },
       };
+    case 'hints':
+      return { tipDelay: message.tipDelay, noticeTimes: message.noticeTimes };
     case 'textView':
       return { textView: message.view };
     case 'imageView':

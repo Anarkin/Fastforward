@@ -15,7 +15,7 @@ import { findMarks, findCount } from './viewerAppFixtures';
 import { assertFillsRows } from './markRows';
 
 const toggle = (title: string) =>
-  page.locator(`.viewer .search-toggle[title="${title}"]`);
+  page.locator(`.viewer .search-toggle[data-tip="${title}"]`);
 
 suite('App commander', () => {
   sharedCommanderApp();

@@ -1,3 +1,4 @@
+import { labelTip } from '../../../lib/page/tips';
 import { useMemo, useState } from 'react';
 import { type ChangeArea } from '../shared/protocol';
 import {
@@ -239,7 +240,7 @@ export function Files() {
     <div className="nav-buttons all-files">
       <button
         className={`nav-button toggle ${showAll ? 'active' : ''}`}
-        title={strings.files.showAll}
+        {...labelTip(strings.files.showAll)}
         aria-pressed={showAll}
         onClick={() => onShowAll(!showAll)}
       >
@@ -247,7 +248,7 @@ export function Files() {
       </button>
       <button
         className="nav-button"
-        title={strings.files.collapseAll}
+        {...labelTip(strings.files.collapseAll)}
         disabled={noFolders}
         onClick={() =>
           filtering
@@ -264,7 +265,7 @@ export function Files() {
       </button>
       <button
         className="nav-button"
-        title={strings.files.expandAll}
+        {...labelTip(strings.files.expandAll)}
         disabled={noFolders}
         onClick={() =>
           filtering

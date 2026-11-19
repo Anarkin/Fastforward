@@ -93,6 +93,11 @@ suite('Shell store', () => {
       smoothSnap: false,
     });
     receive({
+      type: 'hints',
+      tipDelay: 120,
+      noticeTimes: { least: 1, most: 2, errorLeast: 3, errorMost: 4 },
+    });
+    receive({
       type: 'textView',
       view: { wordWrap: false, showWhitespace: true, highlightSyntax: false },
     });
@@ -102,6 +107,10 @@ suite('Shell store', () => {
     const state = store.getState();
     assert.deepStrictEqual(state.tabs, [terminal, git]);
     assert.strictEqual(state.active, '2');
+    assert.deepStrictEqual(
+      [state.tipDelay, state.noticeTimes],
+      [120, { least: 1, most: 2, errorLeast: 3, errorMost: 4 }],
+    );
     assert.strictEqual(state.dateFormat, 'DD.MM.YYYY');
     assert.deepStrictEqual(state.scrolling, {
       wheelRows: 3,

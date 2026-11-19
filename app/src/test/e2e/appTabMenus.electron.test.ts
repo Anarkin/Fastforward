@@ -19,13 +19,13 @@ const shownTab = () =>
     all.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'),
   );
 
-const appMenu = `nav button[title="${strings.tabs.settings}"]`;
+const appMenu = `nav button[data-tip="${strings.tabs.settings}"]`;
 
 const kinds = ['commander', 'commander', 'git', 'git', 'terminal'] as const;
 
 const toolMenus = {
-  commander: `.commander-pane button[title="${strings.commander.bookmarks}"]`,
-  git: `button[title="${strings.commits.settings}"]`,
+  commander: `.commander-pane button[data-tip="${strings.commander.bookmarks}"]`,
+  git: `button[data-tip="${strings.commits.settings}"]`,
   terminal: undefined,
 } as const;
 

@@ -1,3 +1,4 @@
+import { labelTip, tip } from './tips';
 import type { InputHTMLAttributes, KeyboardEvent, RefObject } from 'react';
 import type { SearchOptions } from '../shared/searchOptions';
 import { strings } from '../shared/strings';
@@ -53,7 +54,7 @@ function SearchToggles({
           <button
             key={option}
             className={`search-toggle${pressed ? ' active' : ''}`}
-            title={off ? noRegex : title}
+            {...labelTip(off ? noRegex : title)}
             aria-pressed={pressed}
             disabled={off}
             tabIndex={compact ? -1 : undefined}
@@ -122,7 +123,7 @@ export function SearchBar({
       {!compact && onClose !== undefined && (
         <button
           className="nav-button"
-          title={strings.common.close}
+          {...labelTip(strings.common.close)}
           onClick={onClose}
         >
           <BackIcon />
@@ -142,7 +143,7 @@ export function SearchBar({
           onKeyDown={onKeyDown}
         />
         {count && (
-          <span className="search-count" title={countTitle}>
+          <span className="search-count" {...tip(countTitle)}>
             {count}
           </span>
         )}
@@ -152,7 +153,7 @@ export function SearchBar({
         <div className="search-steps">
           <button
             className="nav-button"
-            title={strings.find.previous}
+            {...labelTip(strings.find.previous)}
             disabled={found.matches === 0}
             onClick={() => onStep(-1)}
           >
@@ -160,7 +161,7 @@ export function SearchBar({
           </button>
           <button
             className="nav-button"
-            title={strings.find.next}
+            {...labelTip(strings.find.next)}
             disabled={found.matches === 0}
             onClick={() => onStep(1)}
           >

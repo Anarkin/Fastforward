@@ -33,7 +33,7 @@ suite('Worktree bar', () => {
   afterEach(() => vi.useRealTimers());
 
   type Worktree = {
-    title: string;
+    'data-tip': string;
     className: string;
     onPointerEnter: () => void;
     onClick?: () => void;
@@ -94,7 +94,7 @@ suite('Worktree bar', () => {
 
   test('marks the worktree shown, naming each folder in its tooltip and the main one by its branch alone', () => {
     const [main, gone, feature] = worktreesOf([], []);
-    assert.strictEqual(main.props.title, '/a');
+    assert.strictEqual(main.props['data-tip'], '/a');
     assert.match(main.props.className, /\bactive\b/);
     const [name, folder] = main.props.children;
     assert.ok(isValidElement<{ className: string }>(name));
@@ -102,7 +102,7 @@ suite('Worktree bar', () => {
     assert.strictEqual(folder, false);
     assert.doesNotMatch(feature.props.className, /\bactive\b/);
     assert.match(gone.props.className, /\bmissing\b/);
-    assert.strictEqual(gone.props.title, "/b doesn't exist anymore");
+    assert.strictEqual(gone.props['data-tip'], "/b doesn't exist anymore");
   });
 
   test('shows the folder of a linked worktree dimmed after its branch, unless they are named the same', () => {

@@ -216,8 +216,8 @@ suite('Commit list rows', () => {
       head: 'main',
       refs: [{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }],
     });
-    assert.match(html, /class="bubble-action[^"]*" title="Pull:/);
-    assert.match(html, /class="bubble-action[^"]*" title="Push:/);
+    assert.match(html, /class="bubble-action[^"]*" aria-label="Pull:/);
+    assert.match(html, /class="bubble-action[^"]*" aria-label="Push:/);
   });
 
   test("puts each remote's tag right after the local tag of its name, and the tags only on a remote after the rest", () => {
@@ -270,7 +270,7 @@ suite('Commit list rows', () => {
     });
     assert.match(
       html,
-      /title="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">3<\/span>/,
+      /data-tip="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">3<\/span>/,
     );
   });
 
@@ -292,7 +292,7 @@ suite('Commit list rows', () => {
       });
     assert.match(
       bubbles([{ kind: 'branch', name: 'main', commit: at, tracking }], true),
-      /^<div class="bubble-line"><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge hash" title="[^"]*aaaaaaaaaa[^"]*">aaaaaaa<\/span><wbr\/><span class="badge stash">[^<]*<\/span><\/div>$/,
+      /^<div class="bubble-line"><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge hash" data-tip="[^"]*aaaaaaaaaa[^"]*">aaaaaaa<\/span><wbr\/><span class="badge stash">[^<]*<\/span><\/div>$/,
     );
     assert.match(
       bubbles([], false),

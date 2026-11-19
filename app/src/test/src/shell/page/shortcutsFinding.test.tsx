@@ -461,8 +461,10 @@ suite('Shortcuts popup', () => {
     const title = dialog.props.children[0];
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(title));
     const close = title.props.children[1];
-    assert.ok(isValidElement<{ title: string; onClick: () => void }>(close));
-    assert.strictEqual(close.props.title, 'Close');
+    assert.ok(
+      isValidElement<{ 'data-tip': string; onClick: () => void }>(close),
+    );
+    assert.strictEqual(close.props['data-tip'], 'Close');
     close.props.onClick();
     assert.deepStrictEqual(store.getState().popups, []);
   });

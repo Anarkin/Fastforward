@@ -255,4 +255,26 @@ suite('Shell with no tab open', () => {
       noGit,
     );
   });
+
+  test('tells the page how long to wait before a tooltip and how long a notice stays, as the settings say', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('hints'), {
+          type: 'hints',
+          tipDelay: 500,
+          noticeTimes: {
+            least: 6000,
+            most: 15_000,
+            errorLeast: 20_000,
+            errorMost: 45_000,
+          },
+        });
+      },
+      true,
+      new FakeHost(),
+      noGit,
+    );
+  });
 });

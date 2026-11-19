@@ -9,6 +9,11 @@ export const themes = ['auto', 'light', 'dark'] as const;
 
 export type Theme = (typeof themes)[number];
 
+interface NoticeSeconds {
+  readonly leastSeconds: number;
+  readonly mostSeconds: number;
+}
+
 export interface Settings {
   readonly tabs: {
     readonly recentFolders: number;
@@ -19,6 +24,13 @@ export interface Settings {
     readonly wheelRows: number;
     readonly smooth: boolean;
     readonly smoothSnap: boolean;
+  };
+  readonly tooltips: {
+    readonly delayMilliseconds: number;
+  };
+  readonly notices: {
+    readonly info: NoticeSeconds;
+    readonly error: NoticeSeconds;
   };
   readonly cursor: CursorLook;
   readonly text: TextView;

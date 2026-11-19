@@ -1,0 +1,29 @@
+.card {
+  box-sizing: border-box;
+  max-width: 480px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--color-foreground);
+  background: var(--color-notice-background);
+  border-radius: var(--card-radius);
+  box-shadow: var(--popup-shadow);
+}
+
+.card-message {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.card.tip {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 30;
+  visibility: hidden;
+  align-items: center;
+  padding: 3px 8px;
+  pointer-events: none;
+}

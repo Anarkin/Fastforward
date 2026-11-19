@@ -44,10 +44,10 @@ suite('Changes tree rows', () => {
         })}
       </>,
     );
-    const src = tagWith(html, 'title="src"', 'row', 'tree-row', 'folder');
+    const src = tagWith(html, 'data-tip="src"', 'row', 'tree-row', 'folder');
     assert.ok(!classesOf(src).has('dimmed'));
-    tagWith(html, 'title="Modified: src/b.ts"', 'row', 'file', 'selected');
-    const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
+    tagWith(html, 'data-tip="Modified: src/b.ts"', 'row', 'file', 'selected');
+    const a = tagWith(html, 'data-tip="Modified: src/a.ts"', 'row', 'file');
     assert.ok(!classesOf(a).has('selected'));
   });
 
@@ -176,8 +176,8 @@ suite('Changes tree rows', () => {
       cursor: folderRowKey('src'),
     });
     const html = renderToStaticMarkup(<>{elements}</>);
-    tagWith(html, 'title="src"', 'row', 'folder', 'selected');
-    const a = tagWith(html, 'title="Modified: src/a.ts"', 'row', 'file');
+    tagWith(html, 'data-tip="src"', 'row', 'folder', 'selected');
+    const a = tagWith(html, 'data-tip="Modified: src/a.ts"', 'row', 'file');
     assert.ok(!classesOf(a).has('selected'));
     clickRow(elements[1], FileRow);
     assert.deepStrictEqual(picked, [undefined]);
@@ -202,10 +202,10 @@ suite('Changes tree rows', () => {
     });
     const html = renderToStaticMarkup(<>{elements}</>);
     for (const title of ['src', 'src/lib']) {
-      const row = tagWith(html, `title="${title}"`, 'row', 'folder');
+      const row = tagWith(html, `data-tip="${title}"`, 'row', 'folder');
       assert.ok(!classesOf(row).has('dimmed'), title);
     }
-    tagWith(html, 'title="docs"', 'row', 'folder', 'dimmed');
+    tagWith(html, 'data-tip="docs"', 'row', 'folder', 'dimmed');
     assert.strictEqual(tagsWith(html, 'path', 'unchanged').length, 2);
     for (const element of elements) {
       if (

@@ -64,10 +64,10 @@ suite('App editor', () => {
     await backToCommander();
     await edit('latin.txt');
     const readButton = page.locator(
-      '.editor .menu-button-trigger[title="Encoding to read in"]',
+      '.editor .menu-button-trigger[data-tip="Encoding to read in"]',
     );
     const writeButton = page.locator(
-      '.editor .menu-button-trigger[title="Encoding to write in"]',
+      '.editor .menu-button-trigger[data-tip="Encoding to write in"]',
     );
     await writeButton.click();
     await page.locator('.menu-item', { hasText: /^UTF-8 with BOM$/ }).click();
@@ -126,7 +126,7 @@ suite('App editor', () => {
     await edit('sourced.txt');
     const items = page.locator('.menu-item');
     await page
-      .locator('.editor .menu-button-trigger[title="Encoding to read in"]')
+      .locator('.editor .menu-button-trigger[data-tip="Encoding to read in"]')
       .click();
     await items.filter({ hasText: 'UTF-8, as its bytes are UTF-8' }).waitFor();
     await page.keyboard.press('Escape');

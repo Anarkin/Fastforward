@@ -1,3 +1,4 @@
+import { labelTip, tip } from '../../../lib/page/tips';
 import { useSyncExternalStore } from 'react';
 import type { DiffLine } from './diff';
 import type { SidewaysShown } from './sidewaysShown';
@@ -55,7 +56,10 @@ export function FileHeader({
           <PathName path={path} file root={root} />
         </span>
       ) : (
-        <span className="path" title={strings.common.fromTo(oldPath, path)}>
+        <span
+          className="path"
+          {...tip(strings.common.fileFromTo(oldPath, path, root))}
+        >
           <Words boxed={false}>{renamedPath(oldPath, path, root)}</Words>
         </span>
       )}
@@ -64,7 +68,7 @@ export function FileHeader({
         {onView && (
           <button
             className="nav-button file-header-button"
-            title={strings.diff.viewFile}
+            {...labelTip(strings.diff.viewFile)}
             onClick={(event) => {
               event.stopPropagation();
               onView();
@@ -174,7 +178,7 @@ export function HiddenChangeMarks({
         <button
           key={edge}
           className={`hidden-change ${edge} ${kind}`}
-          title={strings.diff.showHiddenChange}
+          {...labelTip(strings.diff.showHiddenChange)}
           tabIndex={-1}
           style={place(edge)}
           onMouseDown={(event) => event.preventDefault()}

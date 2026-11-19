@@ -97,7 +97,7 @@ suite('App menu', () => {
   test("opens from the app's icon, as the menu of the whole app", () => {
     assert.match(
       renderToStaticMarkup(withStores(<AppMenu />)),
-      /^<div class="menu-button"><button [^>]*title="Settings"[^>]*><svg class="title-bar-icon"[^]*<\/svg><\/button><\/div>$/,
+      /^<div class="menu-button"><button [^>]*data-tip="Settings"[^>]*><svg class="title-bar-icon"[^]*<\/svg><\/button><\/div>$/,
     );
   });
 

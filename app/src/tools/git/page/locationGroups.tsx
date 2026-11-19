@@ -1,3 +1,4 @@
+import { tip } from '../../../lib/page/tips';
 import type { CommitInfo, StashInfo } from '../shared/protocol';
 import { CommitBubble, HeadBubble, RefBubble } from './bubbles';
 import { useOpenMenu, refMenuTarget } from './menus';
@@ -126,7 +127,7 @@ export function StashesSection({
             key={stash.name}
             {...rowProps(rows, stashKey(stash), 1)}
             className={`row result ${activeClass(rows, stashKey(stash))}`}
-            title={stash.message}
+            {...tip(stash.message)}
             onClick={() => onJump(stash.commit)}
           >
             <span className="badge stash">
@@ -224,7 +225,7 @@ export function SearchResults({
           key={ref.name}
           {...rowProps(rows, refKey(ref), 1)}
           className={`row result ${activeClass(rows, refKey(ref))}`}
-          title={ref.name}
+          {...tip(ref.name, { cut: true })}
           onClick={() => onJump(ref.commit)}
           onContextMenu={(event) => openMenu(event, refMenuTarget(ref))}
         >

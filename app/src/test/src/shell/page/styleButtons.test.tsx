@@ -211,7 +211,7 @@ suite('Style', () => {
     );
     for (const button of [
       withClass(rendered(<TabBarShown />), 'tab-close'),
-      withClass(rendered(<NoticesShown />), 'notice-close'),
+      withClass(rendered(<NoticesShown />), 'card-close'),
     ]) {
       looks(button, { background: 'var(--hover-background)' }, hovered);
     }

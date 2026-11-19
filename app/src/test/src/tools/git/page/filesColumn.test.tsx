@@ -183,7 +183,7 @@ function startButton(column: React.ReactNode, title: string) {
     isValidElement<{
       start: React.ReactElement<{
         children: React.ReactElement<{
-          title: string;
+          'data-tip': string;
           disabled?: boolean;
           onClick: () => void;
         }>[];
@@ -191,7 +191,7 @@ function startButton(column: React.ReactNode, title: string) {
     }>(column),
   );
   const found = column.props.start.props.children.find(
-    (each) => each.props.title === title,
+    (each) => each.props['data-tip'] === title,
   );
   assert.ok(found, title);
   assert.ok(!found.props.disabled, title);
@@ -301,7 +301,7 @@ suite('Files column', () => {
       const html = renderToStaticMarkup(column.props.start);
       const toggle = tagWith(
         html,
-        'title="Show All Files"',
+        'data-tip="Show All Files"',
         'nav-button',
         'toggle',
       );

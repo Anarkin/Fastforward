@@ -1,3 +1,4 @@
+import { labelTip, tip } from '../../../lib/page/tips';
 import { useEffect, useId, useRef, useState } from 'react';
 import { iconUrl, type IconSource } from '../shared/icons';
 import { imageType, vectorType } from '../../../lib/shared/images';
@@ -131,7 +132,7 @@ export function ExtensionCell({
       {open !== undefined ? (
         <button
           className="commander-mark"
-          title={strings.commander.openRepository}
+          {...labelTip(strings.commander.openRepository)}
           tabIndex={-1}
           onClick={(event) => {
             event.stopPropagation();
@@ -186,7 +187,7 @@ export function SizeCell({
       : strings.commander.unreadUnder(entry.unreadFolders);
   const Cell = tile ? 'div' : 'span';
   return (
-    <Cell className={className} title={title}>
+    <Cell className={className} {...tip(title)}>
       {size}
     </Cell>
   );

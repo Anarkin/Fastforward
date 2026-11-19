@@ -1,3 +1,4 @@
+import { tip } from '../../../lib/page/tips';
 import { useEffect, useRef } from 'react';
 import { useFocusKeeper } from '../../../lib/page/viewFocus';
 import { strings } from '../../../lib/shared/strings';
@@ -98,7 +99,7 @@ export function Editor() {
         {mark !== undefined && (
           <span
             className={`editor-mark ${edited?.changed ? 'unsaved' : ''}`}
-            title={mark}
+            {...tip(mark)}
           >
             {edited?.changed ? strings.symbols.unsaved : mark}
           </span>

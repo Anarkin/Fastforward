@@ -278,7 +278,7 @@ suite('Window', () => {
         });
       const shown = () =>
         Array.from(
-          document.querySelectorAll('.notice-message'),
+          document.querySelectorAll('.card-message'),
           (message) => message.textContent,
         );
       await act(async () => {
@@ -400,7 +400,7 @@ suite('Window', () => {
       );
       assert.deepStrictEqual(
         Array.from(
-          document.querySelectorAll('.notice-message'),
+          document.querySelectorAll('.card-message'),
           (message) => message.textContent,
         ),
         ['kept'],

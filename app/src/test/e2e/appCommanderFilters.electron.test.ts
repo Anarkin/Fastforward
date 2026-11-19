@@ -226,7 +226,9 @@ suite('App commander', () => {
         'the next match selected',
       );
       await waitFor(async () => (await count()) === '3 of 3', 'the count');
-      const matchCase = right().locator('.search-toggle[title="Match Case"]');
+      const matchCase = right().locator(
+        '.search-toggle[data-tip="Match Case"]',
+      );
       await matchCase.click();
       await waitFor(
         async () =>

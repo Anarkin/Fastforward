@@ -142,7 +142,7 @@ suite('App editor', () => {
       async () => (await editedText()) === 'a  b\nc\td\n e\n',
       'the text',
     );
-    const toggle = page.locator('.editor button[title="Show Whitespace"]');
+    const toggle = page.locator('.editor button[data-tip="Show Whitespace"]');
     await page.locator('.editor .space-dots path').waitFor();
     assert.strictEqual(
       await content().locator('.blank[data-glyph="→"]').count(),

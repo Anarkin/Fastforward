@@ -1,3 +1,4 @@
+import { labelTip, tip } from './tips';
 import { useLayoutEffect, useRef, useState } from 'react';
 import {
   CloseIcon,
@@ -100,7 +101,7 @@ export function MenuItems({
               aria-checked={item.checked}
               data-access-key={item.accessKey}
               aria-keyshortcuts={shownKey(item)}
-              title={item.title}
+              {...tip(item.title)}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               aria-expanded={item.submenu ? openSubmenu === index : undefined}
               disabled={item.disabled}
@@ -159,7 +160,7 @@ export function MenuItems({
             {item.onRemove && (
               <button
                 className="menu-remove"
-                title={item.removeTitle}
+                {...labelTip(item.removeTitle)}
                 tabIndex={-1}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={(event) => {

@@ -1,3 +1,4 @@
+import { labelTip } from '../../../lib/page/tips';
 import type { ReactNode, RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
@@ -165,7 +166,7 @@ export function EditorToolbar({
           <div className="viewer-toggles">
             <button
               className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-              title={strings.common.showWhitespace}
+              {...labelTip(strings.common.showWhitespace)}
               aria-pressed={showWhitespace}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() =>
@@ -176,7 +177,7 @@ export function EditorToolbar({
             </button>
             <button
               className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-              title={strings.common.wrap}
+              {...labelTip(strings.common.wrap)}
               aria-pressed={wordWrap}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => changeTextView({ wordWrap: !wordWrap })}

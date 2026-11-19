@@ -189,7 +189,7 @@ suite('Commander rows', () => {
     assert.match(
       drawn(rowOf('repo')),
       new RegExp(
-        `^<div class="row commander-row commander-folder commander-line generic-folder" data-drop="repo" draggable="true"><span class="commander-name">repo</span><span class="commander-extension cut"><button class="commander-mark" title="${strings.commander.openRepository}"`,
+        `^<div class="row commander-row commander-folder commander-line generic-folder" data-drop="repo" draggable="true"><span class="commander-name">repo</span><span class="commander-extension cut"><button class="commander-mark" aria-label="${strings.commander.openRepository}" data-tip="${strings.commander.openRepository}"`,
       ),
     );
     assert.deepStrictEqual(celled(rowOf('repo'), { gitMissing: true }), {

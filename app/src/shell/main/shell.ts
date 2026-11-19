@@ -551,6 +551,11 @@ export class Shell {
       smooth: storage.smoothScrolling,
       smoothSnap: storage.smoothSnap,
     });
+    page.post({
+      type: 'hints',
+      tipDelay: storage.tipDelay,
+      noticeTimes: storage.noticeTimes,
+    });
     page.post({ type: 'textView', view: storage.textView });
     page.post({ type: 'imageView', view: storage.imageView });
     page.post({ type: 'update', status: host.updateStatus() });

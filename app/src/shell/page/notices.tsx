@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { CloseIcon, ErrorIcon } from '../../lib/page/icons';
-import { Words } from '../../lib/page/name';
-import { strings } from '../../lib/shared/strings';
+import { Card } from './card';
 import { useShell, useShellActions } from './store';
 import { fading } from './noticeFading';
 
 export function Notices() {
   const notices = useShell((state) => state.notices);
+  const times = useShell((state) => state.noticeTimes);
   const { dismissNotice: onDismiss, restartNotices } = useShellActions();
   const [held, setHeld] = useState<number>();
   const [focused, setFocused] = useState(true);
@@ -31,35 +30,26 @@ export function Notices() {
     const timers = fading(
       notices.filter((notice) => notice.id !== held),
       performance.now(),
+      times,
     ).map(({ id, after }) => setTimeout(() => onDismiss(id), after));
     return () => timers.forEach(clearTimeout);
-  }, [notices, onDismiss, held, focused]);
+  }, [notices, times, onDismiss, held, focused]);
 
   return (
     <div className="notices" role="status">
       {notices.map((notice) => (
-        <div
+        <Card
           key={notice.id}
-          className={`notice ${notice.level}`}
+          kind="notice"
+          said={notice.message}
+          error={notice.level === 'error'}
+          onClose={() => onDismiss(notice.id)}
           onMouseEnter={() => setHeld(notice.id)}
           onMouseLeave={() => {
             setHeld(undefined);
             restartNotices([notice.id]);
           }}
-        >
-          {notice.level === 'error' && <ErrorIcon />}
-          <span className="notice-message">
-            <Words>{notice.message}</Words>
-          </span>
-          <button
-            className="notice-close"
-            title={strings.messages.dismiss}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => onDismiss(notice.id)}
-          >
-            <CloseIcon />
-          </button>
-        </div>
+        />
       ))}
     </div>
   );

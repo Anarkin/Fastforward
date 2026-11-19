@@ -327,7 +327,7 @@ suite('Tab bar for assistive technology', () => {
     const add = document.querySelector('.tab-add');
     const close = document.querySelector('.tab-close');
     assert.strictEqual(add?.textContent, '');
-    assert.strictEqual(add.getAttribute('title'), strings.tabs.newTab);
+    assert.strictEqual(add.getAttribute('data-tip'), strings.tabs.newTab);
     assert.strictEqual(add.innerHTML, renderToStaticMarkup(<AddIcon />));
     assert.strictEqual(
       add.querySelector('svg')?.getAttribute('stroke-width'),

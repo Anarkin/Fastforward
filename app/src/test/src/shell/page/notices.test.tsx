@@ -8,6 +8,7 @@ import {
   type Notice,
 } from '../../../../shell/page/noticeFading';
 import { Notices } from '../../../../shell/page/notices';
+import { Card } from '../../../../shell/page/card';
 import { noop } from '../../../helpers/fixtures';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores, renderedBy } from '../../../helpers/componentFixtures';
@@ -39,12 +40,35 @@ suite('Notices', () => {
     };
     assert.match(
       renderToStaticMarkup(withNotices([named])),
-      /<span class="notice-message">Pushed <code class="name"><span>main<\/span><\/code> to <code class="name"><span>origin\/<\/span><span>main<\/span><\/code><\/span>/,
+      /<span class="card-message">Pushed <code class="name"><span>main<\/span><\/code> to <code class="name"><span>origin\/<\/span><span>main<\/span><\/code><\/span>/,
     );
     assert.strictEqual(
       shownFor(named),
       shownFor({ ...named, message: 'Pushed "main" to "origin/main"' }),
     );
+  });
+
+  test('stays as long as the settings say, a notice between their least and their most by its length, an error three times as long between those of errors', () => {
+    const times = {
+      least: 1000,
+      most: 3000,
+      errorLeast: 5000,
+      errorMost: 8000,
+    };
+    const lasting = (level: Notice['level'], length: number) =>
+      shownFor({ level, message: 'x'.repeat(length) }, times);
+    assert.deepStrictEqual(
+      [
+        lasting('info', 0),
+        lasting('info', 1000),
+        lasting('error', 0),
+        lasting('error', 1000),
+      ],
+      [1000, 3000, 5000, 8000],
+    );
+    assert.deepStrictEqual(fading([info(1, 0)], 400, times), [
+      { id: 1, after: shownFor(info(1, 0), times) - 400 },
+    ]);
   });
 
   test('shows the newest notice last, nearest the corner it stacks in', () => {
@@ -58,9 +82,9 @@ suite('Notices', () => {
     );
     assert.match(
       html,
-      /class="notice error"[^>]*><svg class="icon error-icon"[^]*?<\/svg><span[^>]*>notice 1</,
+      /class="card notice error"[^>]*><svg class="icon error-icon"[^]*?<\/svg><span[^>]*>notice 1</,
     );
-    assert.match(html, /class="notice info"[^>]*><span[^>]*>fyi</);
+    assert.match(html, /class="card notice info"[^>]*><span[^>]*>fyi</);
   });
 
   test('dismisses a notice by its close button, which takes no focus, as it goes and would leave the keys with nothing', () => {
@@ -70,8 +94,10 @@ suite('Notices', () => {
     const drawn = renderedBy(Notices, {}, { shell });
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(drawn));
     const older = drawn.props.children[0];
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(older));
-    const close = older.props.children[2];
+    assert.ok(isValidElement<React.ComponentProps<typeof Card>>(older));
+    const card = Card(older.props);
+    assert.ok(isValidElement<{ children: React.ReactElement[] }>(card));
+    const close = card.props.children[3];
     assert.ok(
       isValidElement<{
         onClick: () => void;

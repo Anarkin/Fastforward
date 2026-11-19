@@ -1,3 +1,4 @@
+import { labelTip } from '../../../lib/page/tips';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ViewMode } from './keymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
@@ -247,7 +248,7 @@ export function Viewer() {
                 <button
                   key={each}
                   className={`nav-button toggle ${mode === each ? 'active' : ''}`}
-                  title={title}
+                  {...labelTip(title)}
                   aria-pressed={mode === each}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => choose(each)}
@@ -286,7 +287,7 @@ export function Viewer() {
               <div className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${realSize ? 'active' : ''}`}
-                  title={strings.viewer.realSize}
+                  {...labelTip(strings.viewer.realSize)}
                   aria-pressed={realSize}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={toggleRealSize}
@@ -300,7 +301,7 @@ export function Viewer() {
               <div className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-                  title={strings.common.showWhitespace}
+                  {...labelTip(strings.common.showWhitespace)}
                   aria-pressed={showWhitespace}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() =>
@@ -311,7 +312,7 @@ export function Viewer() {
                 </button>
                 <button
                   className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-                  title={strings.common.wrap}
+                  {...labelTip(strings.common.wrap)}
                   aria-pressed={wordWrap}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => changeTextView({ wordWrap: !wordWrap })}

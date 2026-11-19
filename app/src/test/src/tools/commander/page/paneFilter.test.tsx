@@ -37,7 +37,7 @@ suite('The filter of a side', () => {
         resizer={null}
       />,
       async ({ main, selected }) => {
-        clicked(main.querySelector('[title="Filter the folder"]'));
+        clicked(main.querySelector('[data-tip="Filter the folder"]'));
         const bar = () =>
           main.querySelector('.column-title.searching > .search-bar');
         assert.ok(bar());

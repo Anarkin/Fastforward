@@ -11,6 +11,7 @@ import { ConfirmPopup } from './confirmPopup';
 import { AppMenu } from './appMenu';
 import { ContextMenu } from './contextMenu';
 import { Notices } from './notices';
+import { Tooltip } from './tooltip';
 import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../lib/page/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
@@ -194,6 +195,7 @@ export function App({ name, post, listen, dropFiles }: Props) {
             <PathMenu />
             <Popups />
             <Notices />
+            <Tooltip />
             <EmptyState />
             <ToolViews />
             <NoticeKey />

@@ -82,7 +82,7 @@ suite('Commander menu on a side', () => {
     await inPane(async ({ main }) => {
       const chosenFrom = async (title: string, label: string) => {
         const trigger = main.querySelector<HTMLButtonElement>(
-          `button[title="${title}"]`,
+          `button[data-tip="${title}"]`,
         );
         assert.ok(trigger, title);
         await act(async () => trigger.focus());
@@ -115,7 +115,7 @@ suite('Commander menu on a side', () => {
     await inPane(
       async ({ main }) => {
         const trigger = main.querySelector<HTMLButtonElement>(
-          `button[title="${strings.commander.chooseDrive}"]`,
+          `button[data-tip="${strings.commander.chooseDrive}"]`,
         );
         assert.ok(trigger);
         const named = trigger.textContent;

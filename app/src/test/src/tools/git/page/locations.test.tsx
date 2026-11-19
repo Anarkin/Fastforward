@@ -339,18 +339,18 @@ suite('Search', () => {
     assert.deepStrictEqual(counts(html), [3, 1, 1]);
     assert.match(
       html,
-      /tree-row folder[^>]*><span class="twisty">▸<\/span>feat<\/div><\/div><div[^>]*title="main"/,
+      /tree-row folder[^>]*><span class="twisty">▸<\/span>feat<\/div><\/div><div[^>]*data-tip="main"/,
     );
     assert.match(
-      tagWith(html, 'title="main"', 'tree-row', 'leaf'),
+      tagWith(html, 'data-tip="main"', 'tree-row', 'leaf'),
       new RegExp(`padding-left:${leafIndent(0, true)}px`),
     );
     assert.match(
-      tagWith(html, 'title="origin/main"', 'tree-row', 'leaf'),
+      tagWith(html, 'data-tip="origin/main"', 'tree-row', 'leaf'),
       new RegExp(`padding-left:${leafIndent(1, false)}px`),
     );
     assert.match(
-      tagWith(html, 'title="v1"', 'tree-row', 'leaf'),
+      tagWith(html, 'data-tip="v1"', 'tree-row', 'leaf'),
       new RegExp(`padding-left:${leafIndent(0, false)}px`),
     );
   });
@@ -409,7 +409,7 @@ suite('Search', () => {
     const html = popup('v1', undefined, { repository: refState });
     const active = tagsWith(html, 'row', 'result', 'active');
     assert.strictEqual(active.length, 1);
-    assert.match(active[0], /title="v1"/);
+    assert.match(active[0], /data-tip="v1"/);
   });
 
   test('pins the bookmarks, showing one that is gone as such, and not the checked-out branch, which its group shows', () => {

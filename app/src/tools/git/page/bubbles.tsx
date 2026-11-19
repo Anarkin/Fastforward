@@ -1,3 +1,4 @@
+import { labelTip, tip } from '../../../lib/page/tips';
 import { shortHash } from '../../../lib/shared/hashes';
 import type { BookmarkRef, Tracking } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
@@ -19,7 +20,7 @@ export function HeadBubble({ hash }: { hash: string }) {
   return (
     <span
       className="badge head checked-out"
-      title={strings.commits.detachedAt(hash)}
+      {...tip(strings.commits.detachedAt(hash))}
       {...menu}
     >
       {strings.commits.head(shortHash(hash))}
@@ -30,7 +31,11 @@ export function HeadBubble({ hash }: { hash: string }) {
 export function CommitBubble({ hash }: { hash: string }) {
   const menu = useContextMenu(commitBookmarkTarget(hash));
   return (
-    <span className="badge hash" title={strings.commits.commit(hash)} {...menu}>
+    <span
+      className="badge hash"
+      {...tip(strings.commits.commit(hash))}
+      {...menu}
+    >
       {shortHash(hash)}
     </span>
   );
@@ -89,13 +94,14 @@ export function RefBubble({
   return (
     <span
       className={`badge ${kind} ${checkedOut ? 'checked-out' : ''} ${missing ? 'missing' : ''} ${withActions ? 'with-actions' : ''}`}
-      title={
+      {...tip(
         missing
           ? strings.common.gone(name)
           : checkedOut
             ? strings.commits.checkedOut(name)
-            : name
-      }
+            : name,
+        { cut: !missing && !checkedOut },
+      )}
       {...menu}
     >
       {withActions ? <span className="bubble-name">{name}</span> : name}
@@ -130,7 +136,7 @@ function actionButton({
     <button
       key={key}
       className={`bubble-action ${key} ${running ? 'running' : ''} ${idle ? 'idle' : ''}`}
-      title={title}
+      {...labelTip(title)}
       tabIndex={-1}
       disabled={running}
       onMouseDown={(event) => event.preventDefault()}

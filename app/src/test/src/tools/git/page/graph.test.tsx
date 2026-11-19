@@ -22,7 +22,7 @@ const attributes = (html: string, tag: string, name: string) =>
   );
 
 const titles = (html: string) =>
-  [...html.matchAll(/<title>([^<]*)<\/title>/g)].map((match) => match[1]);
+  [...html.matchAll(/ data-tip="([^"]*)"/g)].map((match) => match[1]);
 
 const laneAt = (scale: number) => {
   const html = cell(

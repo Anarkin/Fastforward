@@ -634,7 +634,7 @@ suite('App at a scale of 125%', () => {
       });
     await page.locator('.diff-view .wrap-break').first().waitFor();
     const inline = await widths();
-    await page.locator(`[title="${strings.diff.sideBySide}"]`).click();
+    await page.locator(`[data-tip="${strings.diff.sideBySide}"]`).click();
     await page.locator('.diff-view .diff-row .split-side').first().waitFor();
     await page.locator('.diff-view .wrap-break').first().waitFor();
     const sideBySide = await widths();

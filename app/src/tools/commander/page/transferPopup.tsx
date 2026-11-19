@@ -1,6 +1,7 @@
+import { namedFile } from '../../../lib/shared/sentences';
+import { labelTip, tip } from '../../../lib/page/tips';
 import { joinedPath } from '../../../lib/page/pathLooks';
 import { useEffect, useId, useRef } from 'react';
-import { plainOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { useDismiss } from '../../../lib/page/dismiss';
 import { CloseIcon } from '../../../lib/page/icons';
@@ -147,10 +148,10 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
         <NameLines lines={runningLines(transfer)} />
         <span
           className="transfer-current"
-          title={
-            lines.file ??
-            (lines.current === undefined ? undefined : plainOf(lines.current))
-          }
+          {...tip(
+            lines.file === undefined ? lines.current : [namedFile(lines.file)],
+            { at: 'over', cut: true },
+          )}
         >
           {lines.file !== undefined ? (
             <PathTitle path={lines.file} file />
@@ -224,7 +225,7 @@ function TransferDialog({ transfer }: { transfer: TransferView }) {
           <span>{title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={hideTransfer}
           >
             <CloseIcon />

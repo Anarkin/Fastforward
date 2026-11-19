@@ -1,3 +1,4 @@
+import { tip } from '../../../lib/page/tips';
 import {
   useCallback,
   useEffect,
@@ -391,7 +392,7 @@ export function Pane({
           {elevated && (
             <span
               className="elevated-mark"
-              title={strings.commander.readAsAdministrator}
+              {...tip(strings.commander.readAsAdministrator)}
             >
               <ShieldIcon />
             </span>

@@ -146,7 +146,7 @@ suite('App commander', () => {
     );
     assert.strictEqual(await layoutLabel(), strings.commander.layouts.details);
     await right()
-      .locator(`button[title="${strings.commander.layout}"]`)
+      .locator(`button[data-tip="${strings.commander.layout}"]`)
       .click();
     await page
       .getByRole('menuitemcheckbox', {

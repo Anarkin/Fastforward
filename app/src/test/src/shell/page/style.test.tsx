@@ -97,7 +97,7 @@ suite('Style', () => {
     for (const control of [
       withClass(rendered(<TabBarShown />), 'tab-add'),
       withClass(rendered(<TabBarShown />), 'tab-close'),
-      withClass(rendered(<NoticesShown />), 'notice-close'),
+      withClass(rendered(<NoticesShown />), 'card-close'),
       withClass(rendered(<NavButtonsShown />), 'nav-button'),
       withClass(about, 'about-copy'),
       withClass(about, 'nav-button'),
@@ -220,7 +220,7 @@ suite('Style', () => {
   });
 
   test('fits a scrollbar to what it stands in where that is no panel: the track of the one of a long notice tinted from the text of the notice rather than drawn in the border color, which stood as a dark strip in it, and the ends of the one below a block of code in Markdown rounded as the block is', () => {
-    looks(withClass(rendered(<NoticesShown />), 'notice-message'), {
+    looks(withClass(rendered(<NoticesShown />), 'card-message'), {
       '--scrollbar-track-background':
         'color-mix( in srgb, var(--color-foreground) 10%, transparent )',
     });
@@ -451,7 +451,7 @@ suite('Style', () => {
     const view = diffView(<DiffViewShown />, <FileHeaderRow />);
     for (const selectable of [
       view,
-      withClass(rendered(<NoticesShown />), 'notice-message'),
+      withClass(rendered(<NoticesShown />), 'card-message'),
       withClass(
         rendered(
           <Crash
@@ -527,7 +527,7 @@ suite('Style', () => {
 
   test('dims close buttons, disabled controls and a gone bubble like muted text, keeping its own fade only for the loading placeholder', () => {
     for (const dimmed of [
-      withClass(rendered(<NoticesShown />), 'notice-close'),
+      withClass(rendered(<NoticesShown />), 'card-close'),
       withClass(rendered(<LocationsPopupShown query="" />), 'badge', 'missing'),
       allWithClass(rendered(<ContextMenuShown />), 'menu-item').find((item) =>
         item.attributes.has('disabled'),

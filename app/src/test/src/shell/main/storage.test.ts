@@ -40,6 +40,49 @@ suite('Storage', () => {
     }
   });
 
+  test('takes how long the pointer rests on something before its tooltip shows from the settings, half a second unless set, in whole milliseconds from none to ten seconds', () => {
+    assert.strictEqual(storageOf().tipDelay, 500);
+    for (const [set, taken] of [
+      [0, 0],
+      [120.4, 120],
+      [-5, 0],
+      [60_000, 10_000],
+      [Number.NaN, 500],
+    ]) {
+      const settings = new UserSettings({
+        ...defaultSettings(),
+        tooltips: { delayMilliseconds: set },
+      });
+      assert.strictEqual(
+        new Storage(settings, new FakeStore()).tipDelay,
+        taken,
+        String(set),
+      );
+    }
+  });
+
+  test('takes how long a notice stays from the settings, in seconds, 6 to 15 by its length and 20 to 45 for an error unless set, each a second at the least and the most no less than the least', () => {
+    assert.deepStrictEqual(storageOf().noticeTimes, {
+      least: 6000,
+      most: 15_000,
+      errorLeast: 20_000,
+      errorMost: 45_000,
+    });
+    const settings = new UserSettings({
+      ...defaultSettings(),
+      notices: {
+        info: { leastSeconds: 2.5, mostSeconds: 1 },
+        error: { leastSeconds: 0, mostSeconds: Number.NaN },
+      },
+    });
+    assert.deepStrictEqual(new Storage(settings, new FakeStore()).noticeTimes, {
+      least: 2500,
+      most: 2500,
+      errorLeast: 1000,
+      errorMost: 45_000,
+    });
+  });
+
   test('takes how many rows a notch of the mouse wheel scrolls from the settings, ten unless set, as a whole number from one to fifty', () => {
     assert.strictEqual(storageOf().wheelRows, 10);
     for (const [set, taken] of [

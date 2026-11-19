@@ -1,3 +1,4 @@
+import { plainOf } from '../../../../../lib/shared/sentences';
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { folderMenuItems } from '../../../../../tools/terminal/page/folderMenu';
@@ -26,14 +27,16 @@ suite('Terminal folder menu', () => {
     });
     assert.deepStrictEqual(
       items.map((item) =>
-        'separator' in item ? '-' : `${item.label} ${item.title ?? ''}`,
+        'separator' in item
+          ? '-'
+          : `${item.label} ${plainOf(item.title ?? '')}`,
       ),
       [
         'New ',
         'Open... ',
         '-',
-        'C:\\Code\\app C:\\Code\\app',
-        'C:\\Code\\site C:\\Code\\site',
+        'C:\\Code\\app "C:\\Code\\app"',
+        'C:\\Code\\site "C:\\Code\\site"',
       ],
     );
     for (const item of items) {

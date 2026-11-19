@@ -367,7 +367,7 @@ suite('Terminal', () => {
     await page.keyboard.press('Enter');
     await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
     assert.ok(
-      sameFolder((await tabs.nth(1).getAttribute('title')) ?? '', inner),
+      sameFolder((await tabs.nth(1).getAttribute('data-tip')) ?? '', inner),
     );
     await page.keyboard.press('ControlOrMeta+Shift+W');
     await waitFor(async () => (await tabs.count()) === 1, 'the tab to close');
@@ -400,7 +400,7 @@ suite('Terminal', () => {
     await offered.click();
     await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
     assert.ok(
-      sameFolder((await tabs.nth(1).getAttribute('title')) ?? '', inner),
+      sameFolder((await tabs.nth(1).getAttribute('data-tip')) ?? '', inner),
     );
     const popup = page.locator('.confirm-popup');
     await page.keyboard.press('ControlOrMeta+Shift+W');

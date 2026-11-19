@@ -1,3 +1,4 @@
+import { tip } from './tips';
 import {
   type CSSProperties,
   useEffect,
@@ -112,10 +113,14 @@ export function ImagePane({
                     ? real
                     : fittedWithin(real)
               }
-              title={
+              {...tip(
                 size &&
-                strings.diff.imageDetails(size.width, size.height, image.bytes)
-              }
+                  strings.diff.imageDetails(
+                    size.width,
+                    size.height,
+                    image.bytes,
+                  ),
+              )}
               draggable={false}
               onLoad={(event) =>
                 setSize({

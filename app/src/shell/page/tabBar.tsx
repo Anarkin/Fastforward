@@ -1,3 +1,10 @@
+import type { ToolId } from '../shared/tools';
+import {
+  namedFile,
+  namedFolder,
+  type Sentence,
+} from '../../lib/shared/sentences';
+import { labelTip, tip } from '../../lib/page/tips';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { AddIcon, CloseIcon, ToolIcon } from '../../lib/page/icons';
@@ -26,7 +33,7 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
       <span
         key="unsaved"
         className="tab-unsaved"
-        title={strings.editor.unsaved}
+        {...tip(strings.editor.unsaved)}
       >
         {strings.symbols.unsaved}
       </span>
@@ -39,7 +46,7 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
     <button
       key="close"
       className="tab-close"
-      title={strings.common.close}
+      {...labelTip(strings.common.close)}
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => {
         event.stopPropagation();
@@ -52,6 +59,19 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
 }
 
 const noTabs: readonly TabInfo[] = [];
+
+const shownAsFile: readonly ToolId[] = ['viewer', 'editor'];
+
+function tabTip({ root, name, tool, compared }: TabInfo): Sentence {
+  if (compared !== undefined) {
+    return compared.old === compared.new
+      ? [namedFile(compared.new)]
+      : strings.common.fileFromTo(compared.old, compared.new);
+  }
+  return root === undefined
+    ? name
+    : [shownAsFile.includes(tool) ? namedFile(root) : namedFolder(root)];
+}
 
 export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const tabs = useShell((state) => state.tabs ?? noTabs);
@@ -208,7 +228,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
                 role="tab"
                 aria-selected={tab.id === open}
                 className={`tab ${tab.id === open || tab.id === visitor ? 'active' : ''} ${tab.id === drag.dragged || tab.id === visitor ? 'dragging' : ''} ${motion ?? ''}`}
-                title={tab.root ?? tab.name}
+                {...tip(tabTip(tab))}
                 {...drag.pressing(tab.id)}
                 onClick={() => {
                   rest.cancel();
@@ -247,7 +267,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
         <button
           ref={add}
           className={`nav-button tab-add ${adding ? 'open' : ''}`}
-          title={strings.tabs.newTab}
+          {...labelTip(strings.tabs.newTab)}
           aria-haspopup="menu"
           aria-expanded={adding}
           onClick={onAdd}

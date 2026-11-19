@@ -97,7 +97,7 @@ suite('Commander pane', () => {
     assert.match(
       pathLine(true) ?? '',
       new RegExp(
-        `^<span class="commander-icon"><span class="elevated-mark" title="${strings.commander.readAsAdministrator}">.*</span></span><span class="column-name path-title"><span class="path-text">`,
+        `^<span class="commander-icon"><span class="elevated-mark" data-tip="${strings.commander.readAsAdministrator}">.*</span></span><span class="column-name path-title"><span class="path-text">`,
       ),
     );
     assert.match(
@@ -148,7 +148,7 @@ const side = (
 };
 
 const button = (document: Document) =>
-  document.querySelector(`button[title="${strings.commander.flatView}"]`);
+  document.querySelector(`button[data-tip="${strings.commander.flatView}"]`);
 
 suite('Commander pane in flat view', () => {
   test('ends the path of a flat side in ** past a separator, and presses the button of flat view, turning it while reading', () => {

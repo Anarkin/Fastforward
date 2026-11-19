@@ -65,8 +65,8 @@ suite('Navigation bar', () => {
     const html = buttons({
       back: [{ hash: 'a'.repeat(40), subject: 'a' }],
     });
-    assert.match(html, /title="Back[^"]*"(?![^>]*disabled)/);
-    assert.match(html, /title="Forward[^"]*" disabled=""/);
+    assert.match(html, /data-tip="Back[^"]*"(?![^>]*disabled)/);
+    assert.match(html, /data-tip="Forward[^"]*" disabled=""/);
   });
 
   test('opens the search popup anew in another tab, so it searches again there for the same query', () => {
@@ -78,14 +78,14 @@ suite('Navigation bar', () => {
   test('spins the fetch button while fetching', () => {
     const spinning = tagWith(
       buttons({ fetching: true }),
-      'title="Fetch every remote',
+      'data-tip="Fetch every remote',
       'nav-button',
       'running',
     );
     assert.match(spinning, /disabled=""/);
     const idle = tagWith(
       buttons({}),
-      'title="Fetch every remote',
+      'data-tip="Fetch every remote',
       'nav-button',
     );
     assert.ok(!classesOf(idle).has('running'));
@@ -99,7 +99,7 @@ suite('Navigation bar', () => {
     });
     tagWith(
       html,
-      'title="Fetch every remote, dropping branches deleted there\nFetched 3 minutes ago"',
+      'data-tip="Fetch every remote, dropping branches deleted there\nFetched 3 minutes ago"',
       'nav-button',
     );
     assert.doesNotMatch(html, /fetch-mark/);
@@ -144,10 +144,10 @@ suite('Navigation bar', () => {
   });
 
   test('pins fetching every few minutes next to the fetch button, hidden when the settings turn it off', () => {
-    tagWith(buttons({}), 'title="Fetch Every Minute"');
+    tagWith(buttons({}), 'data-tip="Fetch Every Minute"');
     const on = tagWith(
       buttons({ autoFetch: true, autoFetchMinutes: 5 }),
-      'title="Fetch Every 5 Minutes"',
+      'data-tip="Fetch Every 5 Minutes"',
       'nav-button',
       'toggle',
       'active',
@@ -186,7 +186,7 @@ suite('Navigation bar', () => {
       assert.match(
         buttons({ autoFetch }),
         new RegExp(
-          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*title="Fetch[^"]*"[^>]*>.*?</button><button[^>]*title="Fetch Every Minute"[^>]*>.*?</button></span></div>$`,
+          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*data-tip="Fetch[^"]*"[^>]*>.*?</button><button[^>]*data-tip="Fetch Every Minute"[^>]*>.*?</button></span></div>$`,
         ),
       );
     }
@@ -206,11 +206,11 @@ suite('Navigation bar', () => {
     assert.deepStrictEqual(posted, [{ type: 'jump', hash: at, root: '/repo' }]);
     assert.match(
       buttons({}),
-      /title="Forward[^"]*"[^>]*>.*?<\/button><\/div><button class="nav-button" title="Select the checked-out commit">/,
+      /data-tip="Forward[^"]*"[^>]*>.*?<\/button><\/div><button class="nav-button" aria-label="Select the checked-out commit" data-tip="Select the checked-out commit">/,
     );
     assert.match(
       buttons({ headCommit: undefined }),
-      /title="Select the checked-out commit" disabled=""/,
+      /data-tip="Select the checked-out commit" disabled=""/,
     );
   });
 });

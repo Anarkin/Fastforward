@@ -1,6 +1,11 @@
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
-import { sentence, type Sentence, type Value } from '../shared/sentences';
+import {
+  namedFile,
+  sentence,
+  type Sentence,
+  type Value,
+} from '../shared/sentences';
 import type { ChangeKind } from './iconKinds';
 import { wholePath } from './pathLooks';
 
@@ -79,10 +84,10 @@ export function renamedPath(from: string, to: string, root?: string): Sentence {
   );
 }
 
-export function changeTitle(change: FileChange): string {
+export function changeTitle(change: FileChange, root?: string): Sentence {
   const path = change.oldPath
-    ? strings.common.fromTo(change.oldPath, change.path)
-    : change.path;
+    ? strings.common.fileFromTo(change.oldPath, change.path, root)
+    : [namedFile(change.path, root)];
   const statuses = change.link
     ? strings.files.linkStatuses
     : strings.files.statuses;

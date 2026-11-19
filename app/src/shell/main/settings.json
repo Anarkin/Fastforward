@@ -9,6 +9,19 @@
     "smooth": true,
     "smoothSnap": true
   },
+  "tooltips": {
+    "delayMilliseconds": 500
+  },
+  "notices": {
+    "info": {
+      "leastSeconds": 6,
+      "mostSeconds": 15
+    },
+    "error": {
+      "leastSeconds": 20,
+      "mostSeconds": 45
+    }
+  },
   "cursor": {
     "style": "block",
     "width": 2,

@@ -17,14 +17,16 @@ export const labeled = (label: string, value: Value): Line => ({
 
 export const named = (name: string): Named => ({ name });
 
-export const namedFile = (path: string): Named => ({
+export const namedFile = (path: string, root?: string): Named => ({
   name: path,
   path: 'file',
+  ...(root !== undefined && { root }),
 });
 
-export const namedFolder = (path: string): Named => ({
+export const namedFolder = (path: string, root?: string): Named => ({
   name: path,
   path: 'folder',
+  ...(root !== undefined && { root }),
 });
 
 export const namedItem = (

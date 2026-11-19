@@ -1,3 +1,4 @@
+import { labelTip } from '../../lib/page/tips';
 import { useCallback, useEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
@@ -70,7 +71,7 @@ export function OpenWithPopup() {
           <span>{strings.openWith.title}</span>
           <button
             className="nav-button"
-            title={strings.common.close}
+            {...labelTip(strings.common.close)}
             onClick={onClose}
           >
             <CloseIcon />
