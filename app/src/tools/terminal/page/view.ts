@@ -28,6 +28,7 @@ import {
 import { inNextFrame } from '../../../lib/page/afterPaint';
 import { setWheeled } from '../../../lib/page/scrollbarLinks';
 import { lineAt, scrolledBack } from './scrolledBack';
+import { stepped, type Heading } from './lineSteps';
 
 const resizeDelay = 50;
 
@@ -105,6 +106,7 @@ export class TerminalView {
   private size: string;
   private exited = false;
   private webgl = false;
+  private heading: Heading | undefined;
 
   constructor(
     private readonly xterm: Xterm,
@@ -149,12 +151,14 @@ export class TerminalView {
       bar,
       'vertical',
       {
-        onDrag: (share) =>
+        onDrag: (share) => {
+          this.heading = undefined;
           this.terminal.scrollToLine(
             lineAt(this.terminal.buffer.active, share),
-          ),
+          );
+        },
         onLetGo: () => undefined,
-        onStep: (steps) => this.terminal.scrollLines(steps),
+        onStep: this.step,
       },
       () => element,
     );
@@ -193,6 +197,19 @@ export class TerminalView {
 
   private readonly showBar = () => this.barShown.ask();
 
+  private readonly step = (lines: number) => {
+    const { viewportY, baseY } = this.terminal.buffer.active;
+    const { by, heading } = stepped(
+      this.heading,
+      { shown: viewportY, last: baseY },
+      lines,
+      performance.now(),
+      this.terminal.options.smoothScrollDuration ?? 0,
+    );
+    this.heading = heading;
+    this.terminal.scrollLines(by);
+  };
+
   private readonly wheel = (event: WheelEvent) => {
     const lines = wheelLines(
       event,
@@ -204,7 +221,7 @@ export class TerminalView {
     );
     if (lines !== undefined) {
       event.preventDefault();
-      this.terminal.scrollLines(lines);
+      this.step(lines);
     }
   };
 

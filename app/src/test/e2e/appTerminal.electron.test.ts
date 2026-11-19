@@ -10,6 +10,7 @@ import { barsOffGrid, gridLines } from './gridLines';
 import { barOf, barParts } from './scrollbarsShown';
 import { waitFor } from '../helpers/fixtures';
 import { writeSettings } from './settingsWritten';
+import { untilSettled } from './waits';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 const hundredLines =
@@ -184,6 +185,40 @@ suite('Terminal', () => {
     }
   });
 
+  test('scrolls back as many rows as the wheel and the buttons of its scrollbar ask for while it glides, each starting where the glide before it was going rather than where it had come to, as two notches of two rows turned one after the other scrolled back three, and a press of a button right after a notch one', async () => {
+    await page.locator('.terminal-screen').hover();
+    await page.mouse.wheel(0, 1000);
+    const last = await untilSettled(
+      rows,
+      'the terminal to rest on its last lines',
+    );
+    const backBy = async (lines: number, what: string) => {
+      const expected = JSON.stringify(last.slice(0, last.length - lines));
+      await waitFor(
+        async () => JSON.stringify((await rows()).slice(lines)) === expected,
+        what,
+      );
+    };
+    await page.mouse.wheel(0, -100);
+    await page.mouse.wheel(0, -100);
+    await backBy(4, 'two notches to scroll back four rows');
+    const { box } = await barOf(
+      page,
+      '.terminal-panel .scroll-proxy.vertical',
+      'vertical',
+    );
+    const { start } = await barParts(page, box, 'vertical');
+    await page.mouse.wheel(0, -100);
+    await page.mouse.click(
+      start.left + start.width / 2,
+      start.top + start.height / 2,
+    );
+    await backBy(
+      7,
+      'a notch and a press of the button to scroll back three more',
+    );
+  });
+
   test('gives the terminal the scrollbar every tool has, beside its screen, the lines scrolled off the top making its thumb: a press of the button at its top scrolls a line back, and a press of its track to where the pointer is', async () => {
     const { box } = await barOf(
       page,
@@ -193,7 +228,10 @@ suite('Terminal', () => {
     const parts = await barParts(page, box, 'vertical');
     assert.ok(parts.thumb);
     await page.mouse.wheel(0, 100);
-    const below = await rows();
+    const below = await untilSettled(
+      rows,
+      'the terminal to rest after the wheel',
+    );
     await page.mouse.click(
       parts.start.left + parts.start.width / 2,
       parts.start.top + parts.start.height / 2,
