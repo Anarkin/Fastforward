@@ -7,6 +7,7 @@ const onRow = 1e-6;
 export interface RowGlider {
   readonly glideBy: (rows: number) => void;
   readonly holdBy: (rows: number) => void;
+  readonly hold: () => void;
   readonly holdAt: (part: number) => void;
   readonly letGo: () => void;
   readonly reset: () => void;
@@ -31,6 +32,7 @@ export function glideRowsOf({
   let glide: Glide | undefined;
   let frame: number | undefined;
   let rest: ReturnType<typeof setTimeout> | undefined;
+  let held = false;
   const settle = () => {
     glide = undefined;
     if (frame !== undefined) {
@@ -106,17 +108,25 @@ export function glideRowsOf({
       place(at + rows);
       rest = setTimeout(letGo, holdRest);
     },
+    hold: () => {
+      held = true;
+    },
     holdAt: (part) => {
       unrest();
       settle();
       at = moved + Math.max(0, Math.min(1 - onRow, part));
       shift(at - moved < onRow ? 0 : at - moved);
+      if (!held) {
+        letGo();
+      }
     },
     letGo: () => {
+      held = false;
       unrest();
       letGo();
     },
     reset: () => {
+      held = false;
       unrest();
       settle();
       at = 0;

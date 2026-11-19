@@ -146,15 +146,40 @@ suite('Gliding the rows of a file viewed', () => {
   test('shifts the rows by the part of a row its scrollbar is held at, as often as it is held anew and with no row moved, and settles on a whole row once the scrollbar is let go, as a file viewed went a row at a time under a scrollbar dragged though scrolling was set to glide', () => {
     const { glider, rows, shifted, run, close } = gliding();
     try {
+      glider.hold();
       glider.holdAt(0.25);
       const first = shifted();
+      run();
       glider.holdAt(0.75);
       const second = shifted();
+      run();
+      const held = [rows(), shifted()];
       glider.letGo();
       run();
 
       assert.deepStrictEqual([first, second], [0.25, 0.75]);
+      assert.deepStrictEqual(held, [0, 0.75]);
       assert.deepStrictEqual([rows(), shifted()], [1, 0]);
+    } finally {
+      close();
+    }
+  });
+
+  test('settles on a whole row once it is told the part of a row its scrollbar was held at after the scrollbar was let go, as the text of the place a scrollbar jumps to is read from the file first, and a scrollbar let go before it came, as by a click on its track, left the file between two rows for good', () => {
+    const { glider, rows, shifted, run, close } = gliding();
+    try {
+      glider.hold();
+      glider.letGo();
+      glider.holdAt(0.75);
+      const told = shifted();
+      run();
+
+      assert.deepStrictEqual([told, rows(), shifted()], [0.75, 1, 0]);
+
+      glider.hold();
+      glider.holdAt(0.25);
+      run();
+      assert.deepStrictEqual([rows(), shifted()], [1, 0.25]);
     } finally {
       close();
     }

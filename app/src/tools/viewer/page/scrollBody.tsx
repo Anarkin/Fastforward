@@ -289,6 +289,7 @@ export function ScrollBody({
   const jumped = (share: number, held = false) => {
     const gliders = glider.current;
     if (held && gliding && gliders) {
+      gliders.hold();
       jump(share, gliders.holdAt);
     } else {
       gliders?.reset();
