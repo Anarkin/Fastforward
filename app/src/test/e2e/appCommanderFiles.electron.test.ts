@@ -14,6 +14,7 @@ import {
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { fileName, rowsShown } from './commanderRows';
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -71,9 +72,10 @@ suite('App commander', () => {
     ]);
     await waitFor(
       async () =>
-        (
-          await right().locator('.commander-row.selected').textContent()
-        )?.startsWith('dtxt') === true,
+        (await rowsShown(right()))
+          .filter(({ classes }) => classes.includes('selected'))
+          .map(fileName)
+          .join() === 'd.txt',
       'the file after the deleted ones to be selected',
     );
     await page.keyboard.press('Backspace');

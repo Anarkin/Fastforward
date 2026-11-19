@@ -21,16 +21,18 @@ import type { CommanderActions } from './state';
 
 type IconTickets = Pick<CommanderActions, 'iconTicketOf' | 'iconCame'>;
 
-function SystemIcon({
+export function SystemIcon({
   source,
   generic,
   onDropIcon,
+  onShown,
   onFailed,
   tickets,
 }: {
   source: IconSource;
   generic: React.ReactNode;
   onDropIcon: (ticket: string) => void;
+  onShown?: () => void;
   onFailed: () => void;
   tickets: IconTickets | undefined;
 }) {
@@ -69,6 +71,7 @@ function SystemIcon({
           came.current = true;
           setShown(true);
           tickets?.iconCame(url, ticket);
+          onShown?.();
         }}
         onError={() => {
           came.current = true;

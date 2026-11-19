@@ -14,6 +14,7 @@ async function inWholeRows(
     readonly scroller: Element;
     readonly window: JSDOM['window'];
   }) => void,
+  recycled = false,
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>', {
     pretendToBeVisual: true,
@@ -74,6 +75,7 @@ async function inWholeRows(
           selectedKey={undefined}
           initialRect={{ width: 400, height: 240 }}
           wholeRows
+          recycled={recycled}
         />,
       ),
     );
@@ -85,6 +87,14 @@ async function inWholeRows(
     Object.assign(globalThis, saved);
   }
 }
+
+const shownOf = (main: Element) =>
+  [...main.querySelectorAll('.virtual-row')].map((row) => ({
+    row,
+    index: Number(row.getAttribute('data-index')),
+    text: row.textContent,
+    top: row instanceof HTMLElement ? row.style.top : '',
+  }));
 
 suite('Virtual rows', () => {
   test('draws only the rows in view of a long list, not every row', () => {
@@ -255,6 +265,54 @@ suite('Virtual rows', () => {
           .join(' '),
       );
     });
+  });
+
+  test('writes the rows a list comes to into the elements of the rows it left, once it is told its rows may be reused and none of those drawn stays, as dragged by its scrollbar, each with its own place, name and text, and takes the rows out and puts others in as before where some stay or it was not told so', async () => {
+    const { act } = await import('react');
+    for (const recycled of [true, false]) {
+      await inWholeRows(({ main, scroller }) => {
+        const moveTo = rowScrollerOf(scroller);
+        assert.ok(moveTo);
+        const before = shownOf(main);
+        act(() => moveTo.dragTo(500 * estimatedRowHeight));
+        const after = shownOf(main);
+        assert.ok(before.length > 5 && after.length > 5);
+        assert.deepStrictEqual(
+          after.map(({ index, text, top }) => [index, text, top]),
+          after.map(({ index }) => [
+            index,
+            `row:${index}`,
+            `${index * estimatedRowHeight}px`,
+          ]),
+        );
+        assert.deepStrictEqual(
+          after.map(({ index }) => index),
+          after.map(({ index }) => index).toSorted((a, b) => a - b),
+        );
+        const reused = after.filter(
+          ({ row }, at) => before[at]?.row === row,
+        ).length;
+        assert.strictEqual(
+          reused,
+          recycled ? Math.min(before.length, after.length) : 0,
+        );
+
+        act(() => moveTo.dragTo(502 * estimatedRowHeight));
+        const moved = shownOf(main);
+        const stayed = moved.filter(({ index }) =>
+          after.some((each) => each.index === index),
+        );
+        assert.ok(stayed.length > 0 && stayed.length < moved.length);
+        for (const { row, index } of moved) {
+          const was = after.find((each) => each.row === row);
+          assert.strictEqual(was?.index, was && index, String(index));
+        }
+        assert.deepStrictEqual(
+          moved.map(({ index }) => index),
+          moved.map(({ index }) => index).toSorted((a, b) => a - b),
+        );
+      }, recycled);
+    }
   });
 
   test('scrolls a list of whole rows down by the wheel turned alone and leaves the wheel turned with Shift held to scroll sideways, as it scrolled a diff down and across at once', async () => {

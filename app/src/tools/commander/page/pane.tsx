@@ -33,7 +33,8 @@ import { PathTitle } from '../../../lib/page/pathTitle';
 import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 import { actOnPane } from './paneActs';
 import { useTiles } from './paneTiles';
-import { PaneLine, PaneTile } from './paneRows';
+import { PaneLine, PaneTile, type PaneLook } from './paneRows';
+import { useNameRoom } from './nameRoom';
 import { PaneStatus } from './paneStatus';
 import { goesOn } from './sideStatus';
 import { folderLooks } from './headerLooks';
@@ -103,7 +104,9 @@ export function Pane({
     extended: boolean,
   ) => actions.shellMenu(side, names, at, extended);
   const filter = useCommander((state) => filterOf(state, side));
-  const { rows } = useCommander((state) => shownRowsOf(state, side));
+  const { rows, starts } = useCommander((state) => shownRowsOf(state, side));
+  const fileColors = useCommander((state) => state.view.fileColors);
+  const dateFormat = useShell((state) => state.dateFormat);
   const setFilter = (query: string | undefined) =>
     actions.filterSide(side, query);
   const filtering = filter !== undefined;
@@ -227,17 +230,45 @@ export function Pane({
     (key, at) => menuOpener.current(key, at),
     [],
   );
+  const listKey =
+    shownList === undefined ? undefined : `${shownList} ${tab ?? ''}`;
+  const nameColumns = useNameRoom(section, side, tiled ? undefined : listKey);
+  const look = useMemo<PaneLook>(
+    () => ({
+      tab,
+      folder: paneFolder,
+      fileColors,
+      gitMissing,
+      columns,
+      room: { name: nameColumns, ...columns },
+      dateFormat,
+      filter: matching,
+    }),
+    [
+      tab,
+      paneFolder,
+      fileColors,
+      gitMissing,
+      columns,
+      nameColumns,
+      dateFormat,
+      matching,
+    ],
+  );
   const itemOf = useCallback(
     (row: Row, index: number) => ({
       side,
       row,
       index,
-      filter: matching,
+      look,
+      selected: row.key === selectedName,
+      marked: marked?.has(row.key) === true,
+      startsGroup: starts?.has(row.key) === true,
       dropTarget: row.key === dropInto,
       pairsClick,
       onMenu,
     }),
-    [side, matching, dropInto, pairsClick, onMenu],
+    [side, look, selectedName, marked, starts, dropInto, pairsClick, onMenu],
   );
 
   const renderRow = useCallback(
@@ -374,6 +405,11 @@ export function Pane({
         />
       </div>
       {!tiled && <ColumnHeader side={side} />}
+      {!tiled && (
+        <div className="row commander-line commander-ruler" aria-hidden="true">
+          <span className="commander-name" />
+        </div>
+      )}
       <div
         className={`column-body${dropInto === null ? ' drop-target' : ''}`}
         ref={body}
@@ -384,7 +420,7 @@ export function Pane({
       >
         {shownList !== undefined && (
           <VirtualRows
-            key={`${shownList} ${tab ?? ''}`}
+            key={listKey}
             placeKey={scrollKey}
             initialOffset={keptScroll}
             revealAtStart={!restored || keptScroll === 0}
@@ -394,6 +430,7 @@ export function Pane({
             selectedKey={selectedName}
             label={strings.commander.sides[side]}
             wholeRows
+            recycled={!tiled}
             wheelStep={tiled ? tileTextRow : undefined}
             notchRows={tiled ? 1 : undefined}
             overscan={tiled ? 2 : undefined}

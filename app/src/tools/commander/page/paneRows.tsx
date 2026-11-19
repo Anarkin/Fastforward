@@ -1,40 +1,53 @@
-import { type CSSProperties } from 'react';
-import { type IconSource } from '../shared/icons';
+import { memo, useState } from 'react';
+import { iconUrl, type IconSource } from '../shared/icons';
 import { commanderKeymap } from './keymap';
 import { clicked } from '../../../lib/shared/keymap';
 import { parentFolder } from '../shared/protocol';
 import { type Side } from '../shared/sides';
+import type { ColumnWidths } from '../shared/columnWidths';
 import { type Row } from './listing';
 import { opens, pointedKeys, rangeKeys } from './rowKeys';
 import { TileName } from './tileName';
 import type { Filter } from '../../../lib/shared/filter';
-import { shownColumns, shownRowsOf } from './shownRows';
+import { shownRowsOf } from './shownRows';
 import { cutClass } from './cellFit';
 import { useCommander, useCommanderActions, useCommanderNow } from './store';
 import { formatDate } from '../../../lib/page/dates';
-import { useShell } from '../../../shell/page/store';
-import { fileColorOf } from '../../../lib/page/fileColors';
+import { groupOfEntry, type FileColors } from '../../../lib/page/fileColors';
+import { fileColorClass } from '../../../lib/shared/fileColors';
 import { menuOfClick } from './paneKeys';
 import { tileWidthOf } from './tiles';
+import { formatSize } from './format';
+import { overCheck, overCheckAttribute } from './lineCheck';
+import { plainLine, type LineRoom } from './plainLine';
 import {
-  RowIcon,
   ExtensionCell,
   MarkBox,
   NameCell,
   SizeCell,
+  SystemIcon,
   TileImage,
 } from './paneCells';
-declare module 'react' {
-  interface CSSProperties {
-    readonly '--file-color'?: string;
-  }
+
+export interface PaneLook {
+  readonly tab: string | undefined;
+  readonly folder: string | undefined;
+  readonly fileColors: FileColors;
+  readonly gitMissing: boolean;
+  readonly columns: ColumnWidths;
+  readonly room: LineRoom;
+  readonly dateFormat: string;
+  readonly filter: Filter;
 }
 
-interface PaneItemProps {
+export interface PaneItemProps {
   side: Side;
   row: Row;
   index: number;
-  filter: Filter;
+  look: PaneLook;
+  selected: boolean;
+  marked: boolean;
+  startsGroup: boolean;
   dropTarget: boolean;
   pairsClick: (key: string, count: number) => boolean;
   onMenu: (
@@ -47,14 +60,18 @@ function usePaneItem({
   side,
   row,
   index,
+  look,
+  selected,
+  marked,
+  startsGroup,
   dropTarget,
   pairsClick,
   onMenu,
 }: PaneItemProps) {
   const actions = useCommanderActions();
   const onSelect = (key: string) => actions.select(side, key);
-  const onMark = (keys: readonly string[], marked: boolean) =>
-    actions.mark(side, keys, marked);
+  const onMark = (keys: readonly string[], marking: boolean) =>
+    actions.mark(side, keys, marking);
   const onOpen = (name: string) => actions.open(side, name);
   const now = useCommanderNow();
   const shown = () => {
@@ -66,24 +83,12 @@ function usePaneItem({
       selected: pane?.selected,
     };
   };
-  const tab = useCommander((state) => state.view.tab);
-  const folder = useCommander((state) => state.view.panes[side]?.folder);
-  const selected = useCommander(
-    (state) => state.view.panes[side]?.selected === row.key,
-  );
-  const marked = useCommander(
-    (state) => state.view.panes[side]?.marked?.has(row.key) === true,
-  );
-  const startsGroup = useCommander(
-    (state) => shownRowsOf(state, side).starts?.has(row.key) === true,
-  );
-  const fileColors = useCommander((state) => state.view.fileColors);
-  const dateFormat = useShell((state) => state.dateFormat);
-  const fileColor =
-    row.entry === undefined ? undefined : fileColorOf(row.entry, fileColors);
-  const rowClass = `row commander-row${selected ? ' selected' : ''}${marked ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${dropTarget ? ' drop-target' : ''}${fileColor === undefined ? '' : ' colored'}${startsGroup ? ' group-start' : ''}`;
-  const colorStyle: CSSProperties =
-    fileColor === undefined ? {} : { '--file-color': fileColor };
+  const { tab, folder } = look;
+  const group =
+    row.entry === undefined
+      ? undefined
+      : groupOfEntry(row.entry, look.fileColors);
+  const rowClass = `row commander-row${selected ? ' selected' : ''}${marked ? ' marked' : ''}${row.entry?.hidden ? ' hidden' : ''}${row.entry === undefined || row.entry.folder ? ' commander-folder' : ''}${dropTarget ? ' drop-target' : ''}${group === undefined ? '' : ` colored ${fileColorClass(group)}`}${startsGroup ? ' group-start' : ''}`;
   const iconSource: IconSource | undefined =
     tab === undefined ||
     folder === undefined ||
@@ -94,7 +99,7 @@ function usePaneItem({
   const date =
     row.entry?.modified === undefined
       ? ''
-      : formatDate(row.entry.modified, dateFormat);
+      : formatDate(row.entry.modified, look.dateFormat);
   const itemEvents = {
     'data-drop':
       row.entry === undefined || row.entry.folder ? row.key : undefined,
@@ -145,61 +150,112 @@ function usePaneItem({
     },
   };
   const toggleMark = () => onMark([row.key], !shown().marked?.has(row.key));
-  return { rowClass, colorStyle, iconSource, date, itemEvents, toggleMark };
+  return { rowClass, iconSource, date, itemEvents, toggleMark };
 }
 
-export function PaneLine(props: PaneItemProps) {
-  const { side, row, filter } = props;
+interface IconSettled {
+  readonly url: string | undefined;
+  readonly as: 'shown' | 'failed';
+}
+
+const pointCheck = (event: React.PointerEvent) =>
+  event.currentTarget.toggleAttribute(overCheckAttribute, overCheck(event));
+
+const leaveCheck = (event: React.PointerEvent) =>
+  event.currentTarget.removeAttribute(overCheckAttribute);
+
+export const PaneLine = memo(function PaneLine(props: PaneItemProps) {
+  const { side, row, look } = props;
   const { entry } = row;
   const actions = useCommanderActions();
-  const gitMissing = useCommander((state) => state.view.gitMissing);
-  const onOpenRepository = gitMissing
-    ? undefined
-    : (name: string) => actions.openRepository(side, name);
-  const { rowClass, colorStyle, iconSource, date, itemEvents, toggleMark } =
+  const { rowClass, iconSource, date, itemEvents, toggleMark } =
     usePaneItem(props);
-  const columns = useCommander(shownColumns);
+  const url = iconSource === undefined ? undefined : iconUrl(iconSource);
+  const [settled, setSettled] = useState<IconSettled>();
+  const icon =
+    settled !== undefined && settled.url === url
+      ? settled.as
+      : url !== undefined && actions.iconTicketOf(url) !== undefined
+        ? 'shown'
+        : undefined;
+  const onOpenRepository =
+    look.gitMissing || !row.repository
+      ? undefined
+      : (name: string) => actions.openRepository(side, name);
+  const folder = entry === undefined || entry.folder;
+  const line =
+    onOpenRepository !== undefined ||
+    entry?.counting === true ||
+    entry?.unreadFolders !== undefined
+      ? undefined
+      : plainLine(
+          {
+            name: folder ? `[${row.base}]` : row.base,
+            extension: row.extension,
+            size: formatSize(entry?.size),
+            date,
+          },
+          look.room,
+          look.filter,
+        );
+  const checked = entry !== undefined;
   return (
     <div
-      className={`${rowClass} commander-line`}
-      style={colorStyle}
+      className={`${rowClass} commander-line${icon === 'shown' ? '' : folder ? ' generic-folder' : ' generic-file'}${checked ? '' : ' up'}${line === undefined ? '' : ' plain'}`}
       {...itemEvents}
+      onClick={(event) => {
+        if (checked && overCheck(event)) {
+          toggleMark();
+        } else {
+          itemEvents.onClick(event);
+        }
+      }}
+      onPointerMove={checked ? pointCheck : undefined}
+      onPointerLeave={checked ? leaveCheck : undefined}
     >
-      {row.entry !== undefined && <MarkBox onToggle={toggleMark} />}
-      <span className="commander-icon">
-        <RowIcon
-          row={row}
+      {iconSource !== undefined && icon !== 'failed' && (
+        <SystemIcon
+          key={url}
           source={iconSource}
+          generic={null}
           onDropIcon={actions.dropIcon}
+          onShown={() => setSettled({ url, as: 'shown' })}
+          onFailed={() => setSettled({ url, as: 'failed' })}
           tickets={actions}
         />
-      </span>
-      <NameCell row={row} filter={filter} />
-      <ExtensionCell
-        row={row}
-        filter={filter}
-        columns={columns.extension}
-        onOpenRepository={onOpenRepository}
-      />
-      <SizeCell entry={entry} columns={columns.size} />
-      <span className={`commander-date${cutClass(date, columns.date)}`}>
-        {date}
-      </span>
+      )}
+      {line ?? (
+        <>
+          <NameCell row={row} filter={look.filter} />
+          <ExtensionCell
+            row={row}
+            filter={look.filter}
+            columns={look.columns.extension}
+            onOpenRepository={onOpenRepository}
+          />
+          <SizeCell entry={entry} columns={look.columns.size} />
+          <span
+            className={`commander-date${cutClass(date, look.columns.date)}`}
+          >
+            {date}
+          </span>
+        </>
+      )}
     </div>
   );
-}
+});
 
-export function PaneTile(props: PaneItemProps) {
-  const { row, filter } = props;
+export const PaneTile = memo(function PaneTile(props: PaneItemProps) {
+  const { row, look } = props;
   const thumbnailSize = useCommander((state) => state.view.thumbnailSize);
   const actions = useCommanderActions();
   const tileWidth = tileWidthOf(thumbnailSize);
-  const { rowClass, colorStyle, iconSource, date, itemEvents, toggleMark } =
+  const { rowClass, iconSource, date, itemEvents, toggleMark } =
     usePaneItem(props);
   return (
     <div
       className={`${rowClass} commander-tile`}
-      style={{ ...colorStyle, width: tileWidth }}
+      style={{ width: tileWidth }}
       {...itemEvents}
     >
       {row.entry !== undefined && <MarkBox onToggle={toggleMark} />}
@@ -222,9 +278,9 @@ export function PaneTile(props: PaneItemProps) {
           tickets={actions}
         />
       </div>
-      <TileName row={row} filter={filter} />
+      <TileName row={row} filter={look.filter} />
       <SizeCell entry={row.entry} tile />
       <div className="commander-tile-date">{date}</div>
     </div>
   );
-}
+});

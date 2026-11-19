@@ -113,7 +113,7 @@ suite('App buttons', () => {
       .locator('.tabs .tab', { hasText: strings.tools.commander })
       .click();
     const right = page.locator('.commander-pane').nth(1);
-    await right.locator('.commander-row', { hasText: 'atxt' }).click();
+    await right.locator('.commander-row', { hasText: /^a\s*txt/ }).click();
     const commander = await buttonsOf(page);
     await page.keyboard.press('F3');
     await page.locator('.viewer').waitFor();

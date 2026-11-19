@@ -38,6 +38,7 @@ import {
 } from './listRows';
 import { activeDescendant, rowId } from './rowIds';
 import { pinnedRows } from './pinnedRows';
+import { useRowSlots } from './rowSlots';
 import { restoreWhen, type Restoring } from './restore';
 
 const exactHeight = (element: Element) =>
@@ -77,6 +78,7 @@ export function VirtualRows({
   wheelStep,
   notchRows,
   overscan = 20,
+  recycled = false,
   scrolling,
 }: {
   rows: ListedRows;
@@ -96,6 +98,7 @@ export function VirtualRows({
   wheelStep?: () => number;
   notchRows?: number;
   overscan?: number;
+  recycled?: boolean;
   scrolling: ScrollSettings;
 }) {
   const list = useRef<HTMLDivElement>(null);
@@ -103,6 +106,7 @@ export function VirtualRows({
   const [fixedHeight, setFixedHeight] = useState<number>();
   const { observeOffset, offsetSeen } = useSeenOffsets<HTMLDivElement>();
   const follower = useRef<RowFollower>(undefined);
+  const slotsOf = useRowSlots();
   const rowsNow = useLaterRows(
     (range: Parameters<typeof defaultRangeExtractor>[0]) => {
       const to = follower.current?.glidingTo();
@@ -265,6 +269,8 @@ export function VirtualRows({
   );
 
   const drawn = virtualizer.getVirtualItems();
+  const slots =
+    recycled && wholeRows ? slotsOf(drawn.map((item) => item.key)) : undefined;
   const itemProps = (index: number, key: React.Key) => {
     const item = treeItemOf?.(index);
     return {
@@ -329,7 +335,7 @@ export function VirtualRows({
         )}
         {drawn.map((item) => (
           <div
-            key={item.key}
+            key={slots?.get(item.key) ?? item.key}
             {...itemProps(item.index, item.key)}
             className="virtual-row"
             data-index={item.index}

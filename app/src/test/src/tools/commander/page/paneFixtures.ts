@@ -19,6 +19,16 @@ import type { ToHost } from '../../../../../shell/shared/protocol';
 import type { Layout } from '../../../../../tools/commander/page/layouts';
 import { withStores } from '../../../../helpers/componentFixtures';
 import { noop } from '../../../../helpers/fixtures';
+import {
+  checkSize,
+  checkStart,
+} from '../../../../../tools/commander/page/lineCheck';
+
+interface Place {
+  readonly clientX?: number;
+  readonly clientY?: number;
+  readonly relatedTarget?: EventTarget | null;
+}
 
 export const pane = (
   elevated: boolean,
@@ -117,7 +127,8 @@ export async function inSide(
   run: (shown: {
     readonly main: HTMLElement;
     readonly rightClick: (target: Element | null, shift?: boolean) => void;
-    readonly click: (target: Element | null, count: number) => void;
+    readonly click: (target: Element | null, count: number, at?: Place) => void;
+    readonly point: (target: Element | null, type: string, at?: Place) => void;
     readonly menu: () => readonly string[];
     readonly choose: (label: string) => void;
     readonly posted: CommanderToHost[];
@@ -204,7 +215,7 @@ export async function inSide(
           );
         });
       },
-      click: (target, count) => {
+      click: (target, count, at = {}) => {
         assert.ok(target);
         act(() => {
           for (const type of count === 2 ? ['click', 'dblclick'] : ['click']) {
@@ -213,9 +224,22 @@ export async function inSide(
                 bubbles: true,
                 cancelable: true,
                 detail: count,
+                ...at,
               }),
             );
           }
+        });
+      },
+      point: (target, type, at = {}) => {
+        assert.ok(target);
+        act(() => {
+          target.dispatchEvent(
+            new dom.window.MouseEvent(type, {
+              bubbles: true,
+              cancelable: true,
+              ...at,
+            }),
+          );
         });
       },
       menu: () => items().map((item) => item.label),
@@ -254,3 +278,10 @@ export const tileNamed = (main: HTMLElement, name: string) =>
 
 export const boxOf = (item: Element | null) =>
   item?.querySelector('.commander-check') ?? null;
+
+export const onBox: Place = {
+  clientX: checkStart + checkSize / 2,
+  clientY: 0,
+};
+
+export const pastBox: Place = { clientX: checkStart + checkSize, clientY: 0 };

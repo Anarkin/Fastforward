@@ -335,7 +335,9 @@ suite('App commander', () => {
         postMessage(shown(), 0x100, 0x1b, 0);
         await waitFor(() => shown() === null, closing);
       };
-      const menuRow = right().locator('.commander-row', { hasText: 'menutxt' });
+      const menuRow = right().locator('.commander-row', {
+        hasText: /^menu\s*txt/,
+      });
       try {
         await menuRow.click({ button: 'right' });
         await appMenu.waitFor();

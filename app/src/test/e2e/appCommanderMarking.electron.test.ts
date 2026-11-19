@@ -18,9 +18,11 @@ import {
   openFolder,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { boxOfRow, rowsShown } from './commanderRows';
 
-const selectedName = () =>
-  right().locator('.commander-row.selected .commander-name').textContent();
+const selectedName = async () =>
+  (await rowsShown(right())).find(({ classes }) => classes.includes('selected'))
+    ?.name;
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -76,13 +78,13 @@ suite('App commander', () => {
     );
     assert.strictEqual(await selectedName(), 'd');
     await markingRow('b').hover();
-    await markingRow('b').locator('.commander-check').click();
+    await boxOfRow(markingRow('b'));
     await waitFor(
       async () => (await markedNames()).join() === 'a,c,d',
       'a click on the box of a marked file to unmark it',
     );
     assert.strictEqual(await selectedName(), 'd');
-    await markingRow('b').locator('.commander-check').click();
+    await boxOfRow(markingRow('b'));
     await waitFor(
       async () => (await markedNames()).join() === 'a,b,c,d',
       'a click on the box of a file to mark it',

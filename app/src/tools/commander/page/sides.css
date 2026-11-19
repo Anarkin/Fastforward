@@ -199,8 +199,63 @@
 }
 
 .row.commander-line {
+  --line-icon: var(--row-icon, none) var(--commander-row-start) center / 16px
+    16px no-repeat;
+  grid-template-columns:
+    minmax(0, 1fr)
+    calc(var(--commander-extension) * var(--commander-advance))
+    calc(var(--commander-size) * var(--commander-advance))
+    calc(var(--commander-date) * var(--commander-advance));
   height: var(--commander-row-height);
-  padding: 0 8px 0 var(--commander-row-start);
+  padding: 0 8px 0
+    calc(var(--commander-row-start) + 16px + var(--commander-gap));
+  overflow: clip;
+}
+
+.row.commander-line.plain {
+  display: block;
+  padding-left: calc(
+    var(--commander-row-start) + 16px + var(--commander-advance)
+  );
+  overflow: visible;
+  white-space: pre;
+  tab-size: calc(var(--commander-name-width, 0px) + var(--commander-gap));
+}
+
+.commander-ruler {
+  position: absolute;
+  left: -9999px;
+  width: 4000px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.row.commander-line.generic-file {
+  --row-icon: var(--file-icon);
+}
+
+.row.commander-line.generic-folder {
+  --row-icon: var(--folder-icon);
+}
+
+.row.commander-line.hidden.generic-file {
+  --row-icon: var(--hidden-file-icon);
+}
+
+.row.commander-line.hidden.generic-folder {
+  --row-icon: var(--hidden-folder-icon);
+}
+
+.commander-line > .system-icon {
+  position: absolute;
+  top: calc((var(--commander-row-height) - 16px) / 2);
+  left: var(--commander-row-start);
+  width: 16px;
+  height: 16px;
+}
+
+.commander-line > .system-icon.loading {
+  display: none;
 }
 
 .row.commander-row.colored {
@@ -215,7 +270,7 @@
   );
 }
 
-.row.commander-line.hidden .commander-icon,
+.row.commander-line.hidden > .system-icon,
 .row.commander-tile.hidden .commander-thumbnail {
   opacity: var(--color-hidden-file);
 }
@@ -280,7 +335,7 @@
   background: none;
 }
 
-.row.commander-row {
+.row.commander-tile {
   position: relative;
 }
 
@@ -349,6 +404,85 @@
 
 .commander-pane.inactive .row.commander-row.marked.selected:not(:hover) {
   background: var(--marked-background);
+}
+
+.row.commander-row.commander-line {
+  background: var(--line-icon);
+}
+
+.row.commander-row.commander-line:hover {
+  background: var(--line-icon), var(--hover-background);
+}
+
+.row.commander-row.commander-line.selected {
+  background: var(--line-icon), var(--selection-background);
+}
+
+.commander-pane.inactive
+  .row.commander-row.commander-line.selected:not(:hover) {
+  background: var(--line-icon);
+}
+
+.row.commander-row.commander-line.marked {
+  background: var(--line-icon), var(--marked-background);
+}
+
+.row.commander-row.commander-line.marked:hover {
+  background:
+    var(--line-icon),
+    linear-gradient(var(--hover-background), var(--hover-background)),
+    var(--marked-background);
+}
+
+.row.commander-row.commander-line.marked.selected {
+  background:
+    var(--line-icon),
+    linear-gradient(var(--selection-tint), var(--selection-tint)),
+    var(--marked-background);
+}
+
+.commander-pane.inactive
+  .row.commander-row.commander-line.marked.selected:not(:hover) {
+  background: var(--line-icon), var(--marked-background);
+}
+
+.row.commander-line:not(.up):hover::before,
+.row.commander-line.marked::before,
+.row.commander-line.marked::after {
+  content: '';
+  position: absolute;
+  top: calc((var(--commander-row-height) - var(--commander-check)) / 2);
+  left: var(--commander-check-start);
+  box-sizing: border-box;
+  width: var(--commander-check);
+  height: var(--commander-check);
+}
+
+.row.commander-line:not(.up):hover::before,
+.row.commander-line.marked::before {
+  border: 1px solid var(--muted-foreground);
+  border-radius: 2px;
+}
+
+.row.commander-line[data-over-check]:not(.up):hover::before {
+  border-color: var(--color-foreground);
+}
+
+.row.commander-line.marked::before {
+  background: var(--color-foreground);
+  border-color: var(--color-foreground);
+}
+
+.row.commander-line.marked::after {
+  top: calc(
+    (var(--commander-row-height) - var(--commander-check)) / 2 +
+      var(--hairline) - 1px
+  );
+  left: calc(var(--commander-check-start) + var(--hairline) - 1px);
+  width: calc(var(--commander-check) - 2 * var(--hairline) + 2px);
+  height: calc(var(--commander-check) - 2 * var(--hairline) + 2px);
+  background: var(--color-panel-background);
+  mask: var(--check-mark) center / 100% no-repeat;
 }
 
 .row.commander-row.drop-target,

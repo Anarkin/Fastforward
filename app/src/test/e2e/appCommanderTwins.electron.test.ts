@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import { fileName, rowsShown } from './commanderRows';
 import {
   opened,
   page,
@@ -28,17 +29,7 @@ const twins = {
   'vertical.br2': '[Buttonbar]\nbutton1=vertical.br2\n',
 };
 
-const rowNames = () =>
-  right()
-    .locator('.commander-row')
-    .evaluateAll((rows) =>
-      rows.map((row) => {
-        const base = row.querySelector('.commander-name')?.textContent ?? '';
-        const extension =
-          row.querySelector('.commander-extension')?.textContent ?? '';
-        return extension === '' ? base : `${base}.${extension}`;
-      }),
-    );
+const rowNames = async () => (await rowsShown(right())).map(fileName);
 
 const selectedName = async () => {
   const names = await rowNames();

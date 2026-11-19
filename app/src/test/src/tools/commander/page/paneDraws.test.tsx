@@ -3,7 +3,7 @@ import { suite, test, vi } from 'vitest';
 import { Pane } from '../../../../../tools/commander/page/pane';
 import { rowsOf } from '../../../../../tools/commander/page/listing';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
-import { boxOf, inSide, rowNamed, sort, workPane } from './paneFixtures';
+import { inSide, onBox, rowNamed, sort, workPane } from './paneFixtures';
 
 const drawn: number[] = [];
 
@@ -94,11 +94,11 @@ suite('Commander rows drawn again', () => {
         assert.strictEqual(selected(), 'plan.md');
         assert.deepStrictEqual(drawnNames(), ['notes.txt', 'plan.md']);
 
-        click(boxOf(rowNamed(main, 'docs')), 1);
+        click(rowNamed(main, 'docs'), 1, onBox);
         assert.deepStrictEqual(marked(), ['docs']);
         assert.deepStrictEqual(drawnNames(), ['docs']);
 
-        click(boxOf(rowNamed(main, 'docs')), 1);
+        click(rowNamed(main, 'docs'), 1, onBox);
         assert.deepStrictEqual(marked(), []);
         assert.deepStrictEqual(drawnNames(), ['docs']);
       },

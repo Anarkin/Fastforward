@@ -29,7 +29,7 @@ suite('App commander', () => {
     );
     const zipRow = right().locator('.commander-row', { hasText: 'packed' });
     await zipRow.waitFor();
-    await zipRow.locator('.commander-name').click({ button: 'right' });
+    await zipRow.click({ button: 'right' });
     await page
       .locator('.context-menu .menu-item', {
         hasText: strings.commander.openWithSevenZip,

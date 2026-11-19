@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { fileName, rowsShown } from './commanderRows';
 
 let folder: string;
 export let opened: string;
@@ -22,19 +23,8 @@ export const editedText = () =>
       (line) => line.textContent ?? '',
     ).join('\n'),
   );
-const rowIndexOf = (name: string) =>
-  right()
-    .locator('.commander-row')
-    .evaluateAll(
-      (rows, wanted) =>
-        rows.findIndex((row) => {
-          const base = row.querySelector('.commander-name')?.textContent ?? '';
-          const extension =
-            row.querySelector('.commander-extension')?.textContent ?? '';
-          return (extension === '' ? base : `${base}.${extension}`) === wanted;
-        }),
-      name,
-    );
+const rowIndexOf = async (name: string) =>
+  (await rowsShown(right())).findIndex((row) => fileName(row) === name);
 const selectedIndex = () =>
   right()
     .locator('.commander-row')

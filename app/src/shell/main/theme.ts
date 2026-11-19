@@ -1,6 +1,11 @@
 import type { Settings } from './settings';
 import type { ToolId } from '../shared/tools';
 import { cursorVariables } from '../../lib/shared/cursorSettings';
+import {
+  fileColorClass,
+  fileColorValue,
+  type FileColor,
+} from '../../lib/shared/fileColors';
 
 const themedTools = [
   'terminal',
@@ -16,6 +21,18 @@ function declarations(
   return Object.entries(values).map(
     ([name, value]) => `${indent}--${prefix}${name}: ${value};`,
   );
+}
+
+function fileColorRules(groups: readonly FileColor[]): string[] {
+  return groups.length === 0
+    ? []
+    : [
+        ...groups.map(
+          (group, index) =>
+            `.${fileColorClass(index)} { --file-color: ${fileColorValue(group)}; }`,
+        ),
+        '',
+      ];
 }
 
 export function themeCss({
@@ -54,5 +71,6 @@ export function themeCss({
     '  }',
     '}',
     '',
+    ...fileColorRules(tools.commander.fileColors),
   ].join('\n');
 }

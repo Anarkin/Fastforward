@@ -2,6 +2,7 @@ import { languageOf } from './languages';
 import {
   executablesGroup,
   extensionKey,
+  fileColorValue,
   languagesGroup,
   type FileColor,
 } from '../shared/fileColors';
@@ -49,9 +50,7 @@ export function fileColorsOf(groups: readonly FileColor[]): FileColors {
     }
   });
   return {
-    colors: groups.map(
-      ({ colors }) => `light-dark(${colors.light}, ${colors.dark})`,
-    ),
+    colors: groups.map(fileColorValue),
     byExtension,
     languages,
     executables,

@@ -103,6 +103,10 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: true once the system icon has loaded, at once when its ticket came before',
   'tools/commander/page/paneCells.tsx ticket':
     'made once: the ticket of a system icon, taken once from the icon tickets of the store',
+  'tools/commander/page/paneRows.tsx settled':
+    'a measure: the address of the system icon a row has seen come or fail, and which of the two, so the row draws its generic icon behind no other; told again from the icon tickets of the store once the row shows another file',
+  'tools/commander/page/nameRoom.ts room':
+    'a measure: the characters a name has room for in a row of a side, measured from its rows as the side is laid out and resized, and kept for the side while the page lives',
   'tools/commander/page/paneTiles.ts fill':
     'a measure: where thumbnails fill from, set as the list scrolls and asked anew once shown again',
   'tools/commander/page/paneTiles.ts fitting':

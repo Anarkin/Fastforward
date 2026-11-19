@@ -17,6 +17,7 @@ import {
   icons,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { rowsShown } from './commanderRows';
 
 const rowOf = (name: string) =>
   right().locator('.commander-row', { hasText: name });
@@ -25,6 +26,24 @@ const markOf = (name: string) =>
   right()
     .locator('.commander-row', { hasText: name })
     .locator('.commander-extension .commander-mark .tool-git');
+
+const clipsOf = (name: string) =>
+  right()
+    .locator('.commander-row', { hasText: name })
+    .evaluate((element) => ({
+      row: `${getComputedStyle(element).overflowX}${element.classList.contains('plain') ? ', one text' : ''}`,
+      ...Object.fromEntries(
+        ['name', 'extension', 'size', 'date'].map((cell) => {
+          const found = element.querySelector(`.commander-${cell}`);
+          return [
+            cell,
+            found === null
+              ? 'missing'
+              : `${getComputedStyle(found).overflowX}${found.scrollWidth > found.clientWidth ? ', too long' : ''}`,
+          ];
+        }),
+      ),
+    }));
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -41,27 +60,13 @@ suite('App commander', () => {
       'big.bin',
     ]);
     assert.strictEqual(
-      await right()
-        .locator('.commander-row', { hasText: 'big' })
-        .locator('.commander-size')
-        .textContent(),
+      (await rowsShown(right())).find(({ name }) => name === 'big')?.size,
       '12,288',
     );
   });
 
   test('draws the name of a folder in brackets, the parent folder too, as Total Commander does, and the name of a file without', async () => {
-    const drawn = await right()
-      .locator('.commander-row.commander-line')
-      .evaluateAll((rows) =>
-        rows.map((row) => {
-          const name = row.querySelector('.commander-name');
-          const around = (part: string) => {
-            const content = name ? getComputedStyle(name, part).content : '';
-            return content === 'none' ? '' : content.replaceAll('"', '');
-          };
-          return `${around('::before')}${name?.textContent ?? ''}${around('::after')}`;
-        }),
-      );
+    const drawn = (await rowsShown(right())).map((row) => row.drawn);
     assert.deepStrictEqual(drawn, ['[..]', '[src]', 'notes', 'big']);
   });
 
@@ -112,7 +117,8 @@ suite('App commander', () => {
       await page.keyboard.press(' ');
       await waitFor(
         async () =>
-          (await source.locator('.commander-size').textContent()) === '1,000',
+          (await rowsShown(right())).find(({ name }) => name === 'src')
+            ?.size === '1,000',
         'the size of src',
       );
       await source.click();
@@ -203,15 +209,25 @@ suite('App commander', () => {
         return names.every((name) => shown.includes(`${name}.txt`));
       }, 'the files to be listed');
       const drawn = await right()
-        .locator('.commander-row .commander-name')
-        .evaluateAll((cells) =>
-          cells.flatMap((cell) => {
-            const text = cell.textContent ?? '';
-            if (!text.includes('spaced')) {
+        .locator('.commander-row')
+        .evaluateAll((rows) =>
+          rows.flatMap((row) => {
+            const cell = row.querySelector('.commander-name');
+            const written =
+              cell?.firstChild ??
+              [...row.childNodes].find(
+                (node) => node.nodeType === Node.TEXT_NODE,
+              );
+            const whole = written?.textContent ?? '';
+            const tab = whole.indexOf(String.fromCharCode(9));
+            const text =
+              cell === null && tab !== -1 ? whole.slice(0, tab) : whole;
+            if (written === undefined || !text.includes('spaced')) {
               return [];
             }
             const range = document.createRange();
-            range.selectNodeContents(cell);
+            range.setStart(written, 0);
+            range.setEnd(written, text.length);
             return [[text, range.getBoundingClientRect().width] as const];
           }),
         );
@@ -267,29 +283,31 @@ suite('App commander', () => {
     );
   });
 
-  test('clips the cells of a row only where their text may not fit: the name, which takes the room left, but not an extension, a size or a date that fits its column, as a clip for every cell of every row had each frame of a scroll paint a thousand of them', async () => {
-    const row = right().locator('.commander-row', { hasText: 'notes' });
-    await row.waitFor();
-    assert.deepStrictEqual(
-      await row.evaluate((element) =>
-        Object.fromEntries(
-          ['name', 'extension', 'size', 'date'].map((cell) => {
-            const found = element.querySelector(`.commander-${cell}`);
-            return [
-              cell,
-              found === null
-                ? 'missing'
-                : `${getComputedStyle(found).overflowX}${found.scrollWidth > found.clientWidth ? ', too long' : ''}`,
-            ];
-          }),
-        ),
-      ),
-      {
+  test('clips a row only where its text may not fit: nothing of a row drawn as one text, which is drawn so only while it fits, and of a row drawn with cells the name, which takes the room left, but not an extension, a size or a date that fits its column, as a clip for every cell of every row had each frame of a scroll paint a thousand of them', async () => {
+    const celled = path.join(opened, 'cellé.txt');
+    fs.writeFileSync(celled, '');
+    try {
+      await right().locator('.commander-row', { hasText: 'cellé' }).waitFor();
+      assert.deepStrictEqual(await clipsOf('notes'), {
+        row: 'visible, one text',
+        name: 'missing',
+        extension: 'missing',
+        size: 'missing',
+        date: 'missing',
+      });
+      assert.deepStrictEqual(await clipsOf('cellé'), {
+        row: 'clip',
         name: 'hidden',
         extension: 'visible',
         size: 'visible',
         date: 'visible',
-      },
+      });
+    } finally {
+      fs.rmSync(celled);
+    }
+    await waitFor(
+      async () => !(await rowNames()).includes('cellé.txt'),
+      'the file to be gone from the list',
     );
   });
 

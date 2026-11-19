@@ -182,7 +182,7 @@ suite('App commander', () => {
         path.join(opened, 'over.md'),
         `# Over${String.fromCharCode(10).repeat(1024 * 1024)}`,
       );
-      await select('overmd');
+      await select(/^over\s*md/);
       await page.keyboard.press('F3');
       await waitFor(
         async () =>

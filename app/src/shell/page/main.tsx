@@ -9,6 +9,7 @@ import { windowButtonColor } from './windowButtons';
 import { errorText } from '../../lib/page/errors';
 import { installScrollbars } from '../../lib/page/scrollbars';
 import { watchDevicePixels } from '../../lib/page/devicePixels';
+import { showGenericIcons } from './genericIcons';
 import { installTextCursors } from './textCursor';
 import { installTextHeights } from './textHeights';
 
@@ -55,6 +56,7 @@ window.addEventListener('unhandledrejection', (event) =>
 
 installScrollbars();
 watchDevicePixels(() => undefined);
+showGenericIcons();
 installTextHeights();
 installTextCursors();
 

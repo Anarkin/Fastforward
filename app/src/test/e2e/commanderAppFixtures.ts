@@ -6,6 +6,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { closeOrKill, launchApp } from './appLaunch';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { fileName, rowsShown } from './commanderRows';
 
 export let folder: string;
 export let opened: string;
@@ -44,46 +45,67 @@ export const savedSetting = (
 };
 
 export const hiding = (element: Locator) =>
-  element.evaluate((shown) => {
-    const look = () => {
-      const icon = shown.querySelector('.commander-icon');
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d', {
-        willReadFrequently: true,
-      });
-      if (context === null) {
-        throw new Error('no canvas');
-      }
+  element.evaluate(async (shown) => {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', {
+      willReadFrequently: true,
+    });
+    if (context === null) {
+      throw new Error('no canvas');
+    }
+    const inked = async () => {
+      const image = new Image();
+      image.src = getComputedStyle(shown)
+        .backgroundImage.replace(/^url\("/, '')
+        .replace(/"\).*$/, '');
+      await image.decode();
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0);
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      return Math.max(...data.filter((_, at) => at % 4 === 3));
+    };
+    const full = shown.classList.contains('commander-line')
+      ? shown.querySelector('.system-icon') === null
+        ? await inked()
+        : 1
+      : undefined;
+    const look = async () => {
+      const icon = shown.querySelector('.system-icon');
+      canvas.width = 1;
+      canvas.height = 1;
+      context.clearRect(0, 0, 1, 1);
       context.fillStyle = getComputedStyle(shown).color;
       context.fillRect(0, 0, 1, 1);
+      const color = [...context.getImageData(0, 0, 1, 1).data];
       return {
-        color: [...context.getImageData(0, 0, 1, 1).data],
+        color,
         icon:
-          icon === null ? undefined : Number(getComputedStyle(icon).opacity),
+          full === undefined
+            ? undefined
+            : icon === null
+              ? (await inked()) / full
+              : Number(getComputedStyle(icon).opacity),
       };
     };
-    const before = look();
+    const before = await look();
     shown.classList.add('hidden');
-    const after = look();
+    const after = await look();
     shown.classList.remove('hidden');
     return { before, after };
   });
 
 export const looksOf = (row: Locator) =>
   row.evaluate((shown) => {
-    const box = shown.querySelector('.commander-check');
-    const check = shown.querySelector('.check-box');
+    const drawn = (part: string) =>
+      getComputedStyle(shown, part).content === 'none' ? 'hidden' : 'visible';
     return {
       color: getComputedStyle(shown).color,
       weight: getComputedStyle(shown).fontWeight,
       background: getComputedStyle(shown).backgroundColor,
-      box: box === null ? undefined : getComputedStyle(box).visibility,
-      check:
-        check === null
-          ? undefined
-          : getComputedStyle(check, '::after').content === 'none'
-            ? 'hidden'
-            : 'visible',
+      box: drawn('::before'),
+      check: drawn('::after'),
     };
   });
 
@@ -106,24 +128,15 @@ export const wrapLongLines = async (wrap = true) => {
 };
 
 export const right = () => page.locator('.commander-pane').nth(1);
-export const rowNames = (pane = right()) =>
-  pane
-    .locator('.commander-row')
-    .evaluateAll((rows) =>
-      rows.map((row) =>
-        [
-          row.querySelector('.commander-name')?.textContent,
-          row.querySelector('.commander-extension')?.textContent,
-        ]
-          .filter(Boolean)
-          .join('.'),
-      ),
-    );
+export const rowNames = async (pane = right()) =>
+  (await rowsShown(pane)).map(fileName);
 
-export const groupStartsShown = () =>
-  right()
-    .locator('.commander-row.group-start .commander-name')
-    .allTextContents();
+const namesWith = async (className: string) =>
+  (await rowsShown(right()))
+    .filter(({ classes }) => classes.includes(className))
+    .map(({ name }) => name);
+
+export const groupStartsShown = () => namesWith('group-start');
 export const statusShown = () =>
   right().locator('.column-status').textContent();
 export const sortedRows = async () => (await rowNames()).toSorted().join();
@@ -150,24 +163,44 @@ export const onClipboard = () =>
 export const textOnClipboard = () =>
   app.evaluate(({ clipboard }) => clipboard.readText());
 
-export const markedNames = () =>
-  right().locator('.commander-row.marked .commander-name').allTextContents();
+export const markedNames = () => namesWith('marked');
 
 export const markingRow = (name: string) =>
-  right().locator('.commander-row', { hasText: `${name}txt` });
+  right().locator('.commander-row', {
+    hasText: new RegExp(`^${name}\\s*txt`),
+  });
 
 export const icons = () =>
   right()
     .locator('.commander-row')
     .evaluateAll((rows) =>
       rows.map((row) => {
-        const image = row.querySelector<HTMLImageElement>(
-          '.commander-icon img',
-        );
+        const image = row.querySelector<HTMLImageElement>('img.system-icon');
+        const text = [...row.childNodes]
+          .filter((node) => node.nodeType === Node.TEXT_NODE)
+          .map((node) => node.textContent ?? '')
+          .join('');
+        const drawn =
+          row.querySelector('.commander-name')?.textContent ??
+          text.split(String.fromCharCode(9))[0] ??
+          '';
+        const picture = getComputedStyle(row).backgroundImage;
+        const pictured = (name: string) =>
+          row.classList.contains(`generic-${name}`) &&
+          picture.startsWith('url("data:image/png') &&
+          picture.startsWith(
+            getComputedStyle(document.documentElement)
+              .getPropertyValue(`--${name}-icon`)
+              .trim(),
+          );
         return {
-          name: row.querySelector('.commander-name')?.textContent,
-          folder: row.querySelector('.commander-icon .folder-icon') !== null,
-          file: row.querySelector('.commander-icon .file-icon') !== null,
+          name:
+            row.classList.contains('plain') &&
+            row.classList.contains('commander-folder')
+              ? drawn.slice(1, -1)
+              : drawn,
+          folder: pictured('folder'),
+          file: pictured('file'),
           loaded: image !== null && image.complete && image.naturalWidth > 0,
           loading: image?.classList.contains('loading') === true,
         };
@@ -176,14 +209,14 @@ export const icons = () =>
 
 export const selected = async () =>
   (await right().locator('.commander-row.selected').textContent()) ?? '';
-export const select = async (name: string) => {
+export const select = async (name: string | RegExp) => {
   await right().locator('.commander-row', { hasText: name }).click();
   await waitFor(
-    async () =>
-      (
-        await right().locator('.commander-row.selected').textContent()
-      )?.includes(name) === true,
-    `${name} to be selected`,
+    async () => {
+      const text = await selected();
+      return typeof name === 'string' ? text.includes(name) : name.test(text);
+    },
+    `${String(name)} to be selected`,
   );
 };
 export const openFolder = async (name: string, folderPath: string) => {
