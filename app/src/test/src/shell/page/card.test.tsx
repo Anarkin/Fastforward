@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { Card } from '../../../../shell/page/card';
-import { noop } from '../../../helpers/fixtures';
+import { defaultSettings, noop } from '../../../helpers/fixtures';
 import { namedFile, sentence } from '../../../../lib/shared/sentences';
 import { cascaded } from '../../../helpers/cascade';
 import {
@@ -65,12 +65,11 @@ suite('The card a tooltip and a notice are drawn as', () => {
     }
   });
 
-  test('gives a tooltip the ground, the corners and the shadow of a notice, and words that wrap within its width, tighter around them than a notice', () => {
+  test('gives a tooltip the corners and the shadow of a notice, and words that wrap within its width, tighter around them than a notice, on a ground of its own in the theme, that of a menu unless set, as the yellow of a notice was liked in neither theme', () => {
     const card = withClass(rendered(tip), 'card');
     const notice = withClass(rendered(<NoticesShown />), 'notice');
     for (const property of [
       'color',
-      'background',
       'border-radius',
       'box-shadow',
       'max-width',
@@ -83,7 +82,16 @@ suite('The card a tooltip and a notice are drawn as', () => {
       );
       assert.ok(cascaded(card, property) !== undefined, property);
     }
-    looks(card, { padding: '3px 8px', 'align-items': 'center' });
+    looks(card, {
+      padding: '3px 8px',
+      'align-items': 'center',
+      background: 'var(--color-tooltip-background)',
+    });
+    const { light, dark } = defaultSettings().colors;
+    assert.deepStrictEqual(
+      [light['tooltip-background'], dark['tooltip-background']],
+      [light['panel-background'], dark['panel-background']],
+    );
     looks(withClass(card, 'card-message'), {
       'overflow-wrap': 'anywhere',
       'white-space': 'pre-wrap',

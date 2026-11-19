@@ -521,6 +521,7 @@
       "background": "#ccc",
       "panel-background": "#fff",
       "notice-background": "#ffd",
+      "tooltip-background": "#fff",
 
       "border": "#ccc",
 
@@ -573,6 +574,7 @@
       "background": "#2a2a2a",
       "panel-background": "#111",
       "notice-background": "#3d3a26",
+      "tooltip-background": "#111",
 
       "border": "#2a2a2a",
 

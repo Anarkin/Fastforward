@@ -25,5 +25,6 @@
   visibility: hidden;
   align-items: center;
   padding: 3px 8px;
+  background: var(--color-tooltip-background);
   pointer-events: none;
 }
