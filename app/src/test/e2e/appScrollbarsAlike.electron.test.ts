@@ -355,7 +355,7 @@ suite('App scrollbars alike', () => {
     }
   });
 
-  test('gives the text of the viewer, the editor and the diff a scrollbar below it too while it is not wrapped, alike, the one beside it ending above it, the square between them left empty, and none once the text is wrapped', async () => {
+  test('gives the text of the viewer, the editor and the diff a scrollbar below it too while it is not wrapped, alike, the one beside it ending above it, the square between them filled as their tracks are, as it stood empty in the corner as a hole in the two, and none once the text is wrapped', async () => {
     await writeSettings(page, profile, settingsWith(true));
     const unwrapped = await inEvery(textViews, async (name) => {
       const down = (await bar(name, 'vertical')).box;
@@ -378,7 +378,7 @@ suite('App scrollbars alike', () => {
       return {
         tall: across.height,
         meets: Math.abs(down.top + down.height - across.top) < 1,
-        empty: !near(corner, plain) && !near(corner, thumb),
+        filled: near(corner, plain) && !near(corner, thumb),
         steps: (moved?.left ?? 0) > parts.thumb.left,
         text: typeof before === 'string' && before.length > 0,
       };
@@ -388,7 +388,7 @@ suite('App scrollbars alike', () => {
       alike(textViews, {
         tall: size,
         meets: true,
-        empty: true,
+        filled: true,
         steps: true,
         text: true,
       }),

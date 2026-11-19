@@ -160,7 +160,7 @@ body {
 }
 
 ::-webkit-scrollbar-corner {
-  background: none;
+  background: var(--scrollbar-track-background);
 }
 
 ::-webkit-scrollbar-thumb {

@@ -92,6 +92,20 @@
   display: none;
 }
 
+.viewer-body:not(.wrapped)::after,
+.cm-editor.editor-text:not(:has(.cm-content.cm-lineWrapping))::after,
+.diff-view:not(.wrap)::before {
+  content: '';
+  position: absolute;
+  right: var(--line-right, 0px);
+  bottom: var(--line-below, 0px);
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+  background: var(--scrollbar-track-background);
+  border-bottom-right-radius: var(--corner-round, 0px);
+  pointer-events: none;
+}
+
 .cm-editor.editor-text .cm-content {
   padding: 0;
 }

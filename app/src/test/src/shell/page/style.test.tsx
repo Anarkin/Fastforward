@@ -164,7 +164,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws every scrollbar by one set of rules for the scrollbars of the browser, as wide as the scrollbar size, so no part of the app can draw its own another way: a track in the border color with a button at either end, a thumb as see-through as the theme says at rest, hovered and held, never shorter than 24 pixels, an arrow on each button drawn from the color of the theme, dimmer where there is nothing to scroll to, the ends rounded where what it scrolls says so, which what scrolls inside it never takes over from it, none of them next to the square between two scrollbars, which is left empty', () => {
+  test('draws every scrollbar by one set of rules for the scrollbars of the browser, as wide as the scrollbar size, so no part of the app can draw its own another way: a track in the border color with a button at either end, a thumb as see-through as the theme says at rest, hovered and held, never shorter than 24 pixels, an arrow on each button drawn from the color of the theme, dimmer where there is nothing to scroll to, the ends rounded where what it scrolls says so, which what scrolls inside it never takes over from it, none of them next to the square between two scrollbars, which is filled as their tracks are', () => {
     for (const [name, state] of [
       ['scrollbar-background', 'rest'],
       ['scrollbar-hover-background', 'hover'],
@@ -189,7 +189,7 @@ suite('Style', () => {
       '::-webkit-scrollbar:vertical { border-radius: 0 var(--scrollbar-round-start, 0px) var(--scrollbar-round-end, 0px) 0; }',
       '::-webkit-scrollbar:horizontal { border-radius: 0 0 var(--scrollbar-round-end, 0px) var(--scrollbar-round-start, 0px); }',
       '::-webkit-scrollbar:vertical:corner-present, ::-webkit-scrollbar:horizontal:corner-present, ::-webkit-scrollbar-button:vertical:end:increment:corner-present, ::-webkit-scrollbar-button:horizontal:end:increment:corner-present { border-bottom-right-radius: 0; }',
-      '::-webkit-scrollbar-corner { background: none; }',
+      '::-webkit-scrollbar-corner { background: var(--scrollbar-track-background); }',
       '::-webkit-scrollbar-thumb { min-width: 24px; min-height: 24px; background: var(--scrollbar-background); }',
       '::-webkit-scrollbar-button { display: none; }',
       '::-webkit-scrollbar-button:disabled { --scrollbar-arrow-color: var(--scrollbar-button-hover-background); }',
@@ -215,6 +215,45 @@ suite('Style', () => {
         ),
         held,
       );
+    }
+  });
+
+  test('fills the square between the scrollbar beside a text and the one below it as their tracks are, in the viewer, the editor and the diff alike while their lines are not wrapped, inside the lines of their column and rounded with its corner, and draws none once they are wrapped and have no scrollbar below, as the square stood empty, a hole in the corner of the two', () => {
+    const square = {
+      content: "''",
+      position: 'absolute',
+      right: 'var(--line-right, 0px)',
+      bottom: 'var(--line-below, 0px)',
+      width: 'var(--scrollbar-size)',
+      height: 'var(--scrollbar-size)',
+      background: 'var(--scrollbar-track-background)',
+      'border-bottom-right-radius': 'var(--corner-round, 0px)',
+      'pointer-events': 'none',
+    };
+    const none = { background: undefined, width: undefined };
+    for (const [unwrapped, wrapped, pseudoElement] of [
+      [
+        <div key="viewer" className="viewer-body" />,
+        <div key="viewer" className="viewer-body wrapped" />,
+        '::after',
+      ],
+      [
+        <div key="editor" className="cm-editor editor-text">
+          <div className="cm-content" />
+        </div>,
+        <div key="editor" className="cm-editor editor-text">
+          <div className="cm-content cm-lineWrapping" />
+        </div>,
+        '::after',
+      ],
+      [
+        <div key="diff" className="diff-view" />,
+        <div key="diff" className="diff-view wrap" />,
+        '::before',
+      ],
+    ] as const) {
+      looks(rendered(unwrapped), square, { pseudoElement });
+      looks(rendered(wrapped), none, { pseudoElement });
     }
   });
 
