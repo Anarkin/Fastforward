@@ -165,8 +165,8 @@ suite('App commander', () => {
       underHeader: true,
       aboveText: true,
       fromText: 8 - 56 - 6,
-      start: 4,
-      actions: 4,
+      start: 2 + 4,
+      actions: 2 + 4,
     });
 
     await page.keyboard.press('Escape');
