@@ -28,6 +28,7 @@ import {
   views,
   type ViewName,
 } from './scrollbarViews';
+import { rounded as roundedApp } from './rounding';
 
 const size = 24;
 
@@ -526,7 +527,7 @@ suite('App scrollbars alike', () => {
     assert.deepStrictEqual(seen, alike(textViews, true));
   });
 
-  test('rounds the ends of a scrollbar with the corners of what it stands in, a menu at both ends, the window of the shortcuts and the card of a list at their bottom, as the browser draws its scrollbars square over a rounded corner', async () => {
+  test('rounds the ends of a scrollbar with the corners of what it stands in once the app has a radius, a menu at both ends, the window of the shortcuts and the card of a list at their bottom, as the browser draws its scrollbars square over a rounded corner', async () => {
     const rounded = async (
       selector: string,
       ends: readonly ('top' | 'bottom')[],
@@ -544,6 +545,7 @@ suite('App scrollbars alike', () => {
         (_, end) => !near(colors[end * 2], colors[end * 2 + 1]),
       );
     };
+    await roundedApp(page);
     await show('commander');
     const card = await rounded(views.commander.vertical, ['bottom']);
     await page.keyboard.press('F1');
@@ -595,7 +597,8 @@ suite('App scrollbars alike', () => {
     );
   });
 
-  test('rounds the end of the scrollbar of a preview of Markdown with the corner of its column, the ends of the scrollbar below a block of code inside it as the block itself is rounded, and leaves those of the scrollbar below a table inside it square, as what scrolls inside a rounded scrollbar took its rounding over', async () => {
+  test('rounds the end of the scrollbar of a preview of Markdown with the corner of its column once the app has a radius, the ends of the scrollbar below a block of code inside it as the block itself is rounded, and leaves those of the scrollbar below a table inside it square, as what scrolls inside a rounded scrollbar took its rounding over', async () => {
+    await roundedApp(page);
     await page.locator('.tabs .tab').nth(previews.Markdown.tab).click();
     const code = page.locator('.viewer .markdown pre').first();
     await code.waitFor();

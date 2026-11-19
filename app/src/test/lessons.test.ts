@@ -23,7 +23,7 @@ const textOf = (file: string) =>
 const filesWith = (folder: string, pattern: RegExp) =>
   filesIn(folder).filter((file) => pattern.test(textOf(file)));
 
-const stylesWith = (folder: string, pattern: RegExp) =>
+const stylesIn = (folder: string) =>
   fs
     .readdirSync(path.join(sources, folder), {
       recursive: true,
@@ -31,8 +31,20 @@ const stylesWith = (folder: string, pattern: RegExp) =>
     })
     .filter((file) => file.endsWith('.css'))
     .map((file) => path.join(folder, file).split(path.sep).join('/'))
-    .filter((file) => pattern.test(textOf(file)))
     .toSorted();
+
+const stylesWith = (folder: string, pattern: RegExp) =>
+  stylesIn(folder).filter((file) => pattern.test(textOf(file)));
+
+function roundsByItself(css: string): string[] {
+  const rounded =
+    /(?:border(?:-[a-z]+)*-radius|--scrollbar-round-(?:start|end)|--corner-round)\s*:\s*([^;}]+)/g;
+  const allowed =
+    /var\(--radius\)|var\(--(?:scrollbar-round-(?:start|end)|corner-round|column-line|popup-line), 0px\)|\binherit\b|50%|\b0(?:px)?\b|\b(?:max|calc)\b|[\s(),-]/g;
+  return Array.from(css.matchAll(rounded), ([, value]) => value ?? '').filter(
+    (value) => value.replaceAll(allowed, '') !== '',
+  );
+}
 
 const timesIn = (folder: string, pattern: RegExp) =>
   filesIn(folder).reduce(
@@ -173,6 +185,37 @@ suite('Lessons from past mistakes', () => {
     assert.deepStrictEqual(
       pages.flatMap((folder) => stylesWith(folder, /\.toolbar\b/)),
       ['shell/page/buttons.css'],
+    );
+  });
+
+  test('rounds every corner by the one radius of the app: a stylesheet gives a corner the radius, none, the half that makes a dot, or what its element inherits, and the corner of a scrollbar what comes of the radius, as cards, tabs, buttons, fields and marks each had a radius of their own, eleven in all, none of which followed another', () => {
+    assert.deepStrictEqual(
+      [
+        'border-radius: var(--radius);',
+        'border-radius: 0 var(--radius) var(--radius) 0;',
+        'border-radius: 50%;',
+        'border-top-left-radius: inherit;',
+        '--corner-round: max(0px, var(--radius) - var(--column-line, 0px));',
+        'border-radius: 0 var(--scrollbar-round-start, 0px) 0 0;',
+        'border-radius: 4px;',
+        'border-radius: calc(var(--button-size) / 2);',
+        '--scrollbar-round-end: 6px;',
+        'border-radius: var(--card-radius);',
+      ].map((rule) => roundsByItself(rule).length),
+      [0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
+    );
+    const pages = ['tools', 'lib', 'components', 'shell'];
+    assert.deepStrictEqual(
+      pages.flatMap((folder) =>
+        stylesIn(folder).flatMap((file) =>
+          roundsByItself(textOf(file)).map((value) => `${file}: ${value}`),
+        ),
+      ),
+      [],
+    );
+    assert.deepStrictEqual(
+      pages.flatMap((folder) => stylesWith(folder, /--radius\s*:/)),
+      ['shell/page/window.css'],
     );
   });
 });

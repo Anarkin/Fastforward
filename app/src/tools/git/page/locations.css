@@ -11,7 +11,7 @@
   --popup-background: var(--color-panel-background);
   color: var(--color-foreground);
   background: var(--popup-background);
-  border-radius: var(--card-radius);
+  border-radius: var(--radius);
 }
 
 .locations-bar {
@@ -41,7 +41,7 @@
 }
 
 .locations-groups {
-  --scrollbar-round-end: calc(var(--card-radius) - var(--column-line, 0px));
+  --scrollbar-round-end: max(0px, var(--radius) - var(--column-line, 0px));
   flex: 1;
   min-height: 0;
   margin: 0 var(--column-line, 0px) var(--column-line, 0px) 0;

@@ -124,7 +124,7 @@ suite('Style', () => {
       const header = withClass(popup, 'shortcuts-title');
       looks(header, {
         background: 'var(--color-background)',
-        'border-radius': 'var(--card-radius) var(--card-radius) 0 0',
+        'border-radius': 'var(--radius) var(--radius) 0 0',
       });
       const padding = paddingOf(header);
       assert.strictEqual(padding.left, inside.left);
@@ -288,7 +288,7 @@ suite('Style', () => {
     looks(other, {
       color: 'inherit',
       'box-shadow': undefined,
-      'border-radius': '0 4px 4px 0',
+      'border-radius': '0 var(--radius) var(--radius) 0',
     });
     looks(other, { background: 'var(--hover-background)' }, hovered);
     for (const className of ['shortcuts-tool empty', 'shortcuts-group-link']) {
@@ -316,7 +316,7 @@ suite('Style', () => {
       border: undefined,
       'box-shadow':
         'inset 0 0 0 1px var(--color-border), inset 0 -2px var(--color-border)',
-      'border-radius': '4px',
+      'border-radius': 'var(--radius)',
     });
     assert.strictEqual(
       unwrapped(cascaded(combo, 'background')),

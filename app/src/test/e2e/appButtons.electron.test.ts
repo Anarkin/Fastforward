@@ -82,7 +82,7 @@ suite('App buttons', () => {
     removeFolder(folder);
   });
 
-  test('spaces the buttons of every header alike at 125%, each gap and each round button a whole number of screen pixels, as Chromium drew a gap of 2.5 pixels as 2 or 3 and a button of 32.5 as 32 or 33', async () => {
+  test('spaces the buttons of every header alike at 125%, each gap and each button a whole number of screen pixels, as Chromium drew a gap of 2.5 pixels as 2 or 3 and a button of 32.5 as 32 or 33', async () => {
     const display = await page.evaluate(() => devicePixelRatio);
     await app.evaluate(
       ({ BrowserWindow }, zoom) =>

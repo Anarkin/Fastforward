@@ -55,7 +55,7 @@ function SoloButtonShown({
 }
 
 suite('Style', () => {
-  test('sizes every round button and spaces every group of them by one size and one gap, each a whole number of screen pixels, so no gap is drawn wider than another at 125%', () => {
+  test('sizes every button of a bar and spaces every group of them by one size and one gap, each a whole number of screen pixels, so no gap is drawn wider than another at 125%', () => {
     assert.strictEqual(deviceRounded('button-size'), 26);
     assert.strictEqual(deviceRounded('bar-space'), 4);
     assert.strictEqual(deviceRounded('arrowed-button-width'), 44);
@@ -101,7 +101,7 @@ suite('Style', () => {
     );
   });
 
-  test('shades a round button on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
+  test('shades a button of a bar on hover over whatever fill it has, so an active toggle or a pinned pair changes too', () => {
     const pinned = rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} />);
     const enabled = [
       pinned,
@@ -116,11 +116,11 @@ suite('Style', () => {
     );
     assert.strictEqual(filled.length, 3);
     for (const button of enabled) {
-      const radius = halved(cascaded(button, 'width'));
-      looks(button, { 'border-radius': radius });
+      const half = halved(cascaded(button, 'width'));
+      looks(button, { 'border-radius': 'var(--radius)' });
       looks(
         button,
-        { 'box-shadow': `inset 0 0 0 ${radius} var(--hover-background)` },
+        { 'box-shadow': `inset 0 0 0 ${half} var(--hover-background)` },
         hovered,
       );
     }
@@ -135,7 +135,7 @@ suite('Style', () => {
     looks(disabled, { 'box-shadow': undefined }, hovered);
   });
 
-  test("fills every round button in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, and in the panel's on a file's header, tinting the button of an open menu, the + one too, over its fill and ringing a button's dot in it", () => {
+  test("fills every button of a bar in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, and in the panel's on a file's header, tinting the button of an open menu, the + one too, over its fill and ringing a button's dot in it", () => {
     assert.strictEqual(
       bodyVariable('button-background'),
       'var(--color-border)',

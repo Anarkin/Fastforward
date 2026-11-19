@@ -50,7 +50,7 @@
   width: 22px;
   height: calc(var(--diff-file-height) - 2px);
   margin: 0;
-  border-radius: 9px;
+  border-radius: var(--radius);
 }
 
 .file-header .unchanged {

@@ -37,7 +37,7 @@
   color: var(--color-foreground);
   background: var(--color-panel-background);
   position: relative;
-  border-radius: var(--card-radius);
+  border-radius: var(--radius);
   box-shadow: var(--popup-drop);
   outline: none;
   -webkit-app-region: no-drag;
@@ -82,7 +82,7 @@
   color: inherit;
   background: var(--color-background);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
 }
 
 .open-with-tool:hover:not(:disabled),
@@ -151,7 +151,7 @@
   color: inherit;
   background: var(--color-background);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
 }
 
 .confirm-button:hover {
@@ -185,7 +185,7 @@
   font-weight: 700;
   --button-background: var(--color-background);
   background: var(--color-background);
-  border-radius: var(--card-radius) var(--card-radius) 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 .prompt-message {
@@ -209,7 +209,7 @@
   color: var(--color-foreground);
   background: var(--color-background);
   border: 1px solid var(--color-border);
-  border-radius: 4px;
+  border-radius: var(--radius);
   outline: none;
 }
 
@@ -225,7 +225,7 @@
   height: 6px;
   overflow: hidden;
   background: var(--color-border);
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .progress-bar-done {

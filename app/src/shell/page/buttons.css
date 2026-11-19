@@ -6,7 +6,7 @@
     linear-gradient(var(--color-focus), var(--color-focus)),
     var(--color-panel-background);
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .nav-button {
@@ -21,7 +21,7 @@
   color: var(--color-foreground);
   background: var(--button-background);
   border: none;
-  border-radius: calc(var(--button-size) / 2);
+  border-radius: var(--radius);
 }
 
 .nav-button:hover:not(:disabled) {
@@ -33,7 +33,7 @@
 }
 
 .segmented {
-  border-radius: calc(var(--button-size) / 2);
+  border-radius: var(--radius);
   background: var(--button-background);
 }
 

@@ -18,6 +18,7 @@ import {
   sharedCommanderApp,
   textOnClipboard,
 } from './commanderAppFixtures';
+import { rounded } from './rounding';
 
 const focusIn = (selector: string) =>
   page.evaluate(
@@ -123,8 +124,9 @@ suite('App commander', () => {
     await page.locator('.viewer').waitFor({ state: 'detached' });
   });
 
-  test('runs the scrollbar of the language menu down the whole menu, beside its filter too, rounding its ends as the menu rounds its corners, its thumb at the end of its track at the last language and back at its start at the first', async () => {
+  test('runs the scrollbar of the language menu down the whole menu, beside its filter too, rounding its ends as the menu rounds its corners once the app has a radius, its thumb at the end of its track at the last language and back at its start at the first', async () => {
     fs.writeFileSync(path.join(opened, 'menu.ts'), 'const a = 1;');
+    await rounded(page);
     try {
       await select('menu');
       await page.keyboard.press('F3');

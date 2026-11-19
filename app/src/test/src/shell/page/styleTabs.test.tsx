@@ -17,7 +17,6 @@ import {
   bodyVariable,
   lengthOf,
   paddingOf,
-  halved,
   layer,
   hovered,
   after,
@@ -127,7 +126,7 @@ suite('Style', () => {
       'padding-left: 0;',
       'border-right-width: 0;',
       'border-left-width: 0;',
-      'margin-right: calc(-1 * var(--card-radius));',
+      'margin-right: calc(-1 * var(--tab-list-gap));',
     ]) {
       assert.ok(gone.includes(declaration), declaration);
     }
@@ -194,16 +193,12 @@ suite('Style', () => {
     }
   });
 
-  test("rounds the repository tabs as Chrome does, rounder than the sheet's corners and the worktree chips", () => {
-    assert.strictEqual(bodyVariable('tab-radius'), '10px');
-    assert.ok(
-      parseFloat(bodyVariable('tab-radius') ?? '0') >
-        parseFloat(bodyVariable('card-radius') ?? '0'),
-    );
+  test("rounds the repository tabs by the one radius of the app, as the sheet's corners and the worktree chips, which is none for now, every corner square", () => {
+    assert.strictEqual(bodyVariable('radius'), '0px');
     const [active, other] = allWithClass(rendered(<TabBarShown />), 'tab');
-    looks(other, { 'border-radius': 'var(--tab-radius)' });
+    looks(other, { 'border-radius': 'var(--radius)' });
     looks(active, {
-      'border-radius': 'var(--tab-radius) var(--tab-radius) 0 0',
+      'border-radius': 'var(--radius) var(--radius) 0 0',
     });
   });
 
@@ -316,7 +311,7 @@ suite('Style', () => {
     looks(tab, {
       '--sheet': 'var(--repository-background)',
       background: 'var(--sheet)',
-      'border-radius': 'var(--tab-radius) var(--tab-radius) 0 0',
+      'border-radius': 'var(--radius) var(--radius) 0 0',
     });
     for (const pseudoElement of ['::before', '::after']) {
       assert.match(
@@ -341,8 +336,8 @@ suite('Style', () => {
       'border-bottom-color': undefined,
       'margin-bottom': `-${border}`,
     });
-    const size = 'calc(2 * var(--tab-radius))';
-    const corner = 'var(--tab-radius)';
+    const size = 'calc(2 * var(--radius))';
+    const corner = 'var(--radius)';
     looks(
       tab,
       {
@@ -393,7 +388,7 @@ suite('Style', () => {
     );
   });
 
-  test('highlights a repository tab not open on hover as a pill stopping short of the sheet, as Chrome does, its name and close button in the middle of it, still picking the tab from the gap under it', () => {
+  test('highlights a repository tab not open on hover as a box stopping short of the sheet, as Chrome does, its name and close button in the middle of it, still picking the tab from the gap under it', () => {
     const other = allWithClass(rendered(<TabBarShown />), 'tab').find(
       (tab) => !tab.classes.includes('active'),
     );
@@ -428,14 +423,14 @@ suite('Style', () => {
     );
     const width = cascaded(divider(a), 'width');
     const [border] = (cascaded(a, 'border') ?? '').split(' ');
-    const gap = parseFloat(bodyVariable('card-radius') ?? '');
+    const gap = parseFloat(bodyVariable('tab-list-gap') ?? '');
     looks(divider(a), {
       position: 'absolute',
       top: '50%',
       right: `${-(parseFloat(border) + gap / 2 + parseFloat(width ?? '') / 2)}px`,
       width: '2px',
       height: '16px',
-      'border-radius': halved(width),
+      'border-radius': 'var(--radius)',
       background: 'var(--tab-divider)',
       transform: 'translateY(-50%)',
       'pointer-events': 'none',
@@ -520,7 +515,7 @@ suite('Style', () => {
     );
   });
 
-  test('makes the button opening a repository round like the buttons beside it', () => {
+  test('shapes the button opening a repository like the buttons beside it', () => {
     const add = withClass(rendered(<TabBarShown />), 'tab-add');
     const beside = withClass(rendered(<MenuButtonShown />), 'nav-button');
     assert.ok(add.classes.includes('nav-button'));
@@ -594,9 +589,8 @@ suite('Style', () => {
   test("leaves a straight run of the sheet's edge between its rounded corner and the curve out of its first tab, past the app's icon", () => {
     const { tabStart } = appIconSpacing(<TabBarShown />);
     const gutter = lengthOf('var(--gutter-width)');
-    const corner = lengthOf('var(--card-radius)');
-    const curve = lengthOf('var(--tab-radius)');
-    const run = tabStart - gutter - corner - curve;
+    const corner = lengthOf('var(--radius)');
+    const run = tabStart - gutter - 2 * corner;
     assert.ok(run >= gutter, String(run));
   });
 
@@ -615,7 +609,7 @@ suite('Style', () => {
     assert.ok(
       lengthOf(cascaded(button, 'width')) > lengthOf(cascaded(icon, 'width')),
     );
-    looks(button, { 'border-radius': 'var(--card-radius)' });
+    looks(button, { 'border-radius': 'var(--radius)' });
     assert.strictEqual(
       lengthOf(
         /inset 0 0 0\s+([^]*\S)\s+var\(--hover-background\)/.exec(
@@ -656,7 +650,7 @@ suite('Style', () => {
     for (const chip of [active, other]) {
       assert.match(cascaded(chip, 'border') ?? '', /^\S+ solid transparent$/);
       looks(chip, {
-        'border-radius': 'var(--card-radius)',
+        'border-radius': 'var(--radius)',
         'margin-bottom': undefined,
       });
     }

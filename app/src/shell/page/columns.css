@@ -16,7 +16,7 @@
 .columns > .column {
   --column-line: round(2px, var(--device-pixel, 1px));
   background: var(--color-panel-background);
-  border-radius: var(--card-radius);
+  border-radius: var(--radius);
 }
 
 .columns > .column::after {
@@ -24,7 +24,7 @@
   position: absolute;
   inset: 0;
   z-index: 16;
-  border-radius: var(--card-radius);
+  border-radius: var(--radius);
   --frame-line: var(--column-line);
   box-shadow: inset 0 0 0 var(--frame-line) var(--color-border);
   pointer-events: none;
@@ -116,13 +116,13 @@ body.resizing {
 .column-body {
   flex: 1;
   overflow: auto;
-  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .column-body {
   --line-right: var(--column-line, 0px);
   --line-below: var(--column-line, 0px);
-  --corner-round: calc(var(--card-radius) - var(--column-line, 0px));
+  --corner-round: max(0px, var(--radius) - var(--column-line, 0px));
 }
 
 .column-body:has(+ .column-status) {
@@ -187,7 +187,7 @@ body.resizing {
   color: var(--color-foreground);
   white-space: nowrap;
   box-shadow: inset 0 var(--hairline) var(--color-border);
-  border-radius: 0 0 var(--card-radius) var(--card-radius);
+  border-radius: 0 0 var(--radius) var(--radius);
 }
 
 .column-status.monospace {

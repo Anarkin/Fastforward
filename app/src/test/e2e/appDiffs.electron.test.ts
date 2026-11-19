@@ -190,7 +190,7 @@ suite('App', () => {
     await waitForCount(page.locator('.find-match'), 0, 'matches');
   });
 
-  test('opens the diff search from its round button, giving it the header but for going back, the toggles inside its box and stepping between matches, matching case while its toggle is pressed, and closes it from the back button', async () => {
+  test('opens the diff search from its button, giving it the header but for going back, the toggles inside its box and stepping between matches, matching case while its toggle is pressed, and closes it from the back button', async () => {
     await openChangedFile();
     const diff = page.locator('.columns > .column').nth(2);
     await diff.locator('.column-actions > .search-button').click();

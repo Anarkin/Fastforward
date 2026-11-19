@@ -11,6 +11,7 @@ import { longLines } from './wrappingSamples';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { rounded } from './rounding';
 
 const scale = 1.25;
 
@@ -351,7 +352,8 @@ suite('App at a scale of 125%', () => {
     assert.strictEqual(row[edge], line, JSON.stringify(row));
   });
 
-  test('rounds the end of the scrollbar of the shortcuts of the commander, the longest, as their window rounds its corner, painting none of it past the corner, as a thumb stood square past the corner where the side of the shortcuts fell between pixels', async () => {
+  test('rounds the end of the scrollbar of the shortcuts of the commander, the longest, as their window rounds its corner once the app has a radius, painting none of it past the corner, as a thumb stood square past the corner where the side of the shortcuts fell between pixels', async () => {
+    await rounded(page);
     await page.keyboard.press('F1');
     const pane = page.locator('.shortcuts-pane');
     await pane.waitFor();

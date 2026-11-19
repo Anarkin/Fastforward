@@ -6,7 +6,7 @@
   gap: 8px;
   color: var(--color-foreground);
   background: var(--color-notice-background);
-  border-radius: var(--card-radius);
+  border-radius: var(--radius);
   box-shadow: var(--popup-shadow);
 }
 

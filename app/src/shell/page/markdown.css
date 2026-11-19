@@ -97,24 +97,24 @@
 .markdown :not(pre) > code {
   padding: 0.2em 0.4em;
   background: var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 .markdown kbd {
   padding: 0.1em 0.4em;
   border: 1px solid var(--color-border);
   border-bottom-width: 2px;
-  border-radius: 4px;
+  border-radius: var(--radius);
 }
 
 .markdown pre {
-  --scrollbar-round-start: 6px;
-  --scrollbar-round-end: 6px;
+  --scrollbar-round-start: var(--radius);
+  --scrollbar-round-end: var(--radius);
   padding: 16px;
   overflow: auto;
   line-height: 1.45;
   background: var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius);
 }
 
 .markdown pre code {

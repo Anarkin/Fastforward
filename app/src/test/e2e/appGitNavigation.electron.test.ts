@@ -71,7 +71,7 @@ suite('App', () => {
       .waitFor();
   });
 
-  test('opens the commit search from the round button at the far right of the commit column', async () => {
+  test('opens the commit search from the button at the far right of the commit column', async () => {
     const commits = page.locator('.columns > .column').first();
     const button = commits.locator('.column-actions > .search-button');
     const popup = page.locator('.locations-popup');
@@ -323,7 +323,7 @@ suite('App', () => {
     }
   });
 
-  test('filters the files from their round button, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
+  test('filters the files from their button, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
     const files = page.locator('.columns > .column').nth(1);
     const names = () => files.locator('.row.file .path').allTextContents();
     await page.locator('.commit', { hasText: 'first' }).click();

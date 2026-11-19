@@ -66,7 +66,7 @@ const found = (classes: string, current: boolean) =>
   );
 
 suite('Style', () => {
-  test('draws the search button as every round button is drawn, in its ground, its color and its size, as one in the border color with a muted icon stood apart from the buttons beside it, and draws the strip between hunks in the border color', () => {
+  test('draws the search button as every button of a bar is drawn, in its ground, its color and its size, as one in the border color with a muted icon stood apart from the buttons beside it, and draws the strip between hunks in the border color', () => {
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       background: 'var(--button-background)',
       color: 'var(--color-foreground)',
@@ -232,9 +232,9 @@ suite('Style', () => {
       'block',
     );
     looks(code, {
-      'border-radius': '6px',
-      '--scrollbar-round-start': '6px',
-      '--scrollbar-round-end': '6px',
+      'border-radius': 'var(--radius)',
+      '--scrollbar-round-start': 'var(--radius)',
+      '--scrollbar-round-end': 'var(--radius)',
     });
   });
 

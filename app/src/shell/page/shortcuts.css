@@ -43,11 +43,11 @@
 .shortcuts-tool,
 .shortcuts-group-link {
   padding: 0 8px;
-  border-radius: 4px;
+  border-radius: var(--radius);
 }
 
 .shortcuts-group-link {
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 .shortcuts-tool:hover,
@@ -105,7 +105,7 @@
 }
 
 .shortcuts-pane {
-  --scrollbar-round-end: calc(var(--card-radius) - var(--popup-line, 0px));
+  --scrollbar-round-end: max(0px, var(--radius) - var(--popup-line, 0px));
   position: relative;
   overflow-y: auto;
   padding: 0 16px 16px;
@@ -153,7 +153,7 @@
     var(--color-border) 40%,
     var(--color-panel-background)
   );
-  border-radius: 4px;
+  border-radius: var(--radius);
   box-shadow:
     inset 0 0 0 1px var(--color-border),
     inset 0 -2px var(--color-border);

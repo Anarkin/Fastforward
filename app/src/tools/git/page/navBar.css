@@ -1,5 +1,5 @@
 .pin-pair {
-  border-radius: calc(var(--button-size) / 2);
+  border-radius: var(--radius);
 }
 
 .pin-pair.pinned {

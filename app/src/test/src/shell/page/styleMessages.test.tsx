@@ -226,7 +226,7 @@ suite('Style', () => {
       'box-sizing': 'border-box',
       'margin-right': 'var(--gutter-width)',
       background: 'var(--color-panel-background)',
-      'border-radius': 'var(--card-radius)',
+      'border-radius': 'var(--radius)',
       'pointer-events': 'none',
     });
     const [edge] = (bodyVariable('popup-shadow') ?? '').split(',');

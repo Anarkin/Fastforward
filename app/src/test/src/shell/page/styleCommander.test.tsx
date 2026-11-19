@@ -574,12 +574,12 @@ suite('Style', () => {
       left: '4px',
       width: '16px',
       height: '16px',
-      'border-radius': '3px',
+      'border-radius': 'var(--radius)',
       'box-shadow': '0 0 0 var(--hairline) var(--color-panel-background)',
     });
     looks(withClass(tile, 'check-box'), {
       background: 'var(--color-panel-background)',
-      'border-radius': '3px',
+      'border-radius': 'var(--radius)',
     });
     looks(
       withClass(

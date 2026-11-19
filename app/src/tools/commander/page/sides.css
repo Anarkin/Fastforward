@@ -363,13 +363,13 @@
   left: 4px;
   width: 16px;
   height: 16px;
-  border-radius: 3px;
+  border-radius: var(--radius);
   box-shadow: 0 0 0 var(--hairline) var(--color-panel-background);
 }
 
 .row.commander-tile .check-box {
   background: var(--color-panel-background);
-  border-radius: 3px;
+  border-radius: var(--radius);
 }
 
 .row.commander-row:hover .commander-check,
@@ -461,7 +461,7 @@
 .row.commander-line:not(.up):hover::before,
 .row.commander-line.marked::before {
   border: 1px solid var(--muted-foreground);
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
 .row.commander-line[data-over-check]:not(.up):hover::before {

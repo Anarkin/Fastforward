@@ -52,7 +52,7 @@
   color: inherit;
   background: none;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
   opacity: var(--muted-opacity);
 }
 

@@ -9,7 +9,7 @@ import { tagWith } from '../../../helpers/markup';
 const page = (html: string) => new JSDOM(html).window.document;
 
 suite('Column search', () => {
-  test('draws the search of a column as a button, round like the others, showing a magnifier and naming what it searches', () => {
+  test('draws the search of a column as a button like the others, showing a magnifier and naming what it searches', () => {
     const html = renderToStaticMarkup(
       <SearchButton title="Search files" onClick={noop} />,
     );

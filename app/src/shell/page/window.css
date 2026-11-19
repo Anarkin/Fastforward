@@ -105,8 +105,8 @@ body {
   --app-icon-size: 20px;
   --app-icon-margin: 14px;
   --app-icon-padding: 4px;
-  --card-radius: 6px;
-  --tab-radius: 10px;
+  --radius: 0px;
+  --tab-list-gap: 6px;
   --tab-divider: color-mix(in srgb, var(--color-foreground) 12%, transparent);
   --popup-background: var(--color-background);
   --popup-drop: 0 12px 32px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(0, 0, 0, 0.16);
@@ -310,7 +310,7 @@ body {
   flex-direction: column;
   margin: 0 var(--gutter-width) var(--gutter-width);
   background: var(--repository-background);
-  border-radius: var(--card-radius);
+  border-radius: var(--radius);
 }
 
 .icon {

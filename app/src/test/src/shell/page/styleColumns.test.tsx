@@ -175,7 +175,7 @@ suite('Style', () => {
     );
   });
 
-  test('fills a pinned pair as one undimmed switched-on toggle, its buttons unfilled, and fills the layout buttons as one pill, lifting the chosen and the hovered one onto the panel inside it', () => {
+  test('fills a pinned pair as one undimmed switched-on toggle, its buttons unfilled, and fills the layout buttons as one, lifting the chosen and the hovered one onto the panel inside it', () => {
     const fetching = withClass(
       rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} fetching />),
       'pin-pair',
@@ -232,7 +232,7 @@ suite('Style', () => {
     looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
       width: 'var(--button-size)',
       height: 'var(--button-size)',
-      'border-radius': 'calc(var(--button-size) / 2)',
+      'border-radius': 'var(--radius)',
     });
   });
 
