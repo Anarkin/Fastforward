@@ -204,6 +204,12 @@ suite('Terminal view', () => {
 
   test('places its scrollbar once a frame, however many lines were printed in it, as each line printed changed how much there is to scroll back and laid the page out once more, a third of a second or more for every ten thousand lines', () => {
     withPage((screen, painted) => {
+      const page = screen.ownerDocument.defaultView;
+      assert.ok(page);
+      Object.defineProperty(page.HTMLElement.prototype, 'clientHeight', {
+        configurable: true,
+        get: () => 480,
+      });
       const terminals: QuietTerminal[] = [];
       scrolls.length = 0;
       const xterm = posingAsXterm({

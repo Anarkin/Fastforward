@@ -73,12 +73,14 @@ function standIn(height: number) {
 }
 
 suite('A scrollbar standing in for a view that scrolls by itself', () => {
-  test('is as many times longer than what it shows as the view is, so the browser draws its thumb as long as the share shown, and no longer than 4,000 times, as a file of gigabytes would ask for more pixels than a page may have', () => {
-    assert.strictEqual(proxyRatio({ at: 0, length: 0.25 }), 4);
-    assert.strictEqual(proxyRatio({ at: 0.5, length: 1 }), 1);
-    assert.strictEqual(proxyRatio(undefined), 1);
-    assert.strictEqual(proxyRatio({ at: 0, length: 1e-9 }), 4000);
-    assert.strictEqual(proxyRatio({ at: 0, length: 0 }), 4000);
+  test('is as many times longer than what it shows as the view is, so the browser draws its thumb as long as the share shown, and no longer than where that thumb is at its shortest, 24 pixels, as a longer one draws the same thumb and had a view that grows, as a terminal filling its scrollback, restyle it and lay it out for every line', () => {
+    assert.strictEqual(proxyRatio({ at: 0, length: 0.25 }, 480), 4);
+    assert.strictEqual(proxyRatio({ at: 0.5, length: 1 }, 480), 1);
+    assert.strictEqual(proxyRatio(undefined, 480), 1);
+    assert.strictEqual(proxyRatio({ at: 0, length: 1e-9 }, 480), 20);
+    assert.strictEqual(proxyRatio({ at: 0, length: 0 }, 480), 20);
+    assert.strictEqual(proxyRatio({ at: 0, length: 0.04 }, 480), 20);
+    assert.strictEqual(proxyRatio({ at: 0, length: 0.25 }, 0), 1);
   });
 
   test('is scrolled as far through the room it has to scroll as the view is through its own, wherever the view says it is, and nowhere while the view has nothing to scroll', () => {
@@ -99,14 +101,15 @@ suite('A scrollbar standing in for a view that scrolls by itself', () => {
   });
 
   test('stays at its end where its height is no whole pixel, taking where the browser stops it for where the view put it rather than for a scroll of the user, as the terminal at a scale of 150% hopped two lines back from its end and no longer followed what was printed', () => {
-    const { proxy, drags, scrolledTo, told, letGo, close } = standIn(666.67);
+    const { proxy, element, drags, scrolledTo, told, letGo, close } =
+      standIn(666.67);
     try {
       proxy.show({ at: 1, length: 1 / 125 });
       told('scroll');
       told('scrollend');
       assert.deepStrictEqual([drags, letGo], [[], []]);
 
-      scrolledTo(41333.5);
+      scrolledTo((element.scrollHeight - element.clientHeight) / 2);
       assert.strictEqual(drags.length, 1);
       assert.ok(Math.abs((drags[0] ?? 0) - 0.5) < 0.001, String(drags[0]));
       scrolledTo(1e9);
@@ -138,6 +141,11 @@ suite('A scrollbar standing in for a view that scrolls by itself', () => {
       assert.deepStrictEqual([writes, element.scrollTop], [0, 900]);
       proxy.show({ at: 1, length: 0.5 });
       assert.deepStrictEqual([writes, element.scrollTop], [1, 300]);
+      proxy.show({ at: 1, length: 0.05 });
+      assert.deepStrictEqual([writes, sizeWritten()], [2, '1250%']);
+      proxy.show({ at: 1, length: 0.01 });
+      proxy.show({ at: 1, length: 0.001 });
+      assert.deepStrictEqual([writes, sizeWritten()], [2, '1250%']);
     } finally {
       close();
     }

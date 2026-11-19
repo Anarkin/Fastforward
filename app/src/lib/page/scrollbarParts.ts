@@ -1,4 +1,4 @@
-const shortestThumb = 24;
+export const shortestThumb = 24;
 
 export interface Scrolled {
   readonly scrollSize: number;

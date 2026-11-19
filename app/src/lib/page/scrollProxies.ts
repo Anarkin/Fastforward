@@ -4,6 +4,7 @@ import {
   setStoodFor,
   wheeledAround,
 } from './scrollbarLinks';
+import { shortestThumb } from './scrollbarParts';
 
 export interface Shown {
   readonly at: number;
@@ -23,12 +24,12 @@ export interface ScrollProxy {
 
 type Axis = 'vertical' | 'horizontal';
 
-const longest = 4000;
-
-export function proxyRatio(shown: Shown | undefined): number {
-  return shown === undefined || shown.length >= 1
-    ? 1
-    : Math.min(longest, 1 / Math.max(shown.length, 1 / longest));
+export function proxyRatio(shown: Shown | undefined, long: number): number {
+  if (shown === undefined || shown.length >= 1) {
+    return 1;
+  }
+  const longest = Math.max(1, long / shortestThumb);
+  return 1 / Math.max(shown.length, 1 / longest);
 }
 
 export function proxyScroll(shown: Shown | undefined, room: number): number {
@@ -68,6 +69,7 @@ export function scrollProxy(
   const size = element.querySelector<HTMLElement>('.scroll-proxy-size');
   let shown: Shown | undefined;
   let ratio = 0;
+  let long = 0;
   let room: number | undefined;
   let placed = 0;
   const scrolled = () =>
@@ -77,7 +79,7 @@ export function scrollProxy(
       ? element.scrollHeight - element.clientHeight
       : element.scrollWidth - element.clientWidth;
   const place = () => {
-    const next = proxyRatio(shown);
+    const next = proxyRatio(shown, long);
     if (next !== ratio) {
       ratio = next;
       size?.style.setProperty(
@@ -96,6 +98,7 @@ export function scrollProxy(
     placed = scrolled();
   };
   const measure = () => {
+    long = axis === 'vertical' ? element.clientHeight : element.clientWidth;
     room = undefined;
     place();
   };
