@@ -6,7 +6,7 @@
   "dateFormat": "YYYY-MM-DD HH:mm",
   "scrolling": {
     "wheelRows": 10,
-    "smooth": false,
+    "smooth": true,
     "smoothSnap": true
   },
   "cursor": {
@@ -28,7 +28,7 @@
     "monospaceLineHeight": 1.5
   },
   "sizes": {
-    "scrollbar": "20px"
+    "scrollbar": "18px"
   },
   "tools": {
     "terminal": {

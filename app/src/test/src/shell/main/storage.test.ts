@@ -62,15 +62,15 @@ suite('Storage', () => {
     }
   });
 
-  test('glides when scrolling by rows only once the settings turn it on', () => {
-    assert.strictEqual(storageOf().smoothScrolling, false);
+  test('glides when scrolling by rows unless the settings turn it off', () => {
+    assert.strictEqual(storageOf().smoothScrolling, true);
     const settings = new UserSettings({
       ...defaultSettings(),
-      scrolling: { ...defaultSettings().scrolling, smooth: true },
+      scrolling: { ...defaultSettings().scrolling, smooth: false },
     });
     assert.strictEqual(
       new Storage(settings, new FakeStore()).smoothScrolling,
-      true,
+      false,
     );
   });
 

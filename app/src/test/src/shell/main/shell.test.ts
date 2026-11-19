@@ -246,7 +246,7 @@ suite('Shell with no tab open', () => {
         assert.deepStrictEqual(view.page.last('scrolling'), {
           type: 'scrolling',
           wheelRows: 10,
-          smooth: false,
+          smooth: true,
           smoothSnap: true,
         });
       },

@@ -308,7 +308,10 @@ suite('App editor, long lines and places shown again', () => {
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify({ text: { wordWrap: true } }),
+      JSON.stringify({
+        text: { wordWrap: true },
+        scrolling: { smooth: false },
+      }),
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
