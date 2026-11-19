@@ -18,6 +18,16 @@ import {
 } from './scrollbarsShown';
 import { writeSettings } from './settingsWritten';
 import { untilSettled } from './waits';
+import {
+  alike,
+  everyView,
+  middle,
+  near,
+  previews,
+  textViews,
+  views,
+  type ViewName,
+} from './scrollbarViews';
 
 const size = 24;
 
@@ -27,80 +37,6 @@ const lines = (changed: boolean) =>
     (_, row) =>
       `line ${row}${changed && row % 50 === 7 ? ' changed' : ''} ${'of words that reach far past the right edge of the window '.repeat(6)}end`,
   ).join('\n');
-
-const views = {
-  commander: {
-    tab: 0,
-    rows: '.commander-pane:not(.inactive) .virtual-row',
-    vertical: '.commander-pane:not(.inactive) .virtual-rows',
-    horizontal: undefined,
-    marks: undefined,
-  },
-  viewer: {
-    tab: 1,
-    rows: '.viewer-row:not(.viewer-probe)',
-    vertical: '.viewer-body .scroll-proxy.vertical',
-    horizontal: '.viewer-sideways',
-    marks: '.viewer-body .scrollbar-marks',
-  },
-  editor: {
-    tab: 2,
-    rows: '.editor .cm-line',
-    vertical: '.editor .cm-scroller',
-    horizontal: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
-    marks: undefined,
-  },
-  diff: {
-    tab: 3,
-    rows: '.diff-view .virtual-row',
-    vertical: '.diff-view > .virtual-rows',
-    horizontal: '.diff-view .scroll-proxy.horizontal',
-    marks: '.diff-view > .scrollbar-marks',
-  },
-  'commit list': {
-    tab: 4,
-    rows: '.virtual-rows.list .virtual-row',
-    vertical: '.virtual-rows.list',
-    horizontal: undefined,
-    marks: undefined,
-  },
-} as const;
-
-type ViewName = keyof typeof views;
-
-const everyView: readonly ViewName[] = [
-  'commander',
-  'viewer',
-  'editor',
-  'diff',
-  'commit list',
-];
-
-const textViews: readonly ViewName[] = ['viewer', 'editor', 'diff'];
-
-const previews = {
-  Markdown: { tab: 5, vertical: '.viewer-preview' },
-  PDF: { tab: 6, vertical: '.viewer-pdf .pdf-scroll' },
-} as const;
-
-const near = (one = '', other = '') =>
-  one.length === 6 &&
-  other.length === 6 &&
-  [0, 2, 4].every(
-    (at) =>
-      Math.abs(
-        parseInt(one.slice(at, at + 2), 16) -
-          parseInt(other.slice(at, at + 2), 16),
-      ) <= 6,
-  );
-
-const middle = (box: Box) => ({
-  x: box.left + box.width / 2,
-  y: box.top + box.height / 2,
-});
-
-const alike = <T>(names: readonly string[], value: T) =>
-  Object.fromEntries(names.map((name) => [name, value]));
 
 const settingsWith = (smooth: boolean, wordWrap = false) => ({
   scrolling: { smooth },
@@ -466,6 +402,62 @@ suite('App scrollbars alike', () => {
       );
     });
     assert.deepStrictEqual(wrapped, alike(textViews, true));
+  });
+
+  test('shows the last line of a text whole above the scrollbar below it, in the viewer, the editor and the diff scrolled to their end, gliding or not, and the last file of the commander whole in its list, as the viewer counted the rows that fit in a height that held that scrollbar and drew its last line under it, where no key and no scrollbar reached it', async () => {
+    const ended: readonly ViewName[] = ['commander', ...textViews];
+    const focused: Partial<Record<ViewName, string>> = {
+      viewer: '.viewer-body',
+      editor: '.editor .cm-content',
+      diff: '.diff-view > .virtual-rows',
+    };
+    for (const smooth of [true, false]) {
+      await writeSettings(page, profile, settingsWith(smooth));
+      const seen = await inEvery(ended, async (name) => {
+        const below = textViews.includes(name)
+          ? (await bar(name, 'horizontal')).box.top
+          : await page
+              .locator(views[name].vertical)
+              .first()
+              .evaluate((list) => list.getBoundingClientRect().bottom);
+        await page
+          .locator(focused[name] ?? views[name].vertical)
+          .first()
+          .focus();
+        await page.keyboard.press(
+          name === 'editor' ? 'ControlOrMeta+End' : 'End',
+        );
+        await rested(name);
+        const last = await untilSettled(
+          () =>
+            page.locator(views[name].rows).evaluateAll((rows) => {
+              const [lowest] = rows
+                .map((row) => ({
+                  text: row.textContent.slice(0, 40),
+                  box: row.getBoundingClientRect(),
+                }))
+                .filter(({ box }) => box.height > 0)
+                .toSorted((one, other) => other.box.top - one.box.top);
+              return {
+                text: lowest?.text ?? '',
+                bottom: lowest?.box.bottom ?? 0,
+              };
+            }),
+          `the last row of the ${name}`,
+        );
+        const ends = /line 399 |file-399/.test(last.text);
+        await page.keyboard.press(
+          name === 'editor' ? 'ControlOrMeta+Home' : 'Home',
+        );
+        await rested(name);
+        return { ends, whole: last.bottom <= below + 0.5 };
+      });
+      assert.deepStrictEqual(
+        seen,
+        alike(ended, { ends: true, whole: true }),
+        `gliding ${String(smooth)}: ${JSON.stringify(seen)}`,
+      );
+    }
   });
 
   test('marks what changed in a diff and what a find matched on the track of the scrollbar itself, between its buttons, where the thumb comes to stand at them, in the diff and in the file viewed alike, as a strip of its own beside the scrollbar stood off its track and took the room of the text', async () => {

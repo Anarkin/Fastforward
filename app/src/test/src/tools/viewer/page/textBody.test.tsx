@@ -25,6 +25,8 @@ interface File {
 
 const screen = 10;
 
+const barBelow = 2;
+
 const page = screen - 1;
 
 function fileOf(lengths: readonly number[]): File {
@@ -84,7 +86,10 @@ async function viewing(
   Object.defineProperty(dom.window.HTMLElement.prototype, 'clientHeight', {
     configurable: true,
     get(this: HTMLElement) {
-      return this.classList.contains('viewer-body') ? screen : 0;
+      if (this.classList.contains('viewer-sideways')) {
+        return screen;
+      }
+      return this.classList.contains('viewer-body') ? screen + barBelow : 0;
     },
   });
   const globals = {

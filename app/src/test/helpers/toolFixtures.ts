@@ -14,6 +14,8 @@ import { noop } from './fixtures';
 
 const toolScreen = 10;
 
+const barBelow = 2;
+
 const settle = () =>
   act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -70,7 +72,10 @@ export async function inTool<K extends ToolId>(
   Object.defineProperty(dom.window.HTMLElement.prototype, 'clientHeight', {
     configurable: true,
     get(this: HTMLElement) {
-      return this.classList.contains('viewer-body') ? toolScreen : 0;
+      if (this.classList.contains('viewer-sideways')) {
+        return toolScreen;
+      }
+      return this.classList.contains('viewer-body') ? toolScreen + barBelow : 0;
     },
   });
   const globals = {

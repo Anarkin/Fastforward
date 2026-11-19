@@ -252,7 +252,8 @@ export function ScrollBody({
       const height = measured || 1;
       rowHeight.current = measured;
       placeRows();
-      const rows = Math.max(1, Math.floor(element.clientHeight / height));
+      const shown = sideways.current?.clientHeight ?? element.clientHeight;
+      const rows = Math.max(1, Math.floor(shown / height));
       setScreen(rows);
       onScreen(rows);
       setTrack(
@@ -276,6 +277,9 @@ export function ScrollBody({
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
+    if (sideways.current !== null) {
+      observer.observe(sideways.current);
+    }
     return () => observer.disconnect();
   }, [onScreen, onColumns, onFont, wrapped]);
 

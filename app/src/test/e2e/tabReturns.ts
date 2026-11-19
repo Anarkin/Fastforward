@@ -38,7 +38,16 @@ const looksNow = (page: Page): Promise<TabLooks> =>
           return false;
         }
         if (style.overflowX !== 'visible' || style.overflowY !== 'visible') {
-          const clip = at.getBoundingClientRect();
+          const edge = at.getBoundingClientRect();
+          const inside = at.clientWidth > 0 && at.clientHeight > 0;
+          const clip = inside
+            ? {
+                left: edge.left + at.clientLeft,
+                top: edge.top + at.clientTop,
+                right: edge.left + at.clientLeft + at.clientWidth,
+                bottom: edge.top + at.clientTop + at.clientHeight,
+              }
+            : edge;
           left = Math.max(left, clip.left);
           top = Math.max(top, clip.top);
           right = Math.min(right, clip.right);
