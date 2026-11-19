@@ -472,22 +472,36 @@ export function installScrollbars(): void {
     pointed = event.target;
     return came && overBar(event);
   };
-  for (const type of ['pointermove', 'pointerover'] as const) {
-    document.addEventListener(
-      type,
-      (event) => {
-        if (!released(event)) {
-          return;
-        }
-        if (cameOver(event)) {
-          showFor(pointed);
-        } else {
-          pointing.ask();
-        }
-      },
-      { passive: true },
+  const stillWithin = (target: EventTarget | null) =>
+    target instanceof Node &&
+    covers.some((cover) => cover.shown) &&
+    covers.every(
+      (cover) => !cover.shown || cover.scroller?.contains(target) === true,
     );
-  }
+  document.addEventListener(
+    'pointermove',
+    (event) => {
+      if (!released(event)) {
+        return;
+      }
+      if (cameOver(event)) {
+        showFor(pointed);
+      } else {
+        pointing.ask();
+      }
+    },
+    { passive: true },
+  );
+  document.addEventListener(
+    'pointerover',
+    (event) => {
+      if (released(event) && !stillWithin(event.target)) {
+        pointed = event.target;
+        pointing.ask();
+      }
+    },
+    { passive: true },
+  );
   let scrolled: EventTarget | null = null;
   const scrolling = inNextFrame(() => {
     const places = covers.map((cover) =>

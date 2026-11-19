@@ -17,17 +17,21 @@ const bar = 20;
 
 function scrolledList(tall = 300) {
   const dom = new JSDOM(
-    '<!doctype html><body><div id="list" style="overflow-y: scroll"><p id="row"></p></div><div id="other"></div></body>',
+    '<!doctype html><body><div id="list" style="overflow-y: scroll"><p id="row"></p><p id="next"></p></div><div id="other"></div></body>',
   );
   const { document } = dom.window;
   const frames: (() => void)[] = [];
+  const styled: Element[] = [];
   const watched: (() => void)[] = [];
   const globals = {
     window: dom.window,
     document,
     Element: dom.window.Element,
     Node: dom.window.Node,
-    getComputedStyle: dom.window.getComputedStyle.bind(dom.window),
+    getComputedStyle: (element: Element) => {
+      styled.push(element);
+      return dom.window.getComputedStyle(element);
+    },
     devicePixelRatio: 1,
     requestAnimationFrame: (run: () => void) => frames.push(run),
     cancelAnimationFrame: () => {},
@@ -47,8 +51,9 @@ function scrolledList(tall = 300) {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   const list = document.getElementById('list');
   const row = document.getElementById('row');
+  const next = document.getElementById('next');
   const other = document.getElementById('other');
-  assert.ok(list && row && other);
+  assert.ok(list && row && next && other);
   let scrollTop = 0;
   Object.defineProperties(list, {
     scrollHeight: { value: 1000 },
@@ -113,7 +118,9 @@ function scrolledList(tall = 300) {
     dom,
     list,
     row,
+    next,
     other,
+    styled,
     cover,
     part,
     pointer,
@@ -206,6 +213,31 @@ suite('Scrollbars', () => {
 
       pointer('pointermove', other);
       painted();
+      assert.ok(!cover.classList.contains('shown'));
+    } finally {
+      close();
+    }
+  });
+
+  test('looks for no scrollbar anew while the pointer rests and what it is over only gives way to more of what the covers shown scroll, as every row scrolled under a resting pointer had the page read its layout and the styles of all it stands in, and looks again once the pointer is over something else', () => {
+    const { cover, row, next, other, pointer, painted, styled, close } =
+      scrolledList();
+    try {
+      pointer('pointermove', row);
+      painted();
+      assert.ok(cover.classList.contains('shown'));
+      styled.length = 0;
+
+      pointer('pointerover', next);
+      painted();
+      assert.deepStrictEqual(
+        [styled.length, cover.classList.contains('shown')],
+        [0, true],
+      );
+
+      pointer('pointerover', other);
+      painted();
+      assert.ok(styled.length > 0);
       assert.ok(!cover.classList.contains('shown'));
     } finally {
       close();

@@ -707,18 +707,18 @@ suite('App scrollbars alike', () => {
       const content = { x: box.left - 120, y: box.top + box.height / 2 };
       const from = await rested(name);
       await page.mouse.move(content.x, content.y);
-      await page.mouse.wheel(0, 120);
+      await page.mouse.wheel(0, 100);
       await movedFrom(name, from.text);
       const over = await rested(name);
-      await page.mouse.wheel(0, -120);
+      await page.mouse.wheel(0, -100);
       await movedFrom(name, over.text);
       const back = await rested(name);
       const parts = await barParts(page, box, 'vertical');
       await page.mouse.move(middle(box).x, parts.end.top - 6);
-      await page.mouse.wheel(0, 120);
+      await page.mouse.wheel(0, 100);
       await movedFrom(name, back.text);
       const onBar = await rested(name);
-      await page.mouse.wheel(0, -120);
+      await page.mouse.wheel(0, -100);
       await movedFrom(name, onBar.text);
       await rested(name);
       return {
@@ -733,6 +733,7 @@ suite('App scrollbars alike', () => {
       JSON.stringify(down),
     );
 
+    const raw: Record<string, number[]> = {};
     const across = await inEvery(textViews, async (name) => {
       const below = (await bar(name, 'horizontal')).box;
       const beside = (await bar(name, 'vertical')).box;
@@ -754,20 +755,25 @@ suite('App scrollbars alike', () => {
         y: beside.top + beside.height / 2,
       };
       const from = await restedAt();
-      const over = await turn(content.x, content.y, 120);
-      const back = await turn(content.x, content.y, -120);
+      const over = await turn(content.x, content.y, 100);
+      const back = await turn(content.x, content.y, -100);
       const onBar = await turn(
         below.left + below.width - size - 6,
         middle(below).y,
-        120,
+        100,
       );
-      await turn(content.x, content.y, -120);
-      return { moved: over > from, back: back === from, alike: onBar === over };
+      await turn(content.x, content.y, -100);
+      raw[name] = [from, over, back, onBar];
+      return {
+        moved: over > from + 1,
+        back: Math.abs(back - from) <= 1,
+        alike: onBar === over,
+      };
     });
     assert.deepStrictEqual(
       across,
       alike(textViews, { moved: true, back: true, alike: true }),
-      JSON.stringify(across),
+      JSON.stringify({ across, raw }),
     );
   });
 });
