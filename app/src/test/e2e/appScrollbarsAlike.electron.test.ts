@@ -137,6 +137,11 @@ suite('App scrollbars alike', () => {
       markdown,
       [
         `    ${'code that reaches far past the right edge '.repeat(12)}`,
+        [
+          `| ${Array.from({ length: 40 }, (_, index) => `column ${index}`).join(' | ')} |`,
+          `| ${Array.from({ length: 40 }, () => '---').join(' | ')} |`,
+          `| ${Array.from({ length: 40 }, (_, index) => `a cell ${index}`).join(' | ')} |`,
+        ].join('\n'),
         ...Array.from({ length: 200 }, (_, index) => `Paragraph ${index}.`),
       ].join('\n\n'),
     );
@@ -598,7 +603,7 @@ suite('App scrollbars alike', () => {
     );
   });
 
-  test('rounds the end of the scrollbar of a preview of Markdown with the corner of its column, and leaves the ends of the scrollbar of a block of code inside it square, as what scrolls inside a rounded scrollbar took its rounding over', async () => {
+  test('rounds the end of the scrollbar of a preview of Markdown with the corner of its column, the ends of the scrollbar below a block of code inside it as the block itself is rounded, and leaves those of the scrollbar below a table inside it square, as what scrolls inside a rounded scrollbar took its rounding over', async () => {
     await page.locator('.tabs .tab').nth(previews.Markdown.tab).click();
     const code = page.locator('.viewer .markdown pre').first();
     await code.waitFor();
@@ -615,16 +620,25 @@ suite('App scrollbars alike', () => {
               '--scrollbar-round-end',
             ),
           ),
+          corner: parseFloat(
+            getComputedStyle(scroller).borderBottomRightRadius,
+          ),
         }));
     const preview = await rounded(previews.Markdown.vertical);
+    const block = await rounded('.viewer .markdown pre');
     assert.deepStrictEqual(
       {
-        preview: { ...preview, round: preview.round > 0 },
-        code: await rounded('.viewer .markdown pre'),
+        preview: { scrolls: preview.scrolls, round: preview.round > 0 },
+        code: {
+          scrolls: block.scrolls,
+          round: block.round > 0 && block.round === block.corner,
+        },
+        table: await rounded('.viewer .markdown table'),
       },
       {
         preview: { scrolls: true, round: true },
-        code: { scrolls: true, round: 0 },
+        code: { scrolls: true, round: true },
+        table: { scrolls: true, round: 0, corner: 0 },
       },
     );
   });

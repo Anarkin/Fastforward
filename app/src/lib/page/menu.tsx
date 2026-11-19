@@ -2,7 +2,13 @@ import { pathMenuClass } from './pathMenu';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { keymap } from './keymap';
 import { letterTyped, pressedAlone } from '../shared/keymap';
-import { menuRows, onMenuKeyDown, useMenuFocus } from './menuControls';
+import {
+  menuGap,
+  menuRows,
+  menuScrolls,
+  onMenuKeyDown,
+  useMenuFocus,
+} from './menuControls';
 import type { ContextMenuItem } from './contextMenuItem';
 import { useDismiss } from './dismiss';
 import { MenuItems } from './menuItems';
@@ -134,11 +140,37 @@ function Dropdown({
   onClose: () => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<{
+    readonly tallest: number | undefined;
+    readonly moved: number;
+  }>();
+  const scrolled = menuScrolls(items);
+  useLayoutEffect(() => {
+    const element = menu.current;
+    if (element) {
+      const box = element.getBoundingClientRect();
+      const below = window.innerHeight - box.top - menuGap;
+      const tallest =
+        scrolled && element.scrollHeight > below ? below : undefined;
+      const was = fit?.moved ?? 0;
+      const past = box.right + was - (window.innerWidth - menuGap);
+      const moved = Math.max(0, Math.min(past, box.left + was - menuGap));
+      if (fit?.tallest !== tallest || was !== moved) {
+        setFit({ tallest, moved });
+      }
+    }
+  }, [scrolled, fit]);
+  const tallest = fit?.tallest;
   useDismiss(container, onClose);
   useMenuFocus(menu);
+  useWholeRows(menu, tallest === undefined ? undefined : menuRows, scrolling);
   return (
     <div
-      className="menu"
+      className={tallest === undefined ? 'menu' : 'menu scrolls'}
+      style={{
+        maxHeight: tallest,
+        marginLeft: fit && fit.moved > 0 ? -fit.moved : undefined,
+      }}
       role="menu"
       ref={menu}
       onKeyDown={(event) => onMenuKeyDown(event)}

@@ -128,10 +128,13 @@
   z-index: 27;
 }
 
-.menu.context-menu.scrolls {
+.menu.scrolls {
   box-sizing: border-box;
-  max-height: 100vh;
   overflow-y: auto;
+}
+
+.menu.context-menu.scrolls {
+  max-height: 100vh;
 }
 
 .menu-entry {

@@ -219,6 +219,38 @@ suite('Style', () => {
     }
   });
 
+  test('fits a scrollbar to what it stands in where that is no panel: the track of the one of a long notice tinted from the text of the notice rather than drawn in the border color, which stood as a dark strip in it, and the ends of the one below a block of code in Markdown rounded as the block is', () => {
+    looks(withClass(rendered(<NoticesShown />), 'notice-message'), {
+      '--scrollbar-track-background':
+        'color-mix( in srgb, var(--color-foreground) 10%, transparent )',
+    });
+    const code = withClass(
+      rendered(
+        <div className="markdown">
+          <pre className="block" />
+        </div>,
+      ),
+      'block',
+    );
+    looks(code, {
+      'border-radius': '6px',
+      '--scrollbar-round-start': '6px',
+      '--scrollbar-round-end': '6px',
+    });
+  });
+
+  test('lets any menu marked as scrolling scroll down, the one of a button as the one opened at the pointer, which alone may be as tall as the window', () => {
+    const rules = stylesheet().replace(/\s+/g, ' ');
+    assert.ok(
+      rules.includes(
+        '.menu.scrolls { box-sizing: border-box; overflow-y: auto; }',
+      ),
+    );
+    assert.ok(
+      rules.includes('.menu.context-menu.scrolls { max-height: 100vh; }'),
+    );
+  });
+
   test('names the buttons of a scrollbar by where they stand and which way they move, the one before the track that moves back and the one after it that moves on, never as a single or a double button, which the browser matches only where the scrollbars of the system have buttons, so macOS, whose own have none, drew no button at all', () => {
     const rules = stylesheet().replace(/\s+/g, ' ');
     assert.doesNotMatch(rules, /:single-button|:double-button/);

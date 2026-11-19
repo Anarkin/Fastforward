@@ -108,6 +108,8 @@
 }
 
 .markdown pre {
+  --scrollbar-round-start: 6px;
+  --scrollbar-round-end: 6px;
   padding: 16px;
   overflow: auto;
   line-height: 1.45;

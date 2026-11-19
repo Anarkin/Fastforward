@@ -25,6 +25,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: the item of an open dropdown with the focus; the dropdown closes on a tab change',
   'lib/page/menu.tsx open':
     'a moment: whether a dropdown is open; it closes as the focus leaves it, as it does on a tab change',
+  'lib/page/menu.tsx fit':
+    'a measure: the room below the button of an open dropdown too tall for the window, and how far it reaches past its right edge, read as it opens',
   'lib/page/menu.tsx search':
     'a moment: typed into an open dropdown, which closes on a tab change as the focus leaves it',
   'lib/page/menuItems.tsx openSubmenu':

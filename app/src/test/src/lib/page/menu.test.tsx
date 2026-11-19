@@ -53,6 +53,63 @@ async function rendered(
   }
 }
 
+async function openedMenu(
+  tall: number,
+  items: Parameters<typeof MenuButton>[0]['items'],
+  across = { x: 0, width: 200 },
+) {
+  let seen: { scrolls: boolean; tallest: string; moved: string } | undefined;
+  await rendered(
+    <MenuButton
+      scrolling={defaultScrolling}
+      title="Bookmarks"
+      label="Bookmarks"
+      items={items}
+    />,
+    async (main, window) => {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: 600,
+      });
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: 1000,
+      });
+      Object.defineProperty(
+        window.HTMLElement.prototype,
+        'getBoundingClientRect',
+        {
+          configurable: true,
+          value(this: HTMLElement) {
+            const scrolls = this.classList.contains('scrolls');
+            return window.DOMRect.fromRect({
+              x: across.x + (parseFloat(this.style.marginLeft) || 0),
+              y: 100,
+              width: across.width + (scrolls ? 20 : 0),
+              height: tall,
+            });
+          },
+        },
+      );
+      Object.defineProperty(window.HTMLElement.prototype, 'scrollHeight', {
+        configurable: true,
+        get: () => tall,
+      });
+      await act(async () =>
+        main.querySelector<HTMLButtonElement>('.menu-button-trigger')?.click(),
+      );
+      const menu = main.querySelector<HTMLElement>('.menu');
+      assert.ok(menu);
+      seen = {
+        scrolls: menu.classList.contains('scrolls'),
+        tallest: menu.style.maxHeight,
+        moved: menu.style.marginLeft,
+      };
+    },
+  );
+  return seen;
+}
+
 suite('Menu button', () => {
   test('sets the label of its button apart as a name when the label is one, as a drive', () => {
     const named = triggerOf(
@@ -286,6 +343,48 @@ suite('Menu button', () => {
       },
     );
   });
+  test('scrolls a menu that would reach past the bottom of the window, no taller than the room below its button, by its whole items, and moves one that would reach past the right edge of the window back inside it, as the bookmarks of the right side went on past the window, out of reach, their scrollbar out of sight, and leaves a menu that fits, or one with a submenu, which scrolling would cut off, as it is', async () => {
+    const plain = [{ label: 'One', onClick: noop }];
+    assert.deepStrictEqual(await openedMenu(900, plain), {
+      scrolls: true,
+      tallest: '496px',
+      moved: '',
+    });
+    assert.deepStrictEqual(await openedMenu(300, plain), {
+      scrolls: false,
+      tallest: '',
+      moved: '',
+    });
+    assert.deepStrictEqual(
+      await openedMenu(900, [{ label: 'More', submenu: plain }]),
+      { scrolls: false, tallest: '', moved: '' },
+    );
+    assert.deepStrictEqual(
+      await openedMenu(300, plain, { x: 700, width: 500 }),
+      {
+        scrolls: false,
+        tallest: '',
+        moved: '-204px',
+      },
+    );
+    assert.deepStrictEqual(
+      await openedMenu(300, plain, { x: 100, width: 2000 }),
+      {
+        scrolls: false,
+        tallest: '',
+        moved: '-96px',
+      },
+    );
+    assert.deepStrictEqual(
+      await openedMenu(900, plain, { x: 700, width: 500 }),
+      {
+        scrolls: true,
+        tallest: '496px',
+        moved: '-224px',
+      },
+    );
+  });
+
   test('keeps a menu with a filter as wide as it opened while it is typed in, so what is typed stays readable when nothing is left to list', async () => {
     const items = ['Windows-1250 Central European', 'UTF-8'].map((label) => ({
       label,

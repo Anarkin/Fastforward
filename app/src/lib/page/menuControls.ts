@@ -26,6 +26,12 @@ export function nextMenuItem(
 
 export const menuRows = ':scope > .menu-entry';
 
+export const menuGap = 4;
+
+export function menuScrolls(items: readonly ContextMenuItem[]): boolean {
+  return items.every((item) => 'separator' in item || !item.submenu);
+}
+
 function menuItems(menu: Element | null): HTMLElement[] {
   return Array.from(
     menu?.querySelectorAll<HTMLElement>(

@@ -2,10 +2,11 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { MenuItems } from '../../lib/page/menuItems';
 import {
   menuRows,
+  menuScrolls,
   onMenuKeyDown,
   useMenuFocus,
 } from '../../lib/page/menuControls';
-import type { ContextMenuItem, OpenMenu } from '../../lib/page/contextMenuItem';
+import type { OpenMenu } from '../../lib/page/contextMenuItem';
 import { useDismiss } from '../../lib/page/dismiss';
 import { useWholeRows } from '../../lib/page/wholeRows';
 import { useShell } from './store';
@@ -21,7 +22,7 @@ export function ContextMenu({
 }) {
   const element = useRef<HTMLDivElement>(null);
   const scrolling = useShell((state) => state.scrolling);
-  const scrolled = scrolls(menu.items);
+  const scrolled = menuScrolls(menu.items);
   const [position, setPosition] = useState({ left: menu.x, top: menu.y });
 
   useLayoutEffect(() => {
@@ -57,8 +58,4 @@ export function ContextMenu({
       <MenuItems items={menu.items} scrolling={scrolling} onClose={onClose} />
     </div>
   );
-}
-
-function scrolls(items: readonly ContextMenuItem[]): boolean {
-  return items.every((item) => 'separator' in item || !item.submenu);
 }
