@@ -16,6 +16,8 @@ import { OpenWithPopup } from './openWithPopup';
 import { useBinding } from '../../lib/page/shortcuts';
 import { ShortcutsPopup } from './shortcutsPopup';
 import { activeTabOf } from './selectors';
+import { holdingSwitches } from './heldSwitch';
+import { whenSettled } from '../../lib/page/settling';
 import {
   createShellStore,
   ShellStore,
@@ -168,7 +170,19 @@ export function App({ name, post, listen, dropFiles }: Props) {
     store.getState();
 
   useEffect(() => {
-    const stop = listen(store.getState().receive);
+    const stop = listen(
+      holdingSwitches(
+        store.getState().receive,
+        {
+          active: () => store.getState().active,
+          hold: () => store.getState().tabHold,
+          settled: (within) => whenSettled(document.body, within),
+        },
+        {
+          startViewTransition: (update) => document.startViewTransition(update),
+        },
+      ),
+    );
     ready();
     return stop;
   }, [listen, store, ready]);

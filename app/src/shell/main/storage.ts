@@ -8,6 +8,7 @@ import {
   defaultTipDelay,
   type NoticeTimes,
 } from '../shared/notices';
+import { defaultTabHold } from '../shared/tabHold';
 import type { ToolId } from '../shared/tools';
 import type { Layout } from './windows';
 import type { Store } from './stateFile';
@@ -24,6 +25,8 @@ export const maxRecentItems = 50;
 const maxWheelRows = 50;
 
 const maxTipDelay = 10_000;
+
+const maxTabHold = 10_000;
 
 const longestNotice = 3_600_000;
 
@@ -190,6 +193,13 @@ export class Storage {
     return Number.isFinite(delay)
       ? Math.min(maxTipDelay, Math.max(0, Math.round(delay)))
       : defaultTipDelay;
+  }
+
+  get tabHold(): number {
+    const hold = this.settings.tabs.holdMilliseconds;
+    return Number.isFinite(hold)
+      ? Math.min(maxTabHold, Math.max(0, Math.round(hold)))
+      : defaultTabHold;
   }
 
   get noticeTimes(): NoticeTimes {

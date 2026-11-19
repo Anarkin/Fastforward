@@ -256,6 +256,22 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('tells the page how long a tab switched to may hold the picture of the one left, as the settings say', async () => {
+    await withView(
+      log,
+      [],
+      async (view) => {
+        assert.deepStrictEqual(view.page.last('tabHold'), {
+          type: 'tabHold',
+          milliseconds: 300,
+        });
+      },
+      true,
+      new FakeHost(),
+      noGit,
+    );
+  });
+
   test('tells the page how long to wait before a tooltip and how long a notice stays, as the settings say', async () => {
     await withView(
       log,

@@ -61,6 +61,27 @@ suite('Storage', () => {
     }
   });
 
+  test('takes how long a tab switched to may hold the picture of the one left while it draws itself from the settings, 300 ms unless set, none turning the hold off, in whole milliseconds up to ten seconds', () => {
+    assert.strictEqual(storageOf().tabHold, 300);
+    for (const [set, taken] of [
+      [0, 0],
+      [120.4, 120],
+      [-5, 0],
+      [60_000, 10_000],
+      [Number.NaN, 300],
+    ]) {
+      const settings = new UserSettings({
+        ...defaultSettings(),
+        tabs: { ...defaultSettings().tabs, holdMilliseconds: set },
+      });
+      assert.strictEqual(
+        new Storage(settings, new FakeStore()).tabHold,
+        taken,
+        String(set),
+      );
+    }
+  });
+
   test('takes how long a notice stays from the settings, in seconds, 6 to 15 by its length and 20 to 45 for an error unless set, each a second at the least and the most no less than the least', () => {
     assert.deepStrictEqual(storageOf().noticeTimes, {
       least: 6000,

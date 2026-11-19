@@ -1,6 +1,7 @@
 {
   "tabs": {
-    "recentFolders": 15
+    "recentFolders": 15,
+    "holdMilliseconds": 300
   },
   "theme": "auto",
   "dateFormat": "YYYY-MM-DD HH:mm",

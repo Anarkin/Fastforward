@@ -3,6 +3,9 @@ import { maxFindLength } from '../shared/protocol';
 import type { ViewerToHost } from '../shared/protocol';
 import type { ViewerActions } from './state';
 import type { ToViewer } from './viewing';
+import { arrived, awaiting } from '../../../lib/page/settling';
+
+const readAwaited = 'viewer read';
 
 const pdfPlaceWait = 2000;
 
@@ -63,6 +66,9 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
   };
   return {
     heard: (message) => {
+      if (message.type !== 'found' && message.type !== 'pdfPlace') {
+        arrived(readAwaited);
+      }
       for (const handler of viewerListeners) {
         handler(message);
       }
@@ -70,6 +76,9 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
     awaitViewing: (tab) => {
       awaited = tab;
       held = [];
+      if (tab === undefined) {
+        arrived(readAwaited);
+      }
     },
     viewingCame: (tab) => {
       if (awaited !== tab) {
@@ -81,7 +90,10 @@ export function viewerActions(sent: (message: ViewerToHost) => void): {
       }
     },
     actions: {
-      request: post,
+      request: (message) => {
+        awaiting(readAwaited);
+        post(message);
+      },
       listenViewer,
       findText: (tab, encoding, query, options, onFound) => {
         if (query.length > maxFindLength) {

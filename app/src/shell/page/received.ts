@@ -43,6 +43,8 @@ export function received(
       };
     case 'hints':
       return { tipDelay: message.tipDelay, noticeTimes: message.noticeTimes };
+    case 'tabHold':
+      return { tabHold: message.milliseconds };
     case 'textView':
       return { textView: message.view };
     case 'imageView':

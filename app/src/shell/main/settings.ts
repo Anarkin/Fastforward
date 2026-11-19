@@ -17,6 +17,7 @@ interface NoticeSeconds {
 export interface Settings {
   readonly tabs: {
     readonly recentFolders: number;
+    readonly holdMilliseconds: number;
   };
   readonly theme: Theme;
   readonly dateFormat: string;

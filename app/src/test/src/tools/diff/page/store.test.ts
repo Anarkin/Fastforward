@@ -7,6 +7,7 @@ import type {
 } from '../../../../../tools/diff/shared/protocol';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { noop } from '../../../../helpers/fixtures';
+import { settledNow } from '../../../../helpers/settled';
 
 const settings = {
   showEntireFile: false,
@@ -64,6 +65,20 @@ suite('Diff store', () => {
       [state().tab, state().compare, state().texts.size],
       [undefined, undefined, 0],
     );
+  });
+
+  test('keeps the page from being taken for settled from when a tab shows until what it compares came, or it hides, as the main process reads the files anew for each', async () => {
+    const store = createDiffStore(noop);
+    const state = () => store.getState();
+    assert.strictEqual(await settledNow(), true);
+    state().receive({ type: 'show', tab: 'c1', settings });
+    assert.strictEqual(await settledNow(), false);
+    state().receive({ type: 'compare', compare: compare('c1') });
+    assert.strictEqual(await settledNow(), true);
+    state().receive({ type: 'show', tab: 'c2', settings });
+    assert.strictEqual(await settledNow(), false);
+    state().receive({ type: 'hide' });
+    assert.strictEqual(await settledNow(), true);
   });
 
   test('takes the settings of the diff as a tab shows, changes them at once, and tells the main process, asking it for texts too', () => {

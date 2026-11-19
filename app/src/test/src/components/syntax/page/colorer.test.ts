@@ -5,8 +5,12 @@ import {
   workerPort,
   type SyntaxPort,
 } from '../../../../../components/syntax/page/colorer';
-import type { CodePart } from '../../../../../components/syntax/page/parts';
+import {
+  packedPart,
+  type CodePart,
+} from '../../../../../components/syntax/page/parts';
 import { waitFor } from '../../../../helpers/fixtures';
+import { settledNow } from '../../../../helpers/settled';
 import { codeLines, warmsUpTheGrammar } from './fixtures';
 import { loadLanguages } from '../../../../../components/syntax/page/grammars';
 import {
@@ -58,6 +62,43 @@ suite('Coloring away from the page', () => {
       end: 3,
       kind: 'keyword',
     });
+  });
+
+  test('keeps the page from being taken for settled until the first colors of a job came or it was stopped, so a tab switched to shows with its colors, but for a job in the background, which colors nothing shown', async () => {
+    let received: ((message: FromSyntax) => void) | undefined;
+    const posted: ToSyntax[] = [];
+    const colorer = colorerOf({
+      post: (message: ToSyntax) => posted.push(message),
+      listen: (listener) => {
+        received = listener;
+      },
+    });
+    const source = { language: 'typescript', lines: ['let a;'], keys: ['0:0'] };
+    colorer.color([source], () => undefined, undefined, true);
+    assert.strictEqual(await settledNow(), true);
+    colorer.color([source], () => undefined);
+    const stop = colorer.color([source], () => undefined);
+    assert.strictEqual(await settledNow(), false);
+    received?.({
+      type: 'entire',
+      job: 2,
+      generation: 0,
+      source: 0,
+      part: packedPart([], 0, true),
+    });
+    assert.strictEqual(await settledNow(), false);
+    received?.({ type: 'colors', job: 2, generations: {}, ranges: [] });
+    assert.strictEqual(await settledNow(), false);
+    stop();
+    assert.strictEqual(await settledNow(), true);
+    const parts = colorer.colorParts('ts', 'let a;', () => undefined);
+    const edited = colorer.colorEdited('ts', ['let a;'], () => undefined);
+    assert.strictEqual(await settledNow(), false);
+    received?.({ type: 'code', job: 4, part: undefined });
+    assert.strictEqual(await settledNow(), false);
+    edited.stop();
+    assert.strictEqual(await settledNow(), true);
+    parts();
   });
 
   test('hands the page the colors of code in parts as they are done, and none once it asked to stop', async () => {
