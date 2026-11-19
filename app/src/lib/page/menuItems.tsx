@@ -1,3 +1,5 @@
+import { KeyCombo } from './keyCombo';
+import { keysOf } from '../shared/keymap';
 import { labelTip, tip } from './tips';
 import { useLayoutEffect, useRef, useState } from 'react';
 import {
@@ -43,6 +45,14 @@ function MenuIconOf({ icon }: { icon: MenuIcon }) {
   }
 }
 
+function capsOf(item: Extract<ContextMenuItem, { label: string }>): string[] {
+  const picks = shownKey(item);
+  return [
+    ...(item.keys?.split(' ') ?? []),
+    ...(picks === undefined ? [] : [picks]),
+  ];
+}
+
 export function MenuItems({
   items,
   filter = noFilter,
@@ -58,9 +68,6 @@ export function MenuItems({
   const [submenuByKey, setSubmenuByKey] = useState(false);
   const entries = useRef<(HTMLButtonElement | null)[]>([]);
   const removedAt = useRef<number>(undefined);
-  const keyed = items.some(
-    (item) => !('separator' in item) && shownKey(item) !== undefined,
-  );
   useLayoutEffect(() => {
     const removed = removedAt.current;
     removedAt.current = undefined;
@@ -134,11 +141,6 @@ export function MenuItems({
                   <MenuIconOf icon={item.icon} />
                 )}
               </span>
-              {keyed && (
-                <span className="menu-access-key" aria-hidden="true">
-                  {shownKey(item)}
-                </span>
-              )}
               {item.details?.map((detail, at) => (
                 <span key={at} className="menu-detail">
                   <HighlightWords text={detail} filter={filter} />
@@ -151,6 +153,13 @@ export function MenuItems({
               ) : (
                 <HighlightWords text={item.label} filter={filter} />
               )}
+              {capsOf(item).length > 0 && (
+                <span className="menu-keys" aria-hidden="true">
+                  {capsOf(item).map((combo) => (
+                    <KeyCombo key={combo} keys={combo} />
+                  ))}
+                </span>
+              )}
               {item.submenu && (
                 <span className="submenu-arrow">
                   <SubmenuIcon />
@@ -160,7 +169,9 @@ export function MenuItems({
             {item.onRemove && (
               <button
                 className="menu-remove"
-                {...labelTip(item.removeTitle)}
+                {...labelTip(item.removeTitle, {
+                  keys: keysOf(keymap.removeItem),
+                })}
                 tabIndex={-1}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={(event) => {

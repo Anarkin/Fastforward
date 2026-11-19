@@ -1,4 +1,4 @@
-import { keyOf } from '../../../lib/shared/keymap';
+import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { viewerKeymap, type ViewMode } from './keymap';
@@ -249,7 +249,9 @@ export function Viewer() {
                 <button
                   key={each}
                   className={`nav-button toggle ${mode === each ? 'active' : ''}`}
-                  {...labelTip(title)}
+                  {...labelTip(title, {
+                    keys: keysOf(viewerKeymap.viewAs, each),
+                  })}
                   aria-pressed={mode === each}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => choose(each)}
@@ -263,7 +265,7 @@ export function Viewer() {
                 <MenuButton
                   scrolling={scrolling}
                   title={strings.encodings.encoding}
-                  keys={keyOf(viewerKeymap.encoding)}
+                  keys={keysOf(viewerKeymap.encoding)}
                   trigger={encodingTrigger}
                   onChosen={focusBody}
                   label={strings.encodings.short[shown]}
@@ -277,6 +279,7 @@ export function Viewer() {
                 choice={languageChoice}
                 detected={detectedLanguage}
                 single
+                keys={keysOf(viewerKeymap.language)}
                 choose={chooseLanguage}
                 trigger={languageTrigger}
                 onChosen={focusBody}
@@ -290,7 +293,7 @@ export function Viewer() {
                 <button
                   className={`nav-button toggle ${realSize ? 'active' : ''}`}
                   {...labelTip(strings.viewer.realSize, {
-                    keys: keyOf(viewerKeymap.realSize),
+                    keys: keysOf(viewerKeymap.realSize),
                   })}
                   aria-pressed={realSize}
                   onMouseDown={(event) => event.preventDefault()}
@@ -306,7 +309,7 @@ export function Viewer() {
                 <button
                   className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
                   {...labelTip(strings.common.showWhitespace, {
-                    keys: keyOf(viewerKeymap.showWhitespace),
+                    keys: keysOf(viewerKeymap.showWhitespace),
                   })}
                   aria-pressed={showWhitespace}
                   onMouseDown={(event) => event.preventDefault()}
@@ -319,7 +322,7 @@ export function Viewer() {
                 <button
                   className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
                   {...labelTip(strings.common.wrap, {
-                    keys: keyOf(viewerKeymap.wrap),
+                    keys: keysOf(viewerKeymap.wrap),
                   })}
                   aria-pressed={wordWrap}
                   onMouseDown={(event) => event.preventDefault()}
@@ -333,7 +336,7 @@ export function Viewer() {
           <div className="column-actions">
             <SearchButton
               title={strings.textFile.findInFile}
-              keys={keyOf(viewerKeymap.find)}
+              keys={keysOf(viewerKeymap.find)}
               onClick={openFind}
             />
           </div>

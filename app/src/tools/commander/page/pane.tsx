@@ -1,3 +1,5 @@
+import { commanderKeymap } from './keymap';
+import { keysOf } from '../../../lib/shared/keymap';
 import { tip } from '../../../lib/page/tips';
 import {
   useCallback,
@@ -10,7 +12,11 @@ import {
 import { type Side } from '../shared/sides';
 import { menuTargetOf } from './fileMenu';
 import { copiedText } from './copiedText';
-import { fileMenuItems, type Copied } from '../../../lib/page/fileMenu';
+import {
+  fileMenuItems,
+  type Copied,
+  type FileMenuKeys,
+} from '../../../lib/page/fileMenu';
 import { type Row } from './listing';
 import { goesInto } from './rowKeys';
 import { filterStep, keptFiles, steppedFile } from './filterSteps';
@@ -47,6 +53,14 @@ declare module 'react' {
     readonly '--commander-date'?: string;
   }
 }
+
+const fileMenuKeys: FileMenuKeys = {
+  view: keysOf(commanderKeymap.view),
+  compare: keysOf(commanderKeymap.compare),
+  edit: keysOf(commanderKeymap.edit),
+  enterArchive: keysOf(commanderKeymap.openWithSevenZip),
+  copyPaths: keysOf(commanderKeymap.copyPaths),
+};
 
 export function Pane({
   side,
@@ -187,7 +201,7 @@ export function Pane({
             ? (names) => onShellMenu(names, at, false)
             : undefined,
       },
-      { inArchive, gitMissing },
+      { inArchive, gitMissing, keys: fileMenuKeys },
     );
     if (items.length > 0) {
       showMenu({ x: at.x, y: at.y, items });

@@ -24,7 +24,7 @@
   z-index: 30;
   visibility: hidden;
   align-items: center;
-  padding: 3px 8px;
+  padding: 8px 14px;
   background: var(--color-tooltip-background);
   pointer-events: none;
 }

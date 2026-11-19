@@ -23,15 +23,17 @@ const tip = (
 );
 
 suite('The card a tooltip and a notice are drawn as', () => {
-  test('draws a tooltip as a notice is drawn, by the one card: its words, a path among them as every path, and the keys of what it explains as a key cap after them, with no button and no icon', () => {
+  test('draws a tooltip as a notice is drawn, by the one card: its words, a path among them as every path, and every shortcut of what it explains after them, each a key cap as the list of shortcuts draws it, a button of the mouse too, with no button and no icon', () => {
     const html = renderToStaticMarkup(tip);
     assert.match(
       html,
       /^<div role="tooltip" class="card tip info"><span class="card-message">Moved from <code class="name named-path">.*old\.ts.*<\/code><\/span><\/div>$/,
     );
     assert.match(
-      renderToStaticMarkup(<Card kind="tip" said="Find" keys="Ctrl+F" />),
-      /^<div class="card tip info"><span class="card-message">Find<\/span><span class="shortcut-combo">.*<kbd>F<\/kbd><\/span><\/div>$/,
+      renderToStaticMarkup(
+        <Card kind="tip" said="Back" keys="BackButton Alt+ArrowLeft" />,
+      ),
+      /^<div class="card tip info"><span class="card-message">Back<\/span><span class="shortcut-keys"><span class="shortcut-combo"><kbd class="pointer">.*Back<\/kbd><\/span><span class="shortcut-combo"><kbd>Alt<\/kbd>.*<kbd>←<\/kbd><\/span><\/span><\/div>$/,
     );
   });
 
@@ -41,7 +43,7 @@ suite('The card a tooltip and a notice are drawn as', () => {
     );
     assert.match(
       html,
-      /^<div class="card notice error"><svg class="icon error-icon".*<\/svg><span class="card-message">failed<\/span><button class="card-close" aria-label="Dismiss" data-tip="Dismiss">/,
+      /^<div class="card notice error"><svg class="icon error-icon".*<\/svg><span class="card-message">failed<\/span><button class="card-close" aria-label="Dismiss" data-tip="Dismiss" data-tip-keys="Escape">/,
     );
   });
 
@@ -65,7 +67,7 @@ suite('The card a tooltip and a notice are drawn as', () => {
     }
   });
 
-  test('gives a tooltip the corners and the shadow of a notice, and words that wrap within its width, tighter around them than a notice, on a ground of its own in the theme, that of a menu unless set, as the yellow of a notice was liked in neither theme', () => {
+  test('gives a tooltip the corners and the shadow of a notice, and words that wrap within its width, as far in from its edges as the words of a menu are from the edges of the menu, on a ground of its own in the theme, that of a menu unless set, as the yellow of a notice was liked in neither theme', () => {
     const card = withClass(rendered(tip), 'card');
     const notice = withClass(rendered(<NoticesShown />), 'notice');
     for (const property of [
@@ -83,7 +85,7 @@ suite('The card a tooltip and a notice are drawn as', () => {
       assert.ok(cascaded(card, property) !== undefined, property);
     }
     looks(card, {
-      padding: '3px 8px',
+      padding: '8px 14px',
       'align-items': 'center',
       background: 'var(--color-tooltip-background)',
     });

@@ -1,5 +1,5 @@
 import { commanderKeymap } from './keymap';
-import { keyOf } from '../../../lib/shared/keymap';
+import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { type Side } from '../shared/sides';
 import { type Layout } from './layouts';
@@ -41,7 +41,7 @@ function BookmarkButton({
     <MenuButton
       scrolling={scrolling}
       title={strings.commander.bookmarks}
-      keys={keyOf(commanderKeymap.bookmarks)}
+      keys={keysOf(commanderKeymap.bookmarks)}
       icon={<BookmarkIcon filled={bookmark !== undefined} />}
       arrow
       trigger={trigger}
@@ -69,7 +69,7 @@ function FlatButton({ side }: { side: Side }) {
     <button
       className={`nav-button toggle${flat ? ' active' : ''}${reading ? ' running' : ''}`}
       {...labelTip(strings.commander.flatView, {
-        keys: keyOf(commanderKeymap.flatView),
+        keys: keysOf(commanderKeymap.flatView),
       })}
       aria-pressed={flat}
       onClick={() => onFlat(side)}
@@ -121,7 +121,7 @@ export function PaneTitle({
         <button
           className="nav-button"
           {...labelTip(strings.commander.back, {
-            keys: keyOf(commanderKeymap.history, -1),
+            keys: keysOf(commanderKeymap.history, -1),
           })}
           disabled={back !== true}
           onClick={() => onStep(-1)}
@@ -131,7 +131,7 @@ export function PaneTitle({
         <button
           className="nav-button"
           {...labelTip(strings.commander.forward, {
-            keys: keyOf(commanderKeymap.history, 1),
+            keys: keysOf(commanderKeymap.history, 1),
           })}
           disabled={forward !== true}
           onClick={() => onStep(1)}
@@ -143,7 +143,7 @@ export function PaneTitle({
             <MenuButton
               scrolling={scrolling}
               title={strings.commander.chooseDrive}
-              keys={keyOf(commanderKeymap.drive, side)}
+              keys={keysOf(commanderKeymap.drive, side)}
               label={current ?? ''}
               path
               trigger={driveTrigger}
@@ -163,6 +163,7 @@ export function PaneTitle({
           <MenuButton
             scrolling={scrolling}
             title={strings.commander.layout}
+            keys={keysOf(commanderKeymap.layout)}
             label={strings.commander.layouts[layout]}
             onChosen={onChosen}
             items={layoutMenu({
@@ -177,7 +178,7 @@ export function PaneTitle({
         <FlatButton side={side} />
         <SearchButton
           title={strings.commander.filterFolder}
-          keys={keyOf(commanderKeymap.filter)}
+          keys={keysOf(commanderKeymap.filter)}
           onClick={onFilter}
         />
       </div>

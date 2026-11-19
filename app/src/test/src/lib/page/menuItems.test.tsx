@@ -372,7 +372,7 @@ suite('Menu items', () => {
     );
   });
 
-  test('shows the access key of an item before its label when asked, telling assistive technology it as the key of the item rather than reading it with the label, and hides it otherwise, as a drive letter is in its label already, leaving its room empty in a menu showing keys so the labels line up', () => {
+  test('shows the keys of an item as key caps at its right end, the shortcuts that do what it does and, when asked, the key that picks it in its menu, as the shortcuts are listed, kept from the name assistive technology reads, and shows none for an item that has none', () => {
     const html = renderToStaticMarkup(
       <MenuItems
         scrolling={defaultScrolling}
@@ -385,19 +385,25 @@ suite('Menu items', () => {
             onClick: noop,
           },
           { label: 'D:\\', accessKey: 'D', onClick: noop },
+          { label: 'Details', keys: 'Mod+1 F9', onClick: noop },
         ]}
         onClose={noop}
       />,
     );
     assert.match(
       html,
-      /aria-keyshortcuts="1"[^>]*><span class="menu-check">✓<\/span><span class="menu-access-key" aria-hidden="true">1<\/span>C:\\Code<\/button>/,
+      /aria-keyshortcuts="1"[^>]*><span class="menu-check">✓<\/span>C:\\Code<span class="menu-keys" aria-hidden="true"><span class="shortcut-combo"><kbd>1<\/kbd><\/span><\/span><\/button>/,
     );
     assert.match(
       html,
-      /data-access-key="D"><span class="menu-check"><\/span><span class="menu-access-key" aria-hidden="true"><\/span>D:\\<\/button>/,
+      /data-access-key="D"><span class="menu-check"><\/span>D:\\<\/button>/,
     );
-    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 2);
+    assert.match(
+      html,
+      /Details<span class="menu-keys" aria-hidden="true"><span class="shortcut-combo"><kbd>Ctrl<\/kbd>.*<kbd>1<\/kbd><\/span><span class="shortcut-combo"><kbd>F9<\/kbd><\/span><\/span><\/button>/,
+    );
+    assert.strictEqual(tagsWith(html, 'menu-keys').length, 2);
+    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 0);
   });
 
   test('leaves room for a check before every item, whether it can be checked or not, so the labels of every menu line up alike', () => {

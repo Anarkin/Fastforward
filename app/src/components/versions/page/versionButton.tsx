@@ -12,6 +12,7 @@ export function VersionButton({
   dateFormat,
   scrolling,
   trigger,
+  keys,
   onChosen,
 }: {
   readonly listed: ListedVersions;
@@ -20,6 +21,7 @@ export function VersionButton({
   readonly dateFormat: string;
   readonly scrolling: ScrollSettings;
   readonly trigger?: React.Ref<HTMLButtonElement>;
+  readonly keys?: string | undefined;
   readonly onChosen?: () => void;
 }) {
   return (
@@ -33,6 +35,7 @@ export function VersionButton({
       <MenuButton
         scrolling={scrolling}
         title={strings.versions.version}
+        keys={keys}
         trigger={trigger}
         label={versionLabel(version, listed)}
         onChosen={onChosen}

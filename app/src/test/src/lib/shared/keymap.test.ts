@@ -4,7 +4,7 @@ import { shellKeymap } from '../../../../shell/shared/keymap';
 import {
   clicked,
   bind,
-  keyOf,
+  keysOf,
   letterTyped,
   menuFromKeyboard,
   modifierKey,
@@ -418,7 +418,7 @@ suite('Keymap', () => {
     );
   });
 
-  test('names the key of a binding for the tooltip of its button, the first it has on the keyboard rather than a click or a button of the mouse, and the one for a way where it has a key for each', () => {
+  test('names the keys of a binding for the tooltip of its button as the shortcuts list them, every one it has, a button of the mouse among them, and only those for a way where it has keys for each', () => {
     const closeTab = bind('Tabs', 'Close', {
       MiddleClick: true,
       'Mod+W': true,
@@ -430,16 +430,21 @@ suite('Keymap', () => {
       'Alt+ArrowLeft': -1,
       'Alt+ArrowRight': 1,
     });
-    const drag = bind(undefined, 'Drag', { Click: true });
     assert.deepStrictEqual(
       [
-        keyOf(closeTab),
-        keyOf(history, -1),
-        keyOf(history, 1),
-        keyOf(history, 2),
-        keyOf(drag),
+        keysOf(closeTab),
+        keysOf(history, -1),
+        keysOf(history, 1),
+        keysOf(history, 2),
+        keysOf(history),
       ],
-      ['Mod+W', 'Alt+ArrowLeft', 'Alt+ArrowRight', undefined, undefined],
+      [
+        'MiddleClick Mod+W Mod+Shift+W',
+        'BackButton Alt+ArrowLeft',
+        'ForwardButton Alt+ArrowRight',
+        undefined,
+        'BackButton ForwardButton Alt+ArrowLeft Alt+ArrowRight',
+      ],
     );
   });
 });

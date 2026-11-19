@@ -1,5 +1,5 @@
 import { diffKeymap } from './keymap';
-import { keyOf } from '../../../lib/shared/keymap';
+import { keysOf } from '../../../lib/shared/keymap';
 import {
   useCallback,
   useEffect,
@@ -186,7 +186,7 @@ export function Diff({
       search={
         <SearchButton
           title={strings.find.title}
-          keys={keyOf(diffKeymap.find)}
+          keys={keysOf(diffKeymap.find)}
           onClick={openFind}
         />
       }

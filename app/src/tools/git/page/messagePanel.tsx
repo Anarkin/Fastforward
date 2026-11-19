@@ -1,4 +1,4 @@
-import { labelTip } from '../../../lib/page/tips';
+import { closeTip } from '../../../lib/page/closeTip';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clicked, shortcutOf } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
@@ -128,7 +128,7 @@ export function MessageCorner({
       </span>
       <button
         className="message-close"
-        {...labelTip(strings.common.close)}
+        {...closeTip}
         disabled={!onUnpin}
         onClick={onUnpin}
       >

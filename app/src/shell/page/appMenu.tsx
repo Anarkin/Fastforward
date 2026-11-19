@@ -1,4 +1,4 @@
-import { keyOf } from '../../lib/shared/keymap';
+import { keysOf } from '../../lib/shared/keymap';
 import { useRef } from 'react';
 import { shellKeymap } from '../shared/keymap';
 import { strings } from '../../lib/shared/strings';
@@ -32,11 +32,15 @@ export function AppMenu() {
       scrolling={scrolling}
       trigger={trigger}
       title={strings.tabs.settings}
-      keys={keyOf(shellKeymap.mainMenu)}
+      keys={keysOf(shellKeymap.mainMenu)}
       icon={<AppIcon />}
       marked={installs}
       items={[
-        { label: strings.tabs.newWindow, onClick: onNewWindow },
+        {
+          label: strings.tabs.newWindow,
+          keys: keysOf(shellKeymap.newWindow),
+          onClick: onNewWindow,
+        },
         { separator: true },
         {
           label: strings.tabs.openDefaultSettings,
@@ -52,8 +56,16 @@ export function AppMenu() {
         ...(onInstallCommand
           ? [{ label: strings.tabs.installCommand, onClick: onInstallCommand }]
           : []),
-        { label: strings.shortcuts.title, onClick: onShowShortcuts },
-        { label: strings.tabs.about, onClick: onShowAbout },
+        {
+          label: strings.shortcuts.title,
+          keys: keysOf(shellKeymap.shortcuts),
+          onClick: onShowShortcuts,
+        },
+        {
+          label: strings.tabs.about,
+          keys: keysOf(shellKeymap.about),
+          onClick: onShowAbout,
+        },
       ]}
     />
   );

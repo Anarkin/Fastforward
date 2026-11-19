@@ -68,7 +68,7 @@ suite('Navigation bar', () => {
     assert.match(html, /data-tip="Back[^"]*"(?![^>]*disabled)/);
     assert.match(
       html,
-      /data-tip="Forward[^"]*" data-tip-keys="Alt\+ArrowRight" disabled=""/,
+      /data-tip="Forward[^"]*" data-tip-keys="ForwardButton Alt\+ArrowRight" disabled=""/,
     );
   });
 

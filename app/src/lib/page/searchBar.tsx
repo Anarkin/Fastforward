@@ -1,3 +1,4 @@
+import { closeTip } from './closeTip';
 import { labelTip, tip } from './tips';
 import type { InputHTMLAttributes, KeyboardEvent, RefObject } from 'react';
 import type { SearchOptions } from '../shared/searchOptions';
@@ -121,11 +122,7 @@ export function SearchBar({
       className={`search-bar${font === 'monospace' ? ' monospace' : ''}${compact ? ' compact' : ''}`}
     >
       {!compact && onClose !== undefined && (
-        <button
-          className="nav-button"
-          {...labelTip(strings.common.close)}
-          onClick={onClose}
-        >
+        <button className="nav-button" {...closeTip} onClick={onClose}>
           <BackIcon />
         </button>
       )}

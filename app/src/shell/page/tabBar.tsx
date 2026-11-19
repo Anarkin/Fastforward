@@ -10,7 +10,7 @@ import { type TabInfo } from '../shared/protocol';
 import { AddIcon, CloseIcon, ToolIcon } from '../../lib/page/icons';
 import { titleBarHeight } from '../shared/titleBar';
 import { shellKeymap } from '../shared/keymap';
-import { clicked, keyOf } from '../../lib/shared/keymap';
+import { clicked, keysOf } from '../../lib/shared/keymap';
 import { strings } from '../../lib/shared/strings';
 import { useBinding } from '../../lib/page/shortcuts';
 import { useShell, useShellActions } from './store';
@@ -47,7 +47,7 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
       key="close"
       className="tab-close"
       {...labelTip(strings.common.close, {
-        keys: keyOf(shellKeymap.closeTab),
+        keys: keysOf(shellKeymap.closeTab),
       })}
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => {
@@ -270,7 +270,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
           ref={add}
           className={`nav-button tab-add ${adding ? 'open' : ''}`}
           {...labelTip(strings.tabs.newTab, {
-            keys: keyOf(shellKeymap.newTab),
+            keys: keysOf(shellKeymap.newTab),
           })}
           aria-haspopup="menu"
           aria-expanded={adding}

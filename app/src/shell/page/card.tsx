@@ -1,3 +1,5 @@
+import { shellKeymap } from '../shared/keymap';
+import { keysOf } from '../../lib/shared/keymap';
 import { CloseIcon, ErrorIcon } from '../../lib/page/icons';
 import { KeyCombo } from '../../lib/page/keyCombo';
 import { Words } from '../../lib/page/name';
@@ -25,11 +27,19 @@ export function Card({
       <span className="card-message">
         <Words>{said}</Words>
       </span>
-      {keys !== undefined && <KeyCombo keys={keys} />}
+      {keys !== undefined && (
+        <span className="shortcut-keys">
+          {keys.split(' ').map((combo) => (
+            <KeyCombo key={combo} keys={combo} />
+          ))}
+        </span>
+      )}
       {onClose && (
         <button
           className="card-close"
-          {...labelTip(strings.messages.dismiss)}
+          {...labelTip(strings.messages.dismiss, {
+            keys: keysOf(shellKeymap.dismissNotice),
+          })}
           onMouseDown={(event) => event.preventDefault()}
           onClick={onClose}
         >

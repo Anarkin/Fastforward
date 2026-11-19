@@ -1,3 +1,4 @@
+import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { useMemo, useState } from 'react';
 import { type ChangeArea } from '../shared/protocol';
@@ -325,7 +326,11 @@ export function Files() {
         </ColumnStatus>
       }
       search={
-        <SearchButton title={strings.files.search} onClick={openFilter} />
+        <SearchButton
+          title={strings.files.search}
+          keys={keysOf(gitKeymap.find)}
+          onClick={openFilter}
+        />
       }
       searching={
         filter !== undefined && (

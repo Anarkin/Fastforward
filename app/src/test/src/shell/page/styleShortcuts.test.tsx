@@ -22,6 +22,7 @@ import {
   layer,
   hovered,
   after,
+  unwrapped,
 } from './stylesheetFixtures';
 import { keyOf, popupOf } from '../../../helpers/styleMarkup';
 import {
@@ -303,7 +304,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws a shortcut as one key cap holding its keys inside its line, two pixels short of it and centered, its keys on the line of the words beside it, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted, its middle on the middle of the capitals of its key rather than of its small letters, where it stood low', () => {
+  test('draws a shortcut as one key cap on a ground a little dimmer than a panel, between it and the color of its edge, so it is a key on a panel and on the row of a menu under the pointer alike, holding its keys inside its line, two pixels short of it and centered, its keys on the line of the words beside it, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted, its middle on the middle of the capitals of its key rather than of its small letters, where it stood low', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     const combo = withClass(popup, 'shortcut-combo');
     looks(combo, {
@@ -317,6 +318,10 @@ suite('Style', () => {
         'inset 0 0 0 1px var(--color-border), inset 0 -2px var(--color-border)',
       'border-radius': '4px',
     });
+    assert.strictEqual(
+      unwrapped(cascaded(combo, 'background')),
+      'color-mix(in srgb, var(--color-border) 40%, var(--color-panel-background))',
+    );
     const key = keyOf(combo);
     assert.ok(key);
     looks(key, {

@@ -1,5 +1,5 @@
 import { gitKeymap } from './keymap';
-import { keyOf } from '../../../lib/shared/keymap';
+import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip, tip } from '../../../lib/page/tips';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Direction, LastFetch, NavigationEntry } from '../shared/protocol';
@@ -76,7 +76,7 @@ export function NavButtons() {
       <HistoryButton direction="forward" />
       <button
         className="nav-button"
-        {...labelTip(strings.actions.head, { keys: keyOf(gitKeymap.head) })}
+        {...labelTip(strings.actions.head, { keys: keysOf(gitKeymap.head) })}
         disabled={onHome === undefined}
         onClick={onHome}
       >
@@ -136,7 +136,7 @@ function HistoryButton({ direction }: { direction: Direction }) {
       <button
         className="nav-button"
         {...labelTip(strings.navigation.history[direction], {
-          keys: keyOf(gitKeymap.navigate, direction),
+          keys: keysOf(gitKeymap.navigate, direction),
         })}
         disabled={entries.length === 0}
         onPointerDown={() => {

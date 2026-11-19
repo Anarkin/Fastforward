@@ -9,6 +9,7 @@ export function driveMenu(
     label: drive,
     path: true,
     accessKey: drive.charAt(0),
+    showAccessKey: true,
     checked: drive === current,
     onClick: () => onDrive(drive),
   }));

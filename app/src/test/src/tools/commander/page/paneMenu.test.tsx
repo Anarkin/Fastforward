@@ -89,7 +89,7 @@ suite('Commander menu on a side', () => {
         await act(async () => trigger.click());
         const item = [
           ...main.querySelectorAll<HTMLButtonElement>('.menu-item'),
-        ].find((each) => each.textContent.endsWith(label));
+        ].find((each) => each.textContent.includes(label));
         assert.ok(item, label);
         await act(async () => item.click());
         return Boolean(
@@ -126,7 +126,7 @@ suite('Commander menu on a side', () => {
 
         assert.match(named, /^[A-Z]:\\$/);
         assert.ok(
-          drives.some((drive) => drive.endsWith(named)),
+          drives.some((drive) => drive.includes(named)),
           `${named} among ${drives.join(', ')}`,
         );
       },

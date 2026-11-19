@@ -109,12 +109,6 @@
   font-size: var(--monospace-font-size);
 }
 
-.menu-access-key {
-  display: inline-block;
-  width: 1.6em;
-  color: var(--muted-foreground);
-}
-
 .menu-check:has(> .icon) {
   vertical-align: -3px;
 }
@@ -173,9 +167,17 @@
   background: var(--hover-background);
 }
 
-.menu-item.has-submenu {
+.menu-item.has-submenu,
+.menu-item:has(> .menu-keys) {
   display: flex;
   align-items: center;
+}
+
+.menu-keys {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 24px;
 }
 
 .submenu-arrow {
