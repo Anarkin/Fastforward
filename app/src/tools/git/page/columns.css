@@ -14,18 +14,18 @@
 
 .column-title:has(.history-button ~ .pin-pair > :nth-child(2)) {
   padding-left: calc(
-    4px + 5 * var(--button-size) + 4 * var(--button-gap) + 8px
+    var(--bar-edge) + 5 * var(--button-size) + 4 * var(--bar-space) + 8px
   );
 }
 
 .column-title:has(.all-files) {
   padding-left: calc(
-    4px + 3 * var(--button-size) + 2 * var(--button-gap) + 8px
+    var(--bar-edge) + 3 * var(--button-size) + 2 * var(--bar-space) + 8px
   );
   padding-right: 8px;
 }
 
 .column-title:has(.all-files)::after {
   content: '';
-  width: calc(4px + 3 * var(--button-size) + 2 * var(--button-gap));
+  width: calc(var(--bar-edge) + 3 * var(--button-size) + 2 * var(--bar-space));
 }

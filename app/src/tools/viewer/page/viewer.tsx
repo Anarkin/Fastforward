@@ -42,6 +42,7 @@ import { useViewer, useViewerActions } from './store';
 import { choicesOf } from './state';
 import { ViewedVersionButton } from './versionButton';
 import { viewerKey } from './keys';
+import { Toolbar } from '../../../lib/page/toolbar';
 
 const modes: readonly {
   readonly mode: ViewMode;
@@ -239,8 +240,8 @@ export function Viewer() {
         />
       ) : (
         <header className="column-title">
-          <div className="column-start nav-buttons viewer-actions">
-            <div
+          <Toolbar className="column-start viewer-actions">
+            <Toolbar
               className="segmented"
               role="group"
               aria-label={strings.viewer.viewAs}
@@ -259,7 +260,7 @@ export function Viewer() {
                   {icon}
                 </button>
               ))}
-            </div>
+            </Toolbar>
             {mode === 'text' && (
               <div className="viewer-encoding">
                 <MenuButton
@@ -290,9 +291,8 @@ export function Viewer() {
               trigger={versionTrigger}
               onChosen={focusBody}
             />
-            {showsImage && <span className="nav-button-space" />}
             {showsImage && (
-              <div className="viewer-toggles">
+              <Toolbar className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${realSize ? 'active' : ''}`}
                   {...labelTip(strings.viewer.realSize, {
@@ -304,11 +304,10 @@ export function Viewer() {
                 >
                   <RealSizeIcon />
                 </button>
-              </div>
+              </Toolbar>
             )}
-            {readsText && <span className="nav-button-space" />}
             {readsText && (
-              <div className="viewer-toggles">
+              <Toolbar className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
                   {...labelTip(strings.common.showWhitespace, {
@@ -333,16 +332,16 @@ export function Viewer() {
                 >
                   <WordWrapIcon />
                 </button>
-              </div>
+              </Toolbar>
             )}
-          </div>
-          <div className="column-actions">
+          </Toolbar>
+          <Toolbar className="column-actions">
             <SearchButton
               title={strings.textFile.findInFile}
               keys={keysOf(viewerKeymap.find)}
               onClick={openFind}
             />
-          </div>
+          </Toolbar>
         </header>
       )}
       <div className="viewer-path">

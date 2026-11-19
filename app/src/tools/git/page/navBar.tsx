@@ -20,6 +20,7 @@ import {
   nextHistoryOpen,
   historyLabel,
 } from './navHistory';
+import { Toolbar } from '../../../lib/page/toolbar';
 
 const holdDelay = 400;
 
@@ -71,7 +72,7 @@ export function NavButtons() {
   const status = fetchStatus(lastFetch, autoFetch ? autoFetchMinutes : 0, now);
   const title = fetchTitle(lastFetch, status === 'failed', now);
   return (
-    <div className="nav-buttons">
+    <Toolbar>
       <HistoryButton direction="back" />
       <HistoryButton direction="forward" />
       <button
@@ -82,7 +83,7 @@ export function NavButtons() {
       >
         <HomeIcon />
       </button>
-      <span
+      <Toolbar
         className={`pin-pair ${autoFetch && autoFetchMinutes > 0 ? 'pinned' : ''}`}
       >
         <button
@@ -108,8 +109,8 @@ export function NavButtons() {
             <PinIcon />
           </button>
         )}
-      </span>
-    </div>
+      </Toolbar>
+    </Toolbar>
   );
 }
 

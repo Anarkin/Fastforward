@@ -20,7 +20,7 @@
   align-items: center;
   box-sizing: border-box;
   height: calc(var(--title-height) - var(--hairline));
-  padding: var(--column-line, 0px) var(--search-gap) 0 4px;
+  padding: var(--column-line, 0px) var(--bar-edge) 0;
 }
 
 .locations-list .row.result.active,

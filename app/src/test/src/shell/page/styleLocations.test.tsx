@@ -35,7 +35,7 @@ suite('Style', () => {
       border,
     );
     const edge = cascaded(withClass(title, 'column-start'), 'left');
-    assert.match(edge ?? '', /^\d+px$/);
+    assert.strictEqual(edge, 'var(--bar-edge)');
     assert.strictEqual(line, '1px');
     looks(
       withClass(rendered(<LocationsPopupShown query="" />), 'locations-bar'),
@@ -45,7 +45,7 @@ suite('Style', () => {
         margin: undefined,
         'margin-top': undefined,
         'margin-bottom': undefined,
-        padding: `var(--column-line, 0px) var(--search-gap) 0 ${edge}`,
+        padding: `var(--column-line, 0px) ${edge} 0`,
       },
     );
   });

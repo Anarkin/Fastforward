@@ -23,6 +23,17 @@ const textOf = (file: string) =>
 const filesWith = (folder: string, pattern: RegExp) =>
   filesIn(folder).filter((file) => pattern.test(textOf(file)));
 
+const stylesWith = (folder: string, pattern: RegExp) =>
+  fs
+    .readdirSync(path.join(sources, folder), {
+      recursive: true,
+      encoding: 'utf8',
+    })
+    .filter((file) => file.endsWith('.css'))
+    .map((file) => path.join(folder, file).split(path.sep).join('/'))
+    .filter((file) => pattern.test(textOf(file)))
+    .toSorted();
+
 const timesIn = (folder: string, pattern: RegExp) =>
   filesIn(folder).reduce(
     (count, file) => count + (textOf(file).match(pattern)?.length ?? 0),
@@ -132,6 +143,36 @@ suite('Lessons from past mistakes', () => {
         filesWith(folder, /<title>|setAttribute\(\s*['"]title['"]/),
       ),
       [],
+    );
+  });
+
+  test('spaces the buttons of a header by the Toolbar they stand in, never by a spacer or a style of the header: the Toolbar and its ToolbarSpace alone write their classes, the start and the actions of a header are Toolbars, and no stylesheet but that of the buttons styles a toolbar, as every header had spacers and paddings of its own until its buttons stood apart by different amounts, closer to one edge than another, and moved as a search opened', () => {
+    const pages = ['tools', 'lib', 'components', 'shell'];
+    assert.deepStrictEqual(
+      pages.flatMap((folder) =>
+        filesWith(folder, /["'`\s]toolbar(?:-space)?["'`\s$]/),
+      ),
+      ['lib/page/toolbar.tsx'],
+    );
+    const ends =
+      /<([A-Za-z]\w*)\s+className=\{?["`][^"`]*\bcolumn-(?:start|actions)\b/g;
+    const found = pages.flatMap((folder) =>
+      filesIn(folder).flatMap((file) =>
+        Array.from(textOf(file).matchAll(ends), ([, tag]) => tag),
+      ),
+    );
+    assert.deepStrictEqual([...new Set(found)], ['Toolbar']);
+    assert.strictEqual(
+      found.length,
+      pages.reduce(
+        (count, folder) =>
+          count + timesIn(folder, /\bcolumn-(?:start|actions)\b/g),
+        0,
+      ),
+    );
+    assert.deepStrictEqual(
+      pages.flatMap((folder) => stylesWith(folder, /\.toolbar\b/)),
+      ['shell/page/buttons.css'],
     );
   });
 });

@@ -1,6 +1,4 @@
 .pin-pair {
-  display: flex;
-  gap: var(--button-gap);
   border-radius: calc(var(--button-size) / 2);
 }
 

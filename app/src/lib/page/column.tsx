@@ -1,4 +1,5 @@
 import { focusNameAttribute } from './viewFocus';
+import { Toolbar } from './toolbar';
 
 export function Column({
   title,
@@ -29,17 +30,17 @@ export function Column({
         <header className="column-title searching">{searching}</header>
       ) : (
         <header className="column-title">
-          {start && <div className="column-start">{start}</div>}
+          {start && <Toolbar className="column-start">{start}</Toolbar>}
           {typeof title === 'string' ? (
             <span className="column-name">{title}</span>
           ) : (
             title
           )}
           {(actions || search) && (
-            <div className="column-actions">
+            <Toolbar className="column-actions">
               {actions}
               {search}
-            </div>
+            </Toolbar>
           )}
         </header>
       )}

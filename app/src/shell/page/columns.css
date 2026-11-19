@@ -41,9 +41,12 @@
 }
 
 .column {
-  --title-height: 36px;
+  --bar-edge: calc(var(--column-line, 0px) + var(--bar-space));
+  --title-height: calc(
+    var(--column-line, 0px) + 2 * var(--bar-space) + var(--button-size) +
+      var(--hairline)
+  );
   --search-height: var(--button-size);
-  --search-gap: 6px;
   --status-height: var(--row-line-height);
   position: relative;
   display: flex;
@@ -83,9 +86,11 @@ body.resizing {
 
 .column-title:has(.column-start) {
   padding-left: calc(
-    4px + 4 * var(--button-size) + 3 * var(--button-gap) + 8px
+    var(--bar-edge) + 4 * var(--button-size) + 3 * var(--bar-space) + 8px
   );
-  padding-right: calc(4px + 2 * var(--button-size) + var(--button-gap) + 8px);
+  padding-right: calc(
+    var(--bar-edge) + 2 * var(--button-size) + var(--bar-space) + 8px
+  );
 }
 
 .column-name {
@@ -99,14 +104,8 @@ body.resizing {
 .column-start {
   position: absolute;
   top: var(--column-line, 0px);
-  left: 4px;
+  left: var(--bar-edge);
   bottom: 0;
-  display: flex;
-  align-items: center;
-}
-
-.column-start .menu-button {
-  padding: 0;
 }
 
 .column-start .menu {

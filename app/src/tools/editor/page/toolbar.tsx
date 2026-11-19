@@ -26,6 +26,7 @@ import { MenuButton } from '../../../lib/page/menu';
 import { readMenu, savedName, saveMenu } from './encodings';
 import { useEditor, useEditorActions } from './store';
 import { editedShown } from './state';
+import { Toolbar } from '../../../lib/page/toolbar';
 
 export function EditorToolbar({
   view,
@@ -91,7 +92,7 @@ export function EditorToolbar({
   return (
     <>
       <header className="column-title">
-        <div className="column-start nav-buttons viewer-actions">
+        <Toolbar className="column-start viewer-actions">
           {tab !== undefined && encoding !== undefined && !readOnly && (
             <>
               {!made && (
@@ -164,8 +165,7 @@ export function EditorToolbar({
             </div>
           )}
           {language}
-          <span className="nav-button-space" />
-          <div className="viewer-toggles">
+          <Toolbar className="viewer-toggles">
             <button
               className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
               {...labelTip(strings.common.showWhitespace)}
@@ -186,15 +186,15 @@ export function EditorToolbar({
             >
               <WordWrapIcon />
             </button>
-          </div>
-        </div>
-        <div className="column-actions">
+          </Toolbar>
+        </Toolbar>
+        <Toolbar className="column-actions">
           <SearchButton
             title={strings.textFile.findInFile}
             keys={keysOf(editorKeymap.find)}
             onClick={onFind}
           />
-        </div>
+        </Toolbar>
       </header>
       {reopening !== undefined && tab !== undefined && (
         <ConfirmPopup

@@ -61,7 +61,7 @@ suite('Search bar', () => {
     assert.deepStrictEqual(classesOf(shown), [
       'nav-button',
       'search-box active',
-      'search-steps',
+      'toolbar search-steps',
     ]);
     const back = shown?.firstElementChild;
     assert.strictEqual(back?.getAttribute('data-tip'), 'Close');
@@ -222,8 +222,8 @@ suite('Search bar', () => {
   });
 
   test('types in the font of what it searches, monospace where it searches code and file names, and the font of the app elsewhere', () => {
-    assert.strictEqual(barClassOf('monospace'), 'search-bar monospace');
-    assert.strictEqual(barClassOf('proportional'), 'search-bar');
+    assert.strictEqual(barClassOf('monospace'), 'toolbar search-bar monospace');
+    assert.strictEqual(barClassOf('proportional'), 'toolbar search-bar');
   });
 
   test('turns the previous and next buttons off while nothing matches', () => {
@@ -246,7 +246,7 @@ suite('Search bar', () => {
     const document = page({ compact: true, placeholder: 'Filter…' });
     assert.strictEqual(
       document.querySelector('.search-bar')?.className,
-      'search-bar compact',
+      'toolbar search-bar compact',
     );
     assert.deepStrictEqual(classesOf(document.querySelector('.search-bar')), [
       'search-box active',

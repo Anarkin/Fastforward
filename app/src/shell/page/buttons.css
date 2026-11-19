@@ -33,8 +33,6 @@
 }
 
 .segmented {
-  display: flex;
-  gap: var(--button-gap);
   border-radius: calc(var(--button-size) / 2);
   background: var(--button-background);
 }
@@ -42,11 +40,8 @@
 .column-actions {
   position: absolute;
   top: var(--column-line, 0px);
-  right: 4px;
+  right: var(--bar-edge);
   bottom: 0;
-  display: flex;
-  align-items: center;
-  gap: var(--button-gap);
   text-align: left;
 }
 
@@ -101,17 +96,13 @@
   background: var(--color-focus);
 }
 
-.nav-button-space {
-  flex: none;
-  width: var(--button-size);
-}
-
-.nav-buttons {
+.toolbar {
   display: flex;
   align-items: center;
-  gap: var(--button-gap);
+  gap: var(--bar-space);
 }
 
-.column-actions .menu-button {
-  padding: 0;
+.toolbar-space {
+  flex: none;
+  width: var(--button-size);
 }

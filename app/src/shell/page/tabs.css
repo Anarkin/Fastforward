@@ -55,7 +55,6 @@
 .tabs > .menu-button {
   align-self: flex-end;
   height: calc(max(1lh, 20px) + 8px);
-  padding: 0;
   margin-right: calc(
     var(--app-icon-margin) - var(--app-icon-padding) - var(--tabs-gap)
   );

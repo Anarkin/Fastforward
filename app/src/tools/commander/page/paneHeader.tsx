@@ -17,6 +17,7 @@ import { strings } from '../../../lib/shared/strings';
 import { bookmarkMenu, bookmarkOf } from './bookmarks';
 import { driveMenu, driveOf } from './driveMenu';
 import { layoutMenu } from './paneLayoutMenu';
+import { Toolbar } from '../../../lib/page/toolbar';
 
 function BookmarkButton({
   side,
@@ -117,7 +118,7 @@ export function PaneTitle({
   const onStep = (step: -1 | 1) => actions.step(side, step);
   return (
     <header className="column-title">
-      <div className="column-start nav-buttons">
+      <Toolbar className="column-start">
         <button
           className="nav-button"
           {...labelTip(strings.commander.back, {
@@ -157,8 +158,8 @@ export function PaneTitle({
           trigger={bookmarkTrigger}
           onChosen={onChosen}
         />
-      </div>
-      <div className="column-actions">
+      </Toolbar>
+      <Toolbar className="column-actions">
         <div className="commander-layout">
           <MenuButton
             scrolling={scrolling}
@@ -181,7 +182,7 @@ export function PaneTitle({
           keys={keysOf(commanderKeymap.filter)}
           onClick={onFilter}
         />
-      </div>
+      </Toolbar>
     </header>
   );
 }

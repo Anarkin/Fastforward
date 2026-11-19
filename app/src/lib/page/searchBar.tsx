@@ -6,6 +6,7 @@ import { strings } from '../shared/strings';
 import { matchCount, type MatchesFound } from '../shared/textMatches';
 import { BackIcon, NextIcon, PreviousIcon } from './icons';
 import { focusNameAttribute } from './viewFocus';
+import { Toolbar } from './toolbar';
 
 const toggles = [
   {
@@ -120,7 +121,7 @@ export function SearchBar({
     />
   );
   return (
-    <div
+    <Toolbar
       className={`search-bar${font === 'monospace' ? ' monospace' : ''}${compact ? ' compact' : ''}`}
     >
       {!compact && onClose !== undefined && (
@@ -149,7 +150,7 @@ export function SearchBar({
         {toggled}
       </div>
       {!compact && onStep !== undefined && (
-        <div className="search-steps">
+        <Toolbar className="search-steps">
           <button
             className="nav-button"
             {...labelTip(strings.find.previous, { keys: stepKeys?.[0] })}
@@ -166,8 +167,8 @@ export function SearchBar({
           >
             <NextIcon />
           </button>
-        </div>
+        </Toolbar>
       )}
-    </div>
+    </Toolbar>
   );
 }

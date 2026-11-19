@@ -234,8 +234,8 @@
 }
 
 .column-title:has(> .column-start.viewer-actions) {
-  gap: 8px;
-  padding: var(--column-line, 0px) 4px 0;
+  gap: var(--bar-space);
+  padding: var(--column-line, 0px) var(--bar-edge) 0;
 }
 
 .column-title:has(> .column-start.viewer-actions) > .column-start,
@@ -272,13 +272,4 @@
 
 .viewer-actions .language-button .menu-button-trigger {
   max-width: var(--widest-language-button);
-}
-
-.viewer-toggles {
-  display: flex;
-  gap: var(--button-gap);
-}
-
-.viewer-actions {
-  gap: 8px;
 }

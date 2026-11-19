@@ -639,7 +639,7 @@ suite('Style', () => {
       'align-self': 'flex-end',
       'align-items': 'center',
       height: `calc(max(1lh, ${close}) + ${parseFloat(top) + parseFloat(bottom) + 2 * border}px)`,
-      padding: '0',
+      padding: undefined,
       'margin-bottom': cascaded(tab, 'margin-bottom'),
     });
   });

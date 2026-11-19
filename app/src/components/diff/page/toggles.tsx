@@ -11,6 +11,7 @@ import {
 } from '../../../lib/page/icons';
 import type { DiffLayout } from '../shared/protocol';
 import { strings } from '../../../lib/shared/strings';
+import { Toolbar } from '../../../lib/page/toolbar';
 
 export function DiffToggles({
   language,
@@ -38,7 +39,7 @@ export function DiffToggles({
   readonly onShowWhitespace: (show: boolean) => void;
 }) {
   return (
-    <div className="nav-buttons diff-options">
+    <Toolbar className="diff-options">
       <button
         className={`nav-button toggle ${entire ? 'active' : ''}`}
         {...labelTip(strings.diff.showEntireFile)}
@@ -47,9 +48,7 @@ export function DiffToggles({
       >
         <EntireFileIcon />
       </button>
-      <span className="nav-button-space" />
       {language}
-      <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
         {...labelTip(strings.common.showWhitespace, {
@@ -68,7 +67,6 @@ export function DiffToggles({
       >
         <WhitespaceChangesIcon />
       </button>
-      <span className="nav-button-space" />
       <button
         className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
         {...labelTip(strings.common.wrap, { keys: keysOf(diffKeymap.wrap) })}
@@ -77,8 +75,11 @@ export function DiffToggles({
       >
         <WordWrapIcon />
       </button>
-      <span className="nav-button-space" />
-      <div className="segmented" role="group" aria-label={strings.diff.layout}>
+      <Toolbar
+        className="segmented"
+        role="group"
+        aria-label={strings.diff.layout}
+      >
         <button
           className={`nav-button toggle ${layout === 'inline' ? 'active' : ''}`}
           {...labelTip(strings.diff.inline)}
@@ -95,7 +96,7 @@ export function DiffToggles({
         >
           <SideBySideIcon />
         </button>
-      </div>
-    </div>
+      </Toolbar>
+    </Toolbar>
   );
 }

@@ -65,6 +65,7 @@ import { FileFilterField } from './filesFilterField';
 import { noneClosed, useFilesFilter } from './filesFilter';
 import { ColumnStatus } from '../../../lib/page/columnStatusLine';
 import { filesCounted } from './columnStatus';
+import { Toolbar } from '../../../lib/page/toolbar';
 
 const settlingPaths = 20_000;
 
@@ -238,7 +239,7 @@ export function Files() {
     }
   };
   const start = (
-    <div className="nav-buttons all-files">
+    <Toolbar className="all-files">
       <button
         className={`nav-button toggle ${showAll ? 'active' : ''}`}
         {...labelTip(strings.files.showAll)}
@@ -279,7 +280,7 @@ export function Files() {
       >
         <ExpandAllIcon />
       </button>
-    </div>
+    </Toolbar>
   );
   const header = (side: ChangeArea | undefined) => {
     const key = areaKey(side, changesKey);

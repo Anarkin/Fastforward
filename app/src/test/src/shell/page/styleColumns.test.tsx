@@ -25,6 +25,7 @@ import {
   focused,
   after,
   halved,
+  unwrapped,
 } from './stylesheetFixtures';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
@@ -124,17 +125,17 @@ suite('Style', () => {
 
   test('keeps the title of the Files column clear of its three buttons on the left, spaces the buttons of the Diff column alike, and never squeezes the search field out', () => {
     const files = columnTitle(
-      <ColumnShown start={<div className="nav-buttons all-files" />} />,
+      <ColumnShown start={<div className="toolbar all-files" />} />,
     );
     assert.strictEqual(
       pixels(cascaded(files, 'padding-left')),
       buttonsWidth(<CommitColumn />, <ColumnShown start={null} />, 3),
     );
-    const gap = cascaded(withClass(files, 'nav-buttons'), 'gap');
+    const gap = cascaded(withClass(files, 'toolbar'), 'gap');
     assert.ok(gap);
     const diff = columnTitle(<ColumnShown start={<DiffOptionsShown />} />);
     for (const group of [
-      withClass(diff, 'nav-buttons'),
+      withClass(diff, 'toolbar'),
       withClass(diff, 'segmented'),
     ]) {
       looks(group, { gap, border: undefined, padding: undefined });
@@ -154,7 +155,7 @@ suite('Style', () => {
       rendered(
         renderedBy(Column, {
           title: '0123456 → 89abcde',
-          start: <div className="nav-buttons all-files" />,
+          start: <div className="toolbar all-files" />,
           children: null,
         }),
       ),
@@ -207,26 +208,21 @@ suite('Style', () => {
 
   test('keeps the search fields clear of the active column edge, the title holding both fields at one height', () => {
     const column = rendered(renderedBy(Column, { children: null }));
-    const px = (name: string) => {
-      const match = /^(\d+)px$/.exec(cascaded(column, `--${name}`) ?? '');
-      assert.ok(match, name);
-      return Number(match[1]);
-    };
     const edge = parseFloat(
       activeEdge(
         <Columns className={columnsClass(true, 'a')} active="commits" />,
       ),
     );
-    const line = parseFloat(
-      cascaded(withClass(column, 'column-title'), 'border-bottom') ?? '',
-    );
+    assert.ok(edge > 0, String(edge));
     assert.strictEqual(
       cascaded(column, '--search-height'),
       'var(--button-size)',
     );
-    const above =
-      (px('title-height') - line - deviceRounded('button-size')) / 2;
-    assert.ok(above - edge >= 2, String(above));
+    assert.strictEqual(
+      unwrapped(cascaded(column, '--bar-edge')),
+      'calc(var(--column-line, 0px) + var(--bar-space))',
+    );
+    assert.ok(deviceRounded('bar-space') >= 2);
     for (const field of [
       withClass(rendered(<DiffFindShown />), 'search-box'),
       withClass(rendered(<LocationsPopupShown query="" />), 'search-box'),

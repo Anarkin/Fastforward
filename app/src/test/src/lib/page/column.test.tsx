@@ -74,7 +74,7 @@ suite('Column', () => {
     assert.ok(header.classList.contains('searching'));
     assert.deepStrictEqual(
       Array.from(header.children, (child) => child.className),
-      ['search-bar'],
+      ['toolbar search-bar'],
     );
   });
 });

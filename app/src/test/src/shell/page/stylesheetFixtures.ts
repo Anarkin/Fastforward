@@ -27,13 +27,13 @@ export function buttonsWidth(
 ): number {
   const title = columnTitle(column);
   const actions = rendered(
-    createElement('div', { className: 'column-actions' }),
+    createElement('div', { className: 'column-actions toolbar' }),
   );
   const [edge, gap] =
     side === 'left'
       ? [
           cascaded(withClass(title, 'column-start'), 'left'),
-          cascaded(withClass(title, 'nav-buttons'), 'gap'),
+          cascaded(withClass(title, 'toolbar'), 'gap'),
         ]
       : [cascaded(actions, 'right'), cascaded(actions, 'gap')];
   const button = cascaded(withClass(title, 'nav-button'), 'width');

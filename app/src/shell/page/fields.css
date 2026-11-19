@@ -44,15 +44,12 @@ input[type='checkbox']:focus-visible {
 }
 
 .column-title.searching {
-  padding: var(--column-line, 0px) var(--search-gap) 0 4px;
+  padding: var(--column-line, 0px) var(--bar-edge) 0;
 }
 
 .search-bar {
   flex: 1;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 .search-box {
@@ -114,20 +111,18 @@ input[type='checkbox']:focus-visible {
   white-space: nowrap;
 }
 
-.search-toggles,
 .search-steps {
+  flex: none;
+}
+
+.search-toggles {
   flex: none;
   display: flex;
   align-items: center;
-  gap: var(--button-gap);
 }
 
 .search-bar.compact .search-box {
   --search-height: 26px;
-}
-
-.search-box > .search-toggles {
-  gap: 0;
 }
 
 .search-box .search-toggle {

@@ -57,14 +57,14 @@ function SoloButtonShown({
 suite('Style', () => {
   test('sizes every round button and spaces every group of them by one size and one gap, each a whole number of screen pixels, so no gap is drawn wider than another at 125%', () => {
     assert.strictEqual(deviceRounded('button-size'), 26);
-    assert.strictEqual(deviceRounded('button-gap'), 2);
+    assert.strictEqual(deviceRounded('bar-space'), 4);
     assert.strictEqual(deviceRounded('arrowed-button-width'), 44);
     const nav = rendered(<NavButtonsShown autoFetch autoFetchMinutes={5} />);
     const options = rendered(<DiffOptionsShown />);
     for (const group of [
-      withClass(nav, 'nav-buttons'),
+      withClass(nav, 'toolbar'),
       withClass(nav, 'pin-pair'),
-      withClass(options, 'nav-buttons'),
+      withClass(options, 'toolbar'),
       withClass(options, 'segmented'),
       withClass(
         rendered(
@@ -76,7 +76,7 @@ suite('Style', () => {
         'column-actions',
       ),
     ]) {
-      looks(group, { gap: 'var(--button-gap)' });
+      looks(group, { gap: 'var(--bar-space)' });
     }
     const buttons = [
       ...allWithClass(nav, 'nav-button'),

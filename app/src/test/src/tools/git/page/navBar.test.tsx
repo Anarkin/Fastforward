@@ -189,7 +189,7 @@ suite('Navigation bar', () => {
       assert.match(
         buttons({ autoFetch }),
         new RegExp(
-          `<span class="pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*data-tip="Fetch[^"]*"[^>]*>.*?</button><button[^>]*data-tip="Fetch Every Minute"[^>]*>.*?</button></span></div>$`,
+          `<div class="toolbar pin-pair ${autoFetch ? 'pinned' : ''}"><button[^>]*data-tip="Fetch[^"]*"[^>]*>.*?</button><button[^>]*data-tip="Fetch Every Minute"[^>]*>.*?</button></div></div>$`,
         ),
       );
     }
