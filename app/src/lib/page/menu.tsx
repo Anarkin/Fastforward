@@ -74,7 +74,6 @@ export function MenuButton({
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
-  const shortcut = { keys };
   const close = useCallback(() => setOpen(false), []);
   const shown = onChosen === undefined ? items : thenChosen(items, onChosen);
 
@@ -97,8 +96,8 @@ export function MenuButton({
         ref={trigger}
         className={`nav-button menu-button-trigger${label === undefined ? '' : ' labelled'}${arrow ? ' arrowed' : ''}${open ? ' open' : ''}`}
         {...(label === undefined
-          ? labelTip(title, shortcut)
-          : tip(title, shortcut))}
+          ? labelTip(title, { keys })
+          : tip(title, { keys }))}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}

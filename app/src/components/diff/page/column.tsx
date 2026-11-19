@@ -61,6 +61,7 @@ export interface DiffProps {
   readonly note?: string;
   readonly heading?: React.ReactNode;
   readonly onViewFile?: (source: ViewedSource) => void;
+  readonly viewKeys?: string | undefined;
   readonly viewAsked?: number;
   readonly look: DiffLook;
   readonly measures: DiffMeasures;
@@ -92,6 +93,7 @@ export function Diff({
   note,
   heading,
   onViewFile,
+  viewKeys,
   viewAsked = 0,
   look,
   measures,
@@ -206,6 +208,7 @@ export function Diff({
     >
       <DiffView
         viewOf={viewOf}
+        viewKeys={viewKeys}
         key={shownAt}
         keptPlace={tab.place}
         placeNow={tab.placeNow}

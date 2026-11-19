@@ -40,7 +40,7 @@ import { PathTitle } from '../../../lib/page/pathTitle';
 import { fileLooks } from './fileLooks';
 import { useViewer, useViewerActions } from './store';
 import { choicesOf } from './state';
-import { VersionButton } from './versionButton';
+import { ViewedVersionButton } from './versionButton';
 import { viewerKey } from './keys';
 
 const modes: readonly {
@@ -286,7 +286,10 @@ export function Viewer() {
                 scrolling={scrolling}
               />
             )}
-            <VersionButton trigger={versionTrigger} onChosen={focusBody} />
+            <ViewedVersionButton
+              trigger={versionTrigger}
+              onChosen={focusBody}
+            />
             {showsImage && <span className="nav-button-space" />}
             {showsImage && (
               <div className="viewer-toggles">

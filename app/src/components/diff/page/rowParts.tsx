@@ -38,6 +38,7 @@ export function FileHeader({
   collapsible,
   onClick,
   onView,
+  viewKeys,
 }: {
   path: string;
   root?: string | undefined;
@@ -47,6 +48,7 @@ export function FileHeader({
   collapsible: boolean;
   onClick: () => void;
   onView?: () => void;
+  viewKeys?: string | undefined;
 }) {
   return (
     <div className="file-header" onClick={onClick}>
@@ -68,7 +70,7 @@ export function FileHeader({
         {onView && (
           <button
             className="nav-button file-header-button"
-            {...labelTip(strings.diff.viewFile)}
+            {...labelTip(strings.diff.viewFile, { keys: viewKeys })}
             onClick={(event) => {
               event.stopPropagation();
               onView();

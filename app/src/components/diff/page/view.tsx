@@ -85,6 +85,7 @@ export function DiffView({
   firstChange,
   origin,
   viewOf,
+  viewKeys,
   look,
   measures,
   measuring,
@@ -109,6 +110,7 @@ export function DiffView({
   jump: number;
   firstChange: number | undefined;
   viewOf?: (file: number) => (() => void) | undefined;
+  viewKeys?: string | undefined;
   look: DiffLook;
   measures: DiffMeasures;
   measuring: DiffMeasuring;
@@ -315,6 +317,7 @@ export function DiffView({
       whole={whole !== undefined}
       collapsible={row.collapsible}
       onView={viewOf?.(row.file)}
+      viewKeys={viewKeys}
       onClick={() => {
         if (!row.collapsible) {
           return;

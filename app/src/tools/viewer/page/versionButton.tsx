@@ -4,7 +4,7 @@ import { VersionButton as VersionMenuButton } from '../../../components/versions
 import { useShell } from '../../../shell/page/store';
 import { useViewer, useViewerActions } from './store';
 
-export function VersionButton({
+export function ViewedVersionButton({
   trigger,
   onChosen,
 }: {

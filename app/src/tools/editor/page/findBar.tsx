@@ -1,3 +1,4 @@
+import { keysOf } from '../../../lib/shared/keymap';
 import type { ReactNode, RefObject } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { strings } from '../../../lib/shared/strings';
@@ -73,6 +74,10 @@ export function EditorFindBar({
             onQuery={(text) => search({ ...query, text })}
             onOptions={(options) => search({ ...query, options })}
             onStep={findStep}
+            stepKeys={[
+              keysOf(editorKeymap.match, -1),
+              keysOf(editorKeymap.match, 1),
+            ]}
             onClose={closeFind}
             onKeyDown={findKeyDown(editorKeymap, findStep, closeFind)}
           />
