@@ -200,7 +200,7 @@
 
 .row.commander-line {
   height: var(--commander-row-height);
-  padding: 0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start);
+  padding: 0 8px 0 var(--commander-row-start);
 }
 
 .row.commander-row.colored {

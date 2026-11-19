@@ -66,7 +66,9 @@ suite('App', () => {
       await page.locator('.diff-row .diff-line .code').allTextContents(),
       ['one', 'two', '2', 'three'],
     );
-    await page.locator('.diff-minimap').waitFor();
+    await page
+      .locator('.diff-view > .scrollbar-marks > .scrollbar-mark.added')
+      .waitFor();
     await page.getByRole('button', { name: 'Side by Side' }).click();
     const sides = page.locator('.split-line');
     await sides.first().waitFor();

@@ -87,7 +87,6 @@ export interface Sideways {
   readonly scrolled: number;
   readonly width: number;
   readonly room: number;
-  readonly minimap: number;
 }
 
 const dotStretch = 128;
@@ -117,12 +116,8 @@ export function sidewaysRoom(
   columns: number,
   charWidth: number,
   width: number,
-  minimap: number,
 ): number {
-  return Math.max(
-    0,
-    2 * codePadding + Math.ceil(columns * charWidth) + minimap - width,
-  );
+  return Math.max(0, 2 * codePadding + Math.ceil(columns * charWidth) - width);
 }
 
 export interface TextArea {
@@ -130,11 +125,8 @@ export interface TextArea {
   readonly visible: number;
 }
 
-export function sideArea(view: Sideways, last: boolean): TextArea {
-  return {
-    origin: codePadding,
-    visible: view.width - (last ? view.minimap : 0),
-  };
+export function sideArea(view: Sideways): TextArea {
+  return { origin: codePadding, visible: view.width };
 }
 
 export function areaColumns(

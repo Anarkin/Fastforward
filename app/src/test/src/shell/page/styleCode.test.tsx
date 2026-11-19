@@ -118,13 +118,11 @@ suite('Style', () => {
     looks(tab, { content: undefined }, { pseudoElement: '::before' });
   });
 
-  test('ends the lines scrolled sideways before the minimap, keeping their rows tinted under it, and wraps the text of the diff, the viewer and the editor inside one right padding, two columns for a blank hanging at the end of a row and the sign of its break, then what covers the edge, the minimap or the scrollbar, and a gap, so no text runs under either and both sides wrap alike', () => {
-    const beforeMinimap =
-      'calc(var(--diff-code-padding) + var(--minimap-width))';
-    looks(inlineCode(false), { 'padding-right': beforeMinimap });
-    const [left, right] = sideCodes(false);
-    looks(right, { 'padding-right': beforeMinimap });
-    looks(left, { 'padding-right': undefined });
+  test('ends the lines scrolled sideways a padding before the edge, on both sides alike, and wraps the text of the diff, the viewer and the editor inside one right padding, two columns for a blank hanging at the end of a row and the sign of its break, then a gap, as the scrollbar has a strip of its own and covers nothing', () => {
+    const padding = { 'padding-right': 'var(--diff-code-padding)' };
+    looks(inlineCode(false), padding);
+    const [, right] = sideCodes(false);
+    looks(right, padding);
 
     const editor = withClass(
       rendered(
@@ -144,17 +142,11 @@ suite('Style', () => {
     ]) {
       assert.strictEqual(
         compact(cascaded(wrapped, 'padding-right')),
-        'calc(2 * var(--text-advance) + var(--wrap-cover) + var(--wrap-gap))',
+        'calc(2 * var(--text-advance) + var(--wrap-gap))',
         wrapped.classes.join(' '),
       );
     }
-    looks(withClass(diffView(<DiffViewShown wordWrap />), 'diff-view'), {
-      '--wrap-cover': 'var(--minimap-width)',
-    });
-    assert.deepStrictEqual(
-      [bodyVariable('wrap-cover'), bodyVariable('wrap-gap')],
-      ['var(--scrollbar-size)', '8px'],
-    );
+    assert.strictEqual(bodyVariable('wrap-gap'), '8px');
   });
 
   test('draws a tab in the code as wide as the wrapping and the hidden changes count it', () => {

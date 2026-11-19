@@ -1,0 +1,577 @@
+import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { ElectronApplication, Page } from 'playwright-core';
+import { afterAll, beforeAll, suite, test } from 'vitest';
+import { waitFor } from '../helpers/fixtures';
+import { tempRepository } from '../helpers/repositories';
+import { tempFolder } from '../helpers/tempFolders';
+import { closeOrKill, launchApp } from './appLaunch';
+import { pdfOf } from './pdfs';
+import {
+  barOf,
+  barParts,
+  paintedAt,
+  type Axis,
+  type Box,
+} from './scrollbarsShown';
+import { writeSettings } from './settingsWritten';
+import { untilSettled } from './waits';
+
+const size = 20;
+
+const lines = (changed: boolean) =>
+  Array.from(
+    { length: 400 },
+    (_, row) =>
+      `line ${row}${changed && row % 50 === 7 ? ' changed' : ''} ${'of words that reach far past the right edge of the window '.repeat(6)}end`,
+  ).join('\n');
+
+const views = {
+  commander: {
+    tab: 0,
+    rows: '.commander-pane:not(.inactive) .virtual-row',
+    vertical: '.commander-pane:not(.inactive) .virtual-rows',
+    horizontal: undefined,
+    marks: undefined,
+  },
+  viewer: {
+    tab: 1,
+    rows: '.viewer-row:not(.viewer-probe)',
+    vertical: '.viewer-body .scroll-proxy.vertical',
+    horizontal: '.viewer-sideways',
+    marks: '.viewer-body .scrollbar-marks',
+  },
+  editor: {
+    tab: 2,
+    rows: '.editor .cm-line',
+    vertical: '.editor .cm-scroller',
+    horizontal: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
+    marks: undefined,
+  },
+  diff: {
+    tab: 3,
+    rows: '.diff-view .virtual-row',
+    vertical: '.diff-view > .virtual-rows',
+    horizontal: '.diff-view .scroll-proxy.horizontal',
+    marks: '.diff-view > .scrollbar-marks',
+  },
+  'commit list': {
+    tab: 4,
+    rows: '.virtual-rows.list .virtual-row',
+    vertical: '.virtual-rows.list',
+    horizontal: undefined,
+    marks: undefined,
+  },
+} as const;
+
+type ViewName = keyof typeof views;
+
+const everyView: readonly ViewName[] = [
+  'commander',
+  'viewer',
+  'editor',
+  'diff',
+  'commit list',
+];
+
+const textViews: readonly ViewName[] = ['viewer', 'editor', 'diff'];
+
+const previews = {
+  Markdown: { tab: 5, vertical: '.viewer-preview' },
+  PDF: { tab: 6, vertical: '.viewer-pdf .pdf-scroll' },
+} as const;
+
+const near = (one = '', other = '') =>
+  one.length === 6 &&
+  other.length === 6 &&
+  [0, 2, 4].every(
+    (at) =>
+      Math.abs(
+        parseInt(one.slice(at, at + 2), 16) -
+          parseInt(other.slice(at, at + 2), 16),
+      ) <= 6,
+  );
+
+const middle = (box: Box) => ({
+  x: box.left + box.width / 2,
+  y: box.top + box.height / 2,
+});
+
+const alike = <T>(names: readonly string[], value: T) =>
+  Object.fromEntries(names.map((name) => [name, value]));
+
+const settingsWith = (smooth: boolean, wordWrap = false) => ({
+  scrolling: { smooth },
+  sizes: { scrollbar: `${size}px` },
+  text: { wordWrap },
+});
+
+const gutterOf = (name: ViewName) =>
+  name === 'editor'
+    ? '.editor .cm-gutters'
+    : name === 'diff'
+      ? '.diff-view .virtual-row .split-code'
+      : '.viewer-gutter';
+suite('App scrollbars alike', () => {
+  let app: ElectronApplication;
+  let page: Page;
+  let profile: string;
+
+  beforeAll(async () => {
+    const folder = tempFolder('scrollbars');
+    profile = path.join(folder, 'profile');
+    const opened = path.join(folder, 'opened');
+    fs.mkdirSync(profile, { recursive: true });
+    fs.mkdirSync(opened);
+    for (let index = 0; index < 400; index++) {
+      fs.writeFileSync(path.join(opened, `file-${index}.txt`), '');
+    }
+    const one = path.join(folder, 'one.txt');
+    const two = path.join(folder, 'two.txt');
+    fs.writeFileSync(one, lines(false));
+    fs.writeFileSync(two, lines(true));
+    const markdown = path.join(folder, 'long.md');
+    fs.writeFileSync(
+      markdown,
+      [
+        `    ${'code that reaches far past the right edge '.repeat(12)}`,
+        ...Array.from({ length: 200 }, (_, index) => `Paragraph ${index}.`),
+      ].join('\n\n'),
+    );
+    const pdf = path.join(folder, 'long.pdf');
+    fs.writeFileSync(
+      pdf,
+      pdfOf(Array.from({ length: 6 }, (_, index) => [`Page ${index}`])),
+    );
+    const repository = await tempRepository(path.join(folder, 'repository'));
+    for (let index = 0; index < 120; index++) {
+      await repository.git('commit', '--allow-empty', '-m', `step ${index}`);
+    }
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({
+        tabs: [
+          { id: '1', tool: 'commander', root: opened },
+          { id: '2', tool: 'viewer', root: one },
+          { id: '3', tool: 'editor', root: one },
+          { id: '4', tool: 'diff', compare: { old: one, new: two } },
+          { id: '5', tool: 'git', root: repository.root },
+          { id: '6', tool: 'viewer', root: markdown },
+          { id: '7', tool: 'viewer', root: pdf },
+        ],
+        activeTab: '1',
+      }),
+    );
+    fs.writeFileSync(
+      path.join(profile, 'settings.user.json'),
+      JSON.stringify(settingsWith(true)),
+    );
+    app = await launchApp(profile);
+    page = await app.firstWindow();
+  });
+
+  afterAll(async () => {
+    await closeOrKill(app);
+  });
+
+  const show = async (name: ViewName) => {
+    await page.locator('.tabs .tab').nth(views[name].tab).click();
+    await page.locator(views[name].rows).nth(5).waitFor();
+    await page.locator(views[name].vertical).first().waitFor();
+    await page.mouse.move(2, 2);
+  };
+
+  const inEvery = async <T>(
+    names: readonly ViewName[],
+    check: (name: ViewName) => Promise<T>,
+  ): Promise<Record<string, T>> => {
+    const found: Record<string, T> = {};
+    for (const name of names) {
+      await show(name);
+      found[name] = await check(name);
+    }
+    return found;
+  };
+
+  const bar = (name: ViewName, axis: Axis) => {
+    const selector = views[name][axis];
+    assert.ok(selector, `the ${name} has no ${axis} scrollbar`);
+    return barOf(page, selector, axis);
+  };
+
+  const firstRow = async (name: ViewName) => {
+    const { box } = await bar(name, 'vertical');
+    return page.locator(views[name].rows).evaluateAll(
+      (rows, from) =>
+        rows
+          .map((row) => ({
+            text: (row.textContent ?? '').slice(0, 24),
+            top: Math.round(row.getBoundingClientRect().top - from),
+          }))
+          .filter(({ top }) => top >= 0)
+          .toSorted((one, other) => one.top - other.top)[0],
+      Math.round(box.top) - 1,
+    );
+  };
+
+  const movedFrom = async (name: ViewName, text: string) => {
+    let now = text;
+    await waitFor(async () => {
+      now = (await firstRow(name))?.text ?? text;
+      return now !== text;
+    }, `the ${name} to move on`);
+    return now;
+  };
+
+  const insideLines = (selector: string) =>
+    page
+      .locator(selector)
+      .first()
+      .evaluate((scroller) => {
+        const column = scroller.closest('.column');
+        if (column === null) {
+          throw new Error('What scrolls stands in no column');
+        }
+        const line = parseFloat(
+          getComputedStyle(column).getPropertyValue('--column-line'),
+        );
+        const { right, bottom } = column.getBoundingClientRect();
+        return { right: right - line, bottom: bottom - line };
+      });
+
+  const keptInside = async (vertical: string, horizontal?: string) => {
+    const frame = await insideLines(vertical);
+    const down = (await barOf(page, vertical, 'vertical')).box;
+    const across =
+      horizontal === undefined
+        ? undefined
+        : (await barOf(page, horizontal, 'horizontal')).box;
+    const within = (box: Box) =>
+      box.left + box.width <= frame.right + 0.01 &&
+      box.top + box.height <= frame.bottom + 0.01;
+    return {
+      wide: Math.round(down.width * 100) / 100,
+      beside: Math.round((frame.right - down.left - down.width) * 100) / 100,
+      within: within(down) && (across === undefined || within(across)),
+    };
+  };
+
+  const rested = (name: ViewName) =>
+    untilSettled(() => firstRow(name), `the ${name} to rest`);
+
+  test('gives every view a scrollbar of the browser that takes a strip of its own beside what it scrolls, as wide as the settings say, shown whether pointed at or not, drawn alike in every view, a button at either end with its arrow, the track and the thumb, the page knowing each part where the browser draws it', async () => {
+    const seen = await inEvery(everyView, async (name) => {
+      const { box } = await bar(name, 'vertical');
+      const parts = await barParts(page, box, 'vertical');
+      assert.ok(parts.thumb, `the ${name} shows no thumb`);
+      await page.mouse.move(2, 2);
+      const track = {
+        x: box.left + box.width / 2,
+        y: parts.thumb.top + parts.thumb.height + 8,
+      };
+      const [arrowUp, arrowDown, thumb, plain, beside] = await paintedAt(
+        app,
+        page,
+        [
+          middle(parts.start),
+          middle(parts.end),
+          middle(parts.thumb),
+          track,
+          { x: box.left - 6, y: track.y },
+        ],
+      );
+      return {
+        wide: box.width,
+        buttons: [parts.start.height, parts.end.height],
+        look: [arrowUp, arrowDown, thumb, plain],
+        apart:
+          !near(arrowUp, plain) && !near(thumb, plain) && !near(plain, beside),
+      };
+    });
+    const first = seen.commander;
+    assert.ok(first);
+    assert.deepStrictEqual(
+      Object.fromEntries(
+        Object.entries(seen).map(([name, { look, ...rest }]) => [
+          name,
+          {
+            ...rest,
+            alike: look.every((color, part) => near(color, first.look[part])),
+            sameArrows: near(look[0], look[1]),
+          },
+        ]),
+      ),
+      alike(everyView, {
+        wide: size,
+        buttons: [size, size],
+        apart: true,
+        alike: true,
+        sameArrows: true,
+      }),
+      JSON.stringify(seen),
+    );
+  });
+
+  test('moves every view a row on a press of a button of its scrollbar, on and on while it is held, up again on the other, and to where its track is pressed, the thumb centered there, gliding or not as the settings say', async () => {
+    for (const smooth of [true, false]) {
+      await writeSettings(page, profile, settingsWith(smooth));
+      const seen = await inEvery(everyView, async (name) => {
+        const { box } = await bar(name, 'vertical');
+        const parts = await barParts(page, box, 'vertical');
+        const from = await rested(name);
+        await page.mouse.click(middle(parts.end).x, middle(parts.end).y);
+        const stepped = await rested(name);
+        await page.mouse.move(middle(parts.end).x, middle(parts.end).y);
+        await page.mouse.down();
+        const once = await movedFrom(name, stepped.text);
+        await movedFrom(name, once);
+        await page.mouse.up();
+        const held = await rested(name);
+        await page.mouse.click(middle(parts.start).x, middle(parts.start).y);
+        const back = await rested(name);
+        const before = (await barParts(page, box, 'vertical')).thumb;
+        assert.ok(before, `the ${name} has no thumb`);
+        const pressed =
+          box.top + box.height * (middle(before).y > middle(box).y ? 0.3 : 0.7);
+        await page.mouse.click(middle(box).x, pressed);
+        await rested(name);
+        const jumped = (await barParts(page, box, 'vertical')).thumb;
+        assert.ok(jumped, `the ${name} lost its thumb`);
+        return {
+          stepped: stepped.text !== from.text,
+          whole: stepped.top === from.top,
+          held: held.text !== stepped.text,
+          back: back.text !== held.text,
+          centered:
+            Math.abs(jumped.top + jumped.height / 2 - pressed) <=
+            jumped.height / 5 + 2,
+        };
+      });
+      assert.deepStrictEqual(
+        seen,
+        alike(everyView, {
+          stepped: true,
+          whole: true,
+          held: true,
+          back: true,
+          centered: true,
+        }),
+        `gliding ${smooth}: ${JSON.stringify(seen)}`,
+      );
+    }
+  });
+
+  test('gives the text of the viewer, the editor and the diff a scrollbar below it too while it is not wrapped, alike, the one beside it ending above it, the square between them left empty, and none once the text is wrapped', async () => {
+    await writeSettings(page, profile, settingsWith(true));
+    const unwrapped = await inEvery(textViews, async (name) => {
+      const down = (await bar(name, 'vertical')).box;
+      const across = (await bar(name, 'horizontal')).box;
+      const parts = await barParts(page, across, 'horizontal');
+      assert.ok(parts.thumb, `the ${name} shows no thumb below`);
+      await page.mouse.move(2, 2);
+      const [corner, plain, thumb] = await paintedAt(app, page, [
+        { x: middle(down).x, y: middle(across).y },
+        { x: parts.thumb.left + parts.thumb.width + 8, y: middle(across).y },
+        middle(parts.thumb),
+      ]);
+      const before = await page
+        .locator(views[name].rows)
+        .nth(3)
+        .evaluate((row) => row.textContent);
+      await page.mouse.click(middle(parts.end).x, middle(parts.end).y);
+      await rested(name);
+      const moved = (await barParts(page, across, 'horizontal')).thumb;
+      return {
+        tall: across.height,
+        meets: Math.abs(down.top + down.height - across.top) < 1,
+        empty: !near(corner, plain) && !near(corner, thumb),
+        steps: (moved?.left ?? 0) > parts.thumb.left,
+        text: before !== null,
+      };
+    });
+    assert.deepStrictEqual(
+      unwrapped,
+      alike(textViews, {
+        tall: size,
+        meets: true,
+        empty: true,
+        steps: true,
+        text: true,
+      }),
+    );
+    await writeSettings(page, profile, settingsWith(true, true));
+    const wrapped = await inEvery(textViews, async (name) => {
+      const selector = views[name].horizontal;
+      assert.ok(selector);
+      return (
+        !(await page.locator(selector).first().isVisible()) ||
+        (await barOf(page, selector, 'horizontal')).box.height < 1
+      );
+    });
+    assert.deepStrictEqual(wrapped, alike(textViews, true));
+  });
+
+  test('marks what changed in a diff and what a find matched on the track of the scrollbar itself, between its buttons, where the thumb comes to stand at them, in the diff and in the file viewed alike, as a strip of its own beside the scrollbar stood off its track and took the room of the text', async () => {
+    const marked = async (name: ViewName, marks: string) => {
+      const { box } = await bar(name, 'vertical');
+      const parts = await barParts(page, box, 'vertical');
+      await page.mouse.move(2, 2);
+      await page.locator(marks).first().waitFor({ state: 'attached' });
+      const boxes = await page.locator(marks).evaluateAll((each) =>
+        each.map((mark) => {
+          const { left, right, top, bottom } = mark.getBoundingClientRect();
+          return { left, right, top, bottom };
+        }),
+      );
+      return (
+        boxes.length > 0 &&
+        boxes.every(
+          (mark) =>
+            mark.left >= box.left - 0.5 &&
+            mark.right <= box.left + box.width + 0.5 &&
+            mark.top >= parts.start.top + parts.start.height - 0.5 &&
+            mark.bottom <= parts.end.top + 0.5,
+        )
+      );
+    };
+    const found = async (name: ViewName, focused: string, text: string) => {
+      await show(name);
+      await page.locator(focused).first().focus();
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.keyboard.type(text);
+      const ticked = await marked(
+        name,
+        `${views[name].marks} .scrollbar-mark.match`,
+      );
+      await page.keyboard.press('Escape');
+      return ticked;
+    };
+    await show('diff');
+    assert.deepStrictEqual(
+      {
+        changes: await marked(
+          'diff',
+          '.diff-view > .scrollbar-marks .scrollbar-mark.added',
+        ),
+        minimaps: await page.locator('.diff-minimap').count(),
+        diff: await found('diff', '.diff-view > .virtual-rows', 'changed'),
+        viewer: await found('viewer', '.viewer-body', 'line 20'),
+      },
+      { changes: true, minimaps: 0, diff: true, viewer: true },
+    );
+  });
+
+  test('starts the scrollbar below the text of the viewer, the editor and the diff where the text starts, after the line numbers, which scroll nowhere sideways, so its thumb stands under the columns it shows', async () => {
+    await writeSettings(page, profile, settingsWith(true));
+    const seen = await inEvery(textViews, async (name) => {
+      const across = (await bar(name, 'horizontal')).box;
+      const gutter = await page
+        .locator(gutterOf(name))
+        .first()
+        .evaluate((element, code) => {
+          const { left, right } = element.getBoundingClientRect();
+          return code ? left : right;
+        }, name === 'diff');
+      return across.left >= gutter - 1 && across.left <= gutter + 12;
+    });
+    assert.deepStrictEqual(seen, alike(textViews, true));
+  });
+
+  test('rounds the ends of a scrollbar with the corners of what it stands in, a menu at both ends, the window of the shortcuts and the card of a list at their bottom, as the browser draws its scrollbars square over a rounded corner', async () => {
+    const rounded = async (
+      selector: string,
+      ends: readonly ('top' | 'bottom')[],
+    ) => {
+      const { box } = await barOf(page, selector, 'vertical');
+      const points = ends.flatMap((end) => {
+        const y = end === 'top' ? box.top + 0.5 : box.top + box.height - 1;
+        return [
+          { x: box.left + box.width - 1, y },
+          { x: box.left + box.width / 2, y },
+        ];
+      });
+      const colors = await paintedAt(app, page, points);
+      return ends.every(
+        (_, end) => !near(colors[end * 2], colors[end * 2 + 1]),
+      );
+    };
+    await show('commander');
+    const card = await rounded(views.commander.vertical, ['bottom']);
+    await page.keyboard.press('F1');
+    await page.locator('.shortcuts-pane').waitFor();
+    const shortcuts = await rounded('.shortcuts-pane', ['bottom']);
+    await page.keyboard.press('F1');
+    await page.locator('.shortcuts-pane').waitFor({ state: 'detached' });
+    await show('viewer');
+    await page.locator('.viewer-body').first().focus();
+    await page.keyboard.press('L');
+    await page.locator('.menu.filtered-menu').waitFor();
+    const menu = await rounded('.menu.filtered-menu', ['top', 'bottom']);
+    await page.keyboard.press('Escape');
+    assert.deepStrictEqual(
+      { card, menu, shortcuts },
+      { card: true, menu: true, shortcuts: true },
+    );
+  });
+
+  test('keeps every scrollbar inside the lines its column draws around it, the one beside what it scrolls against the line on the right, in the lists, the text and the previews of Markdown and of a PDF alike, as the scrollbar of a preview ran under the lines of its column, two pixels of it hidden on the right and below', async () => {
+    const seen = await inEvery(everyView, (name) =>
+      keptInside(views[name].vertical, views[name].horizontal),
+    );
+    for (const [name, { tab, vertical }] of Object.entries(previews)) {
+      await page.locator('.tabs .tab').nth(tab).click();
+      await waitFor(
+        () =>
+          page
+            .locator(vertical)
+            .evaluate(
+              (scroller) => scroller.scrollHeight > scroller.clientHeight,
+            )
+            .catch(() => false),
+        `the preview of ${name} to outgrow its column`,
+      );
+      seen[name] = await keptInside(vertical);
+    }
+    assert.deepStrictEqual(
+      seen,
+      alike([...everyView, 'Markdown', 'PDF'], {
+        wide: size,
+        beside: 0,
+        within: true,
+      }),
+      JSON.stringify(seen),
+    );
+  });
+
+  test('rounds the end of the scrollbar of a preview of Markdown with the corner of its column, and leaves the ends of the scrollbar of a block of code inside it square, as what scrolls inside a rounded scrollbar took its rounding over', async () => {
+    await page.locator('.tabs .tab').nth(previews.Markdown.tab).click();
+    const code = page.locator('.viewer .markdown pre').first();
+    await code.waitFor();
+    const rounded = (selector: string) =>
+      page
+        .locator(selector)
+        .first()
+        .evaluate((scroller) => ({
+          scrolls:
+            scroller.scrollWidth > scroller.clientWidth ||
+            scroller.scrollHeight > scroller.clientHeight,
+          round: parseFloat(
+            getComputedStyle(scroller).getPropertyValue(
+              '--scrollbar-round-end',
+            ),
+          ),
+        }));
+    const preview = await rounded(previews.Markdown.vertical);
+    assert.deepStrictEqual(
+      {
+        preview: { ...preview, round: preview.round > 0 },
+        code: await rounded('.viewer .markdown pre'),
+      },
+      {
+        preview: { scrolls: true, round: true },
+        code: { scrolls: true, round: 0 },
+      },
+    );
+  });
+});

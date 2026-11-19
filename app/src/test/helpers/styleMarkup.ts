@@ -3,7 +3,7 @@ import type {
   WorktreeInfo,
 } from '../../tools/git/shared/protocol';
 import { createElement } from 'react';
-import { overlayScrollbarClass } from '../../lib/page/overlayScrollbars';
+import { scrollbarCoverClass } from '../../lib/page/scrollbars';
 import {
   allWithClass,
   rendered,
@@ -62,10 +62,10 @@ export function popupOf(popup: React.ReactElement): MarkupElement {
   return withClass(rendered(popup), 'shortcuts-popup');
 }
 
-export function overlayScrollbar(classes = ''): MarkupElement {
+export function scrollbarCover(classes = ''): MarkupElement {
   return rendered(
     createElement('div', {
-      className: `${overlayScrollbarClass} vertical ${classes}`,
+      className: `${scrollbarCoverClass} vertical ${classes}`,
     }),
   );
 }

@@ -33,7 +33,6 @@ export interface Settings {
   };
   readonly sizes: {
     readonly scrollbar: string;
-    readonly minimap: string;
   };
   readonly colors: ThemeColors;
 }

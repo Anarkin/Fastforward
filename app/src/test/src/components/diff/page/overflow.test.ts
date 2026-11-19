@@ -35,7 +35,7 @@ const drawnWidths: TextWidths = {
 
 suite('Overflow', () => {
   test('dots the spaces of an unwrapped line only in the columns in sight and two stretches of 128 columns either side, as a line of thousands of characters took the browser longer to dot whole than to show, and keeps those very columns until the ones in sight come within 64 of their end, so scrolling sideways draws the dots anew some 200 columns apart, each new set taking some 30 ms to draw for the rows in view, rather than twice every 128', () => {
-    const view = { scrolled: 720, width: 800, room: 5000, minimap: 40 };
+    const view = { scrolled: 720, width: 800, room: 5000 };
     const first = dottedColumns(view, 8);
     assert.deepStrictEqual(first, [-256, 512]);
     assert.strictEqual(
@@ -162,15 +162,15 @@ suite('Overflow', () => {
       hiddenChanges(text, [word], { first: 0, last: 150 }, drawnWidths),
       { left: undefined, right: word },
     );
-    const view = { scrolled: 0, width: 600, room: 3000, minimap: 40 };
-    const area = sideArea(view, true);
+    const view = { scrolled: 0, width: 600, room: 3000 };
+    const area = sideArea(view);
     assert.strictEqual(
       revealChange(view, area, text, word, drawnWidths),
-      6 + 211 * 8 + 16 - 280,
+      6 + 211 * 8 + 16 - 300,
     );
     assert.strictEqual(
       revealFound(view, area, text, word, drawnWidths),
-      6 + 211 * 8 + 16 - 280,
+      6 + 211 * 8 + 16 - 300,
     );
   });
 
@@ -197,14 +197,14 @@ suite('Overflow', () => {
     assert.strictEqual(revealScroll(1150, 1160, 200, 1000), 1000);
   });
 
-  test('leaves as much room to scroll sideways as the widest line of the whole diff reaches past the text shown, with its padding on either side and the minimap, whatever rows are drawn, so scrolling down to shorter lines moves nothing sideways, and none while every line fits', () => {
+  test('leaves as much room to scroll sideways as the widest line of the whole diff reaches past the text shown, with its padding on either side, whatever rows are drawn, so scrolling down to shorter lines moves nothing sideways, and none while every line fits', () => {
     assert.deepStrictEqual(
       [
-        sidewaysRoom(200, 7.5, 600, 40),
-        sidewaysRoom(13, 7.5, 600, 40),
-        sidewaysRoom(100, 7.2, 600, 40),
+        sidewaysRoom(200, 7.5, 600),
+        sidewaysRoom(13, 7.5, 600),
+        sidewaysRoom(100, 7.2, 600),
       ],
-      [2 * 6 + 1500 + 40 - 600, 0, 2 * 6 + 720 + 40 - 600],
+      [2 * 6 + 1500 - 600, 0, 2 * 6 + 720 - 600],
     );
   });
 
@@ -219,60 +219,57 @@ suite('Overflow', () => {
   });
 
   test('hides nothing past an edge there is no more to scroll to', () => {
-    const start = { scrolled: 0, width: 600, room: 900, minimap: 40 };
+    const start = { scrolled: 0, width: 600, room: 900 };
     assert.strictEqual(
-      areaColumns(start, sideArea(start, false), 10)?.first,
+      areaColumns(start, sideArea(start), 10)?.first,
       -Infinity,
     );
     const end = { ...start, scrolled: 900 };
-    assert.strictEqual(
-      areaColumns(end, sideArea(end, false), 10)?.last,
-      Infinity,
-    );
+    assert.strictEqual(areaColumns(end, sideArea(end), 10)?.last, Infinity);
   });
 
-  test('leaves out the line numbers, the padding, the minimap and room for a marker on each edge', () => {
-    const view = { scrolled: 200, width: 600, room: 900, minimap: 40 };
-    assert.deepStrictEqual(sideArea(view, false), { origin: 6, visible: 600 });
-    assert.deepStrictEqual(sideArea(view, true), { origin: 6, visible: 560 });
-    assert.deepStrictEqual(areaColumns(view, sideArea(view, false), 10), {
+  test('leaves out the line numbers, the padding and room for a marker on each edge', () => {
+    const view = { scrolled: 200, width: 600, room: 900 };
+    assert.deepStrictEqual(sideArea(view), { origin: 6, visible: 600 });
+    assert.deepStrictEqual(areaColumns(view, sideArea(view), 10), {
       first: 21.2,
       last: 77.6,
     });
   });
 
   test('scrolls a hidden change into the middle of the text it is in', () => {
-    const view = { scrolled: 0, width: 600, room: 900, minimap: 40 };
+    const view = { scrolled: 0, width: 600, room: 900 };
     assert.strictEqual(
       revealChange(
         view,
-        sideArea(view, true),
+        sideArea(view),
         'a'.repeat(100),
         { start: 80, end: 84 },
         monospace(10),
       ),
-      6 + 820 - 280,
+      6 + 820 - 300,
     );
   });
 
-  test('scrolls a found match into the middle of the text it is in only when some of it is hidden, the minimap counting as hiding it', () => {
-    const view = { scrolled: 0, width: 600, room: 3000, minimap: 40 };
+  test('scrolls a found match into the middle of the text it is in only when some of it is hidden', () => {
+    const view = { scrolled: 0, width: 600, room: 3000 };
     const text = 'a'.repeat(400);
     const reveal = (scrolled: number, start: number, end: number) => {
       const shown = { ...view, scrolled };
       return revealFound(
         shown,
-        sideArea(shown, true),
+        sideArea(shown),
         text,
         { start, end },
         monospace(8),
       );
     };
-    assert.strictEqual(reveal(0, 300, 304), 6 + 2416 - 280);
+    assert.strictEqual(reveal(0, 300, 304), 6 + 2416 - 300);
     assert.strictEqual(reveal(2000, 0, 4), 0);
     assert.strictEqual(reveal(0, 10, 14), 0);
     assert.strictEqual(reveal(50, 10, 14), 50);
-    assert.strictEqual(reveal(0, 69, 73), 6 + 568 - 280);
+    assert.strictEqual(reveal(0, 69, 73), 0);
+    assert.strictEqual(reveal(0, 73, 77), 6 + 600 - 300);
   });
 });
 

@@ -23,16 +23,16 @@ const monospace: TextWidths = {
 
 suite('Diff sideways scrolling', () => {
   test('scrolls sideways to a found match hidden past an edge of the side it is on', () => {
-    const view = { scrolled: 0, width: 600, room: 3000, minimap: 40 };
+    const view = { scrolled: 0, width: 600, room: 3000 };
     const inline: DiffRow = { kind: 'line', file: 0, line: longLine('added') };
-    assert.strictEqual(foundScroll(inline, foundOn(3), view, monospace), 2142);
+    assert.strictEqual(foundScroll(inline, foundOn(3), view, monospace), 2122);
     const whole: DiffRow = {
       kind: 'wholeLine',
       file: 0,
       number: 4,
       text: 'a'.repeat(400),
     };
-    assert.strictEqual(foundScroll(whole, foundOn(3), view, monospace), 2142);
+    assert.strictEqual(foundScroll(whole, foundOn(3), view, monospace), 2122);
     const changed: DiffRow = {
       kind: 'split',
       file: 0,
@@ -40,7 +40,7 @@ suite('Diff sideways scrolling', () => {
       right: { index: 3, line: longLine('added') },
     };
     assert.strictEqual(foundScroll(changed, foundOn(2), view, monospace), 2122);
-    assert.strictEqual(foundScroll(changed, foundOn(3), view, monospace), 2142);
+    assert.strictEqual(foundScroll(changed, foundOn(3), view, monospace), 2122);
     const cell = { index: 3, line: longLine('context') };
     const context: DiffRow = {
       kind: 'split',
@@ -48,7 +48,7 @@ suite('Diff sideways scrolling', () => {
       left: cell,
       right: cell,
     };
-    assert.strictEqual(foundScroll(context, foundOn(3), view, monospace), 2142);
+    assert.strictEqual(foundScroll(context, foundOn(3), view, monospace), 2122);
     assert.strictEqual(
       foundScroll(
         inline,

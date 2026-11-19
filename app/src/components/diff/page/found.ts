@@ -12,21 +12,14 @@ export function foundScroll(
 ): number | undefined {
   switch (row.kind) {
     case 'line':
-      return revealFound(
-        view,
-        sideArea(view, true),
-        row.line.text,
-        found,
-        widths,
-      );
+      return revealFound(view, sideArea(view), row.line.text, found, widths);
     case 'wholeLine':
-      return revealFound(view, sideArea(view, true), row.text, found, widths);
+      return revealFound(view, sideArea(view), row.text, found, widths);
     case 'split': {
       const right = row.right?.index === found.line;
       const cell = right ? row.right : row.left;
       return (
-        cell &&
-        revealFound(view, sideArea(view, right), cell.line.text, found, widths)
+        cell && revealFound(view, sideArea(view), cell.line.text, found, widths)
       );
     }
     default:

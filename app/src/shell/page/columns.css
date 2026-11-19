@@ -120,7 +120,15 @@ body.resizing {
   border-radius: 0 0 var(--card-radius) var(--card-radius);
 }
 
+.column-body {
+  --line-right: var(--column-line, 0px);
+  --line-below: var(--column-line, 0px);
+  --corner-round: calc(var(--card-radius) - var(--column-line, 0px));
+}
+
 .column-body:has(+ .column-status) {
+  --line-below: 0px;
+  --corner-round: 0px;
   border-radius: 0;
 }
 

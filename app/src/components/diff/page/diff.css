@@ -5,9 +5,48 @@
   );
   --diff-advance: round(1ch, var(--device-pixel, 1px));
   --text-advance: var(--diff-advance);
-  --wrap-cover: var(--minimap-width);
   position: relative;
   height: 100%;
+}
+
+.diff-view {
+  --diff-bar-below: var(--line-below, 0px);
+}
+
+.diff-view:not(.wrap) {
+  --diff-bar-below: calc(var(--line-below, 0px) + var(--scrollbar-size));
+}
+
+.diff-view:not(.wrap) > .virtual-rows {
+  --scrollbar-round-end: 0px;
+  height: calc(100% - var(--diff-bar-below));
+}
+
+.diff-view > .scroll-proxy-frame {
+  left: calc(2 * var(--diff-number-width));
+  right: calc(var(--line-right, 0px) + var(--scrollbar-size));
+  bottom: var(--line-below, 0px);
+}
+
+.diff-view.side-by-side > .scroll-proxy-frame {
+  left: var(--diff-number-width);
+  right: calc(50% + (var(--line-right, 0px) + var(--scrollbar-size)) / 2);
+}
+
+.diff-view.side-by-side > .scroll-proxy-frame ~ .scroll-proxy-frame {
+  left: calc(
+    50% - (var(--line-right, 0px) + var(--scrollbar-size)) / 2 +
+      var(--diff-number-width)
+  );
+  right: calc(var(--line-right, 0px) + var(--scrollbar-size));
+}
+
+.diff-view > .scrollbar-marks {
+  top: var(--scrollbar-size);
+  right: var(--line-right, 0px);
+  bottom: calc(var(--diff-bar-below) + var(--scrollbar-size));
+  z-index: 6;
+  width: var(--scrollbar-size);
 }
 
 .virtual-row.diff-row {
@@ -251,7 +290,7 @@
 
 .diff-view:not(.wrap) .diff-line:not(.split-side) .code,
 .diff-view:not(.wrap) .split-side:last-child .code {
-  padding-right: calc(var(--diff-code-padding) + var(--minimap-width));
+  padding-right: var(--diff-code-padding);
 }
 
 .diff-view.wrap .split-code .code {

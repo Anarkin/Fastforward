@@ -287,7 +287,7 @@ export const strings = {
     submenu: 'Open a submenu, or go back from it',
     result: 'Move in the search results',
     go: 'Go to the search result',
-    drag: 'Drag a scrollbar or the minimap',
+    drag: 'Drag a scrollbar',
     copySelection: 'Copy the selection',
     paste: 'Paste',
     leftToApp: 'Go to the app rather than the shell',

@@ -15,9 +15,10 @@ import {
 import {
   diffView,
   worktree,
-  overlayScrollbar,
   popupOf,
+  scrollbarCover,
 } from '../../../helpers/styleMarkup';
+import { stylesheet } from '../../../helpers/pageSources';
 import {
   activeEdge,
   looks,
@@ -46,7 +47,6 @@ import {
 import {
   DiffRow,
   DiffViewShown,
-  MinimapShown,
   DiffFindShown,
   FileHeaderRow,
 } from '../../../helpers/styleDiffFixtures';
@@ -165,7 +165,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws the scrollbars and the minimap viewport in the one scrollbar color, as see-through as the theme says at rest, hovered and dragged', () => {
+  test('draws every scrollbar by one set of rules for the scrollbars of the browser, as wide as the scrollbar size, so no part of the app can draw its own another way: a track in the border color with a button at either end, a thumb as see-through as the theme says at rest, hovered and held, never shorter than 24 pixels, an arrow on each button drawn from the color of the theme, dimmer where there is nothing to scroll to, the ends rounded where what it scrolls says so, which what scrolls inside it never takes over from it, none of them next to the square between two scrollbars, which is left empty', () => {
     for (const [name, state] of [
       ['scrollbar-background', 'rest'],
       ['scrollbar-hover-background', 'hover'],
@@ -177,34 +177,52 @@ suite('Style', () => {
         name,
       );
     }
-    const resting = { background: 'var(--scrollbar-background) padding-box' };
-    const hover = { 'background-color': 'var(--scrollbar-hover-background)' };
-    const drag = { 'background-color': 'var(--scrollbar-active-background)' };
-    looks(overlayScrollbar('shown'), resting);
-    looks(overlayScrollbar('shown'), hover, hovered);
-    looks(overlayScrollbar('shown dragging'), drag);
-    const minimap = rendered(<MinimapShown />);
-    const viewport = withClass(minimap, 'minimap-viewport');
-    looks(viewport, resting);
-    looks(viewport, hover, { hover: minimap });
-    looks(
-      withClass(
-        rendered(
-          <div className="diff-minimap shown dragging">
-            <div className="minimap-viewport" />
-          </div>,
-        ),
-        'minimap-viewport',
-      ),
-      drag,
+    assert.strictEqual(
+      bodyVariable('scrollbar-track-background'),
+      'var(--color-border)',
     );
+    const rules = stylesheet().replace(/\s+/g, ' ');
+    for (const rule of [
+      '::-webkit-scrollbar { width: var(--scrollbar-size); height: var(--scrollbar-size); background: var(--scrollbar-track-background); }',
+      "@property --scrollbar-round-start { syntax: '<length>'; inherits: false; initial-value: 0px; }",
+      "@property --scrollbar-round-end { syntax: '<length>'; inherits: false; initial-value: 0px; }",
+      '::-webkit-scrollbar, ::-webkit-scrollbar-button { --scrollbar-round-start: inherit; --scrollbar-round-end: inherit; }',
+      '::-webkit-scrollbar:vertical { border-radius: 0 var(--scrollbar-round-start, 0px) var(--scrollbar-round-end, 0px) 0; }',
+      '::-webkit-scrollbar:horizontal { border-radius: 0 0 var(--scrollbar-round-end, 0px) var(--scrollbar-round-start, 0px); }',
+      '::-webkit-scrollbar:vertical:corner-present, ::-webkit-scrollbar:horizontal:corner-present, ::-webkit-scrollbar-button:single-button:vertical:increment:corner-present, ::-webkit-scrollbar-button:single-button:horizontal:increment:corner-present { border-bottom-right-radius: 0; }',
+      '::-webkit-scrollbar-corner { background: none; }',
+      '::-webkit-scrollbar-thumb { min-width: 24px; min-height: 24px; background: var(--scrollbar-background); }',
+      '::-webkit-scrollbar-button { display: none; }',
+      '::-webkit-scrollbar-button:single-button:disabled { --scrollbar-arrow-color: var(--scrollbar-button-hover-background); }',
+      "[data-scrollbar-hover='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-hover='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-hover-background); }",
+      "[data-scrollbar-held='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-held='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-active-background); }",
+    ]) {
+      assert.ok(rules.includes(rule), rule);
+    }
+    assert.match(
+      rules,
+      /::-webkit-scrollbar-button:single-button \{ display: block; width: var\(--scrollbar-size\); height: var\(--scrollbar-size\);/,
+    );
+    assert.strictEqual(rules.match(/::-webkit-scrollbar \{/g)?.length, 1);
+    assert.strictEqual(
+      rules.match(/var\(--scrollbar-arrow-color\) 90deg/g)?.length,
+      4,
+    );
+    for (const held of ['hover', 'held']) {
+      assert.match(
+        rules,
+        new RegExp(
+          `\\[data-scrollbar-${held}='horizontal-end'\\]::-webkit-scrollbar-button:horizontal:increment \\{ --scrollbar-arrow-color: var\\(--scrollbar-${held === 'hover' ? 'hover' : 'active'}-background\\); background-color: var\\(--scrollbar-button-${held}-background\\); \\}`,
+        ),
+        held,
+      );
+    }
   });
 
-  test('draws a thumb across the whole of its box, as wide as the scrollbar size, with no border keeping it off the edges it runs along', () => {
-    looks(overlayScrollbar('shown'), { border: undefined });
-    looks(withClass(rendered(<MinimapShown />), 'minimap-viewport'), {
-      border: undefined,
-    });
+  test('takes the presses on a scrollbar with a cover the page lays over it, seen by nothing, shown only over the scrollbar the pointer is at', () => {
+    looks(scrollbarCover(), { position: 'fixed', display: 'none' });
+    looks(scrollbarCover('shown'), { display: 'block' });
+    looks(scrollbarCover('shown'), { background: undefined });
   });
 
   test('tints a selected row and the active search result alike, with the focus color', () => {

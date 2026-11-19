@@ -7,7 +7,7 @@ import { App } from './App';
 import { ErrorBoundary } from './errorBoundary';
 import { windowButtonColor } from './windowButtons';
 import { errorText } from '../../lib/page/errors';
-import { installOverlayScrollbars } from '../../lib/page/overlayScrollbars';
+import { installScrollbars } from '../../lib/page/scrollbars';
 import { watchDevicePixels } from '../../lib/page/devicePixels';
 import { installTextCursors } from './textCursor';
 import { installTextHeights } from './textHeights';
@@ -53,7 +53,7 @@ window.addEventListener('unhandledrejection', (event) =>
   post({ type: 'log', level: 'error', message: errorText(event.reason) }),
 );
 
-installOverlayScrollbars();
+installScrollbars();
 watchDevicePixels(() => undefined);
 installTextHeights();
 installTextCursors();

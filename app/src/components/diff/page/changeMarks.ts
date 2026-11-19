@@ -1,26 +1,25 @@
-export interface MinimapMark {
+export interface ChangeMark {
   readonly kind: 'added' | 'removed' | 'match';
   readonly top: number;
   readonly height: number;
 }
 
-export interface MinimapRow {
+export interface MarkedRow {
   readonly height: number;
   readonly change: 'added' | 'removed' | undefined;
 }
 
 function runMarks(
-  rows: readonly MinimapRow[],
-  kindOf: (row: MinimapRow, index: number) => MinimapMark['kind'] | undefined,
-): MinimapMark[] {
+  rows: readonly MarkedRow[],
+  kindOf: (row: MarkedRow, index: number) => ChangeMark['kind'] | undefined,
+): ChangeMark[] {
   const total = rows.reduce((sum, row) => sum + row.height, 0);
   if (total === 0) {
     return [];
   }
-  const marks: MinimapMark[] = [];
+  const marks: ChangeMark[] = [];
   let offset = 0;
-  let run:
-    { kind: MinimapMark['kind']; start: number; end: number } | undefined;
+  let run: { kind: ChangeMark['kind']; start: number; end: number } | undefined;
   const close = () => {
     if (run) {
       marks.push({
@@ -46,13 +45,17 @@ function runMarks(
   return marks;
 }
 
-export function minimapMarks(rows: readonly MinimapRow[]): MinimapMark[] {
+export function changedMarks(rows: readonly MarkedRow[]): ChangeMark[] {
   return runMarks(rows, (row) => row.change);
 }
 
 export function matchMarks(
-  rows: readonly MinimapRow[],
+  rows: readonly MarkedRow[],
   found: ReadonlySet<number>,
-): MinimapMark[] {
+): ChangeMark[] {
   return runMarks(rows, (_, index) => (found.has(index) ? 'match' : undefined));
+}
+
+export function marksScale(total: number, viewport: number): number {
+  return total > 0 && total < viewport ? total / viewport : 1;
 }

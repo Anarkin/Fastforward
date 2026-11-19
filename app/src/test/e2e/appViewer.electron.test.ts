@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { clippedCorner } from './scrollProbes';
+import { barOf, barParts } from './scrollbarsShown';
 import { untilSettled, waitForFocus } from './waits';
 import {
   opened,
@@ -14,13 +14,48 @@ import {
   right,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { firstViewerRow, viewerThumb } from './viewerAppFixtures';
+import { firstViewerRow } from './viewerAppFixtures';
 
 const firstRowText = () =>
   page.locator('.viewer-rows .viewer-row').first().textContent();
 
 const nextFrame = () =>
   page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+
+const viewerBar = '.viewer-body .scroll-proxy.vertical';
+
+const viewerThumb = async () => {
+  const { box } = await barOf(page, viewerBar, 'vertical');
+  const { start, end, thumb } = await barParts(page, box, 'vertical');
+  assert.ok(thumb, 'the scrollbar of the file viewed has no thumb');
+  return {
+    top: thumb.top,
+    height: thumb.height,
+    fromEnd: end.top - thumb.top - thumb.height,
+    track: end.top - start.top - start.height,
+  };
+};
+
+const thumbHeld = () =>
+  page.evaluate(() => {
+    const thumb = document.querySelector<HTMLElement>(
+      '.scrollbar-cover.vertical.shown .scrollbar-thumb',
+    );
+    if (thumb === null || thumb.hidden) {
+      return undefined;
+    }
+    const { top, height } = thumb.getBoundingClientRect();
+    return { top, height };
+  });
+
+const insideLines = () =>
+  page.locator('.viewer').evaluate((viewer) => {
+    const line = parseFloat(
+      getComputedStyle(viewer).getPropertyValue('--column-line'),
+    );
+    const edge = viewer.getBoundingClientRect();
+    return { right: edge.right - line, bottom: edge.bottom - line };
+  });
 
 const placesOf = () =>
   page.locator('.viewer').evaluate((viewer) => {
@@ -139,7 +174,7 @@ suite('App commander', () => {
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
   });
 
-  test('runs the thumb of a Markdown preview all the way down to the line its column draws, rounding its corner as the column rounds its own, though the body of the preview is rounded itself', async () => {
+  test('keeps the scrollbar of a Markdown preview beside the line its column draws on the right, so it shows as wide as that of a file viewed as text, and runs it all the way down to the line its column draws below', async () => {
     const lines = Array.from(
       { length: 200 },
       (_, index) => `Paragraph ${index}.`,
@@ -152,44 +187,23 @@ suite('App commander', () => {
       await select('long');
       await page.keyboard.press('F3');
       await page.locator('.viewer .markdown').waitFor();
-      const preview = page.locator('.viewer-preview');
-      await preview.evaluate((body) => {
-        body.scrollTop = body.scrollHeight;
-      });
-      await preview.hover();
-      const edges = () =>
-        preview.evaluate((body) => {
-          const column = body.closest('.column');
-          const bar = document.querySelector(
-            '.overlay-scrollbar.vertical.shown',
-          );
-          if (column === null || bar === null) {
-            return undefined;
-          }
-          const style = getComputedStyle(column);
-          const line = parseFloat(style.getPropertyValue('--column-line'));
-          const edge = column.getBoundingClientRect();
-          const thumb = bar.getBoundingClientRect();
-          return {
-            right: Math.round(edge.right - line - thumb.right) + 0,
-            bottom: Math.round(edge.bottom - line - thumb.bottom) + 0,
-            clip: getComputedStyle(bar).clipPath,
-            corner: Math.round(
-              parseFloat(style.borderBottomRightRadius) - line,
-            ),
-          };
-        });
-      await waitFor(async () => (await edges()) !== undefined, 'the thumb');
-      const placed = await edges();
+      await waitFor(
+        () =>
+          page
+            .locator('.viewer-preview')
+            .evaluate((body) => body.scrollHeight > body.clientHeight),
+        'the preview to outgrow its column',
+      );
+      const { box } = await barOf(page, '.viewer-preview', 'vertical');
+      const inside = await insideLines();
 
       assert.deepStrictEqual(
-        [
-          placed?.right,
-          placed?.bottom,
-          Math.round(clippedCorner(placed?.clip ?? '')),
-        ],
-        [0, 0, placed?.corner],
-        JSON.stringify(placed),
+        {
+          right: Math.round(inside.right - box.left - box.width) + 0,
+          reachesBelow: box.top + box.height > inside.bottom - 0.5,
+        },
+        { right: 0, reachesBelow: true },
+        JSON.stringify({ box, inside }),
       );
     } finally {
       if (await page.locator('.viewer').isVisible()) {
@@ -204,7 +218,7 @@ suite('App commander', () => {
     }
   });
 
-  test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump, against the line its column draws on the right and where the rounded corner of the column starts', async () => {
+  test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump, its scrollbar against the line its column draws on the right and ending above the one under the text, which runs along the line its column draws below', async () => {
     const lines = Array.from({ length: 300 }, (_, index) =>
       index < 150
         ? `short ${index}`.padEnd(19, '.')
@@ -239,7 +253,7 @@ suite('App commander', () => {
         async () => (await firstViewerRow()).startsWith('long 2'),
         'the end',
       );
-      seen.push(await viewerThumb());
+      seen.push(await untilSettled(viewerThumb, 'the thumb to rest'));
       assert.ok(
         seen.every((each) => Math.abs(each.height - first.height) < 0.5),
         JSON.stringify(seen),
@@ -255,29 +269,17 @@ suite('App commander', () => {
         Math.abs(seen.at(-1)?.fromEnd ?? 1) < 0.5,
         JSON.stringify(seen),
       );
-      const edges = await page.locator('.viewer-thumb').evaluate((thumb) => {
-        const column = thumb.closest('.column');
-        const track = thumb.parentElement;
-        if (column === null || track === null) {
-          return undefined;
-        }
-        const style = getComputedStyle(column);
-        const clip = getComputedStyle(track);
-        const line = parseFloat(style.getPropertyValue('--column-line'));
-        const edge = column.getBoundingClientRect();
-        const box = thumb.getBoundingClientRect();
-        return {
-          right: Math.round(edge.right - line - box.right) + 0,
-          bottom: Math.round(edge.bottom - line - box.bottom) + 0,
-          corner: Math.round(parseFloat(style.borderBottomRightRadius) - line),
-          clipped: clip.overflow,
-          rounded: Math.round(parseFloat(clip.borderBottomRightRadius)),
-        };
-      });
+      const inside = await insideLines();
+      const beside = (await barOf(page, viewerBar, 'vertical')).box;
+      const below = (await barOf(page, '.viewer-sideways', 'horizontal')).box;
       assert.deepStrictEqual(
-        [edges?.right, edges?.bottom, edges?.clipped, edges?.rounded],
-        [0, 0, 'hidden', edges?.corner],
-        JSON.stringify(edges),
+        {
+          right: Math.round(inside.right - beside.left - beside.width) + 0,
+          above: Math.round(below.top - beside.top - beside.height) + 0,
+          bottom: Math.round(inside.bottom - below.top - below.height) + 0,
+        },
+        { right: 0, above: 0, bottom: 0 },
+        JSON.stringify({ inside, beside, below }),
       );
       const atEnd = seen.at(-1)?.top ?? 0;
       const lastTop = await firstViewerRow();
@@ -286,16 +288,8 @@ suite('App commander', () => {
         async () => (await firstViewerRow()) !== lastTop,
         'a row up',
       );
-      const track = await page
-        .locator('.viewer-thumb')
-        .evaluate(
-          (element) =>
-            element.parentElement?.getBoundingClientRect().height ?? 0,
-        );
-      assert.ok(
-        atEnd - (await viewerThumb()).top < track / 50,
-        JSON.stringify({ atEnd, up: await viewerThumb(), track }),
-      );
+      const up = await untilSettled(viewerThumb, 'the thumb a row up');
+      assert.ok(atEnd - up.top < up.track / 50, JSON.stringify({ atEnd, up }));
     } finally {
       if (await page.locator('.viewer').isVisible()) {
         await page.keyboard.press('Escape');
@@ -309,152 +303,164 @@ suite('App commander', () => {
     }
   });
 
-  test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar, centering its thumb where its track is pressed, its thumb moving with the rows while dragged rather than under the pointer and then jumping to them once let go', async () => {
+  test('shows the rows of a file viewed, moving a page with PageDown, to its end with End and anywhere with its scrollbar, as wide as the settings say, centering its thumb where its track is pressed, its thumb moving with the rows while dragged rather than under the pointer and then jumping to them once let go', async () => {
     const lines = Array.from({ length: 200 }, (_, index) => `row ${index}`);
     fs.writeFileSync(
       path.join(opened, 'rows.txt'),
       lines.join(String.fromCharCode(10)),
     );
-    await select('rows');
-    await page.keyboard.press('F3');
-    await waitFor(
-      async () => (await firstRowText()) === 'row 0',
-      'the first row',
-    );
-    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
-
-    await page
-      .locator('.viewer-rows .viewer-row')
-      .nth(3)
-      .dblclick({ position: { x: 12, y: 4 } });
-    assert.strictEqual(
-      await page.evaluate(() => getSelection()?.toString().trim()),
-      'row',
-    );
-    const thumb = page.locator('.viewer-thumb');
-    assert.match(
-      (await thumb.getAttribute('class')) ?? '',
-      /overlay-scrollbar/,
-    );
-    assert.strictEqual(
-      await thumb.evaluate((element) => element.getBoundingClientRect().width),
-      await page.evaluate(() =>
-        parseFloat(
-          getComputedStyle(document.body).getPropertyValue('--scrollbar-size'),
-        ),
-      ),
-    );
-
-    for (let press = 0; press < 30; press++) {
-      void page.keyboard.press('ArrowDown');
-    }
-    await waitFor(
-      async () => (await firstRowText()) === 'row 30',
-      'every press of a key held down to move a row',
-    );
-
-    await page.keyboard.press('PageDown');
-    await waitFor(
-      async () => /^row [4-9]/.test((await firstRowText()) ?? ''),
-      'a page further down',
-    );
-    await page.keyboard.press('End');
-    await waitFor(
-      async () =>
-        (await page
-          .locator('.viewer-rows .viewer-row')
-          .last()
-          .textContent()) === 'row 199',
-      'the last row',
-    );
-    const bar = await page.locator('.viewer-scrollbar').boundingBox();
-    assert.ok(bar);
-    await page.mouse.click(bar.x + bar.width / 2, bar.y + 1);
-    await waitFor(
-      async () => (await firstRowText()) === 'row 0',
-      'the start again',
-    );
-
-    const middle = bar.y + bar.height / 2;
-    await page.mouse.move(bar.x + bar.width / 2, bar.y + 1);
-    await page.mouse.down();
-    await page.mouse.move(bar.x + bar.width / 2, middle, { steps: 10 });
-    await waitFor(async () => {
-      const row = Number((await firstRowText())?.split(' ')[1]);
-      return row > 60 && row < 140;
-    }, 'the middle rows while the thumb is still held');
-    const held = await thumb.boundingBox();
-    assert.ok(held && held.y <= middle && middle <= held.y + held.height);
-    await page.mouse.up();
-
-    await thumb.evaluate((element) => {
-      const frames: { top: number; row: string }[] = [];
-      Reflect.set(window, 'thumbFrames', frames);
-      const record = () => {
-        frames.push({
-          top: element.getBoundingClientRect().top,
-          row:
-            document.querySelector('.viewer-rows .viewer-row')?.textContent ??
-            '',
-        });
-        if (Reflect.get(window, 'thumbFrames') === frames) {
-          requestAnimationFrame(record);
-        }
-      };
-      requestAnimationFrame(record);
-    });
-    const x = bar.x + bar.width / 2;
-    await page.mouse.move(x, middle);
-    await page.mouse.down();
-    for (let step = 1; step <= 30; step++) {
-      await page.mouse.move(x, middle + step);
-      await nextFrame();
-      await nextFrame();
-    }
-    await page.mouse.up();
-    for (let frame = 0; frame < 10; frame++) {
-      await nextFrame();
-    }
-    const frames = await page.evaluate(() => {
-      const recorded: unknown = Reflect.get(window, 'thumbFrames');
-      Reflect.set(window, 'thumbFrames', undefined);
-      return Array.isArray(recorded)
-        ? recorded.map((frame: unknown) => ({
-            top: Number(Reflect.get(Object(frame), 'top')),
-            row: String(Reflect.get(Object(frame), 'row')),
-          }))
-        : [];
-    });
-    assert.ok(new Set(frames.map((frame) => frame.row)).size > 1);
-    assert.deepStrictEqual(
-      frames.filter(
-        (frame, index) =>
-          index > 0 &&
-          frame.row === frames[index - 1]?.row &&
-          Math.abs(frame.top - (frames[index - 1]?.top ?? 0)) > 0.5,
-      ),
-      [],
-    );
-
-    const thumbHeight = (await thumb.boundingBox())?.height ?? 0;
-    assert.ok(thumbHeight > 0);
-    const pressed = bar.y + thumbHeight * 1.5;
-    await page.mouse.click(x, pressed);
-    await waitFor(async () => {
-      const box = await thumb.boundingBox();
-      return (
-        box !== null &&
-        Math.abs(box.y + box.height / 2 - pressed) < box.height / 10
+    try {
+      await select('rows');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstRowText()) === 'row 0',
+        'the first row',
       );
-    }, 'the thumb centered where its track was pressed');
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
 
-    await page.keyboard.press('Escape');
-    await page.locator('.viewer').waitFor({ state: 'detached' });
-    fs.rmSync(path.join(opened, 'rows.txt'));
-    await waitFor(
-      async () => !(await rowNames()).includes('rows.txt'),
-      'the file to be gone from the list',
-    );
+      await page
+        .locator('.viewer-rows .viewer-row')
+        .nth(3)
+        .dblclick({ position: { x: 12, y: 4 } });
+      assert.strictEqual(
+        await page.evaluate(() => getSelection()?.toString().trim()),
+        'row',
+      );
+      const { box: bar } = await barOf(page, viewerBar, 'vertical');
+      assert.strictEqual(
+        bar.width,
+        await page.evaluate(() =>
+          parseFloat(
+            getComputedStyle(document.body).getPropertyValue(
+              '--scrollbar-size',
+            ),
+          ),
+        ),
+      );
+
+      for (let press = 0; press < 30; press++) {
+        void page.keyboard.press('ArrowDown');
+      }
+      await waitFor(
+        async () => (await firstRowText()) === 'row 30',
+        'every press of a key held down to move a row',
+      );
+
+      await page.keyboard.press('PageDown');
+      await waitFor(
+        async () => /^row [4-9]/.test((await firstRowText()) ?? ''),
+        'a page further down',
+      );
+      await page.keyboard.press('End');
+      await waitFor(
+        async () =>
+          (await page
+            .locator('.viewer-rows .viewer-row')
+            .last()
+            .textContent()) === 'row 199',
+        'the last row',
+      );
+      const x = bar.left + bar.width / 2;
+      const { start } = await barParts(page, bar, 'vertical');
+      const trackTop = start.top + start.height;
+      await page.mouse.click(x, trackTop + 1);
+      await waitFor(
+        async () => (await firstRowText()) === 'row 0',
+        'the start again',
+      );
+
+      const atStart = await untilSettled(viewerThumb, 'the thumb to rest');
+      const middle = bar.top + bar.height / 2;
+      await page.mouse.move(x, atStart.top + atStart.height / 2);
+      await page.mouse.down();
+      try {
+        await page.mouse.move(x, middle, { steps: 10 });
+        await waitFor(async () => {
+          const row = Number((await firstRowText())?.split(' ')[1]);
+          return row > 60 && row < 140;
+        }, 'the middle rows while the thumb is still held');
+        const held = await untilSettled(thumbHeld, 'the thumb held to rest');
+        assert.ok(
+          held && held.top <= middle && middle <= held.top + held.height,
+          JSON.stringify({ held, middle }),
+        );
+      } finally {
+        await page.mouse.up();
+      }
+
+      await page.locator(viewerBar).evaluate((proxy) => {
+        const frames: { share: number; row: string }[] = [];
+        Reflect.set(window, 'thumbFrames', frames);
+        const record = () => {
+          frames.push({
+            share: proxy.scrollTop / (proxy.scrollHeight - proxy.clientHeight),
+            row:
+              document.querySelector('.viewer-rows .viewer-row')?.textContent ??
+              '',
+          });
+          if (Reflect.get(window, 'thumbFrames') === frames) {
+            requestAnimationFrame(record);
+          }
+        };
+        requestAnimationFrame(record);
+      });
+      await page.mouse.move(x, middle);
+      await page.mouse.down();
+      try {
+        for (let step = 1; step <= 30; step++) {
+          await page.mouse.move(x, middle + step);
+          await nextFrame();
+          await nextFrame();
+        }
+      } finally {
+        await page.mouse.up();
+      }
+      for (let frame = 0; frame < 10; frame++) {
+        await nextFrame();
+      }
+      const room = atStart.track - atStart.height;
+      const frames = await page.evaluate(() => {
+        const recorded: unknown = Reflect.get(window, 'thumbFrames');
+        Reflect.set(window, 'thumbFrames', undefined);
+        return Array.isArray(recorded)
+          ? recorded.map((frame: unknown) => ({
+              share: Number(Reflect.get(Object(frame), 'share')),
+              row: String(Reflect.get(Object(frame), 'row')),
+            }))
+          : [];
+      });
+      assert.ok(new Set(frames.map((frame) => frame.row)).size > 1);
+      assert.ok(new Set(frames.map((frame) => frame.share)).size > 1);
+      assert.deepStrictEqual(
+        frames.filter(
+          (frame, index) =>
+            index > 0 &&
+            frame.row === frames[index - 1]?.row &&
+            Math.abs(frame.share - (frames[index - 1]?.share ?? 0)) * room >
+              0.5,
+        ),
+        [],
+      );
+
+      const pressed = trackTop + atStart.height * 1.5;
+      await page.mouse.click(x, pressed);
+      await waitFor(async () => {
+        const thumb = await viewerThumb();
+        return (
+          Math.abs(thumb.top + thumb.height / 2 - pressed) < thumb.height / 10
+        );
+      }, 'the thumb centered where its track was pressed');
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'rows.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('rows.txt'),
+        'the file to be gone from the list',
+      );
+    }
   });
 
   test('keeps each row of a file viewed where it is in its box while the file glides, the box scrolling by instead, so only the rows that come into view are painted, as every row was painted again at each row glided by, a quarter of the frames of a glide through long lines coming late; and leaves the box scrolled by the same 64 rows whenever it rests, wherever in the file', async () => {

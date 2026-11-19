@@ -7,6 +7,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appLaunch';
 import { barsOffGrid, gridLines } from './gridLines';
+import { barOf, barParts } from './scrollbarsShown';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
@@ -172,6 +173,37 @@ suite('Terminal', () => {
       async () => JSON.stringify((await rows()).slice(2)) === expected,
       'the terminal to scroll back two rows',
     );
+  });
+
+  test('gives the terminal the scrollbar every tool has, beside its screen, the lines scrolled off the top making its thumb: a press of the button at its top scrolls a line back, and a press of its track to where the pointer is', async () => {
+    const { box } = await barOf(
+      page,
+      '.terminal-panel .scroll-proxy.vertical',
+      'vertical',
+    );
+    const parts = await barParts(page, box, 'vertical');
+    assert.ok(parts.thumb);
+    await page.mouse.wheel(0, 100);
+    const below = await rows();
+    await page.mouse.click(
+      parts.start.left + parts.start.width / 2,
+      parts.start.top + parts.start.height / 2,
+    );
+    const expected = JSON.stringify(below.slice(0, below.length - 1));
+    await waitFor(
+      async () => JSON.stringify((await rows()).slice(1)) === expected,
+      'the terminal to scroll a line back',
+    );
+    await page.mouse.click(box.left + box.width / 2, box.top + 40);
+    await waitFor(
+      async () => (await rows()).some((row) => row === 'line1'),
+      'the terminal to scroll to its first lines',
+    );
+    const screen = await page.locator('.terminal-screen').boundingBox();
+    assert.ok(screen);
+    assert.ok(screen.x + screen.width <= box.left + 0.5);
+    await run('echo back-below');
+    await waitForRow((row) => row === 'back-below', 'the screen below again');
   });
 
   test('keeps the shell running while the page reloads, showing what it printed before', async () => {

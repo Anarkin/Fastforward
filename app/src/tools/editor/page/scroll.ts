@@ -19,6 +19,12 @@ import { wheeled } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
 import { cursorKeys } from './cursorKeys';
 import { scratchRange } from '../../../lib/page/scratchRange';
+import {
+  proxyElements,
+  scrollProxy,
+  type ScrollProxy,
+  type Shown,
+} from '../../../lib/page/scrollProxies';
 
 export interface Leading {
   readonly above: number;
@@ -111,7 +117,45 @@ class RowScrolling implements PluginValue {
     write: (_: undefined, view: EditorView) => roundGaps(view),
   };
 
-  constructor(view: EditorView, scrolling: () => ScrollSettings) {
+  private readonly bar: ScrollProxy;
+  private readonly barFrame: HTMLElement;
+  private readonly acrossShown = {
+    read: (view: EditorView) => {
+      const scroller = view.scrollDOM;
+      const gutter =
+        scroller.querySelector('.cm-gutters')?.getBoundingClientRect().width ??
+        0;
+      const room = scroller.scrollWidth - scroller.clientWidth;
+      return {
+        gutter,
+        shown:
+          room > 0
+            ? {
+                at: scroller.scrollLeft / room,
+                length:
+                  (scroller.clientWidth - gutter) /
+                  (scroller.scrollWidth - gutter),
+              }
+            : undefined,
+      };
+    },
+    write: ({
+      gutter,
+      shown,
+    }: {
+      gutter: number;
+      shown: Shown | undefined;
+    }) => {
+      this.barFrame.style.left = `${gutter}px`;
+      this.bar.show(shown);
+    },
+  };
+  private readonly onScroll = () => this.view.requestMeasure(this.acrossShown);
+
+  constructor(
+    private readonly view: EditorView,
+    scrolling: () => ScrollSettings,
+  ) {
     const scroller = view.scrollDOM;
     this.following = followRows(scroller, () => view.defaultLineHeight, {
       limit: () => scroller.scrollHeight - scroller.clientHeight,
@@ -127,13 +171,32 @@ class RowScrolling implements PluginValue {
       smooth: () => scrolling().smooth,
       settles: () => scrolling().smoothSnap,
     });
+    const { frame, element } = proxyElements('horizontal');
+    this.barFrame = frame;
+    view.dom.append(frame);
+    this.bar = scrollProxy(
+      element,
+      'horizontal',
+      {
+        onDrag: (share) =>
+          this.across.dragTo(
+            share * (scroller.scrollWidth - scroller.clientWidth),
+          ),
+        onLetGo: () => this.across.dragEnd(),
+        onStep: (steps) => this.across.stepBy?.(steps),
+      },
+      scroller,
+    );
+    scroller.addEventListener('scroll', this.onScroll, { passive: true });
     view.requestMeasure(this.sizes);
     view.requestMeasure(this.gaps);
+    view.requestMeasure(this.acrossShown);
   }
 
   update(update: ViewUpdate): void {
     if (update.geometryChanged) {
       update.view.requestMeasure(this.sizes);
+      update.view.requestMeasure(this.acrossShown);
     }
   }
 
@@ -144,6 +207,9 @@ class RowScrolling implements PluginValue {
   destroy(): void {
     this.following.stop();
     this.across.stop();
+    this.bar.stop();
+    this.view.scrollDOM.removeEventListener('scroll', this.onScroll);
+    this.barFrame.remove();
   }
 }
 

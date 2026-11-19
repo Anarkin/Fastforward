@@ -206,7 +206,7 @@ suite('Settings', () => {
     const { settings, problems } = mergeSettings(defaults, {
       colors: { light: { foreground: '12px /* big' } },
       fonts: { family: '"\\"', monospaceFamily: '"Cascadia\nCode"' },
-      sizes: { scrollbar: '12px\\', minimap: '12px */' },
+      sizes: { scrollbar: '12px\\' },
     });
     assert.deepStrictEqual(problems, [
       strings.settings.notCssValue('colors.light.foreground'),
@@ -224,7 +224,6 @@ suite('Settings', () => {
       defaults.fonts.monospaceFamily,
     );
     assert.strictEqual(settings.sizes.scrollbar, defaults.sizes.scrollbar);
-    assert.strictEqual(settings.sizes.minimap, '12px */');
   });
 
   test('knows no setting by a name every object has', () => {

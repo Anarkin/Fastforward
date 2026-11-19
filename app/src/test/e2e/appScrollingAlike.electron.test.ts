@@ -7,6 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
+import { barOf, barParts, type Axis } from './scrollbarsShown';
 import { writeSettings } from './settingsWritten';
 import { untilSettled } from './waits';
 
@@ -25,35 +26,40 @@ const views = {
     tab: 0,
     pane: '.commander-pane:not(.inactive) .virtual-rows',
     rows: '.virtual-row',
-    bar: '.overlay-scrollbar.vertical.shown',
+    vertical: '.commander-pane:not(.inactive) .virtual-rows',
+    horizontal: undefined,
     across: undefined,
   },
   viewer: {
     tab: 1,
     pane: '.viewer-body',
     rows: '.viewer-row:not(.viewer-probe)',
-    bar: '.viewer-thumb',
+    vertical: '.viewer-body .scroll-proxy.vertical',
+    horizontal: '.viewer-sideways',
     across: '.viewer-sideways',
   },
   editor: {
     tab: 2,
     pane: '.editor .cm-scroller',
     rows: '.cm-line',
-    bar: '.overlay-scrollbar.vertical.shown',
+    vertical: '.editor .cm-scroller',
+    horizontal: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
     across: '.editor .cm-scroller',
   },
   diff: {
     tab: 3,
     pane: '.diff-view .virtual-rows',
     rows: '.virtual-row',
-    bar: '.diff-minimap',
+    vertical: '.diff-view > .virtual-rows',
+    horizontal: '.diff-view .scroll-proxy.horizontal',
     across: '.diff-row .split-code .code',
   },
   'commit list': {
     tab: 4,
     pane: '.virtual-rows.list',
     rows: '.virtual-row',
-    bar: '.overlay-scrollbar.vertical.shown',
+    vertical: '.virtual-rows.list',
+    horizontal: undefined,
     across: undefined,
   },
 } as const;
@@ -69,6 +75,8 @@ const everyView: readonly ViewName[] = [
 ];
 
 const textViews: readonly ViewName[] = ['viewer', 'editor', 'diff'];
+
+const axes: readonly Axis[] = ['vertical', 'horizontal'];
 
 interface Place {
   readonly state: string;
@@ -212,6 +220,22 @@ function paintedPlaces(): { state: string; at: number }[] {
         at: Number(Reflect.get(Object(each), 'at')),
       }))
     : [];
+}
+
+function thumbShownAt(bar: {
+  readonly axis: string;
+  readonly left: number;
+  readonly top: number;
+}): boolean | null {
+  const cover = document.querySelector(`.scrollbar-cover.${bar.axis}.shown`);
+  const thumb = cover?.querySelector<HTMLElement>('.scrollbar-thumb');
+  const box = cover?.getBoundingClientRect();
+  return !thumb ||
+    !box ||
+    Math.abs(box.left - bar.left) > 1 ||
+    Math.abs(box.top - bar.top) > 1
+    ? null
+    : !thumb.hidden;
 }
 
 const longestFrame = 100;
@@ -375,9 +399,39 @@ suite('App scrolling alike', () => {
   const scrollsSet = (smooth: boolean, smoothSnap: boolean) =>
     writeSettings(page, profile, settingsWith(smooth, smoothSnap));
 
+  const thumbsShown = async (name: ViewName) => {
+    const shown: boolean[] = [];
+    for (const axis of axes) {
+      const selector = views[name][axis];
+      if (selector === undefined) {
+        continue;
+      }
+      const { box } = await barOf(page, selector, axis);
+      let nudge = 0;
+      await waitFor(async () => {
+        nudge = 1 - nudge;
+        await page.mouse.move(
+          box.left + box.width / 2 + nudge,
+          box.top + box.height / 2 + nudge,
+        );
+        const thumb = await page.evaluate(thumbShownAt, {
+          axis,
+          left: box.left,
+          top: box.top,
+        });
+        if (thumb === null) {
+          return false;
+        }
+        shown.push(thumb);
+        return true;
+      }, `the ${axis} scrollbar of the ${name} to take the pointer`);
+    }
+    return shown.filter(Boolean).length;
+  };
+
   const fitting = async (name: ViewName) => {
     await show(name, true);
-    const { pane, rows, bar, across: sideways } = views[name];
+    const { pane, rows, across: sideways } = views[name];
     const box = await center(name);
     const under = page.locator(`${pane} ${rows}`).nth(1);
     const stroke = (by: { deltaX?: number; deltaY?: number }) =>
@@ -415,14 +469,7 @@ suite('App scrolling alike', () => {
       },
       400,
     );
-    return {
-      still: still(samples),
-      bars: await page
-        .locator(
-          `${name === 'diff' ? '.minimap-viewport' : bar}, .overlay-scrollbar.shown`,
-        )
-        .count(),
-    };
+    return { still: still(samples), thumbs: await thumbsShown(name) };
   };
 
   const pressed = async (
@@ -516,21 +563,17 @@ suite('App scrolling alike', () => {
   const barHeld = async (
     name: ViewName,
     read: () => Promise<Place>,
-    bar: string,
-    sideways: boolean,
+    axis: Axis,
   ) => {
-    const pane = await center(name);
-    await page.mouse.move(pane.x + pane.width / 3 + 3, pane.y + 60);
-    const thumb = page.locator(bar).first();
-    await thumb.waitFor({ timeout: 5000 });
-    const box = await thumb.boundingBox();
-    assert.ok(box, `the ${name} shows no scrollbar`);
-    const x = box.x + box.width / 2;
-    const y = sideways
-      ? box.y + box.height / 2
-      : box.y + Math.min(box.height / 2, name === 'diff' ? 200 : 20);
+    const selector = views[name][axis];
+    assert.ok(selector, `the ${name} has no ${axis} scrollbar`);
+    const { box } = await barOf(page, selector, axis);
+    const { thumb } = await barParts(page, box, axis);
+    assert.ok(thumb, `the ${axis} scrollbar of the ${name} has no thumb`);
+    const x = thumb.left + thumb.width / 2;
+    const y = thumb.top + thumb.height / 2;
     const at = (by: number) =>
-      sideways ? ([x + by, y] as const) : ([x, y + by] as const);
+      axis === 'horizontal' ? ([x + by, y] as const) : ([x, y + by] as const);
     const before = await read();
     await page.mouse.move(...at(0));
     await page.mouse.down();
@@ -553,7 +596,6 @@ suite('App scrolling alike', () => {
   };
 
   const acrossViews: readonly ViewName[] = ['viewer', 'diff'];
-  const horizontalBar = '.overlay-scrollbar.horizontal.shown';
 
   test('glides every view while scrolling glides on whatever is pressed, a notch of the wheel, Page Down, an arrow or End, through places between where it was and where it comes to rest, on a whole row, the commit list and the file viewed as the others, which jumped on their keys, and the editor as its cursor is paged, sent to the end of the file or brought back into view by an arrow, which the caret of the browser scrolled at once', async () => {
     const glided = { moved: true, glides: true, whole: true };
@@ -599,7 +641,7 @@ suite('App scrolling alike', () => {
     assert.deepStrictEqual(
       {
         scrollbar: await inEvery(everyView, (name) =>
-          barHeld(name, () => down(name), views[name].bar, false),
+          barHeld(name, () => down(name), 'vertical'),
         ),
         touchpad: await inEvery(everyView, (name) =>
           swiped(name, () => down(name), { deltaY: touched }),
@@ -636,7 +678,7 @@ suite('App scrolling alike', () => {
           pressed(name, true, () => page.keyboard.press('ArrowRight')),
         ),
         scrollbar: await inEvery(textViews, (name) =>
-          barHeld(name, () => across(name), horizontalBar, true),
+          barHeld(name, () => across(name), 'horizontal'),
         ),
         touchpad: await inEvery(textViews, (name) =>
           swiped(name, () => across(name), { deltaX: touched }),
@@ -682,11 +724,11 @@ suite('App scrolling alike', () => {
     );
   });
 
-  test('leaves every view as it is while all of it fits in the view, scrolling gliding: nothing moves or shifts on the wheel, a touchpad stroked down or sideways, or the keys, and no scrollbar shows, as a short file viewed shook on each notch of the wheel and showed a scrollbar as long as its view', async () => {
+  test('leaves every view as it is while all of it fits in the view, scrolling gliding: nothing moves or shifts on the wheel, a touchpad stroked down or sideways, or the keys, and no scrollbar of it has a thumb, as a short file viewed shook on each notch of the wheel and showed a thumb as long as its view', async () => {
     await scrollsSet(true, true);
     assert.deepStrictEqual(
       await inEveryFitting(fitting),
-      alike(everyView, { still: true, bars: 0 }),
+      alike(everyView, { still: true, thumbs: 0 }),
     );
   });
 
@@ -702,7 +744,7 @@ suite('App scrolling alike', () => {
           keyed(name, 'PageDown', 2),
         ),
         scrollbar: await inEvery(everyView, (name) =>
-          barHeld(name, () => down(name), views[name].bar, false),
+          barHeld(name, () => down(name), 'vertical'),
         ),
         touchpad: await inEvery(everyView, (name) =>
           swiped(name, () => down(name), { deltaY: touched }),
@@ -716,7 +758,7 @@ suite('App scrolling alike', () => {
           });
         }),
         scrollbarAcross: await inEvery(textViews, (name) =>
-          barHeld(name, () => across(name), horizontalBar, true),
+          barHeld(name, () => across(name), 'horizontal'),
         ),
       },
       {
@@ -733,7 +775,7 @@ suite('App scrolling alike', () => {
   test('leaves every view as it is while all of it fits in the view and scrolling does not glide either', async () => {
     assert.deepStrictEqual(
       await inEveryFitting(fitting),
-      alike(everyView, { still: true, bars: 0 }),
+      alike(everyView, { still: true, thumbs: 0 }),
     );
   });
 });

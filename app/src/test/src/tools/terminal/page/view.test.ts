@@ -24,7 +24,9 @@ class QuietTerminal {
   };
   readonly buffer = {
     active: { cursorX: 0, cursorY: 0, baseY: 0, viewportY: 0, getLine: noop },
+    onBufferChange: quiet,
   };
+  onWriteParsed = quiet;
   onRender = quiet;
   onCursorMove = quiet;
   onScroll = quiet;

@@ -37,7 +37,7 @@ import {
   DiffViewShown,
   FileHeaderRow,
   InlineLine,
-  MinimapShown,
+  ScrollbarMarksShown,
   SplitLine,
 } from '../../../helpers/styleDiffFixtures';
 
@@ -162,7 +162,7 @@ suite('Style', () => {
     );
   });
 
-  test('keeps an image row as wide as the diff, its images in the part scrolled to, side by side and short of the minimap, hatching a side it lacks down to where an image could reach', () => {
+  test('keeps an image row as wide as the diff, its images in the part scrolled to, side by side, hatching a side it lacks down to where an image could reach', () => {
     const view = diffView(
       <DiffViewShown />,
       <div className={diffRowClass('image')}>
@@ -268,7 +268,7 @@ suite('Style', () => {
     }
   });
 
-  test('keeps the minimap of a diff and the scrollbar of a file viewed inside the line their column draws, all the way down, clipped to its rounded corner, as their thumbs reach the edges of their boxes', () => {
+  test('keeps the marks of a diff over the track of its scrollbar, between its buttons, inside the line their column draws, as their thumbs reach the edges of their boxes', () => {
     looks(
       rendered(
         <Columns className={columnsClass(true, 'a')} active="commits" />,
@@ -300,43 +300,40 @@ suite('Style', () => {
       },
       after,
     );
-    for (const track of [
-      rendered(<MinimapShown />),
-      rendered(<div className="viewer-scrollbar" />),
-    ]) {
-      looks(track, {
-        right: 'var(--column-line, 0px)',
-        bottom: 'var(--column-line, 0px)',
-        'border-bottom-right-radius':
-          'calc( var(--card-radius) - var(--column-line, 0px) )',
-        overflow: 'hidden',
-      });
-    }
-  });
-
-  test('keeps the minimap of a diff as wide as its setting and its scrollbar as wide as the scrollbars, against its right edge, the marks across the whole minimap', () => {
-    const shown = rendered(<MinimapShown />);
-    looks(shown, { width: 'var(--minimap-width)' });
-    looks(withClass(shown, 'minimap-viewport'), {
-      left: undefined,
-      right: '0',
+    looks(withClass(rendered(<ScrollbarMarksShown />), 'scrollbar-marks'), {
+      position: 'absolute',
+      top: 'var(--scrollbar-size)',
+      right: 'var(--line-right, 0px)',
+      bottom: 'calc(var(--diff-bar-below) + var(--scrollbar-size))',
       width: 'var(--scrollbar-size)',
-    });
-    looks(withClass(shown, 'minimap-mark', 'added'), {
-      left: '2px',
-      right: '2px',
+      'pointer-events': 'none',
     });
   });
 
-  test('draws the minimap marks as see-through as the theme says', () => {
+  test('draws the marks of a diff over the middle of the track of its scrollbar, leaving the thumb to be seen at either side of them, and what a find matched over its right half', () => {
+    const shown = rendered(<ScrollbarMarksShown />);
+    looks(withClass(shown, 'scrollbar-mark', 'added'), {
+      left: '25%',
+      right: '25%',
+    });
+    looks(withClass(shown, 'scrollbar-mark', 'match'), {
+      left: '50%',
+      right: '10%',
+    });
+  });
+
+  test('draws the marks of changes as see-through as the theme says', () => {
     for (const [kind, color] of [
       ['added', 'added'],
       ['removed', 'deleted'],
     ]) {
-      looks(withClass(rendered(<MinimapShown />), 'minimap-mark', kind), {
-        opacity: undefined,
-        background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-minimap), transparent )`,
-      });
+      looks(
+        withClass(rendered(<ScrollbarMarksShown />), 'scrollbar-mark', kind),
+        {
+          opacity: undefined,
+          background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-mark), transparent )`,
+        },
+      );
     }
   });
 
@@ -400,7 +397,7 @@ suite('Style', () => {
     }
   });
 
-  test('tints the whole row of every added and removed line more lightly, as the theme says, in the colors their minimap marks are drawn in', () => {
+  test('tints the whole row of every added and removed line more lightly, as the theme says, in the colors their marks on the scrollbar are drawn in', () => {
     for (const [kind, color] of [
       ['added', 'added'],
       ['removed', 'deleted'],
@@ -547,7 +544,7 @@ suite('Style', () => {
     ]);
   });
 
-  test('keeps the button of a file header clear of the minimap, within the header, and in view however wide the lines make the header', () => {
+  test('keeps the button of a file header within the header, as far from its end as its name is from its start, and in view however wide the lines make the header', () => {
     const header = withClass(
       diffView(
         <DiffViewShown />,
@@ -565,10 +562,7 @@ suite('Style', () => {
       'file-header',
     );
     const padding = paddingOf(header);
-    assert.strictEqual(
-      padding.right,
-      `calc(${padding.left} + var(--minimap-width))`,
-    );
+    assert.strictEqual(padding.right, padding.left);
     looks(header, { height: 'var(--diff-file-height)' });
     assert.strictEqual(
       cascaded(withClass(header, 'file-header-button'), 'height'),
@@ -599,7 +593,7 @@ suite('Style', () => {
     }
   });
 
-  test('highlights what a find in the diff matched in the search match colors, edging the current match, and ticks the minimap in them', () => {
+  test('highlights what a find in the diff matched in the search match colors, edging the current match, and ticks the scrollbar in them', () => {
     const [match, current] = allWithClass(
       diffView(
         <DiffViewShown />,
@@ -624,9 +618,12 @@ suite('Style', () => {
       'box-shadow': currentMatchOutline,
     });
     assert.ok(current.classes.includes('current'));
-    looks(withClass(rendered(<MinimapShown />), 'minimap-mark', 'match'), {
-      background: 'var(--color-search-match)',
-    });
+    looks(
+      withClass(rendered(<ScrollbarMarksShown />), 'scrollbar-mark', 'match'),
+      {
+        background: 'var(--color-search-match)',
+      },
+    );
   });
 
   test('divides the two sides with one hairline from top to bottom, across headers and hunk gaps, letting the pointer through', () => {

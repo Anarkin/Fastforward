@@ -14,12 +14,13 @@ import {
   sharedCommanderApp,
   wrapLongLines,
 } from './commanderAppFixtures';
+import { barOf, barParts } from './scrollbarsShown';
 import { firstViewerRow } from './viewerAppFixtures';
 
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('scrolls a file viewed sideways while its lines are not wrapped, on its overlay scrollbar, Shift and the wheel, or Left and Right, keeping the width of the widest row seen as it scrolls away, drawing only the columns near the screen yet copying rows whole, and brings a match off to the side into view', async () => {
+  test('scrolls a file viewed sideways while its lines are not wrapped, on the scrollbar below it, Shift and the wheel, or Left and Right, keeping the width of the widest row seen as it scrolls away, drawing only the columns near the screen yet copying rows whole, and brings a match off to the side into view', async () => {
     const long = `start ${'x'.repeat(600)} found`;
     fs.writeFileSync(
       path.join(opened, 'wide.txt'),
@@ -80,8 +81,26 @@ suite('App commander', () => {
       );
       await page.evaluate(() => getSelection()?.removeAllRanges());
 
+      const below = await barOf(page, '.viewer-sideways', 'horizontal');
+      const { thumb } = await barParts(page, below.box, 'horizontal');
+      assert.ok(thumb, 'the scrollbar below the file has no thumb');
+      const held = {
+        x: thumb.left + thumb.width / 2,
+        y: thumb.top + thumb.height / 2,
+      };
+      await page.mouse.move(held.x, held.y);
+      await page.mouse.down();
+      await page.mouse.move(held.x + 40, held.y, { steps: 4 });
+      await waitFor(
+        async () => (await across()).left > 0,
+        'the scrollbar dragged sideways',
+      );
+      await page.mouse.move(held.x - 40, held.y, { steps: 4 });
+      await page.mouse.up();
+      await untilSettled(across, 'the scrollbar dragged back to the start', {
+        accepted: ({ left }) => left === 0,
+      });
       await page.locator('.viewer-rows').hover();
-      await page.locator('.overlay-scrollbar.horizontal.shown').waitFor();
       await page.keyboard.press('ArrowRight');
       await page.keyboard.press('ArrowRight');
       await waitFor(async () => (await across()).left > 0, 'a step sideways');
@@ -197,7 +216,10 @@ suite('App commander', () => {
         return char > 0 && width >= long.length * char;
       }, 'the width of the last line');
       assert.strictEqual(await firstViewerRow(), 'row 0');
-      assert.strictEqual(savedText(profile, 'wordWrap'), undefined);
+      await waitFor(
+        () => savedText(profile, 'wordWrap') === undefined,
+        'the lines not wrapped to be saved',
+      );
     } finally {
       if (await page.locator('.viewer').isVisible()) {
         await page.keyboard.press('Escape');

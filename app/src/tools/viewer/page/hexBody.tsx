@@ -35,13 +35,11 @@ export function ByteBody({
   layout,
   viewing,
   find,
-  finding = false,
   onPlace,
 }: {
   layout: ByteLayout;
   viewing: Viewing;
   find?: ViewerFind;
-  finding?: boolean;
   onPlace: (byte: number) => void;
 }) {
   const {
@@ -194,7 +192,6 @@ export function ByteBody({
 
   return (
     <ScrollBody
-      barPinned={finding}
       matches={find?.matches}
       size={size}
       thumb={

@@ -219,14 +219,10 @@ export function DiffRowShown({
             look={dotLook}
             widths={widths}
           />
-          {hiddenMarks(
-            keys[index].at(0),
-            row.line,
-            (shown) => sideArea(shown, true),
-            (edge) =>
-              edge === 'left'
-                ? { left: 2 * numberWidth + markerInset }
-                : { right: `calc(var(--minimap-width) + ${markerInset}px)` },
+          {hiddenMarks(keys[index].at(0), row.line, sideArea, (edge) =>
+            edge === 'left'
+              ? { left: 2 * numberWidth + markerInset }
+              : { right: markerInset },
           )}
         </div>
       );
@@ -266,16 +262,11 @@ export function DiffRowShown({
                 hiddenMarks(
                   lineKey(row.file, cell.index),
                   cell.line,
-                  (shown) => sideArea(shown, side === 1),
+                  sideArea,
                   (edge) =>
                     edge === 'left'
                       ? { left: numberWidth + markerInset }
-                      : {
-                          right:
-                            side === 1
-                              ? `calc(var(--minimap-width) + ${markerInset}px)`
-                              : markerInset,
-                        },
+                      : { right: markerInset },
                 )}
             </div>
           ))}

@@ -35,13 +35,3 @@ export const findMarks = () =>
     );
 export const findCount = () =>
   page.locator('.viewer .search-count').textContent();
-export const viewerThumb = () =>
-  page.locator('.viewer-thumb').evaluate((element) => {
-    const box = element.getBoundingClientRect();
-    const track = element.parentElement?.getBoundingClientRect();
-    return {
-      top: box.top,
-      height: box.height,
-      fromEnd: (track?.bottom ?? 0) - box.bottom,
-    };
-  });

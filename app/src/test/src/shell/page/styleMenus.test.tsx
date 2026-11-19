@@ -21,7 +21,7 @@ import {
   hovered,
   focused,
 } from './stylesheetFixtures';
-import { overlayScrollbar, popupOf } from '../../../helpers/styleMarkup';
+import { popupOf, scrollbarCover } from '../../../helpers/styleMarkup';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import { HistoryMenuShown } from '../../../helpers/styleHistoryFixtures';
 
@@ -312,9 +312,7 @@ suite('Style', () => {
     assert.ok(
       layer(rendered(<HistoryMenuShown />)) > layer(rendered(<NoticesShown />)),
     );
-    assert.ok(
-      layer(overlayScrollbar()) < layer(rendered(<ContextMenuShown />)),
-    );
+    assert.ok(layer(scrollbarCover()) < layer(rendered(<ContextMenuShown />)));
     looks(rendered(<NoticesShown />), { 'pointer-events': 'none' });
     looks(withClass(rendered(<NoticesShown />), 'notice'), {
       'pointer-events': 'auto',

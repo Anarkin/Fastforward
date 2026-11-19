@@ -28,8 +28,7 @@
     "monospaceLineHeight": 1.5
   },
   "sizes": {
-    "scrollbar": "20px",
-    "minimap": "40px"
+    "scrollbar": "20px"
   },
   "tools": {
     "terminal": {
@@ -531,11 +530,11 @@
       "change-added": "#0a0",
       "change-added-line": "20%",
       "change-added-row": "8%",
-      "change-added-minimap": "50%",
+      "change-added-mark": "50%",
       "change-deleted": "#a00",
       "change-deleted-line": "20%",
       "change-deleted-row": "8%",
-      "change-deleted-minimap": "50%",
+      "change-deleted-mark": "50%",
       "change-modified": "#a70",
       "change-renamed": "#06c",
 
@@ -583,11 +582,11 @@
       "change-added": "#0c0",
       "change-added-line": "20%",
       "change-added-row": "8%",
-      "change-added-minimap": "50%",
+      "change-added-mark": "50%",
       "change-deleted": "#e00",
       "change-deleted-line": "20%",
       "change-deleted-row": "8%",
-      "change-deleted-minimap": "50%",
+      "change-deleted-mark": "50%",
       "change-modified": "#d92",
       "change-renamed": "#5af",
 

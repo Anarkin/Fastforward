@@ -4,6 +4,7 @@ import {
   useEffect,
   useEffectEvent,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type RefObject,
@@ -13,29 +14,17 @@ import {
   type ColumnFollower,
 } from '../../../lib/page/columnScroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
-import { elementMetrics } from '../../../lib/page/scrollerMetrics';
-import {
-  setSidewaysScroller,
-  sidewaysScrollEvent,
-} from '../../../lib/page/scrollbarLinks';
-import { sidewaysMetrics, sidewaysScroll } from './sidewaysMetrics';
+import type { HeldScroller } from '../../../lib/page/scrollbarLinks';
 import { codeShift, sideWidth, wheelsSideways } from './sidewaysScroll';
 import { dottedColumns, sidewaysRoom, type Sideways } from './overflow';
 import { sidewaysShown, type SidewaysShown } from './sidewaysShown';
 
 export interface SideBox {
   readonly width: number;
-  readonly minimap: number;
 }
 
 export function readSideBox(element: HTMLElement): SideBox {
-  return {
-    width: sideWidth(element),
-    minimap:
-      parseFloat(
-        getComputedStyle(element).getPropertyValue('--minimap-width'),
-      ) || 0,
-  };
+  return { width: sideWidth(element) };
 }
 
 type DotColumns = readonly [number, number] | undefined;
@@ -63,6 +52,7 @@ export function useSideways(
   readonly scrollTo: (left: number) => void;
   readonly glideTo: (left: number) => void;
   readonly measureSideways: () => void;
+  readonly held: HeldScroller;
 } {
   const scrolled = useRef(kept);
   const across = useRef<ColumnFollower>(undefined);
@@ -71,9 +61,7 @@ export function useSideways(
   const [dotColumns, setDotColumns] = useState<DotColumns>();
   const dotted = useRef<DotColumns>(undefined);
   const room =
-    box && !wordWrap
-      ? sidewaysRoom(widest, advance, box.width, box.minimap)
-      : undefined;
+    box && !wordWrap ? sidewaysRoom(widest, advance, box.width) : undefined;
   const now = useRef({ wordWrap, scale, advance, box, room });
   const viewNow = useCallback((): Sideways | undefined => {
     const { box: side, room: most } = now.current;
@@ -82,7 +70,6 @@ export function useSideways(
           scrolled: scrolled.current,
           width: side.width,
           room: most,
-          minimap: side.minimap,
         }
       : undefined;
   }, []);
@@ -121,7 +108,6 @@ export function useSideways(
       }
       shown.set(viewNow());
       dotAround(false);
-      listRef.current?.dispatchEvent(new Event(sidewaysScrollEvent));
       keep(left);
     },
     [listRef, shown, keep, viewNow, dotAround],
@@ -150,7 +136,6 @@ export function useSideways(
       return undefined;
     }
     const roomNow = () => now.current.room ?? 0;
-    const sideNow = () => now.current.box?.width ?? 0;
     const following = followColumns(element, {
       turned: wheelsSideways,
       advance: () => now.current.advance,
@@ -162,24 +147,9 @@ export function useSideways(
       scrollTo,
     });
     across.current = following;
-    setSidewaysScroller(element, {
-      metrics: () =>
-        sidewaysMetrics(
-          elementMetrics(element),
-          sideNow(),
-          roomNow(),
-          scrolled.current,
-        ),
-      scrollTo: (scrollLeft) =>
-        following.dragTo(
-          sidewaysScroll(scrollLeft, element.clientWidth, sideNow()),
-        ),
-      dragEnd: following.dragEnd,
-    });
     return () => {
       following.stop();
       across.current = undefined;
-      setSidewaysScroller(element, undefined);
     };
   }, [listRef, wordWrap, scrollTo]);
   const measureSideways = useCallback(() => {
@@ -189,9 +159,7 @@ export function useSideways(
       return;
     }
     const next = readSideBox(element);
-    setBox((last) =>
-      last?.width === next.width && last.minimap === next.minimap ? last : next,
-    );
+    setBox((last) => (last?.width === next.width ? last : next));
   }, [listRef, wordWrap]);
   useEffect(() => {
     const element = listRef.current;
@@ -213,7 +181,16 @@ export function useSideways(
     },
     [scrollTo],
   );
+  const held = useMemo<HeldScroller>(
+    () => ({
+      dragTo: (left) => across.current?.dragTo(left),
+      dragEnd: () => across.current?.dragEnd(),
+      stepBy: (steps) => across.current?.stepBy?.(steps),
+    }),
+    [],
+  );
   return {
+    held,
     shown,
     dotColumns,
     room,

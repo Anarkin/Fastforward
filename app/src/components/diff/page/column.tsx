@@ -213,7 +213,6 @@ export function Diff({
         texts={texts}
         onLoadTexts={onLoadTexts}
         changeMarks={changeMarks}
-        finding={finding}
         origin={origin}
         matches={matches}
         current={shown}

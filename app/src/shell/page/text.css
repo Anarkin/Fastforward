@@ -67,6 +67,31 @@
   letter-spacing: calc(var(--text-advance) - 1ch);
 }
 
+.cm-editor.editor-text .cm-scroller {
+  margin: 0 var(--line-right, 0px)
+    calc(var(--line-below, 0px) + var(--scrollbar-size)) 0;
+  overflow: scroll;
+}
+
+.cm-editor.editor-text .cm-scroller::-webkit-scrollbar:horizontal {
+  height: 0;
+}
+
+.cm-editor.editor-text:has(.cm-content.cm-lineWrapping) .cm-scroller {
+  --scrollbar-round-end: var(--corner-round, 0px);
+  margin-bottom: var(--line-below, 0px);
+  overflow-x: hidden;
+}
+
+.cm-editor.editor-text > .scroll-proxy-frame {
+  right: calc(var(--line-right, 0px) + var(--scrollbar-size));
+  bottom: var(--line-below, 0px);
+}
+
+.cm-editor.editor-text:has(.cm-content.cm-lineWrapping) > .scroll-proxy-frame {
+  display: none;
+}
+
 .cm-editor.editor-text .cm-content {
   padding: 0;
 }
@@ -94,9 +119,7 @@
 .viewer-rows.wrapped,
 .cm-editor.editor-text .cm-content.cm-lineWrapping,
 .diff-view.wrap .diff-line .code {
-  padding-right: calc(
-    2 * var(--text-advance) + var(--wrap-cover) + var(--wrap-gap)
-  );
+  padding-right: calc(2 * var(--text-advance) + var(--wrap-gap));
 }
 
 .cm-editor.editor-text .cm-content.cm-lineWrapping {

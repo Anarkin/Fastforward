@@ -92,15 +92,18 @@ const parts = (className: string, pointed = false) => {
 };
 
 suite('Style', () => {
-  test('keeps the columns of the commander clear of the scrollbar drawn over its right edge, whatever its size and the font, two characters apart, the handle resizing a column in the middle of the gap before it', () => {
+  test('ends the rows of the commander a padding before the scrollbar beside them, and its header as far in as the scrollbar is wide besides, so each column stands under its heading, whatever its size and the font, two characters apart, the handle resizing a column in the middle of the gap before it', () => {
+    looks(rendered(<div className="commander-line commander-header" />), {
+      padding:
+        '0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start)',
+      'column-gap': 'var(--commander-gap)',
+    });
     for (const className of [
-      'commander-line commander-header',
       'row commander-row commander-line',
       'row commander-row selected commander-line',
     ]) {
       looks(rendered(<div className={className} />), {
-        padding:
-          '0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start)',
+        padding: '0 8px 0 var(--commander-row-start)',
         'column-gap': 'var(--commander-gap)',
       });
     }

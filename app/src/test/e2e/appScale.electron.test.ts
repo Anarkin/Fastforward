@@ -1,10 +1,12 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { ElectronApplication, Locator, Page } from 'playwright-core';
+import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { baseSettings, launchApp } from './appLaunch';
+import { barOf, barParts, type Axis } from './scrollbarsShown';
+import { onceDrawn } from './waits';
 import { longLines } from './wrappingSamples';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
@@ -34,113 +36,73 @@ async function pixelsOf(
   );
 }
 
-async function pointedThumb(
-  page: Page,
-  bar: Locator,
-  pointer: { readonly x: number; readonly y: number },
-  nudge = 0,
-): Promise<void> {
-  for (let moved = 0; moved < 10; moved++) {
-    await page.mouse.move(pointer.x + nudge - (moved % 2), pointer.y);
-    const shown = await bar.waitFor({ timeout: 1000 }).then(
-      () => true,
-      () => false,
-    );
-    if (shown) {
-      return;
-    }
-  }
-  const under = await page.evaluate(
-    ({ x, y }) => {
-      const element = document.elementFromPoint(x, y);
-      return `${element?.tagName ?? 'nothing'}.${element?.className ?? ''}, thumbs ${[...document.querySelectorAll('.overlay-scrollbar')].map((each) => each.className).join()}, focused ${String(document.hasFocus())}, ${document.visibilityState}`;
-    },
-    { x: pointer.x + nudge, y: pointer.y },
+const scaled = (value: number) => Math.round(value * scale);
+
+const partPointedAt = (page: Page) =>
+  page.evaluate(
+    () =>
+      document
+        .querySelector('[data-scrollbar-hover]')
+        ?.getAttribute('data-scrollbar-hover') ?? '',
   );
-  assert.fail(`no thumb shown for the pointer moved over ${under}`);
-}
 
-async function shotWithThumb(
+async function partAgainstLine(
   page: Page,
-  bar: Locator,
-  pointer: { readonly x: number; readonly y: number },
-): Promise<{
-  readonly shown: Buffer;
-  readonly thumb: { x: number; y: number; width: number; height: number };
-}> {
-  for (let nudge = 0; nudge < 5; nudge++) {
-    await pointedThumb(page, bar, pointer, nudge);
-    await page.waitForTimeout(400);
-    const shown = await page.screenshot();
-    const [thumb] = await bar.evaluateAll((elements) =>
-      elements.map((element) => {
-        const { x, y, width, height } = element.getBoundingClientRect();
-        return { x, y, width, height };
-      }),
-    );
-    if (thumb !== undefined) {
-      return { shown, thumb };
-    }
-  }
-  return assert.fail('the thumb hid before each screenshot was taken');
-}
-
-async function thumbAgainstLine(
-  page: Page,
-  list: Locator,
+  scroller: string,
+  axis: Axis,
+  part: 'thumb' | 'end',
   edge: 'right' | 'bottom',
-  bar = page.locator('.overlay-scrollbar.vertical.shown'),
 ): Promise<{
-  readonly reached: string;
-  readonly before: string;
-  readonly line: string;
+  readonly reached: string | undefined;
+  readonly before: string | undefined;
+  readonly line: string | undefined;
 }> {
   await page.mouse.move(2, 2);
-  await bar.waitFor({ state: 'detached' });
-  await page.waitForTimeout(400);
+  await waitFor(
+    async () => (await partPointedAt(page)) === '',
+    'no scrollbar to be pointed at',
+  );
+  await onceDrawn(page);
   const bare = await page.screenshot();
-  const box = await list.boundingBox();
-  assert.ok(box, 'the list has no box');
-  const { shown, thumb } = await shotWithThumb(page, bar, {
-    x: box.x + 20,
-    y: edge === 'right' ? box.y + box.height - 10 : box.y + 10,
-  });
-  const column = await list.evaluate((element) => {
-    const { right, bottom } = element
-      .closest('.column')
-      ?.getBoundingClientRect() ?? { right: 0, bottom: 0 };
-    return { right, bottom };
-  });
+  const { box } = await barOf(page, scroller, axis);
+  const found = (await barParts(page, box, axis))[part];
+  assert.ok(found, `the ${axis} scrollbar of ${scroller} has no ${part}`);
+  const middle = {
+    x: found.left + found.width / 2,
+    y: found.top + found.height / 2,
+  };
+  await page.mouse.move(middle.x, middle.y);
+  await waitFor(
+    async () => (await partPointedAt(page)) === `${axis}-${part}`,
+    `the ${part} of the ${axis} scrollbar to be pointed at`,
+  );
+  const column = await page
+    .locator(scroller)
+    .first()
+    .evaluate((element) => {
+      const { right, bottom } = element
+        .closest('.column')
+        ?.getBoundingClientRect() ?? { right: 0, bottom: 0 };
+      return { right, bottom };
+    });
   const points: [number, number][] =
     edge === 'right'
       ? Array.from(
-          {
-            length:
-              Math.round(column.right * scale) -
-              Math.round((thumb.x + thumb.width / 2) * scale),
-          },
-          (_, index) => [
-            Math.round((thumb.x + thumb.width / 2) * scale) + index,
-            Math.round((thumb.y + 8) * scale),
-          ],
+          { length: scaled(column.right) - scaled(middle.x) },
+          (_, index) => [scaled(middle.x) + index, scaled(found.top + 4)],
         )
       : Array.from(
-          {
-            length:
-              Math.round(column.bottom * scale) -
-              Math.round((thumb.y + thumb.height / 2) * scale),
-          },
-          (_, index) => [
-            Math.round((thumb.x + 4) * scale),
-            Math.round((thumb.y + thumb.height / 2) * scale) + index,
-          ],
+          { length: scaled(column.bottom) - scaled(middle.y) },
+          (_, index) => [scaled(found.left + 4), scaled(middle.y) + index],
         );
-  const [without, withThumb] = await Promise.all([
-    pixelsOf(page, bare, points),
-    pixelsOf(page, shown, points),
-  ]);
+  const without = await pixelsOf(page, bare, points);
+  let pointedAt = without;
+  await waitFor(async () => {
+    pointedAt = await pixelsOf(page, await page.screenshot(), points);
+    return pointedAt[0] !== without[0];
+  }, `the ${part} of the ${axis} scrollbar to be drawn as pointed at`);
   const reached = without.findIndex(
-    (pixel, index) => pixel === withThumb[index],
+    (pixel, index) => pixel === pointedAt[index],
   );
   return {
     reached: without[reached],
@@ -210,29 +172,25 @@ suite('App at a scale of 125%', () => {
     removeFolder(folder);
   });
 
-  test('runs the thumb of the files over every pixel up to the line of their column, those the line fills in part too, and over none the line fills whole, wherever the column falls between pixels', async () => {
-    const columns = page.locator('.columns > .column');
-    for (const [list, edge] of [
-      [columns.nth(1).locator('.virtual-rows'), 'right'],
-      [columns.nth(1).locator('.virtual-rows'), 'bottom'],
-    ] as const) {
-      if (edge === 'bottom') {
-        await list.evaluate((element) => {
-          element.scrollTop = element.scrollHeight;
-        });
-      }
-      const met = await thumbAgainstLine(page, list, edge);
-      assert.strictEqual(
-        met.reached,
-        met.line,
-        `${edge} ${JSON.stringify(met)}`,
-      );
-      assert.notStrictEqual(
-        met.before,
-        met.line,
-        `${edge} ${JSON.stringify(met)}`,
-      );
-    }
+  test('runs the scrollbar of the files over every pixel up to the lines around it, its thumb up to the line of their column beside it and its last button up to the line under the files, those a line fills in part too, and over none a line fills whole, wherever the column falls between pixels', async () => {
+    const files = '.columns > .column:nth-child(2) .virtual-rows';
+    const beside = await partAgainstLine(
+      page,
+      files,
+      'vertical',
+      'thumb',
+      'right',
+    );
+    assert.strictEqual(beside.reached, beside.line, JSON.stringify(beside));
+    assert.notStrictEqual(beside.before, beside.line, JSON.stringify(beside));
+    const below = await partAgainstLine(
+      page,
+      files,
+      'vertical',
+      'end',
+      'bottom',
+    );
+    assert.strictEqual(below.reached, below.line, JSON.stringify(below));
   });
 
   test('ends a list scrolled to its end above the line of its column, so its last row shows whole', async () => {
@@ -393,86 +351,107 @@ suite('App at a scale of 125%', () => {
     assert.strictEqual(row[edge], line, JSON.stringify(row));
   });
 
-  test('rounds the end of the thumb of the shortcuts of the commander, the longest, scrolled to their end as their window rounds its corner, as it stood square past the corner where the side of the shortcuts fell between pixels', async () => {
+  test('rounds the end of the scrollbar of the shortcuts of the commander, the longest, as their window rounds its corner, painting none of it past the corner, as a thumb stood square past the corner where the side of the shortcuts fell between pixels', async () => {
     await page.keyboard.press('F1');
     const pane = page.locator('.shortcuts-pane');
     await pane.waitFor();
-    await page.locator('.shortcuts-tool', { hasText: 'Commander' }).click();
-    await page
-      .locator('.shortcuts-tool.open', { hasText: 'Commander' })
-      .waitFor();
-    assert.ok(
-      await pane.evaluate(
-        (element) => element.scrollHeight > element.clientHeight,
-      ),
-      'the shortcuts of the commander fit their window, so it has no thumb',
-    );
-    await pane.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    const box = await pane.boundingBox();
-    assert.ok(box, 'the shortcuts have no box');
-    const bar = page.locator('.overlay-scrollbar.vertical.shown');
-    await pointedThumb(page, bar, {
-      x: box.x + box.width - 4,
-      y: box.y + box.height - 20,
-    });
-    const corner = await page.evaluate(() => {
-      const window = document.querySelector('.shortcuts-window');
-      const thumb = document.querySelector<HTMLElement>(
-        '.overlay-scrollbar.vertical.shown',
+    try {
+      await page.locator('.shortcuts-tool', { hasText: 'Commander' }).click();
+      await page
+        .locator('.shortcuts-tool.open', { hasText: 'Commander' })
+        .waitFor();
+      assert.ok(
+        await pane.evaluate(
+          (element) => element.scrollHeight > element.clientHeight,
+        ),
+        'the shortcuts of the commander fit their window, so it has no scrollbar',
       );
-      const style = window === null ? undefined : getComputedStyle(window);
-      const line =
-        window === null
-          ? 0
-          : parseFloat(
-              getComputedStyle(window, '::after').getPropertyValue(
-                '--frame-line',
-              ),
-            );
-      return {
-        clip: thumb?.style.getPropertyValue('clip-path'),
-        rounded:
-          style === undefined
-            ? 0
-            : parseFloat(style.borderBottomRightRadius) -
-              Math.floor(line * devicePixelRatio + 0.001) / devicePixelRatio,
-      };
-    });
-    await page.keyboard.press('Escape');
-    await pane.waitFor({ state: 'detached' });
-    const bottom = Number(
-      /round \S+ \S+ ([\d.]+)px/.exec(corner.clip ?? '')?.[1] ?? 0,
-    );
-    assert.ok(corner.rounded > 0, JSON.stringify(corner));
-    assert.strictEqual(bottom, corner.rounded, JSON.stringify(corner));
+      const { box } = await barOf(page, '.shortcuts-pane', 'vertical');
+      const corner = await pane.evaluate((element) => {
+        const window = element.closest('.shortcuts-window');
+        if (window === null) {
+          return undefined;
+        }
+        const style = getComputedStyle(window);
+        const line = parseFloat(
+          getComputedStyle(window, '::after').getPropertyValue('--frame-line'),
+        );
+        const end = parseFloat(
+          getComputedStyle(element).getPropertyValue('--scrollbar-round-end'),
+        );
+        const { right, bottom } = window.getBoundingClientRect();
+        return {
+          right,
+          bottom,
+          end,
+          rounded:
+            parseFloat(style.borderBottomRightRadius) -
+            Math.floor(line * devicePixelRatio + 0.001) / devicePixelRatio,
+        };
+      });
+      assert.ok(corner, 'the shortcuts are in no window');
+      await page.mouse.move(2, 2);
+      await onceDrawn(page);
+      const right = Math.round(corner.right * scale);
+      const bottom = Math.round(corner.bottom * scale);
+      const [within, past] = await pixelsOf(page, await page.screenshot(), [
+        [right - 8, bottom - 8],
+        [right - 1, bottom - 1],
+      ]);
+      const seen = JSON.stringify({ box, corner, within, past });
+      assert.ok(
+        Math.abs(box.left + box.width - corner.right) < 1 &&
+          Math.abs(box.top + box.height - corner.bottom) < 1,
+        seen,
+      );
+      assert.ok(corner.rounded > 0, seen);
+      assert.ok(Math.abs(corner.end - corner.rounded) < 0.01, seen);
+      assert.notStrictEqual(past, within, seen);
+    } finally {
+      await page.keyboard.press('Escape');
+      await pane.waitFor({ state: 'detached' });
+    }
   });
 
-  test('runs the thumb of a file viewed at its end over every pixel up to the bottom line of its column, and over none the line fills', async () => {
+  test('runs the scrollbars of a file viewed at its end over every pixel up to the lines of its column, the thumb of the one beside it up to the line on the right and the thumb of the one below it up to the bottom line, and over none the lines fill', async () => {
     await page.locator('.tabs [role="tab"]').nth(1).click();
     const side = page.locator('.commander-pane').nth(1);
     await side.locator('.commander-row', { hasText: 'long' }).click();
     await page.keyboard.press('F3');
     await page.locator('.viewer-rows .viewer-row').first().waitFor();
-    await page.keyboard.press('End');
-    await waitFor(
-      async () =>
-        (await page
-          .locator('.viewer-row', { hasText: `line${longLines.length - 1} ` })
-          .count()) > 0,
-      'the last line of the file',
-    );
-    const met = await thumbAgainstLine(
-      page,
-      page.locator('.viewer-body'),
-      'bottom',
-      page.locator('.viewer-thumb.shown'),
-    );
-    assert.strictEqual(met.reached, met.line, JSON.stringify(met));
-    assert.notStrictEqual(met.before, met.line, JSON.stringify(met));
-    await page.keyboard.press('Escape');
-    await page.locator('.viewer').waitFor({ state: 'detached' });
+    try {
+      await page.keyboard.press('End');
+      await waitFor(
+        async () =>
+          (await page
+            .locator('.viewer-row', {
+              hasText: `line${longLines.length - 1} `,
+            })
+            .count()) > 0,
+        'the last line of the file',
+      );
+      const beside = await partAgainstLine(
+        page,
+        '.viewer-body .scroll-proxy.vertical',
+        'vertical',
+        'thumb',
+        'right',
+      );
+      const below = await partAgainstLine(
+        page,
+        '.viewer-sideways',
+        'horizontal',
+        'thumb',
+        'bottom',
+      );
+      for (const met of [beside, below]) {
+        assert.strictEqual(met.reached, met.line, JSON.stringify(met));
+        assert.notStrictEqual(met.before, met.line, JSON.stringify(met));
+      }
+    } finally {
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+    }
   });
 
   test('reveals a commit it moves to at the bottom of the list above the line of its column', async () => {

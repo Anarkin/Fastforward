@@ -41,9 +41,11 @@
 }
 
 .locations-groups {
+  --scrollbar-round-end: calc(var(--card-radius) - var(--column-line, 0px));
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  margin-right: var(--column-line, 0px);
+  overflow: hidden auto;
   border-top: 1px solid var(--color-border);
 }
 

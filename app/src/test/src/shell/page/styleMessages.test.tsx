@@ -16,7 +16,7 @@ import {
   bodyVariable,
 } from './stylesheetFixtures';
 import { createElement } from 'react';
-import { overlayScrollbarClass } from '../../../../lib/page/overlayScrollbars';
+import { scrollbarCoverClass } from '../../../../lib/page/scrollbars';
 import { keyOf, popupOf } from '../../../helpers/styleMarkup';
 import {
   rendered,
@@ -37,19 +37,19 @@ function shownScrollbar(message?: string): MarkupElement {
         null,
         message !== undefined && createElement('div', { className: message }),
         createElement('div', {
-          className: `${overlayScrollbarClass} vertical shown`,
+          className: `${scrollbarCoverClass} vertical shown`,
         }),
       ),
     ),
-    overlayScrollbarClass,
+    scrollbarCoverClass,
   );
 }
 
 suite('Style', () => {
-  test("hides the overlay scrollbars while a commit's whole message is peeked at, as they are drawn over everything and would cut through it, but not while one is pinned, which scrolls with them", () => {
-    looks(shownScrollbar('message-peek'), { opacity: '0' });
-    looks(shownScrollbar('message-peek pinned'), { opacity: '1' });
-    looks(shownScrollbar(), { opacity: '1' });
+  test("takes no press on a scrollbar under a commit's whole message peeked at, which is drawn over the list and its scrollbar, but does while one is pinned, which scrolls by its own", () => {
+    looks(shownScrollbar('message-peek'), { display: 'none' });
+    looks(shownScrollbar('message-peek pinned'), { display: 'block' });
+    looks(shownScrollbar(), { display: 'block' });
   });
 
   test('puts the pin and the keys pinning a message peeked at, or the button closing a pinned one, beside the subject at the top right, on its first line and muted like the author, the keys drawn like the shortcuts screen draws them', () => {

@@ -89,7 +89,7 @@
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Scrollback | Keep the lines scrolled off the top | — | Core | ✅ Yes | 10,000 lines by default, `tools.terminal.scrollback`, up to 100,000 |
-| Scroll | Scroll back through the output | — | Core | ✅ Yes | The wheel moves `scrolling.wheelRows` rows a notch, 10 by default, gliding with `scrolling.smooth`, while the main screen shows and no program reads the mouse |
+| Scroll | Scroll back through the output | — | Core | ✅ Yes | The wheel moves `scrolling.wheelRows` rows a notch, 10 by default, gliding with `scrolling.smooth`, while the main screen shows and no program reads the mouse; and its scrollbar, the one every tool has, by its buttons, its track and its thumb, a line at a time |
 | Alternate screen | Keep full-screen programs out of the scrollback | `CSI ? 1049 h` | Core | ✅ Yes | By `xterm.js` |
 | Reflow | Wrap lines anew when the window is resized | — | Common | ✅ Yes | By `xterm.js` |
 | Find | Search the scrollback | — | Core | ❌ No |  |

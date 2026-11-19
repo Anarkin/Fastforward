@@ -11,7 +11,17 @@
 
 .terminal-screen {
   position: absolute;
-  inset: 6px 4px 6px 10px;
+  inset: 6px calc(4px + var(--scrollbar-size)) 6px 10px;
+}
+
+.terminal-screen .xterm-scrollable-element > .scrollbar {
+  display: none;
+}
+
+.terminal-panel > .scroll-proxy-frame {
+  top: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .terminal-screen canvas {

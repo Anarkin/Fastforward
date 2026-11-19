@@ -1,4 +1,4 @@
-import { layerOver } from '../../../../lib/page/overlayScrollbars';
+import { layerOver } from '../../../../lib/page/scrollbars';
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { plainFilter } from '../../../helpers/filters';

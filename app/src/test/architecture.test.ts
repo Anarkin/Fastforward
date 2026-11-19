@@ -672,7 +672,11 @@ suite('Architecture', () => {
       sourceFiles.filter(
         (file) => file.endsWith('.css') && /\bsearch-match\b/.test(read(file)),
       ),
-      ['shell/page/minimap.css', 'shell/page/pdf.css', 'shell/page/text.css'],
+      [
+        'shell/page/pdf.css',
+        'shell/page/scrollbarMarks.css',
+        'shell/page/text.css',
+      ],
     );
   });
 

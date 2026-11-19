@@ -1,7 +1,11 @@
 import { glideAt, glideEnded, type Glide } from './glide';
 import { rowGlide } from './rowScroll';
 import { holdRest } from './scrollSettings';
-import { setColumnScroller, type HeldScroller } from './scrollbarLinks';
+import {
+  setColumnScroller,
+  setWheeled,
+  type HeldScroller,
+} from './scrollbarLinks';
 import { wheelTurn } from './wheelTurns';
 
 const onColumn = 0.01;
@@ -170,16 +174,25 @@ export function followColumns(
     }
   };
   element.addEventListener('wheel', onWheel, { passive: false });
-  setColumnScroller(element, { dragTo, dragEnd: letGo });
+  const stepBy = (steps: number) => {
+    const column = advance();
+    if (column > 0) {
+      moveTo((glide?.to ?? scrolled()) + steps * column, true);
+    }
+  };
+  setColumnScroller(element, { dragTo, dragEnd: letGo, stepBy });
+  setWheeled(element, 'columns', onWheel);
   return {
     scrollTo: moveTo,
     dragTo,
     dragEnd: letGo,
+    stepBy,
     stop: () => {
       clearTimeout(rest);
       settle();
       element.removeEventListener('wheel', onWheel);
       setColumnScroller(element, undefined);
+      setWheeled(element, 'columns', undefined);
     },
   };
 }

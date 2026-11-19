@@ -2,7 +2,11 @@ import { wheeledAlone } from '../shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 import { holdRest } from './scrollSettings';
 import { glideAt, glideEnded, type Glide } from './glide';
-import { setRowScroller, type HeldScroller } from './scrollbarLinks';
+import {
+  setRowScroller,
+  setWheeled,
+  type HeldScroller,
+} from './scrollbarLinks';
 import { notchesOf, wheelTurn } from './wheelTurns';
 
 const onRow = 0.01;
@@ -262,7 +266,14 @@ export function followRows(
     passive: true,
     capture: true,
   });
-  setRowScroller(element, { dragTo, dragEnd: letGo });
+  const stepBy = (steps: number) => {
+    const row = rowHeight();
+    if (row > 0) {
+      scrollTo(snap(snap(aim()) + steps * row, Math.sign(steps)), true);
+    }
+  };
+  setRowScroller(element, { dragTo, dragEnd: letGo, stepBy });
+  setWheeled(element, 'rows', onWheel);
   if (keys) {
     element.addEventListener('keydown', onKeyDown);
   }
@@ -273,10 +284,12 @@ export function followRows(
     reveals,
     dragTo,
     dragEnd: letGo,
+    stepBy,
     stop: () => {
       clearTimeout(rest);
       settle();
       setRowScroller(element, undefined);
+      setWheeled(element, 'rows', undefined);
       element.removeEventListener('wheel', onWheel);
       element.removeEventListener('scroll', onScroll, { capture: true });
       element.removeEventListener('keydown', onKeyDown);

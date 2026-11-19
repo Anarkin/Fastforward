@@ -109,8 +109,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: why a pdf could not be shown, found again as it opens anew',
   'tools/viewer/page/scrollBody.tsx leadFrom':
     'a moment: the row the rows are counted from while they glide, set anew once they rest',
-  'tools/viewer/page/scrollBody.tsx barShown':
-    'a moment: true for a moment after the body moves or the pointer moves over it',
   'tools/viewer/page/scrollBody.tsx screen':
     'a measure: the rows that fit, measured anew by a resize observer once mounted',
   'tools/viewer/page/scrollBody.tsx track':
@@ -145,8 +143,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in tabViews',
   'tools/viewer/page/find.ts jump':
     'a trigger: counts the jumps to a match; a viewer shown again keeps its place rather than jumping',
-  'tools/viewer/page/scrollbar.tsx dragging':
-    'a moment: true only while the thumb of the viewer is dragged',
   'tools/git/page/addressBar.tsx asked':
     'a trigger: counts the find key presses only to mount the search anew; the search itself is kept per repository',
   'tools/git/page/cappedVirtualizer.ts placed':
@@ -206,13 +202,13 @@ export const componentStates: Readonly<Record<string, string>> = {
   'components/diff/page/jumps.ts revealing':
     'a moment: the match brought into view after a jump, set only until it is drawn',
   'components/diff/page/sideways.ts box':
-    'a measure: how wide a side of the diff and its minimap are, measured anew from its layout once mounted',
+    'a measure: how wide a side of the diff is, measured anew from its layout once mounted',
   'components/diff/page/sideways.ts dotColumns':
     'a measure: the columns of an unwrapped diff whose spaces are dotted, worked out anew from where it is scrolled sideways once mounted',
   'components/diff/page/sideways.ts shown':
     'made once: where the diff is scrolled sideways, for the marks of hidden changes to follow without their lines drawn anew, set from the kept place once mounted',
   'components/diff/page/view.tsx dragged':
-    'a moment: true only while the thumb of the minimap is dragged',
+    'a moment: true only while the thumb of the scrollbar is held',
   'tools/git/page/filesColumn.tsx filterAsked':
     'a trigger: counts the find key presses, read only as changes; the filter itself is kept per repository in fileFilters',
   'tools/git/page/filesFilter.ts clicked':
@@ -227,10 +223,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: where the row of the pinned commit was drawn as it was pinned or found again, the pin itself kept per worktree in pinnedMessages',
   'tools/git/page/messagePeek.tsx peek':
     'a moment: the message peeked at, shown only while alt is held over a row',
-  'components/diff/page/minimap.tsx dragging':
-    'a moment: true only while the minimap is dragged',
-  'components/diff/page/minimap.tsx shown':
-    'a moment: true for a moment after the diff scrolls or the pointer moves over it',
   'tools/git/page/navBar.tsx now': 'a measure: the clock, read anew every tick',
   'tools/git/page/navBar.tsx open':
     'a moment: whether the history dropdown is open; it closes as the focus leaves it, as it does on a tab change',

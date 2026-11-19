@@ -164,11 +164,21 @@ const looksNow = (page: Page): Promise<TabLooks> =>
               ] as const;
             }
           }
+          const place = (scrolled: number, room: number) =>
+            element.classList.contains('scroll-proxy')
+              ? Math.round((100 * scrolled) / Math.max(1, room))
+              : Math.round(scrolled);
           return [
             pathOf(element),
             '',
-            Math.round(element.scrollTop),
-            Math.round(element.scrollLeft),
+            place(
+              element.scrollTop,
+              element.scrollHeight - element.clientHeight,
+            ),
+            place(
+              element.scrollLeft,
+              element.scrollWidth - element.clientWidth,
+            ),
           ] as const;
         }),
       states: inside

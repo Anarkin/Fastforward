@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { launchedForPerf, measure } from './perfFixtures';
+import { barOf, barParts } from '../e2e/scrollbarsShown';
 import { dragged, sleep, wheelNotches } from './perfInput';
 
 const playground = process.env.FASTFORWARD_PERF_PLAYGROUND;
@@ -84,12 +85,12 @@ const files = [...inventedFiles, ...playgroundFiles].filter(
 );
 
 const tools = [
-  { name: 'viewer', pane: '.viewer-body', bar: '.viewer-thumb' },
   {
-    name: 'editor',
-    pane: '.editor .cm-scroller',
-    bar: '.overlay-scrollbar.vertical.shown',
+    name: 'viewer',
+    pane: '.viewer-body',
+    bar: '.viewer-body .scroll-proxy.vertical',
   },
+  { name: 'editor', pane: '.editor .cm-scroller', bar: '.editor .cm-scroller' },
 ] as const;
 
 afterAll(() => removeFolder(invented));
@@ -136,24 +137,21 @@ for (const wordWrap of [false, true]) {
 
         test(`${tool.name} drag`, async () => {
           const { page } = perf();
-          const pane = page.locator(tool.pane).first();
-          const box = await pane.boundingBox();
-          assert.ok(box);
-          await page.mouse.move(box.x + box.width / 3, box.y + 80);
-          await page.mouse.move(box.x + box.width / 3 + 3, box.y + 84);
-          const bar = page.locator(tool.bar).first();
-          await bar.waitFor({ timeout: 5000 });
-          const thumb = await bar.boundingBox();
+          const { box } = await barOf(page, tool.bar, 'vertical');
+          const { thumb, start, end } = await barParts(page, box, 'vertical');
           assert.ok(thumb);
           const from = {
-            x: thumb.x + thumb.width / 2,
-            y: thumb.y + Math.min(thumb.height / 2, 12),
+            x: thumb.left + thumb.width / 2,
+            y: thumb.top + Math.min(thumb.height / 2, 12),
           };
           await page.mouse.move(from.x, from.y);
           await page.mouse.down();
           await sleep(300);
-          const room = Math.max(40, (box.height - thumb.height) / 2);
-          const lower = thumb.y + thumb.height / 2 > box.y + box.height / 2;
+          const room = Math.max(
+            40,
+            (box.height - start.height - end.height - thumb.height) / 2,
+          );
+          const lower = thumb.top + thumb.height / 2 > box.top + box.height / 2;
           const result = await measure(perf(), `${named}, drag`, () =>
             dragged(page, from, { x: 0, y: lower ? -room : room }),
           );

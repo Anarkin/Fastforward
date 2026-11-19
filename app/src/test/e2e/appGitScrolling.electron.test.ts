@@ -10,10 +10,18 @@ import {
   sharedApp,
 } from './appFixtures';
 import { scrollPlaces } from './scrollProbes';
+import { barOf, barParts } from './scrollbarsShown';
 import { longLines, firstLongLine } from './wrappingSamples';
 import { defaultSettings, waitFor, writeWhenFree } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+
+const diffRows = '.diff-view > .virtual-rows';
+const diffBarBelow = '.diff-view .scroll-proxy.horizontal';
+const diffColumn = '.column-body:has(> .diff-view)';
+const fileRows = '.columns > .column:nth-child(2) .virtual-rows';
+
+const whole = (pixels: number) => Math.round(pixels) + 0;
 
 suite('App', () => {
   sharedApp({
@@ -65,9 +73,9 @@ suite('App', () => {
         JSON.stringify(scrolled),
       );
 
-      await list.hover();
-      const grabbed = await sharedPage.locator('.diff-minimap').boundingBox();
-      assert.ok(grabbed, 'the scrollbar of the diff');
+      const bar = await barOf(sharedPage, diffRows, 'vertical');
+      const { thumb } = await barParts(sharedPage, bar.box, 'vertical');
+      assert.ok(thumb, 'the scrollbar of the diff has no thumb');
       await list.evaluate((element) => {
         const offsets: number[] = [];
         Reflect.set(window, 'lineOffsets', offsets);
@@ -86,8 +94,8 @@ suite('App', () => {
         painted.port1.start();
         requestAnimationFrame(() => painted.port2.postMessage(null));
       });
-      const x = grabbed.x + grabbed.width / 2;
-      const y = grabbed.y + grabbed.height / 2;
+      const x = thumb.left + thumb.width / 2;
+      const y = thumb.top + thumb.height / 2;
       await sharedPage.mouse.move(x, y);
       await sharedPage.mouse.down();
       for (let step = 1; step <= 30; step++) {
@@ -126,80 +134,57 @@ suite('App', () => {
       .locator('.diff-line', { hasText: 'line0 ' })
       .first()
       .waitFor();
-    const list = sharedPage.locator('.diff-view .virtual-rows');
-    await list.evaluate((element) => {
-      element.scrollTop = 0;
-    });
-    const minimap = await sharedPage.locator('.diff-minimap').boundingBox();
-    assert.ok(minimap);
-    await sharedPage.mouse.move(
-      minimap.x + minimap.width / 2,
-      minimap.y + minimap.height / 2,
-    );
-    await sharedPage.mouse.wheel(0, 100);
-    const lines = () =>
-      list.evaluate((element) => {
-        const line =
-          element.querySelector('.diff-line')?.getBoundingClientRect().height ??
-          1;
-        return {
-          lines: element.scrollTop / line,
-          column: element.closest('.column-body')?.scrollTop ?? 0,
-        };
-      });
-    await waitFor(
-      async () =>
-        Math.abs(
-          (await lines()).lines - defaultSettings().scrolling.wheelRows,
-        ) < 0.01,
-      'the diff to scroll the lines of a notch',
-    );
-    assert.strictEqual((await lines()).column, 0);
+    await wheelsDiffOverItsBar(sharedPage);
   });
 
-  test('keeps the scrollbar and the minimap of a diff against the line its column draws on the right and at the bottom, or the status line under it, clipped to its rounded corner where it has one', async () => {
+  test('keeps the scrollbar of a diff, with the marks on its track between its buttons, against the line its column draws on the right, and the scrollbar under its lines against the line at the bottom, or the status line under it, the two ending at the square between them', async () => {
     await sharedPage.locator('.commit', { hasText: 'first' }).click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
     await sharedPage
       .locator('.diff-line', { hasText: 'line0 ' })
       .first()
       .waitFor();
-    await sharedPage.locator('.diff-view .virtual-rows').hover();
-    const edges = await sharedPage
-      .locator('.diff-minimap')
-      .evaluate((minimap) => {
-        const column = minimap.closest('.column');
-        const viewport = minimap.querySelector('.minimap-viewport');
-        if (column === null || viewport === null) {
+    const down = (await barOf(sharedPage, diffRows, 'vertical')).box;
+    const across = (await barOf(sharedPage, diffBarBelow, 'horizontal')).box;
+    const { start, end } = await barParts(sharedPage, down, 'vertical');
+    const inside = await sharedPage
+      .locator('.diff-view > .scrollbar-marks')
+      .evaluate((layer) => {
+        const column = layer.closest('.column');
+        if (column === null) {
           return undefined;
         }
-        const style = getComputedStyle(column);
-        const line = parseFloat(style.getPropertyValue('--column-line'));
+        const line = parseFloat(
+          getComputedStyle(column).getPropertyValue('--column-line'),
+        );
         const edge = column.getBoundingClientRect();
         const status = column.querySelector('.column-status');
+        const { left, top, right, bottom } = layer.getBoundingClientRect();
         return {
-          right: Math.round(
-            edge.right - line - viewport.getBoundingClientRect().right,
-          ),
-          bottom: Math.round(
-            (status?.getBoundingClientRect().top ?? edge.bottom - line) -
-              minimap.getBoundingClientRect().bottom,
-          ),
-          corner:
-            status === null
-              ? Math.round(parseFloat(style.borderBottomRightRadius) - line)
-              : 0,
-          clipped: getComputedStyle(minimap).overflow,
-          rounded: Math.round(
-            parseFloat(getComputedStyle(minimap).borderBottomRightRadius),
-          ),
+          right: edge.right - line,
+          bottom: status?.getBoundingClientRect().top ?? edge.bottom - line,
+          marks: { left, top, right, bottom },
         };
       });
+    assert.ok(inside, 'the diff is in no column');
 
     assert.deepStrictEqual(
-      [edges?.right, edges?.bottom, edges?.clipped, edges?.rounded],
-      [0, 0, 'hidden', edges?.corner],
-      JSON.stringify(edges),
+      {
+        right: whole(inside.right - (down.left + down.width)),
+        bottom: whole(inside.bottom - (across.top + across.height)),
+        meeting: [
+          whole(across.top - (down.top + down.height)),
+          whole(down.left - (across.left + across.width)),
+        ],
+        marks: [
+          whole(inside.marks.left - down.left),
+          whole(inside.marks.right - (down.left + down.width)),
+          whole(inside.marks.top - (start.top + start.height)),
+          whole(inside.marks.bottom - end.top),
+        ],
+      },
+      { right: 0, bottom: 0, meeting: [0, 0], marks: [0, 0, 0, 0] },
+      JSON.stringify({ down, across, start, end, inside }),
     );
   });
 
@@ -214,26 +199,13 @@ suite('App', () => {
       content: '.diff-view { margin-bottom: 4px; }',
     });
     try {
-      const minimap = await sharedPage.locator('.diff-minimap').boundingBox();
-      assert.ok(minimap);
-      await sharedPage.mouse.move(
-        minimap.x + minimap.width / 2,
-        minimap.y + minimap.height / 2,
-      );
-      await sharedPage.mouse.move(
-        minimap.x + minimap.width / 2,
-        minimap.y + minimap.height / 2 + 10,
-      );
-      await sharedPage.evaluate(
-        () =>
-          new Promise((resolve) =>
-            requestAnimationFrame(() => setTimeout(resolve, 50)),
-          ),
-      );
-      assert.strictEqual(
-        await sharedPage.locator('.overlay-scrollbar.vertical.shown').count(),
-        0,
-      );
+      const sticksOut = await sharedPage
+        .locator(diffColumn)
+        .evaluate((element) => element.scrollHeight - element.clientHeight);
+      assert.ok(sticksOut >= 4, `the diff sticks out by ${sticksOut} pixels`);
+      const around = (await barOf(sharedPage, diffColumn, 'vertical')).box;
+      assert.strictEqual(around.width, 0);
+      await wheelsDiffOverItsBar(sharedPage);
     } finally {
       await taller.evaluate((element) =>
         element.parentNode?.removeChild(element),
@@ -248,6 +220,9 @@ suite('App', () => {
       .locator('.diff-line', { hasText: 'line0 ' })
       .first()
       .waitFor();
+    await sharedPage.locator(diffRows).evaluate((element) => {
+      element.scrollTop = 0;
+    });
     await sharedPage.evaluate(() => {
       const list = document.querySelector('.diff-view .virtual-rows');
       const seen: boolean[] = [];
@@ -274,16 +249,16 @@ suite('App', () => {
       };
       window.addEventListener('scroll', check, { capture: true });
     });
-    const minimap = await sharedPage.locator('.diff-minimap').boundingBox();
-    assert.ok(minimap);
-    const x = minimap.x + minimap.width / 2;
-    await sharedPage.mouse.move(x, minimap.y + 2);
+    const { box } = await barOf(sharedPage, diffRows, 'vertical');
+    const { thumb, end } = await barParts(sharedPage, box, 'vertical');
+    assert.ok(thumb, 'the scrollbar of the diff has no thumb');
+    const x = thumb.left + thumb.width / 2;
+    const y = thumb.top + thumb.height / 2;
+    const reach = end.top - thumb.height / 2 - y;
+    await sharedPage.mouse.move(x, y);
     await sharedPage.mouse.down();
     for (let step = 1; step <= 5; step++) {
-      await sharedPage.mouse.move(
-        x,
-        minimap.y + 2 + (minimap.height - 4) * (step / 5),
-      );
+      await sharedPage.mouse.move(x, y + reach * (step / 5));
     }
     await sharedPage.mouse.up();
 
@@ -297,6 +272,34 @@ suite('App', () => {
     assert.ok(covered.every(Boolean), JSON.stringify(covered));
   });
 });
+
+async function wheelsDiffOverItsBar(page: Page): Promise<void> {
+  const list = page.locator(diffRows);
+  await list.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  const { box } = await barOf(page, diffRows, 'vertical');
+  await barParts(page, box, 'vertical');
+  await page.mouse.wheel(0, 100);
+  const scrolled = () =>
+    list.evaluate((element) => {
+      const line =
+        element.querySelector('.diff-line')?.getBoundingClientRect().height ??
+        1;
+      return {
+        lines: element.scrollTop / line,
+        column: element.closest('.column-body')?.scrollTop ?? 0,
+      };
+    });
+  await waitFor(
+    async () =>
+      Math.abs(
+        (await scrolled()).lines - defaultSettings().scrolling.wheelRows,
+      ) < 0.01,
+    'the diff to scroll the lines of a notch',
+  );
+  assert.strictEqual((await scrolled()).column, 0);
+}
 
 async function settledTop(list: Locator): Promise<number | undefined> {
   return list.evaluate(
@@ -388,14 +391,29 @@ suite('App with lists longer than their columns', () => {
     removeFolder(folder);
   });
 
-  test('scrolls on the wheel over the folders pinned atop the files and the file header stuck atop the diff, which stays in place sideways, showing the scrollbar of the files over them', async () => {
-    const files = page.locator('.column').nth(1).locator('.virtual-rows');
+  test('scrolls on the wheel over the folders pinned atop the files and the file header stuck atop the diff, which stays in place sideways, the scrollbar of the files beside the folders pinned rather than under them, taking the presses of a pointer that came over them', async () => {
+    const files = page.locator(fileRows);
     const pinned = page.locator('.pinned-rows');
     await scrollsOnWheelOver(page, files, pinned);
     await pinned.hover();
-    assert.strictEqual(
-      await page.locator('.overlay-scrollbar.vertical.shown').count(),
-      1,
+    const cover = page.locator('.scrollbar-cover.vertical.shown');
+    await cover.waitFor();
+    const { box } = await barOf(page, fileRows, 'vertical');
+    const band = await pinned.boundingBox();
+    const taking = await cover.boundingBox();
+    assert.ok(band && taking, 'the pinned folders or the scrollbar has no box');
+    assert.deepStrictEqual(
+      {
+        beside: whole(box.left - (band.x + band.width)),
+        taking: [
+          whole(taking.x - box.left),
+          whole(taking.y - box.top),
+          whole(taking.width - box.width),
+          whole(taking.height - box.height),
+        ],
+      },
+      { beside: 0, taking: [0, 0, 0, 0] },
+      JSON.stringify({ box, band, taking }),
     );
 
     const diff = page.locator('.diff-view .virtual-rows');
@@ -443,12 +461,12 @@ suite('App with lists longer than their columns', () => {
     }
   });
 
-  test('keeps the scrollbar the pointer rests on where it is while another list scrolls, as the diff on the keys', async () => {
-    const bar = page.locator('.overlay-scrollbar.vertical');
-    await page.locator('.column').nth(1).locator('.virtual-rows').hover();
-    await bar.hover();
-    const shown = await bar.boundingBox();
-    const diff = page.locator('.diff-view .virtual-rows');
+  test('keeps the layer taking the presses of the scrollbar the pointer rests on where it is while another list scrolls, as the diff on the keys', async () => {
+    const { box } = await barOf(page, fileRows, 'vertical');
+    const rested = await barParts(page, box, 'vertical');
+    const cover = page.locator('.scrollbar-cover.vertical');
+    const shown = await cover.boundingBox();
+    const diff = page.locator(diffRows);
     const top = await diff.evaluate((element) => element.scrollTop);
     await diff.focus();
     await page.keyboard.press('PageDown');
@@ -462,7 +480,13 @@ suite('App with lists longer than their columns', () => {
           requestAnimationFrame(() => requestAnimationFrame(drawn)),
         ),
     );
-    assert.ok(await bar.evaluate((element) => element.matches('.shown')));
-    assert.deepStrictEqual(await bar.boundingBox(), shown);
+    assert.ok(await cover.evaluate((element) => element.matches('.shown')));
+    assert.deepStrictEqual(await cover.boundingBox(), shown);
+    assert.deepStrictEqual(
+      await cover
+        .locator('.scrollbar-thumb')
+        .evaluate((thumb) => thumb.getBoundingClientRect().top),
+      rested.thumb?.top,
+    );
   });
 });

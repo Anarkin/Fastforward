@@ -111,9 +111,13 @@
 
 .virtual-rows {
   box-sizing: border-box;
-  height: 100%;
-  padding-bottom: calc(var(--column-line, 0px) + var(--device-pixel, 1px));
-  overflow: auto;
+  height: calc(100% - var(--line-below, 0px));
+  padding-bottom: calc(
+    var(--column-line, 0px) - var(--line-below, 0px) + var(--device-pixel, 1px)
+  );
+  --scrollbar-round-end: var(--corner-round, 0px);
+  margin: 0 var(--line-right, 0px) var(--line-below, 0px) 0;
+  overflow: hidden scroll;
   background: var(--color-panel-background);
 }
 
@@ -137,4 +141,34 @@
 
 .skeleton-row .bar {
   margin: 0.35em 0;
+}
+
+.scroll-proxy-frame {
+  position: absolute;
+}
+
+.scroll-proxy-frame.vertical {
+  width: var(--scrollbar-size);
+}
+
+.scroll-proxy-frame.horizontal {
+  height: var(--scrollbar-size);
+}
+
+.scroll-proxy {
+  position: absolute;
+  inset: 0;
+}
+
+.scroll-proxy.vertical {
+  overflow: hidden scroll;
+}
+
+.scroll-proxy.horizontal {
+  overflow: scroll hidden;
+}
+
+.scroll-proxy-size {
+  width: 1px;
+  height: 1px;
 }

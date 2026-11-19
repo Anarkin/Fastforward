@@ -29,7 +29,7 @@ const timesIn = (folder: string, pattern: RegExp) =>
     0,
   );
 
-const fixedSleeps = 29;
+const fixedSleeps = 25;
 
 suite('Lessons from past mistakes', () => {
   test('waits for a page to load again in no end-to-end test, as the app loads its pages again only for settings other than those it has and a save of its own under way replaces the settings a test wrote, so a test waited 30 seconds for a page that loaded no more; writeSettings writes them until the page shows them', () => {

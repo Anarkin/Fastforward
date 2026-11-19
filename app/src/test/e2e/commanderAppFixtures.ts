@@ -5,7 +5,6 @@ import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { closeOrKill, launchApp } from './appLaunch';
-import { clippedCorner } from './scrollProbes';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
 export let folder: string;
@@ -128,41 +127,6 @@ export const groupStartsShown = () =>
 export const statusShown = () =>
   right().locator('.column-status').textContent();
 export const sortedRows = async () => (await rowNames()).toSorted().join();
-
-export const thumbGaps = () =>
-  right()
-    .evaluate((side) => {
-      const scroller = side.querySelector('.virtual-rows');
-      const bar = document.querySelector('.overlay-scrollbar.vertical.shown');
-      if (scroller === null || bar === null) {
-        return undefined;
-      }
-      const line = parseFloat(
-        getComputedStyle(side, '::after').getPropertyValue('--frame-line'),
-      );
-      const inner =
-        parseFloat(getComputedStyle(side).borderBottomRightRadius) - line;
-      const border = parseFloat(getComputedStyle(bar).borderTopWidth);
-      const edge = side.getBoundingClientRect();
-      const list = scroller.getBoundingClientRect();
-      const thumb = bar.getBoundingClientRect();
-      const rightGap = edge.right - line - (thumb.right - border);
-      const bottomGap = edge.bottom - line - (thumb.bottom - border);
-      return {
-        right: Math.round(rightGap) + 0,
-        top: Math.round(thumb.top + border - list.top) + 0,
-        bottom: Math.round(bottomGap) + 0,
-        corner: Math.round(inner),
-        clip: getComputedStyle(bar).clipPath,
-        atEnd:
-          scroller.scrollTop + scroller.clientHeight >=
-          scroller.scrollHeight - 1,
-      };
-    })
-    .then(
-      (gaps) =>
-        gaps && { ...gaps, rounded: Math.round(clippedCorner(gaps.clip)) },
-    );
 
 export const markedSorted = async () => (await markedNames()).toSorted().join();
 

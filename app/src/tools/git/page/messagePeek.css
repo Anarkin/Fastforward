@@ -1,5 +1,5 @@
-body:has(.message-peek:not(.pinned)) .overlay-scrollbar {
-  opacity: 0;
+body:has(.message-peek:not(.pinned)) .scrollbar-cover {
+  display: none;
 }
 
 .message-peek {

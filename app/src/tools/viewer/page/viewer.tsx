@@ -347,7 +347,6 @@ export function Viewer() {
           layout={mode === 'hex' ? 'hex' : 'text'}
           viewing={viewing}
           find={finder.find}
-          finding={finding}
           onPlace={onPlace}
         />
       ) : (
@@ -357,7 +356,6 @@ export function Viewer() {
           language={language}
           viewing={viewing}
           find={finder.find}
-          finding={finding}
           place={place}
           onPlace={onPlace}
         />

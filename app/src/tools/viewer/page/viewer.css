@@ -21,10 +21,32 @@
 
 .viewer-sideways {
   position: absolute;
-  inset: 0;
-  overflow-x: auto;
+  inset: 0 calc(var(--scrollbar-size) + var(--line-right, 0px))
+    var(--line-below, 0px) var(--viewer-inset);
+  overflow-x: scroll;
   overflow-y: hidden;
   background: var(--color-panel-background);
+}
+
+.viewer-sideways:has(> .viewer-rows.wrapped) {
+  overflow-x: hidden;
+}
+
+.viewer-body {
+  --viewer-inset: 8px;
+  --viewer-bar-below: var(--line-below, 0px);
+}
+
+.viewer-body:has(.viewer-rows.numbered) {
+  --viewer-inset: calc(var(--line-number-width) + var(--line-number-gap));
+}
+
+.viewer-body:has(.viewer-rows:not(.wrapped)) {
+  --viewer-bar-below: calc(var(--line-below, 0px) + var(--scrollbar-size));
+}
+
+.viewer-body:has(.viewer-rows.wrapped) .scroll-proxy.vertical {
+  --scrollbar-round-end: var(--corner-round, 0px);
 }
 
 @property --viewer-lead {
@@ -39,22 +61,16 @@
   font-size: var(--monospace-font-size);
   width: max-content;
   min-width: 100%;
-  --viewer-inset: 8px;
-  padding: 0 calc(var(--scrollbar-size) + 8px) 0 var(--viewer-inset);
+  padding: 0 8px 0 0;
   padding-top: calc(var(--viewer-lead) * var(--viewer-row-height));
   box-sizing: border-box;
   min-height: calc(100% + (var(--viewer-lead) + 1) * var(--viewer-row-height));
 }
 
-.viewer-rows.numbered,
-.viewer-probe.numbered {
-  --viewer-inset: calc(var(--line-number-width) + var(--line-number-gap));
-}
-
 .viewer-gutter {
   position: absolute;
   top: 0;
-  bottom: 0;
+  bottom: var(--line-below, 0px);
   left: 0;
   z-index: 1;
   width: 8px;
@@ -120,8 +136,8 @@
 .viewer-probe {
   position: absolute;
   width: max-content;
-  --viewer-inset: 8px;
-  padding: 0 calc(var(--scrollbar-size) + 8px) 0 var(--viewer-inset);
+  padding: 0 calc(8px + var(--scrollbar-size) + var(--line-right, 0px)) 0
+    var(--viewer-inset);
   visibility: hidden;
   pointer-events: none;
 }
@@ -131,22 +147,10 @@
   color: var(--color-error-foreground);
 }
 
-.viewer-scrollbar {
-  position: absolute;
+.viewer-body > .scroll-proxy-frame {
   top: 0;
-  right: var(--column-line, 0px);
-  bottom: var(--column-line, 0px);
-  overflow: hidden;
-  border-bottom-right-radius: calc(
-    var(--card-radius) - var(--column-line, 0px)
-  );
-  width: var(--scrollbar-size);
-}
-
-.viewer-thumb.overlay-scrollbar {
-  position: absolute;
-  right: 0;
-  width: var(--scrollbar-size);
+  right: var(--line-right, 0px);
+  bottom: var(--viewer-bar-below);
 }
 
 .viewer-row .syntax-keyword {
@@ -180,6 +184,16 @@
 .hex-bytes,
 .hex-text {
   margin-left: calc(var(--text-advance) * 3);
+}
+
+.viewer-preview,
+.viewer-pdf {
+  margin: 0 var(--line-right, 0px) var(--line-below, 0px) 0;
+}
+
+.viewer-preview,
+.viewer-pdf .pdf-scroll {
+  --scrollbar-round-end: var(--corner-round, 0px);
 }
 
 .viewer-preview {

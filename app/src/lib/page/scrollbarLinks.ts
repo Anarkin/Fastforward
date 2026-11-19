@@ -1,5 +1,3 @@
-import type { ScrollerMetrics } from './scrollbarGeometry';
-
 export type ScrollbarDrag = 'thumb' | 'track';
 
 export const scrollbarDrags = new WeakMap<Element, ScrollbarDrag>();
@@ -7,33 +5,52 @@ export const scrollbarDrags = new WeakMap<Element, ScrollbarDrag>();
 export interface HeldScroller {
   readonly dragTo: (place: number) => void;
   readonly dragEnd: () => void;
+  readonly stepBy?: (steps: number) => void;
 }
 
-export interface SidewaysScroller {
-  readonly metrics: () => ScrollerMetrics;
-  readonly scrollTo: (scrollLeft: number) => void;
-  readonly dragEnd: () => void;
-}
+type Wheeled = (event: WheelEvent) => void;
 
-const sidewaysScrollers = new WeakMap<Element, SidewaysScroller>();
+const wheeled = new WeakMap<Element, Map<string, Wheeled>>();
 
-export const sidewaysScrollEvent = 'sidewaysscroll';
-
-export function setSidewaysScroller(
+export function setWheeled(
   element: Element,
-  scroller: SidewaysScroller | undefined,
+  along: 'rows' | 'columns',
+  turn: Wheeled | undefined,
 ): void {
-  if (scroller) {
-    sidewaysScrollers.set(element, scroller);
+  const turns = wheeled.get(element) ?? new Map<string, Wheeled>();
+  if (turn) {
+    turns.set(along, turn);
   } else {
-    sidewaysScrollers.delete(element);
+    turns.delete(along);
+  }
+  wheeled.set(element, turns);
+}
+
+const stoodFor = new WeakMap<Element, Element>();
+
+export function setStoodFor(standIn: Element, view: Element | undefined): void {
+  if (view) {
+    stoodFor.set(standIn, view);
+  } else {
+    stoodFor.delete(standIn);
   }
 }
 
-export function sidewaysScrollerOf(
-  element: Element,
-): SidewaysScroller | undefined {
-  return sidewaysScrollers.get(element);
+export function wheeledAround(element: Element): Wheeled[] {
+  const found: Wheeled[] = [];
+  for (
+    let at: Element | null = stoodFor.get(element) ?? element;
+    at !== null;
+    at = at.parentElement
+  ) {
+    const turns = wheeled.get(at);
+    found.push(
+      ...(turns
+        ? ['rows', 'columns'].flatMap((along) => turns.get(along) ?? [])
+        : []),
+    );
+  }
+  return found;
 }
 
 const columnScrollers = new WeakMap<Element, HeldScroller>();

@@ -14,16 +14,6 @@ export function rowEnds(top: number, lastTop: number): Ends {
   return { atStart: top <= 0, atEnd: top >= lastTop };
 }
 
-const minThumb = 24;
-
-export function thumbBox(
-  thumb: Thumb,
-  track: number,
-): { readonly top: number; readonly height: number } {
-  const height = Math.min(track, Math.max(minThumb, thumb.length * track));
-  return { top: thumb.start * (track - height), height };
-}
-
 export interface Tick {
   readonly top: number;
   readonly height: number;
@@ -49,13 +39,4 @@ export function matchTicks(
     }
   }
   return ticks.map(({ top, bottom }) => ({ top, height: bottom - top }));
-}
-
-export function grabbedAt(
-  pointer: number,
-  thumb: { readonly top: number; readonly height: number },
-): number {
-  return pointer >= thumb.top && pointer <= thumb.top + thumb.height
-    ? pointer - thumb.top
-    : thumb.height / 2;
 }

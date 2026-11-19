@@ -73,7 +73,7 @@ suite('Dismissing menus and popups', () => {
     try {
       window.dispatchEvent(pointerDown(menu.element));
       window.dispatchEvent(pointerDown(element('context-menu')));
-      window.dispatchEvent(pointerDown(element('overlay-scrollbar')));
+      window.dispatchEvent(pointerDown(element('scrollbar-cover')));
       assert.strictEqual(menu.closed, 0);
       window.dispatchEvent(pointerDown(element('elsewhere')));
       assert.strictEqual(menu.closed, 1);

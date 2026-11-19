@@ -170,7 +170,7 @@ suite('Files to view', () => {
 
 suite('Changes hidden off to the side', () => {
   test('marks a change scrolled out of sight on a step sideways, and unmarks it once back, without the line it is on being drawn anew, as a step drew every row of the diff again to move its marks, and scrolls to the change from where the diff is scrolled to by then', async () => {
-    const view = { scrolled: 0, width: 600, room: 3000, minimap: 0 };
+    const view = { scrolled: 0, width: 600, room: 3000 };
     const shown = sidewaysShown(view);
     const widths = { char: 8, of: () => 8 };
     const text = 'a'.repeat(400);
@@ -185,7 +185,7 @@ suite('Changes hidden off to the side', () => {
           words={[word]}
           kind="added"
           shown={shown}
-          area={(seen) => sideArea(seen, false)}
+          area={sideArea}
           widths={widths}
           place={() => ({})}
           onReveal={(scrolled) => revealed.push(scrolled)}
@@ -213,7 +213,7 @@ suite('Changes hidden off to the side', () => {
           [
             revealChange(
               { ...view, scrolled: 800 },
-              sideArea(view, false),
+              sideArea(view),
               text,
               word,
               widths,

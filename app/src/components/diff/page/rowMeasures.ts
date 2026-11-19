@@ -9,7 +9,7 @@ import {
   diffRowKey,
   changeOf,
 } from './rows';
-import type { MinimapRow } from './minimapMarks';
+import type { MarkedRow } from './changeMarks';
 
 type MeasuredKind = 'error' | 'skeleton' | 'skeletonLines';
 
@@ -323,10 +323,10 @@ export function rowHeight(
 
 export const beyondAscii = /[^\0-\x7f]/;
 
-export function minimapRows(
+export function markedRows(
   rows: readonly DiffRow[],
   measured: (index: number) => number | undefined = () => undefined,
-): MinimapRow[] {
+): MarkedRow[] {
   return rows.map((row, index) => ({
     height: measured(index) ?? rowHeight(row) ?? 0,
     change: changeOf(row),

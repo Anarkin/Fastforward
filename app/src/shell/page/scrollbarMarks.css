@@ -1,0 +1,37 @@
+.scrollbar-marks {
+  position: absolute;
+  pointer-events: none;
+}
+
+.scroll-proxy-frame.vertical > .scrollbar-marks {
+  inset: var(--scrollbar-size) 0;
+}
+
+.scrollbar-mark {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  min-height: 2px;
+}
+
+.scrollbar-mark.added {
+  background: color-mix(
+    in srgb,
+    var(--color-change-added) var(--color-change-added-mark),
+    transparent
+  );
+}
+
+.scrollbar-mark.match {
+  left: 50%;
+  right: 10%;
+  background: var(--color-search-match);
+}
+
+.scrollbar-mark.removed {
+  background: color-mix(
+    in srgb,
+    var(--color-change-deleted) var(--color-change-deleted-mark),
+    transparent
+  );
+}

@@ -3,9 +3,9 @@ import { clicked, shortcutOf } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import { listenForDismiss } from '../../../lib/page/dismiss';
-import { overlayScrollbarClass } from '../../../lib/page/overlayScrollbars';
+import { scrollbarCoverClass } from '../../../lib/page/scrollbars';
 
-const pinKeptBy = `.${overlayScrollbarClass}, [role="tablist"]`;
+const pinKeptBy = `.${scrollbarCoverClass}, [role="tablist"]`;
 
 function isNode(target: EventTarget | null): target is Node {
   return target !== null && 'nodeType' in target;

@@ -14,7 +14,8 @@ import {
 } from './appFixtures';
 import { baseSettings } from './appLaunch';
 import { barsOffGrid, gridLines } from './gridLines';
-import { waitForFocus } from './waits';
+import { barOf, barParts } from './scrollbarsShown';
+import { waitForCount, waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 import {
   codeRow,
@@ -321,38 +322,50 @@ suite('App', () => {
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
-  test('scrolls the two sides of a side by side diff together on a sideways scrollbar, shown while a line is too wide', async () => {
+  test('scrolls the two sides of a side by side diff together on the sideways scrollbar below either, both showing how far they are scrolled, and takes the two away once the lines are wrapped', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     await page.getByRole('button', { name: 'Side by Side' }).click();
-    const code = page.locator('.split-row .split-code').nth(1);
-    await code.hover();
-    const bar = page.locator('.overlay-scrollbar.horizontal.shown');
-    await bar.waitFor();
-    const before = await code.locator('.code').boundingBox();
-    const thumb = await bar.boundingBox();
-    assert.ok(before && thumb, 'the code or the scrollbar has no box');
-    await page.mouse.move(thumb.x + 5, thumb.y + thumb.height / 2);
+    const bars = '.diff-view .scroll-proxy.horizontal';
+    await waitForCount(page.locator(bars), 2, 'sideways scrollbars');
+    const thumbBelow = async (side: number) => {
+      const { box } = await barOf(page, `${bars} >> nth=${side}`, 'horizontal');
+      const { thumb } = await barParts(page, box, 'horizontal');
+      assert.ok(thumb, `the scrollbar below side ${side} has no thumb`);
+      return { thumb, along: thumb.left - box.left };
+    };
+    const code = page.locator('.split-row .split-code').nth(1).locator('.code');
+    const before = await code.boundingBox();
+    assert.ok(before, 'the code has no box');
+    const right = await thumbBelow(1);
+    const left = await thumbBelow(0);
+    assert.ok(
+      Math.abs(left.along - right.along) <= 1,
+      `${left.along} is not ${right.along}`,
+    );
+    const y = left.thumb.top + left.thumb.height / 2;
+    await page.mouse.move(left.thumb.left + 5, y);
     await page.mouse.down();
-    await page.mouse.move(thumb.x + 105, thumb.y + thumb.height / 2, {
-      steps: 5,
-    });
+    await page.mouse.move(left.thumb.left + 105, y, { steps: 5 });
     await page.mouse.up();
     await waitFor(async () => {
-      const after = await code.locator('.code').boundingBox();
+      const after = await code.boundingBox();
       return after !== null && after.x < before.x - 100;
     }, 'the code to scroll sideways');
+    let moved = [left.along, right.along];
     await waitFor(async () => {
-      const moved = await bar.boundingBox();
-      return moved !== null && moved.x > thumb.x + 90;
-    }, 'the scrollbar to move along');
+      moved = [(await thumbBelow(0)).along, (await thumbBelow(1)).along];
+      return moved.every(
+        (along) =>
+          along > left.along + 90 && Math.abs(along - (moved[0] ?? 0)) <= 1,
+      );
+    }, 'both scrollbars to move along together').catch((error: unknown) => {
+      throw new Error(`${String(error)}: ${JSON.stringify(moved)}`);
+    });
 
     await page.keyboard.press('w');
     await page.locator('.diff-view.wrap').waitFor();
-    await page.mouse.move(0, 0);
-    await code.hover();
-    await page.waitForTimeout(100);
-    assert.strictEqual(await bar.count(), 0);
+    await waitForCount(page.locator(bars), 0, 'sideways scrollbars');
     await page.getByRole('button', { name: 'Inline' }).click();
     await waitFor(
       () => wrapsSaved() && savedSetting('diff', 'diffLayout') === 'inline',

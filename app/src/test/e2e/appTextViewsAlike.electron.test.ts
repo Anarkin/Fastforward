@@ -7,6 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { windowOfPage } from './cursorWindow';
+import { barOf, barParts } from './scrollbarsShown';
 
 const scale = 1.25;
 const perNotch = 10;
@@ -33,22 +34,31 @@ const table = (changed: boolean) =>
   ].join('\n');
 
 const views = {
-  viewer: { tab: 1, pane: '.viewer-body', split: undefined, rowsOfChange: 1 },
+  viewer: {
+    tab: 1,
+    pane: '.viewer-body',
+    below: '.viewer-sideways',
+    split: undefined,
+    rowsOfChange: 1,
+  },
   editor: {
     tab: 2,
     pane: '.editor .cm-scroller',
+    below: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
     split: undefined,
     rowsOfChange: 1,
   },
   'diff inline': {
     tab: 3,
     pane: '.diff-view .virtual-rows',
+    below: '.diff-view .scroll-proxy.horizontal',
     split: false,
     rowsOfChange: 2,
   },
   'diff side by side': {
     tab: 3,
     pane: '.diff-view .virtual-rows',
+    below: '.diff-view .scroll-proxy.horizontal',
     split: true,
     rowsOfChange: 1,
   },
@@ -427,19 +437,14 @@ suite('App text views alike', () => {
     assert.deepStrictEqual(
       await everyView(async (name) => {
         const rest = await settled(name);
-        const box = await hover(name);
-        await page.mouse.move(
-          box.x + box.width / 3 + 3,
-          box.y + box.height / 2,
-        );
-        const bar = page.locator('.overlay-scrollbar.horizontal.shown');
-        await bar.waitFor({ timeout: 5000 });
-        const thumb = await bar.boundingBox();
-        assert.ok(thumb, `the ${name} shows no sideways scrollbar`);
-        const y = thumb.y + thumb.height / 2;
-        await page.mouse.move(thumb.x + thumb.width / 2, y);
+        const { box } = await barOf(page, views[name].below, 'horizontal');
+        const { thumb } = await barParts(page, box, 'horizontal');
+        assert.ok(thumb, `the scrollbar below the ${name} has no thumb`);
+        const x = thumb.left + thumb.width / 2;
+        const y = thumb.top + thumb.height / 2;
+        await page.mouse.move(x, y);
         await page.mouse.down();
-        await page.mouse.move(thumb.x + thumb.width / 2 + 37, y, { steps: 5 });
+        await page.mouse.move(x + 37, y, { steps: 5 });
         await page.mouse.up();
         const moved = await settled(name);
         const columns = rest.marks.map(

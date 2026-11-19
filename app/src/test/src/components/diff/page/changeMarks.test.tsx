@@ -3,13 +3,14 @@ import { suite, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   matchMarks,
-  minimapMarks,
-} from '../../../../../components/diff/page/minimapMarks';
-import { Minimap } from '../../../../../components/diff/page/minimap';
+  changedMarks,
+  marksScale,
+} from '../../../../../components/diff/page/changeMarks';
+import { ScrollbarMarks } from '../../../../../lib/page/scrollbarMarks';
 import type { DiffRow } from '../../../../../components/diff/page/rows';
 import {
   uniformHeight as row,
-  minimapRows,
+  markedRows,
 } from '../../../../../components/diff/page/rowMeasures';
 
 const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
@@ -18,39 +19,29 @@ const line = (kind: 'added' | 'removed' | 'context'): DiffRow => ({
   line: { kind, text: '', oldNumber: undefined, newNumber: undefined },
 });
 
-function minimap(viewport: number, pinned = false): string {
-  const scroller = {
-    scrollTop: 100,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    dispatchEvent: () => true,
-  };
+function marked(viewport: number): string {
   return renderToStaticMarkup(
-    <Minimap
+    <ScrollbarMarks
       marks={[{ kind: 'added', top: 0.25, height: 0.5 }]}
-      scroller={{ current: scroller }}
-      viewport={viewport}
-      total={400}
-      pinned={pinned}
-      onScroll={() => {}}
+      scale={marksScale(400, viewport)}
     />,
   );
 }
 
-suite('Minimap', () => {
-  test('marks a diff shorter than the view where its rows are, not stretched over the whole minimap', () => {
+suite('Marks of a diff on its scrollbar', () => {
+  test('marks a diff shorter than the view where its rows are, not stretched over the whole track', () => {
     assert.match(
-      minimap(800),
-      /class="minimap-mark added" style="top:12.5%;height:25%"/,
+      marked(800),
+      /class="scrollbar-mark added" style="top:12.5%;height:25%"/,
     );
     assert.match(
-      minimap(200),
-      /class="minimap-mark added" style="top:25%;height:50%"/,
+      marked(200),
+      /class="scrollbar-mark added" style="top:25%;height:50%"/,
     );
   });
 
   test('marks each run of added or removed lines where it is in the file', () => {
-    const rows = minimapRows([
+    const rows = markedRows([
       { kind: 'file', file: 0, path: 'a', open: true, collapsible: true },
       line('context'),
       line('removed'),
@@ -60,7 +51,7 @@ suite('Minimap', () => {
       line('context'),
       line('added'),
     ]);
-    assert.deepStrictEqual(minimapMarks(rows), [
+    assert.deepStrictEqual(changedMarks(rows), [
       { kind: 'removed', top: (2 * row) / (8 * row), height: row / (8 * row) },
       {
         kind: 'added',
@@ -72,7 +63,7 @@ suite('Minimap', () => {
   });
 
   test('counts the measured height of rows like an error above the file', () => {
-    const rows = minimapRows(
+    const rows = markedRows(
       [
         { kind: 'error' },
         { kind: 'file', file: 0, path: 'a', open: true, collapsible: true },
@@ -80,7 +71,7 @@ suite('Minimap', () => {
       ],
       (index) => (index === 0 ? 40 : undefined),
     );
-    assert.deepStrictEqual(minimapMarks(rows), [
+    assert.deepStrictEqual(changedMarks(rows), [
       {
         kind: 'added',
         top: (40 + row) / (40 + 2 * row),
@@ -90,35 +81,23 @@ suite('Minimap', () => {
   });
 
   test('counts the measured height of a wrapped line over the height of one row', () => {
-    const rows = minimapRows([line('context'), line('added')], (index) =>
+    const rows = markedRows([line('context'), line('added')], (index) =>
       index === 0 ? 66 : 22,
     );
-    assert.deepStrictEqual(minimapMarks(rows), [
+    assert.deepStrictEqual(changedMarks(rows), [
       { kind: 'added', top: 66 / 88, height: 22 / 88 },
     ]);
   });
 
   test('marks nothing in an empty or unchanged file', () => {
-    assert.deepStrictEqual(minimapMarks([]), []);
+    assert.deepStrictEqual(changedMarks([]), []);
     assert.deepStrictEqual(
-      minimapMarks(minimapRows([line('context'), line('context')])),
+      changedMarks(markedRows([line('context'), line('context')])),
       [],
     );
   });
 
-  test('draws the marks where they are, and the part in view only when not all of it is', () => {
-    const html = minimap(200);
-    assert.match(html, /class="minimap-mark added" style="top:25%;height:50%"/);
-    assert.match(html, /class="minimap-viewport" style="top:25%;height:50%"/);
-    assert.doesNotMatch(minimap(400), /minimap-viewport/);
-  });
-
-  test('shows the part in view while pinned, as while finding, so jumping from match to match shows where in the diff it is, and hides it otherwise until scrolled or pointed at', () => {
-    assert.match(minimap(200, true), /class="diff-minimap shown/);
-    assert.doesNotMatch(minimap(200), /shown/);
-  });
-
-  test('ticks the minimap where the matched rows are, once for each run of them', () => {
+  test('ticks the track where the matched rows are, once for each run of them', () => {
     const rows = [
       { height: 10, change: undefined },
       { height: 30, change: undefined },

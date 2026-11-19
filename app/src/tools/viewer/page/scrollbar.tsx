@@ -1,101 +1,27 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo } from 'react';
+import { ScrollbarMarks } from '../../../lib/page/scrollbarMarks';
 import type { ByteRange } from '../shared/protocol';
-import { followDrag } from '../../../lib/page/followDrag';
-import { shareAt } from '../../../lib/page/scrollbarGeometry';
-import { overlayScrollbarClass } from '../../../lib/page/overlayScrollbars';
-import { type Thumb, thumbBox, matchTicks, grabbedAt } from './scrollThumbs';
+import { matchTicks } from './scrollThumbs';
 
 const minTick = 2;
 
-function percent(share: number): string {
-  return `${share * 100}%`;
-}
-
-const MatchTicks = memo(function MatchTicks({
+export const MatchTicks = memo(function MatchTicks({
+  ticks,
   matches,
   size,
   track,
 }: {
+  ticks: React.Ref<HTMLDivElement>;
   matches: readonly ByteRange[];
   size: number;
   track: number;
 }) {
-  const ticks = useMemo(
-    () => matchTicks(matches, size, track > 0 ? minTick / track : 0),
+  const marks = useMemo(
+    () =>
+      matchTicks(matches, size, track > 0 ? minTick / track : 0).map(
+        (tick) => ({ kind: 'match', ...tick }),
+      ),
     [matches, size, track],
   );
-  return ticks.map((tick) => (
-    <div
-      key={tick.top}
-      className="minimap-mark match"
-      style={{ top: percent(tick.top), height: percent(tick.height) }}
-    />
-  ));
+  return <ScrollbarMarks marks={marks} marked={ticks} />;
 });
-
-export function ViewerScrollbar({
-  scrollbar,
-  thumb,
-  track,
-  shown,
-  onShow,
-  jump,
-  onLetGo,
-  matches,
-  size,
-}: {
-  scrollbar: React.Ref<HTMLDivElement>;
-  thumb: Thumb | undefined;
-  track: number;
-  shown: boolean;
-  onShow: () => void;
-  jump: (share: number) => void;
-  onLetGo: () => void;
-  matches: readonly ByteRange[];
-  size: number;
-}) {
-  const [dragging, setDragging] = useState(false);
-  const box = thumb && thumbBox(thumb, track);
-  return (
-    <div
-      className="viewer-scrollbar"
-      ref={scrollbar}
-      style={box === undefined ? { pointerEvents: 'none' } : undefined}
-      onPointerDown={(event) => {
-        if (box === undefined) {
-          return;
-        }
-        event.preventDefault();
-        const bar = event.currentTarget.getBoundingClientRect();
-        const grab = grabbedAt(event.clientY - bar.top, box);
-        const at = (clientY: number) => {
-          setDragging(true);
-          jump(shareAt(clientY, bar.top, bar.height, box.height, grab));
-        };
-        at(event.clientY);
-        followDrag(
-          window,
-          (pointer: PointerEvent) => at(pointer.clientY),
-          () => {
-            setDragging(false);
-            onLetGo();
-            onShow();
-          },
-        );
-      }}
-    >
-      {box !== undefined && (
-        <>
-          <MatchTicks matches={matches} size={size} track={track} />
-          <div
-            className={`${overlayScrollbarClass} viewer-thumb${shown || dragging ? ' shown' : ''}${dragging ? ' dragging' : ''}`}
-            style={{
-              top: box.top,
-              height: box.height,
-            }}
-          />
-        </>
-      )}
-    </div>
-  );
-}

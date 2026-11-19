@@ -3,18 +3,66 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
+import { untilSettled } from './waits';
 import { scrollPlaces } from './scrollProbes';
+import { barOf, barParts } from './scrollbarsShown';
 import {
   opened,
   page,
   betweenRows,
   right,
   rowNames,
-  thumbGaps,
   select,
   openFolder,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+
+const sideRows = '.commander-pane >> nth=1 >> .virtual-rows';
+
+const whole = (pixels: number) => Math.round(pixels) + 0;
+
+const sideBar = async () => {
+  const { box } = await barOf(page, sideRows, 'vertical');
+  const { start, end, thumb } = await barParts(page, box, 'vertical');
+  assert.ok(thumb, 'the scrollbar of the side has no thumb');
+  const side = await right().evaluate((pane) => {
+    const header = pane.querySelector('.commander-header');
+    const rows = pane.querySelector('.virtual-rows');
+    const row = pane.querySelector('.commander-row');
+    if (header === null || rows === null || row === null) {
+      return undefined;
+    }
+    const line = parseFloat(
+      getComputedStyle(pane).getPropertyValue('--column-line'),
+    );
+    const edge = pane.getBoundingClientRect();
+    return {
+      header: header.getBoundingClientRect().bottom,
+      rows: row.getBoundingClientRect().right,
+      right: edge.right - line,
+      bottom: edge.bottom - line,
+      atEnd: rows.scrollTop + rows.clientHeight >= rows.scrollHeight - 1,
+    };
+  });
+  assert.ok(side, 'the side lists no rows under a header');
+  return {
+    atEnd: side.atEnd,
+    wide: box.width,
+    buttons: [start.height, end.height],
+    beside: whole(box.left - side.rows),
+    right: whole(side.right - (box.left + box.width)),
+    top: whole(box.top - side.header),
+    bottom: whole(side.bottom - (box.top + box.height)),
+    ends: [
+      whole(start.top - box.top),
+      whole(box.top + box.height - (end.top + end.height)),
+    ],
+    thumb: [
+      whole(thumb.top - (start.top + start.height)),
+      whole(end.top - (thumb.top + thumb.height)),
+    ],
+  };
+};
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -104,10 +152,9 @@ suite('App commander', () => {
     await list.evaluate((element) => {
       element.scrollTop = 0;
     });
-    await list.hover();
-    const thumb = page.locator('.overlay-scrollbar.vertical.shown');
-    const grabbed = await thumb.boundingBox();
-    assert.ok(grabbed, 'the scrollbar of the list');
+    const { box } = await barOf(page, sideRows, 'vertical');
+    const { thumb } = await barParts(page, box, 'vertical');
+    assert.ok(thumb, 'the scrollbar of the list has no thumb');
     await list.evaluate((element) => {
       const row =
         element.querySelector('.commander-row')?.getBoundingClientRect()
@@ -123,8 +170,8 @@ suite('App commander', () => {
       };
       requestAnimationFrame(record);
     });
-    const x = grabbed.x + grabbed.width / 2;
-    const y = grabbed.y + grabbed.height / 2;
+    const x = thumb.left + thumb.width / 2;
+    const y = thumb.top + thumb.height / 2;
     await page.mouse.move(x, y);
     await page.mouse.down();
     for (let step = 1; step <= 40; step++) {
@@ -175,7 +222,7 @@ suite('App commander', () => {
     );
   });
 
-  test('keeps the thumb of a side against the header of the side and the line its column draws on the right and at the bottom, clipped by the corner the column rounds as it runs into it', async () => {
+  test('gives the scrollbar of a side a strip of its own beside the rows, as wide as the settings say, from the header of the side down to the line its column draws at the bottom and against the one on the right, a button at either end and the thumb against the one the list has reached', async () => {
     const long = path.join(opened, 'thumbs');
     fs.mkdirSync(long);
     for (let index = 0; index < 200; index++) {
@@ -183,22 +230,35 @@ suite('App commander', () => {
     }
     try {
       await openFolder('thumbs', long);
-      await right().locator('.virtual-rows').hover();
-      await waitFor(async () => (await thumbGaps()) !== undefined, 'the thumb');
-      const atTop = await thumbGaps();
-      await page.keyboard.press('End');
-      await waitFor(async () => (await thumbGaps())?.atEnd === true, 'the end');
-      await page.evaluate(
-        () =>
-          new Promise((resolve) =>
-            requestAnimationFrame(() => requestAnimationFrame(resolve)),
-          ),
+      await waitFor(
+        async () => (await rowNames()).includes('file10.txt'),
+        'the files of the folder',
       );
-      const atEnd = await thumbGaps();
+      const atTop = await sideBar();
+      await page.keyboard.press('End');
+      const atEnd = await untilSettled(sideBar, 'the end of the list', {
+        accepted: (bar) => bar.atEnd,
+      });
 
+      const wide = parseFloat(defaultSettings().sizes.scrollbar);
+      const strip = {
+        wide,
+        buttons: [wide, wide],
+        beside: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+        ends: [0, 0],
+      };
       assert.deepStrictEqual(
-        [atTop?.right, atTop?.top, atEnd?.right, atEnd?.bottom, atEnd?.rounded],
-        [0, 0, 0, 0, atEnd?.corner],
+        [
+          { ...atTop, thumb: atTop.thumb[0] },
+          { ...atEnd, thumb: atEnd.thumb[1] },
+        ],
+        [
+          { ...strip, atEnd: false, thumb: 0 },
+          { ...strip, atEnd: true, thumb: 0 },
+        ],
         JSON.stringify({ atTop, atEnd }),
       );
     } finally {

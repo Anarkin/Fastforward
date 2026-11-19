@@ -41,7 +41,6 @@ export function themeCss({
     `  --monospace-font-size: ${fonts.monospaceSize};`,
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
     `  --scrollbar-size: ${sizes.scrollbar};`,
-    `  --minimap-width: ${sizes.minimap};`,
     `  ${cursorVariables.style}: ${cursor.style};`,
     `  ${cursorVariables.width}: ${cursor.width};`,
     `  ${cursorVariables.blink}: ${cursor.blink ? 'on' : 'off'};`,

@@ -22,7 +22,6 @@ export function TextBody({
   language,
   viewing,
   find,
-  finding = false,
   place,
   onPlace,
 }: {
@@ -30,7 +29,6 @@ export function TextBody({
   language: string | undefined;
   viewing: Viewing;
   find?: ViewerFind;
-  finding?: boolean;
   place: () => number;
   onPlace: (byte: number) => void;
 }) {
@@ -174,7 +172,6 @@ export function TextBody({
   return (
     <ScrollBody
       numbered
-      barPinned={finding}
       matches={find?.matches}
       size={size}
       thumb={textThumb(loaded, screen, size ?? 0, perRow, lastTop)}

@@ -173,7 +173,7 @@ suite('Style', () => {
     looks(viewer, {
       position: 'absolute',
       top: '0',
-      bottom: '0',
+      bottom: 'var(--line-below, 0px)',
       width: 'calc(var(--line-number-width) + var(--line-number-gap))',
       'background-image': `linear-gradient(${line}, ${line})`,
       'background-position':

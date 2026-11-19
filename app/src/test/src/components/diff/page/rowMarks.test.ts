@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../components/diff/page/diff';
 import { diffRows, lineKeys } from '../../../../../components/diff/page/rows';
-import { diffMinimapMarks } from '../../../../../components/diff/page/minimapChanges';
+import { diffMarks } from '../../../../../components/diff/page/rowMarks';
 
 const patch = [
   'diff --git a/a.ts b/a.ts',
@@ -29,9 +29,7 @@ suite('Find in diff', () => {
     const keys = lineKeys(rows);
     const matched = new Map([['0:3', []]]);
     const kinds = (changeMarks: boolean) =>
-      diffMinimapMarks(rows, keys, matched, changeMarks).map(
-        (mark) => mark.kind,
-      );
+      diffMarks(rows, keys, matched, changeMarks).map((mark) => mark.kind);
     assert.deepStrictEqual(kinds(false), ['match']);
     assert.deepStrictEqual(kinds(true), [
       'removed',

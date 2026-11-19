@@ -3,7 +3,7 @@ import { DiffToggles } from '../../components/diff/page/toggles';
 import { SearchBar } from '../../lib/page/searchBar';
 import { plainSearch } from '../../lib/shared/searchOptions';
 import type { FindRange } from '../../lib/shared/textMatches';
-import { Minimap } from '../../components/diff/page/minimap';
+import { ScrollbarMarks } from '../../lib/page/scrollbarMarks';
 import { Code, MarkedCode } from '../../components/diff/page/codeMarks';
 import { diffRowClass } from '../../components/diff/page/rowClasses';
 import { DiffView } from '../../components/diff/page/view';
@@ -45,19 +45,17 @@ export function DiffFindShown({ query = '' }: { readonly query?: string }) {
   );
 }
 
-export function MinimapShown() {
+export function ScrollbarMarksShown() {
   return (
-    <Minimap
-      marks={[
-        { kind: 'added', top: 0, height: 0.1 },
-        { kind: 'removed', top: 0.2, height: 0.1 },
-        { kind: 'match', top: 0.4, height: 0.1 },
-      ]}
-      scroller={{ current: null }}
-      viewport={10}
-      total={100}
-      onScroll={noop}
-    />
+    <div className="diff-view">
+      <ScrollbarMarks
+        marks={[
+          { kind: 'added', top: 0, height: 0.1 },
+          { kind: 'removed', top: 0.2, height: 0.1 },
+          { kind: 'match', top: 0.4, height: 0.1 },
+        ]}
+      />
+    </div>
   );
 }
 

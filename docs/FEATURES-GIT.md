@@ -101,7 +101,7 @@
 | Compare two commits | Diff any two commits | `git diff <a> <b>` | Common | ✅ Yes | Mod+click the second; the first selected is the old side |
 | Compare with the working tree | Diff a commit against the uncommitted changes | `git diff <a>` | Common | ✅ Yes | Mod+click the Uncommitted changes row, or a commit from it for the reverse |
 | Compare from the merge base | Show what a branch adds since it forked | `git diff <a>...<b>` | Common | ❌ No | Comparing two tips shows the changes of both |
-| Diff view | Show a diff, its layout, words, colors, whitespace, find, minimap and images | — | Core | ✅ Yes | FEATURES-DIFF says what it does, the diff of a commit and of two files being drawn alike |
+| Diff view | Show a diff, its layout, words, colors, whitespace, find, marks on the scrollbar and images | — | Core | ✅ Yes | FEATURES-DIFF says what it does, the diff of a commit and of two files being drawn alike |
 | Renames and copies | Pair a moved file's old and new path | `git diff -M`, `-C` | Core | 🟡 Partial | Renames only; notes the ones without changes |
 | Mode and type changes | Show changes of mode, and files that became links | — | Common | ✅ Yes |  |
 | Rendered Markdown | Show Markdown rendered | — | Niche | ✅ Yes | In a viewer tab of its own, not in the diff: `markdown-it`, with the HTML GitHub keeps, its code colored, the images next to the file, and Mermaid diagrams drawn |
@@ -274,6 +274,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Keyboard | Work every list, column and popup by keyboard | — | Common | ✅ Yes | F1 lists the shortcuts of every tool, opening on the one in use, the diff's in an entry of their own it opens on in a comparison or the diff column, grouped by what they are for and narrowed to the words or keys typed, scrolled by whole rows below the heading stuck at the top |
 | Command palette | Find any command by typing | — | Common | ❌ No |  |
+| Scrollbars | Show where a list or a text is scrolled to, and scroll it | — | Core | ✅ Yes | The scrollbars of the browser, drawn alike in every tool, always shown, in a strip of their own as wide as `sizes.scrollbar`: a button at either end moves a row or a column, on and on while held, the track pressed moves there, the thumb centered on the pointer, and the thumb dragged follows it; one below a text too while it is not wrapped, from where the text starts after its line numbers; a menu or a popup shows one only while it has more than fits; rounded with the corners of what they stand in |
 | Themes | Light and dark, colors and fonts | — | Common | ✅ Yes | Following the system by default, or light or dark by the theme setting; every color and font in the settings |
 | Settings | Change the settings | — | Common | 🟡 Partial | JSON files, applied as saved and checked, no settings page |
 | Notices | Say what happened, and why something wasn't done | — | Core | ✅ Yes | In the bottom right corner, errors marked by an icon; each fades in the time its length takes to read, 6 to 15 seconds, an error three times as long, held while the pointer is over it and while the window has no focus; Esc closes the newest |

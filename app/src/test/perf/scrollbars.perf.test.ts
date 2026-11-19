@@ -5,45 +5,43 @@ import { afterAll, suite, test } from 'vitest';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { manyFolder, tableFile } from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
+import { barOf, barParts } from '../e2e/scrollbarsShown';
 import { dragged, sleep } from './perfInput';
-
-const overlay = (axis: 'vertical' | 'horizontal') =>
-  `.overlay-scrollbar.${axis}.shown`;
 
 const views = [
   {
     name: 'commander',
     tab: 0,
     pane: '.commander-pane:not(.inactive) .virtual-rows',
-    down: overlay('vertical'),
+    down: '.commander-pane:not(.inactive) .virtual-rows',
     across: undefined,
   },
   {
     name: 'viewer',
     tab: 1,
     pane: '.viewer-body',
-    down: '.viewer-thumb',
-    across: overlay('horizontal'),
+    down: '.viewer-body .scroll-proxy.vertical',
+    across: '.viewer-sideways',
   },
   {
     name: 'editor',
     tab: 2,
     pane: '.editor .cm-scroller',
-    down: overlay('vertical'),
-    across: overlay('horizontal'),
+    down: '.editor .cm-scroller',
+    across: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
   },
   {
     name: 'diff',
     tab: 3,
     pane: '.compare-view .diff-view .virtual-rows',
-    down: '.diff-minimap',
-    across: overlay('horizontal'),
+    down: '.compare-view .diff-view > .virtual-rows',
+    across: '.compare-view .diff-view .scroll-proxy.horizontal',
   },
   {
     name: 'commit list',
     tab: 4,
     pane: '.virtual-rows.list',
-    down: overlay('vertical'),
+    down: '.virtual-rows.list',
     across: undefined,
   },
 ] as const;
@@ -105,21 +103,14 @@ for (const smooth of [true, false]) {
           await page.locator('.viewer-row').nth(8).waitFor();
         }
         await sleep(1500);
-        const box = await pane.boundingBox();
-        assert.ok(box);
-        await page.mouse.move(box.x + box.width / 3, box.y + 80);
-        const bar = page.locator(view.down).first();
-        await bar.waitFor();
-        const thumb = await bar.boundingBox();
+        const { box } = await barOf(page, view.down, 'vertical');
+        const { thumb, start, end } = await barParts(page, box, 'vertical');
         assert.ok(thumb);
-        const whole = view.name === 'diff';
         const from = {
-          x: thumb.x + thumb.width / 2,
-          y: whole ? thumb.y + 40 : thumb.y + Math.min(thumb.height / 2, 12),
+          x: thumb.left + thumb.width / 2,
+          y: thumb.top + Math.min(thumb.height / 2, 12),
         };
-        const room = whole
-          ? thumb.height - 120
-          : box.height - thumb.height - 40;
+        const room = box.height - start.height - end.height - thumb.height - 40;
         await page.mouse.move(from.x, from.y);
         await page.mouse.down();
         await sleep(300);
@@ -136,18 +127,12 @@ for (const smooth of [true, false]) {
       if (across !== undefined) {
         test(`${view.name} across`, async () => {
           const { page } = perf();
-          const pane = page.locator(view.pane).first();
-          const box = await pane.boundingBox();
-          assert.ok(box);
-          await page.mouse.move(box.x + box.width / 3, box.y + 120);
-          await page.mouse.move(box.x + box.width / 3 + 4, box.y + 124);
-          const bar = page.locator(across).first();
-          await bar.waitFor();
-          const thumb = await bar.boundingBox();
+          const { box } = await barOf(page, across, 'horizontal');
+          const { thumb, start, end } = await barParts(page, box, 'horizontal');
           assert.ok(thumb);
           const from = {
-            x: thumb.x + Math.min(thumb.width / 2, 12),
-            y: thumb.y + thumb.height / 2,
+            x: thumb.left + Math.min(thumb.width / 2, 12),
+            y: thumb.top + thumb.height / 2,
           };
           await page.mouse.move(from.x, from.y);
           await page.mouse.down();
@@ -157,7 +142,7 @@ for (const smooth of [true, false]) {
             `drag: ${view.name}, across, ${mode}`,
             () =>
               dragged(page, from, {
-                x: box.width - thumb.width - 80,
+                x: box.width - start.width - end.width - thumb.width - 40,
                 y: 0,
               }),
           );

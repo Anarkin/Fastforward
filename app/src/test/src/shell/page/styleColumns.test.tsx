@@ -50,7 +50,7 @@ function columnVisibility(columns: React.ReactElement) {
 function lineOf(font: 'monospace' | 'proportional') {
   return rendered(
     <Column status={<StatusLine font={font}>+1 −0</StatusLine>}>
-      <div className="diff-minimap" />
+      <div />
     </Column>,
   );
 }
@@ -336,7 +336,7 @@ suite('Style', () => {
     }
   });
 
-  test('makes a status line exactly one row of its own font tall, as if another row of the list above it, on whole device pixels, its line drawn inside it taking no room, and the minimap of a diff over it ending square against it', () => {
+  test('makes a status line exactly one row of its own font tall, as if another row of the list above it, on whole device pixels, its line drawn inside it taking no room, and the scrollbars of the body over it ending square against it', () => {
     looks(withClass(lineOf('proportional'), 'column'), {
       '--status-height': 'var(--row-line-height)',
     });
@@ -355,9 +355,9 @@ suite('Style', () => {
         'border-top': undefined,
         'box-shadow': 'inset 0 var(--hairline) var(--color-border)',
       });
-      looks(withClass(column, 'diff-minimap'), {
-        bottom: '0',
-        'border-bottom-right-radius': '0',
+      looks(withClass(column, 'column-body'), {
+        '--line-below': '0px',
+        '--corner-round': '0px',
       });
     }
   });

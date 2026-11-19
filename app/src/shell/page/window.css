@@ -26,7 +26,6 @@ body {
   --hairline: round(down, 1px, var(--device-pixel, 1px));
   --line-number-width: 56px;
   --line-number-gap: 6px;
-  --wrap-cover: var(--scrollbar-size);
   --wrap-gap: 8px;
   --check-size: 12px;
   --check-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 8.2 7 10.7l4.5-5' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -51,6 +50,19 @@ body {
     var(--color-scrollbar) var(--color-scrollbar-rest),
     transparent
   );
+  --scrollbar-track-background: var(--color-border);
+  --scrollbar-button-hover-background: color-mix(
+    in srgb,
+    var(--color-scrollbar) calc(var(--color-scrollbar-rest) / 4),
+    transparent
+  );
+  --scrollbar-button-held-background: color-mix(
+    in srgb,
+    var(--color-scrollbar) calc(var(--color-scrollbar-rest) / 2),
+    transparent
+  );
+  --scrollbar-arrow-color: var(--scrollbar-background);
+  --scrollbar-arrow: round(calc(var(--scrollbar-size) * 0.4), 2px);
   --scrollbar-hover-background: color-mix(
     in srgb,
     var(--color-scrollbar) var(--color-scrollbar-hover),
@@ -113,33 +125,173 @@ body {
   user-select: text;
 }
 
-::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+@property --scrollbar-round-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
 }
 
-.overlay-scrollbar {
+@property --scrollbar-round-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+::-webkit-scrollbar,
+::-webkit-scrollbar-button {
+  --scrollbar-round-start: inherit;
+  --scrollbar-round-end: inherit;
+}
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+  background: var(--scrollbar-track-background);
+}
+
+::-webkit-scrollbar:vertical {
+  border-radius: 0 var(--scrollbar-round-start, 0px)
+    var(--scrollbar-round-end, 0px) 0;
+}
+
+::-webkit-scrollbar:horizontal {
+  border-radius: 0 0 var(--scrollbar-round-end, 0px)
+    var(--scrollbar-round-start, 0px);
+}
+
+::-webkit-scrollbar-corner {
+  background: none;
+}
+
+::-webkit-scrollbar-thumb {
+  min-width: 24px;
+  min-height: 24px;
+  background: var(--scrollbar-background);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-button:single-button {
+  display: block;
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+  background: no-repeat center / var(--scrollbar-arrow)
+    calc(var(--scrollbar-arrow) / 2);
+}
+
+::-webkit-scrollbar-button:single-button:horizontal {
+  background-size: calc(var(--scrollbar-arrow) / 2) var(--scrollbar-arrow);
+}
+
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: conic-gradient(
+    from 135deg at 50% 0,
+    var(--scrollbar-arrow-color) 90deg,
+    transparent 0
+  );
+}
+
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: conic-gradient(
+    from -45deg at 50% 100%,
+    var(--scrollbar-arrow-color) 90deg,
+    transparent 0
+  );
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  background-image: conic-gradient(
+    from 45deg at 0 50%,
+    var(--scrollbar-arrow-color) 90deg,
+    transparent 0
+  );
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+  background-image: conic-gradient(
+    from -135deg at 100% 50%,
+    var(--scrollbar-arrow-color) 90deg,
+    transparent 0
+  );
+}
+
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  border-top-right-radius: var(--scrollbar-round-start, 0px);
+}
+
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  border-bottom-right-radius: var(--scrollbar-round-end, 0px);
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:decrement {
+  border-bottom-left-radius: var(--scrollbar-round-start, 0px);
+}
+
+::-webkit-scrollbar-button:single-button:horizontal:increment {
+  border-bottom-right-radius: var(--scrollbar-round-end, 0px);
+}
+
+::-webkit-scrollbar:vertical:corner-present,
+::-webkit-scrollbar:horizontal:corner-present,
+::-webkit-scrollbar-button:single-button:vertical:increment:corner-present,
+::-webkit-scrollbar-button:single-button:horizontal:increment:corner-present {
+  border-bottom-right-radius: 0;
+}
+
+::-webkit-scrollbar-button:single-button:disabled {
+  --scrollbar-arrow-color: var(--scrollbar-button-hover-background);
+}
+
+[data-scrollbar-hover='vertical-thumb']::-webkit-scrollbar-thumb:vertical,
+[data-scrollbar-hover='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal {
+  background: var(--scrollbar-hover-background);
+}
+
+[data-scrollbar-held='vertical-thumb']::-webkit-scrollbar-thumb:vertical,
+[data-scrollbar-held='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal {
+  background: var(--scrollbar-active-background);
+}
+
+[data-scrollbar-hover='vertical-start']::-webkit-scrollbar-button:vertical:decrement,
+[data-scrollbar-hover='vertical-end']::-webkit-scrollbar-button:vertical:increment,
+[data-scrollbar-hover='horizontal-start']::-webkit-scrollbar-button:horizontal:decrement,
+[data-scrollbar-hover='horizontal-end']::-webkit-scrollbar-button:horizontal:increment {
+  --scrollbar-arrow-color: var(--scrollbar-hover-background);
+  background-color: var(--scrollbar-button-hover-background);
+}
+
+[data-scrollbar-held='vertical-start']::-webkit-scrollbar-button:vertical:decrement,
+[data-scrollbar-held='vertical-end']::-webkit-scrollbar-button:vertical:increment,
+[data-scrollbar-held='horizontal-start']::-webkit-scrollbar-button:horizontal:decrement,
+[data-scrollbar-held='horizontal-end']::-webkit-scrollbar-button:horizontal:increment {
+  --scrollbar-arrow-color: var(--scrollbar-active-background);
+  background-color: var(--scrollbar-button-held-background);
+}
+
+.scrollbar-cover {
   position: fixed;
   z-index: 20;
-  box-sizing: border-box;
-  border-radius: 1px;
-  background: var(--scrollbar-background) padding-box;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s;
+  display: none;
 }
 
-.overlay-scrollbar.shown {
-  opacity: 1;
-  pointer-events: auto;
+.scrollbar-cover.shown {
+  display: block;
 }
 
-.overlay-scrollbar:hover {
-  background-color: var(--scrollbar-hover-background);
+.scrollbar-cover > div {
+  position: absolute;
 }
 
-.overlay-scrollbar.dragging {
-  background-color: var(--scrollbar-active-background);
+.scrollbar-cover.vertical > div {
+  left: 0;
+  right: 0;
+}
+
+.scrollbar-cover.horizontal > div {
+  top: 0;
+  bottom: 0;
 }
 
 .app {

@@ -4,7 +4,7 @@
   box-sizing: border-box;
   height: var(--diff-file-height);
   gap: 8px;
-  padding: 0 calc(8px + var(--minimap-width)) 0 8px;
+  padding: 0 8px;
   --button-background: var(--color-panel-background);
   background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
@@ -13,7 +13,7 @@
 
 .file-header-end {
   position: sticky;
-  right: calc(8px + var(--minimap-width));
+  right: 8px;
   display: flex;
   flex: none;
   align-items: center;

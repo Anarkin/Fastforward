@@ -20,6 +20,13 @@ import type { FromScreen } from './store';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
 import { cursorOptions, drawnByPage, PageCursor } from './pageCursor';
 import { PlaceReports } from './placeReports';
+import {
+  proxyElements,
+  scrollProxy,
+  type ScrollProxy,
+} from '../../../lib/page/scrollProxies';
+import { setWheeled } from '../../../lib/page/scrollbarLinks';
+import { lineAt, scrolledBack } from './scrolledBack';
 
 const resizeDelay = 50;
 
@@ -87,6 +94,8 @@ export class TerminalView {
   private readonly cursor: PageCursor;
   private readonly place: PlaceReports;
   private readonly probe = document.createElement('span');
+  private readonly bar: ScrollProxy;
+  private readonly barFrame: HTMLElement;
   private readonly observer = new ResizeObserver(() => this.layOut());
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
   private readonly stopWatching: () => void;
@@ -132,6 +141,28 @@ export class TerminalView {
       capture: true,
       passive: false,
     });
+    const { frame, element: bar } = proxyElements('vertical');
+    this.barFrame = frame;
+    element.after(frame);
+    this.bar = scrollProxy(
+      bar,
+      'vertical',
+      {
+        onDrag: (share) =>
+          this.terminal.scrollToLine(
+            lineAt(this.terminal.buffer.active, share),
+          ),
+        onLetGo: () => undefined,
+        onStep: (steps) => this.terminal.scrollLines(steps),
+      },
+      element,
+    );
+    setWheeled(element, 'rows', this.wheel);
+    this.terminal.onScroll(this.showBar);
+    this.terminal.onWriteParsed(this.showBar);
+    this.terminal.onResize(this.showBar);
+    this.terminal.buffer.onBufferChange(this.showBar);
+    this.showBar();
     if (options.renderer === 'webgl') {
       this.useWebgl();
     }
@@ -152,6 +183,11 @@ export class TerminalView {
       this.terminal.focus();
     }
   }
+
+  private readonly showBar = () =>
+    this.bar.show(
+      scrolledBack(this.terminal.buffer.active, this.terminal.rows),
+    );
 
   private readonly wheel = (event: WheelEvent) => {
     const lines = wheelLines(
@@ -214,6 +250,9 @@ export class TerminalView {
     this.place.dispose();
     this.cursor.dispose();
     this.terminal.dispose();
+    this.bar.stop();
+    setWheeled(this.element, 'rows', undefined);
+    this.barFrame.remove();
     this.probe.remove();
   }
 

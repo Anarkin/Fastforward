@@ -2,7 +2,6 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import {
-  useCallback,
   useEffect,
   useEffectEvent,
   useLayoutEffect,
@@ -21,12 +20,13 @@ import {
   type ColumnFollower,
 } from '../../../lib/page/columnScroll';
 import { useShell } from '../../../shell/page/store';
-import { hideAfter } from '../../../lib/page/scrollbarGeometry';
 import { wrapColumns } from '../../../lib/page/wordWrap';
 import { boxColumns } from '../../../lib/page/wrapBox';
 import { type Ends, type Thumb } from './scrollThumbs';
 import { copiedRows, type RowText } from './rowCopy';
-import { ViewerScrollbar } from './scrollbar';
+import { MatchTicks } from './scrollbar';
+import { ScrollProxy } from '../../../lib/page/scrollProxy';
+import { setWheeled } from '../../../lib/page/scrollbarLinks';
 
 const probeText = '0'.repeat(1000);
 
@@ -37,8 +37,6 @@ const noMatches: readonly ByteRange[] = [];
 const leadRoom = 64;
 
 const leadRest = 150;
-
-const barRenewal = 200;
 
 declare module 'react' {
   interface CSSProperties {
@@ -64,7 +62,6 @@ export function ScrollBody({
   onLeft,
   reveal,
   rowText,
-  barPinned = false,
   matches = noMatches,
   size = 0,
   lead = 0,
@@ -87,7 +84,6 @@ export function ScrollBody({
   onLeft?: (left: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
   rowText?: (row: Element) => RowText | undefined;
-  barPinned?: boolean;
   matches?: readonly ByteRange[];
   size?: number;
   lead?: number;
@@ -99,7 +95,6 @@ export function ScrollBody({
   const rowsBox = useRef<HTMLDivElement>(null);
   const scrollbar = useRef<HTMLDivElement>(null);
   const advance = useRef(1);
-  const inset = useRef(0);
   const revealed = useRef(0);
   const leftBack = useRef(keptLeft);
   const leftSeen = useRef(0);
@@ -126,7 +121,7 @@ export function ScrollBody({
     ) {
       return;
     }
-    const x = inset.current + reveal.column * advance.current;
+    const x = reveal.column * advance.current;
     const margin = revealColumns * advance.current;
     if (
       x < area.scrollLeft + margin ||
@@ -150,23 +145,6 @@ export function ScrollBody({
   const smooth = useEffectEvent(() => gliding);
   const snaps = useShell((state) => state.scrolling.smoothSnap);
   const settles = useEffectEvent(() => snaps);
-  const [barShown, setBarShown] = useState(false);
-  const hiding = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const shownAt = useRef(-Infinity);
-  const showBar = useCallback(() => {
-    const now = performance.now();
-    if (now - shownAt.current < barRenewal) {
-      return;
-    }
-    shownAt.current = now;
-    clearTimeout(hiding.current);
-    setBarShown(true);
-    hiding.current = setTimeout(() => {
-      shownAt.current = -Infinity;
-      setBarShown(false);
-    }, hideAfter);
-  }, []);
-  useEffect(() => () => clearTimeout(hiding.current), []);
   useEffect(() => body.current?.focus(), []);
   const failed = error !== undefined;
   const glider = useRef<RowGlider>(undefined);
@@ -284,7 +262,6 @@ export function ScrollBody({
       const style = getComputedStyle(row);
       const padding =
         parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-      inset.current = parseFloat(style.paddingLeft) || 0;
       const char =
         (row.getBoundingClientRect().width - padding) / probeText.length;
       advance.current = char || 1;
@@ -303,7 +280,6 @@ export function ScrollBody({
   }, [onScreen, onColumns, onFont, wrapped]);
 
   const moved = (by: number) => {
-    showBar();
     if (gliding && glider.current) {
       glider.current.glideBy(by);
     } else {
@@ -320,13 +296,50 @@ export function ScrollBody({
     }
   };
 
+  const turned = (event: WheelEvent) => {
+    if (wheeled(viewerKeymap.wheelSideways, event) !== undefined) {
+      return;
+    }
+    const height = probe.current?.getBoundingClientRect().height || 1;
+    if (
+      gliding &&
+      glider.current &&
+      notchesOf(event) === undefined &&
+      event.deltaMode === 0
+    ) {
+      glider.current.holdBy(event.deltaY / height);
+      return;
+    }
+    const { rows, pending } = wheelTurn(wheel.current, event, {
+      row: height,
+      step: height,
+      page: body.current?.clientHeight ?? 0,
+      perNotch: wheelRows,
+    });
+    wheel.current = pending;
+    if (rows !== 0) {
+      moved(rows);
+    }
+  };
+  const turnedOver = useEffectEvent((event: WheelEvent) => {
+    turned(event);
+    event.preventDefault();
+  });
+  useEffect(() => {
+    const element = body.current;
+    if (element === null) {
+      return undefined;
+    }
+    setWheeled(element, 'rows', turnedOver);
+    return () => setWheeled(element, 'rows', undefined);
+  }, []);
+
   return (
     <div
       className="column-body viewer-body"
       ref={body}
       tabIndex={0}
       data-column-focus=""
-      onPointerMove={showBar}
       onCopy={(event) => {
         const copied = copiedRows(
           getSelection(),
@@ -338,33 +351,7 @@ export function ScrollBody({
           event.clipboardData.setData('text/plain', copied);
         }
       }}
-      onWheel={(event) => {
-        if (wheeled(viewerKeymap.wheelSideways, event) !== undefined) {
-          return;
-        }
-        const height = probe.current?.getBoundingClientRect().height || 1;
-        const turned = event.nativeEvent;
-        if (
-          gliding &&
-          glider.current &&
-          notchesOf(turned) === undefined &&
-          turned.deltaMode === 0
-        ) {
-          showBar();
-          glider.current.holdBy(turned.deltaY / height);
-          return;
-        }
-        const { rows, pending } = wheelTurn(wheel.current, turned, {
-          row: height,
-          step: height,
-          page: event.currentTarget.clientHeight,
-          perNotch: wheelRows,
-        });
-        wheel.current = pending;
-        if (rows !== 0) {
-          moved(rows);
-        }
-      }}
+      onWheel={(event) => turned(event.nativeEvent)}
       onKeyDown={(event) => {
         const sidestep = keyPressed(viewerKeymap.scrollSideways, event);
         if (sidestep !== undefined) {
@@ -438,7 +425,7 @@ export function ScrollBody({
             style={{
               '--viewer-lead': led,
               ...(width !== undefined && {
-                minWidth: `calc(${width} * var(--text-advance) + var(--viewer-inset) + 8px + var(--scrollbar-size))`,
+                minWidth: `calc(${width} * var(--text-advance) + 8px)`,
               }),
             }}
           >
@@ -450,17 +437,20 @@ export function ScrollBody({
           <Words>{error}</Words>
         </div>
       )}
-      <ViewerScrollbar
-        scrollbar={scrollbar}
-        thumb={thumb}
-        track={track}
-        shown={barShown || barPinned}
-        onShow={showBar}
-        jump={(share) => jumped(share, true)}
+      <ScrollProxy
+        axis="vertical"
+        shown={thumb && { at: thumb.start, length: thumb.length }}
+        onDrag={(share) => jumped(share, true)}
         onLetGo={() => glider.current?.letGo()}
-        matches={matches}
-        size={size}
-      />
+        onStep={moved}
+      >
+        <MatchTicks
+          ticks={scrollbar}
+          matches={matches}
+          size={size}
+          track={track}
+        />
+      </ScrollProxy>
     </div>
   );
 }

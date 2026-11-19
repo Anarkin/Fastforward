@@ -13,18 +13,16 @@ import type { DiffFile, DiffLine } from './diff';
 import type { LoadedText } from './sideTexts';
 import { type FindMatch } from './find';
 import { lineKey } from './lines';
-import { Minimap } from './minimap';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { useSeenOffsets } from '../../../lib/page/seenOffsets';
 import { shortcutsEntryAttribute } from '../../../lib/page/shortcutsEntry';
 import { useSyntax, noSyntaxInput } from './syntax';
 import { useTextsToLoad } from './textsToLoad';
 import { wordRanges, type LineWords } from './wordDiff';
-import { ownScrollbarAttribute } from '../../../lib/page/overlayScrollbars';
 import { type ImageOrigin } from './images';
 import { useSkeleton } from '../../../lib/page/skeletonDelay';
 import { wrapIndent } from '../../../lib/page/wordWrap';
-import { snappedTop, type RowFollower } from '../../../lib/page/rowScroll';
+import type { RowFollower } from '../../../lib/page/rowScroll';
 import type { DiffLook } from './look';
 import type { DiffMeasures, DiffMeasuring } from './measures';
 import { widestColumns, type Sideways, type TextArea } from './overflow';
@@ -51,13 +49,17 @@ import {
   codeProps,
   findRangesByLine,
 } from './lineMarks';
-import { useDiffMinimapMarks } from './minimapChanges';
+import { useDiffMarks } from './rowMarks';
 import { Code } from './codeMarks';
 import { unmeasured, gapWidth, layoutVariables } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
 import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './rowShown';
 import { useSideways } from './sideways';
+import { SidewaysBars } from './sidewaysBars';
+import { ScrollbarMarks } from '../../../lib/page/scrollbarMarks';
+import { scrollbarHeldAttribute } from '../../../lib/page/scrollbars';
+import { marksScale } from './changeMarks';
 import { snappedLeft } from '../../../lib/page/columnScroll';
 import { useLaterRows } from '../../../lib/page/laterRows';
 import { useFoundJumps, useRevealFound } from './jumps';
@@ -82,7 +84,6 @@ export function DiffView({
   current,
   jump,
   firstChange,
-  finding = false,
   origin,
   viewOf,
   look,
@@ -109,7 +110,6 @@ export function DiffView({
   current: number;
   jump: number;
   firstChange: number | undefined;
-  finding?: boolean;
   viewOf?: (file: number) => (() => void) | undefined;
   look: DiffLook;
   measures: DiffMeasures;
@@ -203,44 +203,19 @@ export function DiffView({
     rangeExtractor: rowsNow,
     observeElementOffset: observeOffset,
   });
-  const scrollTarget = useRef<number>(undefined);
-  const scrollFrame = useRef<number>(undefined);
   const follower = useRef<RowFollower>(undefined);
-  const scrollToTop = useCallback(
-    (top: number) => {
-      if (scrolling.smooth && follower.current) {
-        follower.current.dragTo(top);
-        return;
-      }
-      scrollTarget.current = snappedTop(top, lineHeight, Infinity);
-      scrollFrame.current ??= requestAnimationFrame(() => {
-        scrollFrame.current = undefined;
-        const target = scrollTarget.current;
-        if (target === undefined) {
-          return;
-        }
-        virtualizer.scrollToOffset(target);
-        if (list.current) {
-          offsetSeen.current?.(list.current.scrollTop);
-        }
-      });
-    },
-    [virtualizer, lineHeight, scrolling.smooth, offsetSeen],
-  );
-  useEffect(
-    () => () => {
-      if (scrollFrame.current !== undefined) {
-        cancelAnimationFrame(scrollFrame.current);
-      }
-    },
-    [],
-  );
-
-  const dragMinimap = useCallback((dragging: boolean) => {
-    setDragged(dragging);
-    if (!dragging) {
-      follower.current?.dragEnd();
+  useEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
     }
+    const held = new MutationObserver(() =>
+      setDragged(
+        element.getAttribute(scrollbarHeldAttribute) === 'vertical-thumb',
+      ),
+    );
+    held.observe(element, { attributeFilter: [scrollbarHeldAttribute] });
+    return () => held.disconnect();
   }, []);
   const endPadding = useDiffFollow({
     list,
@@ -261,6 +236,7 @@ export function DiffView({
     [rows, wordWrap, widths],
   );
   const {
+    held,
     shown,
     dotColumns,
     room,
@@ -479,7 +455,7 @@ export function DiffView({
     virtualizer,
     lineHeight,
   });
-  const marks = useDiffMinimapMarks({
+  const marks = useDiffMarks({
     rows,
     keys,
     rangesByLine,
@@ -541,21 +517,26 @@ export function DiffView({
         '--diff-gap-width': `${gapWidth(scale)}px`,
       }}
     >
-      <Minimap
+      {!wordWrap && (
+        <SidewaysBars
+          shown={shown}
+          held={held}
+          sides={split ? 2 : 1}
+          list={list}
+        />
+      )}
+      <ScrollbarMarks
         marks={marks}
-        scroller={list}
-        viewport={virtualizer.scrollRect?.height ?? 0}
-        total={virtualizer.getTotalSize()}
-        pinned={finding}
-        onDrag={dragMinimap}
-        onScroll={scrollToTop}
+        scale={marksScale(
+          virtualizer.getTotalSize(),
+          virtualizer.scrollRect?.height ?? 0,
+        )}
       />
       <div
         className="virtual-rows"
         ref={list}
         tabIndex={0}
         {...{
-          [ownScrollbarAttribute]: '',
           [columnFocusAttribute]: '',
           [shortcutsEntryAttribute]: 'diff',
         }}

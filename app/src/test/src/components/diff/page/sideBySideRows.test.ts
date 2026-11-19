@@ -15,7 +15,7 @@ import {
   splitPairs,
 } from '../../../../../components/diff/page/sideBySideRows';
 import { changeStarts } from '../../../../../components/diff/page/scrolling';
-import { minimapRows } from '../../../../../components/diff/page/rowMeasures';
+import { markedRows } from '../../../../../components/diff/page/rowMeasures';
 import { splitSideClass } from '../../../../../components/diff/page/rowClasses';
 import { sideBySideWords } from '../../../../../components/diff/page/pairing';
 import { wordRanges } from '../../../../../components/diff/page/wordDiff';
@@ -155,11 +155,11 @@ suite('Side-by-side diff', () => {
     ]);
   });
 
-  test('marks changed rows on the minimap and finds where changes start, as inline', () => {
+  test('marks changed rows on the scrollbar and finds where changes start, as inline', () => {
     const files = parsePatch(patch);
     const rows = diffRows(files, new Map(), undefined, false, true);
     assert.deepStrictEqual(
-      minimapRows(rows).map((row) => row.change),
+      markedRows(rows).map((row) => row.change),
       [
         undefined,
         undefined,
@@ -233,10 +233,10 @@ suite('Side-by-side rows with matched lines', () => {
     ]);
   });
 
-  test('marks the matched and inserted rows as added on the minimap', () => {
+  test('marks the matched and inserted rows as added on the scrollbar', () => {
     const rows = diffRows(file, new Map(), undefined, false, true);
     assert.deepStrictEqual(
-      minimapRows(rows)
+      markedRows(rows)
         .slice(2)
         .map((row) => row.change),
       [u, 'added', 'added', 'added', u],

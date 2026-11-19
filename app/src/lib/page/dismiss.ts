@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { keymap } from './keymap';
-import { overlayScrollbarClass } from './overlayScrollbars';
+import { scrollbarCoverClass } from './scrollbars';
 import { isKeyPress, keyPressed } from './shortcuts';
 
 export interface DismissOptions {
@@ -32,7 +32,7 @@ export function listenForDismiss(
     const inside =
       (isNode(clicked) && element.current?.contains(clicked)) ||
       (isElement(clicked) &&
-        clicked.closest(`.${overlayScrollbarClass}`) !== null) ||
+        clicked.closest(`.${scrollbarCoverClass}`) !== null) ||
       (ignore !== undefined &&
         isElement(clicked) &&
         clicked.closest(ignore) !== null);
