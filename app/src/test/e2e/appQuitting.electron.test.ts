@@ -54,7 +54,7 @@ suite('App quitting', () => {
     try {
       const page = await app.firstWindow();
       await page.locator('.commit', { hasText: 'first' }).waitFor();
-      await page.getByTitle(strings.navigation.fetch, { exact: true }).click();
+      await page.getByLabel(strings.navigation.fetch, { exact: true }).click();
       await waitFor(() => fs.existsSync(alive), 'git to fetch');
       await quitWithoutChromium(app, folder);
       const counted = fs.readFileSync(alive, 'utf8');
@@ -104,7 +104,7 @@ suite('App quitting', () => {
       const page = await app.firstWindow();
       await page.locator('.commit', { hasText: 'first' }).waitFor();
       await page
-        .getByTitle(
+        .getByLabel(
           strings.navigation.fetchEvery(
             defaultSettings().tools.git.autoFetchMinutes,
           ),
