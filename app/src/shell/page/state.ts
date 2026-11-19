@@ -14,7 +14,6 @@ import {
   defaultTipDelay,
   type NoticeTimes,
 } from '../shared/notices';
-import { defaultTabHold } from '../shared/tabHold';
 import type {
   AboutInfo,
   TabInfo,
@@ -53,7 +52,6 @@ export interface ShellSource {
   readonly partLooks: KnownLooks;
   readonly scrolling: ScrollSettings;
   readonly tipDelay: number;
-  readonly tabHold: number;
   readonly noticeTimes: NoticeTimes;
   readonly textView: TextView;
   readonly imageView: ImageView;
@@ -132,7 +130,6 @@ export const shellDefaults: ShellSource = {
   partLooks: new Map(),
   scrolling: defaultScrolling,
   tipDelay: defaultTipDelay,
-  tabHold: defaultTabHold,
   noticeTimes: defaultNoticeTimes,
   textView: defaultTextView,
   imageView: defaultImageView,

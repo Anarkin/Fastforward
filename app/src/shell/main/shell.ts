@@ -556,7 +556,6 @@ export class Shell {
       tipDelay: storage.tipDelay,
       noticeTimes: storage.noticeTimes,
     });
-    page.post({ type: 'tabHold', milliseconds: storage.tabHold });
     page.post({ type: 'textView', view: storage.textView });
     page.post({ type: 'imageView', view: storage.imageView });
     page.post({ type: 'update', status: host.updateStatus() });

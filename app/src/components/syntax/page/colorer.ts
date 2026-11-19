@@ -1,7 +1,6 @@
 import { partLines, type CodePart } from './parts';
 import type { FromSyntax, ToSyntax } from './serving';
 import type { LineRanges, SyntaxRange } from './engine';
-import { settling } from '../../../lib/page/settling';
 
 interface Twin {
   readonly source: number;
@@ -61,7 +60,6 @@ export function colorerOf(port: SyntaxPort): Colorer {
   let jobs = 0;
   const colorParts: Colorer['colorParts'] = (language, code, colored) => {
     const job = (jobs += 1);
-    const came = settling();
     waiting.set(job, (message) => {
       if (message.type !== 'code') {
         return;
@@ -69,12 +67,10 @@ export function colorerOf(port: SyntaxPort): Colorer {
       if (message.part === undefined || message.part.done) {
         waiting.delete(job);
       }
-      came();
       colored(message.part);
     });
     port.post({ type: 'code', job, language, code });
     return () => {
-      came();
       if (waiting.delete(job)) {
         port.post({ type: 'stop', job });
       }
@@ -93,10 +89,8 @@ export function colorerOf(port: SyntaxPort): Colorer {
   return {
     colorEdited(language, lines, colored) {
       const job = (jobs += 1);
-      const came = settling();
       waiting.set(job, (message) => {
         if (message.type === 'code') {
-          came();
           colored(message.part);
         }
       });
@@ -105,7 +99,6 @@ export function colorerOf(port: SyntaxPort): Colorer {
         edit: (from, removed, edited) =>
           port.post({ type: 'editLines', job, from, removed, lines: edited }),
         stop: () => {
-          came();
           if (waiting.delete(job)) {
             port.post({ type: 'stop', job });
           }
@@ -114,10 +107,8 @@ export function colorerOf(port: SyntaxPort): Colorer {
     },
     color(sources, colored, entire, background) {
       const job = (jobs += 1);
-      const came = background === true ? () => undefined : settling();
       waiting.set(job, (message) => {
         if (message.type === 'colors') {
-          came();
           colored(message.ranges, message.generations);
         } else if (message.type === 'entire') {
           entire?.(message.source, message.part, message.generation);
@@ -130,7 +121,6 @@ export function colorerOf(port: SyntaxPort): Colorer {
         ...(background === true && { background }),
       });
       return () => {
-        came();
         waiting.delete(job);
         port.post({ type: 'stop', job });
       };

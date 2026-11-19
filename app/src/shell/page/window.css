@@ -266,34 +266,6 @@ body {
   background-color: var(--scrollbar-track-background);
 }
 
-@keyframes held-picture {
-  from,
-  to {
-    opacity: 1;
-  }
-}
-
-::view-transition,
-::view-transition-group(*),
-::view-transition-image-pair(*),
-::view-transition-old(*),
-::view-transition-new(*) {
-  pointer-events: none;
-}
-
-::view-transition-group(*) {
-  animation: none;
-}
-
-::view-transition-old(*) {
-  animation: held-picture 60s linear both;
-  mix-blend-mode: normal;
-}
-
-::view-transition-new(*) {
-  display: none;
-}
-
 .scrollbar-cover {
   position: fixed;
   z-index: 20;

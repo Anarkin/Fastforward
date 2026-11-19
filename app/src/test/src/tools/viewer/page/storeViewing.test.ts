@@ -10,7 +10,6 @@ import {
 import { createViewerStore } from '../../../../../tools/viewer/page/store';
 import { choicesOf } from '../../../../../tools/viewer/page/state';
 import { noop } from '../../../../helpers/fixtures';
-import { settledNow } from '../../../../helpers/settled';
 
 const place = { page: 2, zoom: 'auto', left: 0, top: 10 } as const;
 
@@ -245,47 +244,6 @@ suite('Viewer store', () => {
     assert.deepStrictEqual(posted, [
       { type: 'readText', tab: '1', encoding: 'utf-8', request: 1 },
     ]);
-  });
-
-  test('keeps the page from being taken for settled from when the viewer asks the main process for rows until an answer came or its tab hides, the matches of a find, which come for as long as it searches, apart', async () => {
-    const { store } = shown();
-    const { receive, request } = store.getState();
-    const rows = {
-      type: 'readRows',
-      tab: '1',
-      encoding: 'utf-8',
-      request: 1,
-      anchor: 0,
-      exact: false,
-      before: 0,
-      after: 10,
-      least: 10,
-    } as const;
-    assert.strictEqual(await settledNow(), true);
-    request(rows);
-    assert.strictEqual(await settledNow(), false);
-    receive({
-      type: 'found',
-      tab: '1',
-      request: 1,
-      matches: [],
-      capped: false,
-      done: true,
-    });
-    assert.strictEqual(await settledNow(), false);
-    receive({
-      type: 'rows',
-      tab: '1',
-      request: 1,
-      size: 0,
-      rows: [],
-      anchorIndex: 0,
-    });
-    assert.strictEqual(await settledNow(), true);
-    request(rows);
-    assert.strictEqual(await settledNow(), false);
-    receive({ type: 'hide' });
-    assert.strictEqual(await settledNow(), true);
   });
 
   test('keeps what each viewer tab was chosen to show its file as, its mode, encoding and language one by one, each choice keeping the others, while another tab is shown, and forgets them once the tab is closed, as a tab opened later can take its id', () => {

@@ -97,7 +97,6 @@ suite('Shell store', () => {
       tipDelay: 120,
       noticeTimes: { least: 1, most: 2, errorLeast: 3, errorMost: 4 },
     });
-    receive({ type: 'tabHold', milliseconds: 80 });
     receive({
       type: 'textView',
       view: { wordWrap: false, showWhitespace: true, highlightSyntax: false },
@@ -112,7 +111,6 @@ suite('Shell store', () => {
       [state.tipDelay, state.noticeTimes],
       [120, { least: 1, most: 2, errorLeast: 3, errorMost: 4 }],
     );
-    assert.strictEqual(state.tabHold, 80);
     assert.strictEqual(state.dateFormat, 'DD.MM.YYYY');
     assert.deepStrictEqual(state.scrolling, {
       wheelRows: 3,

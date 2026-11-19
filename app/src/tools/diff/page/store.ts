@@ -24,9 +24,6 @@ import {
   type CompareState,
   type ComparedVersions,
 } from './state';
-import { arrived, awaiting } from '../../../lib/page/settling';
-
-const compareAwaited = 'diff compare';
 
 function withTexts(
   texts: ReadonlyMap<string, LoadedText>,
@@ -122,7 +119,6 @@ export function createDiffStore(
         const leaving = get().tab;
         switch (message.type) {
           case 'show':
-            awaiting(compareAwaited);
             tabs.showing(message.tab, leaving);
             set((state) => ({
               tab: message.tab,
@@ -135,7 +131,6 @@ export function createDiffStore(
             }));
             break;
           case 'hide':
-            arrived(compareAwaited);
             set(hidden);
             break;
           case 'closed':
@@ -145,7 +140,6 @@ export function createDiffStore(
             tabs.closed(message.tab);
             break;
           case 'compare':
-            arrived(compareAwaited);
             if (message.compare.tab === get().tab) {
               set({ compare: message.compare });
             }

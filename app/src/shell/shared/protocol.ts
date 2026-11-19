@@ -159,7 +159,6 @@ export type ToWebview =
       readonly tipDelay: number;
       readonly noticeTimes: NoticeTimes;
     }
-  | { readonly type: 'tabHold'; readonly milliseconds: number }
   | { readonly type: 'textView'; readonly view: TextView }
   | { readonly type: 'imageView'; readonly view: ImageView }
   | { readonly type: 'update'; readonly status: UpdateStatus }
