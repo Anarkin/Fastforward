@@ -6,7 +6,7 @@ import { Pane } from '../../../../../tools/commander/page/pane';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import type { Layout } from '../../../../../tools/commander/page/layouts';
 import type { CommanderToWebview } from '../../../../../tools/commander/shared/protocol';
-import { inSide, rowNamed, sort } from './paneFixtures';
+import { inSide, pane, rowNamed, sort } from './paneFixtures';
 import {
   PathMenuContext,
   type PathMenuAsk,
@@ -109,6 +109,30 @@ suite('Commander menu on a side', () => {
         [true, true, true],
       );
     });
+  });
+
+  test('names the drive of a side on its button as its menu names it, with its backslash, as the button left it out above a path and a menu that had it', async () => {
+    await inPane(
+      async ({ main }) => {
+        const trigger = main.querySelector<HTMLButtonElement>(
+          `button[title="${strings.commander.chooseDrive}"]`,
+        );
+        assert.ok(trigger);
+        const named = trigger.textContent;
+        await act(async () => trigger.click());
+        const drives = [
+          ...main.querySelectorAll<HTMLButtonElement>('.menu-item'),
+        ].map((each) => each.textContent);
+
+        assert.match(named, /^[A-Z]:\\$/);
+        assert.ok(
+          drives.some((drive) => drive.endsWith(named)),
+          `${named} among ${drives.join(', ')}`,
+        );
+      },
+      undefined,
+      pane(false, []),
+    );
   });
 
   test('asks for the menu of the folder or file a part of the path of a side is on a right click on the part', async () => {

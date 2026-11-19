@@ -133,7 +133,7 @@ export function PaneTitle({
             <MenuButton
               scrolling={scrolling}
               title={strings.commander.chooseDrive}
-              label={(current ?? '').replace(/\\$/, '')}
+              label={current ?? ''}
               path
               trigger={driveTrigger}
               onChosen={onChosen}
