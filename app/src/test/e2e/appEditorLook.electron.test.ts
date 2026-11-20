@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { strings } from '../../lib/shared/strings';
 import {
   opened,
   page,
@@ -74,6 +75,26 @@ async function starredAfter(
     Math.abs(starred.left - named.right) < 0.5,
     `${starred.left} right after ${named.right}`,
   );
+}
+
+function baselinesOf(line: Element) {
+  const top = line.getBoundingClientRect().top;
+  const baselineOf = (element: Element | null) => {
+    if (element === null) {
+      return undefined;
+    }
+    const probe = document.createElement('span');
+    probe.style.display = 'inline-block';
+    probe.style.height = '0';
+    element.append(probe);
+    const at = probe.getBoundingClientRect().bottom - top;
+    probe.remove();
+    return Math.round(at * devicePixelRatio * 64) / 64;
+  };
+  return {
+    name: baselineOf(line.querySelector('.path-name')),
+    mark: baselineOf(line.querySelector('.editor-mark')),
+  };
 }
 
 function firstLeftOf(element: Element): number {
@@ -274,5 +295,26 @@ suite('App editor', () => {
         scrolled.to - scrolled.from < 3 * scrolled.wide,
       JSON.stringify(scrolled),
     );
+  });
+
+  test('keeps the name of a file where it stands in its path once a mark in the font of the app follows it, as Read-only, the mark on the line of the name', async () => {
+    const pathLine = page.locator('.editor .editor-path');
+    await backToCommander();
+    await edit('notes.txt');
+    await pathLine.locator('.path-name').waitFor();
+    const alone = await pathLine.evaluate(baselinesOf);
+    assert.strictEqual(alone.mark, undefined);
+    await backToCommander();
+    await page.keyboard.press('Alt+F');
+    await page.getByText(strings.tabs.openDefaultSettings).click();
+    await pathLine
+      .locator('.editor-mark', { hasText: strings.editor.readOnlyMark })
+      .waitFor();
+    const marked = await pathLine.evaluate(baselinesOf);
+    assert.deepStrictEqual(marked, { name: alone.name, mark: alone.name });
+    await page.keyboard.press('Escape');
+    await pathLine
+      .locator('.editor-mark', { hasText: strings.editor.readOnlyMark })
+      .waitFor({ state: 'detached' });
   });
 });
