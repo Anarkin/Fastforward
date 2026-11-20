@@ -29,6 +29,23 @@ export function bitmapResizing(
     : { resizeHeight: target };
 }
 
+function skewOf(size: PixelSize, other: PixelSize): number {
+  return Math.abs(
+    Math.log((size.width * other.height) / (size.height * other.width)),
+  );
+}
+
+export function shapeOf(
+  drawn: PixelSize,
+  stored: PixelSize | undefined,
+): PixelSize {
+  if (stored === undefined) {
+    return drawn;
+  }
+  const turned = { width: stored.height, height: stored.width };
+  return skewOf(turned, drawn) < skewOf(stored, drawn) ? turned : stored;
+}
+
 export function thumbnailPixels(drawn: PixelSize, target: number): PixelSize {
   const scale = target / Math.max(drawn.width, drawn.height, 1);
   return {

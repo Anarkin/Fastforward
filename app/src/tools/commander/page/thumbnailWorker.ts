@@ -15,6 +15,7 @@ import {
   halvings,
   jpegScaling,
   targetSide,
+  shapeOf,
   thumbnailPixels,
 } from './thumbnailSize';
 
@@ -60,10 +61,11 @@ function drawnOn(
 async function encoded(
   source: CanvasImageSource,
   drawn: PixelSize,
+  storedSize: PixelSize | undefined,
   target: number,
   pixelRatio: number,
 ): Promise<MadeThumbnail> {
-  const shown = thumbnailPixels(drawn, target);
+  const shown = thumbnailPixels(shapeOf(drawn, storedSize), target);
   let current = source;
   for (const step of halvings(drawn, shown)) {
     current = drawnOn(current, step, 'low');
@@ -104,6 +106,7 @@ async function fromJpeg(
       return await encoded(
         frame,
         { width: frame.displayWidth, height: frame.displayHeight },
+        storedSize,
         target,
         pixelRatio,
       );
@@ -134,6 +137,7 @@ async function fromBitmap(
     return await encoded(
       bitmap,
       bitmap,
+      storedSize,
       targetSide(Math.max(decoded.width, decoded.height), box, pixelRatio),
       pixelRatio,
     );
