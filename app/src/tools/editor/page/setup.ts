@@ -1,6 +1,5 @@
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { history, historyField } from '@codemirror/commands';
-import { bracketMatching } from '@codemirror/language';
 import {
   Compartment,
   EditorState,
@@ -14,6 +13,7 @@ import {
   type ViewUpdate,
 } from '@codemirror/view';
 import type { Sentence } from '../../../lib/shared/sentences';
+import { bracketPairs } from './brackets';
 import { syntaxColors } from './colors';
 import { appSelection } from './selection';
 import { appTextLook, blanksShown } from './text';
@@ -105,7 +105,7 @@ export function extensionsOf({
     appTextLook(table),
     appSelection(editorKeymap.rowEnd, cursor),
     lineNumbers(),
-    bracketMatching(),
+    bracketPairs,
     history(),
     endingsUndone,
     editorFind,

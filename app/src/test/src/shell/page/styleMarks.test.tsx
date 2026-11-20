@@ -161,6 +161,22 @@ const textHeights: Readonly<Record<string, string>> = {
   'var(--monospace-font-family)': 'var(--monospace-text-height, 1lh)',
 };
 
+const editorBracket = (classes: string) =>
+  withClass(
+    rendered(
+      <div className="cm-editor editor-text cm-focused">
+        <div className="cm-scroller">
+          <div className="cm-content">
+            <div className="cm-line">
+              <span className={classes}>(</span>
+            </div>
+          </div>
+        </div>
+      </div>,
+    ),
+    classes,
+  );
+
 const unwrappedLooks = (
   element: MarkupElement,
   expected: Readonly<Record<string, string | undefined>>,
@@ -235,6 +251,53 @@ suite('Style', () => {
     for (const [, mark] of current) {
       looks(mark, { 'box-shadow': currentMatchOutline });
     }
+  });
+
+  test('marks a bracket the editor matches in the yellow of a find match there, its text in the color of that match over the color of its syntax, which CodeMirror sets inside the mark, padded as that match over the rows of device pixels the cursor fills, so the cursor standing on it covers the mark whole, and leaves a bracket that matches none as it is, as an outline stood a pixel out on every side of a matched bracket, round its line and its first column', () => {
+    const match = marks.find(([where]) => where === 'the editor')?.[1];
+    assert.ok(match, 'no find match in the editor');
+    const looked = [
+      '--mark-text-height',
+      '--mark-leading',
+      '--mark-slack',
+      '--mark-above',
+      'padding-top',
+      'padding-bottom',
+      'padding-left',
+      'padding-right',
+      'color',
+      'background',
+      'box-shadow',
+    ];
+    const lookOf = (element: MarkupElement) =>
+      Object.fromEntries(
+        looked.map((property) => [property, cascaded(element, property)]),
+      );
+    assert.deepStrictEqual(
+      lookOf(editorBracket('cm-matchingBracket')),
+      lookOf(match),
+    );
+    assert.deepStrictEqual(
+      lookOf(editorBracket('cm-nonmatchingBracket')),
+      Object.fromEntries(looked.map((property) => [property, undefined])),
+    );
+    const colored = withClass(
+      rendered(
+        <div className="cm-editor editor-text cm-focused">
+          <div className="cm-scroller">
+            <div className="cm-content">
+              <div className="cm-line">
+                <span className="cm-matchingBracket">
+                  <span className="syntax-keyword">(</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>,
+      ),
+      'syntax-keyword',
+    );
+    assert.strictEqual(cascaded(colored, 'color'), 'inherit');
   });
 
   test('leaves the keys of a shortcut F1 found unpadded, as each is a box of its own as tall as its line', () => {

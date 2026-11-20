@@ -77,7 +77,7 @@
 | Column selection | Select a column, a cursor on each line | Shift+Alt+drag | Common | ✅ Yes |  |
 | End of a wrapped row | Go to the end of the row rather than the line | End | Common | ✅ Yes | Past the spaces hanging at the end of the row, the cursor drawn while in them on the column kept past the row for a blank hanging there, where the viewer and the diff mark it |
 | Go to a line | Go to a line by its number | Ctrl+G | Common | ✅ Yes | The prompt kept open with its tab, with the line typed and its caret, as the tab is shown again, reloaded or moved |
-| Bracket matching | Mark the bracket matching the one at the cursor | — | Common | ✅ Yes | Round, square and curly brackets, by CodeMirror, outlined, one that matches none outlined in the color of errors; brackets in strings and comments counted too, as no grammar tells it where they are |
+| Bracket matching | Mark the bracket matching the one at the cursor | — | Common | ✅ Yes | Round, square and curly brackets, by CodeMirror, both of a pair marked in the yellow of a find match, over the rows of device pixels the cursor fills, so the cursor on one covers its mark whole; one that matches none left unmarked; brackets in strings and comments counted too, as no grammar tells it where they are |
 
 ## Finding
 

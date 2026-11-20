@@ -22,6 +22,22 @@ import { writeSettings } from './settingsWritten';
 
 const status = () => page.locator('.editor .column-status-text').textContent();
 
+const bracketAndCursor = async () => {
+  const [bracket = [], cursor = []] = await page.evaluate(() =>
+    ['.editor .cm-line .cm-matchingBracket', '.editor .cm-cursor-primary'].map(
+      (selector) => {
+        const box = document.querySelector(selector)?.getBoundingClientRect();
+        return box === undefined
+          ? []
+          : [box.left, box.top, box.right, box.bottom].map((edge) =>
+              Math.round(Math.round(edge * devicePixelRatio * 64) / 64),
+            );
+      },
+    ),
+  );
+  return { bracket, cursor };
+};
+
 const shownWhole = () =>
   page.locator('.editor .cm-scroller').evaluate((scroller) => {
     const top = scroller.getBoundingClientRect().top;
@@ -242,7 +258,7 @@ suite('App editor', () => {
     }
   });
 
-  test('marks the bracket matching the one beside the cursor, and one matching none', async () => {
+  test('marks the bracket matching the one beside the cursor, and nothing beside one that matches none', async () => {
     fs.writeFileSync(path.join(opened, 'brackets.txt'), 'call(a[0])\nopen(\n');
     await backToCommander();
     await edit('brackets.txt');
@@ -261,6 +277,57 @@ suite('App editor', () => {
     );
     await content().locator('.cm-line').nth(1).click();
     await page.keyboard.press('End');
-    await content().locator('.cm-nonmatchingBracket').waitFor();
+    await waitFor(
+      async () =>
+        (await content().locator('.cm-matchingBracket').count()) === 0,
+      'the brackets of the call no longer marked',
+    );
+    assert.strictEqual(
+      await content().locator('.cm-nonmatchingBracket').count(),
+      0,
+      'a bracket matching none marked',
+    );
+  });
+
+  test('marks a matched bracket on the very box of the cursor standing on it, its text in the color of a find match whatever color its syntax gives it, so the cursor covers the mark whole and a bracket in the first column is marked whole, as the outline it had stood a pixel out on every side of its text', async () => {
+    fs.writeFileSync(path.join(opened, 'block.json'), '{\n}\n');
+    await backToCommander();
+    await edit('block.json');
+    await waitFor(async () => (await editedText()) === '{\n}\n', 'the text');
+    await content().locator('.cm-line [class^="syntax-"]').first().waitFor();
+    await content().locator('.cm-line').first().click();
+    await page.keyboard.press('Home');
+    let seen = await bracketAndCursor();
+    await waitFor(
+      async () => {
+        seen = await bracketAndCursor();
+        return (
+          seen.bracket.length === 4 &&
+          seen.bracket.join() === seen.cursor.join()
+        );
+      },
+      'the bracket marked on the box of the cursor',
+      3000,
+    ).catch(() => undefined);
+    assert.deepStrictEqual(seen.bracket, seen.cursor, JSON.stringify(seen));
+    const colors = await page.evaluate(() => {
+      const mark = document.querySelector(
+        '.editor .cm-line .cm-matchingBracket',
+      );
+      let glyph = mark;
+      while (glyph?.firstElementChild) {
+        glyph = glyph.firstElementChild;
+      }
+      const found = document.createElement('span');
+      found.style.color = 'var(--color-search-match-foreground)';
+      mark?.parentElement?.append(found);
+      const wanted = getComputedStyle(found).color;
+      found.remove();
+      return {
+        glyph: glyph === null ? '' : getComputedStyle(glyph).color,
+        wanted,
+      };
+    });
+    assert.strictEqual(colors.glyph, colors.wanted);
   });
 });

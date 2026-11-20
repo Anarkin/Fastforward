@@ -277,13 +277,19 @@ input {
 
 mark.match,
 kbd.match,
-.find-match {
+.find-match,
+.cm-editor.editor-text.cm-focused .cm-matchingBracket {
   color: var(--color-search-match-foreground);
   background: var(--color-search-match);
 }
 
+.cm-editor.editor-text.cm-focused .cm-matchingBracket * {
+  color: inherit;
+}
+
 mark.match,
-.find-match {
+.find-match,
+.cm-editor.editor-text .cm-matchingBracket {
   --mark-text-height: var(--text-height, 1lh);
   --mark-leading: max(0px, 1lh - var(--mark-text-height));
   --mark-slack: calc(var(--device-pixel, 1px) / 256);
@@ -304,11 +310,13 @@ mark.match,
 .find-match,
 .commander-row mark.match,
 .tree-row .path mark.match,
-.name mark.match {
+.name mark.match,
+.cm-editor.editor-text .cm-matchingBracket {
   --mark-text-height: var(--monospace-text-height, 1lh);
 }
 
-.cm-editor.editor-text .find-match {
+.cm-editor.editor-text .find-match,
+.cm-editor.editor-text .cm-matchingBracket {
   --mark-above: calc(var(--mark-leading) / 2);
 }
 

@@ -364,7 +364,7 @@ suite('Style', () => {
     }
   });
 
-  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, outlining the current one, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and outlines a bracket as a plain rectangle too', () => {
+  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, outlining the current one, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and a bracket the editor matches as a match too', () => {
     const match = {
       color: 'var(--color-search-match-foreground)',
       background: 'var(--color-search-match)',
@@ -432,18 +432,16 @@ suite('Style', () => {
         },
       );
     }
-    for (const bracket of ['cm-matchingBracket', 'cm-nonmatchingBracket']) {
-      looks(
-        withClass(
-          inside(
-            'cm-editor editor-text cm-focused',
-            <span className={bracket}>(</span>,
-          ),
-          bracket,
+    looks(
+      withClass(
+        inside(
+          'cm-editor editor-text cm-focused',
+          <span className="cm-matchingBracket">(</span>,
         ),
-        { background: 'none', 'border-radius': undefined },
-      );
-    }
+        'cm-matchingBracket',
+      ),
+      { background: 'var(--color-search-match)', 'border-radius': undefined },
+    );
   });
 
   test('selects text in the color of a selected row everywhere, in the text boxes, the viewer, the diff, Markdown and any other text as the editor does, and see-through in that color over the page of a PDF, which shows through', () => {
