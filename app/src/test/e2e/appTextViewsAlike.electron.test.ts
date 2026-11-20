@@ -9,7 +9,7 @@ import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { windowOfPage } from './cursorWindow';
 import { barOf, barParts } from './scrollbarsShown';
-import { untilSettled } from './waits';
+import { untilSettled, waitForFocus } from './waits';
 
 const scale = 1.25;
 const perNotch = 10;
@@ -491,9 +491,16 @@ suite('App text views alike', () => {
   test('draws the dots of the spaces in the editor alike with text selected and without, as the browser keeps its own caret, hidden under the cursor of the editor, in a layer of its own while nothing is selected and paints the dots over it apart from the text, which blurred them by half a device pixel where the editor starts between two', async () => {
     await show('editor');
     const pane = await page.locator(views.editor.pane).first().boundingBox();
+    assert.ok(pane, 'the editor has no box');
+    await page.mouse.click(pane.x + pane.width / 2, pane.y + pane.height / 2);
+    await waitForFocus(page.locator('.editor .cm-content'), 'the editor');
+    await page.keyboard.press('ControlOrMeta+Home');
+    for (let row = 0; row < 3; row++) {
+      await page.keyboard.press('ArrowDown');
+    }
+    await page.keyboard.press('Home');
     const line = await page.locator('.editor .cm-line').nth(3).boundingBox();
-    assert.ok(pane && line, 'the editor shows no fourth line');
-    await page.mouse.click(line.x + 4, line.y + line.height / 2);
+    assert.ok(line, 'the editor shows no fourth line');
     const away = {
       left: pane.x,
       right: pane.x + pane.width,
