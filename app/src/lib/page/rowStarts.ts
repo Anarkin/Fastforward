@@ -31,6 +31,9 @@ export function snappedToStart(
     return Math.max(0, Math.min(max, top));
   }
   const next = firstStartFrom(startOf, count, top, near);
+  if (next === count && toward >= 0) {
+    return Math.max(0, max);
+  }
   const onIt = next < count && Math.abs(startOf(next) - top) <= near;
   const index =
     toward < 0 && !onIt ? Math.max(0, next - 1) : Math.min(count - 1, next);

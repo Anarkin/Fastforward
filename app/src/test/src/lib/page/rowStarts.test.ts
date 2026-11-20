@@ -17,7 +17,14 @@ suite('Row starts', () => {
     assert.strictEqual(snappedToStart(startOf, count, 60, 0, 1000), 90);
     assert.strictEqual(snappedToStart(startOf, count, 54.004, 0, 1000), 54);
     assert.strictEqual(snappedToStart(startOf, count, 0, -1, 1000), 0);
-    assert.strictEqual(snappedToStart(startOf, count, 500, 1, 1000), 180);
+  });
+
+  test('stops at the end of the list going down past the start of its last row once that row is taller than the list, as no row starts below it, and at the start of that row going up, as the commit list went back to the start of a last commit whose labels ran below the list and never reached the end of its scrollbar, its last button drawn as one that scrolls', () => {
+    assert.strictEqual(snappedToStart(startOf, count, 500, 1, 1000), 1000);
+    assert.strictEqual(snappedToStart(startOf, count, 500, 0, 1000), 1000);
+    assert.strictEqual(snappedToStart(startOf, count, 500, -1, 1000), 180);
+    assert.strictEqual(snappedToStart(startOf, count, 1000, -1, 1000), 180);
+    assert.strictEqual(snappedToStart(startOf, count, 180.005, 1, 1000), 180);
   });
 
   test('never stops past the end of the list', () => {
