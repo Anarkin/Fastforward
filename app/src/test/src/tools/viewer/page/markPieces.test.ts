@@ -5,6 +5,7 @@ import {
   hexMarks,
   markPieces,
   occurrenceMarks,
+  occurrencesOf,
   textMarks,
 } from '../../../../../tools/viewer/page/markPieces';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
@@ -20,6 +21,14 @@ suite('Matches marked in a file viewed', () => {
       ],
     );
     assert.deepStrictEqual(occurrenceMarks('total', undefined), []);
+  });
+
+  test('gives a row the same occurrences while the same text stays selected, so a row drawn before is not drawn again as the view scrolls', () => {
+    const copiesIn = occurrencesOf('a');
+    const first = copiesIn('a b a');
+    assert.strictEqual(copiesIn('a b a'), first);
+    assert.deepStrictEqual(first, occurrenceMarks('a b a', 'a'));
+    assert.notStrictEqual(occurrencesOf('a')('a b a'), first);
   });
 
   test('cuts the pieces of a row at its occurrences as at its matches, so each is drawn as an occurrence', () => {

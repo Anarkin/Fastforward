@@ -4,7 +4,7 @@ import { type TextEncoding } from '../../../components/encodings/shared/textEnco
 import { ScrollBody } from './scrollBody';
 import type { Viewing } from './viewing';
 import type { ViewerFind } from './find';
-import { occurrenceMarks, textMarks } from './markPieces';
+import { occurrencesOf, textMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
 import { columnAt } from './columns';
 import { cellWidthsOf, textWidths } from '../../../lib/page/textWidths';
@@ -82,6 +82,7 @@ export function TextBody({
     (state) => state.textView.highlightOccurrences,
   );
   const [copy, setCopy] = useState<string>();
+  const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
   const wrapAt =
     wordWrap && columns !== undefined && Number.isFinite(columns)
       ? columns
@@ -217,7 +218,7 @@ export function TextBody({
             colored={colored}
             marks={
               find === undefined || !finding
-                ? occurrenceMarks(row.row.text, copy)
+                ? copiesIn(row.row.text)
                 : textMarks(
                     row.row,
                     find.query,
