@@ -52,7 +52,7 @@ const timesIn = (folder: string, pattern: RegExp) =>
     0,
   );
 
-const fixedSleeps = 25;
+const fixedSleeps = 23;
 
 function titlesAnElement(text: string): boolean {
   for (const opened of text.matchAll(/<[a-z][a-z0-9]*(?=[\s/>])/g)) {
