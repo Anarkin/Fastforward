@@ -154,7 +154,9 @@ export function Commits({
     crowded,
     looks: labLooks,
     rows: bubbleRows,
-    onRoom: setBubbleRoom,
+    rowsAt: bubbleRowsAt,
+    onAdvances: setBubbleAdvances,
+    onWidth: setBubbleWidth,
   } = useCrowdedBubbles(history, version);
   const sizes = useMemo(
     () => rowSizes(history, offset, line, scale, bubbleRows),
@@ -502,7 +504,12 @@ export function Commits({
           className="virtual-spacer"
           style={{ height: realHeight(totalSize) + endPad }}
         >
-          <BubbleLab looks={labLooks} onRoom={setBubbleRoom} />
+          <BubbleLab
+            looks={labLooks}
+            rowsAt={bubbleRowsAt}
+            onAdvances={setBubbleAdvances}
+            onWidth={setBubbleWidth}
+          />
           {rows.map((row) => {
             const height = fixedRowHeight(
               history,

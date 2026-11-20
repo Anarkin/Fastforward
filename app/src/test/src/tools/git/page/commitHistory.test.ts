@@ -104,4 +104,27 @@ suite('Commit history bubbles', () => {
     assert.strictEqual(history.hasBubbles(42), true);
     assert.strictEqual(history.hasBubbles(7), false);
   });
+
+  test('keeps the commits with more than one bubble as they were when only the lanes the walk of the graph found for them come, so their bubbles are not looked at and measured again, and takes new ones as new', () => {
+    const unknown = [
+      { position: 3, hash: 'a', lanes: 0 },
+      { position: 9, hash: 'b', lanes: 0 },
+    ];
+    const history = new CommitHistory(
+      20,
+      [3, 9],
+      undefined,
+      0,
+      undefined,
+      undefined,
+      unknown,
+    );
+    history.takeCrowded(unknown.map((commit) => ({ ...commit, lanes: 2 })));
+    assert.strictEqual(history.crowdedSpots, unknown);
+    assert.strictEqual(history.crowdedLanesAt(9), 2);
+    assert.strictEqual(history.crowdedLanesAt(4), 0);
+    const moved = [{ position: 4, hash: 'a', lanes: 1 }];
+    history.takeCrowded(moved);
+    assert.strictEqual(history.crowdedSpots, moved);
+  });
 });

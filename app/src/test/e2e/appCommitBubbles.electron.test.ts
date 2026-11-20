@@ -156,7 +156,8 @@ suite('Commit bubbles', () => {
         const page = await app.firstWindow();
         const list = page.locator('.virtual-rows.list.commit-rows');
         await list.locator('.bubble-line.laid-out').first().waitFor();
-        assert.ok((await list.locator('.bubble-lab .badge').count()) > 90);
+        const copies = await list.locator('.bubble-lab .badge').count();
+        assert.ok(copies > 0 && copies < 10, `${copies} copies of bubbles`);
         const resizer = page.locator(
           'section.column[data-focus-name="commits"] .resizer',
         );

@@ -150,7 +150,8 @@ export const BubbleReplica = memo(
       </span>
     );
   },
-  (before, after) => lookKey(before.look) === lookKey(after.look),
+  (before, after) =>
+    before.look === after.look || lookKey(before.look) === lookKey(after.look),
 );
 
 interface Action {

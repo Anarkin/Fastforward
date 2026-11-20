@@ -140,6 +140,16 @@ export function lookKey(look: BubbleLook): string {
   ].join('\n');
 }
 
+export function shapeKey(look: BubbleLook): string {
+  return [
+    look.kind,
+    ...look.actions.map(
+      (action) =>
+        `${action.key}${action.count > 0 ? String(action.count).length : 0}`,
+    ),
+  ].join('\n');
+}
+
 export function looksOn(
   hash: string,
   around: CommitSurroundings,

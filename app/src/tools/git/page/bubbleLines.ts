@@ -6,6 +6,18 @@ export function indentOf(lanes: number): number {
   return graphWidth(lanes) + rowIndent;
 }
 
+const keptLines = new Map<string, readonly number[]>();
+
+function kept(lines: number[]): readonly number[] {
+  const key = lines.join(',');
+  const known = keptLines.get(key);
+  if (known !== undefined) {
+    return known;
+  }
+  keptLines.set(key, lines);
+  return lines;
+}
+
 export function bubbleLines(
   advances: readonly number[],
   width: number,
@@ -53,28 +65,61 @@ export function linesAcross(
   return width > 0 ? bubbleLines(known, width) : undefined;
 }
 
+export function sameRows(
+  a: ReadonlyMap<number, readonly number[]>,
+  b: ReadonlyMap<number, readonly number[]>,
+): boolean {
+  if (a.size !== b.size) {
+    return false;
+  }
+  for (const [position, lines] of a) {
+    if (b.get(position) !== lines) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export interface CrowdedLooks {
   readonly position: number;
-  readonly lanes: number;
   readonly keys: readonly string[];
 }
 
-export function bubbleRowsOf(
+export interface MeasuredCrowd {
+  readonly position: number;
+  readonly indent: number;
+  readonly advances: readonly number[];
+}
+
+export function measuredCrowds(
   crowded: readonly CrowdedLooks[],
   advances: ReadonlyMap<string, number>,
-  width: number,
   lanesAt: (position: number) => number,
+): MeasuredCrowd[] {
+  const measured: MeasuredCrowd[] = [];
+  for (const { position, keys } of crowded) {
+    const known = keys.map((key) => advances.get(key));
+    if (known.every((advance) => advance !== undefined)) {
+      measured.push({
+        position,
+        indent: indentOf(lanesAt(position)),
+        advances: known,
+      });
+    }
+  }
+  return measured;
+}
+
+export function bubbleRowsAt(
+  crowds: readonly MeasuredCrowd[],
+  width: number,
 ): Map<number, readonly number[]> {
   const rows = new Map<number, readonly number[]>();
-  for (const { position, lanes, keys } of crowded) {
-    const lines = linesAcross(
-      keys,
-      advances,
-      width - indentOf(lanes > 0 ? lanes : lanesAt(position)),
-    );
-    if (lines !== undefined) {
-      rows.set(position, lines);
-    }
+  if (width <= 0) {
+    return rows;
+  }
+  for (const { position, indent, advances } of crowds) {
+    rows.set(position, kept(bubbleLines(advances, width - indent)));
   }
   return rows;
 }

@@ -22,6 +22,7 @@ export class CommitHistory {
   private readonly listeners = new Set<() => void>();
   private version = 0;
   private crowdedAt: ReadonlyMap<number, CrowdedCommit> = new Map();
+  crowdedSpots: readonly CrowdedCommit[] = [];
 
   constructor(
     readonly total: number,
@@ -34,6 +35,7 @@ export class CommitHistory {
   ) {
     this.decorated = new Set(decorations);
     this.crowdedAt = crowdedPlaces(crowded);
+    this.crowdedSpots = crowded;
   }
 
   hasBubbles(position: number): boolean {
@@ -41,11 +43,23 @@ export class CommitHistory {
   }
 
   takeCrowded(crowded: readonly CrowdedCommit[]): void {
+    const placed =
+      crowded.length === this.crowded.length &&
+      crowded.every(
+        (commit, at) =>
+          commit.position === this.crowded[at]?.position &&
+          commit.hash === this.crowded[at]?.hash,
+      );
+    if (!placed) {
+      this.crowdedSpots = crowded;
+    }
     this.crowded = crowded;
-    this.crowdedAt = new Map(
-      crowded.map((commit) => [commit.position, commit]),
-    );
+    this.crowdedAt = crowdedPlaces(crowded);
     this.changed();
+  }
+
+  crowdedLanesAt(position: number): number {
+    return this.crowdedAt.get(position)?.lanes ?? 0;
   }
 
   crowdedHashAt(position: number): string | undefined {

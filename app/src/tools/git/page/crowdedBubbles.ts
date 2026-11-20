@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { CrowdedCommit } from '../shared/protocol';
 import {
   lookKey,
@@ -6,8 +6,7 @@ import {
   type BubbleLook,
   type CommitSurroundings,
 } from './bubbleLooks';
-import { bubbleRowsOf } from './bubbleLines';
-import { noBubbleRoom, type BubbleRoom } from './bubbleRoom';
+import { bubbleRowsAt, measuredCrowds } from './bubbleLines';
 import type { CommitHistory } from './commitHistory';
 import { rowLanes } from './graphLanes';
 import { detachedHead } from './selectors';
@@ -51,6 +50,8 @@ function useCommitSurroundings(): CommitSurroundings {
   );
 }
 
+const noAdvances: ReadonlyMap<string, number> = new Map();
+
 export function useCrowdedBubbles(
   history: CommitHistory | undefined,
   version: number,
@@ -58,17 +59,20 @@ export function useCrowdedBubbles(
   readonly crowded: readonly CrowdedCommit[];
   readonly looks: readonly BubbleLook[];
   readonly rows: ReadonlyMap<number, readonly number[]>;
-  readonly onRoom: (room: BubbleRoom) => void;
+  readonly rowsAt: (width: number) => ReadonlyMap<number, readonly number[]>;
+  readonly onAdvances: (advances: ReadonlyMap<string, number>) => void;
+  readonly onWidth: (width: number) => void;
 } {
   const around = useCommitSurroundings();
   const crowded = history?.crowded ?? noCrowded;
+  const spots = history?.crowdedSpots ?? noCrowded;
   const crowdedLooks = useMemo(
     () =>
-      crowded.map((commit) => {
-        const looks = looksOn(commit.hash, around);
-        return { ...commit, looks, keys: looks.map(lookKey) };
+      spots.map(({ position, hash }) => {
+        const looks = looksOn(hash, around);
+        return { position, looks, keys: looks.map(lookKey) };
       }),
-    [crowded, around],
+    [spots, around],
   );
   const looks = useMemo(() => {
     const distinct = new Map<string, BubbleLook>();
@@ -77,20 +81,37 @@ export function useCrowdedBubbles(
     }
     return [...distinct.values()];
   }, [crowdedLooks]);
-  const [room, setRoom] = useState(noBubbleRoom);
+  const [advances, setAdvances] = useState(noAdvances);
+  const [width, setWidth] = useState(0);
   const lanesLoaded = crowded.some((commit) => commit.lanes === 0)
     ? version
     : 0;
   const graphLoaded = useMemo(
-    () => ({ history, version: lanesLoaded }),
-    [history, lanesLoaded],
+    () => ({ history, crowded, version: lanesLoaded }),
+    [history, crowded, lanesLoaded],
   );
-  const rows = useMemo(
+  const crowds = useMemo(
     () =>
-      bubbleRowsOf(crowdedLooks, room.advances, room.width, (position) =>
-        rowLanes(graphLoaded.history?.graphAt(position)),
+      measuredCrowds(
+        crowdedLooks,
+        advances,
+        (position) =>
+          graphLoaded.history?.crowdedLanesAt(position) ||
+          rowLanes(graphLoaded.history?.graphAt(position)),
       ),
-    [crowdedLooks, room, graphLoaded],
+    [crowdedLooks, advances, graphLoaded],
   );
-  return { crowded, looks, rows, onRoom: setRoom };
+  const rowsAt = useCallback(
+    (at: number) => bubbleRowsAt(crowds, at),
+    [crowds],
+  );
+  const rows = useMemo(() => rowsAt(width), [rowsAt, width]);
+  return {
+    crowded,
+    looks,
+    rows,
+    rowsAt,
+    onAdvances: setAdvances,
+    onWidth: setWidth,
+  };
 }

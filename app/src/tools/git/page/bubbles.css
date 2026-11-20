@@ -176,6 +176,10 @@
   display: inline-block;
 }
 
+.bubble-lab-text {
+  font-style: normal;
+}
+
 .bubble-lab-end {
   display: inline-block;
   margin-left: calc(-1 * var(--bubble-inset));
