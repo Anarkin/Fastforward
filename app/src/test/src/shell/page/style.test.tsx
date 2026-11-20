@@ -364,7 +364,7 @@ suite('Style', () => {
     }
   });
 
-  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, outlining the current one, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and a bracket the editor matches as a match too', () => {
+  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, outlining the current one, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and what the editor marks on its own, a bracket it matches and the occurrences of the word at the cursor or of the text selected, as a plain rectangle too, in that yellow at the share the theme gives such marks', () => {
     const match = {
       color: 'var(--color-search-match-foreground)',
       background: 'var(--color-search-match)',
@@ -432,16 +432,22 @@ suite('Style', () => {
         },
       );
     }
-    looks(
-      withClass(
-        inside(
-          'cm-editor editor-text cm-focused',
-          <span className="cm-matchingBracket">(</span>,
+    for (const implicit of ['cm-matchingBracket', 'occurrence-match']) {
+      looks(
+        withClass(
+          inside(
+            'cm-editor editor-text cm-focused',
+            <span className={implicit}>(</span>,
+          ),
+          implicit,
         ),
-        'cm-matchingBracket',
-      ),
-      { background: 'var(--color-search-match)', 'border-radius': undefined },
-    );
+        {
+          background:
+            'color-mix( in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent )',
+          'border-radius': undefined,
+        },
+      );
+    }
   });
 
   test('selects text in the color of a selected row everywhere, in the text boxes, the viewer, the diff, Markdown and any other text as the editor does, and see-through in that color over the page of a PDF, which shows through', () => {

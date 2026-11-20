@@ -371,7 +371,7 @@ suite('App text views alike', () => {
       path.join(profile, 'settings.user.json'),
       JSON.stringify({
         scrolling: { smooth: false, wheelRows: perNotch },
-        text: { wordWrap: false },
+        text: { wordWrap: false, highlightOccurrences: false },
       }),
     );
     app = await launchApp(profile, {

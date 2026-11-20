@@ -392,11 +392,13 @@ suite('Shell with no tab open', () => {
           wordWrap: false,
           showWhitespace: true,
           highlightSyntax: true,
+          highlightOccurrences: true,
         });
         const chosen = {
           wordWrap: true,
           showWhitespace: false,
           highlightSyntax: false,
+          highlightOccurrences: false,
         };
         await view.connection.receive({ type: 'setTextView', view: chosen });
         assert.deepStrictEqual(view.settings.settings.text, chosen);

@@ -324,7 +324,8 @@ export const strings = {
     goToLine: 'Go to a line by its number',
     addCursor: 'Add a cursor where clicked',
     columnSelection: 'Select a column, a cursor on each line',
-    nextOccurrence: 'Select the next occurrence of the selection too',
+    nextOccurrence:
+      'Select the word at the cursor, then the next occurrence of the selection too, each with a cursor of its own',
     cursorRows: 'Add a cursor on the line above or below',
     singleCursor: 'Leave one cursor, or drop the selection',
     tabLeaves: 'Let the next Tab move the focus on',

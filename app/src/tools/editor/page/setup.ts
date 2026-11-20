@@ -22,6 +22,7 @@ import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { colorer } from '../../../components/syntax/page/colorer';
 import { type CellTable } from '../../../lib/page/cellTable';
 import { editorFind } from './find';
+import { editorOccurrences } from './occurrences';
 import { commentsOf } from './comments';
 import { editorKeys, type EditorKeyActions } from './commands';
 import { indentField, indentionOf } from './indent';
@@ -62,6 +63,9 @@ export type ToEditor = EditorToWebviewOf<
 
 export const stateKeepDelay = 300;
 
+export const occurrencesMarked = (on: boolean): Extension =>
+  on ? editorOccurrences : [];
+
 export const bracketsClosed: Extension = [
   closeBrackets(),
   keymap.of(closeBracketsKeymap),
@@ -76,6 +80,8 @@ export interface EditorParts {
   readonly showWhitespace: boolean;
   readonly closing: Compartment;
   readonly closesBrackets: boolean;
+  readonly occurring: Compartment;
+  readonly marksOccurrences: boolean;
   readonly coloring: Compartment;
   readonly colors: Extension;
   readonly keys: EditorKeyActions;
@@ -93,6 +99,8 @@ export function extensionsOf({
   showWhitespace,
   closing,
   closesBrackets,
+  occurring,
+  marksOccurrences,
   coloring,
   colors,
   keys,
@@ -109,6 +117,7 @@ export function extensionsOf({
     history(),
     endingsUndone,
     editorFind,
+    occurring.of(occurrencesMarked(marksOccurrences)),
     wrapping.of(wordWrap ? EditorView.lineWrapping : []),
     blanking.of(blanksShown.of(showWhitespace)),
     closing.of(closesBrackets ? bracketsClosed : []),

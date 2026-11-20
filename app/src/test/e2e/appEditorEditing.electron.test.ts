@@ -22,6 +22,9 @@ import { writeSettings } from './settingsWritten';
 
 const status = () => page.locator('.editor .column-status-text').textContent();
 
+const occurrencesMarked = async () =>
+  (await content().locator('.occurrence-match').allTextContents()).join();
+
 const bracketAndCursor = async () => {
   const [bracket = [], cursor = []] = await page.evaluate(() =>
     ['.editor .cm-line .cm-matchingBracket', '.editor .cm-cursor-primary'].map(
@@ -289,7 +292,7 @@ suite('App editor', () => {
     );
   });
 
-  test('marks a matched bracket on the very box of the cursor standing on it, its text in the color of a find match whatever color its syntax gives it, so the cursor covers the mark whole and a bracket in the first column is marked whole, as the outline it had stood a pixel out on every side of its text', async () => {
+  test('marks a matched bracket on the very box of the cursor standing on it, on the yellow of a find match see-through at the share the theme gives the marks the editor makes on its own, its text in the color its syntax gives it, so the cursor covers the mark whole and a bracket in the first column is marked whole, as the outline it had stood a pixel out on every side of its text', async () => {
     fs.writeFileSync(path.join(opened, 'block.json'), '{\n}\n');
     await backToCommander();
     await edit('block.json');
@@ -318,16 +321,84 @@ suite('App editor', () => {
       while (glyph?.firstElementChild) {
         glyph = glyph.firstElementChild;
       }
-      const found = document.createElement('span');
-      found.style.color = 'var(--color-search-match-foreground)';
-      mark?.parentElement?.append(found);
-      const wanted = getComputedStyle(found).color;
-      found.remove();
+      const unmarked = document.createElement('span');
+      unmarked.className = glyph?.className ?? '';
+      const implicit = document.createElement('span');
+      implicit.style.background =
+        'color-mix(in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent)';
+      mark?.parentElement?.append(unmarked, implicit);
+      const wanted = {
+        glyph: getComputedStyle(unmarked).color,
+        background: getComputedStyle(implicit).backgroundColor,
+      };
+      unmarked.remove();
+      implicit.remove();
       return {
-        glyph: glyph === null ? '' : getComputedStyle(glyph).color,
+        seen: {
+          glyph: glyph === null ? '' : getComputedStyle(glyph).color,
+          background:
+            mark === null ? '' : getComputedStyle(mark).backgroundColor,
+        },
         wanted,
       };
     });
-    assert.strictEqual(colors.glyph, colors.wanted);
+    assert.deepStrictEqual(colors.seen, colors.wanted);
+    assert.notStrictEqual(colors.wanted.background, 'rgba(0, 0, 0, 0)');
+  });
+
+  test('marks every whole word of the word the cursor is in and every other copy of the text selected, as it marks a matched bracket, the text keeping its color, and nothing once the text is typed until the cursor moves', async () => {
+    const words = 'total subtotal total Total\n';
+    fs.writeFileSync(path.join(opened, 'words.txt'), words);
+    await backToCommander();
+    await edit('words.txt');
+    await waitFor(async () => (await editedText()) === words, 'the text');
+    await content().locator('.cm-line').first().click();
+    await page.keyboard.press('Home');
+    await waitFor(
+      async () => (await occurrencesMarked()) === 'total,total',
+      'the whole words of the word at the cursor marked',
+    );
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Shift+ArrowRight');
+    await waitFor(
+      async () => (await occurrencesMarked()) === 'tot,tot',
+      'the other copies of the text selected marked',
+    );
+    const looks = await page.evaluate(() => {
+      const mark = document.querySelector('.editor .cm-line .occurrence-match');
+      const line = mark?.closest('.cm-line');
+      const implicit = document.createElement('span');
+      implicit.style.background =
+        'color-mix(in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent)';
+      line?.append(implicit);
+      const wanted = {
+        color:
+          line === null || line === undefined
+            ? ''
+            : getComputedStyle(line).color,
+        background: getComputedStyle(implicit).backgroundColor,
+      };
+      implicit.remove();
+      return {
+        seen: {
+          color: mark === null ? '' : getComputedStyle(mark).color,
+          background:
+            mark === null ? '' : getComputedStyle(mark).backgroundColor,
+        },
+        wanted,
+      };
+    });
+    assert.deepStrictEqual(looks.seen, looks.wanted);
+    await page.keyboard.type('x');
+    await waitFor(
+      async () => (await occurrencesMarked()) === '',
+      'nothing marked once the text is typed',
+    );
+    await page.keyboard.press('ArrowLeft');
+    await waitFor(
+      async () => (await occurrencesMarked()) === 'xal',
+      'the word at the cursor marked once the cursor moves',
+    );
   });
 });

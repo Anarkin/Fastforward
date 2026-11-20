@@ -253,10 +253,10 @@ suite('Style', () => {
     }
   });
 
-  test('marks a bracket the editor matches in the yellow of a find match there, its text in the color of that match over the color of its syntax, which CodeMirror sets inside the mark, padded as that match over the rows of device pixels the cursor fills, so the cursor standing on it covers the mark whole, and leaves a bracket that matches none as it is, as an outline stood a pixel out on every side of a matched bracket, round its line and its first column', () => {
+  test('marks what the editor marks on its own, a bracket it matches and the copies of the word at the cursor or of the text selected, alike, padded as a find match over the rows of device pixels the cursor fills, so the cursor standing on one covers its mark whole, in the yellow of a find match at the share the theme gives such marks and see-through, so a find match stays the one mark in full yellow and the text keeps the color of its syntax, and leaves a bracket that matches none as it is', () => {
     const match = marks.find(([where]) => where === 'the editor')?.[1];
     assert.ok(match, 'no find match in the editor');
-    const looked = [
+    const padded = [
       '--mark-text-height',
       '--mark-leading',
       '--mark-slack',
@@ -265,39 +265,53 @@ suite('Style', () => {
       'padding-bottom',
       'padding-left',
       'padding-right',
-      'color',
-      'background',
-      'box-shadow',
     ];
+    const looked = [...padded, 'color', 'background', 'box-shadow'];
     const lookOf = (element: MarkupElement) =>
       Object.fromEntries(
         looked.map((property) => [property, cascaded(element, property)]),
       );
+    const implicit = {
+      ...Object.fromEntries(
+        padded.map((property) => [property, cascaded(match, property)]),
+      ),
+      color: undefined,
+      background:
+        'color-mix( in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent )',
+      'box-shadow': undefined,
+    };
     assert.deepStrictEqual(
       lookOf(editorBracket('cm-matchingBracket')),
-      lookOf(match),
+      implicit,
     );
+    assert.deepStrictEqual(lookOf(editorBracket('occurrence-match')), implicit);
     assert.deepStrictEqual(
       lookOf(editorBracket('cm-nonmatchingBracket')),
       Object.fromEntries(looked.map((property) => [property, undefined])),
     );
-    const colored = withClass(
-      rendered(
-        <div className="cm-editor editor-text cm-focused">
-          <div className="cm-scroller">
-            <div className="cm-content">
-              <div className="cm-line">
-                <span className="cm-matchingBracket">
-                  <span className="syntax-keyword">(</span>
-                </span>
+    for (const mark of ['cm-matchingBracket', 'occurrence-match']) {
+      const colored = withClass(
+        rendered(
+          <div className="cm-editor editor-text cm-focused">
+            <div className="cm-scroller">
+              <div className="cm-content">
+                <div className="cm-line">
+                  <span className={mark}>
+                    <span className="syntax-keyword">(</span>
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </div>,
-      ),
-      'syntax-keyword',
-    );
-    assert.strictEqual(cascaded(colored, 'color'), 'inherit');
+          </div>,
+        ),
+        'syntax-keyword',
+      );
+      assert.strictEqual(
+        cascaded(colored, 'color'),
+        'var(--color-syntax-keyword)',
+        mark,
+      );
+    }
   });
 
   test('leaves the keys of a shortcut F1 found unpadded, as each is a box of its own as tall as its line', () => {

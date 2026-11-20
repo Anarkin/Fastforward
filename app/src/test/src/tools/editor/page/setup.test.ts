@@ -5,6 +5,7 @@ import { EditorView } from '@codemirror/view';
 import { suite, test } from 'vitest';
 import {
   bracketsClosed,
+  occurrencesMarked,
   colorsOf,
   extensionsOf,
   settingsKept,
@@ -39,10 +40,11 @@ function commented(state: EditorState): string {
 }
 
 suite('The state of the editor', () => {
-  test('keeps the wrapping, the whitespace, the closing of brackets and the language chosen since the editor was made once the main process sends new text, as reopening in another encoding, reading again and a change on disk do', () => {
+  test('keeps the wrapping, the whitespace, the closing of brackets, the marking of occurrences and the language chosen since the editor was made once the main process sends new text, as reopening in another encoding, reading again and a change on disk do', () => {
     const wrapping = new Compartment();
     const blanking = new Compartment();
     const closing = new Compartment();
+    const occurring = new Compartment();
     const coloring = new Compartment();
     const extensions = extensionsOf({
       table: plainCells,
@@ -53,6 +55,8 @@ suite('The state of the editor', () => {
       showWhitespace: false,
       closing,
       closesBrackets: false,
+      occurring,
+      marksOccurrences: true,
       coloring,
       colors: colorsOf('typescript', false),
       keys: {
@@ -73,6 +77,7 @@ suite('The state of the editor', () => {
         wrapping.reconfigure(EditorView.lineWrapping),
         blanking.reconfigure(blanksShown.of(true)),
         closing.reconfigure(bracketsClosed),
+        occurring.reconfigure(occurrencesMarked(false)),
         coloring.reconfigure(colorsOf('python', false)),
       ],
     }).state;
@@ -80,13 +85,14 @@ suite('The state of the editor', () => {
     const next = settingsKept(
       stateOf(shown('two', 1), undefined, extensions),
       chosen,
-      [wrapping, blanking, closing, coloring],
+      [wrapping, blanking, closing, occurring, coloring],
     );
 
     assert.strictEqual(next.doc.toString(), 'two');
     assert.strictEqual(wrapping.get(next), EditorView.lineWrapping);
     assert.strictEqual(next.facet(blanksShown), true);
     assert.strictEqual(closing.get(next), bracketsClosed);
+    assert.deepStrictEqual(occurring.get(next), occurrencesMarked(false));
     assert.strictEqual(commented(next), '# two');
   });
 });

@@ -30,6 +30,7 @@
 | Syntax highlighting | Color the code of a file | — | Advanced | ✅ Yes | `shiki`, with VS Code's TextMate grammars, for files up to 10 MB; L chooses the language, or Plain Text |
 | Wrap and whitespace | Wrap long lines, and draw the spaces, tabs and line ends | — | Common | ✅ Yes | W and `.`, whitespace on and wrapping off by default, as in the diff; wrapped at the column the editor wraps at, ↵ marking each break, as the editor and the diff mark them |
 | Find in the file | Search the text of a file | F7 | Common | ✅ Yes | Mod+F, through the whole file in its encoding, counting the matches and marking them in the text, the bytes and the hex, and on the track of its scrollbar; Aa matches the case, W whole words, across the slices it reads too, and .* a regular expression within a line; in a PDF, Aa and W through PDF.js, which has no regular expressions, its find kept with its tab and searched again as the PDF opens, stepping to the match it was on |
+| Occurrences | Mark the other copies of the text selected | — | Advanced | ❌ No | The editor marks them |
 
 ## Previews
 

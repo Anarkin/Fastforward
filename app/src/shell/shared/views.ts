@@ -4,6 +4,7 @@ const textViewSchema = record({
   wordWrap: flag(),
   showWhitespace: flag(),
   highlightSyntax: flag(),
+  highlightOccurrences: flag(),
 });
 
 export type TextView = Infer<typeof textViewSchema>;

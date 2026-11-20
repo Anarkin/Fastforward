@@ -32,7 +32,12 @@ const secondsOr = (seconds: number, otherwise: number) =>
     ? Math.min(longestNotice, Math.max(1000, Math.round(seconds * 1000)))
     : otherwise;
 
-const textViewKeys = ['wordWrap', 'showWhitespace', 'highlightSyntax'] as const;
+const textViewKeys = [
+  'wordWrap',
+  'showWhitespace',
+  'highlightSyntax',
+  'highlightOccurrences',
+] as const;
 
 export class Storage {
   private read:

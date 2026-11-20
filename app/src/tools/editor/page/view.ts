@@ -41,6 +41,7 @@ import { focusBack } from '../../../lib/page/viewFocus';
 import {
   stateKeepDelay,
   bracketsClosed,
+  occurrencesMarked,
   extensionsOf,
   stateOf,
   settingsKept,
@@ -59,6 +60,9 @@ export function useEditorView(language: string | undefined) {
   const scrollingNow = useEffectEvent(() => scrolling);
   const closesBrackets = useEditor((state) => state.closeBrackets);
   const highlightSyntax = useShell((state) => state.textView.highlightSyntax);
+  const marksOccurrences = useShell(
+    (state) => state.textView.highlightOccurrences,
+  );
   const {
     listenEditor,
     readEdited,
@@ -101,6 +105,7 @@ export function useEditorView(language: string | undefined) {
   const wrapping = useRef(new Compartment());
   const blanking = useRef(new Compartment());
   const closing = useRef(new Compartment());
+  const occurring = useRef(new Compartment());
   const coloring = useRef(new Compartment());
   const loaded = edited?.version !== undefined;
   const readOnly = edited?.readOnly === true;
@@ -108,6 +113,7 @@ export function useEditorView(language: string | undefined) {
   const wrapsFirst = useEffectEvent(() => wordWrap);
   const blanksFirst = useEffectEvent(() => showWhitespace);
   const closesFirst = useEffectEvent(() => closesBrackets);
+  const marksFirst = useEffectEvent(() => marksOccurrences);
   const colorsFirst = useEffectEvent(() => colorsOf(language, highlightSyntax));
 
   useEffect(() => {
@@ -149,6 +155,8 @@ export function useEditorView(language: string | undefined) {
       showWhitespace: blanksFirst(),
       closing: closing.current,
       closesBrackets: closesFirst(),
+      occurring: occurring.current,
+      marksOccurrences: marksFirst(),
       coloring: coloring.current,
       colors: colorsFirst(),
       cursor: pageCursorLook(),
@@ -254,7 +262,13 @@ export function useEditorView(language: string | undefined) {
       const next = settingsKept(
         stateOf(message.shown, keptState, extensions),
         shown.state,
-        [wrapping.current, blanking.current, closing.current, coloring.current],
+        [
+          wrapping.current,
+          blanking.current,
+          closing.current,
+          occurring.current,
+          coloring.current,
+        ],
       );
       const keptPlace = placeIn(keptState);
       if (message.reloaded === true) {
@@ -360,6 +374,14 @@ export function useEditorView(language: string | undefined) {
       ),
     });
   }, [closesBrackets]);
+
+  useEffect(() => {
+    view.current?.dispatch({
+      effects: occurring.current.reconfigure(
+        occurrencesMarked(marksOccurrences),
+      ),
+    });
+  }, [marksOccurrences]);
 
   useEffect(() => {
     view.current?.dispatch({

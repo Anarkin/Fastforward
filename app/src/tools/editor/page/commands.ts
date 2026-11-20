@@ -25,6 +25,7 @@ import {
 import { clicked } from '../../../lib/shared/keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { editorKeymap } from './keymap';
+import { nextOccurrence, occurrenceStepping } from './nextOccurrence';
 
 const indentOrInsert: Command = (view) => {
   const { state } = view;
@@ -49,41 +50,11 @@ const indentOrInsert: Command = (view) => {
 };
 
 const selectNextOccurrence: Command = (view) => {
-  const { state } = view;
-  const { main } = state.selection;
-  if (main.empty) {
-    const word = state.wordAt(main.head);
-    if (word === null) {
-      return false;
-    }
-    view.dispatch({
-      selection: state.selection.replaceRange(
-        EditorSelection.range(word.from, word.to),
-      ),
-    });
-    return true;
-  }
-  const searched = state.sliceDoc(main.from, main.to);
-  const text = state.doc.toString();
-  const last = Math.max(...state.selection.ranges.map((range) => range.to));
-  const taken = (at: number) =>
-    state.selection.ranges.some((range) => range.from === at);
-  let found = text.indexOf(searched, last);
-  if (found === -1 || taken(found)) {
-    found = text.indexOf(searched);
-  }
-  while (found !== -1 && taken(found)) {
-    found = text.indexOf(searched, found + 1);
-  }
-  if (found === -1) {
+  const next = nextOccurrence(view.state);
+  if (next === undefined) {
     return false;
   }
-  view.dispatch({
-    selection: state.selection.addRange(
-      EditorSelection.range(found, found + searched.length),
-    ),
-    scrollIntoView: true,
-  });
+  view.dispatch(next);
   return true;
 };
 
@@ -179,6 +150,7 @@ export function editorKeys(actions: EditorKeyActions): Extension {
   };
   return [
     EditorState.allowMultipleSelections.of(true),
+    occurrenceStepping,
     EditorView.clickAddsSelectionRange.of(
       (event) => clicked(editorKeymap.addCursor, event) !== undefined,
     ),

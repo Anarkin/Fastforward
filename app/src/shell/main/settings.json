@@ -30,7 +30,8 @@
   "text": {
     "wordWrap": false,
     "showWhitespace": true,
-    "highlightSyntax": true
+    "highlightSyntax": true,
+    "highlightOccurrences": true
   },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",
@@ -535,6 +536,7 @@
 
       "search-match": "#fe6",
       "search-match-foreground": "#000",
+      "search-match-implicit": "50%",
 
       "change-added": "#0a0",
       "change-added-line": "20%",
@@ -583,6 +585,7 @@
 
       "search-match": "#fc0",
       "search-match-foreground": "#000",
+      "search-match-implicit": "20%",
 
       "change-added": "#0c0",
       "change-added-line": "20%",

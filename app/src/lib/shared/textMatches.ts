@@ -11,6 +11,7 @@ export const maxMatches = 10_000;
 const wordCharacter = '[\\p{L}\\p{M}\\p{N}_]';
 const wordBefore = new RegExp(`${wordCharacter}$`, 'u');
 const wordAfter = new RegExp(`^${wordCharacter}`, 'u');
+const wordRun = new RegExp(`${wordCharacter}+`, 'gu');
 
 let compiled:
   | {
@@ -93,7 +94,36 @@ function patternMatches(
   return ranges;
 }
 
-function standsAlone(text: string, start: number, end: number): boolean {
+export function copiesIn(
+  text: string,
+  copy: string,
+  wholeWord: boolean,
+  limit = Infinity,
+): FindRange[] {
+  return copy === '' || limit <= 0
+    ? []
+    : plainMatches(
+        text,
+        copy,
+        { caseSensitive: true, wholeWord, regex: false },
+        limit,
+      );
+}
+
+export function wordAround(text: string, at: number): FindRange | undefined {
+  for (const run of text.matchAll(wordRun)) {
+    if (run.index > at) {
+      return undefined;
+    }
+    const end = run.index + run[0].length;
+    if (end >= at) {
+      return { start: run.index, end };
+    }
+  }
+  return undefined;
+}
+
+export function standsAlone(text: string, start: number, end: number): boolean {
   return (
     !wordBefore.test(text.slice(Math.max(0, start - 2), start)) &&
     !wordAfter.test(text.slice(end, end + 2))

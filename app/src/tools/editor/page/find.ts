@@ -96,7 +96,7 @@ export function replacedText(
       );
 }
 
-const setFind = StateEffect.define<FindQuery | undefined>();
+export const setFind = StateEffect.define<FindQuery | undefined>();
 
 const nothingFound: Finding = {
   query: undefined,
@@ -125,6 +125,10 @@ const findField = StateField.define<Finding>({
 
 function findingOf(state: EditorState): Finding {
   return state.field(findField, false) ?? nothingFound;
+}
+
+export function findsText(state: EditorState): boolean {
+  return (findingOf(state).query?.text ?? '') !== '';
 }
 
 function currentOf(state: EditorState): number {
