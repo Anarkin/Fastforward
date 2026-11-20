@@ -93,6 +93,7 @@ export function SlicedDiff({
   languageKey,
   root,
   wholePaths,
+  note,
   ...shown
 }: Omit<DiffProps, 'look' | 'measures' | 'measuring' | 'tab' | 'options'> & {
   readonly store: DiffStore;
@@ -100,6 +101,7 @@ export function SlicedDiff({
   readonly languageKey: string | undefined;
   readonly root: string | undefined;
   readonly wholePaths?: WholePaths;
+  readonly note?: string;
 }) {
   const { scope, selection } = shown;
   const sideBySide = useStore(
@@ -157,6 +159,7 @@ export function SlicedDiff({
         root,
         language,
         ...(wholePaths && { wholePaths }),
+        ...(note !== undefined && { note }),
       }}
       measures={measures}
       measuring={{

@@ -53,7 +53,17 @@
   border-radius: var(--radius);
 }
 
-.file-header .unchanged {
+.file-header .file-header-note {
   flex: none;
   color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.file-note.side-note {
+  padding-left: calc(2 * var(--diff-number-width) + var(--diff-code-padding));
+}
+
+.split-side.file-note:not(.filler),
+.file-note.whole-note {
+  padding-left: calc(var(--diff-number-width) + var(--diff-code-padding));
 }

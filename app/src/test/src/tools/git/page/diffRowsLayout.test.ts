@@ -3,7 +3,12 @@ import { suite, test } from 'vitest';
 import { parsePatch } from '../../../../../components/diff/page/diff';
 import { collapseThreshold } from '../../../../../components/diff/shared/patchBudget';
 import { patch, kinds } from './diffViewFixtures';
-import { diffRows } from '../../../../../components/diff/page/rows';
+import {
+  diffRows,
+  fileNotes,
+  wholeNotes,
+} from '../../../../../components/diff/page/rows';
+import { strings } from '../../../../../lib/shared/strings';
 import { rowHeight } from '../../../../../components/diff/page/rowMeasures';
 
 const binaryOf = (path: string) =>
@@ -210,13 +215,17 @@ suite('Diff rows', () => {
     );
   });
 
-  test('shows a binary file as such, whole or in a diff, and an image as one', () => {
+  test('says a binary file is one on its header, whole or changed in a diff, as it has no lines on either side, and shows an image as one', () => {
     const whole = { path: 'a.bin', content: '', binary: true, id: 'a' };
     assert.deepStrictEqual(kinds(diffRows([], new Map(), whole)), [
       'error',
       'file',
-      'binary',
     ]);
+    assert.deepStrictEqual(wholeNotes(whole), [
+      strings.diff.unchanged,
+      strings.diff.binaryOrLarge,
+    ]);
+    assert.deepStrictEqual(fileNotes(binaryOf('a.bin')), [strings.diff.binary]);
     assert.deepStrictEqual(
       kinds(diffRows([], new Map(), { ...whole, path: 'a.png' })),
       ['error', 'file', 'image'],
@@ -232,7 +241,7 @@ suite('Diff rows', () => {
             sideBySide,
           ),
         ),
-        ['error', 'file', 'binary', 'file', 'image'],
+        ['error', 'file', 'file', 'image'],
       );
     }
     assert.strictEqual(rowHeight({ kind: 'image', file: 0 }), 19 * 22);

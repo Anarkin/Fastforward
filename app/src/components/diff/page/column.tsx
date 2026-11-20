@@ -58,7 +58,6 @@ export interface DiffProps {
   readonly origin: ImageOrigin | undefined;
   readonly findAsked: number;
   readonly filter: Search | undefined;
-  readonly note?: string;
   readonly heading?: React.ReactNode;
   readonly onViewFile?: (source: ViewedSource) => void;
   readonly viewKeys?: string | undefined;
@@ -90,7 +89,6 @@ export function Diff({
   origin,
   findAsked,
   filter,
-  note,
   heading,
   onViewFile,
   viewKeys,
@@ -123,10 +121,8 @@ export function Diff({
         <div className="error-message">
           <Words>{error}</Words>
         </div>
-      ) : (
-        note && <div className="diff-note">{note}</div>
-      ),
-    [error, note],
+      ) : undefined,
+    [error],
   );
 
   const viewOf = useCallback(

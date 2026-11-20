@@ -14,7 +14,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Compare two files | Diff any two files, in a repository or not | Shift+F3 | Advanced | ✅ Yes | Shift+F3 in the commander, or Open with Diff in its menu of a file or of marked items, the two files marked on a side, or the file selected and the one file marked on the other side, never the cursor the other side does not show, in a diff tab of their own that follows their changes, their whole paths above the diff, as the viewer and the editor show the path of their file, a part of a folder both share kept outside the braces, coming back with its find, the match it was on, its scroll and the keyboard as they were left, once shown again, reloaded or moved to another window; images side by side, as a commit shows them; no Markdown preview |
+| Compare two files | Diff any two files, in a repository or not | Shift+F3 | Advanced | ✅ Yes | Shift+F3 in the commander, or Open with Diff in its menu of a file or of marked items, the two files marked on a side, or the file selected and the one file marked on the other side, never the cursor the other side does not show, in a diff tab of their own that follows their changes, their whole paths above the diff, as the viewer and the editor show the path of their file, a part of a folder both share kept outside the braces, coming back with its find, the match it was on, its scroll and the keyboard as they were left, once shown again, reloaded or moved to another window; files alike, or alike but for whitespace, say so on the header of their paths; images side by side, as a commit shows them; no Markdown preview |
 | Versions of a file | Diff two versions of a file as git keeps them | Shift+F3 | Advanced | ✅ Yes | Shift+F3 or Open with Diff on one file alone in the commander, marked or selected, Open with Diff in the menu of a file in a repository anywhere, and Shift+F3 in the viewer and the editor, the editor comparing the file as saved: the file on disk against the index while it is staged, against its newest commit while it differs from it, and otherwise what its newest commit changed, or the version viewed against the one before it; a notice says when git keeps no earlier version; a button for each side in the header, listing the versions as the viewer does, side by side ending and starting at the line between the sides, inline both in the middle with an arrow between them, a version chosen on the new side moving the old to the one before it while both are versions of one file; saved with the tab, named after the file and its two versions, the tab comparing them already shown again rather than another opened |
 | Follow changes | Diff the files again once one changes | — | Common | ✅ Yes | The files are watched while their tab shows |
 | Restore after a restart | Open the files compared again once the app starts | — | Common | ✅ Yes | Their tabs come back as tabs of the diff, those git saved before the diff was a tool of its own too |
@@ -39,7 +39,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Ignore whitespace | Leave out changes of whitespace alone | — | Common | ✅ Yes | On by default; files with only whitespace changes are named |
+| Ignore whitespace | Leave out changes of whitespace alone | — | Common | ✅ Yes | On by default; files with only whitespace changes are named on their header |
 | Show whitespace | Draw the spaces, tabs and line ends | . | Advanced | ✅ Yes | On by default; `.` |
 | Line endings | Show changes of line endings, or ignore them | — | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it |
 | Encodings | Show files that aren't UTF-8 | — | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; diffs read files as UTF-8; git turns messages into UTF-8 |
@@ -58,8 +58,8 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes |  |
-| Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
+| Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes | On its header when both sides are binary, on the line of its side when added or deleted, as what holds for the whole file is said once on its header, renamed or copied without changes, its mode changed or unchanged too, and what holds for one side on that side, where its code starts: an empty file, a symbolic link and its target, no newline at its end |
+| Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, inline too, the side an image lacks hatched, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
 | Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for; only the rows a view either way of those in sight are drawn, however many rows each line wraps onto, and the spaces of a line are dotted on one layer, so long lines of prose scroll as code does |
 
 ## Changing

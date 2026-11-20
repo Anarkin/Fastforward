@@ -4,6 +4,7 @@ import { type NumberedLine } from './changeBlocks';
 import { lineKey, wholeLines } from './lines';
 import { pairingBudget } from './pairing';
 import { strings } from '../../../lib/shared/strings';
+import type { Sentence } from '../../../lib/shared/sentences';
 import { previewsImage, previewsWholeImage } from './images';
 import { splitRows } from './sideBySideRows';
 
@@ -31,11 +32,8 @@ export type DiffRow =
       readonly path: string;
       readonly lines: number | undefined;
     }
-  | { readonly kind: 'binary'; readonly file: number; readonly change?: Change }
-  | { readonly kind: 'empty'; readonly file: number; readonly change?: Change }
-  | { readonly kind: 'whitespace'; readonly file: number }
-  | { readonly kind: 'sameContent'; readonly file: number }
-  | { readonly kind: 'mode'; readonly file: number }
+  | { readonly kind: 'binary'; readonly file: number; readonly change: Change }
+  | { readonly kind: 'empty'; readonly file: number; readonly change: Change }
   | {
       readonly kind: 'link';
       readonly file: number;
@@ -112,14 +110,70 @@ const sideChanges: Record<keyof LinkTargets, Change> = {
 
 export const waitingRows: DiffRow[] = [{ kind: 'error' }];
 
+export function fileNotes(file: DiffFile): Sentence[] {
+  if (file.placeholder) {
+    return [];
+  }
+  const empty = file.hunks.length === 0 && sideChange(file) !== undefined;
+  const notes: Sentence[] = [];
+  if (
+    file.binary &&
+    !file.link &&
+    !previewsImage(file) &&
+    sideChange(file) === undefined
+  ) {
+    notes.push(strings.diff.binary);
+  }
+  if (file.whitespaceOnly && !file.link && !file.binary && !empty) {
+    notes.push(strings.diff.onlyWhitespace);
+  }
+  if (file.modeChange) {
+    notes.push(
+      strings.diff.modeChanged(file.modeChange.old, file.modeChange.new),
+    );
+  } else if (
+    file.oldPath !== undefined &&
+    !file.binary &&
+    !file.link &&
+    !file.whitespaceOnly &&
+    file.hunks.length === 0
+  ) {
+    notes.push(
+      file.similarity !== 100
+        ? strings.diff.onlyWhitespace
+        : file.copied
+          ? strings.diff.copiedWithoutChanges
+          : strings.diff.renamedWithoutChanges,
+    );
+  }
+  return notes;
+}
+
+export function wholeNotes(whole: WholeFile): Sentence[] {
+  return whole.binary && !whole.link && !previewsWholeImage(whole)
+    ? [strings.diff.unchanged, strings.diff.binaryOrLarge]
+    : [strings.diff.unchanged];
+}
+
 export function diffRows(
   files: readonly DiffFile[],
   toggled: ReadonlyMap<string, boolean>,
   whole: WholeFile | undefined,
   loading = false,
   sideBySide = false,
+  noted = false,
 ): DiffRow[] {
   const rows: DiffRow[] = [{ kind: 'error' }];
+  if (noted && files.length === 0 && !whole) {
+    rows.push({
+      kind: 'file',
+      file: 0,
+      path: '',
+      open: true,
+      collapsible: false,
+    });
+    return rows;
+  }
   const budget = pairingBudget();
   if (loading && files.every((file) => file.placeholder) && !whole) {
     rows.push({ kind: 'skeleton' });
@@ -137,11 +191,8 @@ export function diffRows(
       rows.push({ kind: 'link', file: 0, side: 'new' });
       return rows;
     }
-    if (whole.binary) {
-      rows.push({
-        kind: previewsWholeImage(whole) ? 'image' : 'binary',
-        file: 0,
-      });
+    if (whole.binary && previewsWholeImage(whole)) {
+      rows.push({ kind: 'image', file: 0 });
     }
     wholeLines(whole).forEach((text, index) =>
       rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
@@ -175,15 +226,19 @@ export function diffRows(
       rows.push({ kind: 'skeletonLines', file: index });
       return;
     }
+    const before: DiffRow[] = [];
+    const after: DiffRow[] = [];
+    const change = sideChange(file);
     if (file.link) {
       for (const side of linkSides) {
+        const into = side === 'old' ? before : after;
         if (file.link[side] !== undefined) {
-          rows.push({ kind: 'link', file: index, side });
+          into.push({ kind: 'link', file: index, side });
         } else if (
           file.blobs?.[side] !== undefined &&
           (file.binary || file.hunks.length === 0)
         ) {
-          rows.push({
+          into.push({
             kind: file.binary ? 'binary' : 'empty',
             file: index,
             change: sideChanges[side],
@@ -191,29 +246,15 @@ export function diffRows(
         }
       }
     } else if (file.binary) {
-      rows.push({
-        kind: previewsImage(file) ? 'image' : 'binary',
-        file: index,
-      });
-    } else if (file.hunks.length === 0 && sideChange(file)) {
-      rows.push({ kind: 'empty', file: index });
-    } else if (file.whitespaceOnly) {
-      rows.push({ kind: 'whitespace', file: index });
+      if (previewsImage(file)) {
+        before.push({ kind: 'image', file: index });
+      } else if (change !== undefined) {
+        before.push({ kind: 'binary', file: index, change });
+      }
+    } else if (file.hunks.length === 0 && change !== undefined) {
+      before.push({ kind: 'empty', file: index, change });
     }
-    if (file.modeChange) {
-      rows.push({ kind: 'mode', file: index });
-    } else if (
-      file.oldPath !== undefined &&
-      !file.binary &&
-      !file.link &&
-      !file.whitespaceOnly &&
-      file.hunks.length === 0
-    ) {
-      rows.push({
-        kind: file.similarity === 100 ? 'sameContent' : 'whitespace',
-        file: index,
-      });
-    }
+    rows.push(...before);
     if (sideBySide) {
       for (const row of splitRows(file, index, budget)) {
         rows.push(row);
@@ -228,6 +269,7 @@ export function diffRows(
         }
       }
     }
+    rows.push(...after);
     if (file.noNewlineAtEnd) {
       rows.push({ kind: 'noNewline', file: index });
     }

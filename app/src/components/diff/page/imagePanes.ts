@@ -6,13 +6,9 @@ export interface Pane {
   readonly url: string | undefined;
 }
 
-export function imagePanes(
-  origin: ImageOrigin,
-  file: DiffFile,
-  sideBySide: boolean,
-): Pane[] {
-  return (['old', 'new'] as const).flatMap((side) => {
-    const url = diffImageUrl(origin, file, side);
-    return url === undefined && !sideBySide ? [] : [{ side, url }];
-  });
+export function imagePanes(origin: ImageOrigin, file: DiffFile): Pane[] {
+  return (['old', 'new'] as const).map((side) => ({
+    side,
+    url: diffImageUrl(origin, file, side),
+  }));
 }

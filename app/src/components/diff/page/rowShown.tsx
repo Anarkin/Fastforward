@@ -10,7 +10,6 @@ import { splitSideClass } from './rowClasses';
 import { DiffSkeleton, FileNote, HunkDivider } from './rowParts';
 import {
   largeDiffText,
-  sideChange,
   type DiffRow,
   type FileHeaderRow,
   type WholeFile,
@@ -97,12 +96,10 @@ export function DiffRowShown({
         </div>
       );
     case 'binary':
-      return whole ? (
-        <div className="file-note">{strings.diff.binaryOrLarge}</div>
-      ) : (
+      return (
         <FileNote
           text={strings.diff.binary}
-          change={row.change ?? sideChange(files[row.file])}
+          change={row.change}
           split={split}
         />
       );
@@ -110,19 +107,7 @@ export function DiffRowShown({
       return (
         <FileNote
           text={strings.diff.emptyFile}
-          change={row.change ?? sideChange(files[row.file])}
-          split={split}
-        />
-      );
-    case 'sameContent':
-      return (
-        <FileNote
-          text={
-            files[row.file].copied
-              ? strings.diff.copiedWithoutChanges
-              : strings.diff.renamedWithoutChanges
-          }
-          change={undefined}
+          change={row.change}
           split={split}
         />
       );
@@ -131,7 +116,7 @@ export function DiffRowShown({
         (whole ? whole.content : files[row.file].link?.[row.side]) ?? '',
       );
       return whole ? (
-        <div className="file-note">
+        <div className="file-note whole-note">
           <Words>{text}</Words>
         </div>
       ) : (
@@ -142,26 +127,6 @@ export function DiffRowShown({
         />
       );
     }
-    case 'mode': {
-      const modes = files[row.file].modeChange;
-      return (
-        modes && (
-          <FileNote
-            text={strings.diff.modeChanged(modes.old, modes.new)}
-            change={undefined}
-            split={split}
-          />
-        )
-      );
-    }
-    case 'whitespace':
-      return (
-        <FileNote
-          text={strings.diff.onlyWhitespace}
-          change={undefined}
-          split={split}
-        />
-      );
     case 'noNewline':
       return (
         <FileNote
@@ -180,7 +145,7 @@ export function DiffRowShown({
         const url = wholeImageUrl(origin, whole);
         return url && <WholeImage url={url} />;
       }
-      return <ImageDiff panes={imagePanes(origin, files[row.file], split)} />;
+      return <ImageDiff panes={imagePanes(origin, files[row.file])} />;
     }
     case 'skeleton':
       return (

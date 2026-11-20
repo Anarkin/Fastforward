@@ -422,7 +422,7 @@
   gap: 10px;
   box-sizing: border-box;
   height: 100%;
-  padding: 0 12px;
+  padding: 0 8px;
   color: var(--muted-foreground);
 }
 
@@ -440,9 +440,4 @@
 
 .diff-skeleton .file-header .bar {
   margin: 0.2em 0;
-}
-
-.diff-note {
-  padding: 8px;
-  color: var(--muted-foreground);
 }

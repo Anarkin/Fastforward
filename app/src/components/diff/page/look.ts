@@ -15,4 +15,5 @@ export interface DiffLook {
   readonly root: string | undefined;
   readonly language: string | undefined;
   readonly wholePaths?: WholePaths;
+  readonly note?: string;
 }

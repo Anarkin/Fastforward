@@ -34,7 +34,7 @@ export function FileHeader({
   root,
   oldPath,
   open,
-  whole,
+  notes,
   collapsible,
   onClick,
   onView,
@@ -44,7 +44,7 @@ export function FileHeader({
   root?: string | undefined;
   oldPath?: string;
   open: boolean;
-  whole: boolean;
+  notes: readonly Sentence[];
   collapsible: boolean;
   onClick: () => void;
   onView?: () => void;
@@ -66,7 +66,11 @@ export function FileHeader({
         </span>
       )}
       <span className="file-header-end">
-        {whole && <span className="unchanged">{strings.diff.unchanged}</span>}
+        {notes.map((note, at) => (
+          <span key={at} className="file-header-note">
+            <Words>{note}</Words>
+          </span>
+        ))}
         {onView && (
           <button
             className="nav-button file-header-button"
@@ -90,12 +94,12 @@ export function FileNote({
   split,
 }: {
   text: Sentence;
-  change: Change | undefined;
+  change: Change;
   split: boolean;
 }) {
   if (!split) {
     return (
-      <div className={`file-note ${change ?? ''}`}>
+      <div className={`file-note side-note ${change}`}>
         <Words>{text}</Words>
       </div>
     );
@@ -103,8 +107,8 @@ export function FileNote({
   return (
     <div className="split-line note-line">
       {(['removed', 'added'] as const).map((side) =>
-        change === undefined || change === side ? (
-          <div key={side} className={`file-note split-side ${change ?? ''}`}>
+        change === side ? (
+          <div key={side} className={`file-note split-side ${change}`}>
             <Words>{text}</Words>
           </div>
         ) : (

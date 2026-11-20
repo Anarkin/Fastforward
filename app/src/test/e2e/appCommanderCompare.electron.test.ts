@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
+import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { waitForFocus } from './waits';
 import {
@@ -227,7 +228,7 @@ suite('App commander', () => {
     }, 'the images to be gone from the list');
   });
 
-  test('says two files compared are the same rather than showing nothing', async () => {
+  test('says on a header of their paths that two files compared are identical rather than showing nothing, as a note stood alone in an empty diff', async () => {
     fs.writeFileSync(path.join(opened, 'twin1.txt'), 'twins');
     fs.writeFileSync(path.join(opened, 'twin2.txt'), 'twins');
     await select('twin1');
@@ -235,11 +236,11 @@ suite('App commander', () => {
     await select('twin2');
     await page.keyboard.press('Space');
     await page.keyboard.press('Shift+F3');
-    await page
-      .locator('.compare-view .diff-note', {
-        hasText: 'The files are the same.',
-      })
+    const header = page.locator('.compare-view .file-header');
+    await header
+      .locator('.file-header-note', { hasText: strings.diff.identical })
       .waitFor();
+    await header.locator('.path', { hasText: 'twin2.txt' }).waitFor();
     await page.keyboard.press('Escape');
     await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
     for (const name of ['twin1.txt', 'twin2.txt']) {

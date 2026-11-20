@@ -30,10 +30,10 @@ const ignored = () => undefined;
 
 function noteOf(compare: Compared | undefined): string | undefined {
   if (compare?.same === 'identical') {
-    return strings.diff.filesIdentical;
+    return strings.diff.identical;
   }
   return compare?.same === 'whitespace'
-    ? strings.diff.filesDifferInWhitespace
+    ? strings.diff.onlyWhitespace
     : undefined;
 }
 

@@ -74,7 +74,7 @@ export function DiffRow({
 export function FileHeaderRow() {
   return (
     <DiffRow>
-      <FileHeader path="a" open whole={false} collapsible onClick={noop} />
+      <FileHeader path="a" open notes={[]} collapsible onClick={noop} />
     </DiffRow>
   );
 }

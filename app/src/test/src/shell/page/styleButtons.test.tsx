@@ -168,7 +168,7 @@ suite('Style', () => {
             <FileHeader
               path="v.svg"
               open
-              whole={false}
+              notes={[]}
               collapsible
               onClick={noop}
               onView={noop}

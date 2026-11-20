@@ -35,7 +35,9 @@ import {
   type FileHeaderRow,
   waitingRows,
   diffRows,
+  fileNotes,
   lineKeys,
+  wholeNotes,
 } from './rows';
 import { showsSideBySide, splitPairs } from './sideBySideRows';
 import { rowMeasures, rowHeight } from './rowMeasures';
@@ -129,6 +131,7 @@ export function DiffView({
     root,
     language: chosenLanguage,
     wholePaths,
+    note,
   } = look;
   const list = useRef<HTMLDivElement>(null);
   const [copy, setCopy] = useState<string>();
@@ -186,12 +189,13 @@ export function DiffView({
     [onPlace],
   );
   const skeleton = useSkeleton(loading);
+  const noted = note !== undefined;
   const rows = useMemo(
     () =>
       table === undefined
         ? waitingRows
-        : diffRows(files, toggled, whole, skeleton, sideBySide),
-    [files, toggled, whole, skeleton, sideBySide, table],
+        : diffRows(files, toggled, whole, skeleton, sideBySide, noted),
+    [files, toggled, whole, skeleton, sideBySide, table, noted],
   );
 
   useCodeSnap(list, measuring.snapCode, [
@@ -342,7 +346,15 @@ export function DiffView({
             : wholePaths.old
       }
       open={row.open}
-      whole={whole !== undefined}
+      notes={
+        whole
+          ? wholeNotes(whole)
+          : files[row.file] === undefined
+            ? note === undefined
+              ? []
+              : [note]
+            : fileNotes(files[row.file])
+      }
       collapsible={row.collapsible}
       onView={viewOf?.(row.file)}
       viewKeys={viewKeys}

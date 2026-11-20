@@ -132,6 +132,34 @@ suite('Style', () => {
     looks(withClass(split, 'split-line'), { height: '100%' });
   });
 
+  test('starts the note of a side where the code of its lines starts, past both columns of line numbers inline and the one of its side side by side, and that of a file shown whole past its one column, as notes started at the edge of the numbers like no line of the diff', () => {
+    looks(
+      withClass(
+        rendered(<FileNote text="Empty file" change="added" split={false} />),
+        'file-note',
+      ),
+      {
+        'padding-left':
+          'calc(2 * var(--diff-number-width) + var(--diff-code-padding))',
+      },
+    );
+    const split = rendered(<FileNote text="Empty file" change="added" split />);
+    looks(withClass(split, 'file-note', 'added'), {
+      'padding-left':
+        'calc(var(--diff-number-width) + var(--diff-code-padding))',
+    });
+    looks(
+      withClass(
+        rendered(<div className="file-note whole-note" />),
+        'file-note',
+      ),
+      {
+        'padding-left':
+          'calc(var(--diff-number-width) + var(--diff-code-padding))',
+      },
+    );
+  });
+
   test('lays an error over the diff out as wide as the view, so a long one wraps rather than running past what can be scrolled to', () => {
     for (const sideBySide of [false, true]) {
       const view = diffView(
@@ -473,7 +501,7 @@ suite('Style', () => {
     }
   });
 
-  test('draws the button that shows a large diff in the solid focus color', () => {
+  test('draws the button that shows a large diff as a button of a bar, in its gray, as it stood out in the solid focus color among the quiet notes of the diff', () => {
     looks(
       withClass(
         rendered(
@@ -484,9 +512,8 @@ suite('Style', () => {
         'show',
       ),
       {
-        color: 'var(--color-focus-foreground)',
-        background:
-          'linear-gradient(var(--color-focus), var(--color-focus)), var(--color-panel-background)',
+        color: 'var(--color-foreground)',
+        background: 'var(--button-background)',
       },
     );
   });
@@ -530,7 +557,7 @@ suite('Style', () => {
           <FileHeader
             path="src/a.ts"
             open
-            whole={false}
+            notes={[]}
             collapsible
             onClick={noop}
           />
@@ -567,7 +594,7 @@ suite('Style', () => {
           <FileHeader
             path="v.svg"
             open
-            whole={false}
+            notes={[]}
             collapsible
             onClick={noop}
             onView={noop}

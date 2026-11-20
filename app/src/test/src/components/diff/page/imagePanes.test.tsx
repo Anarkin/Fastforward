@@ -6,7 +6,7 @@ import { imagePanes } from '../../../../../components/diff/page/imagePanes';
 import { ImageDiff } from '../../../../../components/diff/page/imagePreview';
 
 suite('Diff rows', () => {
-  test('previews an image on both sides when side by side, hatching the side it lacks, and only on the sides it has inline', () => {
+  test('previews an image on both sides inline as side by side, hatching the side it lacks, as an image added inline stood on the half of the old side', () => {
     const [added] = parsePatch(
       [
         'diff --git a/a.png b/a.png',
@@ -16,18 +16,18 @@ suite('Diff rows', () => {
       ].join('\n'),
     );
     const origin = { route: '/image', root: '/repo', hash: 'c'.repeat(40) };
-    const shown = (sideBySide: boolean) =>
-      imagePanes(origin, added, sideBySide).map((pane) => [
+    assert.deepStrictEqual(
+      imagePanes(origin, added).map((pane) => [
         pane.side,
         pane.url !== undefined,
-      ]);
-    assert.deepStrictEqual(shown(false), [['new', true]]);
-    assert.deepStrictEqual(shown(true), [
-      ['old', false],
-      ['new', true],
-    ]);
+      ]),
+      [
+        ['old', false],
+        ['new', true],
+      ],
+    );
     const markup = renderToStaticMarkup(
-      <ImageDiff panes={imagePanes(origin, added, true)} />,
+      <ImageDiff panes={imagePanes(origin, added)} />,
     );
     assert.match(
       markup,

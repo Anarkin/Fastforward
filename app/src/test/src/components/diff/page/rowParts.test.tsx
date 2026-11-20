@@ -18,20 +18,18 @@ import { clicked, mounted } from '../../../../helpers/mounted';
 import { tagsWith } from '../../../../helpers/markup';
 import { PathLooksContext } from '../../../../../lib/page/pathLooks';
 import { fileColorsOf } from '../../../../../lib/page/fileColors';
+import { strings } from '../../../../../lib/shared/strings';
 
-const binaryMarkup = (
-  change: 'added' | 'removed' | undefined,
-  split: boolean,
-) =>
+const binaryMarkup = (change: 'added' | 'removed', split: boolean) =>
   renderToStaticMarkup(
     <FileNote text="Binary file" change={change} split={split} />,
   );
 
 suite('Binary files', () => {
-  test('says a file is binary on each side it has, hatching the other side by side, and tints it inline', () => {
+  test('says a file added or deleted is binary on the side it has, hatching the other side by side, and tints it inline, a note of a side and never of both', () => {
     assert.strictEqual(
       binaryMarkup('added', false),
-      '<div class="file-note added">Binary file</div>',
+      '<div class="file-note side-note added">Binary file</div>',
     );
     assert.strictEqual(
       binaryMarkup('added', true),
@@ -41,10 +39,6 @@ suite('Binary files', () => {
       binaryMarkup('removed', true),
       '<div class="split-line note-line"><div class="file-note split-side removed">Binary file</div><div class="file-note split-side filler"></div></div>',
     );
-    assert.strictEqual(
-      binaryMarkup(undefined, true),
-      '<div class="split-line note-line"><div class="file-note split-side ">Binary file</div><div class="file-note split-side ">Binary file</div></div>',
-    );
   });
 });
 
@@ -53,31 +47,53 @@ const collapsibleHeader = (collapsible: boolean) =>
     <FileHeader
       path="a.ts"
       open
-      whole={false}
+      notes={[]}
       collapsible={collapsible}
       onClick={() => {}}
     />,
   );
 
 suite('Diff file header', () => {
+  test('says once on the header what holds for the whole file, each beside the other after its path, rather than on a line of each side', () => {
+    const html = renderToStaticMarkup(
+      <FileHeader
+        path="q.sh"
+        oldPath="p.sh"
+        open
+        notes={[
+          strings.diff.renamedWithoutChanges,
+          strings.diff.modeChanged('100644', '100755'),
+        ]}
+        collapsible={false}
+        onClick={() => {}}
+      />,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/<span class="file-header-note">([^<]*)<\/span>/g)].map(
+        ([, note]) => note,
+      ),
+      ['Renamed without changes', 'Mode changed from 100644 to 100755'],
+    );
+  });
+
   test('labels a file shown entire as unchanged, naming no commit, as it may be in the uncommitted changes or a comparison', () => {
     const html = renderToStaticMarkup(
       <FileHeader
         path="a.ts"
         open
-        whole
+        notes={[strings.diff.unchanged]}
         collapsible={false}
         onClick={() => {}}
       />,
     );
-    assert.match(html, /<span class="unchanged">Unchanged<\/span>/);
+    assert.match(html, /<span class="file-header-note">Unchanged<\/span>/);
     assert.doesNotMatch(html, /commit/);
     assert.doesNotMatch(
       renderToStaticMarkup(
         <FileHeader
           path="a.ts"
           open
-          whole={false}
+          notes={[]}
           collapsible
           onClick={() => {}}
         />,
@@ -110,7 +126,7 @@ suite('Diff file header', () => {
           path="elsewhere/to-folder.txt"
           oldPath="moved/to-folder.txt"
           open
-          whole={false}
+          notes={[]}
           collapsible
           onClick={() => {}}
         />
@@ -151,7 +167,7 @@ const viewHeader = (onView?: () => void) =>
     <FileHeader
       path="v.svg"
       open
-      whole={false}
+      notes={[]}
       collapsible
       onClick={() => {}}
       onView={onView}

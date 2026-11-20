@@ -18,7 +18,7 @@ suite('Renamed files', () => {
     const line = 16.8;
     assert.strictEqual(rowHeight({ kind: 'hunk', file: 0 }, false, line), line);
     assert.strictEqual(
-      rowHeight({ kind: 'binary', file: 0 }, false, line),
+      rowHeight({ kind: 'binary', file: 0, change: 'added' }, false, line),
       line,
     );
     assert.strictEqual(
@@ -61,8 +61,10 @@ suite('Diff row heights', () => {
     const rows = diffRows(
       parsePatch(
         [
-          'diff --git a/a.png b/a.png',
-          'Binary files a/a.png and b/a.png differ',
+          'diff --git a/a.bin b/a.bin',
+          'new file mode 100644',
+          'index 0000000..2222222',
+          'Binary files /dev/null and b/a.bin differ',
           patch('a.ts', 1),
           '@@ -10,0 +11,1 @@',
           '+line',
@@ -129,8 +131,10 @@ suite('Diff row heights', () => {
     const rows = diffRows(
       parsePatch(
         [
-          'diff --git a/a.png b/a.png',
-          'Binary files a/a.png and b/a.png differ',
+          'diff --git a/a.bin b/a.bin',
+          'new file mode 100644',
+          'index 0000000..2222222',
+          'Binary files /dev/null and b/a.bin differ',
           patch('a.ts', 1),
           '@@ -10,0 +11,1 @@',
           '+line',

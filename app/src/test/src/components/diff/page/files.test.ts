@@ -12,7 +12,7 @@ import {
   shownFiles,
   withLargeFiles,
 } from '../../../../../components/diff/page/files';
-import { patch, kinds } from '../../../tools/git/page/diffViewFixtures';
+import { patch, noted } from '../../../tools/git/page/diffViewFixtures';
 import { diffRows } from '../../../../../components/diff/page/rows';
 import { fileChange } from '../../../../helpers/gitValues';
 
@@ -42,28 +42,20 @@ suite('Files whose changes are all whitespace', () => {
         ['b.ts', true],
       ],
     );
-    assert.deepStrictEqual(kinds(diffRows(diff, new Map(), undefined)), [
+    assert.deepStrictEqual(noted(diff, diffRows(diff, new Map(), undefined)), [
       'error',
       'file',
       'line',
-      'file',
-      'whitespace',
+      'file: Only whitespace changed',
     ]);
   });
 
-  test('notes the same for such a file selected, side by side too, and above its lines when shown entire', () => {
+  test('notes the same on the header of such a file selected, side by side too, and above its lines when shown entire', () => {
     for (const sideBySide of [false, true]) {
+      const shown = shownFiles([], 'b.ts', files, [], new Map(), ['b.ts']);
       assert.deepStrictEqual(
-        kinds(
-          diffRows(
-            shownFiles([], 'b.ts', files, [], new Map(), ['b.ts']),
-            new Map(),
-            undefined,
-            false,
-            sideBySide,
-          ),
-        ),
-        ['error', 'file', 'whitespace'],
+        noted(shown, diffRows(shown, new Map(), undefined, false, sideBySide)),
+        ['error', 'file: Only whitespace changed'],
       );
     }
     assert.deepStrictEqual(shownFiles([], 'b.ts', files, [], new Map()), []);
@@ -72,22 +64,18 @@ suite('Files whose changes are all whitespace', () => {
         '\n',
       ),
     );
+    const whole = shownFiles(entire, 'b.ts', files, [], new Map(), ['b.ts']);
     assert.deepStrictEqual(
-      kinds(
-        diffRows(
-          shownFiles(entire, 'b.ts', files, [], new Map(), ['b.ts']),
-          new Map(),
-          undefined,
-        ),
-      ),
-      ['error', 'file', 'whitespace', 'line', 'line'],
+      noted(whole, diffRows(whole, new Map(), undefined)),
+      ['error', 'file: Only whitespace changed', 'line', 'line'],
     );
   });
 
   test('notes a file left out of the diff that loads with only whitespace changed, above its lines when shown entire', () => {
+    const loaded = loadedWhitespaceOnly('');
     assert.deepStrictEqual(
-      kinds(diffRows(loadedWhitespaceOnly(''), new Map(), undefined)),
-      ['error', 'file', 'whitespace'],
+      noted(loaded, diffRows(loaded, new Map(), undefined)),
+      ['error', 'file: Only whitespace changed'],
     );
     const entire = [
       'diff --git a/large.json b/large.json',
@@ -95,9 +83,10 @@ suite('Files whose changes are all whitespace', () => {
       ' one',
       ' two',
     ].join('\n');
+    const loadedWhole = loadedWhitespaceOnly(entire);
     assert.deepStrictEqual(
-      kinds(diffRows(loadedWhitespaceOnly(entire), new Map(), undefined)),
-      ['error', 'file', 'whitespace', 'line', 'line'],
+      noted(loadedWhole, diffRows(loadedWhole, new Map(), undefined)),
+      ['error', 'file: Only whitespace changed', 'line', 'line'],
     );
     assert.strictEqual(
       parseFilePatch('large.json', '').whitespaceOnly,

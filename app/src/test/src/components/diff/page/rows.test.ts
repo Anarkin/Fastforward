@@ -9,6 +9,7 @@ import {
 import { kinds } from '../../../tools/git/page/diffViewFixtures';
 import {
   diffRows,
+  fileNotes,
   lineKeys,
   sideChange,
 } from '../../../../../components/diff/page/rows';
@@ -78,11 +79,19 @@ suite('Binary files', () => {
           undefined,
         ),
       ),
-      ['error', 'file', 'mode'],
+      ['error', 'file'],
     );
-    assert.strictEqual(
-      strings.diff.modeChanged('100644', '100755'),
-      'Mode changed from 100644 to 100755',
+    assert.deepStrictEqual(
+      fileNotes(
+        parsePatch(
+          [
+            'diff --git a/s.sh b/s.sh',
+            'old mode 100644',
+            'new mode 100755',
+          ].join('\n'),
+        )[0],
+      ),
+      ['Mode changed from 100644 to 100755'],
     );
   });
 
@@ -177,7 +186,23 @@ suite('Symbolic links', () => {
     ].join('\n'),
   );
 
-  test('notes the target of each side that is a symbolic link in place of its text, inline and side by side, above the lines of a side that is a file', () => {
+  test('notes the target of each side that is a symbolic link in place of its text, inline and side by side, after the lines of an old side that was a file and before those of a new side that is one, so the old side reads first', () => {
+    const linkToText = linkPatch(
+      'deleted file mode 120000',
+      'index 1111111..0000000',
+      '--- a/l',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-README',
+      noNewline,
+      'diff --git a/l b/l',
+      'new file mode 100644',
+      'index 0000000..2222222',
+      '--- /dev/null',
+      '+++ b/l',
+      '@@ -0,0 +1 @@',
+      '+A file that was a link.',
+    );
     for (const sideBySide of [false, true]) {
       assert.deepStrictEqual(linkRows(added, sideBySide), [
         'error',
@@ -198,14 +223,20 @@ suite('Symbolic links', () => {
       assert.deepStrictEqual(linkRows(fileToLink, sideBySide), [
         'error',
         'file',
-        'new',
         sideBySide ? 'split' : 'line',
+        'new',
       ]);
       assert.deepStrictEqual(linkRows(renamed, sideBySide), [
         'error',
         'file',
         'old',
         'new',
+      ]);
+      assert.deepStrictEqual(linkRows(linkToText, sideBySide), [
+        'error',
+        'file',
+        'old',
+        sideBySide ? 'split' : 'line',
       ]);
     }
     assert.strictEqual(
@@ -289,6 +320,23 @@ suite('Symbolic links', () => {
   });
 });
 
+suite('Compared files', () => {
+  test('gives files compared that differ in nothing the diff shows a header of their own, which says so, rather than a note in an empty diff', () => {
+    for (const sideBySide of [false, true]) {
+      assert.deepStrictEqual(
+        diffRows([], new Map(), undefined, false, sideBySide, true),
+        [
+          { kind: 'error' },
+          { kind: 'file', file: 0, path: '', open: true, collapsible: false },
+        ],
+      );
+    }
+    assert.deepStrictEqual(kinds(diffRows([], new Map(), undefined)), [
+      'error',
+    ]);
+  });
+});
+
 const renamedFile = (...patchLines: string[]) =>
   parsePatch(['diff --git a/p.sh b/q.sh', ...patchLines].join('\n'))[0];
 suite('Renamed files', () => {
@@ -298,14 +346,19 @@ suite('Renamed files', () => {
     'rename to q.sh',
   ];
 
-  test('notes a file renamed or copied without changes, which has no lines to show, keeping its old path on its header', () => {
+  test('notes a file renamed or copied without changes once, on its header, which keeps its old path, rather than on a line of each side, as it has no lines to show', () => {
     for (const sideBySide of [false, true]) {
       for (const file of [
         renamedFile(...rename),
         renamedFile('similarity index 100%', 'copy from p.sh', 'copy to q.sh'),
       ]) {
         const rows = diffRows([file], new Map(), undefined, false, sideBySide);
-        assert.deepStrictEqual(kinds(rows), ['error', 'file', 'sameContent']);
+        assert.deepStrictEqual(kinds(rows), ['error', 'file']);
+        assert.deepStrictEqual(fileNotes(file), [
+          file.copied
+            ? strings.diff.copiedWithoutChanges
+            : strings.diff.renamedWithoutChanges,
+        ]);
         assert.deepStrictEqual(rows[1], {
           kind: 'file',
           file: 0,
@@ -318,27 +371,25 @@ suite('Renamed files', () => {
     }
   });
 
-  test('notes only whitespace changed for a renamed file git found less than wholly alike but shows no lines of, as whitespace changes are hidden', () => {
-    assert.deepStrictEqual(
-      kinds(
-        diffRows(
-          [
-            renamedFile(
-              'similarity index 83%',
-              'rename from p.sh',
-              'rename to q.sh',
-              'index 1111111..2222222 100644',
-            ),
-          ],
-          new Map(),
-          undefined,
-        ),
-      ),
-      ['error', 'file', 'whitespace'],
+  test('notes only whitespace changed on the header of a renamed file git found less than wholly alike but shows no lines of, as whitespace changes are hidden', () => {
+    const file = renamedFile(
+      'similarity index 83%',
+      'rename from p.sh',
+      'rename to q.sh',
+      'index 1111111..2222222 100644',
     );
+    assert.deepStrictEqual(kinds(diffRows([file], new Map(), undefined)), [
+      'error',
+      'file',
+    ]);
+    assert.deepStrictEqual(fileNotes(file), [strings.diff.onlyWhitespace]);
   });
 
-  test('notes the mode of a renamed file changing rather than its content staying, and no note for a rename with changed lines', () => {
+  test('notes the mode of a renamed file changing on its header rather than its content staying, and no note for a rename with changed lines', () => {
+    assert.deepStrictEqual(
+      fileNotes(renamedFile('old mode 100644', 'new mode 100755', ...rename)),
+      [strings.diff.modeChanged('100644', '100755')],
+    );
     assert.deepStrictEqual(
       kinds(
         diffRows(
@@ -347,7 +398,7 @@ suite('Renamed files', () => {
           undefined,
         ),
       ),
-      ['error', 'file', 'mode'],
+      ['error', 'file'],
     );
     assert.deepStrictEqual(
       kinds(
