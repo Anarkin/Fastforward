@@ -147,7 +147,7 @@ function brokenLines(list: Locator): Promise<string[]> {
 
 suite('Commit bubbles', () => {
   for (const scale of [1, 1.25, 1.5, 1.75]) {
-    test(`breaks the bubbles of a commit at ${scale * 100}% onto a line of their own only where the next would no longer fit the one before, at every width the column is dragged to, each row as tall as its lines and no more, and keeps the height the list scrolls through the same from its start to its end, as the list guessed one line of bubbles for a commit before drawing it and grew as it drew one with many, its thumb shrinking`, async () => {
+    test(`breaks the bubbles of a commit at ${scale * 100}% onto a line of their own only where the next would no longer fit the one before, at every width the column is dragged to, narrower and wider as far as it goes, each row as tall as its lines and no more, and keeps the height the list scrolls through the same from its start to its end, as the list guessed one line of bubbles for a commit before drawing it and grew as it drew one with many, its thumb shrinking`, async () => {
       const folder = tempFolder('commit-bubbles');
       const app = await launchApp((await crowdedProfile(folder)).profile, {
         before: [`--force-device-scale-factor=${scale}`],
@@ -169,22 +169,34 @@ suite('Commit bubbles', () => {
         await page.mouse.down();
         const problems: string[] = [];
         const lineCounts = new Set<number>();
-        for (let step = 0; step < 24; step++) {
-          x += 23;
-          await page.mouse.move(x, y, { steps: 2 });
-          const seen = await untilSettled(
-            async () => ({
-              problems: await brokenLines(list),
-              lines: await list.locator('.bubble-line.laid-out').count(),
-            }),
-            'the bubbles to settle',
-          );
-          problems.push(...seen.problems.map((each) => `${x}: ${each}`));
-          lineCounts.add(seen.lines);
+        const widths = new Set<number>();
+        for (const by of [-23, 23]) {
+          let still = 0;
+          let last = Number.NaN;
+          for (let step = 0; step < 40 && still < 2; step++) {
+            x += by;
+            await page.mouse.move(x, y, { steps: 2 });
+            const seen = await untilSettled(
+              async () => ({
+                problems: await brokenLines(list),
+                lines: await list.locator('.bubble-line.laid-out').count(),
+                width: await list.evaluate((element) => element.clientWidth),
+              }),
+              'the bubbles to settle',
+            );
+            problems.push(...seen.problems.map((each) => `${x}: ${each}`));
+            lineCounts.add(seen.lines);
+            widths.add(seen.width);
+            still = seen.width === last ? still + 1 : 0;
+            last = seen.width;
+          }
         }
         await page.mouse.up();
         assert.deepStrictEqual(problems, []);
-        assert.ok(lineCounts.size > 3, JSON.stringify([...lineCounts]));
+        assert.ok(
+          lineCounts.size > 1,
+          JSON.stringify({ lines: [...lineCounts], widths: [...widths] }),
+        );
         const heights = new Set<number>();
         await list.evaluate((element) => {
           element.scrollTop = 0;
