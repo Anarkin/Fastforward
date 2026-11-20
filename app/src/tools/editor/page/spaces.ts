@@ -36,9 +36,38 @@ interface Point {
 
 const figure = (value: number) => String(Math.round(value * 1000) / 1000);
 
+export function dotsBox(origin: Point, pixel: number): Point {
+  return { left: snapTo(origin.left, pixel), top: snapTo(origin.top, pixel) };
+}
+
 export interface DotFill {
   readonly phase: number;
   readonly path: string;
+}
+
+const stripLeft = (run: SpaceRun, { pixel }: DotLook) =>
+  snapTo(run.left, pixel);
+
+const stripTop = (run: SpaceRun, { dot, pixel }: DotLook) =>
+  snapTo(run.top + (run.height - dot) / 2, pixel);
+
+export function dotsReach(
+  runs: readonly SpaceRun[],
+  look: DotLook,
+  origin: Point,
+): { readonly width: number; readonly height: number } {
+  let width = 0;
+  let height = 0;
+  for (const run of runs) {
+    if (run.length > 0) {
+      width = Math.max(
+        width,
+        stripLeft(run, look) - origin.left + run.length * look.advance,
+      );
+      height = Math.max(height, stripTop(run, look) - origin.top + look.dot);
+    }
+  }
+  return { width: Math.ceil(width), height: Math.ceil(height) };
 }
 
 export function dotFills(
@@ -46,12 +75,12 @@ export function dotFills(
   look: DotLook,
   origin: Point,
 ): DotFill[] {
-  const { advance, dot, pixel } = look;
+  const { advance, dot } = look;
   const fills = new Map<string, string[]>();
   for (const run of runs) {
     if (run.length > 0) {
-      const left = snapTo(run.left, pixel) - origin.left;
-      const top = snapTo(run.top + (run.height - dot) / 2, pixel) - origin.top;
+      const left = stripLeft(run, look) - origin.left;
+      const top = stripTop(run, look) - origin.top;
       const phase = figure(((left % advance) + advance) % advance);
       const parts = fills.get(phase) ?? [];
       fills.set(phase, parts);
@@ -344,14 +373,36 @@ let patterns = 0;
 
 const svgSpace = 'http://www.w3.org/2000/svg';
 
+function written(
+  style: CSSStyleDeclaration,
+  property: 'transform' | 'width' | 'height',
+  value: string,
+): void {
+  if (style[property] !== value) {
+    style[property] = value;
+  }
+}
+
 class DotsMarker implements LayerMarker {
   private readonly drawn: string;
 
   constructor(
     private readonly fills: readonly DotFill[],
     private readonly look: DotLook,
+    private readonly offset: Point,
+    private readonly reach: { readonly width: number; readonly height: number },
   ) {
-    this.drawn = JSON.stringify([fills, look]);
+    this.drawn = JSON.stringify([fills, look, offset, reach]);
+  }
+
+  private place(box: HTMLElement, svg: SVGElement): void {
+    written(
+      box.style,
+      'transform',
+      `translate(${this.offset.left}px, ${this.offset.top}px)`,
+    );
+    written(svg.style, 'width', `${this.reach.width}px`);
+    written(svg.style, 'height', `${this.reach.height}px`);
   }
 
   eq(other: LayerMarker): boolean {
@@ -387,6 +438,7 @@ class DotsMarker implements LayerMarker {
     const box = document.createElement('div');
     box.className = 'space-dots';
     const svg = document.createElementNS(svgSpace, 'svg');
+    this.place(box, svg);
     this.fill(svg);
     box.append(svg);
     return box;
@@ -397,6 +449,7 @@ class DotsMarker implements LayerMarker {
     if (svg === null) {
       return false;
     }
+    this.place(dom, svg);
     this.fill(svg);
     return true;
   }
@@ -448,9 +501,17 @@ function dotMarkers(
     look,
     laidOut,
   );
+  const box = dotsBox(origin, look.pixel);
   return runs.length === 0
     ? []
-    : [new DotsMarker(dotFills(runs, look, origin), look)];
+    : [
+        new DotsMarker(
+          dotFills(runs, look, box),
+          look,
+          { left: box.left - origin.left, top: box.top - origin.top },
+          dotsReach(runs, look, box),
+        ),
+      ];
 }
 
 class ScrollWatch implements PluginValue {

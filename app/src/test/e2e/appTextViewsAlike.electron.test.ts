@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
@@ -8,6 +9,7 @@ import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { windowOfPage } from './cursorWindow';
 import { barOf, barParts } from './scrollbarsShown';
+import { untilSettled } from './waits';
 
 const scale = 1.25;
 const perNotch = 10;
@@ -484,6 +486,43 @@ suite('App text views alike', () => {
         'diff side by side': [0, 0],
       },
     );
+  });
+
+  test('draws the dots of the spaces in the editor alike with text selected and without, as the browser keeps its own caret, hidden under the cursor of the editor, in a layer of its own while nothing is selected and paints the dots over it apart from the text, which blurred them by half a device pixel where the editor starts between two', async () => {
+    await show('editor');
+    const pane = await page.locator(views.editor.pane).first().boundingBox();
+    const line = await page.locator('.editor .cm-line').nth(3).boundingBox();
+    assert.ok(pane && line, 'the editor shows no fourth line');
+    await page.mouse.click(line.x + 4, line.y + line.height / 2);
+    const away = {
+      left: pane.x,
+      right: pane.x + pane.width,
+      top: line.y + 4 * line.height,
+      bottom: pane.y + pane.height,
+    };
+    const settledDots = async (what: string) => {
+      await page.mouse.move(2, 2);
+      let last = Buffer.alloc(0);
+      await untilSettled(async () => {
+        last = pixelsOf(await shot(), away);
+        return createHash('sha1').update(last).digest('hex');
+      }, what);
+      return last;
+    };
+    const plain = await settledDots('the dots with nothing selected');
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Shift+ArrowRight');
+    const selected = await settledDots('the dots with text selected');
+    await page.keyboard.press('ArrowLeft');
+    let differing = 0;
+    for (let at = 0; at < plain.length; at += 4) {
+      if (!plain.subarray(at, at + 3).equals(selected.subarray(at, at + 3))) {
+        differing++;
+      }
+    }
+    assert.ok(inked(plain) > 0, 'no dots below the line of the cursor');
+    assert.strictEqual(differing, 0, 'pixels that changed with the selection');
   });
 
   test('dots the blank hanging at the end of a wrapped row, right before the mark of its break, in every view, however much of a column is left over beside the rows as the window gets narrower', async () => {

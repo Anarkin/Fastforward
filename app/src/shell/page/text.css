@@ -266,8 +266,6 @@ input {
 
 .cm-editor.editor-text .space-dots svg {
   position: absolute;
-  width: 1px;
-  height: 1px;
   overflow: visible;
   shape-rendering: crispEdges;
   fill: var(--muted-foreground);

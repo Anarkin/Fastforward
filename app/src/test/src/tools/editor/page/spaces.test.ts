@@ -6,6 +6,8 @@ import {
   dotsBand,
   dotsSpan,
   dotFills,
+  dotsBox,
+  dotsReach,
   fittingRun,
   holds,
   runsOfLine,
@@ -55,14 +57,27 @@ suite('The dots the editor draws for spaces', () => {
     assert.deepStrictEqual(dotFills([], look, { left: 0, top: 0 }), []);
   });
 
-  test('keeps the dots on whole device pixels however far the layer starts off them', () => {
+  test('stands the box of the dots on the device pixel nearest the start of their layer, however far the layer starts off one, the dots on whole device pixels inside it and its drawing reaching from that corner to past its last dot and no further, so the browser draws the dots alike whether it paints them with the text or apart in a layer of their own over the caret it keeps under the cursor of the editor, which starts that layer where the drawing starts and placed it from a whole CSS pixel, between two device pixels at 150%, blurring the dots until text was selected', () => {
     const look = dotLook(15, 8, 0.5);
+    const runs = [
+      { left: 10.3, top: 20.1, height: 16, length: 2 },
+      { left: 50.2, top: 60, height: 16, length: 1 },
+      { left: 30, top: 100.4, height: 16, length: 0 },
+    ];
+    const box = dotsBox({ left: 0.2, top: 0.1 }, look.pixel);
+    assert.deepStrictEqual(box, { left: 0, top: 0 });
+    assert.deepStrictEqual(dotFills(runs, look, box), [
+      { phase: 2.5, path: 'M10.5 27h16v2.5h-16z' },
+      { phase: 2, path: 'M50 67h8v2.5h-8z' },
+    ]);
+    assert.deepStrictEqual(dotsReach(runs, look, box), {
+      width: 58,
+      height: 70,
+    });
+    assert.deepStrictEqual(dotsReach([], look, box), { width: 0, height: 0 });
     assert.deepStrictEqual(
-      dotFills([{ left: 10.3, top: 20.1, height: 16, length: 1 }], look, {
-        left: 0.2,
-        top: 0.1,
-      }),
-      [{ phase: 2.3, path: 'M10.3 26.9h8v2.5h-8z' }],
+      dotsBox({ left: 8, top: 89.66666412353516 }, 2 / 3),
+      { left: 8, top: 90 },
     );
   });
 
@@ -78,9 +93,9 @@ suite('The dots the editor draws for spaces', () => {
           },
         ],
         dotLook(12, 7.2, 0.8),
-        { left: 8, top: 95.4000015258789 },
+        { left: 8, top: 95.2 },
       ),
-      [{ phase: 4.8, path: 'M120 7.8h7.2v1.6h-7.2z' }],
+      [{ phase: 4.8, path: 'M120 8h7.2v1.6h-7.2z' }],
     );
   });
 
