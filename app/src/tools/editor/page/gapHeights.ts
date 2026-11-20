@@ -103,6 +103,14 @@ function guessOf(view: EditorView): HeightGuess | undefined {
 const sameMeasure = (one: WrapMeasure, other: WrapMeasure) =>
   one.columns === other.columns && one.widths?.char === other.widths?.char;
 
+function guessAgain(view: EditorView): void {
+  const state: unknown = Reflect.get(view, 'viewState');
+  if (typeof state === 'object' && state !== null) {
+    Reflect.set(state, 'mustMeasureContent', 'refresh');
+    view.requestMeasure();
+  }
+}
+
 class GapHeights implements PluginValue {
   private counts: RowCounts | undefined;
   private drawn: WrapMeasure | undefined;
@@ -130,6 +138,15 @@ class GapHeights implements PluginValue {
   update(update: ViewUpdate): void {
     if (update.geometryChanged) {
       this.drawn = undefined;
+    }
+    const measure = this.measureOf(update.view);
+    if (
+      measure !== undefined &&
+      this.counts !== undefined &&
+      !sameMeasure(this.counts.measure, measure)
+    ) {
+      this.counts = new RowCounts(measure);
+      guessAgain(update.view);
     }
   }
 
