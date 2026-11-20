@@ -384,4 +384,143 @@ suite('App with tabs dragged between windows', () => {
       await back();
     }
   });
+
+  test('moves the window of a tab alone in it with the pointer as the tab is dragged, keeping its size to the device pixel, as moving it by its position grew it at each step on a screen scaled by a fraction', async () => {
+    await sparesReady();
+    const windows = (await visiblePages(launched())).length;
+    const alone = await byTabs(1);
+    const moved = await launched().browserWindow(alone);
+    const lowest = await launched().evaluate(
+      ({ BrowserWindow }, id) =>
+        Math.max(
+          ...BrowserWindow.getAllWindows()
+            .filter((other) => other.id !== id && other.isVisible())
+            .map((other) => other.getBounds().y),
+        ),
+      await moved.evaluate((shown) => shown.id),
+    );
+    await moved.evaluate(
+      (shown, y) => shown.setPosition(shown.getPosition()[0], y),
+      lowest + 120,
+    );
+    await waitFor(
+      async () => (await contentOf(alone)).y >= lowest + 100,
+      'the window below the rows of tabs of the others',
+    );
+    await alone.evaluate(() => {
+      const sizes: string[] = [];
+      Object.assign(window, { sizes });
+      new ResizeObserver(([entry]) => {
+        const [size] = entry?.devicePixelContentBoxSize ?? [];
+        if (size !== undefined) {
+          sizes.push(`${size.inlineSize}x${size.blockSize}`);
+        }
+      }).observe(document.documentElement, {
+        box: 'device-pixel-content-box',
+      });
+    });
+    const tab = await untilSettled(
+      async () => {
+        await onceDrawn(alone);
+        return alone.locator('.tabs [role="tab"]').first().boundingBox();
+      },
+      'the tab at rest in its row',
+      { quiet: 200, accepted: async (rested) => rested !== null },
+    );
+    assert.ok(tab);
+    const grabbed = { x: tab.x + 20, y: tab.y + tab.height / 2 };
+    const content = await contentOf(alone);
+    const from = { x: content.x + grabbed.x, y: content.y + grabbed.y };
+    const start = await moved.evaluate((shown) => shown.getPosition()[0]);
+    await alone.mouse.move(grabbed.x, grabbed.y);
+    await alone.mouse.down();
+    for (let step = 1; step <= 12; step += 1) {
+      const shift = 6 + 5 * step;
+      const now = await contentOf(alone);
+      await alone.mouse.move(from.x + shift - now.x, from.y - now.y);
+      await explained(
+        waitFor(
+          async () =>
+            Math.abs(
+              (await moved.evaluate((shown) => shown.getPosition()[0])) -
+                (start + shift),
+            ) <= 1,
+          `the window ${shift} pixels to the right`,
+        ),
+        { x: from.x + shift, y: from.y },
+        { alone },
+      );
+    }
+    await alone.mouse.up();
+    const sizes = await alone.evaluate(() =>
+      'sizes' in window && Array.isArray(window.sizes)
+        ? window.sizes.map(String)
+        : [],
+    );
+    assert.strictEqual(new Set(sizes).size, 1, sizes.join(' '));
+    await shownWindows(launched(), windows);
+  });
+
+  test.skipIf(process.platform !== 'win32')(
+    'leaves a maximized window where it is as its only tab is dragged, as moving it by its position left it there',
+    async () => {
+      await sparesReady();
+      const alone = await byTabs(1);
+      const moved = await launched().browserWindow(alone);
+      const others = (kept: number, minimized: boolean) =>
+        launched().evaluate(
+          ({ BrowserWindow }, asked) => {
+            for (const other of BrowserWindow.getAllWindows()) {
+              if (other.id === asked.kept) {
+                continue;
+              }
+              if (asked.minimized && other.isVisible()) {
+                other.minimize();
+              } else if (!asked.minimized && other.isMinimized()) {
+                other.restore();
+              }
+            }
+          },
+          { kept, minimized },
+        );
+      const id = await moved.evaluate((shown) => shown.id);
+      await others(id, true);
+      try {
+        await moved.evaluate((shown) => shown.maximize());
+        const before = await untilSettled(
+          () => moved.evaluate((shown) => shown.getBounds()),
+          'the window maximized',
+          {
+            accepted: () => moved.evaluate((shown) => shown.isMaximized()),
+          },
+        );
+        const tab = await untilSettled(
+          async () => {
+            await onceDrawn(alone);
+            return alone.locator('.tabs [role="tab"]').first().boundingBox();
+          },
+          'the tab at rest in its row',
+          { quiet: 200, accepted: (rested) => rested !== null },
+        );
+        assert.ok(tab);
+        const grabbed = { x: tab.x + 20, y: tab.y + tab.height / 2 };
+        await alone.mouse.move(grabbed.x, grabbed.y);
+        await alone.mouse.down();
+        await alone.mouse.move(grabbed.x + 66, grabbed.y, { steps: 12 });
+        await alone.mouse.up();
+        const after = await untilSettled(
+          () =>
+            moved.evaluate((shown) => ({
+              bounds: shown.getBounds(),
+              maximized: shown.isMaximized(),
+            })),
+          'the window after the drag',
+        );
+        assert.deepStrictEqual(after, { bounds: before, maximized: true });
+      } finally {
+        await moved.evaluate((shown) => shown.unmaximize());
+        await others(id, false);
+      }
+    },
+  );
 });

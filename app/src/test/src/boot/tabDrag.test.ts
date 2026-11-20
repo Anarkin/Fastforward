@@ -31,10 +31,16 @@ class FakeWindow implements DragWindow {
     readonly id: string,
     private place: Bounds,
     private visible = true,
+    private readonly frame = 0,
   ) {}
 
   bounds(): Bounds {
-    return this.place;
+    return {
+      x: this.place.x - this.frame,
+      y: this.place.y,
+      width: this.place.width + 2 * this.frame,
+      height: this.place.height + this.frame,
+    };
   }
 
   contentBounds(): Bounds {
@@ -49,7 +55,7 @@ class FakeWindow implements DragWindow {
     return this.visible && !this.hidden;
   }
 
-  moveTo(x: number, y: number): void {
+  moveContentTo(x: number, y: number): void {
     this.moves.push([x, y]);
     this.place = { ...this.place, x, y };
   }
@@ -334,6 +340,30 @@ suite('Dragging a tab between windows', () => {
       ['3', '2', 0],
     ]);
     assert.deepStrictEqual(closed, ['1']);
+  });
+
+  test('moves the window of its only tab by its content, so the tab stays under the pointer whatever frame the system draws around the window, and puts its content back where it was once cancelled', () => {
+    const source = new FakeWindow(
+      '1',
+      { x: 100, y: 100, width: 900, height: 600 },
+      true,
+      9,
+    );
+    const other = new FakeWindow('2', {
+      x: 1200,
+      y: 0,
+      width: 900,
+      height: 600,
+    });
+    const { host } = hostOf([source, other]);
+    const drag = TabDrag.start(host, source, start({ x: 400, y: 116 }, true));
+    assert.ok(drag);
+    drag.move({ x: 500, y: 216 });
+    const { x, y } = source.contentBounds();
+    assert.deepStrictEqual([x, y], [472, 202]);
+    drag.cancel();
+    const back = source.contentBounds();
+    assert.deepStrictEqual([back.x, back.y], [100, 100]);
   });
 
   test('starts no drag while the window dragged from has not told where its strip is', () => {

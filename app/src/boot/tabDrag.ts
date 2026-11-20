@@ -8,7 +8,7 @@ export interface DragWindow {
   contentBounds(): Bounds;
   strip(): Strip | undefined;
   shown(): boolean;
-  moveTo(x: number, y: number): void;
+  moveContentTo(x: number, y: number): void;
   hide(hidden: boolean): void;
   veil(): void;
 }
@@ -87,7 +87,7 @@ export class TabDrag {
     private readonly started: DragStart,
     private readonly layout: Strip,
   ) {
-    this.from = floating.bounds();
+    this.from = floating.contentBounds();
     this.at = started.at;
   }
 
@@ -224,7 +224,7 @@ export class TabDrag {
       this.host.visit(target.window.id, undefined);
     }
     if (this.started.alone) {
-      this.floating.moveTo(this.from.x, this.from.y);
+      this.floating.moveContentTo(this.from.x, this.from.y);
       this.floating.hide(false);
     } else {
       this.host.close(this.floating.id);
@@ -233,17 +233,12 @@ export class TabDrag {
   }
 
   private place(at: Point): void {
-    const bounds = this.floating.bounds();
     const content = this.floating.contentBounds();
     const strip = this.floating.strip() ?? this.layout;
-    const x = Math.round(
-      at.x - this.started.grab.x - strip.firstTabLeft - (content.x - bounds.x),
-    );
-    const y = Math.round(
-      at.y - this.started.grab.y - strip.tabTop - (content.y - bounds.y),
-    );
-    if (bounds.x !== x || bounds.y !== y) {
-      this.floating.moveTo(x, y);
+    const x = Math.round(at.x - this.started.grab.x - strip.firstTabLeft);
+    const y = Math.round(at.y - this.started.grab.y - strip.tabTop);
+    if (content.x !== x || content.y !== y) {
+      this.floating.moveContentTo(x, y);
     }
   }
 }
