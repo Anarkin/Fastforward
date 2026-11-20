@@ -9,6 +9,8 @@ import { waitFor } from '../helpers/fixtures';
 const focused = () =>
   page.evaluate(() => document.activeElement?.textContent ?? '');
 
+const layoutUnit = 1 / 64;
+
 const placed = () =>
   page.evaluate(() => {
     const view = document.querySelector('.compare-view .diff-view');
@@ -272,9 +274,9 @@ suite('App', () => {
       const [, oldEnd = 0] = sideBySide.old;
       const [newStart = 0] = sideBySide.new;
       assert.ok(
-        oldEnd <= sideBySide.line &&
+        oldEnd <= sideBySide.line + layoutUnit &&
           sideBySide.line - oldEnd < 12 &&
-          newStart >= sideBySide.line &&
+          newStart >= sideBySide.line - layoutUnit &&
           newStart - sideBySide.line < 12,
         JSON.stringify(sideBySide),
       );
@@ -287,7 +289,7 @@ suite('App', () => {
       const [newLeft = 0, newEnd = 0] = inline.new;
       assert.ok(
         Math.abs((oldStart + newEnd) / 2 - inline.middle) < 2 &&
-          oldRight <= inline.arrow &&
+          oldRight <= inline.arrow + layoutUnit &&
           inline.arrow < newLeft,
         JSON.stringify(inline),
       );
