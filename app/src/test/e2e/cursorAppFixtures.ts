@@ -422,7 +422,10 @@ export function sharedCursorApp(): void {
     );
     settingsFile = path.join(profile, 'settings.user.json');
     writeSettings('block');
-    app = await launchApp(profile, { before: launchSwitches });
+    app = await launchApp(profile, {
+      before: launchSwitches,
+      colorScheme: 'light',
+    });
     page = await app.firstWindow();
     await page
       .locator('.terminal-screen canvas:not(.xterm-link-layer)')

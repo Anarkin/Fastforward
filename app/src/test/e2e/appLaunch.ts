@@ -104,10 +104,10 @@ export function savedTabs(
   };
 }
 
-export function schemeAsked(): { colorScheme?: 'dark' } {
-  return process.env.FASTFORWARD_TEST_DARK === '1'
-    ? { colorScheme: 'dark' }
-    : {};
+export function schemeAsked(): { colorScheme: 'light' | 'dark' } {
+  return {
+    colorScheme: process.env.FASTFORWARD_TEST_LIGHT === '1' ? 'light' : 'dark',
+  };
 }
 
 export function appArguments(profile: string, ...after: string[]): string[] {
@@ -120,16 +120,18 @@ export async function launchApp(
     before = [],
     after = [],
     env,
+    colorScheme = schemeAsked().colorScheme,
   }: {
     readonly before?: readonly string[];
     readonly after?: readonly string[];
     readonly env?: Record<string, string>;
+    readonly colorScheme?: 'light' | 'dark';
   } = {},
 ): Promise<ElectronApplication> {
   const app = await _electron.launch({
     args: [...before, ...appArguments(profile, ...after)],
     cwd: appFolder,
-    ...schemeAsked(),
+    colorScheme,
     ...(env === undefined ? {} : { env }),
   });
   if (process.platform !== 'linux') {
