@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
+import { strings } from '../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { paddedTable } from './perfData';
 import { launchedForPerf, measure } from './perfFixtures';
@@ -138,6 +139,9 @@ const notGliding = {
   text: { wordWrap: true },
 };
 
+const layoutButton = (label: string) =>
+  `.compare-view button.toggle[aria-label="${label}"]`;
+
 suite('Frames of the diff tool', () => {
   const { perf, diff, scrolled } = comparedForPerf(
     file,
@@ -151,12 +155,9 @@ suite('Frames of the diff tool', () => {
   });
 
   test('scrolling it inline', async () => {
-    await perf()
-      .page.locator('.compare-view .segmented button')
-      .first()
-      .click();
+    await perf().page.locator(layoutButton(strings.diff.inline)).click();
     await scrolled('long lines, inline, wrapped');
-    await perf().page.locator('.compare-view .segmented button').last().click();
+    await perf().page.locator(layoutButton(strings.diff.sideBySide)).click();
   });
 
   test('scrolling it with its whitespace hidden', async () => {
@@ -197,12 +198,9 @@ suite('Frames of the diff tool on a table padded with spaces', () => {
   });
 
   test('scrolling the padded table inline', async () => {
-    await perf()
-      .page.locator('.compare-view .segmented button')
-      .first()
-      .click();
+    await perf().page.locator(layoutButton(strings.diff.inline)).click();
     await scrolled('padded table, inline, wrapped');
-    await perf().page.locator('.compare-view .segmented button').last().click();
+    await perf().page.locator(layoutButton(strings.diff.sideBySide)).click();
   });
 
   test('scrolling the padded table unwrapped', async () => {
@@ -228,7 +226,7 @@ suite('Frames of the diff tool on a table padded with spaces', () => {
 
   test('scrolling the padded table sideways inline, unwrapped', async () => {
     const { page } = perf();
-    await page.locator('.compare-view .segmented button').first().click();
+    await page.locator(layoutButton(strings.diff.inline)).click();
     await diff().focus();
     await sleep(500);
     await page.keyboard.down('Shift');
