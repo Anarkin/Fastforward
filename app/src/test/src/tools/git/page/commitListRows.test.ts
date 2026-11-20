@@ -127,11 +127,7 @@ suite('Commit list rows', () => {
       { end: 140, size: 40 },
       { end: 200, size: 60 },
     ];
-    const crowded = [1, 2, 3].map((position) => ({
-      position,
-      hash: `c${position}`,
-      lanes: 1,
-    }));
+    const crowded = [1, 2, 3];
     const sizes = [40, 80, 40, 40];
     const estimate = (index: number) => sizes[index] ?? 0;
     assert.deepStrictEqual(crowdedResize(measured, crowded, 0, estimate, 100), {

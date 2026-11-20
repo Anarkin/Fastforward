@@ -7,6 +7,10 @@ import {
   type GraphRow,
 } from '../shared/protocol';
 
+const loadedFlag = 1;
+const crowdedFlag = 2;
+const bubblesFlag = 4;
+
 function crowdedPlaces(
   crowded: readonly CrowdedCommit[],
 ): ReadonlyMap<number, CrowdedCommit> {
@@ -18,7 +22,7 @@ export class CommitHistory {
   private readonly graph = new Map<number, GraphRow>();
   private readonly positions = new Map<string, number>();
   private readonly requested = new Set<number>();
-  private readonly decorated: ReadonlySet<number>;
+  private readonly flags: Uint8Array;
   private readonly listeners = new Set<() => void>();
   private version = 0;
   private crowdedAt: ReadonlyMap<number, CrowdedCommit> = new Map();
@@ -33,13 +37,49 @@ export class CommitHistory {
     readonly keysFrom?: number,
     public crowded: readonly CrowdedCommit[] = [],
   ) {
-    this.decorated = new Set(decorations);
+    this.flags = new Uint8Array(total);
+    for (const position of decorations) {
+      this.flag(position, bubblesFlag, true);
+    }
     this.crowdedAt = crowdedPlaces(crowded);
     this.crowdedSpots = crowded;
+    this.flagCrowded(crowded, true);
+  }
+
+  private flag(position: number, flag: number, on: boolean): void {
+    if (position >= 0 && position < this.total) {
+      this.flags[position] = on
+        ? (this.flags[position] ?? 0) | flag
+        : (this.flags[position] ?? 0) & ~flag;
+    }
+  }
+
+  private flagCrowded(crowded: readonly CrowdedCommit[], on: boolean): void {
+    for (const { position } of crowded) {
+      this.flag(position, crowdedFlag, on);
+    }
+  }
+
+  private flagged(position: number, flag: number): boolean {
+    return ((this.flags[position] ?? 0) & flag) !== 0;
   }
 
   hasBubbles(position: number): boolean {
-    return this.decorated.has(position);
+    return this.flagged(position, bubblesFlag);
+  }
+
+  isCrowded(position: number): boolean {
+    return this.flagged(position, crowdedFlag);
+  }
+
+  keyAt(position: number): string | undefined {
+    const flags = this.flags[position] ?? 0;
+    if ((flags & loadedFlag) !== 0) {
+      return this.rows.get(position)?.hash;
+    }
+    return (flags & crowdedFlag) !== 0
+      ? this.crowdedAt.get(position)?.hash
+      : undefined;
   }
 
   takeCrowded(crowded: readonly CrowdedCommit[]): void {
@@ -53,6 +93,8 @@ export class CommitHistory {
     if (!placed) {
       this.crowdedSpots = crowded;
     }
+    this.flagCrowded(this.crowded, false);
+    this.flagCrowded(crowded, true);
     this.crowded = crowded;
     this.crowdedAt = crowdedPlaces(crowded);
     this.changed();
@@ -60,10 +102,6 @@ export class CommitHistory {
 
   crowdedLanesAt(position: number): number {
     return this.crowdedAt.get(position)?.lanes ?? 0;
-  }
-
-  crowdedHashAt(position: number): string | undefined {
-    return this.crowdedAt.get(position)?.hash;
   }
 
   at(position: number): CommitInfo | undefined {
@@ -104,6 +142,7 @@ export class CommitHistory {
     commits.forEach((commit, offset) => {
       this.rows.set(start + offset, commit);
       this.positions.set(commit.hash, start + offset);
+      this.flag(start + offset, loadedFlag, true);
     });
     graph.forEach((row, offset) => this.graph.set(start + offset, row));
     this.changed();

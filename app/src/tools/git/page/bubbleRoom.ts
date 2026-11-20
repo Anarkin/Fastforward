@@ -1,4 +1,4 @@
-import { lookKey, shapeKey, type BubbleLook } from './bubbleLooks';
+import { shapeKey, type BubbleLook } from './bubbleLooks';
 
 function pixels(value: string | undefined): number {
   return parseFloat(value ?? '') || 0;
@@ -40,29 +40,50 @@ function textMeasure(probe: Element): (text: string) => number {
   };
 }
 
+interface ShapedText {
+  readonly key: string;
+  readonly shape: number;
+  readonly text: string;
+}
+
+export function shapedLooks(looks: ReadonlyMap<string, BubbleLook>): {
+  readonly shapes: ReadonlyMap<string, BubbleLook>;
+  readonly texts: readonly ShapedText[];
+} {
+  const shapes = new Map<string, BubbleLook>();
+  const at = new Map<string, number>();
+  const texts: ShapedText[] = [];
+  for (const [key, look] of looks) {
+    const shaped = shapeKey(look);
+    let shape = at.get(shaped);
+    if (shape === undefined) {
+      shape = at.size;
+      at.set(shaped, shape);
+      shapes.set(shaped, { ...look, text: '' });
+    }
+    texts.push({ key, shape, text: look.text });
+  }
+  return { shapes, texts };
+}
+
 export function advancesOf(
   row: Element,
   probe: Element,
-  shapes: readonly BubbleLook[],
-  looks: readonly BubbleLook[],
+  texts: readonly ShapedText[],
 ): ReadonlyMap<string, number> {
   const lefts = Array.from(
     row.children,
     (child) => child.getBoundingClientRect().left,
   );
-  const chrome = new Map(
-    shapes.map((shape, at) => [
-      shapeKey(shape),
-      (lefts[at + 1] ?? 0) - (lefts[at] ?? 0),
-    ]),
-  );
   const widthOfText = textMeasure(probe);
-  return new Map(
-    looks.map((look) => [
-      lookKey(look),
-      (chrome.get(shapeKey(look)) ?? 0) + widthOfText(look.text),
-    ]),
-  );
+  const advances = new Map<string, number>();
+  for (const { key, shape, text } of texts) {
+    advances.set(
+      key,
+      (lefts[shape + 1] ?? 0) - (lefts[shape] ?? 0) + widthOfText(text),
+    );
+  }
+  return advances;
 }
 
 export function widthOf(line: Element): number {

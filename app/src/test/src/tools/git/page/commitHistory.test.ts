@@ -127,4 +127,45 @@ suite('Commit history bubbles', () => {
     history.takeCrowded(moved);
     assert.strictEqual(history.crowdedSpots, moved);
   });
+
+  test('keys a position by the commit loaded there, or else by the commit with more than one bubble there, and tells which positions hold one, through every change of the commits with more than one bubble', () => {
+    const history = new CommitHistory(
+      10,
+      [1, 3, 5],
+      undefined,
+      0,
+      undefined,
+      undefined,
+      [{ position: 3, hash: 'c', lanes: 0 }],
+    );
+    const keys = () =>
+      Array.from({ length: 10 }, (_, position) => history.keyAt(position));
+    const crowded = () =>
+      Array.from({ length: 10 }, (_, position) => history.isCrowded(position));
+    assert.deepStrictEqual(keys(), [
+      undefined,
+      undefined,
+      undefined,
+      'c',
+      ...Array(6).fill(undefined),
+    ]);
+    history.add(0, [commitInfo('x'), commitInfo('y')]);
+    history.takeCrowded([{ position: 5, hash: 'e', lanes: 1 }]);
+    assert.deepStrictEqual(keys(), [
+      'x',
+      'y',
+      undefined,
+      undefined,
+      undefined,
+      'e',
+      ...Array(4).fill(undefined),
+    ]);
+    assert.deepStrictEqual(
+      crowded(),
+      Array.from({ length: 10 }, (_, position) => position === 5),
+    );
+    assert.strictEqual(history.keyAt(10), undefined);
+    assert.strictEqual(history.isCrowded(-1), false);
+    assert.strictEqual(history.hasBubbles(10), false);
+  });
 });

@@ -18,22 +18,43 @@ function kept(lines: number[]): readonly number[] {
   return lines;
 }
 
-export function bubbleLines(
+export interface FittedLines {
+  readonly lines: readonly number[];
+  readonly from: number;
+  readonly until: number;
+}
+
+export function fittedLines(
   advances: readonly number[],
-  width: number,
-): number[] {
+  room: number,
+): FittedLines {
   const lines: number[] = [];
   let used = 0;
+  let from = -Infinity;
+  let until = Infinity;
   for (const advance of advances) {
-    if (lines.length === 0 || used + advance > width) {
+    const reach = used + advance;
+    if (lines.length === 0) {
+      lines.push(1);
+      used = advance;
+    } else if (reach > room) {
+      until = Math.min(until, reach);
       lines.push(1);
       used = advance;
     } else {
+      from = Math.max(from, reach);
       lines[lines.length - 1] += 1;
-      used += advance;
+      used = reach;
     }
   }
-  return lines;
+  return { lines: kept(lines), from, until };
+}
+
+export function bubbleLines(
+  advances: readonly number[],
+  width: number,
+): readonly number[] {
+  return fittedLines(advances, width).lines;
 }
 
 export function inLines<T>(
@@ -53,7 +74,7 @@ export function linesAcross(
   keys: readonly string[],
   advances: ReadonlyMap<string, number>,
   width: number,
-): number[] | undefined {
+): readonly number[] | undefined {
   const known: number[] = [];
   for (const key of keys) {
     const advance = advances.get(key);
@@ -63,21 +84,6 @@ export function linesAcross(
     known.push(advance);
   }
   return width > 0 ? bubbleLines(known, width) : undefined;
-}
-
-export function sameRows(
-  a: ReadonlyMap<number, readonly number[]>,
-  b: ReadonlyMap<number, readonly number[]>,
-): boolean {
-  if (a.size !== b.size) {
-    return false;
-  }
-  for (const [position, lines] of a) {
-    if (b.get(position) !== lines) {
-      return false;
-    }
-  }
-  return true;
 }
 
 export interface CrowdedLooks {
@@ -108,18 +114,4 @@ export function measuredCrowds(
     }
   }
   return measured;
-}
-
-export function bubbleRowsAt(
-  crowds: readonly MeasuredCrowd[],
-  width: number,
-): Map<number, readonly number[]> {
-  const rows = new Map<number, readonly number[]>();
-  if (width <= 0) {
-    return rows;
-  }
-  for (const { position, indent, advances } of crowds) {
-    rows.set(position, kept(bubbleLines(advances, width - indent)));
-  }
-  return rows;
 }

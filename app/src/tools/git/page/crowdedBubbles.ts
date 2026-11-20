@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { CrowdedCommit } from '../shared/protocol';
 import {
   lookKey,
@@ -6,8 +6,9 @@ import {
   type BubbleLook,
   type CommitSurroundings,
 } from './bubbleLooks';
-import { bubbleRowsAt, measuredCrowds } from './bubbleLines';
+import { measuredCrowds, type MeasuredCrowd } from './bubbleLines';
 import type { CommitHistory } from './commitHistory';
+import { CrowdLayout } from './crowdLayout';
 import { rowLanes } from './graphLanes';
 import { detachedHead } from './selectors';
 import { useGit } from './store';
@@ -56,12 +57,10 @@ export function useCrowdedBubbles(
   history: CommitHistory | undefined,
   version: number,
 ): {
-  readonly crowded: readonly CrowdedCommit[];
-  readonly looks: readonly BubbleLook[];
-  readonly rows: ReadonlyMap<number, readonly number[]>;
-  readonly rowsAt: (width: number) => ReadonlyMap<number, readonly number[]>;
+  readonly looks: ReadonlyMap<string, BubbleLook>;
+  readonly crowds: readonly MeasuredCrowd[];
+  readonly layout: CrowdLayout;
   readonly onAdvances: (advances: ReadonlyMap<string, number>) => void;
-  readonly onWidth: (width: number) => void;
 } {
   const around = useCommitSurroundings();
   const crowded = history?.crowded ?? noCrowded;
@@ -79,10 +78,10 @@ export function useCrowdedBubbles(
     for (const { looks: each, keys } of crowdedLooks) {
       each.forEach((look, at) => distinct.set(keys[at] ?? '', look));
     }
-    return [...distinct.values()];
+    return distinct;
   }, [crowdedLooks]);
   const [advances, setAdvances] = useState(noAdvances);
-  const [width, setWidth] = useState(0);
+  const [layout] = useState(() => new CrowdLayout());
   const lanesLoaded = crowded.some((commit) => commit.lanes === 0)
     ? version
     : 0;
@@ -101,17 +100,5 @@ export function useCrowdedBubbles(
       ),
     [crowdedLooks, advances, graphLoaded],
   );
-  const rowsAt = useCallback(
-    (at: number) => bubbleRowsAt(crowds, at),
-    [crowds],
-  );
-  const rows = useMemo(() => rowsAt(width), [rowsAt, width]);
-  return {
-    crowded,
-    looks,
-    rows,
-    rowsAt,
-    onAdvances: setAdvances,
-    onWidth: setWidth,
-  };
+  return { looks, crowds, layout, onAdvances: setAdvances };
 }

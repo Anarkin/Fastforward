@@ -1,34 +1,24 @@
 import { memo, useLayoutEffect, useMemo, useRef } from 'react';
 import { BubbleReplica } from './bubbles';
-import { shapeKey, type BubbleLook } from './bubbleLooks';
-import { sameRows } from './bubbleLines';
-import { advancesOf, sameAdvances, widthOf } from './bubbleRoom';
+import type { BubbleLook } from './bubbleLooks';
+import { advancesOf, sameAdvances, shapedLooks, widthOf } from './bubbleRoom';
 
 const noAdvances: ReadonlyMap<string, number> = new Map();
 
 export const BubbleLab = memo(function BubbleLab({
   looks,
-  rowsAt,
   onAdvances,
   onWidth,
 }: {
-  looks: readonly BubbleLook[];
-  rowsAt: (width: number) => ReadonlyMap<number, readonly number[]>;
+  looks: ReadonlyMap<string, BubbleLook>;
   onAdvances: (advances: ReadonlyMap<string, number>) => void;
   onWidth: (width: number) => void;
 }) {
-  const shapes = useMemo(() => {
-    const distinct = new Map<string, BubbleLook>();
-    for (const look of looks) {
-      distinct.set(shapeKey(look), { ...look, text: '' });
-    }
-    return [...distinct.values()];
-  }, [looks]);
+  const { shapes, texts } = useMemo(() => shapedLooks(looks), [looks]);
   const lineRef = useRef<HTMLDivElement>(null);
   const rowRef = useRef<HTMLSpanElement>(null);
   const probeRef = useRef<HTMLSpanElement>(null);
   const toldAdvances = useRef(noAdvances);
-  const toldWidth = useRef(0);
   useLayoutEffect(() => {
     const row = rowRef.current;
     const probe = probeRef.current;
@@ -36,7 +26,7 @@ export const BubbleLab = memo(function BubbleLab({
       return undefined;
     }
     const measure = () => {
-      const measured = advancesOf(row, probe, shapes, looks);
+      const measured = advancesOf(row, probe, texts);
       if (!sameAdvances(measured, toldAdvances.current)) {
         toldAdvances.current = measured;
         onAdvances(measured);
@@ -53,24 +43,17 @@ export const BubbleLab = memo(function BubbleLab({
     });
     observer.observe(row);
     return () => observer.disconnect();
-  }, [looks, shapes, onAdvances]);
+  }, [texts, onAdvances]);
   useLayoutEffect(() => {
     const line = lineRef.current;
     if (!line) {
       return undefined;
     }
-    let shownRows = rowsAt(toldWidth.current);
-    let lastWidth = Number.NaN;
+    let told = Number.NaN;
     const measure = () => {
       const width = widthOf(line);
-      if (width === lastWidth) {
-        return;
-      }
-      lastWidth = width;
-      const rows = rowsAt(width);
-      if (!sameRows(rows, shownRows)) {
-        shownRows = rows;
-        toldWidth.current = width;
+      if (width !== told) {
+        told = width;
         onWidth(width);
       }
     };
@@ -78,17 +61,17 @@ export const BubbleLab = memo(function BubbleLab({
     const observer = new ResizeObserver(measure);
     observer.observe(line);
     return () => observer.disconnect();
-  }, [rowsAt, onWidth]);
+  }, [onWidth]);
   return (
     <div className="bubble-lab" aria-hidden="true" style={{ paddingLeft: 0 }}>
       <div className="bubble-lab-line" ref={lineRef}>
         <span className="bubble-lab-row" ref={rowRef}>
-          {shapes.map((shape) => (
-            <BubbleReplica key={shapeKey(shape)} look={shape} />
+          {[...shapes].map(([key, shape]) => (
+            <BubbleReplica key={key} look={shape} />
           ))}
           <span className="bubble-lab-end" />
           <span className="bubble-lab-text" ref={probeRef}>
-            {looks[0]?.text}
+            {texts[0]?.text}
           </span>
         </span>
       </div>

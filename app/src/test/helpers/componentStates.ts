@@ -181,12 +181,14 @@ export const componentStates: Readonly<Record<string, string>> = {
     'made once: a throttle made once to ask for the commits in view',
   'tools/git/page/commitList.tsx endPadding':
     'a measure: the bottom padding of the list, read anew from its style as mounted',
+  'tools/git/page/commitList.tsx relaidOut':
+    'a trigger: counts the redraws as the lines of bubbles of commits change',
   'tools/git/page/commitList.tsx places':
     'a moment: the tops reported to the main process while unanswered; the place itself is kept per worktree there',
   'tools/git/page/crowdedBubbles.ts advances':
     'a measure: the widths of the bubbles of the commits with more than one, read from the shapes in the hidden row and the names measured in its font as it lays out, and anew as its shapes resize',
-  'tools/git/page/crowdedBubbles.ts width':
-    'a measure: the room a line of bubbles has, read from the hidden row by a resize observer, told only once a commit takes another number of lines at it',
+  'tools/git/page/crowdedBubbles.ts layout':
+    'made once: the lines of bubbles of each commit with more than one, laid out anew as the hidden row tells the room of a line, and only for the commits whose lines that room changes',
   'tools/git/page/commitList.tsx room':
     'a measure: the height of the list less its padding, measured anew by a resize observer once mounted',
   'tools/git/page/commitList.tsx scale':

@@ -7,6 +7,7 @@ import {
   useId,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
   useState,
   useSyncExternalStore,
@@ -151,12 +152,10 @@ export function Commits({
   );
   const line = useRowLineHeight(list, scale);
   const {
-    crowded,
     looks: labLooks,
-    rows: bubbleRows,
-    rowsAt: bubbleRowsAt,
+    crowds,
+    layout: bubbleRows,
     onAdvances: setBubbleAdvances,
-    onWidth: setBubbleWidth,
   } = useCrowdedBubbles(history, version);
   const sizes = useMemo(
     () => rowSizes(history, offset, line, scale, bubbleRows),
@@ -226,31 +225,50 @@ export function Commits({
     };
   }, [placed]);
   useLayoutEffect(() => virtualizer.measure(), [virtualizer, line]);
-  const laidOutFor = useRef({ history, line });
+  const [, relaidOut] = useReducer((times: number) => times + 1, 0);
+  const anchoredBy = useRef(0);
   useLayoutEffect(() => {
-    const before = laidOutFor.current;
-    laidOutFor.current = { history, line };
-    if (before.line !== line) {
+    const above = anchoredBy.current;
+    if (above === 0) {
       return;
     }
-    const samePlaces = before.history === history;
-    const { resized: crowdedResized, above } = crowdedResize(
-      virtualizer.measurementsCache,
-      crowded,
-      offset,
-      sizes.estimateSize,
-      samePlaces ? (virtualizer.scrollOffset ?? 0) : undefined,
-    );
-    if (!crowdedResized) {
-      return;
-    }
-    const top = virtualizer.scrollOffset ?? 0;
-    virtualizer.measure();
-    if (above !== 0) {
-      places.moved(above);
-      virtualizer.scrollToOffset(top + above);
-    }
-  }, [history, line, crowded, offset, sizes, virtualizer, places]);
+    anchoredBy.current = 0;
+    places.moved(above);
+    virtualizer.scrollToOffset((virtualizer.scrollOffset ?? 0) + above);
+  });
+  const laidOutFor = useRef(history);
+  const relaid = useCallback(
+    (positions: readonly number[] | undefined) => {
+      if (positions === undefined) {
+        return;
+      }
+      const samePlaces = laidOutFor.current === history;
+      laidOutFor.current = history;
+      const { resized: crowdedResized, above } = crowdedResize(
+        virtualizer.measurementsCache,
+        positions,
+        offset,
+        sizes.estimateSize,
+        samePlaces ? (virtualizer.scrollOffset ?? 0) : undefined,
+      );
+      if (crowdedResized) {
+        anchoredBy.current += above;
+        virtualizer.measure();
+      }
+      relaidOut();
+    },
+    [history, offset, sizes, virtualizer],
+  );
+  useLayoutEffect(
+    () => relaid(bubbleRows.take(crowds)),
+    [bubbleRows, crowds, relaid],
+  );
+  const onBubbleWidth = useCallback(
+    (width: number) => relaid(bubbleRows.fit(width)),
+    [bubbleRows, relaid],
+  );
+  const total = history?.total;
+  const countedCommits = useMemo(() => commitsCounted(total), [total]);
   const rows = drawnRows(virtualizer, rowKey);
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
@@ -445,7 +463,7 @@ export function Commits({
       overlay={search}
       status={
         <ColumnStatus loading={opening} font="proportional">
-          {commitsCounted(history?.total)}
+          {countedCommits}
         </ColumnStatus>
       }
       search={
@@ -506,9 +524,8 @@ export function Commits({
         >
           <BubbleLab
             looks={labLooks}
-            rowsAt={bubbleRowsAt}
             onAdvances={setBubbleAdvances}
-            onWidth={setBubbleWidth}
+            onWidth={onBubbleWidth}
           />
           {rows.map((row) => {
             const height = fixedRowHeight(
