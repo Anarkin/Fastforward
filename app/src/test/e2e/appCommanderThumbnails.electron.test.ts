@@ -14,6 +14,7 @@ import {
   sharedCommanderApp,
 } from './commanderAppFixtures';
 import { grayPng, withOrientation } from './images';
+import { untilSettled } from './waits';
 
 const storedThumbnails = (profileFolder: string): number => {
   const stored = path.join(profileFolder, 'Thumbnails');
@@ -415,19 +416,23 @@ suite('App commander', () => {
     await right().locator('.commander-tile').first().waitFor();
     await page.keyboard.press('End');
     await page.keyboard.press('ArrowUp');
-    await waitFor(
-      async () => (await place()).scrollTop > 0,
-      'the tiles scrolled down',
+    const before = await untilSettled(
+      place,
+      'the tiles at rest scrolled down',
+      {
+        accepted: (seen) => seen.scrollTop > 0 && seen.first !== undefined,
+      },
     );
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const before = await place();
     await page.keyboard.press('F3');
     await page.locator('.viewer').waitFor();
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
-    await right().locator('.commander-tile').first().waitFor();
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    assert.deepStrictEqual(await place(), before);
+    const after = await untilSettled(
+      place,
+      'the tiles at rest once the file viewed is closed',
+      { accepted: (seen) => seen.first !== undefined },
+    );
+    assert.deepStrictEqual(after, before);
     const selectedBefore = await selectedName();
     await page.keyboard.press('ArrowLeft');
     await waitFor(
