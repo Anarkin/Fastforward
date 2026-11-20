@@ -29,6 +29,7 @@ import {
 } from '../../../lib/page/blankSigns';
 import { spaceDots } from './spaces';
 import { wrapColumnsOf } from './rows';
+import { gapHeights } from './gapHeights';
 import { breakMarks, type WrapMeasure } from './breaks';
 import { scratchRange } from '../../../lib/page/scratchRange';
 
@@ -436,6 +437,7 @@ export function appTextLook(table: CellTable): Extension {
     EditorView.editorAttributes.of({ class: 'editor-text' }),
     spaceDots(blanksOf, (view) => view.plugin(look)?.shape ?? 0),
     breakMarks((view) => view.plugin(look)?.wrapMeasure, blanksOf),
+    gapHeights((view) => view.plugin(look)?.wrapMeasure),
     look,
   ];
 }
