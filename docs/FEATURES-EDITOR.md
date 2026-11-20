@@ -70,6 +70,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
+| Characters and words | Move the cursor a character or a word left or right, or to the start of the row | Left, Right, Ctrl+Left, Ctrl+Right, Home | Core | ✅ Yes | Moved by the editor rather than by the caret of the browser, which stood still beside the places a wrapped line may break, as right before an opening bracket; by CodeMirror, a word a run of letters and digits or of other characters, after the spaces before it; Home to the start of the row of a wrapped line; selecting with Shift; not Alt+Left, Alt+Right, Cmd+Left and Cmd+Right of macOS |
 | Rows and pages | Move the cursor up or down a row or a page, or to either end of the file | Up, Down, PgUp, PgDn, Ctrl+Home, Ctrl+End | Core | ✅ Yes | Moved by the editor rather than by the caret of the browser, which knows only the lines drawn: a page as many rows up as down, a row less than the view shows, the cursor staying on the row of the view it was on, and Ctrl+End reaching the last line of the file; selecting with Shift; the view gliding after it with `scrolling.smooth`, as the lists glide on their keys; not Cmd+Up and Cmd+Down of macOS |
 | Several cursors | Type at several places at once | Alt+click | Common | ✅ Yes | Alt+click adds one, Escape leaves one |
 | Cursors above and below | Add a cursor on the line above or below | Ctrl+Alt+Up, Ctrl+Alt+Down | Common | ✅ Yes |  |

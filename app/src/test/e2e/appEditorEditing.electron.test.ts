@@ -19,8 +19,30 @@ import {
   sharedEditorApp,
 } from './editorAppFixtures';
 import { writeSettings } from './settingsWritten';
+import { strings } from '../../lib/shared/strings';
 
 const status = () => page.locator('.editor .column-status-text').textContent();
+
+const shows = (column: number, selected = 0) =>
+  [
+    strings.editor.column(column),
+    ...(selected > 0 ? [strings.editor.selected(selected)] : []),
+  ].join(strings.editor.between);
+
+const reaches = async (
+  key: string,
+  columns: readonly number[],
+  selected = 0,
+) => {
+  for (const column of columns) {
+    await page.keyboard.press(key);
+    await waitFor(
+      async () => (await status()) === shows(column, selected),
+      `${key} to column ${column}`,
+      3000,
+    );
+  }
+};
 
 const occurrencesMarked = async () =>
   (await content().locator('.occurrence-match').allTextContents()).join();
@@ -255,6 +277,47 @@ suite('App editor', () => {
       );
       await page.keyboard.press('ControlOrMeta+S');
       await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    } finally {
+      await writeSettings(page, profile, Object(JSON.parse(before)));
+      await content().waitFor();
+    }
+  });
+
+  test('moves the cursor itself a character or a word left or right and to the start of the row, selecting with Shift, over the places a wrapped line may break, where the caret of the browser stood still, as right before an opening bracket', async () => {
+    const settings = path.join(profile, 'settings.user.json');
+    const before = fs.readFileSync(settings, 'utf8');
+    const line = 'value.Func<T>(); a(b);';
+    fs.writeFileSync(path.join(opened, 'breaks.txt'), `${line}\n`);
+    try {
+      await writeSettings(page, profile, {
+        scrolling: { smooth: true },
+        text: { wordWrap: true },
+      });
+      await backToCommander();
+      await edit('breaks.txt');
+      await waitFor(
+        async () => (await editedText()) === `${line}\n`,
+        'the text',
+      );
+      await content().locator('.cm-line').first().click();
+      await reaches('End', [23]);
+      await reaches(
+        'ArrowLeft',
+        Array.from({ length: 22 }, (_, at) => 22 - at),
+      );
+      await reaches(
+        'ArrowRight',
+        Array.from({ length: 22 }, (_, at) => at + 2),
+      );
+      await reaches('Control+ArrowLeft', [21, 20, 19, 18, 13, 12, 11, 7, 6, 1]);
+      await reaches('Control+ArrowRight', [6, 7, 11, 12, 13, 17, 19]);
+      await reaches('Home', [1]);
+      await reaches('Control+ArrowRight', [6, 7, 11, 12, 13, 17, 19]);
+      await reaches('Shift+ArrowLeft', [18], 1);
+      await reaches('ArrowRight', [19]);
+      await reaches('Control+Shift+ArrowLeft', [18], 1);
+      await reaches('ArrowRight', [19]);
+      await reaches('Shift+Home', [1], 18);
     } finally {
       await writeSettings(page, profile, Object(JSON.parse(before)));
       await content().waitFor();

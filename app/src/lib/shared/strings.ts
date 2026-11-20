@@ -373,7 +373,11 @@ export const strings = {
     closeCompare: 'Close the files being compared',
     viewAs: 'View the file as hex, text or a preview',
     scrollFile: 'Scroll by a row, a page, or to the start or end',
+    rowStart: 'Move to the start of the row, or select up to it',
     rowEnd: 'Move to the end of the row, or select up to it',
+    cursorCharacter:
+      'Move the cursor a character left or right, or select up to it',
+    cursorWord: 'Move the cursor a word left or right, or select up to it',
     cursorRow: 'Move the cursor up or down a row, or select up to it',
     cursorPage: 'Move the cursor up or down a page, or select up to it',
     cursorFileEnd:

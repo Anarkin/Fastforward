@@ -59,6 +59,28 @@ export const editorKeymap = {
     { 'Alt+ArrowUp': -1, 'Alt+ArrowDown': 1 } as const,
     typing,
   ),
+  cursorCharacter: bind(
+    'Moving',
+    strings.actions.cursorCharacter,
+    {
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+      'Shift+ArrowLeft': 'selectLeft',
+      'Shift+ArrowRight': 'selectRight',
+    } as const,
+    typing,
+  ),
+  cursorWord: bind(
+    'Moving',
+    strings.actions.cursorWord,
+    {
+      'Ctrl+ArrowLeft': 'left',
+      'Ctrl+ArrowRight': 'right',
+      'Ctrl+Shift+ArrowLeft': 'selectLeft',
+      'Ctrl+Shift+ArrowRight': 'selectRight',
+    } as const,
+    typing,
+  ),
   cursorRow: bind(
     'Moving',
     strings.actions.cursorRow,
@@ -90,6 +112,12 @@ export const editorKeymap = {
       'Mod+Shift+Home': 'selectUp',
       'Mod+Shift+End': 'selectDown',
     } as const,
+    typing,
+  ),
+  rowStart: bind(
+    'Moving',
+    strings.actions.rowStart,
+    { Home: 'move', 'Shift+Home': 'select' } as const,
     typing,
   ),
   rowEnd: bind(

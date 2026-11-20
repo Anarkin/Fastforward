@@ -53,6 +53,25 @@ suite('Editor keys', () => {
     );
   });
 
+  test('moves the cursor itself a character or a word left or right and to the start of the row, selecting with Shift, rather than leaving them to the caret of the browser, which stood still beside the places a wrapped line may break, as right before an opening bracket', () => {
+    assert.deepStrictEqual(editorKeymap.cursorCharacter.keys, {
+      ArrowLeft: 'left',
+      ArrowRight: 'right',
+      'Shift+ArrowLeft': 'selectLeft',
+      'Shift+ArrowRight': 'selectRight',
+    });
+    assert.deepStrictEqual(editorKeymap.cursorWord.keys, {
+      'Ctrl+ArrowLeft': 'left',
+      'Ctrl+ArrowRight': 'right',
+      'Ctrl+Shift+ArrowLeft': 'selectLeft',
+      'Ctrl+Shift+ArrowRight': 'selectRight',
+    });
+    assert.deepStrictEqual(editorKeymap.rowStart.keys, {
+      Home: 'move',
+      'Shift+Home': 'select',
+    });
+  });
+
   test('moves a page by the whole rows the view shows but one, as the lists do, so the row the cursor leaves stays in sight, and by a row in a view of one row or none', () => {
     assert.deepStrictEqual(
       [

@@ -1,10 +1,20 @@
 import {
+  cursorCharLeft,
+  cursorCharRight,
   cursorDocEnd,
   cursorDocStart,
+  cursorGroupLeft,
+  cursorGroupRight,
+  cursorLineBoundaryLeft,
   cursorLineDown,
   cursorLineUp,
+  selectCharLeft,
+  selectCharRight,
   selectDocEnd,
   selectDocStart,
+  selectGroupLeft,
+  selectGroupRight,
+  selectLineBoundaryLeft,
   selectLineDown,
   selectLineUp,
 } from '@codemirror/commands';
@@ -16,6 +26,8 @@ import { editorKeymap } from './keymap';
 
 type CursorMove = 'up' | 'down' | 'selectUp' | 'selectDown';
 
+type SidewaysMove = 'left' | 'right' | 'selectLeft' | 'selectRight';
+
 type Follower = (view: EditorView) => RowFollower | undefined;
 
 const byRow: Readonly<Record<CursorMove, Command>> = {
@@ -23,6 +35,25 @@ const byRow: Readonly<Record<CursorMove, Command>> = {
   down: cursorLineDown,
   selectUp: selectLineUp,
   selectDown: selectLineDown,
+};
+
+const byCharacter: Readonly<Record<SidewaysMove, Command>> = {
+  left: cursorCharLeft,
+  right: cursorCharRight,
+  selectLeft: selectCharLeft,
+  selectRight: selectCharRight,
+};
+
+const byWord: Readonly<Record<SidewaysMove, Command>> = {
+  left: cursorGroupLeft,
+  right: cursorGroupRight,
+  selectLeft: selectGroupLeft,
+  selectRight: selectGroupRight,
+};
+
+const toRowStart: Readonly<Record<'move' | 'select', Command>> = {
+  move: cursorLineBoundaryLeft,
+  select: selectLineBoundaryLeft,
 };
 
 const toFileEnd: Readonly<Record<CursorMove, Command>> = {
@@ -90,6 +121,18 @@ function byPage(move: CursorMove, follower: Follower): Command {
 
 export function cursorKeys(follower: Follower): Extension {
   const commandOf = (event: KeyboardEvent): Command | undefined => {
+    const character = keyPressed(editorKeymap.cursorCharacter, event);
+    if (character !== undefined) {
+      return byCharacter[character];
+    }
+    const word = keyPressed(editorKeymap.cursorWord, event);
+    if (word !== undefined) {
+      return byWord[word];
+    }
+    const start = keyPressed(editorKeymap.rowStart, event);
+    if (start !== undefined) {
+      return toRowStart[start];
+    }
     const row = keyPressed(editorKeymap.cursorRow, event);
     if (row !== undefined) {
       return byRow[row];
