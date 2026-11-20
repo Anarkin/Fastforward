@@ -151,6 +151,7 @@ class RowScrolling implements PluginValue {
     },
   };
   private readonly onScroll = () => this.view.requestMeasure(this.acrossShown);
+  private readonly resized: ResizeObserver;
 
   constructor(
     private readonly view: EditorView,
@@ -188,6 +189,11 @@ class RowScrolling implements PluginValue {
       () => scroller,
     );
     scroller.addEventListener('scroll', this.onScroll, { passive: true });
+    this.resized = new ResizeObserver(() => {
+      view.requestMeasure(this.sizes);
+      view.requestMeasure(this.acrossShown);
+    });
+    this.resized.observe(scroller);
     view.requestMeasure(this.sizes);
     view.requestMeasure(this.gaps);
     view.requestMeasure(this.acrossShown);
@@ -209,6 +215,7 @@ class RowScrolling implements PluginValue {
     this.across.stop();
     this.bar.stop();
     this.view.scrollDOM.removeEventListener('scroll', this.onScroll);
+    this.resized.disconnect();
     this.barFrame.remove();
   }
 }
