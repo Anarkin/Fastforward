@@ -22,6 +22,7 @@ import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { colorer } from '../../../components/syntax/page/colorer';
 import { type CellTable } from '../../../lib/page/cellTable';
 import { editorFind } from './find';
+import { findTicks } from './findTicks';
 import { editorOccurrences } from './occurrences';
 import { commentsOf } from './comments';
 import { editorKeys, type EditorKeyActions } from './commands';
@@ -117,6 +118,7 @@ export function extensionsOf({
     history(),
     endingsUndone,
     editorFind,
+    findTicks,
     occurring.of(occurrencesMarked(marksOccurrences)),
     wrapping.of(wordWrap ? EditorView.lineWrapping : []),
     blanking.of(blanksShown.of(showWhitespace)),

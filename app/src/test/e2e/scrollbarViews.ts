@@ -20,7 +20,7 @@ export const views = {
     rows: '.editor .cm-line',
     vertical: '.editor .cm-scroller',
     horizontal: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
-    marks: undefined,
+    marks: '.editor .cm-editor > .scrollbar-marks',
   },
   diff: {
     tab: 3,

@@ -92,6 +92,17 @@
   display: none;
 }
 
+.cm-editor.editor-text > .scrollbar-marks {
+  top: var(--scrollbar-size);
+  right: var(--line-right, 0px);
+  bottom: calc(var(--line-below, 0px) + 2 * var(--scrollbar-size));
+  width: var(--scrollbar-size);
+}
+
+.cm-editor.editor-text:has(.cm-content.cm-lineWrapping) > .scrollbar-marks {
+  bottom: calc(var(--line-below, 0px) + var(--scrollbar-size));
+}
+
 .viewer-body:not(.wrapped)::after,
 .cm-editor.editor-text:not(:has(.cm-content.cm-lineWrapping))::after,
 .diff-view:not(.wrap)::before {

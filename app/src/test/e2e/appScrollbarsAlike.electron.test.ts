@@ -471,7 +471,7 @@ suite('App scrollbars alike', () => {
     );
   });
 
-  test('marks what changed in a diff and what a find matched on the track of the scrollbar itself, between its buttons, where the thumb comes to stand at them, in the diff and in the file viewed alike, as a strip of its own beside the scrollbar stood off its track and took the room of the text', async () => {
+  test('marks what changed in a diff and what a find matched on the track of the scrollbar itself, between its buttons, where the thumb comes to stand at them, in the diff, the file viewed and the file edited alike, as a strip of its own beside the scrollbar stood off its track and took the room of the text', async () => {
     const marked = async (name: ViewName, marks: string) => {
       const { box } = await bar(name, 'vertical');
       const parts = await barParts(page, box, 'vertical');
@@ -516,8 +516,9 @@ suite('App scrollbars alike', () => {
         minimaps: await page.locator('.diff-minimap').count(),
         diff: await found('diff', '.diff-view > .virtual-rows', 'changed'),
         viewer: await found('viewer', '.viewer-body', 'line 20'),
+        editor: await found('editor', '.editor .cm-content', 'line 20'),
       },
-      { changes: true, minimaps: 0, diff: true, viewer: true },
+      { changes: true, minimaps: 0, diff: true, viewer: true, editor: true },
     );
   });
 

@@ -28,7 +28,7 @@ export interface FindQuery {
   readonly options: SearchOptions;
 }
 
-interface Found {
+export interface Found {
   readonly from: number;
   readonly to: number;
 }
@@ -125,6 +125,10 @@ const findField = StateField.define<Finding>({
 
 function findingOf(state: EditorState): Finding {
   return state.field(findField, false) ?? nothingFound;
+}
+
+export function foundOf(state: EditorState): readonly Found[] {
+  return findingOf(state).found;
 }
 
 export function findsText(state: EditorState): boolean {
