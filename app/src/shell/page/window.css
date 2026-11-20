@@ -52,7 +52,20 @@ body {
     transparent
   );
   --scrollbar-arrow-color: var(--color-foreground);
-  --scrollbar-arrow: round(calc(var(--scrollbar-size) * 0.4), 2px);
+  --scrollbar-arrow: round(
+    up,
+    calc(var(--scrollbar-size) * 0.4),
+    calc(2 * var(--device-pixel, 1px))
+  );
+  --scrollbar-arrow-across: round(
+    calc((var(--scrollbar-size) - var(--scrollbar-arrow)) / 2),
+    var(--device-pixel, 1px)
+  );
+  --scrollbar-arrow-along: round(
+    calc((var(--scrollbar-size) - var(--scrollbar-arrow) / 2) / 2),
+    var(--device-pixel, 1px)
+  );
+  --scrollbar-arrow-tip: calc(var(--device-pixel, 1px) / 2);
   --scrollbar-hover-background: color-mix(
     in srgb,
     var(--color-focus) var(--color-focus-hover),
@@ -164,18 +177,21 @@ body {
   display: block;
   width: var(--scrollbar-size);
   height: var(--scrollbar-size);
-  background: var(--scrollbar-background) no-repeat center /
+  background: var(--scrollbar-background) no-repeat
+    var(--scrollbar-arrow-across) var(--scrollbar-arrow-along) /
     var(--scrollbar-arrow) calc(var(--scrollbar-arrow) / 2);
 }
 
 ::-webkit-scrollbar-button:horizontal:start:decrement,
 ::-webkit-scrollbar-button:horizontal:end:increment {
+  background-position: var(--scrollbar-arrow-along)
+    var(--scrollbar-arrow-across);
   background-size: calc(var(--scrollbar-arrow) / 2) var(--scrollbar-arrow);
 }
 
 ::-webkit-scrollbar-button:vertical:start:decrement {
   background-image: conic-gradient(
-    from 135deg at 50% 0,
+    from 135deg at 50% calc(-1 * var(--scrollbar-arrow-tip)),
     var(--scrollbar-arrow-color) 90deg,
     transparent 0
   );
@@ -183,7 +199,7 @@ body {
 
 ::-webkit-scrollbar-button:vertical:end:increment {
   background-image: conic-gradient(
-    from -45deg at 50% 100%,
+    from -45deg at 50% calc(100% + var(--scrollbar-arrow-tip)),
     var(--scrollbar-arrow-color) 90deg,
     transparent 0
   );
@@ -191,7 +207,7 @@ body {
 
 ::-webkit-scrollbar-button:horizontal:start:decrement {
   background-image: conic-gradient(
-    from 45deg at 0 50%,
+    from 45deg at calc(-1 * var(--scrollbar-arrow-tip)) 50%,
     var(--scrollbar-arrow-color) 90deg,
     transparent 0
   );
@@ -199,7 +215,7 @@ body {
 
 ::-webkit-scrollbar-button:horizontal:end:increment {
   background-image: conic-gradient(
-    from -135deg at 100% 50%,
+    from -135deg at calc(100% + var(--scrollbar-arrow-tip)) 50%,
     var(--scrollbar-arrow-color) 90deg,
     transparent 0
   );
