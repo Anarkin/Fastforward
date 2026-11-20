@@ -91,6 +91,21 @@ suite('Lessons from past mistakes', () => {
     ]);
   });
 
+  test('sets each condition a test depends on everywhere the app reads it, as a page follows its driver and not only its settings', () => {
+    assert.deepStrictEqual(
+      filesIn('test/e2e').flatMap((file) => {
+        const text = textOf(file);
+        return Array.from(
+          text.matchAll(/\btheme:\s*['"](light|dark)['"]/g),
+          ([, theme = '']) => theme,
+        )
+          .filter((theme) => !text.includes(`colorScheme: '${theme}'`))
+          .map((theme) => `${file} ${theme}`);
+      }),
+      [],
+    );
+  });
+
   test('closes the app of an end-to-end test in closeOrKill alone, which answers the app that asks before it quits, as a test closing an app with a terminal tab or an unsaved file waited ten seconds and then stopped it', () => {
     assert.deepStrictEqual(
       filesWith('test', /\b(?:app|launched|electronApp)\.close\(\)/),

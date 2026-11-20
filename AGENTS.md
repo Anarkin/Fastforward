@@ -52,3 +52,4 @@
 - Rely on no window width, frame rate or speed of the machine
 - Reproduce a flaky test before fixing it: a first guess at its cause was wrong twice
 - Compare positions and sizes within a fraction of a pixel, never exactly: CI runs at 100%, but other screens scale by fractions
+- Run a test that measures the page under a condition CI lacks, as another screen scale, before trusting it

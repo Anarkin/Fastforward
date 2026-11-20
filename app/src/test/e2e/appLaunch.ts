@@ -110,6 +110,13 @@ export function schemeAsked(): { colorScheme: 'light' | 'dark' } {
   };
 }
 
+function scaleAsked(): string[] {
+  const scale = process.env.FASTFORWARD_TEST_SCALE;
+  return scale === undefined || scale === ''
+    ? []
+    : [`--force-device-scale-factor=${scale}`];
+}
+
 export function appArguments(profile: string, ...after: string[]): string[] {
   return [appFolder, `--user-data-dir=${profile}`, ...after];
 }
@@ -129,7 +136,7 @@ export async function launchApp(
   } = {},
 ): Promise<ElectronApplication> {
   const app = await _electron.launch({
-    args: [...before, ...appArguments(profile, ...after)],
+    args: [...scaleAsked(), ...before, ...appArguments(profile, ...after)],
     cwd: appFolder,
     colorScheme,
     ...(env === undefined ? {} : { env }),
