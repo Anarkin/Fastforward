@@ -204,7 +204,7 @@ suite('App', () => {
         .evaluate((element) => element.scrollHeight - element.clientHeight);
       assert.ok(sticksOut >= 4, `the diff sticks out by ${sticksOut} pixels`);
       const around = (await barOf(sharedPage, diffColumn, 'vertical')).box;
-      assert.strictEqual(around.width, 0);
+      assert.strictEqual(whole(around.width), 0);
       await wheelsDiffOverItsBar(sharedPage);
     } finally {
       await taller.evaluate((element) =>

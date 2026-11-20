@@ -71,13 +71,14 @@ const placesOf = () =>
     const actions = box('.column-title .column-actions');
     const text = box('.path-text');
     const row = box('.viewer-rows .viewer-row');
+    const layoutUnit = 1 / 64;
     return {
       inHeader: viewer.querySelector('.column-title .path-title') !== null,
-      underHeader: text.top >= header.bottom,
-      aboveText: text.bottom <= row.top,
-      fromText: Math.round(text.left - row.left),
-      start: Math.round(start.left - header.left),
-      actions: Math.round(header.right - actions.right),
+      underHeader: text.top >= header.bottom - layoutUnit,
+      aboveText: text.bottom <= row.top + layoutUnit,
+      fromText: Math.round(text.left - row.left) + 0,
+      start: Math.round(start.left - header.left) + 0,
+      actions: Math.round(header.right - actions.right) + 0,
     };
   });
 
