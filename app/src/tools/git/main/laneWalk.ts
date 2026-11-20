@@ -68,7 +68,8 @@ export class LaneWalk {
     key: number,
     parents: readonly number[],
     stashes: ReadonlySet<number>,
-  ) {
+  ): number {
+    const lanesAbove = this.lanes.keys.length;
     const holding = this.lanesOf.get(key);
     let lane: number;
     if (holding && holding.length > 0) {
@@ -96,6 +97,7 @@ export class LaneWalk {
       colors.pop();
       dashed.pop();
     }
+    return Math.max(lanesAbove, lane + 1, keys.length);
   }
 
   private allocate(key: number): number {

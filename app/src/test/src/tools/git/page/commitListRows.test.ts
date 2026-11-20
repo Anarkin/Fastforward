@@ -11,6 +11,7 @@ import { noop } from './commitListFixtures';
 import {
   bubbleLineHeight,
   commitRowHeight,
+  crowdedResize,
   drawnRows,
   estimatedRowHeight,
   fixedRowHeight,
@@ -85,6 +86,69 @@ suite('Commit list rows', () => {
         estimatedRowHeight(history, 1, 2, 20),
       ],
       [20, 40, 60],
+    );
+  });
+
+  test('estimates a commit with more than one bubble at the lines its bubbles were counted to take, keyed by its commit before its page loads, at that height whether loaded or not, so its height never changes as it is drawn', () => {
+    const crowded = [{ position: 1, hash: 'b', lanes: 2 }];
+    const history = new CommitHistory(
+      3,
+      [0, 1],
+      undefined,
+      0,
+      undefined,
+      undefined,
+      crowded,
+    );
+    const counted = new Map([[1, [2, 1, 3]]]);
+    assert.deepStrictEqual(
+      [0, 1, 2].map((index) =>
+        estimatedRowHeight(history, 0, index, 20, counted),
+      ),
+      [60, 100, 40],
+    );
+    assert.strictEqual(estimatedRowHeight(history, 0, 1, 20), 60);
+    assert.deepStrictEqual(
+      [0, 1, 2].map((index) => rowKeyOf(history, 0, index)),
+      [0, 'b', 2],
+    );
+    history.add(0, [commitInfo('a'), commitInfo('b'), commitInfo('c')]);
+    assert.deepStrictEqual(
+      [0, 1, 2].map((index) => fixedRowHeight(history, 0, index, 50, counted)),
+      [undefined, 50, undefined],
+    );
+    assert.strictEqual(fixedRowHeight(history, 0, 1, 50), undefined);
+  });
+
+  test('tells when a commit with more than one bubble is laid out at another height than its lines take, as its column changed width or it was measured when it had fewer bubbles, and by how much the rows wholly above the view changed, to keep the view where it is', () => {
+    const measured = [
+      { end: 40, size: 40 },
+      { end: 100, size: 60 },
+      { end: 140, size: 40 },
+      { end: 200, size: 60 },
+    ];
+    const crowded = [1, 2, 3].map((position) => ({
+      position,
+      hash: `c${position}`,
+      lanes: 1,
+    }));
+    const sizes = [40, 80, 40, 40];
+    const estimate = (index: number) => sizes[index] ?? 0;
+    assert.deepStrictEqual(crowdedResize(measured, crowded, 0, estimate, 100), {
+      resized: true,
+      above: 20,
+    });
+    assert.deepStrictEqual(
+      crowdedResize(measured, crowded, 0, estimate, undefined),
+      { resized: true, above: 0 },
+    );
+    assert.deepStrictEqual(
+      crowdedResize(measured, crowded.slice(1, 2), 0, estimate, 200),
+      { resized: false, above: 0 },
+    );
+    assert.deepStrictEqual(
+      crowdedResize(measured, crowded.slice(2), 0, estimate, 200),
+      { resized: true, above: -20 },
     );
   });
 

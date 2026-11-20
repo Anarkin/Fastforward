@@ -164,6 +164,7 @@ export class Graph {
   private readonly walk = new LaneWalk();
   private reached = 0;
   private readonly stashes: ReadonlySet<number>;
+  private readonly laneCounts: Uint8Array;
   private readonly workingTreeEntry: GraphEntry;
   readonly workingTreeRow: GraphRow;
 
@@ -188,6 +189,7 @@ export class Graph {
     };
     this.checkpointEvery = checkpointEvery;
     this.stashes = stashes;
+    this.laneCounts = new Uint8Array(source.length + 1);
     this.workingTreeRow = step(noLanes(), this.workingTreeEntry, stashes);
   }
 
@@ -216,16 +218,19 @@ export class Graph {
     return rows;
   }
 
-  private advance(walk: LaneWalk, index: number): void {
-    if (index === 0) {
-      walk.advance(workingTree, this.workingTreeEntry.parents, this.stashes);
-    } else {
-      walk.advance(
-        this.source.key(index - 1),
-        this.source.parents(index - 1),
-        this.stashes,
-      );
-    }
+  lanesAt(position: number): number | undefined {
+    const index = position + 1;
+    return index < this.reached ? this.laneCounts[index] : undefined;
+  }
+
+  private advance(walk: LaneWalk, index: number): number {
+    return index === 0
+      ? walk.advance(workingTree, this.workingTreeEntry.parents, this.stashes)
+      : walk.advance(
+          this.source.key(index - 1),
+          this.source.parents(index - 1),
+          this.stashes,
+        );
   }
 
   private entry(index: number): GraphEntry {
@@ -266,7 +271,10 @@ export class Graph {
       if (this.reached % this.checkpointEvery === 0) {
         this.checkpoints.push(this.walk.checkpoint());
       }
-      this.advance(this.walk, this.reached);
+      this.laneCounts[this.reached] = Math.min(
+        maxLanes,
+        this.advance(this.walk, this.reached),
+      );
     }
   }
 }

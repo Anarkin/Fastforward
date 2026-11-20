@@ -65,10 +65,10 @@ suite('App scroll heights', () => {
     return [...heights];
   };
 
-  test('keeps the height every view scrolls through the same while it scrolls from its start to its end, the text wrapped, within a few pixels short of a row, as the heights a text measures add up its fractions of a pixel, so its thumb keeps its size, as the editor guessed the heights of the lines it had not drawn yet from their length and its thumb grew as it drew them', async () => {
+  test('keeps the height every view scrolls through the same while it scrolls from its start to its end, the text wrapped, within a few pixels short of a row, as the heights a text measures add up its fractions of a pixel, so its thumb keeps its size, as the editor guessed the heights of the lines it had not drawn yet from their length and the commit list a line of bubbles for a commit with sixty, and their thumbs grew as they drew them', async () => {
     await writeSettings(page, profile, settingsWith(true, true));
     const grown: string[] = [];
-    for (const name of everyView.filter((each) => each !== 'commit list')) {
+    for (const name of everyView) {
       const heights = await heightsWhileScrolled(name);
       if (Math.max(...heights) - Math.min(...heights) > 4) {
         grown.push(`${name}: ${heights.join(' -> ')}`);

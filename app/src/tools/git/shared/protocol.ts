@@ -131,6 +131,12 @@ export interface GraphLine {
   readonly dashed?: boolean;
 }
 
+export interface CrowdedCommit {
+  readonly position: number;
+  readonly hash: string;
+  readonly lanes: number;
+}
+
 export interface GraphRow {
   readonly lane: number;
   readonly color: number;
@@ -345,6 +351,7 @@ export type GitToWebview =
       readonly generation: number;
       readonly total: number;
       readonly decorations: readonly number[];
+      readonly crowded: readonly CrowdedCommit[];
       readonly start: number;
       readonly commits: readonly CommitInfo[];
       readonly graph: readonly GraphRow[];
@@ -352,6 +359,11 @@ export type GitToWebview =
       readonly selectedIndex: number | undefined;
       readonly keysFrom?: number;
       readonly scrollTarget: ScrollTarget | undefined;
+    }
+  | {
+      readonly type: 'crowdedLanes';
+      readonly generation: number;
+      readonly crowded: readonly CrowdedCommit[];
     }
   | {
       readonly type: 'commitPage';

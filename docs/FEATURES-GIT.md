@@ -72,7 +72,7 @@
 | Collapsed merges | Fold the commits a merge brought in into its row | — | Advanced | ✅ Yes | On by default, by the button above the commits; Space or a click expands one |
 | First parent | Follow the mainline only | `git log --first-parent` | Advanced | 🟡 Partial | Collapsed merges come close; Mod+Down selects the first parent |
 | Sort order | Sort by date or topology | `--date-order`, `--topo-order`, `--author-date-order` | Advanced | 🟡 Partial | Date order only |
-| Ref labels | Show branches, remote branches, tags and HEAD on their commits | `git log --decorate` | Core | ✅ Yes | Bubbles, tags shaped as tags, remote tags, bookmarked hashes |
+| Ref labels | Show branches, remote branches, tags and HEAD on their commits | `git log --decorate` | Core | ✅ Yes | Bubbles, tags shaped as tags, remote tags, bookmarked hashes; on as many lines as they fill, counted before their commit is drawn, so the list keeps its height and its thumb its size as it scrolls |
 | Uncommitted changes in the graph | Draw the working tree as a row leading to HEAD | — | Common | ✅ Yes |  |
 | Stashes in the graph | Draw stashes on the commits they were made on | — | Common | ✅ Yes |  |
 | Commit details | Show the author, committer, date and whole message | `git show -s` | Core | 🟡 Partial | Alt peeks over a row, Alt+click pins it until Esc, a press outside it or a scroll of the list, kept as the tab is left and the window loses focus; the author's name, the commit date and the message, no committer, emails or whole hash |

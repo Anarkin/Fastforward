@@ -186,10 +186,14 @@ suite('Commit row', () => {
 
 const tracking = { upstream: 'origin/main', ahead: 0, behind: 0 };
 
-function bubblesOf(hash: string, shown: ShownGit = {}): string {
+function bubblesOf(
+  hash: string,
+  shown: ShownGit = {},
+  lines?: readonly number[],
+): string {
   return renderToStaticMarkup(
     <GitStore value={gitStore(shown)}>
-      <CommitBubbles hash={hash} />
+      <CommitBubbles hash={hash} lines={lines} />
     </GitStore>,
   );
 }
@@ -209,6 +213,29 @@ suite('Commit list rows', () => {
       html,
       /^<div class="bubble-line"><span class="badge head[^>]*>HEAD aaaaaaa<\/span><wbr\/><span class="badge branch[^>]*>main<\/span><wbr\/><span class="badge remote[^>]*>origin\/main<\/span><\/div>$/,
     );
+  });
+
+  test('puts the bubbles of a commit in the list on the lines it counted for them, each a line of its own no bubble breaks, so the row is as tall as the list laid it out, and on one line that breaks while the lines counted are not those of its bubbles', () => {
+    const hash = 'a'.repeat(40);
+    const shown: ShownGit = {
+      head: 'main',
+      refs: [
+        { kind: 'tag', name: 'v1', commit: hash },
+        { kind: 'tag', name: 'v2', commit: hash },
+        { kind: 'tag', name: 'v3', commit: hash },
+      ],
+    };
+    const lines = [
+      ...bubblesOf(hash, shown, [2, 1]).matchAll(
+        /<div class="bubble-line laid-out">(.*?)<\/div>/g,
+      ),
+    ].map(([, line]) =>
+      [...(line ?? '').matchAll(/>(v\d)</g)].map(([, name]) => name),
+    );
+    assert.deepStrictEqual(lines, [['v1', 'v2'], ['v3']]);
+    assert.ok(!bubblesOf(hash, shown, [2, 1]).includes('<wbr'));
+    assert.match(bubblesOf(hash, shown, [2, 2]), /^<div class="bubble-line">/);
+    assert.match(bubblesOf(hash, shown), /^<div class="bubble-line">/);
   });
 
   test("offers pull and push on the checked-out branch's bubble in a commit's row", () => {

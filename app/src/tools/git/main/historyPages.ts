@@ -3,7 +3,7 @@ import { listHistory, listRecentHistory, recentTips } from './history';
 import type { Commits } from './commits';
 import type { Refs } from './refReads';
 import type { Log } from '../../../shell/main/log';
-import { commitPageSize } from '../shared/protocol';
+import { commitPageSize, type GitToWebviewOf } from '../shared/protocol';
 import type { ShellAccess } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { GitStorage } from './storage';
@@ -186,14 +186,43 @@ export class HistoryPages {
     if (tab.generation !== generation) {
       return;
     }
-    context.post(
-      commitsMessage(
-        tab,
-        page,
-        commits,
-        this.host.bookmarkedOf(context.repository),
-      ),
+    const message = commitsMessage(
+      tab,
+      page,
+      commits,
+      this.host.bookmarkedOf(context.repository),
     );
+    context.post(message);
+    void this.shell().track(this.sendCrowdedLanes(context, message));
+  }
+
+  private async sendCrowdedLanes(
+    context: Context,
+    { generation, crowded }: GitToWebviewOf<'commits'>,
+  ): Promise<void> {
+    const deepest = crowded.reduce(
+      (deep, commit) =>
+        commit.lanes === 0 ? Math.max(deep, commit.position) : deep,
+      -1,
+    );
+    if (deepest === -1) {
+      return;
+    }
+    const { tab } = context;
+    const { graph } = tab;
+    const current = () => tab.graph === graph && tab.generation === generation;
+    await graph.walkTo(deepest, current);
+    if (current()) {
+      context.post({
+        type: 'crowdedLanes',
+        generation,
+        crowded: crowded.map((commit) =>
+          commit.lanes === 0
+            ? { ...commit, lanes: graph.lanesAt(commit.position) ?? 0 }
+            : commit,
+        ),
+      });
+    }
   }
 
   private layOut(tab: TabWork): number {

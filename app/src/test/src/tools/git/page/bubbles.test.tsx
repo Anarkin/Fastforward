@@ -3,11 +3,14 @@ import { isValidElement } from 'react';
 import { renderToStaticMarkup as markupOf } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import {
+  BubbleReplica,
   TagPushAction,
   CommitBubble,
   HeadBubble,
   RefBubble,
+  StashBubble,
 } from '../../../../../tools/git/page/bubbles';
+import { lookOf } from '../../../../../tools/git/page/bubbleLooks';
 import type { MenuEvent } from '../../../../../tools/git/page/menus';
 import { GitStore } from '../../../../../tools/git/page/store';
 import { createShellStore, ShellStore } from '../../../../../shell/page/store';
@@ -15,6 +18,7 @@ import { strings } from '../../../../../lib/shared/strings';
 import type {
   BookmarkRef,
   GitToHost,
+  RefInfo,
   Tracking,
 } from '../../../../../tools/git/shared/protocol';
 import {
@@ -624,5 +628,130 @@ suite('Bubbles', () => {
       shown?.items.map((item) => ('separator' in item ? '-' : item.label)),
       [strings.commits.checkout, '-', strings.commits.addBookmark],
     );
+  });
+});
+
+function layoutOf(markup: string): string {
+  return markup
+    .replaceAll(/\s(?!class=)[\w:-]+="[^"]*"/g, '')
+    .replaceAll(/class="([^"]*)"/g, (_, names: string) => {
+      const kept = names
+        .split(/\s+/)
+        .filter(
+          (name) =>
+            name !== '' &&
+            !['checked-out', 'missing', 'idle', 'running'].includes(name),
+        );
+      return `class="${kept.join(' ')}"`;
+    });
+}
+
+const tracked = (ahead: number, behind: number): Tracking => ({
+  upstream: 'origin/x',
+  ahead,
+  behind,
+});
+
+suite('Bubble copies', () => {
+  const cases: {
+    name: string;
+    ref: RefInfo;
+    shown: ShownGit;
+  }[] = [
+    {
+      name: 'the checked-out branch, behind and ahead',
+      ref: {
+        kind: 'branch',
+        name: 'main',
+        commit: 'a',
+        tracking: tracked(12, 3),
+      },
+      shown: { head: 'main' },
+    },
+    {
+      name: 'another branch checked out elsewhere',
+      ref: {
+        kind: 'branch',
+        name: 'other',
+        commit: 'a',
+        tracking: tracked(0, 1),
+      },
+      shown: { head: 'main', elsewhere: ['other'] },
+    },
+    {
+      name: 'a branch level with its upstream, dimmed actions hidden',
+      ref: {
+        kind: 'branch',
+        name: 'level',
+        commit: 'a',
+        tracking: tracked(0, 0),
+      },
+      shown: { head: 'main', hideDimmed: true },
+    },
+    {
+      name: 'a tag the remote lacks',
+      ref: { kind: 'tag', name: 'v1.2', commit: 'a' },
+      shown: { tagRemote: 'origin' },
+    },
+    {
+      name: 'a tag with no remote, dimmed actions hidden',
+      ref: { kind: 'tag', name: 'v1.3', commit: 'a' },
+      shown: { hideDimmed: true },
+    },
+    {
+      name: 'a remote branch',
+      ref: {
+        kind: 'remote',
+        name: 'origin/main',
+        commit: 'a',
+        remote: 'origin',
+      },
+      shown: { head: 'main' },
+    },
+  ];
+  for (const { name, ref, shown } of cases) {
+    test(`draws the hidden copy the commit list measures of ${name} as the bubble itself, its actions and counts alike, so the widths measured are those of the bubbles drawn`, () => {
+      const look = lookOf({ type: 'ref', ref }, 'a', {
+        head: shown.head,
+        hideDimmed: shown.hideDimmed ?? false,
+        elsewhere: new Set(shown.elsewhere),
+        tagRemote: shown.tagRemote,
+        tagsOnRemote: new Set(),
+      });
+      assert.strictEqual(
+        layoutOf(renderToStaticMarkup(<BubbleReplica look={look} />)),
+        layoutOf(
+          shownIn(
+            { ...shown, refs: [ref] },
+            <RefBubble info={ref} tracking={ref.tracking} actions />,
+          ),
+        ),
+      );
+    });
+  }
+
+  test('draws the hidden copies of the other bubbles as the bubbles themselves', () => {
+    const hash = 'a'.repeat(40);
+    const around = {
+      head: undefined,
+      hideDimmed: false,
+      elsewhere: new Set<string>(),
+      tagRemote: undefined,
+      tagsOnRemote: new Set<string>(),
+    };
+    for (const [bubble, drawn] of [
+      [{ type: 'head' }, <HeadBubble key="head" hash={hash} />],
+      [{ type: 'bookmark' }, <CommitBubble key="bookmark" hash={hash} />],
+      [{ type: 'stash' }, <StashBubble key="stash" />],
+    ] as const) {
+      assert.strictEqual(
+        layoutOf(
+          renderToStaticMarkup(
+            <BubbleReplica look={lookOf(bubble, hash, around)} />,
+          ),
+        ),
+        layoutOf(shownIn({}, drawn)),
+      );
+    }
   });
 });

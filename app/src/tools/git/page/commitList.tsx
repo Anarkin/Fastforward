@@ -16,7 +16,7 @@ import { sidesOf } from '../../../lib/shared/comparisons';
 import { Column } from '../../../lib/page/column';
 import { ColumnResizer } from './columnResizer';
 import { useOpenMenu } from './menus';
-import { graphWidth, rowLanes, withoutWorkingTreeLink } from './graphLanes';
+import { rowLanes, withoutWorkingTreeLink } from './graphLanes';
 import { GraphCell } from './graph';
 import {
   layoutSelectionOf,
@@ -66,8 +66,12 @@ import {
   rowKeyOf,
   drawnRows,
   fixedRowHeight,
+  crowdedResize,
 } from './commitListRows';
 import { commitOption, commitListbox } from './commitListItems';
+import { BubbleLab } from './bubbleLab';
+import { indentOf, rowIndent } from './bubbleLines';
+import { useCrowdedBubbles } from './crowdedBubbles';
 import { CommitRow, ListedCommitRow, WorkingTreeRow } from './commitRow';
 import { SoloButton } from './soloButton';
 import { ColumnStatus } from '../../../lib/page/columnStatusLine';
@@ -80,8 +84,6 @@ const noHistory = () => () => {};
 const noVersion = () => 0;
 
 const noSelect = () => {};
-
-const rowIndent = 8;
 
 const openingRows = 20;
 
@@ -148,9 +150,15 @@ export function Commits({
     [],
   );
   const line = useRowLineHeight(list, scale);
+  const {
+    crowded,
+    looks: labLooks,
+    rows: bubbleRows,
+    onRoom: setBubbleRoom,
+  } = useCrowdedBubbles(history, version);
   const sizes = useMemo(
-    () => rowSizes(history, offset, line, scale),
-    [history, offset, line, scale],
+    () => rowSizes(history, offset, line, scale, bubbleRows),
+    [history, offset, line, scale, bubbleRows],
   );
   const rowKey = useCallback(
     (index: number) => rowKeyOf(history, offset, index),
@@ -216,6 +224,31 @@ export function Commits({
     };
   }, [placed]);
   useLayoutEffect(() => virtualizer.measure(), [virtualizer, line]);
+  const laidOutFor = useRef({ history, line });
+  useLayoutEffect(() => {
+    const before = laidOutFor.current;
+    laidOutFor.current = { history, line };
+    if (before.line !== line) {
+      return;
+    }
+    const samePlaces = before.history === history;
+    const { resized: crowdedResized, above } = crowdedResize(
+      virtualizer.measurementsCache,
+      crowded,
+      offset,
+      sizes.estimateSize,
+      samePlaces ? (virtualizer.scrollOffset ?? 0) : undefined,
+    );
+    if (!crowdedResized) {
+      return;
+    }
+    const top = virtualizer.scrollOffset ?? 0;
+    virtualizer.measure();
+    if (above !== 0) {
+      places.moved(above);
+      virtualizer.scrollToOffset(top + above);
+    }
+  }, [history, line, crowded, offset, sizes, virtualizer, places]);
   const rows = drawnRows(virtualizer, rowKey);
   const first = Math.max(0, (rows[0]?.index ?? 0) - offset);
   const last = Math.max(0, (rows.at(-1)?.index ?? 0) - offset);
@@ -361,8 +394,7 @@ export function Commits({
     );
   };
 
-  const indent = (index: number) =>
-    graphWidth(rowLanes(graphOf(index))) + rowIndent;
+  const indent = (index: number) => indentOf(rowLanes(graphOf(index)));
 
   const renderRow = (index: number) => {
     if (hasWorkingTree && index === 0) {
@@ -400,6 +432,7 @@ export function Commits({
         indent={indent(index)}
         onSelect={onSelect}
         onCompare={onCompare}
+        bubbleLines={bubbleRows.get(index - offset)}
       />
     );
   };
@@ -469,8 +502,15 @@ export function Commits({
           className="virtual-spacer"
           style={{ height: realHeight(totalSize) + endPad }}
         >
+          <BubbleLab looks={labLooks} onRoom={setBubbleRoom} />
           {rows.map((row) => {
-            const height = fixedRowHeight(history, offset, row.index, row.size);
+            const height = fixedRowHeight(
+              history,
+              offset,
+              row.index,
+              row.size,
+              bubbleRows,
+            );
             return (
               <div
                 key={row.key}

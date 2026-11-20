@@ -23,7 +23,8 @@
   font-weight: 600;
 }
 
-.commit {
+.commit,
+.bubble-lab {
   padding: 0 8px;
 }
 

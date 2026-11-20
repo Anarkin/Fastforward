@@ -52,6 +52,11 @@ export function keep(shown: Shown, message: GitToWebview): void {
     case 'commits':
       shown.commits = message;
       break;
+    case 'crowdedLanes':
+      if (shown.commits?.generation === message.generation) {
+        shown.commits = { ...shown.commits, crowded: message.crowded };
+      }
+      break;
     case 'workingTree':
       shown.workingTree = message;
       break;

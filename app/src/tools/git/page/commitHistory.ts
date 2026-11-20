@@ -3,8 +3,15 @@ import {
   commitPagesAsked,
   pageStart,
   type CommitInfo,
+  type CrowdedCommit,
   type GraphRow,
 } from '../shared/protocol';
+
+function crowdedPlaces(
+  crowded: readonly CrowdedCommit[],
+): ReadonlyMap<number, CrowdedCommit> {
+  return new Map(crowded.map((commit) => [commit.position, commit]));
+}
 
 export class CommitHistory {
   private readonly rows = new Map<number, CommitInfo>();
@@ -14,6 +21,7 @@ export class CommitHistory {
   private readonly decorated: ReadonlySet<number>;
   private readonly listeners = new Set<() => void>();
   private version = 0;
+  private crowdedAt: ReadonlyMap<number, CrowdedCommit> = new Map();
 
   constructor(
     readonly total: number,
@@ -22,12 +30,26 @@ export class CommitHistory {
     readonly generation = 0,
     readonly selectedIndex?: number,
     readonly keysFrom?: number,
+    public crowded: readonly CrowdedCommit[] = [],
   ) {
     this.decorated = new Set(decorations);
+    this.crowdedAt = crowdedPlaces(crowded);
   }
 
   hasBubbles(position: number): boolean {
     return this.decorated.has(position);
+  }
+
+  takeCrowded(crowded: readonly CrowdedCommit[]): void {
+    this.crowded = crowded;
+    this.crowdedAt = new Map(
+      crowded.map((commit) => [commit.position, commit]),
+    );
+    this.changed();
+  }
+
+  crowdedHashAt(position: number): string | undefined {
+    return this.crowdedAt.get(position)?.hash;
   }
 
   at(position: number): CommitInfo | undefined {
@@ -70,6 +92,10 @@ export class CommitHistory {
       this.positions.set(commit.hash, start + offset);
     });
     graph.forEach((row, offset) => this.graph.set(start + offset, row));
+    this.changed();
+  }
+
+  private changed(): void {
     this.version++;
     queueMicrotask(() => {
       for (const listener of this.listeners) {

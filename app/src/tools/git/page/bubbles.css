@@ -28,7 +28,8 @@
     var(--color-git-bubble-checked-out-border);
 }
 
-.bubble-line {
+.bubble-line,
+.bubble-lab-line {
   --bubble-inset: 6px;
   min-width: 0;
   margin-left: calc(-1 * var(--bubble-inset));
@@ -37,7 +38,8 @@
   line-height: var(--row-line-height);
 }
 
-.bubble-line .badge {
+.bubble-line .badge,
+.bubble-lab-line .badge {
   display: inline-block;
   max-width: calc(100% + var(--bubble-inset));
   height: calc(var(--row-line-height) - 2px);
@@ -52,7 +54,9 @@
 .badge.tag,
 .badge.remote-tag,
 .bubble-line .badge.tag,
-.bubble-line .badge.remote-tag {
+.bubble-line .badge.remote-tag,
+.bubble-lab-line .badge.tag,
+.bubble-lab-line .badge.remote-tag {
   padding-right: 17px;
   clip-path: shape(
     from 0 0,
@@ -72,7 +76,8 @@
   );
 }
 
-.bubble-line .badge.with-actions {
+.bubble-line .badge.with-actions,
+.bubble-lab-line .badge.with-actions {
   display: inline-flex;
   align-items: center;
   padding: 0 0 0 var(--bubble-inset);
@@ -122,7 +127,8 @@
   opacity: var(--muted-opacity);
 }
 
-.bubble-line .badge.tag.with-actions {
+.bubble-line .badge.tag.with-actions,
+.bubble-lab-line .badge.tag.with-actions {
   padding-right: 14px;
 }
 
@@ -146,4 +152,31 @@
 
 .bubble-action.push.running .icon {
   animation-direction: alternate-reverse;
+}
+
+.bubble-line.laid-out,
+.bubble-lab-line {
+  white-space: nowrap;
+}
+
+.bubble-lab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  contain: strict;
+  pointer-events: none;
+}
+
+.bubble-lab-row {
+  display: inline-block;
+}
+
+.bubble-lab-end {
+  display: inline-block;
+  margin-left: calc(-1 * var(--bubble-inset));
 }

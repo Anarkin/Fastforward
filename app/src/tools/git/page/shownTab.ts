@@ -222,6 +222,7 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         action.generation,
         action.selectedIndex,
         action.keysFrom,
+        action.crowded,
       );
       history.add(action.start, action.commits, action.graph);
       return {
@@ -230,6 +231,11 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
         scrollTarget: action.scrollTarget,
       };
     }
+    case 'crowdedLanes':
+      if (action.generation === state.history?.generation) {
+        state.history.takeCrowded(action.crowded);
+      }
+      return state;
     case 'commitPage':
       if (action.generation !== state.history?.generation) {
         return state;

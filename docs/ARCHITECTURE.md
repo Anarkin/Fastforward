@@ -28,6 +28,7 @@
 
 - Use the installed `git` CLI for everything, rather than a library or a git bundled with the app
 - The commit list is kept whole by the main process per worktree, rather than read a page at a time as it scrolls, so the list knows its full size and locations can jump to any commit's position
+- The bubbles of a commit with more than one are put on their lines by the page, from widths measured once in a hidden row of copies of the bubbles and the lanes of its row the main process counts as it walks the graph, rather than wrapped by the browser, so the list knows how tall a commit is before it loads or draws it and the height it scrolls through never changes as it draws them; the browser wrapped them only once drawn, and a commit with many bubbles grew the list as it came into view
 - A viewer tab showing a file as git keeps a version of it saves the commit or the index and the file whose history it is beside its path, as the main process never reads the view of a tab; the viewer reads a copy git takes out of the blob, made anew whenever the tab shows, so a restart or a cleared cache loses nothing
 
 ### Commander, `commander`

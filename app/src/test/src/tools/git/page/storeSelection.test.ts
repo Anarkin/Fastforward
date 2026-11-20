@@ -96,6 +96,7 @@ suite('Git store', () => {
       generation: 1,
       total: 3,
       decorations: [],
+      crowded: [],
       start: 0,
       commits: [first, second, third].map((hash) => commitInfo(hash)),
       graph: [],

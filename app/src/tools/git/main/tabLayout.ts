@@ -5,7 +5,7 @@ import {
   showHistory,
   type IsExpanded,
 } from './merges';
-import { decorations } from './refs';
+import { crowdedCommits, decorations } from './refs';
 import { shownSide } from '../../../lib/shared/comparisons';
 import {
   pageStart,
@@ -79,8 +79,14 @@ export function commitsMessage(
     generation: tab.generation,
     total: tab.history.length,
     decorations: decorations(
-      new Set([...tab.decorated, ...bookmarked]),
+      new Set([...tab.bubbles.keys(), ...bookmarked]),
       tab.positions,
+    ),
+    crowded: crowdedCommits(
+      tab.bubbles,
+      bookmarked,
+      tab.positions,
+      (position) => tab.graph.lanesAt(position),
     ),
     start,
     commits,

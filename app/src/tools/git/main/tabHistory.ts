@@ -3,7 +3,7 @@ import type { Stash } from './stashes';
 import type { Commits } from './commits';
 import { keepsTiedOrder, ranksOf } from './extend';
 import { headsOf } from './heads';
-import { decoratedCommits, fingerprint } from './refs';
+import { bubblesOnCommits, fingerprint } from './refs';
 import type { RefInfo } from '../shared/protocol';
 import type { TabState } from './tabState';
 
@@ -36,7 +36,7 @@ export function takeRefs(
   tab.stashes = new Map(stashes.map((stash) => [stash.commit, stash]));
   tab.ranks = ranksOf(tipsInGitOrder(head, refs, false, stashes, dates));
   tab.fingerprint = fingerprint(head, refs, stashes);
-  tab.decorated = decoratedCommits(refs, head, stashes);
+  tab.bubbles = bubblesOnCommits(refs, head, stashes);
 }
 
 export function refsKeepHistory(

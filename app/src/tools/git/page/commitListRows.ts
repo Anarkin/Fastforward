@@ -1,5 +1,5 @@
 import { type VirtualItem, type Virtualizer } from '@tanstack/react-virtual';
-import { workingTreeHash } from '../shared/protocol';
+import { workingTreeHash, type CrowdedCommit } from '../shared/protocol';
 import { CommitHistory } from './commitHistory';
 import { measureInLines, useLineHeight } from '../../../lib/page/lineHeight';
 import type { RefObject } from 'react';
@@ -9,17 +9,22 @@ export const commitRowHeight = 2 * defaultRowLineHeight;
 export const workingTreeRowHeight = defaultRowLineHeight;
 export const bubbleLineHeight = defaultRowLineHeight;
 
+const noBubbleRows: ReadonlyMap<number, readonly number[]> = new Map();
+
 export function estimatedRowHeight(
   history: CommitHistory | undefined,
   offset: number,
   index: number,
   line = defaultRowLineHeight,
+  bubbleRows = noBubbleRows,
 ): number {
   if (index < offset) {
     return line;
   }
-  const lines = history?.hasBubbles(index - offset) ? 3 : 2;
-  return lines * line;
+  const position = index - offset;
+  const bubbleLines =
+    bubbleRows.get(position)?.length ?? (history?.hasBubbles(position) ? 1 : 0);
+  return (2 + bubbleLines) * line;
 }
 
 export function rowSizes(
@@ -27,12 +32,14 @@ export function rowSizes(
   offset: number,
   line: number,
   ratio: number,
+  bubbleRows = noBubbleRows,
 ): {
   readonly estimateSize: (index: number) => number;
   readonly measureElement: ReturnType<typeof measureInLines>;
 } {
   return {
-    estimateSize: (index) => estimatedRowHeight(history, offset, index, line),
+    estimateSize: (index) =>
+      estimatedRowHeight(history, offset, index, line, bubbleRows),
     measureElement: measureInLines(line, ratio),
   };
 }
@@ -44,7 +51,9 @@ export function rowKeyOf(
 ): string | number {
   return index < offset
     ? workingTreeHash
-    : (history?.at(index - offset)?.hash ?? index);
+    : (history?.at(index - offset)?.hash ??
+        history?.crowdedHashAt(index - offset) ??
+        index);
 }
 
 function remeasureRowsLaidOutBeforeTheirCommitLoaded(
@@ -84,8 +93,11 @@ export function fixedRowHeight(
   offset: number,
   index: number,
   estimated: number,
+  bubbleRows = noBubbleRows,
 ): number | undefined {
-  return index < offset || history?.at(index - offset) !== undefined
+  return index < offset ||
+    (history?.at(index - offset) !== undefined &&
+      !bubbleRows.has(index - offset))
     ? undefined
     : estimated;
 }
@@ -95,4 +107,27 @@ export function useRowLineHeight(
   ratio: number,
 ): number {
   return useLineHeight(list, defaultRowLineHeight, ratio);
+}
+
+export function crowdedResize(
+  measured: readonly Pick<VirtualItem, 'end' | 'size'>[],
+  crowded: readonly CrowdedCommit[],
+  offset: number,
+  estimateSize: (index: number) => number,
+  top: number | undefined,
+): { readonly resized: boolean; readonly above: number } {
+  let resized = false;
+  let above = 0;
+  for (const { position } of crowded) {
+    const index = position + offset;
+    const shown = measured[index];
+    const size = estimateSize(index);
+    if (shown !== undefined && shown.size !== size) {
+      resized = true;
+      if (top !== undefined && shown.end <= top) {
+        above += size - shown.size;
+      }
+    }
+  }
+  return { resized, above };
 }

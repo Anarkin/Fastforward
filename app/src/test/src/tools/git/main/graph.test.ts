@@ -223,6 +223,41 @@ suite('Graph', () => {
     },
   );
 
+  test('tells how many lanes each row walked through takes, as its page draws them, so the page can tell how wide the bubbles of a commit not loaded yet may be, and nothing of a row not walked yet', async () => {
+    const count = 3000;
+    const history = Array.from({ length: count }, (_, index) => {
+      const later = (step: number) => `c${index + step}`;
+      const parents =
+        index % 97 === 0
+          ? []
+          : index % 3 === 0
+            ? [later(1), later(5 + (index % 400))]
+            : index % 7 === 0
+              ? [later(2 + (index % 300)), later(1), later(9)]
+              : [later(1 + (index % 4))];
+      return { hash: `c${index}`, parents };
+    });
+    const options = {
+      head: 'c4',
+      stashes: new Set(['c10', 'c2001']),
+      checkpointEvery: 64,
+    };
+    const whole = graphOf(history, {
+      ...options,
+      checkpointEvery: count * 2,
+    }).rows(0, count);
+    const graph = graphOf(history, options);
+    graph.rows(0, 10);
+    assert.strictEqual(graph.lanesAt(2000), undefined);
+    await graph.walkAhead(() => true, 0);
+    const lanes = Array.from({ length: count }, (_, at) => graph.lanesAt(at));
+    assert.deepStrictEqual(
+      lanes,
+      whole.map((row) => Math.min(maxLanes, widthOf([row]))),
+    );
+    assert.ok(new Set(lanes).size > 5, JSON.stringify([...new Set(lanes)]));
+  });
+
   test('walks ahead through the rest of the rows a slice at a time, letting other work run, until it is no longer shown', async () => {
     const count = 5000;
     let read = 0;

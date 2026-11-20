@@ -27,6 +27,27 @@ suite('Tab replay', () => {
     });
   });
 
+  test('replays the commits with the lanes of the commits with more than one bubble the walk of the graph found after them, and none found for an earlier layout', () => {
+    const tab = laidOut();
+    const message = commitsMessage(tab, firstPage(tab, false, 'h0'), []);
+    keep(tab.shown, message);
+    const crowded = [{ position: 3, hash: 'h3', lanes: 2 }];
+    keep(tab.shown, {
+      type: 'crowdedLanes',
+      generation: message.generation - 1,
+      crowded: [{ position: 3, hash: 'h3', lanes: 5 }],
+    });
+    keep(tab.shown, {
+      type: 'crowdedLanes',
+      generation: message.generation,
+      crowded,
+    });
+    assert.deepStrictEqual(
+      replayOf(tab).find((shown) => shown.type === 'commits')?.crowded,
+      crowded,
+    );
+  });
+
   test('replays the files before the diff or whole file that came last', () => {
     const tab = newTabState();
     select(tab, 'a');

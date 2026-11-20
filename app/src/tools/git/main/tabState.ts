@@ -39,7 +39,7 @@ export interface TabState {
   anchor: { hash: string; offset: number; report: number } | undefined;
   opened: boolean;
   navigation: Navigation;
-  decorated: Set<string>;
+  bubbles: ReadonlyMap<string, number>;
   toggledMerges: Set<string>;
   history: ShownHistory;
   positions: Positions;
@@ -71,7 +71,7 @@ export function newTabState(): TabState {
     shallow: '',
     anchor: undefined,
     opened: false,
-    decorated: new Set(),
+    bubbles: new Map(),
     toggledMerges: new Set(),
     history: noneShown,
     positions: noneShown.positions,
