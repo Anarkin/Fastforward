@@ -132,7 +132,7 @@ suite('Style', () => {
     }
   });
 
-  test('keeps the repository tabs on one row, shrinking them as Chrome does rather than wrapping them, down to a letter or two of the name beside the close button', () => {
+  test('keeps the repository tabs on one row, shrinking them as Chrome does rather than wrapping them, down to a letter or two of the name beside the close button, every tab as narrow as the open one may be, so a tab opened takes no room from the others and moves none of them', () => {
     looks(withClass(rendered(<TabBarShown />), 'tab-list'), {
       'flex-wrap': 'nowrap',
       overflow: undefined,
@@ -161,7 +161,7 @@ suite('Style', () => {
     looks(other, {
       'flex-shrink': '1',
       'box-sizing': 'border-box',
-      'min-width': `calc(${icon} + ${name} + 2 * ${gap} + ${frame})`,
+      'min-width': `calc(${icon} + ${name} + 3 * ${gap} + ${close} + ${frame})`,
     });
     for (const tab of [active, other]) {
       looks(withClass(tab, 'tab-name'), {

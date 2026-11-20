@@ -120,7 +120,7 @@
   box-sizing: border-box;
   width: 256px;
   flex-shrink: 1;
-  min-width: calc(16px + 2ch + 2 * 4px + 8px + 4px + 2 * 1px);
+  min-width: calc(16px + 2ch + 3 * 4px + 20px + 8px + 4px + 2 * 1px);
   padding: 3px 4px 3px 8px;
   border-radius: var(--radius);
   transition: transform 0.15s ease-out;
@@ -204,10 +204,6 @@
   left: -1px;
   right: -1px;
   height: calc(4px + 1px);
-}
-
-.tabs .tab.active {
-  min-width: calc(16px + 2ch + 3 * 4px + 20px + 8px + 4px + 2 * 1px);
 }
 
 .tabs .tab-name,

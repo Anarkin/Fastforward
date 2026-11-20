@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
+import { untilSettled } from './waits';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
@@ -184,5 +185,52 @@ suite('App with a row of tabs', () => {
       tab.left >= strip.left - 1 && tab.right <= strip.right + 1,
       JSON.stringify({ strip, tab }),
     );
+  });
+});
+
+suite('App with a row of tabs too full for their names', () => {
+  test('keeps every tab where it is as another is opened, every tab as narrow as the open one may be, as the open one kept the room of its close button where the others gave theirs up and moved them all as it changed', async () => {
+    const folder = tempFolder('squeezed-tabs');
+    const profile = path.join(folder, 'profile');
+    fs.mkdirSync(profile, { recursive: true });
+    fs.writeFileSync(
+      path.join(profile, 'state.json'),
+      JSON.stringify({
+        tabs: Array.from({ length: 18 }, (_, index) => ({
+          id: String(index + 1),
+          tool: 'commander',
+          root: folder,
+        })),
+        activeTab: '1',
+      }),
+    );
+    const app = await launchApp(profile);
+    try {
+      const page = await app.firstWindow();
+      const tabs = page.locator('.tabs .tab');
+      await tabs.nth(17).waitFor();
+      const boxes = () =>
+        tabs.evaluateAll((all) =>
+          all.map((tab) => {
+            const { left, right } = tab.getBoundingClientRect();
+            return [Math.round(left * 4) / 4, Math.round(right * 4) / 4];
+          }),
+        );
+      const before = await untilSettled(boxes, 'the squeezed tabs to settle');
+      await tabs.nth(4).click();
+      await waitFor(
+        async () =>
+          (await tabs.nth(4).getAttribute('class'))?.includes('active') ===
+          true,
+        'the fifth tab to open',
+      );
+      assert.deepStrictEqual(
+        await untilSettled(boxes, 'the tabs to settle again'),
+        before,
+      );
+    } finally {
+      await closeOrKill(app);
+      removeFolder(folder);
+    }
   });
 });
