@@ -52,6 +52,7 @@ import {
   useListPlace,
 } from './commitListScrolling';
 import { atMostEvery } from './commitPages';
+import { onceQuiet } from './quietRun';
 import {
   keySelection,
   mergeToToggle,
@@ -79,6 +80,8 @@ import { ColumnStatus } from '../../../lib/page/columnStatusLine';
 import { commitsCounted } from './columnStatus';
 
 const loadDelay = 80;
+
+const bubblesRest = 150;
 
 const noHistory = () => () => {};
 
@@ -263,9 +266,39 @@ export function Commits({
     () => relaid(bubbleRows.take(crowds)),
     [bubbleRows, crowds, relaid],
   );
+  const settled = useRef(() => {});
+  useEffect(() => {
+    settled.current = () => relaid(bubbleRows.show());
+  }, [bubbleRows, relaid]);
+  const [settling] = useState(() =>
+    onceQuiet(() => settled.current(), bubblesRest),
+  );
+  useEffect(() => () => settling.cancel(), [settling]);
+  useEffect(() => {
+    const element = list.current;
+    if (!element) {
+      return undefined;
+    }
+    const hurry = () => settling.hurry();
+    element.addEventListener('scroll', hurry, { passive: true });
+    return () => element.removeEventListener('scroll', hurry);
+  }, [settling]);
   const onBubbleWidth = useCallback(
-    (width: number) => relaid(bubbleRows.fit(width)),
-    [bubbleRows, relaid],
+    (width: number) => {
+      if (!bubbleRows.fit(width)) {
+        return;
+      }
+      const drawn = virtualizer.getVirtualIndexes();
+      const first = (drawn[0] ?? 0) - offset;
+      const last = (drawn.at(-1) ?? -1) - offset;
+      relaid(
+        bubbleRows.show((position) => position >= first && position <= last),
+      );
+      if (bubbleRows.waits) {
+        settling.schedule();
+      }
+    },
+    [bubbleRows, relaid, virtualizer, offset, settling],
   );
   const total = history?.total;
   const countedCommits = useMemo(() => commitsCounted(total), [total]);
