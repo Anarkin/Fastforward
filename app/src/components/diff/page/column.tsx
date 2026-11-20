@@ -223,6 +223,7 @@ export function Diff({
         onLoadTexts={onLoadTexts}
         origin={origin}
         matches={matches}
+        findsText={find.query !== ''}
         current={shown}
         jump={jump}
         firstChange={path === undefined ? undefined : firstChange}

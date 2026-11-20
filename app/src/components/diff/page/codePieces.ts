@@ -5,7 +5,7 @@ import type { SyntaxRange } from '../../syntax/page/engine';
 interface CodePiece {
   readonly start: number;
   readonly end: number;
-  readonly find: 'match' | 'current' | undefined;
+  readonly find: 'match' | 'current' | 'occurrence' | undefined;
   readonly token: SyntaxRange['kind'] | undefined;
   readonly word: boolean;
   readonly gapBefore: boolean;
@@ -37,24 +37,32 @@ export function codePieces(
   words: readonly FindRange[],
   found: readonly FindRange[],
   foundNow: FindRange | undefined,
+  copied: readonly FindRange[] = [],
 ): CodePieces {
-  if (words.length === 0 && syntax.length === 0 && found.length === 0) {
+  if (
+    words.length === 0 &&
+    syntax.length === 0 &&
+    found.length === 0 &&
+    copied.length === 0
+  ) {
     return { pieces: undefined, gapAfter: false };
   }
   const finds = wholeClusters(text, found);
+  const copies = wholeClusters(text, copied);
   const [current] =
     foundNow === undefined ? [] : wholeClusters(text, [foundNow]);
   const edges = [
     ...new Set([
       0,
       text.length,
-      ...[...syntax, ...words, ...finds].flatMap((range) => [
+      ...[...syntax, ...words, ...finds, ...copies].flatMap((range) => [
         range.start,
         range.end,
       ]),
     ]),
   ].toSorted((a, b) => a - b);
   const findAt = covering(finds);
+  const copyAt = covering(copies);
   const tokenAt = covering(syntax);
   const wordAt = covering(words);
   const gaps = new Set(
@@ -72,7 +80,9 @@ export function codePieces(
       end,
       find:
         find === undefined
-          ? undefined
+          ? copyAt(start, end) === undefined
+            ? undefined
+            : ('occurrence' as const)
           : isCurrent
             ? ('current' as const)
             : ('match' as const),

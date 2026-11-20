@@ -4,6 +4,7 @@ import { plainSearch } from '../../../../lib/shared/searchOptions';
 import {
   matchCount,
   matchesIn as matchesWith,
+  soughtCopy,
   stepMatch,
   validSearch,
 } from '../../../../lib/shared/textMatches';
@@ -18,6 +19,19 @@ const wholeWord = { ...plainSearch, wholeWord: true };
 const regex = { ...plainSearch, regex: true };
 
 suite('Find in diff', () => {
+  test('takes a text selected for its occurrences to be marked only while it is on one line, not of whitespace alone and of 200 characters at most', () => {
+    assert.strictEqual(soughtCopy('total'), 'total');
+    assert.strictEqual(soughtCopy('a b'), 'a b');
+    assert.strictEqual(soughtCopy('x'.repeat(200)), 'x'.repeat(200));
+    for (const selected of ['', '  ', 'one\ntwo', 'x'.repeat(201)]) {
+      assert.strictEqual(
+        soughtCopy(selected),
+        undefined,
+        JSON.stringify(selected),
+      );
+    }
+  });
+
   test('finds a match where it is, also after letters that lowercase longer', () => {
     assert.deepStrictEqual(matchesIn('İstanbul foo', 'foo'), [
       { start: 9, end: 12 },

@@ -1,7 +1,7 @@
 import type { ByteRange, TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
-import { matchesIn } from '../../../lib/shared/textMatches';
+import { copiesIn, matchesIn } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import { wholeClusters } from '../../../lib/page/wholeClusters';
 import { bytesOf } from './encodedBytes';
@@ -16,10 +16,25 @@ export interface FindMark {
   readonly start: number;
   readonly end: number;
   readonly current: boolean;
+  readonly occurrence?: true;
 }
 
 export interface MarkedPiece extends CodeSegment {
-  readonly mark: 'match' | 'current' | undefined;
+  readonly mark: 'match' | 'current' | 'occurrence' | undefined;
+}
+
+export function occurrenceMarks(
+  text: string,
+  sought: string | undefined,
+): FindMark[] {
+  return sought === undefined
+    ? []
+    : copiesIn(text, sought, false).map(({ start, end }) => ({
+        start,
+        end,
+        current: false,
+        occurrence: true,
+      }));
 }
 
 function firstEndingAfter(matches: readonly ByteRange[], byte: number): number {
@@ -187,7 +202,13 @@ export function markPieces(
         text: text.slice(from - at, to - at),
         kind,
         mark:
-          mark === undefined ? undefined : mark.current ? 'current' : 'match',
+          mark === undefined
+            ? undefined
+            : mark.occurrence === true
+              ? 'occurrence'
+              : mark.current
+                ? 'current'
+                : 'match',
       });
     }
     at = end;

@@ -75,6 +75,8 @@ function breakable(
   };
 }
 
+const noCopies: readonly FindRange[] = [];
+
 export function MarkedCode({
   text,
   syntax,
@@ -82,6 +84,7 @@ export function MarkedCode({
   wordClass,
   found,
   foundNow,
+  copies = noCopies,
   whitespace = false,
   spaceSpans = true,
   indent,
@@ -95,6 +98,7 @@ export function MarkedCode({
   readonly wordClass: string;
   readonly found: readonly FindRange[];
   readonly foundNow: FindRange | undefined;
+  readonly copies?: readonly FindRange[];
   readonly whitespace?: boolean;
   readonly spaceSpans?: boolean;
   readonly indent?: number;
@@ -110,7 +114,14 @@ export function MarkedCode({
       widths={widths}
     />
   ));
-  const { pieces, gapAfter } = codePieces(text, syntax, words, found, foundNow);
+  const { pieces, gapAfter } = codePieces(
+    text,
+    syntax,
+    words,
+    found,
+    foundNow,
+    copies,
+  );
   if (pieces === undefined) {
     return shown(text.slice(from, to), from);
   }
@@ -119,13 +130,16 @@ export function MarkedCode({
   const drawn = piecesWithin(pieces, from, to).map(
     ({ start, end, find, token, word, gapBefore }) => {
       const piece = text.slice(start, end);
-      let content: React.ReactNode = find ? (
-        <mark className={`find-match ${find === 'current' ? 'current' : ''}`}>
-          {shown(piece, start)}
-        </mark>
-      ) : (
-        shown(piece, start)
-      );
+      let content: React.ReactNode =
+        find === 'occurrence' ? (
+          <mark className="occurrence-match">{shown(piece, start)}</mark>
+        ) : find ? (
+          <mark className={`find-match ${find === 'current' ? 'current' : ''}`}>
+            {shown(piece, start)}
+          </mark>
+        ) : (
+          shown(piece, start)
+        );
       if (token) {
         content = <span className={`syntax-${token}`}>{content}</span>;
       }
@@ -154,6 +168,7 @@ export const Code = memo(function Code({
   wordClass,
   finds,
   current,
+  copies,
   whitespace,
   indent,
   widths,
@@ -173,6 +188,7 @@ export const Code = memo(function Code({
       wordClass={wordClass}
       found={finds}
       foundNow={current}
+      copies={copies}
       whitespace={whitespace}
       spaceSpans={!layered}
       indent={indent}

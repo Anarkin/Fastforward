@@ -4,7 +4,7 @@ import { type TextEncoding } from '../../../components/encodings/shared/textEnco
 import { ScrollBody } from './scrollBody';
 import type { Viewing } from './viewing';
 import type { ViewerFind } from './find';
-import { textMarks } from './markPieces';
+import { occurrenceMarks, textMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
 import { columnAt } from './columns';
 import { cellWidthsOf, textWidths } from '../../../lib/page/textWidths';
@@ -78,6 +78,10 @@ export function TextBody({
   );
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const highlightOccurrences = useShell(
+    (state) => state.textView.highlightOccurrences,
+  );
+  const [copy, setCopy] = useState<string>();
   const wrapAt =
     wordWrap && columns !== undefined && Number.isFinite(columns)
       ? columns
@@ -151,6 +155,7 @@ export function TextBody({
   );
   const rowText = (element: Element) =>
     texts.get(element.getAttribute('data-key') ?? '');
+  const finding = find !== undefined && find.query !== '';
   const target = find?.current;
   const matched =
     whole && target !== undefined
@@ -198,6 +203,9 @@ export function TextBody({
             }
       }
       rowText={rowText}
+      copiesWatched={highlightOccurrences && !finding}
+      onCopySelected={setCopy}
+      copyMarked={copy}
     >
       {table !== undefined &&
         shown.map((row, index) => (
@@ -208,8 +216,8 @@ export function TextBody({
             columns={wrapAt}
             colored={colored}
             marks={
-              find === undefined
-                ? []
+              find === undefined || !finding
+                ? occurrenceMarks(row.row.text, copy)
                 : textMarks(
                     row.row,
                     find.query,

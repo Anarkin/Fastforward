@@ -66,6 +66,34 @@ suite('Drawing code', () => {
     assert.strictEqual(plain.wordClass, 'word-added');
   });
 
+  test('gives a line the same copies of the text selected while that text stays selected, so it is not drawn again, and none without one', () => {
+    const copied = new Map<string, readonly { start: number; end: number }[]>();
+    const marks = {
+      syntax: new Map(),
+      words: new Map(),
+      finds: new Map(),
+      foundKey: undefined,
+      found: undefined,
+      whitespace: false,
+      copiesOf: (text: string) => {
+        const known = copied.get(text) ?? [{ start: 0, end: text.length }];
+        copied.set(text, known);
+        return known;
+      },
+    };
+    const before = codeProps(marks, '0:1', 'sum', 'added');
+    const after = codeProps(marks, '0:1', 'sum', 'added');
+    assert.deepStrictEqual(before.copies, [{ start: 0, end: 3 }]);
+    assert.strictEqual(after.copies, before.copies);
+    const none = codeProps(
+      { ...marks, copiesOf: undefined },
+      '0:1',
+      'sum',
+      'added',
+    );
+    assert.deepStrictEqual(none.copies, []);
+  });
+
   test('tints the row of a line changed through instead of marking its words', () => {
     const words = new Map<string, LineWords>([
       ['0:1', 'whole'],

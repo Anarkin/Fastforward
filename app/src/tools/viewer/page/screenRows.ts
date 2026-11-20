@@ -251,8 +251,8 @@ export function marksWithin(
   return marks
     .filter((mark) => mark.end > from && mark.start < to)
     .map((mark) => ({
+      ...mark,
       start: Math.max(mark.start, from) - from,
       end: Math.min(mark.end, to) - from,
-      current: mark.current,
     }));
 }

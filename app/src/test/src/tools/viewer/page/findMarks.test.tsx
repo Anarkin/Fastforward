@@ -4,6 +4,18 @@ import { suite, test } from 'vitest';
 import { MarkedText } from '../../../../../tools/viewer/page/findMarks';
 
 suite('Matches marked in a file viewed', () => {
+  test('marks an occurrence of the text selected apart from a match of the find, so it is drawn as what the editor marks on its own', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText
+          pieces={[{ text: 'ab c' }]}
+          marks={[{ start: 0, end: 2, current: false, occurrence: true }]}
+        />,
+      ),
+      '<mark class="occurrence-match">ab</mark><span> c</span>',
+    );
+  });
+
   test('signs the tabs of a row as the diff does once whitespace is shown, in its pieces and marks alike, leaving its spaces plain for the layer of the row to dot, and leaves them all plain otherwise', () => {
     const tab = String.fromCharCode(9);
     const pieces = [

@@ -34,7 +34,11 @@ export function MarkedText({
         ) : (
           <mark
             key={index}
-            className={`find-match${mark === 'current' ? ' current' : ''}`}
+            className={
+              mark === 'occurrence'
+                ? 'occurrence-match'
+                : `find-match${mark === 'current' ? ' current' : ''}`
+            }
           >
             {colored}
           </mark>

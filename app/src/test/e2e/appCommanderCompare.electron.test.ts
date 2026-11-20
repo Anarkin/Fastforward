@@ -16,6 +16,18 @@ import {
 } from './commanderAppFixtures';
 import { grayPng } from './images';
 
+const occurrences = () =>
+  page.locator('.compare-view .occurrence-match').allTextContents();
+
+const copiesDrawn = () =>
+  page.locator('.compare-view .diff-view .virtual-row .code').evaluateAll(
+    (codes) =>
+      codes
+        .map((drawn) => drawn.textContent ?? '')
+        .join(' ')
+        .split('alpha').length - 1,
+  );
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -237,5 +249,71 @@ suite('App commander', () => {
       const names = await rowNames();
       return !names.includes('twin1.txt') && !names.includes('twin2.txt');
     }, 'the files to be gone from the list');
+  });
+
+  test('marks every copy of the text selected in two files compared, as the editor marks them, once the selection has rested, and none while the search has a text', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'copies1.txt'),
+      'alpha beta\nalpha gamma\n',
+    );
+    fs.writeFileSync(
+      path.join(opened, 'copies2.txt'),
+      'alpha beta\nalpha delta\n',
+    );
+    try {
+      await select('copies1');
+      await page.keyboard.press('Space');
+      await select('copies2');
+      await page.keyboard.press('Space');
+      await page.keyboard.press('Shift+F3');
+      const code = page
+        .locator('.compare-view .diff-view .virtual-row .code')
+        .first();
+      await code.waitFor();
+      const first = await code.evaluate((element) => {
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+        const text = walker.nextNode();
+        const range = document.createRange();
+        if (text !== null) {
+          range.setStart(text, 1);
+          range.setEnd(text, 2);
+        }
+        const box = range.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+      });
+      await page.mouse.dblclick(first.x, first.y);
+      await waitFor(async () => {
+        const marked = await occurrences();
+        return (
+          marked.length > 2 &&
+          marked.length === (await copiesDrawn()) &&
+          marked.every((text) => text === 'alpha')
+        );
+      }, 'every copy of the word selected marked');
+      assert.strictEqual(
+        await page.evaluate(() => document.getSelection()?.toString().trim()),
+        'alpha',
+        'the word stays selected once its copies are marked',
+      );
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.keyboard.type('beta');
+      await waitFor(
+        async () => (await occurrences()).length === 0,
+        'the copies no longer marked while the search has a text',
+      );
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+      await page
+        .locator('.tabs .tab.active', { hasText: 'Commander' })
+        .waitFor();
+    } finally {
+      for (const name of ['copies1.txt', 'copies2.txt']) {
+        fs.rmSync(path.join(opened, name));
+      }
+      await waitFor(async () => {
+        const names = await rowNames();
+        return !names.includes('copies1.txt') && !names.includes('copies2.txt');
+      }, 'the files to be gone from the list');
+    }
   });
 });

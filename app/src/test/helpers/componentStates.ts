@@ -119,6 +119,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the rows that fit, measured anew by a resize observer once mounted',
   'tools/viewer/page/scrollBody.tsx track':
     'a measure: the height of the scrollbar track, measured anew once mounted',
+  'tools/viewer/page/textBody.tsx copy':
+    'a moment: the text selected whose copies are marked, read from the selection of the page once it rests; the selection goes with a tab change, and the copies with it',
   'tools/viewer/page/textBody.tsx columns':
     'a measure: the columns that fit, measured anew from the body once mounted',
   'tools/viewer/page/textBody.tsx font':
@@ -213,6 +215,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the columns of an unwrapped diff whose spaces are dotted, worked out anew from where it is scrolled sideways once mounted',
   'components/diff/page/sideways.ts shown':
     'made once: where the diff is scrolled sideways, for the marks of hidden changes to follow without their lines drawn anew, set from the kept place once mounted',
+  'components/diff/page/view.tsx copy':
+    'a moment: the text selected whose copies are marked, read from the selection of the page once it rests; the selection goes with a tab change, and the copies with it',
   'components/diff/page/view.tsx dragged':
     'a moment: true only while the thumb of the scrollbar is held',
   'tools/git/page/filesColumn.tsx filterAsked':

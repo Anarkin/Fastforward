@@ -10,6 +10,7 @@ export interface DiffLook {
   readonly wordWrap: boolean;
   readonly showWhitespace: boolean;
   readonly highlightSyntax: boolean;
+  readonly highlightOccurrences?: boolean;
   readonly scrolling: ScrollSettings;
   readonly root: string | undefined;
   readonly language: string | undefined;

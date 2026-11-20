@@ -51,7 +51,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Next change | Move from change to change | J, K | Common | ✅ Yes | J and K, from the files too |
 | Find in the diff | Search the diff's text | Mod+F | Common | ✅ Yes | Mod+F; Aa matches the case, W whole words and .* a regular expression within a line, as every search of the app |
-| Occurrences | Mark the other copies of the text selected | — | Common | ❌ No | The editor marks them |
+| Occurrences | Mark the other copies of the text selected | — | Common | ✅ Yes | Every copy of the text selected in the rows drawn, on both sides, in its case and inside longer words too, once the selection has rested a quarter of a second, a text on one line of 200 characters at most and not of whitespace alone, the spaces at its ends left out; in the yellow of a find match see-through, as the editor marks them, the text keeping its color, the selection kept; none while the find has a text; `text.highlightOccurrences` in the settings |
 | Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | While lines are not wrapped; the wheel with Shift moves `scrolling.wheelRows` columns a notch onto whole columns, gliding with `scrolling.smooth`, as it moves rows, and the scrollbar dragged lands on whole columns too, the line numbers and the gap after them staying where they are, inline as side by side, the text cut where its first column starts, in the viewer and the editor too |
 
 ## Not text

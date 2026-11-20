@@ -16,6 +16,7 @@ export interface LineMarks {
   readonly found: FindRange | undefined;
   readonly whitespace: boolean;
   readonly widths?: TextWidths;
+  readonly copiesOf?: (text: string) => readonly FindRange[];
 }
 
 export interface CodeProps {
@@ -25,6 +26,7 @@ export interface CodeProps {
   readonly wordClass: string;
   readonly finds: readonly FindRange[];
   readonly current: FindRange | undefined;
+  readonly copies?: readonly FindRange[];
   readonly whitespace: boolean;
   readonly indent?: number;
   readonly widths?: TextWidths;
@@ -69,6 +71,7 @@ export function codeProps(
     finds: of(marks.finds),
     current:
       key !== undefined && key === marks.foundKey ? marks.found : undefined,
+    copies: marks.copiesOf?.(text) ?? unmarked,
     whitespace: marks.whitespace,
     widths: beyondAscii.test(text) ? marks.widths : undefined,
   };

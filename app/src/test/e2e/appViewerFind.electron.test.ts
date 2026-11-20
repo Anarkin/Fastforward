@@ -17,6 +17,9 @@ import { assertFillsRows } from './markRows';
 const toggle = (title: string) =>
   page.locator(`.viewer .search-toggle[data-tip="${title}"]`);
 
+const occurrences = () =>
+  page.locator('.viewer-rows .occurrence-match').allTextContents();
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -122,6 +125,64 @@ suite('App commander', () => {
       fs.rmSync(path.join(opened, 'haystack.txt'));
       await waitFor(
         async () => !(await rowNames()).includes('haystack.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('marks every copy of the text selected in a file viewed, as the editor marks them, in its case and inside longer words too, once the selection has rested, and none while the search has a text', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'copies.txt'),
+      'alpha beta\nbeta alpha alphabet Alpha\n',
+    );
+    try {
+      await select('copies');
+      await page.keyboard.press('F3');
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      const first = await page
+        .locator('.viewer-rows .viewer-row')
+        .first()
+        .evaluate((row) => {
+          const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+          const text = walker.nextNode();
+          const range = document.createRange();
+          if (text !== null) {
+            range.setStart(text, 1);
+            range.setEnd(text, 2);
+          }
+          const box = range.getBoundingClientRect();
+          return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+        });
+      await page.mouse.dblclick(first.x, first.y);
+      await waitFor(
+        async () => (await occurrences()).join() === 'alpha,alpha,alpha',
+        'every copy of the word selected marked',
+      );
+      assert.strictEqual(
+        await page.evaluate(() => document.getSelection()?.toString().trim()),
+        'alpha',
+        'the word stays selected once its copies are marked',
+      );
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.keyboard.type('beta');
+      await waitFor(
+        async () => (await occurrences()).length === 0,
+        'the copies no longer marked while the search has a text',
+      );
+    } finally {
+      if (await page.locator('.viewer .search-box').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page
+          .locator('.viewer .search-box')
+          .waitFor({ state: 'detached' });
+      }
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'copies.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('copies.txt'),
         'the file to be gone from the list',
       );
     }

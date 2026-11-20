@@ -294,7 +294,9 @@ kbd.match,
 }
 
 .cm-editor.editor-text.cm-focused .cm-matchingBracket,
-.cm-editor.editor-text.cm-focused .occurrence-match {
+.cm-editor.editor-text.cm-focused .occurrence-match,
+.viewer-rows .occurrence-match,
+.diff-view .occurrence-match {
   background: color-mix(
     in srgb,
     var(--color-search-match) var(--color-search-match-implicit),
@@ -302,10 +304,14 @@ kbd.match,
   );
 }
 
+mark.occurrence-match {
+  color: inherit;
+}
+
 mark.match,
 .find-match,
 .cm-editor.editor-text .cm-matchingBracket,
-.cm-editor.editor-text .occurrence-match {
+.occurrence-match {
   --mark-text-height: var(--text-height, 1lh);
   --mark-leading: max(0px, 1lh - var(--mark-text-height));
   --mark-slack: calc(var(--device-pixel, 1px) / 256);
@@ -328,7 +334,7 @@ mark.match,
 .tree-row .path mark.match,
 .name mark.match,
 .cm-editor.editor-text .cm-matchingBracket,
-.cm-editor.editor-text .occurrence-match {
+.occurrence-match {
   --mark-text-height: var(--monospace-text-height, 1lh);
 }
 

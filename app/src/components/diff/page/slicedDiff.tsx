@@ -20,6 +20,7 @@ export interface DiffTextView {
   readonly wordWrap: boolean;
   readonly showWhitespace: boolean;
   readonly highlightSyntax: boolean;
+  readonly highlightOccurrences: boolean;
   readonly scrolling: ScrollSettings;
   readonly changeTextView: (
     change: Partial<{
@@ -128,7 +129,13 @@ export function SlicedDiff({
     (change: PlaceChange) => keepDiffPlace(scope, selection, change),
     [keepDiffPlace, scope, selection],
   );
-  const { wordWrap, showWhitespace, highlightSyntax, scrolling } = textView;
+  const {
+    wordWrap,
+    showWhitespace,
+    highlightSyntax,
+    highlightOccurrences,
+    scrolling,
+  } = textView;
   return (
     <Diff
       {...shown}
@@ -145,6 +152,7 @@ export function SlicedDiff({
         wordWrap,
         showWhitespace,
         highlightSyntax,
+        highlightOccurrences,
         scrolling,
         root,
         language,

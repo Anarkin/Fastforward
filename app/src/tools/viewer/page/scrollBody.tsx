@@ -1,4 +1,5 @@
 import type { Sentence } from '../../../lib/shared/sentences';
+import { useSelectedCopy } from '../../../lib/page/selectedCopy';
 import { Words } from '../../../lib/page/name';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import {
@@ -65,6 +66,9 @@ export function ScrollBody({
   matches = noMatches,
   size = 0,
   lead = 0,
+  copiesWatched = false,
+  onCopySelected,
+  copyMarked,
   children,
 }: {
   thumb: Thumb | undefined;
@@ -87,9 +91,19 @@ export function ScrollBody({
   matches?: readonly ByteRange[];
   size?: number;
   lead?: number;
+  copiesWatched?: boolean;
+  onCopySelected?: (copy: string | undefined) => void;
+  copyMarked?: string;
   children: React.ReactNode;
 }) {
   const body = useRef<HTMLDivElement>(null);
+  useSelectedCopy(
+    body,
+    'data-key',
+    copiesWatched && onCopySelected !== undefined,
+    (copy) => onCopySelected?.(copy),
+    copyMarked,
+  );
   const probe = useRef<HTMLDivElement>(null);
   const sideways = useRef<HTMLDivElement>(null);
   const rowsBox = useRef<HTMLDivElement>(null);

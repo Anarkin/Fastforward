@@ -314,6 +314,55 @@ suite('Style', () => {
     }
   });
 
+  test('marks the occurrences of the text selected in the viewer and the diff as the editor marks its own, in the yellow of a find match see-through at the share the theme gives such marks, padded as a find match there, the text keeping its color', () => {
+    const padded = [
+      '--mark-text-height',
+      '--mark-leading',
+      '--mark-above',
+      'padding-top',
+      'padding-bottom',
+    ];
+    for (const around of [
+      (marked: React.ReactNode) => (
+        <div className="viewer-rows">
+          <div className="viewer-row">{marked}</div>
+        </div>
+      ),
+      (marked: React.ReactNode) => (
+        <div className="diff-view">
+          <div className="diff-line">
+            <span className="code">{marked}</span>
+          </div>
+        </div>
+      ),
+    ]) {
+      const occurrence = withClass(
+        rendered(around(<mark className="occurrence-match">x</mark>)),
+        'occurrence-match',
+      );
+      const match = withClass(
+        rendered(around(<mark className="find-match">x</mark>)),
+        'find-match',
+      );
+      assert.deepStrictEqual(
+        Object.fromEntries(
+          [...padded, 'color', 'background'].map((property) => [
+            property,
+            cascaded(occurrence, property),
+          ]),
+        ),
+        {
+          ...Object.fromEntries(
+            padded.map((property) => [property, cascaded(match, property)]),
+          ),
+          color: 'inherit',
+          background:
+            'color-mix( in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent )',
+        },
+      );
+    }
+  });
+
   test('leaves the keys of a shortcut F1 found unpadded, as each is a box of its own as tall as its line', () => {
     looks(
       withClass(

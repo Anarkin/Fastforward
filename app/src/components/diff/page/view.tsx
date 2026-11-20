@@ -11,7 +11,9 @@ import {
 import type { TextRequest } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import type { LoadedText } from './sideTexts';
-import { type FindMatch } from './find';
+import { type FindMatch, type FindRange } from './find';
+import { useSelectedCopy } from '../../../lib/page/selectedCopy';
+import { copiesIn } from '../../../lib/shared/textMatches';
 import { lineKey } from './lines';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { useSeenOffsets } from '../../../lib/page/seenOffsets';
@@ -80,6 +82,7 @@ export function DiffView({
   texts,
   onLoadTexts,
   matches,
+  findsText = false,
   current,
   jump,
   firstChange,
@@ -106,6 +109,7 @@ export function DiffView({
   texts: ReadonlyMap<string, LoadedText>;
   onLoadTexts: (texts: TextRequest[]) => void;
   matches: readonly FindMatch[];
+  findsText?: boolean;
   current: number;
   jump: number;
   firstChange: number | undefined;
@@ -120,12 +124,36 @@ export function DiffView({
     wordWrap,
     showWhitespace,
     highlightSyntax,
+    highlightOccurrences = false,
     scrolling,
     root,
     language: chosenLanguage,
     wholePaths,
   } = look;
   const list = useRef<HTMLDivElement>(null);
+  const [copy, setCopy] = useState<string>();
+  useSelectedCopy(
+    list,
+    'data-index',
+    highlightOccurrences && !findsText,
+    setCopy,
+    copy,
+  );
+  const copiesOf = useMemo(() => {
+    if (copy === undefined) {
+      return undefined;
+    }
+    const known = new Map<string, readonly FindRange[]>();
+    return (text: string) => {
+      const kept = known.get(text);
+      if (kept !== undefined) {
+        return kept;
+      }
+      const found = copiesIn(text, copy, false);
+      known.set(text, found);
+      return found;
+    };
+  }, [copy]);
   const split = showsSideBySide(sideBySide, whole);
   const columns = measures.wrapColumns;
   const { keepWrapColumns } = measuring;
@@ -339,6 +367,7 @@ export function DiffView({
     found,
     whitespace: showWhitespace,
     widths,
+    copiesOf,
   };
   const code = (
     key: string | undefined,
@@ -415,6 +444,7 @@ export function DiffView({
     syntax,
     words,
     rangesByLine,
+    copiesOf,
     foundKey,
     found,
     showWhitespace,

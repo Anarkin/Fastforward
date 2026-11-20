@@ -94,6 +94,18 @@ function patternMatches(
   return ranges;
 }
 
+const longestCopy = 200;
+
+const blankOnly = /^\s*$/u;
+
+export function soughtCopy(selected: string): string | undefined {
+  return selected.length > longestCopy ||
+    selected.includes('\n') ||
+    blankOnly.test(selected)
+    ? undefined
+    : selected;
+}
+
 export function copiesIn(
   text: string,
   copy: string,

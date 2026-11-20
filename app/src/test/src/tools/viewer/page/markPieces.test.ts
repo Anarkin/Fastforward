@@ -4,11 +4,37 @@ import {
   byteMarks,
   hexMarks,
   markPieces,
+  occurrenceMarks,
   textMarks,
 } from '../../../../../tools/viewer/page/markPieces';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 
 suite('Matches marked in a file viewed', () => {
+  test('marks every copy of the text selected in a row, in its case and inside longer words too, as occurrences, and nothing without a text selected', () => {
+    assert.deepStrictEqual(
+      occurrenceMarks('total subtotal Total total', 'total'),
+      [
+        { start: 0, end: 5, current: false, occurrence: true },
+        { start: 9, end: 14, current: false, occurrence: true },
+        { start: 21, end: 26, current: false, occurrence: true },
+      ],
+    );
+    assert.deepStrictEqual(occurrenceMarks('total', undefined), []);
+  });
+
+  test('cuts the pieces of a row at its occurrences as at its matches, so each is drawn as an occurrence', () => {
+    assert.deepStrictEqual(
+      markPieces([{ text: 'ab ab' }], occurrenceMarks('ab ab', 'ab')).map(
+        ({ text, mark }) => [text, mark],
+      ),
+      [
+        ['ab', 'occurrence'],
+        [' ', undefined],
+        ['ab', 'occurrence'],
+      ],
+    );
+  });
+
   test('marks the matches of a row of text ignoring case, the one current among them by the bytes it starts at', () => {
     const row = { start: 100, end: 120, text: 'Árvíz árvíz x' };
     const matches = [
