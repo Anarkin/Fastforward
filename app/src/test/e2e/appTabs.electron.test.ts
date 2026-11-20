@@ -163,14 +163,18 @@ suite('App with a row of tabs', () => {
     });
   }
 
-  test('grows a tab opened into a full row without the row taking the tabs for too many and back, which shifted them all while it grew', async () => {
+  test('grows a tab opened into a full row without the row taking the tabs for too many and back, which shifted them all while it grew, whether the row is too full for them already on a narrow screen or not', async () => {
     await app.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()
         .toSorted((a, b) => a.id - b.id)[0]
         ?.setContentSize(1000, 600);
     });
     const { strips } = await openedTab();
-    assert.deepStrictEqual([...new Set(strips)], ['tab-strip']);
+    assert.ok(
+      strips.filter((strip, at) => at > 0 && strip !== strips[at - 1]).length <=
+        1,
+      JSON.stringify(strips),
+    );
   });
 
   test('keeps a tab opened into a row of too many in view as it grows, rather than only where it started, at no width', async () => {
