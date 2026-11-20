@@ -31,6 +31,7 @@ import {
   estimatedRowHeight,
   revealAgain,
   revealOffset,
+  rowRoom,
   scrollTarget,
   type ListedRows,
   type Reveal,
@@ -165,7 +166,7 @@ export function VirtualRows({
     if (!wholeRows || !element) {
       return undefined;
     }
-    const room = () => exactHeight(element) - endCovered(element);
+    const room = () => rowRoom(element);
     const following = followRows(element, rowHeight, {
       limit: () => totalSize() + rowPadding(room(), rowHeight()) - room(),
       step: stepOf,

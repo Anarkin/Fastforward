@@ -58,3 +58,7 @@ export function endCovered(element: Element | null): number {
       : element.ownerDocument.defaultView?.getComputedStyle(element);
   return parseFloat(style?.paddingBottom ?? '') || 0;
 }
+
+export function rowRoom(element: Element): number {
+  return element.getBoundingClientRect().height - endCovered(element);
+}

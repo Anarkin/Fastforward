@@ -1,5 +1,6 @@
 import type { Virtualizer } from '@tanstack/react-virtual';
 import { useEffect, useEffectEvent, useState, type RefObject } from 'react';
+import { rowRoom } from '../../../lib/page/listRows';
 import {
   followRows,
   rowPadding,
@@ -22,8 +23,8 @@ export function useDiffFollow({
   readonly lineHeight: number;
   readonly scrolling: ScrollSettings;
 }): number {
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const endPadding = rowPadding(viewportHeight, lineHeight);
+  const [roomHeight, setRoomHeight] = useState(0);
+  const endPadding = rowPadding(roomHeight, lineHeight);
   const lineOf = useEffectEvent(() => lineHeight);
   const totalOf = useEffectEvent(() => virtualizer.getTotalSize());
   const perNotch = useEffectEvent(() => scrolling.wheelRows);
@@ -34,16 +35,16 @@ export function useDiffFollow({
     if (!element) {
       return undefined;
     }
-    const viewport = () => element.getBoundingClientRect().height;
+    const room = () => rowRoom(element);
     const following = followRows(element, lineOf, {
-      limit: () => totalOf() + rowPadding(viewport(), lineOf()) - viewport(),
+      limit: () => totalOf() + rowPadding(room(), lineOf()) - room(),
       perNotch,
       smooth,
       settles,
       onPlace: (top) => offsetSeen.current?.(top),
     });
     followerRef.current = following;
-    const measure = () => setViewportHeight(viewport());
+    const measure = () => setRoomHeight(room());
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);

@@ -394,41 +394,79 @@ suite('App scrollbars alike', () => {
     }
   });
 
-  test('draws the button of a scrollbar that can scroll no further as a disabled button, its arrow muted: the one at the top of a list at its start, the one at the bottom once the list is at its end, and the other as a button that scrolls, in the list of a folder and beside a file viewed, which stands a scroller of the browser in for its scrollbar, as both buttons looked alike wherever the list was', async () => {
-    const focused: Partial<Record<ViewName, string>> = {
-      viewer: '.viewer-body',
-    };
-    const seen = await inEvery(['commander', 'viewer'], async (name) => {
-      const arrows = async () => {
-        await page.mouse.move(2, 2);
-        const { box } = await bar(name, 'vertical');
-        const across = box.left + box.width / 2;
-        const [up, down] = await paintedAt(app, page, [
-          { x: across, y: box.top + box.width / 2 },
-          { x: across, y: box.top + box.height - box.width / 2 },
-        ]);
-        return { up, down };
-      };
-      await page
-        .locator(focused[name] ?? views[name].vertical)
+  const endsDrawn = async (name: ViewName, axis: Axis) => {
+    await show(name);
+    const selector = views[name][axis];
+    assert.ok(selector, `the ${name} has no ${axis} scrollbar`);
+    const { box } = await bar(name, axis);
+    const parts = await barParts(page, box, axis);
+    const scrolled = () =>
+      page
+        .locator(selector)
         .first()
-        .focus();
-      await page.keyboard.press('Home');
-      await rested(name);
-      const start = await untilSettled(arrows, `the arrows of the ${name}`);
-      await page.keyboard.press('End');
-      await rested(name);
-      const end = await untilSettled(arrows, `the arrows of the ${name}`);
-      await page.keyboard.press('Home');
-      await rested(name);
-      return {
-        apart: !near(start.up, start.down) && !near(end.up, end.down),
-        swapped: near(start.up, end.down) && near(start.down, end.up),
-      };
-    });
+        .evaluate(
+          (scroller, way) =>
+            way === 'vertical' ? scroller.scrollTop : scroller.scrollLeft,
+          axis,
+        );
+    const atRest = (quiet: number) =>
+      untilSettled(scrolled, `the ${name} to rest ${axis}`, { quiet });
+    const pressedAsFarAsItGoes = async (end: 'start' | 'end') => {
+      await barParts(page, box, axis);
+      const button = middle(parts[end]);
+      const beyond =
+        (end === 'start' ? 1 : -1) *
+        ((axis === 'vertical' ? parts[end].height : parts[end].width) / 2 + 2);
+      await page.mouse.click(
+        axis === 'vertical' ? button.x : button.x + beyond,
+        axis === 'vertical' ? button.y + beyond : button.y,
+      );
+      await atRest(200);
+      await page.mouse.move(button.x, button.y);
+      await page.mouse.down();
+      await atRest(600);
+      await page.mouse.up();
+      await atRest(200);
+    };
+    const arrows = async () => {
+      await page.mouse.move(2, 2);
+      const [first, last] = await paintedAt(app, page, [
+        middle(parts.start),
+        middle(parts.end),
+      ]);
+      return { first, last };
+    };
+    await pressedAsFarAsItGoes('start');
+    const start = await untilSettled(arrows, `the arrows of the ${name}`);
+    await pressedAsFarAsItGoes('end');
+    const end = await untilSettled(arrows, `the arrows of the ${name}`);
+    await pressedAsFarAsItGoes('start');
+    return {
+      apart: !near(start.first, start.last) && !near(end.first, end.last),
+      swapped: near(start.first, end.last) && near(start.last, end.first),
+    };
+  };
+
+  test('draws the button of a scrollbar that can scroll no further as a disabled button, its arrow muted: the one at the top of a view at its start, the one at the bottom once its buttons have taken it as far down as they go, and the other as a button that scrolls, in every view, as the diff stopped three pixels before the end of its scrollbar, its last button drawn as one that scrolls', async () => {
+    const seen: Record<string, unknown> = {};
+    for (const name of everyView) {
+      seen[name] = await endsDrawn(name, 'vertical');
+    }
     assert.deepStrictEqual(
       seen,
-      alike(['commander', 'viewer'], { apart: true, swapped: true }),
+      alike(everyView, { apart: true, swapped: true }),
+      JSON.stringify(seen),
+    );
+  });
+
+  test('draws the button of the scrollbar below a text that can scroll no further as a disabled button, the one on the left at its start and the one on the right once its buttons have taken it as far across as they go, in the viewer, the editor and the diff alike', async () => {
+    const seen: Record<string, unknown> = {};
+    for (const name of textViews) {
+      seen[name] = await endsDrawn(name, 'horizontal');
+    }
+    assert.deepStrictEqual(
+      seen,
+      alike(textViews, { apart: true, swapped: true }),
       JSON.stringify(seen),
     );
   });

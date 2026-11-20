@@ -203,8 +203,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a trigger: counts the jumps to a match; a diff shown again keeps its place rather than jumping again',
   'components/diff/page/finding.ts shownFor':
     'a moment: the selection shown and whether a place was kept for it as it was shown, so a selection without one jumps to its first match',
-  'components/diff/page/follow.ts viewportHeight':
-    'a measure: the height of the diff, measured anew by a resize observer once mounted',
+  'components/diff/page/follow.ts roomHeight':
+    'a measure: the height of the diff less the padding under its rows, measured anew by a resize observer once mounted',
   'components/diff/page/jumps.ts revealing':
     'a moment: the match brought into view after a jump, set only until it is drawn',
   'components/diff/page/sideways.ts box':

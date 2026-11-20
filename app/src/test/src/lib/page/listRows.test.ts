@@ -1,12 +1,24 @@
 import * as assert from 'node:assert';
+import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import {
   revealAgain,
   revealOffset,
+  rowRoom,
   scrollTarget,
 } from '../../../../lib/page/listRows';
 
 suite('List rows', () => {
+  test('leaves the padding under the end of a list out of the room its rows have, as the diff counted the three pixels under its line among them and stopped that far before the end of its scrollbar, its last button drawn as one that scrolls', () => {
+    const { window } = new JSDOM(
+      '<!doctype html><div style="padding-bottom: 3px"></div>',
+    );
+    const list = window.document.querySelector('div');
+    assert.ok(list);
+    list.getBoundingClientRect = () => new window.DOMRect(0, 0, 400, 813.5);
+    assert.strictEqual(rowRoom(list), 810.5);
+  });
+
   test('scrolls to the selected row again once it arrives, as a tree loads after its file was selected', () => {
     assert.strictEqual(scrollTarget('a', []), undefined);
     assert.strictEqual(scrollTarget('a', ['b', 'c']), undefined);

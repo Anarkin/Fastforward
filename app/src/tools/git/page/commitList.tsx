@@ -44,7 +44,7 @@ import { followRows, type RowFollower } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
 import { rowPlace } from '../../../lib/page/rowPlace';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
-import { endCovered } from '../../../lib/page/listRows';
+import { endCovered, rowRoom } from '../../../lib/page/listRows';
 import {
   ReportedPlaces,
   movingPlaces,
@@ -197,8 +197,7 @@ export function Commits({
     if (!element) {
       return undefined;
     }
-    const measure = () =>
-      setRoom(element.getBoundingClientRect().height - endCovered(element));
+    const measure = () => setRoom(rowRoom(element));
     const following = followRows(element, lineStep, {
       perNotch,
       smooth,
