@@ -124,11 +124,7 @@ export class WindowDrag {
         !window.isMinimized() &&
         window.getOpacity() > 0,
       moveContentTo: (x, y) => {
-        if (
-          !window.isDestroyed() &&
-          !window.isMaximized() &&
-          !window.isFullScreen()
-        ) {
+        if (!window.isDestroyed()) {
           windowPixels().moveContent(window, x, y);
         }
       },

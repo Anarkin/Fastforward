@@ -1,6 +1,6 @@
 import koffi from 'koffi';
 import { type BrowserWindow, screen } from 'electron';
-import type { WindowPixels } from './windowPixels';
+import { copiesPixels, type WindowPixels } from './windowPixels';
 
 const keepSize = 0x0001;
 const keepPlace = 0x0002;
@@ -18,7 +18,7 @@ function handleOf(window: BrowserWindow): unknown {
   return koffi.decode(window.getNativeWindowHandle(), 'void *');
 }
 
-export function windowsPixels(): WindowPixels {
+export function windowsPixels(byElectron: WindowPixels): WindowPixels {
   const user32 = koffi.load('user32.dll');
   koffi.struct('WindowsPixelsRect', {
     left: 'int32_t',
@@ -42,6 +42,9 @@ export function windowsPixels(): WindowPixels {
   };
   return {
     moveContent: (window, x, y) => {
+      if (window.isMaximized() || window.isFullScreen()) {
+        return;
+      }
       const handle = handleOf(window);
       const outer = rectOf(handle);
       const client = { x: 0, y: 0 };
@@ -61,9 +64,20 @@ export function windowsPixels(): WindowPixels {
     },
     sizeLike: (window, source) => {
       const from = rectOf(handleOf(source));
-      if (from === undefined || source.isMaximized() || source.isFullScreen()) {
-        const { width, height } = source.getNormalBounds();
-        window.setSize(width, height);
+      const current = source.getBounds();
+      if (
+        from === undefined ||
+        !copiesPixels({
+          maximized: source.isMaximized(),
+          fullScreen: source.isFullScreen(),
+          current,
+          normal: source.getNormalBounds(),
+          sourceScale: screen.getDisplayMatching(current).scaleFactor,
+          windowScale: screen.getDisplayMatching(window.getBounds())
+            .scaleFactor,
+        })
+      ) {
+        byElectron.sizeLike(window, source);
         return;
       }
       setWindowPos(

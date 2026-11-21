@@ -143,7 +143,7 @@ suite('Lessons from past mistakes', () => {
           /\.(?:setPosition|setSize|setBounds|setContentBounds|setContentSize)\(/,
         ),
       ),
-      ['boot/windowPixels.ts', 'boot/windowsPixels.ts'],
+      ['boot/windowPixels.ts'],
     );
   });
 

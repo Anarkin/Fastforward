@@ -5,6 +5,28 @@ export interface WindowPixels {
   sizeLike(window: BrowserWindow, source: BrowserWindow): void;
 }
 
+interface Size {
+  readonly width: number;
+  readonly height: number;
+}
+
+export function copiesPixels(source: {
+  readonly maximized: boolean;
+  readonly fullScreen: boolean;
+  readonly current: Size;
+  readonly normal: Size;
+  readonly sourceScale: number;
+  readonly windowScale: number;
+}): boolean {
+  return (
+    !source.maximized &&
+    !source.fullScreen &&
+    Math.abs(source.current.width - source.normal.width) <= 1 &&
+    Math.abs(source.current.height - source.normal.height) <= 1 &&
+    source.sourceScale === source.windowScale
+  );
+}
+
 const byElectron: WindowPixels = {
   moveContent: (window, x, y) => {
     const bounds = window.getBounds();
@@ -21,9 +43,12 @@ let current = byElectron;
 
 export function prepareWindowPixels(platform: NodeJS.Platform): void {
   if (platform === 'win32') {
-    void import('./windowsPixels.js').then(({ windowsPixels }) => {
-      current = windowsPixels();
-    });
+    void import('./windowsPixels.js').then(
+      ({ windowsPixels }) => {
+        current = windowsPixels(byElectron);
+      },
+      () => undefined,
+    );
   }
 }
 
