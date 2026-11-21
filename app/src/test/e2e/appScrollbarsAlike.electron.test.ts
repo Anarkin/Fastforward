@@ -174,7 +174,8 @@ suite('App scrollbars alike', () => {
       box.top + box.height <= frame.bottom + 0.01;
     return {
       wide: Math.round(down.width * 100) / 100,
-      beside: Math.round((frame.right - down.left - down.width) * 100) / 100,
+      beside:
+        Math.round((frame.right - down.left - down.width) * 100) / 100 + 0,
       within: within(down) && (across === undefined || within(across)),
     };
   };

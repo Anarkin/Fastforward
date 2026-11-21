@@ -13,26 +13,26 @@ export interface Box {
 function barBoxIn(scroller: Element, axis: string): Box {
   const { left, top, width, height } = scroller.getBoundingClientRect();
   const style = getComputedStyle(scroller);
+  const edge = (side: string) =>
+    parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;
+  const bar = getComputedStyle(scroller, '::-webkit-scrollbar');
+  const roomDown = width - edge('left') - edge('right') - scroller.clientWidth;
+  const roomAcross =
+    height - edge('top') - edge('bottom') - scroller.clientHeight;
+  const down = roomDown < 1 ? 0 : parseFloat(bar.width) || roomDown;
+  const across = roomAcross < 1 ? 0 : parseFloat(bar.height) || roomAcross;
   return axis === 'vertical'
     ? {
-        left: left + scroller.clientLeft + scroller.clientWidth,
-        top: top + scroller.clientTop,
-        width:
-          width -
-          scroller.clientLeft -
-          scroller.clientWidth -
-          (parseFloat(style.borderRightWidth) || 0),
-        height: scroller.clientHeight,
+        left: left + width - edge('right') - down,
+        top: top + edge('top'),
+        width: down,
+        height: height - edge('top') - edge('bottom') - across,
       }
     : {
-        left: left + scroller.clientLeft,
-        top: top + scroller.clientTop + scroller.clientHeight,
-        width: scroller.clientWidth,
-        height:
-          height -
-          scroller.clientTop -
-          scroller.clientHeight -
-          (parseFloat(style.borderBottomWidth) || 0),
+        left: left + edge('left'),
+        top: top + height - edge('bottom') - across,
+        width: width - edge('left') - edge('right') - down,
+        height: across,
       };
 }
 
@@ -83,9 +83,9 @@ export async function barParts(
   page: Page,
   box: Box,
   axis: Axis,
-): Promise<Parts> {
+): Promise<Parts & { readonly cover: Box }> {
   const at = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-  let found: Parts | undefined;
+  let found: (Parts & { readonly cover: Box }) | undefined;
   let last: unknown;
   let nudge = 0;
   await waitFor(async () => {
@@ -172,11 +172,15 @@ export function barsShown(
           element.clientHeight -
           (parseFloat(style.borderBottomWidth) || 0)
         : 0;
-      return [down, across]
-        .filter((wide) => wide >= 1)
-        .map((wide) => ({
+      const bar = getComputedStyle(element, '::-webkit-scrollbar');
+      return [
+        [down, parseFloat(bar.width)],
+        [across, parseFloat(bar.height)],
+      ]
+        .filter(([room = 0]) => room >= 1)
+        .map(([room = 0, styled = 0]) => ({
           of: element.classList.item(0) ?? element.tagName,
-          wide: Math.round(wide * 100) / 100,
+          wide: Math.round((styled || room) * 100) / 100,
         }));
     }),
   );

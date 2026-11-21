@@ -39,6 +39,17 @@ async function pixelsOf(
 
 const scaled = (value: number) => Math.round(value * scale);
 
+const topCommit = async (page: Page): Promise<void> => {
+  await page
+    .locator('.columns > .column')
+    .first()
+    .locator('.virtual-rows')
+    .evaluate((list) => list.scrollTo({ top: 0 }));
+  await page.locator('.commit', { hasText: 'first' }).click();
+  await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+  await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
+};
+
 const partPointedAt = (page: Page) =>
   page.evaluate(
     () =>
@@ -643,6 +654,33 @@ suite('App at a scale of 125%', () => {
     assert.deepStrictEqual(
       [inline[0], sideBySide[0]],
       [inline[1], sideBySide[1]],
+    );
+  });
+
+  test('takes the pointer over the scrollbar of a list where the browser draws it and as wide as its style says, though the list ends between pixels, as its width taken from the rounded width of what it scrolls put it up to a pixel off', async () => {
+    await page.locator('.tabs [role="tab"]').first().click();
+    await topCommit(page);
+    const files = page
+      .locator('.columns > .column:nth-child(2) .virtual-rows')
+      .first();
+    const drawn = await files.evaluate((element) => {
+      const { right, top, height } = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      const wide = parseFloat(
+        getComputedStyle(element, '::-webkit-scrollbar').width,
+      );
+      return {
+        left: right - (parseFloat(style.borderRightWidth) || 0) - wide,
+        top: top + (parseFloat(style.borderTopWidth) || 0),
+        width: wide,
+        height,
+      };
+    });
+    const { cover } = await barParts(page, drawn, 'vertical');
+    assert.ok(
+      Math.abs(cover.left - drawn.left) < 1 / 64 &&
+        Math.abs(cover.width - drawn.width) < 1 / 64,
+      JSON.stringify({ cover, drawn }),
     );
   });
 });

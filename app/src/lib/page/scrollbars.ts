@@ -44,29 +44,33 @@ function pixels(value: string): number {
 function barBox(axis: Axis, scroller: Element): Box | undefined {
   const { left, top, width, height } = scroller.getBoundingClientRect();
   const style = getComputedStyle(scroller);
-  const box =
-    axis === 'vertical'
-      ? {
-          left: left + scroller.clientLeft + scroller.clientWidth,
-          top: top + scroller.clientTop,
-          width:
-            width -
-            scroller.clientLeft -
-            scroller.clientWidth -
-            pixels(style.borderRightWidth),
-          height: scroller.clientHeight,
-        }
-      : {
-          left: left + scroller.clientLeft,
-          top: top + scroller.clientTop + scroller.clientHeight,
-          width: scroller.clientWidth,
-          height:
-            height -
-            scroller.clientTop -
-            scroller.clientHeight -
-            pixels(style.borderBottomWidth),
-        };
-  return (axis === 'vertical' ? box.width : box.height) >= 1 ? box : undefined;
+  const edges = {
+    left: pixels(style.borderLeftWidth),
+    right: pixels(style.borderRightWidth),
+    top: pixels(style.borderTopWidth),
+    bottom: pixels(style.borderBottomWidth),
+  };
+  const roomDown = width - edges.left - edges.right - scroller.clientWidth;
+  const roomAcross = height - edges.top - edges.bottom - scroller.clientHeight;
+  if ((axis === 'vertical' ? roomDown : roomAcross) < 1) {
+    return undefined;
+  }
+  const bar = getComputedStyle(scroller, '::-webkit-scrollbar');
+  const down = roomDown < 1 ? 0 : pixels(bar.width) || roomDown;
+  const across = roomAcross < 1 ? 0 : pixels(bar.height) || roomAcross;
+  return axis === 'vertical'
+    ? {
+        left: left + width - edges.right - down,
+        top: top + edges.top,
+        width: down,
+        height: height - edges.top - edges.bottom - across,
+      }
+    : {
+        left: left + edges.left,
+        top: top + height - edges.bottom - across,
+        width: width - edges.left - edges.right - down,
+        height: across,
+      };
 }
 
 function scrolledOf(axis: Axis, scroller: Element): Scrolled {
@@ -445,8 +449,16 @@ function overBar(event: PointerEvent): boolean {
   return (
     target instanceof Element &&
     (target.clientWidth > 0 || target.clientHeight > 0) &&
-    (event.offsetX >= target.clientWidth ||
-      event.offsetY >= target.clientHeight)
+    (['vertical', 'horizontal'] as const).some((axis) => {
+      const box = barBox(axis, target);
+      return (
+        box !== undefined &&
+        event.clientX >= box.left &&
+        event.clientX < box.left + box.width &&
+        event.clientY >= box.top &&
+        event.clientY < box.top + box.height
+      );
+    })
   );
 }
 
