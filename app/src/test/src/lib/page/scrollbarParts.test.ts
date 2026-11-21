@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   draggedFrom,
+  furthestScroll,
   jumpedTo,
   partAt,
   partsOf,
@@ -65,6 +66,39 @@ suite('The parts of a scrollbar', () => {
       480,
       18,
       { scrollSize: 483, clientSize: 480, scrolled: 2.1 },
+      1.25,
+    );
+    assert.ok(short.thumb);
+    assert.ok(
+      short.end.from - (short.thumb.from + short.thumb.length) > 0,
+      JSON.stringify(short),
+    );
+  });
+
+  test('scrolls as far as the browser does, the end of what it scrolls and the end of its view each put on a device pixel where they stand, as a file viewed at 125% ended at 4026.4 while the sizes the browser rounds gave 4813 − 786 = 4027 and the exact ones 4026.66', () => {
+    assert.strictEqual(
+      furthestScroll({ start: 106.6, content: 4812.86, view: 786.2 }, 1.25),
+      4026.4,
+    );
+    assert.strictEqual(
+      furthestScroll({ start: 0, content: 100, view: 200 }, 1.25),
+      0,
+    );
+  });
+
+  test('ends the thumb at the end of its track once the scroller is as far as it scrolls, and only then, whatever the sizes it rounds say, as the thumb of a file viewed at its end at 125% stood a device pixel short of the end the browser drew it at', () => {
+    const viewed = { scrollSize: 4813, clientSize: 786, scrolled: 4026.4 };
+    const atEnd = partsOf(786.4, 17.6, { ...viewed, atEnd: true }, 1.25);
+    assert.ok(atEnd.thumb);
+    assert.ok(
+      Math.abs(atEnd.end.from - (atEnd.thumb.from + atEnd.thumb.length)) <
+        1 / 64,
+      JSON.stringify(atEnd),
+    );
+    const short = partsOf(
+      786.4,
+      17.6,
+      { ...viewed, scrolled: 4026.8, atEnd: false },
       1.25,
     );
     assert.ok(short.thumb);

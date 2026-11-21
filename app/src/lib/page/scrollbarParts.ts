@@ -4,6 +4,25 @@ export interface Scrolled {
   readonly scrollSize: number;
   readonly clientSize: number;
   readonly scrolled: number;
+  readonly atEnd?: boolean;
+}
+
+export interface ScrolledExactly {
+  readonly start: number;
+  readonly content: number;
+  readonly view: number;
+}
+
+export function furthestScroll(
+  { start, content, view }: ScrolledExactly,
+  scale: number,
+): number {
+  return Math.max(
+    0,
+    (Math.round((start + content) * scale) -
+      Math.round((start + view) * scale)) /
+      scale,
+  );
 }
 
 interface Extent {
@@ -42,7 +61,7 @@ function thumbIn(
     ),
   );
   const at =
-    range - scrolled.scrolled <= 0.5
+    (scrolled.atEnd ?? range - scrolled.scrolled <= 0.5)
       ? range
       : Math.max(0, Math.min(range, scrolled.scrolled));
   const along = Math.fround(Math.fround(at * (room - length)) / range);

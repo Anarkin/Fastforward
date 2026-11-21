@@ -220,8 +220,8 @@ suite('App commander', () => {
   });
 
   test('keeps the thumb of a file viewed as tall wherever it is scrolled to, though its lines grow long further down, moves it down as the rows do, and ends it at the end of its track without a jump, its scrollbar against the line its column draws on the right and ending above the one under the text, which runs along the line its column draws below', async () => {
-    const lines = Array.from({ length: 300 }, (_, index) =>
-      index < 150
+    const lines = Array.from({ length: 200 }, (_, index) =>
+      index < 100
         ? `short ${index}`.padEnd(19, '.')
         : `long ${index}`.padEnd(59, '.'),
     );
@@ -250,10 +250,9 @@ suite('App commander', () => {
         return false;
       }, 'the long rows');
       await page.keyboard.press('End');
-      await waitFor(
-        async () => (await firstViewerRow()).startsWith('long 2'),
-        'the end',
-      );
+      await page
+        .locator('.viewer-row', { hasText: `long ${lines.length - 1}.` })
+        .waitFor();
       seen.push(await untilSettled(viewerThumb, 'the thumb to rest'));
       assert.ok(
         seen.every((each) => Math.abs(each.height - first.height) < 0.5),

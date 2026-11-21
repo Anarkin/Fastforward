@@ -14,6 +14,7 @@ import { followDrag } from './followDrag';
 import { afterPaint, inNextFrame } from './afterPaint';
 import {
   draggedFrom,
+  furthestScroll,
   jumpedTo,
   partAt,
   partsOf,
@@ -86,18 +87,58 @@ function barBox(axis: Axis, scroller: Element): Box | undefined {
       };
 }
 
+function atEndOf(axis: Axis, scroller: Element, scrolled: number): boolean {
+  const box = barBox(axis, scroller);
+  if (!box) {
+    return false;
+  }
+  const vertical = axis === 'vertical';
+  const start = vertical ? box.top : box.left;
+  const view = vertical ? box.height : box.width;
+  let end = -Infinity;
+  for (const child of scroller.children) {
+    const rect = child.getBoundingClientRect();
+    const margins = getComputedStyle(child);
+    end = Math.max(
+      end,
+      vertical
+        ? rect.bottom + pixels(margins.marginBottom)
+        : rect.right + pixels(margins.marginRight),
+    );
+  }
+  const style = getComputedStyle(scroller);
+  const content = Math.max(
+    view,
+    end -
+      start +
+      scrolled +
+      pixels(vertical ? style.paddingBottom : style.paddingRight),
+  );
+  return (
+    scrolled >=
+    furthestScroll({ start, content, view }, devicePixelRatio) - 1 / 64
+  );
+}
+
 function scrolledOf(axis: Axis, scroller: Element): Scrolled {
-  return axis === 'vertical'
-    ? {
-        scrollSize: scroller.scrollHeight,
-        clientSize: scroller.clientHeight,
-        scrolled: scroller.scrollTop,
-      }
-    : {
-        scrollSize: scroller.scrollWidth,
-        clientSize: scroller.clientWidth,
-        scrolled: scroller.scrollLeft,
-      };
+  const near =
+    axis === 'vertical'
+      ? {
+          scrollSize: scroller.scrollHeight,
+          clientSize: scroller.clientHeight,
+          scrolled: scroller.scrollTop,
+        }
+      : {
+          scrollSize: scroller.scrollWidth,
+          clientSize: scroller.clientWidth,
+          scrolled: scroller.scrollLeft,
+        };
+  return {
+    ...near,
+    atEnd:
+      near.scrollSize - near.clientSize - near.scrolled <
+        1 + 1 / devicePixelRatio && atEndOf(axis, scroller, near.scrolled),
+  };
 }
 
 function scrollsAlong(element: Element, axis: Axis): boolean {
