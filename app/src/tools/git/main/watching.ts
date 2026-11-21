@@ -61,13 +61,13 @@ export class Watching {
       void this.shell().track(
         this.host.loadWorktrees(session, context.repository),
       );
-      void this.core.run(
-        strings.log.refreshingFailed,
-        session,
-        () => this.refreshes.refresh(context),
-        context.root,
-      );
     }
+    void this.core.run(
+      strings.log.refreshingFailed,
+      session,
+      () => this.refreshes.refresh(context),
+      context.root,
+    );
   }
 
   private couldNotWatch(context: Context, error: unknown): void {

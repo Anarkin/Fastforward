@@ -139,6 +139,42 @@ suite('Git tool watching the folder of a tab', () => {
     }
   });
 
+  test('refreshes once its watcher has started however soon it started, as a file changed after the working tree was read and before the watcher was there to tell of it went unseen, the tab saying nothing was uncommitted', async () => {
+    const started = gate();
+    const opened = await openView(log, [repository.root], {
+      ready: false,
+      watched: true,
+    });
+    stubMethod(opened.view, 'startWatching', async (original, ...args) => {
+      await started.opened;
+      return original(...args);
+    });
+    const file = path.join(repository.root, 'made-as-watching-starts.txt');
+    const now = performance.now.bind(performance);
+    const frozen = now();
+    try {
+      replaceBuiltin(performance, 'now', () => frozen);
+      const ready = opened.connection.receive({ type: 'ready' });
+      await waitFor(
+        () => opened.page.last('workingTree') !== undefined,
+        'the working tree',
+      );
+      const before = opened.page.last('workingTree')?.files ?? 0;
+      fs.writeFileSync(file, 'new\n');
+      started.open();
+      await ready;
+      replaceBuiltin(performance, 'now', now);
+      await waitFor(
+        () => opened.page.last('workingTree')?.files === before + 1,
+        'the file made as the watcher started',
+      );
+    } finally {
+      replaceBuiltin(performance, 'now', now);
+      opened.connection.dispose();
+      fs.rmSync(file, { force: true });
+    }
+  });
+
   test("says changes made outside the app won't show once a folder it watches recursively stops being watched", async (context) => {
     if (!watchesRecursively()) {
       context.skip();
