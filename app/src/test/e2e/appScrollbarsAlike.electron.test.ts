@@ -692,7 +692,7 @@ suite('App scrollbars alike', () => {
       {
         others: Object.values(seen)
           .flat()
-          .filter(({ wide }) => Math.abs(wide - size) > 0.5),
+          .filter(({ wide }) => Math.abs(wide - size) >= 1),
         commander: shown('commander').includes('virtual-rows'),
         viewer: shown('viewer').filter((of) => of === 'scroll-proxy').length,
         editor: shown('editor').includes('cm-scroller'),

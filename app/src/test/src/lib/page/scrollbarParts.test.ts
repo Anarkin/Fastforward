@@ -46,7 +46,7 @@ suite('The parts of a scrollbar', () => {
     });
   });
 
-  test('ends the thumb at the end of its track once scrolled to within a pixel of the end the rounded size of what it scrolls gives, as a list ends between pixels at 125%, so a menu scrolled to its end stood at 5432.8 of a range rounded to 5433 and its thumb a device pixel short of the end the browser drew it at', () => {
+  test('ends the thumb at the end of its track once scrolled to within half a pixel of the end the rounded size of what it scrolls gives, and only then, as a list ends between pixels at 125%, so a menu scrolled to its end stood at 5432.8 of a range rounded to 5433 and its thumb a device pixel short of the end the browser drew it at', () => {
     const menu = { scrollSize: 5913, clientSize: 480, scrolled: 5432.8 };
     const parts = partsOf(480, 18, menu, 1.25);
     assert.ok(parts.thumb);
@@ -60,6 +60,17 @@ suite('The parts of a scrollbar', () => {
     assert.ok(
       before.end.from - (before.thumb.from + before.thumb.length) > 0,
       JSON.stringify(before),
+    );
+    const short = partsOf(
+      480,
+      18,
+      { scrollSize: 483, clientSize: 480, scrolled: 2.1 },
+      1.25,
+    );
+    assert.ok(short.thumb);
+    assert.ok(
+      short.end.from - (short.thumb.from + short.thumb.length) > 0,
+      JSON.stringify(short),
     );
   });
 

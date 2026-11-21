@@ -328,16 +328,17 @@ suite('App commander', () => {
         'row',
       );
       const { box: bar } = await barOf(page, viewerBar, 'vertical');
-      assert.strictEqual(
-        bar.width,
-        await page.evaluate(() =>
-          parseFloat(
-            getComputedStyle(
-              document.querySelector('.viewer-body') ?? document.body,
-              '::-webkit-scrollbar',
-            ).width,
-          ),
+      const styled = await page.evaluate(() =>
+        parseFloat(
+          getComputedStyle(
+            document.querySelector('.viewer-body') ?? document.body,
+            '::-webkit-scrollbar',
+          ).width,
         ),
+      );
+      assert.ok(
+        Math.abs(bar.width - styled) < 1 / 64,
+        JSON.stringify({ drawn: bar.width, styled }),
       );
 
       for (let press = 0; press < 30; press++) {

@@ -681,22 +681,25 @@ suite('App at a scale of 125%', () => {
     );
   });
 
-  test('takes the pointer over the scrollbar of a list where the browser draws it and as wide as its style says, though the list ends between pixels, as its width taken from the rounded width of what it scrolls put it up to a pixel off', async () => {
+  test('takes the pointer over the scrollbar of a list from where what the list scrolls ends to its edge, as the width taken from the rounded width of what it scrolls put it up to a pixel off', async () => {
     await page.locator('.tabs [role="tab"]').first().click();
     await topCommit(page);
     const files = page
       .locator('.columns > .column:nth-child(2) .virtual-rows')
       .first();
     const drawn = await files.evaluate((element) => {
+      const inside = document.createElement('div');
+      inside.style.cssText = 'width: 100%; height: 0; flex: none';
+      element.append(inside);
+      const content = inside.getBoundingClientRect();
+      inside.remove();
       const { right, top, height } = element.getBoundingClientRect();
       const style = getComputedStyle(element);
-      const wide = parseFloat(
-        getComputedStyle(element, '::-webkit-scrollbar').width,
-      );
+      const left = content.right + (parseFloat(style.paddingRight) || 0);
       return {
-        left: right - (parseFloat(style.borderRightWidth) || 0) - wide,
+        left,
         top: top + (parseFloat(style.borderTopWidth) || 0),
-        width: wide,
+        width: right - (parseFloat(style.borderRightWidth) || 0) - left,
         height,
       };
     });

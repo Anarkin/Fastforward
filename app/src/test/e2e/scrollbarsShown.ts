@@ -15,12 +15,20 @@ function barBoxIn(scroller: Element, axis: string): Box {
   const style = getComputedStyle(scroller);
   const edge = (side: string) =>
     parseFloat(style.getPropertyValue(`border-${side}-width`)) || 0;
-  const bar = getComputedStyle(scroller, '::-webkit-scrollbar');
+  const probe = document.createElement('div');
+  probe.style.cssText =
+    'position: fixed; left: 0; top: 0; width: 200px; height: 200px; overflow: scroll; visibility: hidden';
+  const inside = document.createElement('div');
+  inside.style.cssText = 'width: 100%; height: 100%';
+  probe.append(inside);
+  (scroller.parentElement ?? document.body).append(probe);
+  const drawn = inside.getBoundingClientRect();
+  probe.remove();
   const roomDown = width - edge('left') - edge('right') - scroller.clientWidth;
   const roomAcross =
     height - edge('top') - edge('bottom') - scroller.clientHeight;
-  const down = roomDown < 1 ? 0 : parseFloat(bar.width) || roomDown;
-  const across = roomAcross < 1 ? 0 : parseFloat(bar.height) || roomAcross;
+  const down = roomDown < 1 ? 0 : 200 - drawn.width;
+  const across = roomAcross < 1 ? 0 : 200 - drawn.height;
   return axis === 'vertical'
     ? {
         left: left + width - edge('right') - down,
@@ -176,15 +184,11 @@ export function barsShown(
           element.clientHeight -
           (parseFloat(style.borderBottomWidth) || 0)
         : 0;
-      const bar = getComputedStyle(element, '::-webkit-scrollbar');
-      return [
-        [down, parseFloat(bar.width)],
-        [across, parseFloat(bar.height)],
-      ]
-        .filter(([room = 0]) => room >= 1)
-        .map(([room = 0, styled = 0]) => ({
+      return [down, across]
+        .filter((wide) => wide >= 1)
+        .map((wide) => ({
           of: element.classList.item(0) ?? element.tagName,
-          wide: Math.round((styled || room) * 100) / 100,
+          wide: Math.round(wide * 100) / 100,
         }));
     }),
   );

@@ -41,17 +41,30 @@ function pixels(value: string): number {
   return parseFloat(value) || 0;
 }
 
-function barBox(axis: Axis, scroller: Element): Box | undefined {
+function roomsOf(scroller: Element, style: CSSStyleDeclaration) {
   const { left, top, width, height } = scroller.getBoundingClientRect();
-  const style = getComputedStyle(scroller);
   const edges = {
     left: pixels(style.borderLeftWidth),
     right: pixels(style.borderRightWidth),
     top: pixels(style.borderTopWidth),
     bottom: pixels(style.borderBottomWidth),
   };
-  const roomDown = width - edges.left - edges.right - scroller.clientWidth;
-  const roomAcross = height - edges.top - edges.bottom - scroller.clientHeight;
+  return {
+    left,
+    top,
+    width,
+    height,
+    edges,
+    down: width - edges.left - edges.right - scroller.clientWidth,
+    across: height - edges.top - edges.bottom - scroller.clientHeight,
+  };
+}
+
+function barBox(axis: Axis, scroller: Element): Box | undefined {
+  const rooms = roomsOf(scroller, getComputedStyle(scroller));
+  const { left, top, width, height, edges } = rooms;
+  const roomDown = rooms.down;
+  const roomAcross = rooms.across;
   if ((axis === 'vertical' ? roomDown : roomAcross) < 1) {
     return undefined;
   }
@@ -90,10 +103,11 @@ function scrolledOf(axis: Axis, scroller: Element): Scrolled {
 function scrollsAlong(element: Element, axis: Axis): boolean {
   const style = getComputedStyle(element);
   const overflow = axis === 'vertical' ? style.overflowY : style.overflowX;
-  return (
-    (overflow === 'auto' || overflow === 'scroll') &&
-    barBox(axis, element) !== undefined
-  );
+  if (overflow !== 'auto' && overflow !== 'scroll') {
+    return false;
+  }
+  const rooms = roomsOf(element, style);
+  return (axis === 'vertical' ? rooms.down : rooms.across) >= 1;
 }
 
 function scrollerOf(target: EventTarget | null, axis: Axis): Element | null {

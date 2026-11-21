@@ -42,7 +42,7 @@ function thumbIn(
     ),
   );
   const at =
-    range - scrolled.scrolled < 1
+    range - scrolled.scrolled <= 0.5
       ? range
       : Math.max(0, Math.min(range, scrolled.scrolled));
   const along = Math.fround(Math.fround(at * (room - length)) / range);
