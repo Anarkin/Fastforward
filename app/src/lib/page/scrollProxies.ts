@@ -33,9 +33,10 @@ export function proxyRatio(shown: Shown | undefined, long: number): number {
 }
 
 export function proxyScroll(shown: Shown | undefined, room: number): number {
-  return shown === undefined
-    ? 0
-    : Math.max(0, Math.min(1, shown.at)) * Math.max(0, room);
+  if (shown === undefined || room <= 0) {
+    return 0;
+  }
+  return shown.at >= 1 ? room + 1 : Math.max(0, shown.at) * room;
 }
 
 export function proxyShare(scrolled: number, room: number): number {

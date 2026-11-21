@@ -85,11 +85,16 @@ suite('A scrollbar standing in for a view that scrolls by itself', () => {
 
   test('is scrolled as far through the room it has to scroll as the view is through its own, wherever the view says it is, and nowhere while the view has nothing to scroll', () => {
     assert.strictEqual(proxyScroll({ at: 0.5, length: 0.25 }, 900), 450);
-    assert.strictEqual(proxyScroll({ at: 1, length: 0.25 }, 900), 900);
-    assert.strictEqual(proxyScroll({ at: 7, length: 0.25 }, 900), 900);
+    assert.strictEqual(proxyScroll({ at: 0.99, length: 0.25 }, 900), 891);
     assert.strictEqual(proxyScroll({ at: -1, length: 0.25 }, 900), 0);
     assert.strictEqual(proxyScroll(undefined, 900), 0);
     assert.strictEqual(proxyScroll({ at: 0.5, length: 1 }, 0), 0);
+  });
+
+  test('is scrolled a pixel past the room the sizes it rounds give once the view is at its end, so the browser takes it to its very end, as a file viewed at its end at 175% left its scroller at 7078.857 of the 7079.429 it scrolls, the room giving 7079 and the browser a device pixel less', () => {
+    assert.strictEqual(proxyScroll({ at: 1, length: 0.25 }, 7079), 7080);
+    assert.strictEqual(proxyScroll({ at: 7, length: 0.25 }, 7079), 7080);
+    assert.strictEqual(proxyScroll({ at: 1, length: 1 }, 0), 0);
   });
 
   test('tells how far through its room it was scrolled as a share, the whole of it from a pixel before its end, as the browser rounds what it reports', () => {
