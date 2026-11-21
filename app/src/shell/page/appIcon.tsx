@@ -1,63 +1,51 @@
-const tile = '#FFFFFF';
+import { useId } from 'react';
+import { usePixelRatio } from '../../lib/page/imageSizes';
+import {
+  appIconColors,
+  appIconDrawing,
+  folderBackOutline,
+} from './appIconDrawing';
 
-function Dot({ cx, color }: { cx: number; color: string }) {
-  return (
-    <circle
-      cx={cx}
-      cy="316"
-      r="22"
-      fill={tile}
-      stroke={color}
-      strokeWidth="14"
-    />
-  );
-}
+const titleBarIconSize = 20;
 
 export function AppIcon({
   className = 'title-bar-icon',
-  size,
+  size = titleBarIconSize,
 }: {
   className?: string;
   size?: number;
 }) {
-  const blue = '#4285F4';
+  const disc = useId();
+  const ratio = usePixelRatio();
+  const drawing = appIconDrawing(Math.round(size * ratio));
+  const half = drawing.size / 2;
   return (
     <svg
       className={className}
       width={size}
       height={size}
-      viewBox="50 50 412 412"
+      viewBox={`0 0 ${drawing.size} ${drawing.size}`}
       aria-hidden
     >
-      <rect x="50" y="50" width="412" height="412" rx="92" fill={tile} />
-      <line
-        x1="140"
-        y1="316"
-        x2="372"
-        y2="316"
-        stroke="#DADCE0"
-        strokeWidth="20"
-        strokeLinecap="round"
-      />
-      <Dot cx={140} color="#EA4335" />
-      <Dot cx={218} color="#FBBC04" />
-      <Dot cx={296} color="#34A853" />
-      <circle cx="372" cy="316" r="34" fill={blue} />
-      <path
-        d="M140 268 Q 256 118 350 250"
-        fill="none"
-        stroke={blue}
-        strokeWidth="26"
-        strokeLinecap="round"
-      />
-      <polyline
-        points="291,231 350,250 350,188"
-        fill="none"
-        stroke={blue}
-        strokeWidth="26"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <defs>
+        <mask id={disc}>
+          <circle cx={half} cy={half} r={half} fill="#FFFFFF" />
+        </mask>
+      </defs>
+      <g mask={`url(#${disc})`}>
+        <rect
+          width={drawing.size}
+          height={drawing.size}
+          fill={appIconColors.sky}
+        />
+        <path d={folderBackOutline(drawing)} fill={appIconColors.back} />
+        <rect
+          y={drawing.frontTop}
+          width={drawing.size}
+          height={drawing.size - drawing.frontTop}
+          fill={appIconColors.front}
+        />
+      </g>
     </svg>
   );
 }

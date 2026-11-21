@@ -100,14 +100,8 @@ suite('Theme', () => {
         'rgba(0, 0, 0, 0.2)',
       ],
       'components/syntax/page/engine.ts': ['#000000', '#ffffff'],
-      'shell/page/appIcon.tsx': [
-        '#FFFFFF',
-        '#4285F4',
-        '#DADCE0',
-        '#EA4335',
-        '#FBBC04',
-        '#34A853',
-      ],
+      'shell/page/appIcon.tsx': ['#FFFFFF'],
+      'shell/page/appIconDrawing.ts': ['#1A73E8', '#D88B00', '#FBBC04'],
       'shell/page/windowButtons.ts': [
         'rgba(${data[0]}, ${data[1]}, ${data[2]}, ${data[3] / 255})',
       ],

@@ -33,6 +33,7 @@
     "format:check": "prettier --check --cache .",
     "coverage": "npm run build && vitest run --coverage --project=!playground --project=!perf",
     "durations": "node scripts/testDurations.mts",
+    "icons": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/icons.mts",
     "checks": "node scripts/checks.mts",
     "verify": "npm run checks && npm test",
     "verify:fast": "npm run checks && npm run test:unit",
@@ -126,6 +127,7 @@
     "mac": {
       "artifactName": "fastforward-${version}-macos-${arch}.${ext}",
       "category": "public.app-category.developer-tools",
+      "icon": "build/icon.icns",
       "identity": "-",
       "hardenedRuntime": false,
       "extraResources": [
@@ -200,6 +202,7 @@
         "deb"
       ],
       "category": "Development",
+      "icon": "build/icons",
       "extraResources": [
         {
           "from": "build/bin/ff",

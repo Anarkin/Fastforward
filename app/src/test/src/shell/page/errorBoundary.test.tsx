@@ -7,6 +7,7 @@ import { strings } from '../../../../lib/shared/strings';
 import type { ToWebview } from '../../../../shell/shared/protocol';
 import { Crash, ErrorBoundary } from '../../../../shell/page/errorBoundary';
 import { renderedBy } from '../../../helpers/componentFixtures';
+import { withStillMediaQueries } from '../../../helpers/mediaQueries';
 
 const noop = () => {};
 
@@ -99,6 +100,7 @@ suite('Error boundary', () => {
     const dom = new JSDOM('<!doctype html><main></main>', {
       pretendToBeVisual: true,
     });
+    withStillMediaQueries(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,

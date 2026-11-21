@@ -332,6 +332,31 @@ suite('App at a scale of 125%', () => {
     }
   });
 
+  test('draws the app icon of the title bar with the edges between its sky and the back and front of its folder on whole device pixels, so no row of it blends two of them', async () => {
+    const box = await page.locator('.title-bar-icon').first().boundingBox();
+    assert.ok(box, 'the app icon has no box');
+    const size = Math.round(box.width * scale);
+    const column = Math.round(box.x * scale) + Math.floor(size * 0.3);
+    const top = Math.round(box.y * scale);
+    const pixels = await pixelsOf(
+      page,
+      await page.screenshot(),
+      Array.from(
+        { length: Math.floor(size * 0.7) - Math.ceil(size * 0.15) },
+        (_, index): [number, number] => [
+          column,
+          top + Math.ceil(size * 0.15) + index,
+        ],
+      ),
+    );
+    const bands = ['26,115,232,255', '216,139,0,255', '251,188,4,255'];
+    assert.deepStrictEqual(
+      pixels.filter((pixel) => !bands.includes(pixel)),
+      [],
+      JSON.stringify(pixels),
+    );
+  });
+
   test('edges a menu with its line on one whole device pixel, with no faint pixel inside it', async () => {
     await page.locator('.tabs .tab-add').click();
     const menu = page.locator('.menu').first();

@@ -43,7 +43,12 @@ export function createWindow(
       : settings.colors.light
     ).background,
     icon:
-      process.platform === 'darwin' ? undefined : path.join(dist, 'icon.png'),
+      process.platform === 'darwin'
+        ? undefined
+        : path.join(
+            dist,
+            process.platform === 'win32' ? 'icon.ico' : 'icon.png',
+          ),
     titleBarStyle: 'hidden',
     titleBarOverlay:
       process.platform === 'darwin'

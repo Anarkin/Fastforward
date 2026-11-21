@@ -37,6 +37,11 @@ import { tagsWith } from '../../../helpers/markup';
 const counts = (query: string) =>
   shown(query).map((each) => [each.id, each.count]);
 
+const withoutIds = (markup: string) =>
+  markup
+    .replaceAll(/id="[^"]*"/g, 'id=""')
+    .replaceAll(/url\(#[^)]*\)/g, 'url()');
+
 const clickOn = (button: Element | undefined) =>
   act(async () => {
     assert.ok(button instanceof window.HTMLElement);
@@ -79,12 +84,12 @@ suite('Shortcuts popup', () => {
       'Editor',
       'Paint',
     ]);
-    const appIcon = renderToStaticMarkup(
-      <AppIcon className="icon" size={16} />,
+    const appIcon = withoutIds(
+      renderToStaticMarkup(<AppIcon className="icon" size={16} />),
     );
     assert.match(appIcon, /^<svg class="icon" width="16" height="16"/);
     assert.ok(
-      html.includes(appIcon),
+      withoutIds(html).includes(appIcon),
       'the shortcuts of every tab under the icon of the app, as small as the icons of the tools',
     );
     const open = tagsWith(html, 'shortcuts-tool', 'open');

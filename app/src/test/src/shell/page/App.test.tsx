@@ -8,6 +8,7 @@ import type { ToHost, ToWebview } from '../../../../shell/shared/protocol';
 import { App, EmptyStateView } from '../../../../shell/page/App';
 import { noop } from '../../../helpers/fixtures';
 import { tagsWith } from '../../../helpers/markup';
+import { withStillMediaQueries } from '../../../helpers/mediaQueries';
 
 suite('Window', () => {
   test('says no tab is open only once the host says which tabs are', () => {
@@ -49,6 +50,7 @@ suite('Window', () => {
     const dom = new JSDOM('<!doctype html><main></main>', {
       pretendToBeVisual: true,
     });
+    withStillMediaQueries(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,
@@ -137,6 +139,7 @@ suite('Window', () => {
     const dom = new JSDOM('<!doctype html><main></main>', {
       pretendToBeVisual: true,
     });
+    withStillMediaQueries(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,
@@ -228,6 +231,7 @@ suite('Window', () => {
     const dom = new JSDOM('<!doctype html><main></main>', {
       pretendToBeVisual: true,
     });
+    withStillMediaQueries(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,

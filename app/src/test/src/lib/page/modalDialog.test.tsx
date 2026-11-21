@@ -8,6 +8,7 @@ import { ShortcutsPopup } from '../../../../shell/page/shortcutsPopup';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores } from '../../../helpers/componentFixtures';
 import { noop } from '../../../helpers/fixtures';
+import { withStillMediaQueries } from '../../../helpers/mediaQueries';
 
 const about = {
   version: '16.0.0',
@@ -28,6 +29,7 @@ async function inPage(
   const dom = new JSDOM(
     '<!doctype html><button id="before">Before</button><main></main>',
   );
+  withStillMediaQueries(dom.window);
   const globals = {
     window: dom.window,
     document: dom.window.document,

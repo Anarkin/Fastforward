@@ -11,6 +11,7 @@ import { shortcutEntries } from '../../../../shell/page/toolShortcuts';
 import { createShellStore } from '../../../../shell/page/store';
 import { withStores } from '../../../helpers/componentFixtures';
 import { noop } from '../../../helpers/fixtures';
+import { withStillMediaQueries } from '../../../helpers/mediaQueries';
 
 export function shortcutsStore(tool?: ToolId) {
   return createShellStore(noop, {
@@ -88,6 +89,7 @@ export async function inPopup(
   prepare: (document: Document) => void = () => {},
 ): Promise<void> {
   const dom = new JSDOM('<!doctype html><main></main>');
+  withStillMediaQueries(dom.window);
   const globals = {
     window: dom.window,
     document: dom.window.document,

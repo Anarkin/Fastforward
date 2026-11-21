@@ -71,7 +71,8 @@ for (const entry of fs.readdirSync(outdir)) {
   fs.rmSync(`${outdir}/${entry}`, { recursive: true, force: true });
 }
 fs.copyFileSync('src/shell/page/index.html', `${outdir}/index.html`);
-fs.copyFileSync('build/window-icon.png', `${outdir}/icon.png`);
+fs.copyFileSync('build/icon.ico', `${outdir}/icon.ico`);
+fs.copyFileSync('build/icons/256x256.png', `${outdir}/icon.png`);
 fs.copyFileSync('src/shell/main/settings.json', `${outdir}/settings.json`);
 for (const folder of ['cmaps', 'standard_fonts', 'iccs', 'wasm']) {
   fs.cpSync(`node_modules/pdfjs-dist/${folder}`, `${outdir}/pdfjs/${folder}`, {
