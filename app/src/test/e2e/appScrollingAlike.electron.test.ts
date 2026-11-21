@@ -402,23 +402,29 @@ suite('App scrolling alike', () => {
     delta: { readonly deltaX?: number; readonly deltaY?: number },
   ) => {
     const before = await read();
+    const stroke =
+      (Math.floor((2 * touched) / before.row) * before.row + before.row / 2) /
+      2;
     const { parts, samples } = await sampled(read, () =>
       page
         .locator(`${views[name].pane} ${views[name].rows}`)
         .nth(3)
-        .evaluate((under, by) => {
-          for (let swipe = 0; swipe < 2; swipe++) {
-            under.dispatchEvent(
-              new WheelEvent('wheel', {
-                ...by,
-                bubbles: true,
-                cancelable: true,
-              }),
-            );
-          }
-        }, delta),
+        .evaluate(
+          (under, by) => {
+            for (let swipe = 0; swipe < 2; swipe++) {
+              under.dispatchEvent(
+                new WheelEvent('wheel', {
+                  ...by,
+                  bubbles: true,
+                  cancelable: true,
+                }),
+              );
+            }
+          },
+          delta.deltaX === undefined ? { deltaY: stroke } : { deltaX: stroke },
+        ),
     );
-    const part = (before.part + 2 * touched) % before.row;
+    const part = (before.part + 2 * stroke) % before.row;
     const rested = await untilSettled(read, `the ${name} to rest`);
     return {
       moved: samples.at(-1) !== samples[0],

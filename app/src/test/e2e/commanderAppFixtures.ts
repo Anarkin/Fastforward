@@ -286,8 +286,8 @@ export const pathPlaces = () =>
     const names = box('.commander-header .commander-name');
     const dates = box('.commander-header .commander-date');
     return {
-      underButtons: text.top >= buttons.bottom,
-      aboveHeadings: text.bottom <= names.top,
+      underButtons: text.top >= buttons.bottom - 1 / 64,
+      aboveHeadings: text.bottom <= names.top + 1 / 64,
       fromNames: Math.round(text.left - names.left) + 0,
       shortOfDates: Math.round(dates.right - text.right) + 0,
     };

@@ -274,7 +274,7 @@ suite('Commit bubbles', () => {
                   at: each.getBoundingClientRect().top - top,
                   bottom: each.getBoundingClientRect().bottom - top,
                 }))
-                .filter((each) => each.bottom > 0)
+                .filter((each) => each.bottom > 0.5 / devicePixelRatio)
                 .toSorted((a, b) => a.at - b.at)[0];
               return `${row?.subject} at ${Math.round((row?.at ?? 0) * 4) / 4}`;
             }),

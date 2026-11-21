@@ -246,7 +246,10 @@ suite('Terminal', () => {
       parts.start.top + parts.start.height + 2,
     );
     await waitFor(
-      async () => (await rows()).some((row) => row === 'line1'),
+      async () =>
+        (await page
+          .locator('.terminal-panel .scroll-proxy.vertical')
+          .evaluate((proxy) => proxy.scrollTop)) < 1,
       'the terminal to scroll to its first lines',
     );
     const screen = await page.locator('.terminal-screen').boundingBox();
