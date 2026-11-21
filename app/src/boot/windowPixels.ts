@@ -3,9 +3,10 @@ import type { BrowserWindow } from 'electron';
 export interface WindowPixels {
   moveContent(window: BrowserWindow, x: number, y: number): void;
   sizeLike(window: BrowserWindow, source: BrowserWindow): void;
+  sizeTo(window: BrowserWindow, size: Size): void;
 }
 
-interface Size {
+export interface Size {
   readonly width: number;
   readonly height: number;
 }
@@ -27,6 +28,18 @@ export function copiesPixels(source: {
   );
 }
 
+export function pixelsToSize(
+  pixels: Size,
+  seen: Size,
+  wanted: Size,
+  scale: number,
+): Size {
+  return {
+    width: pixels.width - Math.round((seen.width - wanted.width) * scale),
+    height: pixels.height - Math.round((seen.height - wanted.height) * scale),
+  };
+}
+
 const byElectron: WindowPixels = {
   moveContent: (window, x, y) => {
     const bounds = window.getBounds();
@@ -37,6 +50,7 @@ const byElectron: WindowPixels = {
     const { width, height } = source.getNormalBounds();
     window.setSize(width, height);
   },
+  sizeTo: () => undefined,
 };
 
 let current = byElectron;

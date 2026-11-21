@@ -204,3 +204,36 @@ suite('App with several windows', () => {
     assert.strictEqual(await tabsIn(empty), 1);
   });
 });
+
+suite('App window saved at 125%', () => {
+  test.runIf(process.platform === 'win32')(
+    'opens a window at the very size it was saved at, as Windows grew a window saved 1400 by 800 to 1406 by 804 at 125%, and so on at every start',
+    async () => {
+      const folder = tempFolder('window-size');
+      const profile = path.join(folder, 'profile');
+      const saved = { x: 40, y: 30, width: 1300, height: 740 };
+      fs.mkdirSync(profile, { recursive: true });
+      fs.writeFileSync(
+        path.join(profile, 'state.json'),
+        JSON.stringify({
+          tabs: [{ id: '1', tool: 'commander' }],
+          windows: [{ id: '1', tabs: ['1'], active: '1' }],
+          windowPlaces: { '1': { bounds: saved, maximized: false } },
+        }),
+      );
+      const app = await launchApp(profile, { scale: 1.25 });
+      try {
+        await app.firstWindow();
+        await waitFor(
+          async () => (await visibleBounds(app)).length === 1,
+          'the window to show',
+        );
+        const [opened] = await visibleBounds(app);
+        assert.deepStrictEqual(opened, saved);
+      } finally {
+        await closeOrKill(app);
+        removeFolder(folder);
+      }
+    },
+  );
+});

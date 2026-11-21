@@ -1,11 +1,13 @@
 import koffi from 'koffi';
 import { type BrowserWindow, screen } from 'electron';
-import { copiesPixels, type WindowPixels } from './windowPixels';
+import { copiesPixels, pixelsToSize, type WindowPixels } from './windowPixels';
 
 const keepSize = 0x0001;
 const keepPlace = 0x0002;
 const keepOrder = 0x0004;
 const keepActivation = 0x0010;
+
+const sizingTries = 4;
 
 interface Rect {
   left: number;
@@ -89,6 +91,37 @@ export function windowsPixels(byElectron: WindowPixels): WindowPixels {
         from.bottom - from.top,
         keepPlace | keepOrder | keepActivation,
       );
+    },
+    sizeTo: (window, size) => {
+      if (window.isMaximized() || window.isFullScreen()) {
+        return;
+      }
+      const handle = handleOf(window);
+      for (let tried = 0; tried < sizingTries; tried++) {
+        const seen = window.getBounds();
+        const outer = rectOf(handle);
+        if (
+          outer === undefined ||
+          (seen.width === size.width && seen.height === size.height)
+        ) {
+          return;
+        }
+        const pixels = pixelsToSize(
+          { width: outer.right - outer.left, height: outer.bottom - outer.top },
+          seen,
+          size,
+          tried === 0 ? screen.getDisplayMatching(seen).scaleFactor : 1,
+        );
+        setWindowPos(
+          handle,
+          null,
+          0,
+          0,
+          pixels.width,
+          pixels.height,
+          keepPlace | keepOrder | keepActivation,
+        );
+      }
     },
   };
 }

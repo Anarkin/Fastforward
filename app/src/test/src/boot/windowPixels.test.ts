@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { copiesPixels } from '../../../boot/windowPixels';
+import { copiesPixels, pixelsToSize } from '../../../boot/windowPixels';
 
 const plain = {
   maximized: false,
@@ -31,5 +31,31 @@ suite('Sizing a window like another', () => {
 
   test('takes the size in pixels of the page across screens of other scales, as a window gets the size its screen gives those pixels once it moves onto it, so device pixels copied from a screen at 100% onto one at 150% made it two thirds as big', () => {
     assert.strictEqual(copiesPixels({ ...plain, windowScale: 1.5 }), false);
+  });
+});
+
+suite('Sizing a window to the size it was saved at', () => {
+  test('takes the device pixels of a window down by what it grew past the size asked for, as a window saved 1400 by 800 opened 1406 by 804 at 125%', () => {
+    assert.deepStrictEqual(
+      pixelsToSize(
+        { width: 1758, height: 1005 },
+        { width: 1406, height: 804 },
+        { width: 1400, height: 800 },
+        1.25,
+      ),
+      { width: 1750, height: 1000 },
+    );
+  });
+
+  test('leaves a window at the size asked for as it is', () => {
+    assert.deepStrictEqual(
+      pixelsToSize(
+        { width: 1750, height: 1000 },
+        { width: 1400, height: 800 },
+        { width: 1400, height: 800 },
+        1.25,
+      ),
+      { width: 1750, height: 1000 },
+    );
   });
 });

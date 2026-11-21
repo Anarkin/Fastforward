@@ -15,6 +15,7 @@ import {
   visibleBounds,
 } from './windowPlacement';
 import { keptBounds } from './savedBounds';
+import { windowPixels } from './windowPixels';
 import type { Place, SavedPlace } from './places';
 
 export function createWindow(
@@ -27,10 +28,14 @@ export function createWindow(
   const workAreas = screen.getAllDisplays().map((display) => display.workArea);
   const size = firstWindowSize(screen.getPrimaryDisplay().workArea);
   const bounds = visibleBounds(saved.bounds, workAreas);
+  const least = {
+    width: minimumWidth(workAreas),
+    height: minimumHeight(workAreas),
+  };
   const window = new BrowserWindow({
     ...(bounds ?? size),
-    minWidth: minimumWidth(workAreas),
-    minHeight: minimumHeight(workAreas),
+    minWidth: least.width,
+    minHeight: least.height,
     title: brand,
     show: false,
     backgroundColor: (nativeTheme.shouldUseDarkColors
@@ -58,6 +63,11 @@ export function createWindow(
   });
   const { maximized } = saved;
   window.once('ready-to-show', () => {
+    const asked = bounds ?? size;
+    windowPixels().sizeTo(window, {
+      width: Math.max(asked.width, least.width),
+      height: Math.max(asked.height, least.height),
+    });
     if (shown) {
       if (maximized) {
         window.maximize();
