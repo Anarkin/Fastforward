@@ -485,6 +485,25 @@ suite('Playground of files', () => {
     );
   });
 
+  test('writes every character of ASCII as itself but NUL, which would make the file binary, and CR, which would end a line, in rows as long as each other, so their bars stand in one column where a control character takes one', () => {
+    const made = planFor('linux');
+    const text = contentOf(itemAt(made, 'text/ascii-grid.md')).toString();
+    const written = new Set(
+      Array.from(text, (character) => character.charCodeAt(0)),
+    );
+    assert.deepStrictEqual(
+      Array.from({ length: 128 }, (_, code) => code).filter(
+        (code) => !written.has(code),
+      ),
+      [0, 13],
+    );
+    assert.strictEqual(Math.max(...written), 127);
+    const rows = text.split('\n').filter((line) => line.endsWith('|'));
+    assert.ok(rows.length > 60, String(rows.length));
+    assert.deepStrictEqual([...new Set(rows.map((row) => row.length))], [41]);
+    assert.ok(made.pairs.some(([one]) => one === 'compare/ascii-v1.md'));
+  });
+
   test('pairs files to compare that differ, but for the pair that is identical', () => {
     const made = planFor('linux');
     assert.ok(made.pairs.length >= 12);

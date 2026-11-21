@@ -5,6 +5,7 @@ import { dotnetPair } from './dotnetSamples.mts';
 import { rustPair } from './rustSamples.mts';
 import { binary } from './samples.mts';
 import { emojiGrid } from './emojiGrid.mts';
+import { asciiGrid } from './asciiGrid.mts';
 import { imageKinds } from './imageSamples.mts';
 import { paddedTable } from './paddedTable.mts';
 import type { PlanBuilder, PlanOptions } from './filesPlan.mts';
@@ -45,6 +46,7 @@ export function planOperations(
     ],
   );
   pair('emoji', ['v1.md', emojiGrid(1)], ['v2.md', emojiGrid(2)]);
+  pair('ascii', ['v1.md', asciiGrid(1)], ['v2.md', asciiGrid(2)]);
   pair('padded-table', ['v1.md', paddedTable(1)], ['v2.md', paddedTable(2)]);
   pair(
     'whitespace-only',

@@ -13,6 +13,7 @@ import {
   sentence,
 } from './samples.mts';
 import { emojiGrid } from './emojiGrid.mts';
+import { asciiGrid } from './asciiGrid.mts';
 import { decoded, imageKinds, orientedJpeg } from './imageSamples.mts';
 import { paddedTable } from './paddedTable.mts';
 import type { PlanBuilder } from './filesPlan.mts';
@@ -160,7 +161,7 @@ export function planViewing(builder: PlanBuilder): void {
 
   section(
     'text',
-    'Text for the viewer: lines just under and over the 64 KiB it shows whole, the longer ones in rows of 4 KiB, and of 1 and 10 MiB; a Markdown table padded as prettier pads it, with lines of more than a thousand spaces, which once made the viewer slow; emoji and Chinese, Japanese and Korean characters in a grid whose bars line up where widths are counted right; every byte value and a NUL byte for the hex view, 1; and more matches than it counts and a log with one NEEDLE near its end, to find with Mod+F. Show whitespace with `.`.',
+    'Text for the viewer: lines just under and over the 64 KiB it shows whole, the longer ones in rows of 4 KiB, and of 1 and 10 MiB; a Markdown table padded as prettier pads it, with lines of more than a thousand spaces, which once made the viewer slow; emoji and Chinese, Japanese and Korean characters in a grid whose bars line up where widths are counted right; every character of ASCII as itself, its control characters too, in a grid whose bars line up where each takes a column; every byte value and a NUL byte for the hex view, 1; and more matches than it counts and a log with one NEEDLE near its end, to find with Mod+F. Show whitespace with `.`.',
   );
   for (const [name, length] of [
     ['long-line-just-under-64-kib.txt', limits.wholeLineBytes - 1],
@@ -279,6 +280,7 @@ export function planViewing(builder: PlanBuilder): void {
   );
 
   file('text/emoji-grid.md', emojiGrid(1));
+  file('text/ascii-grid.md', asciiGrid(1));
   file('text/unicode.txt', unicodeText);
 
   file('text/binary-every-byte.bin', () =>
