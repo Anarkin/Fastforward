@@ -467,6 +467,29 @@ suite('App at a scale of 125%', () => {
     }
   });
 
+  test('keeps the scroller standing in for the scrollbar of a file viewed as wide as the scrollbar setting while the browser draws its bar a whole number of device pixels narrower, as one no wider than its bar dropped 47 frames of a drag of its thumb at 125% rather than 39', async () => {
+    await page.locator('.tabs [role="tab"]').nth(1).click();
+    const side = page.locator('.commander-pane').nth(1);
+    await side.locator('.commander-row', { hasText: 'long' }).click();
+    await page.keyboard.press('F3');
+    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    try {
+      const sizes = await page
+        .locator('.viewer-body .scroll-proxy.vertical')
+        .evaluate((proxy) => [
+          proxy.parentElement?.getBoundingClientRect().width ?? 0,
+          parseFloat(getComputedStyle(proxy, '::-webkit-scrollbar').width),
+        ]);
+      assert.deepStrictEqual(
+        sizes.map((length) => Math.round(length * 100) / 100),
+        [18, 17.6],
+      );
+    } finally {
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+    }
+  });
+
   test('reveals a commit it moves to at the bottom of the list above the line of its column', async () => {
     await page.locator('.tabs [role="tab"]').first().click();
     const list = page

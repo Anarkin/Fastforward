@@ -149,11 +149,11 @@
 }
 
 .scroll-proxy-frame.vertical {
-  width: var(--scrollbar-size);
+  width: var(--scrollbar-setting);
 }
 
 .scroll-proxy-frame.horizontal {
-  height: var(--scrollbar-size);
+  height: var(--scrollbar-setting);
 }
 
 .scroll-proxy {
