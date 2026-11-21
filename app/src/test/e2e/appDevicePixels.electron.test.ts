@@ -1,9 +1,11 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Page } from 'playwright-core';
+import type { ElectronApplication, Page } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
+import { barOf, barParts, paintedAt } from './scrollbarsShown';
+import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
@@ -75,6 +77,70 @@ function thinLinesOffPixels(): string[] {
       }),
     ),
   ];
+}
+
+async function coverMisses(
+  app: ElectronApplication,
+  page: Page,
+): Promise<string[]> {
+  await page.keyboard.press('Escape');
+  await page.locator('.shortcuts-popup').waitFor({ state: 'detached' });
+  await page.locator('.tabs [role="tab"]').first().click();
+  const ratio = await page.evaluate(() => devicePixelRatio);
+  const misses: string[] = [];
+  for (const list of ['.diff-view > .virtual-rows']) {
+    await page.mouse.move(2, 2);
+    await waitFor(
+      () =>
+        page.evaluate(
+          () => document.querySelector('[data-scrollbar-hover]') === null,
+        ),
+      'no scrollbar to be pointed at',
+    );
+    const { box } = await barOf(page, list, 'vertical');
+    const { thumb } = await barParts(page, box, 'vertical');
+    const y = (thumb ?? box).top + 4;
+    const from = Math.floor(box.left * ratio) - 3;
+    const columns = Array.from({ length: 7 }, (_, index) => from + index);
+    const drawn = await paintedAt(
+      app,
+      page,
+      columns.map((x) => ({ x: x / ratio, y })),
+    );
+    const first = columns.find(
+      (_, index) => index > 0 && drawn[index] !== drawn[index - 1],
+    );
+    await page.mouse.move(box.left + box.width / 2, y);
+    await waitFor(
+      () =>
+        page.evaluate(
+          () => document.querySelector('[data-scrollbar-hover]') !== null,
+        ),
+      `the scrollbar of ${list} to be pointed at`,
+    );
+    const hits = await page.evaluate(
+      ({ at, row, scale }) =>
+        at.map(
+          (x) =>
+            document
+              .elementFromPoint(x / scale, row)
+              ?.closest('.scrollbar-cover') !== null,
+        ),
+      {
+        at: first === undefined ? [] : [first - 1, first],
+        row: y,
+        scale: ratio,
+      },
+    );
+    const [before, on] = hits;
+    if (first === undefined || before === undefined || before || !on) {
+      misses.push(
+        `${list} drawn from device column ${first} takes the pointer ${JSON.stringify(hits)} on the column before it and on it`,
+      );
+    }
+  }
+  await page.mouse.move(2, 2);
+  return misses;
 }
 
 async function viewsOf(page: Page): Promise<Record<string, string[]>> {
@@ -156,7 +222,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
 
 suite('Thin lines on whole device pixels', () => {
   for (const scale of [1, 1.25, 1.5, 1.75]) {
-    test(`draws every thin line of the git, commander, viewer, editor and diff tabs, the search of the commits, a dialog, a tooltip, a menu and the shortcuts a whole number of device pixels thick at ${scale * 100}%, and ends the row of tabs on a whole device pixel, as a line between pixels comes out one device pixel thick in one place and two in another, as the dividers of the tabs did at 125% and 175%, and the row of tabs ended on half of one at 150%, so every tool under it stood between pixels and the search of the commits could not scroll to the start of a row at its end`, async () => {
+    test(`draws every thin line of the git, commander, viewer, editor and diff tabs, the search of the commits, a dialog, a tooltip, a menu and the shortcuts a whole number of device pixels thick at ${scale * 100}%, ends the row of tabs on a whole device pixel and takes the pointer over a scrollbar from the first column of device pixels it is drawn on, as a line between pixels comes out one device pixel thick in one place and two in another, as the dividers of the tabs did at 125% and 175%, and the row of tabs ended on half of one at 150%, so every tool under it stood between pixels and the search of the commits could not scroll to the start of a row at its end, and the cover of a scrollbar stood 1/64 of a device pixel right of where the bar is drawn at 175%, so a press on its first column went to the scrollbar of the browser`, async () => {
       const folder = tempFolder('device-pixels');
       const profile = path.join(folder, 'profile');
       const app = await (async () => {
@@ -200,6 +266,7 @@ suite('Thin lines on whole device pixels', () => {
       try {
         const page = await app.firstWindow();
         const seen = await viewsOf(page);
+        seen['cover of a scrollbar'] = await coverMisses(app, page);
         assert.deepStrictEqual(
           seen,
           Object.fromEntries(Object.keys(seen).map((name) => [name, []])),
