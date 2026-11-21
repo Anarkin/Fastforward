@@ -425,6 +425,7 @@ export function sharedCursorApp(): void {
     app = await launchApp(profile, {
       before: launchSwitches,
       colorScheme: 'light',
+      scale: 1,
     });
     page = await app.firstWindow();
     await page

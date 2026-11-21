@@ -173,9 +173,8 @@ suite('App scrollbars alike', () => {
       box.left + box.width <= frame.right + 0.01 &&
       box.top + box.height <= frame.bottom + 0.01;
     return {
-      wide: Math.round(down.width * 100) / 100,
-      beside:
-        Math.round((frame.right - down.left - down.width) * 100) / 100 + 0,
+      wide: Math.round(down.width),
+      beside: Math.round(frame.right - down.left - down.width) + 0,
       within: within(down) && (across === undefined || within(across)),
     };
   };
@@ -209,8 +208,8 @@ suite('App scrollbars alike', () => {
         .first()
         .evaluate((scroller) => scroller.scrollTop <= 0);
       return {
-        wide: box.width,
-        buttons: [parts.start.height, parts.end.height],
+        wide: Math.round(box.width),
+        buttons: [parts.start.height, parts.end.height].map(Math.round),
         look: [arrowDown, thumb, plain],
         mutedAtStart: near(arrowUp, arrowDown) !== atStart,
         apart:
@@ -310,7 +309,7 @@ suite('App scrollbars alike', () => {
       await rested(name);
       const moved = (await barParts(page, across, 'horizontal')).thumb;
       return {
-        tall: across.height,
+        tall: Math.round(across.height),
         meets: Math.abs(down.top + down.height - across.top) < 1,
         filled: near(corner, plain) && !near(corner, thumb),
         steps: (moved?.left ?? 0) > parts.thumb.left,

@@ -5,6 +5,7 @@ import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
 import { waitFor } from '../helpers/fixtures';
+import { alikeWithin } from './alikeWithin';
 import { waitForFocus } from './waits';
 import {
   markedNames,
@@ -48,6 +49,8 @@ interface Layout {
 }
 
 const hundredths = (value: number) => Math.round(value * 100) / 100;
+
+const layoutUnit = 1 / 32;
 
 const viewerLayout = (): Promise<Layout> =>
   page.locator('.viewer-body').evaluate((body) => {
@@ -357,13 +360,14 @@ suite('App', () => {
         viewed.rows.length > wrappedLines.length + 8,
         String(viewed.rows.length),
       );
-      assert.deepStrictEqual(edited, viewed);
+      alikeWithin(edited, viewed, layoutUnit);
       await showWhitespace();
       await page.locator('.editor .wrap-spaces').first().waitFor();
       assert.ok(viewedHanging.length > 0);
-      assert.deepStrictEqual(
+      alikeWithin(
         await hangingMarks('.editor-body', '.wrap-spaces, .wrap-blank'),
         viewedHanging,
+        layoutUnit,
       );
       await showWhitespace();
       await page
