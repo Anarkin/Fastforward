@@ -241,7 +241,10 @@ suite('Terminal', () => {
       async () => JSON.stringify((await rows()).slice(1)) === expected,
       'the terminal to scroll a line back',
     );
-    await page.mouse.click(box.left + box.width / 2, box.top + 40);
+    await page.mouse.click(
+      box.left + box.width / 2,
+      parts.start.top + parts.start.height + 2,
+    );
     await waitFor(
       async () => (await rows()).some((row) => row === 'line1'),
       'the terminal to scroll to its first lines',
