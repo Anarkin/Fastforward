@@ -2,6 +2,7 @@ import { spawnSync, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
 import { _electron, type ElectronApplication } from 'playwright-core';
 import { strings } from '../../lib/shared/strings';
+import { rememberProfile } from './appLogs';
 
 export const appFolder = path.join(__dirname, '..', '..', '..');
 
@@ -135,6 +136,7 @@ export async function launchApp(
     readonly colorScheme?: 'light' | 'dark';
   } = {},
 ): Promise<ElectronApplication> {
+  rememberProfile(profile);
   const app = await _electron.launch({
     args: [...scaleAsked(), ...before, ...appArguments(profile, ...after)],
     cwd: appFolder,
