@@ -14,17 +14,19 @@ suite('Renamed files', () => {
         addEventListener: () => undefined,
         removeEventListener: () => undefined,
       }) as unknown as MediaQueryList;
+    const styleOf = (element: Element) =>
+      Object.assign(Object.create(null), {
+        lineHeight: element.classList.contains('diff-line')
+          ? `${lineHeight}px`
+          : 'normal',
+        letterSpacing: 'normal',
+      });
+    Object.assign(dom.window, { getComputedStyle: styleOf });
     const globals = {
       window: dom.window,
       document: dom.window.document,
       devicePixelRatio: 1,
-      getComputedStyle: (element: Element) =>
-        Object.assign(Object.create(null), {
-          lineHeight: element.classList.contains('diff-line')
-            ? `${lineHeight}px`
-            : 'normal',
-          letterSpacing: 'normal',
-        }),
+      getComputedStyle: styleOf,
       ResizeObserver: class {
         observe(): void {}
         disconnect(): void {}

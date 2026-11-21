@@ -1,6 +1,7 @@
 import { memo, useCallback, useRef } from 'react';
 import { boxColumns } from '../../../lib/page/wrapBox';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
+import { lineHeightOf } from '../../../lib/page/lineHeight';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import { uniformHeight, type WrapColumns } from './rowMeasures';
 import { wordPadding, type Edges } from './textLayout';
@@ -75,11 +76,6 @@ export const WrapProbe = memo(function WrapProbe({
   );
 });
 
-function lineHeightOf(line: HTMLElement): number {
-  const height = parseFloat(getComputedStyle(line).lineHeight);
-  return height > 0 ? height : uniformHeight;
-}
-
 export const TextProbe = memo(function TextProbe({
   onMeasure,
 }: {
@@ -111,7 +107,7 @@ export const TextProbe = memo(function TextProbe({
             devicePixelRatio,
           ),
           devicePixelRatio,
-          lineHeightOf(line),
+          lineHeightOf(line, uniformHeight, devicePixelRatio),
           spacingOf(probe),
         );
       measure();
