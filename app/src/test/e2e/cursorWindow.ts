@@ -24,6 +24,7 @@ export async function fitWindow(
         width: Math.min(largest.width, Math.floor(room.width / 8) * 8),
         height: Math.min(largest.height, Math.floor(room.height / 8) * 8),
       };
+      shown.setMinimumSize(1, 1);
       shown.setPosition(workArea.x, workArea.y);
       shown.setContentSize(size.width, size.height);
       shown.focus();

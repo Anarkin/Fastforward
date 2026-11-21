@@ -90,7 +90,7 @@ suite('App diff filler', () => {
       path.join(profile, 'settings.user.json'),
       JSON.stringify({ text: { wordWrap: true } }),
     );
-    app = await launchApp(profile);
+    app = await launchApp(profile, { scale: 1 });
     page = await app.firstWindow();
     await page.locator('.commit', { hasText: 'second' }).click();
     await page.locator('.split-side.filler').first().waitFor();
