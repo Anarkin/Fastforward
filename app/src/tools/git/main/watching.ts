@@ -3,8 +3,10 @@ import type { ShellAccess } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
 import type { TabWork, Session, Context, GitCore } from './tabContext';
 import type { Refreshes } from './refreshes';
-import { isWatchFailure, watchRepository } from './watch';
+import { isWatchFailure, watchRepository, type Changed } from './watch';
 import type { Watcher } from './watchFolders';
+
+const workingTreeOnly: Changed = { refs: false, workingTree: true };
 
 export interface WatchingHost {
   readonly loadWorktrees: (
@@ -57,7 +59,8 @@ export class Watching {
       return;
     }
     session.watcher = watcher;
-    if (performance.now() - started > this.delays.delay) {
+    const slow = performance.now() - started > this.delays.delay;
+    if (slow) {
       void this.shell().track(
         this.host.loadWorktrees(session, context.repository),
       );
@@ -65,7 +68,12 @@ export class Watching {
     void this.core.run(
       strings.log.refreshingFailed,
       session,
-      () => this.refreshes.refresh(context),
+      () =>
+        this.refreshes.refresh(
+          context,
+          undefined,
+          slow ? undefined : workingTreeOnly,
+        ),
       context.root,
     );
   }
