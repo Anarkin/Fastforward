@@ -421,14 +421,16 @@ suite('Style', () => {
       rendered(<TabRow count={3} active="/b" />),
       'tab',
     );
-    const width = cascaded(divider(a), 'width');
+    const width = parseFloat(
+      /[\d.]+px/.exec(cascaded(divider(a), 'width') ?? '')?.[0] ?? '',
+    );
     const [border] = (cascaded(a, 'border') ?? '').split(' ');
     const gap = parseFloat(bodyVariable('tab-list-gap') ?? '');
     looks(divider(a), {
       position: 'absolute',
       top: '50%',
-      right: `${-(parseFloat(border) + gap / 2 + parseFloat(width ?? '') / 2)}px`,
-      width: '2px',
+      right: `${-(parseFloat(border) + gap / 2 + width / 2)}px`,
+      width: 'round(2px, var(--device-pixel, 1px))',
       height: '16px',
       'border-radius': 'var(--radius)',
       background: 'var(--tab-divider)',

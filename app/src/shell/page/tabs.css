@@ -178,7 +178,7 @@
   position: absolute;
   top: 50%;
   right: -5px;
-  width: 2px;
+  width: round(2px, var(--device-pixel, 1px));
   height: 16px;
   border-radius: var(--radius);
   background: var(--tab-divider);
