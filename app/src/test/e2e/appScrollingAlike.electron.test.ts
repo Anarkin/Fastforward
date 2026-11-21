@@ -306,8 +306,13 @@ suite('App scrolling alike', () => {
     const stroked = page.locator(`${pane} ${rows}`).nth(rowUnder(name, true));
     const stroke = (by: { deltaX?: number; deltaY?: number }) =>
       stroked.evaluate((row, delta) => {
+        const bounds = row.getBoundingClientRect();
+        const at = {
+          x: bounds.left + bounds.width / 3,
+          y: bounds.top + bounds.height / 2,
+        };
         for (let swipe = 0; swipe < 3; swipe++) {
-          row.dispatchEvent(
+          (document.elementFromPoint(at.x, at.y) ?? row).dispatchEvent(
             new WheelEvent('wheel', {
               ...delta,
               bubbles: true,
@@ -409,12 +414,17 @@ suite('App scrolling alike', () => {
       }) ?? touched;
     const { parts, samples } = await sampled(read, () =>
       page
-        .locator(`${views[name].pane} ${views[name].rows}`)
-        .nth(3)
+        .locator(views[name].pane)
+        .first()
         .evaluate(
-          (under, by) => {
+          (pane, by) => {
+            const box = pane.getBoundingClientRect();
+            const at = {
+              x: box.left + box.width / 3,
+              y: box.top + box.height / 2,
+            };
             for (let swipe = 0; swipe < 2; swipe++) {
-              under.dispatchEvent(
+              (document.elementFromPoint(at.x, at.y) ?? pane).dispatchEvent(
                 new WheelEvent('wheel', {
                   ...by,
                   bubbles: true,
