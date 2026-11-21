@@ -22,6 +22,14 @@ a:focus-visible {
   outline-offset: -2px;
 }
 
+:root {
+  --scrollbar-size: round(
+    down,
+    calc(var(--scrollbar-setting) + var(--device-pixel, 1px) / 64),
+    var(--device-pixel, 1px)
+  );
+}
+
 body {
   --hairline: round(down, 1px, var(--device-pixel, 1px));
   --line-number-width: 56px;

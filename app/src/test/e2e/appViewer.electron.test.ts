@@ -332,9 +332,10 @@ suite('App commander', () => {
         bar.width,
         await page.evaluate(() =>
           parseFloat(
-            getComputedStyle(document.body).getPropertyValue(
-              '--scrollbar-size',
-            ),
+            getComputedStyle(
+              document.querySelector('.viewer-body') ?? document.body,
+              '::-webkit-scrollbar',
+            ).width,
           ),
         ),
       );

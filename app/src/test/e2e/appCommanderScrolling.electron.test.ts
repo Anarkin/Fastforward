@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { untilSettled } from './waits';
 import { scrollPlaces } from './scrollProbes';
-import { barOf, barParts } from './scrollbarsShown';
+import { barOf, barParts, drawnBarWidth } from './scrollbarsShown';
 import {
   opened,
   page,
@@ -20,6 +20,8 @@ import {
 const sideRows = '.commander-pane >> nth=1 >> .virtual-rows';
 
 const whole = (pixels: number) => Math.round(pixels) + 0;
+
+const hundredths = (pixels: number) => Math.round(pixels * 100) / 100 + 0;
 
 const sideBar = async () => {
   const { box } = await barOf(page, sideRows, 'vertical');
@@ -47,8 +49,8 @@ const sideBar = async () => {
   assert.ok(side, 'the side lists no rows under a header');
   return {
     atEnd: side.atEnd,
-    wide: box.width,
-    buttons: [start.height, end.height],
+    wide: hundredths(box.width),
+    buttons: [hundredths(start.height), hundredths(end.height)],
     beside: whole(box.left - side.rows),
     right: whole(side.right - (box.left + box.width)),
     top: whole(box.top - side.header),
@@ -240,7 +242,12 @@ suite('App commander', () => {
         accepted: (bar) => bar.atEnd,
       });
 
-      const wide = parseFloat(defaultSettings().sizes.scrollbar);
+      const wide = hundredths(
+        drawnBarWidth(
+          parseFloat(defaultSettings().sizes.scrollbar),
+          await page.evaluate(() => devicePixelRatio),
+        ),
+      );
       const strip = {
         wide,
         buttons: [wide, wide],

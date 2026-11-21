@@ -115,9 +115,7 @@ suite('Scrollbar arrows', () => {
         });
         await page.mouse.move(2, 2);
         const size = await scroller.evaluate((element) =>
-          parseFloat(
-            getComputedStyle(element).getPropertyValue('--scrollbar-size'),
-          ),
+          parseFloat(getComputedStyle(element, '::-webkit-scrollbar').width),
         );
         const button = Math.round(size * scale);
         const down = await scroller.evaluate((element, wide) => {

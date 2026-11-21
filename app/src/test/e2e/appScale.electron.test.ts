@@ -657,6 +657,30 @@ suite('App at a scale of 125%', () => {
     );
   });
 
+  test('sizes what stands beside a scrollbar by the width the browser draws the scrollbar, on whole device pixels, as the browser cuts 18 pixels down to 17.6 at 125% while the page took 18, so a view that stood a scroller in for its scrollbar ended its text 0.4 pixels short of one with a scrollbar of its own', async () => {
+    const widths = await page.evaluate(() => {
+      const scroller = document.createElement('div');
+      scroller.style.cssText =
+        'position: fixed; left: 0; top: 0; width: 200px; height: 100px; overflow: scroll';
+      const inside = document.createElement('div');
+      inside.style.cssText = 'width: 100%; height: 10px';
+      const sized = document.createElement('div');
+      sized.style.cssText =
+        'position: fixed; left: 0; top: 0; width: var(--scrollbar-size); height: 1px';
+      scroller.append(inside);
+      document.body.append(scroller, sized);
+      const drawn = 200 - inside.getBoundingClientRect().width;
+      const taken = sized.getBoundingClientRect().width;
+      scroller.remove();
+      sized.remove();
+      return { drawn, taken };
+    });
+    assert.ok(
+      Math.abs(widths.drawn - widths.taken) < 1 / 64,
+      JSON.stringify(widths),
+    );
+  });
+
   test('takes the pointer over the scrollbar of a list where the browser draws it and as wide as its style says, though the list ends between pixels, as its width taken from the rounded width of what it scrolls put it up to a pixel off', async () => {
     await page.locator('.tabs [role="tab"]').first().click();
     await topCommit(page);

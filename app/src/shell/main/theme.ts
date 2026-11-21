@@ -57,7 +57,7 @@ export function themeCss({
     `  --monospace-font-family: ${fonts.monospaceFamily};`,
     `  --monospace-font-size: ${fonts.monospaceSize};`,
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
-    `  --scrollbar-size: ${sizes.scrollbar};`,
+    `  --scrollbar-setting: ${sizes.scrollbar};`,
     `  ${cursorVariables.style}: ${cursor.style};`,
     `  ${cursorVariables.width}: ${cursor.width};`,
     `  ${cursorVariables.blink}: ${cursor.blink ? 'on' : 'off'};`,

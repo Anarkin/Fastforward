@@ -36,6 +36,10 @@ function barBoxIn(scroller: Element, axis: string): Box {
       };
 }
 
+export function drawnBarWidth(setting: number, ratio: number): number {
+  return Math.floor(setting * ratio + 1e-6) / ratio;
+}
+
 export async function barOf(
   page: Page,
   selector: string,
