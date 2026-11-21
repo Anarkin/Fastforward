@@ -403,8 +403,10 @@ suite('App scrolling alike', () => {
   ) => {
     const before = await read();
     const stroke =
-      (Math.floor((2 * touched) / before.row) * before.row + before.row / 2) /
-      2;
+      [touched, touched - 1, touched + 1, touched - 2].find((each) => {
+        const landed = (before.part + 2 * each) % before.row;
+        return landed > 2 && landed < before.row - 2;
+      }) ?? touched;
     const { parts, samples } = await sampled(read, () =>
       page
         .locator(`${views[name].pane} ${views[name].rows}`)
