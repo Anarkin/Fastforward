@@ -103,7 +103,7 @@ async function coverMisses(
     const from = Math.floor(box.left * ratio) - 3;
     const columns = Array.from({ length: 7 }, (_, index) => from + index);
     const [inside, ...drawn] = await paintedAt(app, page, [
-      { x: box.left + box.width / 2, y },
+      { x: box.left + box.width * 0.15, y },
       ...columns.map((x) => ({ x: x / ratio, y })),
     ]);
     const first = columns.find(
