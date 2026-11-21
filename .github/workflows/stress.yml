@@ -16,6 +16,10 @@ on:
         description: How many times to run them
         type: number
         default: 20
+      scale:
+        description: The scale to start the apps at, as the Windows jobs of CI start them at 1.25; none for the scale of the screen
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -24,6 +28,8 @@ jobs:
   stress:
     runs-on: ${{ inputs.os }}
     timeout-minutes: 60
+    env:
+      FASTFORWARD_TEST_SCALE: ${{ inputs.scale }}
     defaults:
       run:
         working-directory: app
@@ -34,6 +40,10 @@ jobs:
       - run: Add-MpPreference -ExclusionPath $env:TEMP, $env:GITHUB_WORKSPACE
         if: runner.os == 'Windows'
         shell: pwsh
+      - name: Give the screen 1920 by 1080 pixels
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
