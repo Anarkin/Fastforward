@@ -1,3 +1,4 @@
+import { lineHeightOf } from '../../../lib/page/lineHeight';
 import type { Extension, SelectionRange } from '@codemirror/state';
 import { EditorView, layer, RectangleMarker } from '@codemirror/view';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
@@ -80,7 +81,11 @@ function measuresOf(view: EditorView): Measures {
   return {
     origin,
     edge: right === undefined ? undefined : right - origin.left,
-    rowHeight: parseFloat(getComputedStyle(view.contentDOM).lineHeight),
+    rowHeight: lineHeightOf(
+      view.contentDOM,
+      view.defaultLineHeight,
+      devicePixelRatio,
+    ),
     ratio: devicePixelRatio,
   };
 }

@@ -21,6 +21,10 @@ export function withinHalfDevicePixel(
   return Math.abs(place - other) < 0.5 / ratio;
 }
 
+export function onDevicePixels(length: number, ratio: number): number {
+  return Math.round(length * ratio) / ratio;
+}
+
 export function devicePixelSize(ratio: number): string {
   return `${1 / ratio}px`;
 }

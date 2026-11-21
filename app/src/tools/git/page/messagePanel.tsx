@@ -1,4 +1,5 @@
 import { closeTip } from '../../../lib/page/closeTip';
+import { lineHeightOf } from '../../../lib/page/lineHeight';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clicked, shortcutOf } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
@@ -147,7 +148,11 @@ export function MessageBody({ text }: { text: string }) {
         ? hiddenLines(
             element.scrollHeight,
             element.clientHeight,
-            parseFloat(style.lineHeight),
+            lineHeightOf(
+              element,
+              0,
+              element.ownerDocument.defaultView?.devicePixelRatio ?? 1,
+            ),
           )
         : 0,
     );

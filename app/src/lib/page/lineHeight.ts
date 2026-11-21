@@ -1,10 +1,7 @@
 import { useLayoutEffect, useState, type RefObject } from 'react';
+import { onDevicePixels } from './devicePixels';
 
 const onLine = 0.01;
-
-function onDevicePixels(length: number, ratio: number): number {
-  return Math.round(length * ratio) / ratio;
-}
 
 export function inLines(height: number, line: number): number {
   return Math.max(0, Math.ceil(height / line - onLine)) * line;

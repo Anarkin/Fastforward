@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   devicePixelSize,
+  onDevicePixels,
   snapOffset,
   watchDevicePixels,
   withinHalfDevicePixel,
@@ -57,6 +58,12 @@ suite('Device pixels', () => {
         );
       }
     }
+  });
+
+  test('puts a length the style gave to six digits back on the whole device pixels the stylesheet put it on, as a row of 38 device pixels at 150% came as 25.3333 rather than 25.33333 and a column of the terminal as 7.3333', () => {
+    assert.strictEqual(onDevicePixels(25.3333, 1.5), 38 / 1.5);
+    assert.strictEqual(onDevicePixels(7.3333, 1.5), 11 / 1.5);
+    assert.strictEqual(onDevicePixels(17.6, 1.25), 22 / 1.25);
   });
 
   test('sizes a device pixel in CSS pixels', () => {

@@ -157,22 +157,42 @@ function groupsIn(pane: HTMLElement): HTMLElement[] {
   return [...pane.querySelectorAll<HTMLElement>('[data-group]')];
 }
 
+function headingHeight(pane: HTMLElement): number {
+  return (
+    pane.querySelector('.shortcuts-heading')?.getBoundingClientRect().height ??
+    0
+  );
+}
+
+function placesIn(
+  pane: HTMLElement,
+): (element: Element) => { readonly top: number; readonly bottom: number } {
+  const origin =
+    pane.getBoundingClientRect().top +
+    (parseFloat(
+      pane.ownerDocument.defaultView?.getComputedStyle(pane).borderTopWidth ??
+        '',
+    ) || 0) -
+    pane.scrollTop;
+  return (element) => {
+    const { top, bottom } = element.getBoundingClientRect();
+    return { top: top - origin, bottom: bottom - origin };
+  };
+}
+
 function paneView(
   pane: HTMLElement,
 ): PaneView & { readonly keys: readonly string[] } {
-  const heading =
-    pane.querySelector<HTMLElement>('.shortcuts-heading')?.offsetHeight ?? 0;
+  const heading = headingHeight(pane);
+  const placed = placesIn(pane);
   const groups = groupsIn(pane);
   const keys = groupsInView(
     groups.map((group) => {
       const rows = [...group.querySelectorAll<HTMLElement>('.shortcut-row')];
-      const last = rows.at(-1);
       return {
         key: group.dataset.group ?? '',
-        top: rows.at(0)?.offsetTop ?? group.offsetTop,
-        bottom: last
-          ? last.offsetTop + last.offsetHeight
-          : group.offsetTop + group.offsetHeight,
+        top: placed(rows.at(0) ?? group).top,
+        bottom: placed(rows.at(-1) ?? group).bottom,
       };
     }),
     pane.scrollTop + heading,
@@ -182,7 +202,7 @@ function paneView(
   return {
     keys,
     first: keys[0],
-    cut: first !== undefined && first.offsetTop < pane.scrollTop - 1,
+    cut: first !== undefined && placed(first).top < pane.scrollTop - 1,
     atStart: pane.scrollTop <= 0,
     atEnd: pane.scrollTop + pane.clientHeight >= pane.scrollHeight - 1,
   };
@@ -302,11 +322,8 @@ export function ShortcutsPopup() {
       }
     } else if (pageStep !== undefined && pane.current) {
       event.preventDefault();
-      const heading =
-        pane.current.querySelector<HTMLElement>('.shortcuts-heading')
-          ?.offsetHeight ?? 0;
       pane.current.scrollTop +=
-        pageStep * (pane.current.clientHeight - heading);
+        pageStep * (pane.current.clientHeight - headingHeight(pane.current));
     }
   };
   return (

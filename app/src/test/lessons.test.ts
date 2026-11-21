@@ -152,6 +152,24 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
+  test('measures where an element stands and how big it is by its box, never by offsetTop, offsetLeft, offsetWidth or offsetHeight, which round to whole CSS pixels, as the shortcuts brought a group clicked to its rounded place, 0.57 pixels short of where it stood at 175%, and their rows snapped a group up; the tabs alone measure where a tab is laid out apart from where it slides, to the whole pixel, so a tab drawn a hair aside is not taken for one moved', () => {
+    assert.deepStrictEqual(
+      ['boot', 'shell', 'lib', 'tools', 'components'].flatMap((folder) =>
+        filesWith(folder, /\.offset(?:Top|Left|Width|Height)\b/),
+      ),
+      ['shell/page/tabStrip.ts', 'shell/page/tabVisit.ts'],
+    );
+  });
+
+  test('reads a line height through lineHeightOf alone, which puts it back on the whole device pixels the stylesheet puts every row on, as the style gives it to six digits, 25.3333 rather than 25.33333 at 150%, and each row the diff and the editor placed by it drifted; the text boxes alone measure theirs, the line height of their font, which stands on no device pixel', () => {
+    assert.deepStrictEqual(
+      ['boot', 'shell', 'lib', 'tools', 'components'].flatMap((folder) =>
+        filesWith(folder, /parseFloat\([^;]*\.lineHeight\b/),
+      ),
+      ['shell/page/textCursor.ts', 'lib/page/lineHeight.ts'],
+    );
+  });
+
   test('starts the app of an end-to-end test at a scale by the scale of launchApp alone, which a test asking for one passes rather than FASTFORWARD_TEST_SCALE, as each file named the switch of Chromium itself after the one the variable gave and only the order of the two picked the scale', () => {
     assert.deepStrictEqual(filesWith('test/e2e', /force-device-scale-factor/), [
       'test/e2e/appLaunch.ts',

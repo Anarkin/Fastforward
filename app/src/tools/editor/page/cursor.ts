@@ -1,3 +1,4 @@
+import { lineHeightOf } from '../../../lib/page/lineHeight';
 import {
   findClusterBreak,
   type Extension,
@@ -75,7 +76,11 @@ function cellAt(view: EditorView, range: SelectionRange): CursorCell | null {
   if (at === null) {
     return null;
   }
-  const rowHeight = parseFloat(getComputedStyle(view.contentDOM).lineHeight);
+  const rowHeight = lineHeightOf(
+    view.contentDOM,
+    view.defaultLineHeight,
+    devicePixelRatio,
+  );
   const middle = (at.top + at.bottom) / 2;
   const advance = view.defaultCharacterWidth;
   const under = characterAt(view, head, middle, rowHeight);

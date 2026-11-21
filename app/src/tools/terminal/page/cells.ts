@@ -1,3 +1,5 @@
+import { onDevicePixels } from '../../../lib/page/devicePixels';
+import { lineHeightOf } from '../../../lib/page/lineHeight';
 export interface TerminalFont {
   readonly fontFamily: string;
   readonly fontSize: number;
@@ -54,8 +56,11 @@ export function cellsOf(
   probe.style.lineHeight = fontVariables.rowHeight;
   probe.style.width = fontVariables.advance;
   const probed = getComputedStyle(probe);
-  const rowHeight = Number.parseFloat(probed.lineHeight);
-  const advance = Number.parseFloat(probed.width);
+  const rowHeight = lineHeightOf(probe, Number.NaN, devicePixelRatio);
+  const advance = onDevicePixels(
+    Number.parseFloat(probed.width),
+    devicePixelRatio,
+  );
   const context = new OffscreenCanvas(1, 1).getContext('2d');
   if (context === null || !Number.isFinite(rowHeight)) {
     return {

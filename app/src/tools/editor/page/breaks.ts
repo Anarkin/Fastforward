@@ -1,3 +1,4 @@
+import { lineHeightOf } from '../../../lib/page/lineHeight';
 import type { EditorState, Extension, Line } from '@codemirror/state';
 import { layer, type EditorView, type LayerMarker } from '@codemirror/view';
 import { keptWrapStarts } from '../../../lib/page/wrapStarts';
@@ -196,7 +197,11 @@ function breakMarkers(
     origin,
     left: textLeft(view) - origin.left,
     top: view.documentTop - origin.top,
-    rowHeight: parseFloat(getComputedStyle(view.contentDOM).lineHeight),
+    rowHeight: lineHeightOf(
+      view.contentDOM,
+      view.defaultLineHeight,
+      devicePixelRatio,
+    ),
     blanksShown,
   };
   const marks: LayerMarker[] = [];
