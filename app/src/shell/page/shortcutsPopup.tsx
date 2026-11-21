@@ -238,10 +238,15 @@ export function ShortcutsPopup() {
   };
   const scrollPane = (key: string) => {
     const element = pane.current;
+    const group =
+      element && groupsIn(element).find((each) => each.dataset.group === key);
     if (element) {
-      element.scrollTop =
-        groupsIn(element).find((group) => group.dataset.group === key)
-          ?.offsetTop ?? 0;
+      element.scrollTop = group
+        ? element.scrollTop +
+          group.getBoundingClientRect().top -
+          element.getBoundingClientRect().top -
+          element.clientTop
+        : 0;
     }
   };
   useLayoutEffect(() => {
