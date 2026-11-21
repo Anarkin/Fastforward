@@ -55,10 +55,11 @@ export class AppWindows {
     { readonly id: string; readonly entry: OpenedWindow } | undefined;
   private readonly spareId: () => string;
   private readonly windowDrag: WindowDrag;
+  private readonly pixelsReady: Promise<void>;
   readonly everyWindow;
 
   constructor(private readonly deps: AppWindowsDeps) {
-    prepareWindowPixels(process.platform);
+    this.pixelsReady = prepareWindowPixels(process.platform);
     this.spareId = spareWindowIds(deps.storage.layout);
     this.windowDrag = new WindowDrag({
       frontToBack: () => this.frontToBack,
@@ -136,7 +137,8 @@ export class AppWindows {
     });
   }
 
-  openLaidOut(): Promise<void> {
+  async openLaidOut(): Promise<void> {
+    await this.pixelsReady;
     const { storage, state } = this.deps;
     const [firstWindow] = storage.layout.map((window, index) =>
       this.open(
@@ -146,7 +148,7 @@ export class AppWindows {
     );
     const loading = firstWindow?.loading ?? Promise.resolve();
     void loading.then(() => this.keepSpare());
-    return loading;
+    await loading;
   }
 
   sendToEvery(channel: string, message: unknown): void {

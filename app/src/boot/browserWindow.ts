@@ -62,12 +62,12 @@ export function createWindow(
     },
   });
   const { maximized } = saved;
+  const asked = bounds ?? size;
+  windowPixels().sizeTo(window, {
+    width: Math.max(asked.width, least.width),
+    height: Math.max(asked.height, least.height),
+  });
   window.once('ready-to-show', () => {
-    const asked = bounds ?? size;
-    windowPixels().sizeTo(window, {
-      width: Math.max(asked.width, least.width),
-      height: Math.max(asked.height, least.height),
-    });
     if (shown) {
       if (maximized) {
         window.maximize();

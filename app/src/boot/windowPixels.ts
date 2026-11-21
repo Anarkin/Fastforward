@@ -55,15 +55,15 @@ const byElectron: WindowPixels = {
 
 let current = byElectron;
 
-export function prepareWindowPixels(platform: NodeJS.Platform): void {
-  if (platform === 'win32') {
-    void import('./windowsPixels.js').then(
-      ({ windowsPixels }) => {
-        current = windowsPixels(byElectron);
-      },
-      () => undefined,
-    );
-  }
+export function prepareWindowPixels(platform: NodeJS.Platform): Promise<void> {
+  return platform === 'win32'
+    ? import('./windowsPixels.js').then(
+        ({ windowsPixels }) => {
+          current = windowsPixels(byElectron);
+        },
+        () => undefined,
+      )
+    : Promise.resolve();
 }
 
 export function windowPixels(): WindowPixels {
