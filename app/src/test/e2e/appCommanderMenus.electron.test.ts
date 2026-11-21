@@ -184,13 +184,32 @@ suite('App commander', () => {
         JSON.stringify(placed),
       );
 
+      let last: unknown;
       const thumbAt = async () => {
         const { start, end, thumb } = await barParts(page, box, 'vertical');
         assert.ok(thumb, 'the scrollbar of the language menu has no thumb');
-        return {
+        const at = {
           fromStart: thumb.top - start.top - start.height,
           fromEnd: end.top - thumb.top - thumb.height,
         };
+        last = {
+          ...at,
+          thumb,
+          end,
+          scroll: await menu.evaluate((element) => ({
+            top: element.scrollTop,
+            height: element.scrollHeight,
+            client: element.clientHeight,
+            box: element.getBoundingClientRect().height,
+            ratio: devicePixelRatio,
+          })),
+        };
+        return at;
+      };
+      const measured = (error: unknown): never => {
+        throw new Error(`${String(error)}: ${JSON.stringify(last)}`, {
+          cause: error,
+        });
       };
       const top = await thumbAt();
       assert.ok(Math.abs(top.fromStart) < subpixel, JSON.stringify(top));
@@ -199,12 +218,12 @@ suite('App commander', () => {
       await waitFor(
         async () => Math.abs((await thumbAt()).fromEnd) < subpixel,
         'the thumb at the end of its track',
-      );
+      ).catch(measured);
       await page.keyboard.press('Home');
       await waitFor(
         async () => Math.abs((await thumbAt()).fromStart) < subpixel,
         'the thumb back at the start of its track',
-      );
+      ).catch(measured);
     } finally {
       await closeLanguageMenu('menu.ts');
     }
