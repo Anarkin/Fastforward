@@ -106,7 +106,7 @@ body {
     var(--font-size) * var(--line-height),
     var(--device-pixel, 1px)
   );
-  --tabs-top: 5px;
+  --tabs-top: round(5px, var(--device-pixel, 1px));
   --tabs-gap: 8px;
   --gutter-width: 4px;
   --app-icon-size: 20px;

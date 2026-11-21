@@ -91,6 +91,14 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await page.locator('.commit', { hasText: 'second' }).click();
   await page.locator('.diff-line.added').first().waitFor();
   await look('git');
+  seen['tab row'] = await page.evaluate(() => {
+    const end =
+      (document.querySelector('.tabs')?.getBoundingClientRect().bottom ?? 0) *
+      devicePixelRatio;
+    return Math.abs(end - Math.round(end)) < 1 / 64
+      ? []
+      : [`ends ${end} device pixels down`];
+  });
   await page.locator('.tabs [role="tab"]').nth(1).click();
   const right = page.locator('.commander-pane').nth(1);
   await right.locator('.commander-row', { hasText: 'changed' }).click();
@@ -124,7 +132,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
 
 suite('Thin lines on whole device pixels', () => {
   for (const scale of [1, 1.25, 1.5, 1.75]) {
-    test(`draws every thin line of the git, commander, viewer and editor tabs, a menu and the shortcuts a whole number of device pixels thick at ${scale * 100}%, as a line between pixels comes out one device pixel thick in one place and two in another, as the dividers of the tabs did at 125% and 175%`, async () => {
+    test(`draws every thin line of the git, commander, viewer and editor tabs, a menu and the shortcuts a whole number of device pixels thick at ${scale * 100}%, and ends the row of tabs on a whole device pixel, as a line between pixels comes out one device pixel thick in one place and two in another, as the dividers of the tabs did at 125% and 175%, and the row of tabs ended on half of one at 150%, so every tool under it stood between pixels and the search of the commits could not scroll to the start of a row at its end`, async () => {
       const folder = tempFolder('device-pixels');
       const profile = path.join(folder, 'profile');
       const app = await (async () => {
