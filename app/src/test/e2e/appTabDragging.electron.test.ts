@@ -23,6 +23,22 @@ async function selectedIn(page: Page): Promise<string> {
   return selected.join();
 }
 
+function devicePixelSize(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      new Promise<string>((resolve) => {
+        const watch = new ResizeObserver(([entry]) => {
+          watch.disconnect();
+          const [size] = entry?.devicePixelContentBoxSize ?? [];
+          resolve(`${size?.inlineSize}x${size?.blockSize}`);
+        });
+        watch.observe(document.documentElement, {
+          box: 'device-pixel-content-box',
+        });
+      }),
+  );
+}
+
 function recordPointer(): void {
   const pointer: string[] = [];
   Object.assign(window, { pointer });
@@ -278,9 +294,10 @@ suite('App with tabs dragged between windows', () => {
     }
   });
 
-  test('tears a tab off into a window of its own when it is dropped over no row of tabs', async () => {
+  test('tears a tab off into a window of its own when it is dropped over no row of tabs, as big as the window it left to the device pixel, as its size taken in pixels of the page made it a pixel larger on a screen scaled by a fraction', async () => {
     await sparesReady();
     const source = await byTabs(2);
+    const before = await visiblePages(launched());
     const at = await grabTab(source, 1);
     await source.mouse.move(at.x + 200, at.y + 300, { steps: 10 });
     await source.mouse.up();
@@ -289,6 +306,12 @@ suite('App with tabs dragged between windows', () => {
     assert.deepStrictEqual(
       counts.toSorted((a, b) => a - b),
       [1, 1, 2],
+    );
+    const torn = pages.find((page) => !before.includes(page));
+    assert.ok(torn, 'no window of the tab torn off');
+    assert.strictEqual(
+      await devicePixelSize(torn),
+      await devicePixelSize(source),
     );
   });
 

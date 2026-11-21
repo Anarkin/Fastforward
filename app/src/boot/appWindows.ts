@@ -13,6 +13,7 @@ import { cascaded } from './windowPlacement';
 import { showAgain } from './showAgain';
 import { tellMaximized } from './maximized';
 import { WindowDrag } from './windowDrag';
+import { prepareWindowPixels, windowPixels } from './windowPixels';
 import { createWindow } from './browserWindow';
 import {
   boundsKey,
@@ -57,6 +58,7 @@ export class AppWindows {
   readonly everyWindow;
 
   constructor(private readonly deps: AppWindowsDeps) {
+    prepareWindowPixels(process.platform);
     this.spareId = spareWindowIds(deps.storage.layout);
     this.windowDrag = new WindowDrag({
       frontToBack: () => this.frontToBack,
@@ -341,8 +343,7 @@ export class AppWindows {
     this.spare = undefined;
     this.opened.set(taken.id, taken.entry);
     this.frontToBack = [taken.id, ...this.frontToBack];
-    const size = source.getNormalBounds();
-    taken.entry.window.setSize(size.width, size.height);
+    windowPixels().sizeLike(taken.entry.window, source);
     return taken.id;
   }
 }

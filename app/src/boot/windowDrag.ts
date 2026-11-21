@@ -8,15 +8,9 @@ import {
   type DragHost,
   type DragWindow,
 } from './tabDrag';
-import type { MoveContent } from './windowsMove';
+import { windowPixels } from './windowPixels';
 
 const revealDelay = 1000;
-
-const byPosition: MoveContent = (window, x, y) => {
-  const bounds = window.getBounds();
-  const content = window.getContentBounds();
-  window.setPosition(x - (content.x - bounds.x), y - (content.y - bounds.y));
-};
 
 export interface WindowDragHost {
   frontToBack(): readonly string[];
@@ -32,14 +26,8 @@ export class WindowDrag {
   private readonly strips = new Map<string, Strip>();
   private drag: TabDrag | undefined;
   private readonly dragHost: DragHost;
-  private moveContent = byPosition;
 
   constructor(private readonly host: WindowDragHost) {
-    if (process.platform === 'win32') {
-      void import('./windowsMove.js').then(({ windowsMove }) => {
-        this.moveContent = windowsMove();
-      });
-    }
     this.dragHost = {
       windows: () =>
         host.frontToBack().flatMap((id) => this.dragWindowOf(id) ?? []),
@@ -141,7 +129,7 @@ export class WindowDrag {
           !window.isMaximized() &&
           !window.isFullScreen()
         ) {
-          this.moveContent(window, x, y);
+          windowPixels().moveContent(window, x, y);
         }
       },
       veil: () => {

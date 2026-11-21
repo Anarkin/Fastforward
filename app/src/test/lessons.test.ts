@@ -85,6 +85,18 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
+  test('moves and sizes a window in windowPixels alone, which keeps its size to the device pixel on Windows, as Electron rounded the size up at each move or resize on a screen scaled by a fraction, growing a window dragged by its only tab at every step and making a tab torn off a pixel larger than the window it left', () => {
+    assert.deepStrictEqual(
+      ['boot', 'shell', 'lib', 'tools', 'components'].flatMap((folder) =>
+        filesWith(
+          folder,
+          /\.(?:setPosition|setSize|setBounds|setContentBounds|setContentSize)\(/,
+        ),
+      ),
+      ['boot/windowPixels.ts', 'boot/windowsPixels.ts'],
+    );
+  });
+
   test('starts the app of an end-to-end test in launchApp alone, which keeps the pointer of the machine out of its windows, as a move of the real pointer took the pointer capture and dropped the tab a test dragged', () => {
     assert.deepStrictEqual(filesWith('test/e2e', /\b_electron\b/), [
       'test/e2e/appLaunch.ts',
