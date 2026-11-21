@@ -5,6 +5,7 @@ import {
   holdingAfterKey,
   holdingAfterPointer,
   liftOf,
+  nextLift,
 } from '../../../../../tools/git/page/messageHolding';
 import { keyPress, noModifiers } from '../../../../helpers/keys';
 
@@ -75,6 +76,23 @@ suite('Message peek', () => {
     assert.strictEqual(liftOf({ top: 300, bottom: 500 }, room), 100);
     assert.strictEqual(liftOf({ top: 100, bottom: 700 }, room), 50);
     assert.strictEqual(liftOf({ top: 40, bottom: 300 }, room), 0);
+  });
+
+  test('keeps a panel lifted where it is once it measures less than half a device pixel past the bottom of the list, as at 125% a box placed a fraction of a pixel up measures a hair off without moving, and lifting it by that again and again would crash the page', () => {
+    const room = { top: 50, bottom: 400 };
+    assert.strictEqual(
+      nextLift(100, { top: 300.00006, bottom: 400.00006 }, room, 1.25),
+      undefined,
+    );
+    assert.strictEqual(nextLift(0, { top: 300, bottom: 500 }, room, 1.25), 100);
+    assert.strictEqual(
+      nextLift(100, { top: 300.6, bottom: 400.6 }, room, 1.25),
+      400.6 + 100 - 400,
+    );
+    assert.strictEqual(
+      nextLift(0, { top: 100, bottom: 300 }, room, 1.25),
+      undefined,
+    );
   });
 
   test('counts the lines cut off the rest of a message, a line cut through the middle among them, allowing a pixel of rounding', () => {

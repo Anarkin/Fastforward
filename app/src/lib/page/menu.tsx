@@ -4,7 +4,6 @@ import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { keymap } from './keymap';
 import { letterTyped, pressedAlone } from '../shared/keymap';
 import {
-  menuGap,
   menuRows,
   menuScrolls,
   onMenuKeyDown,
@@ -22,6 +21,7 @@ import { noSearch } from '../shared/searchOptions';
 import { SearchBar } from './searchBar';
 import type { ScrollSettings } from './scrollSettings';
 import { useWholeRows } from './wholeRows';
+import { menuFit, type MenuFit } from './menuFit';
 
 function thenChosen(
   items: readonly ContextMenuItem[],
@@ -145,23 +145,24 @@ function Dropdown({
   onClose: () => void;
 }) {
   const menu = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState<{
-    readonly tallest: number | undefined;
-    readonly moved: number;
-  }>();
+  const [fit, setFit] = useState<MenuFit>();
   const scrolled = menuScrolls(items);
   useLayoutEffect(() => {
     const element = menu.current;
     if (element) {
-      const box = element.getBoundingClientRect();
-      const below = window.innerHeight - box.top - menuGap;
-      const tallest =
-        scrolled && element.scrollHeight > below ? below : undefined;
-      const was = fit?.moved ?? 0;
-      const past = box.right + was - (window.innerWidth - menuGap);
-      const moved = Math.max(0, Math.min(past, box.left + was - menuGap));
-      if (fit?.tallest !== tallest || was !== moved) {
-        setFit({ tallest, moved });
+      const next = menuFit(
+        fit,
+        element.getBoundingClientRect(),
+        element.scrollHeight,
+        scrolled,
+        {
+          width: window.innerWidth,
+          height: window.innerHeight,
+          ratio: window.devicePixelRatio,
+        },
+      );
+      if (next !== undefined) {
+        setFit(next);
       }
     }
   }, [scrolled, fit]);

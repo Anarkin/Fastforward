@@ -17,7 +17,7 @@ function isElement(target: EventTarget | null): target is Element {
 }
 import { CloseIcon, PinIcon } from '../../../lib/page/icons';
 import { KeyCombo } from '../../../lib/page/keyCombo';
-import { type PeekAnchor, liftOf, hiddenLines } from './messageHolding';
+import { type PeekAnchor, nextLift, hiddenLines } from './messageHolding';
 
 export function MessagePanel({
   anchor,
@@ -80,12 +80,10 @@ export function MessagePanel({
   useLayoutEffect(() => {
     const box = panel.current?.getBoundingClientRect();
     if (box) {
-      setLifted(
-        liftOf(
-          { top: box.top + lifted, bottom: box.bottom + lifted },
-          anchor.room,
-        ),
-      );
+      const lift = nextLift(lifted, box, anchor.room, window.devicePixelRatio);
+      if (lift !== undefined) {
+        setLifted(lift);
+      }
     }
   }, [anchor, lifted]);
   return (

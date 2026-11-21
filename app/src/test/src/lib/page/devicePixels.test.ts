@@ -4,6 +4,7 @@ import {
   devicePixelSize,
   snapOffset,
   watchDevicePixels,
+  withinDevicePixel,
   type DisplayWindow,
 } from '../../../../lib/page/devicePixels';
 
@@ -35,6 +36,29 @@ function fakeDisplay(ratio: number) {
 }
 
 suite('Device pixels', () => {
+  test('takes two places less than half a device pixel apart for one, as the browser lays out in 64ths of a device pixel, so a place measured again after moving to it comes back a fraction off and storing it again never settled', () => {
+    for (const ratio of ratios) {
+      for (const place of [0, 12.8, 683.99]) {
+        assert.strictEqual(
+          withinDevicePixel(place, place + 1 / 64 / ratio, ratio),
+          true,
+        );
+        assert.strictEqual(
+          withinDevicePixel(place, place - 0.49 / ratio, ratio),
+          true,
+        );
+        assert.strictEqual(
+          withinDevicePixel(place, place + 1 / ratio, ratio),
+          false,
+        );
+        assert.strictEqual(
+          withinDevicePixel(place, place - 2 / ratio, ratio),
+          false,
+        );
+      }
+    }
+  });
+
   test('sizes a device pixel in CSS pixels', () => {
     assert.deepStrictEqual(
       ratios.map((ratio) => devicePixelSize(ratio)),

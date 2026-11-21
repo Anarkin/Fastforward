@@ -54,6 +54,45 @@ const timesIn = (folder: string, pattern: RegExp) =>
 
 const fixedSleeps = 23;
 
+const geometry =
+  /getBoundingClientRect|offset(?:Width|Height|Top|Left)|client(?:Width|Height)|scroll(?:Width|Height|Top|Left)/;
+
+const tolerant = /\b(?:withinDevicePixel|menuFit|nextLift)\(/;
+
+function measuresIntoItsOwnState(text: string): number[] {
+  const lines: number[] = [];
+  let at = text.indexOf('useLayoutEffect(');
+  while (at !== -1) {
+    const open = text.indexOf('{', at);
+    let depth = 0;
+    let end = open;
+    for (; end < text.length; end++) {
+      if (text[end] === '{') {
+        depth++;
+      } else if (text[end] === '}' && --depth === 0) {
+        break;
+      }
+    }
+    const body = text.slice(open, end);
+    const deps = (/^\}\s*,\s*\[([^\]]*)\]/.exec(text.slice(end))?.[1] ?? '')
+      .split(',')
+      .map((name) => name.trim());
+    const stores = Array.from(
+      body.matchAll(/\bset([A-Z]\w*)\(/g),
+      ([, name = '']) => `${name.charAt(0).toLowerCase()}${name.slice(1)}`,
+    );
+    if (
+      geometry.test(body) &&
+      stores.some((name) => deps.includes(name)) &&
+      !tolerant.test(body)
+    ) {
+      lines.push(text.slice(0, at).split('\n').length);
+    }
+    at = text.indexOf('useLayoutEffect(', end);
+  }
+  return lines;
+}
+
 function titlesAnElement(text: string): boolean {
   for (const opened of text.matchAll(/<[a-z][a-z0-9]*(?=[\s/>])/g)) {
     let depth = 0;
@@ -82,6 +121,17 @@ suite('Lessons from past mistakes', () => {
     assert.deepStrictEqual(
       filesWith('test/e2e', /waitForEvent\(\s*['"]load['"]/),
       [],
+    );
+  });
+
+  test('compares what a layout effect measures with what it stored within a device pixel, through menuFit, nextLift or withinDevicePixel, where the effect runs again once that changes, as the browser lays out in 64ths of a device pixel, so at 125% a menu moved into the window measured 0.00006 pixels past its edge at every pass and moving it by that again and again crashed the page; the slot a tab visits is a whole index, and what a diff reveals is only cleared', () => {
+    assert.deepStrictEqual(
+      ['lib', 'shell', 'tools', 'components'].flatMap((folder) =>
+        filesIn(folder).filter(
+          (file) => measuresIntoItsOwnState(textOf(file)).length > 0,
+        ),
+      ),
+      ['shell/page/tabVisit.ts', 'components/diff/page/jumps.ts'],
     );
   });
 

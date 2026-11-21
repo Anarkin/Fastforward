@@ -13,6 +13,14 @@ export interface DisplayWindow {
   };
 }
 
+export function withinDevicePixel(
+  place: number,
+  other: number,
+  ratio: number,
+): boolean {
+  return Math.abs(place - other) < 0.5 / ratio;
+}
+
 export function devicePixelSize(ratio: number): string {
   return `${1 / ratio}px`;
 }

@@ -1,3 +1,4 @@
+import { withinDevicePixel } from '../../../lib/page/devicePixels';
 import {
   hovered,
   modifierKey,
@@ -51,6 +52,19 @@ export interface PeekAnchor {
 
 export function liftOf(box: Span, room: Span): number {
   return Math.max(0, Math.min(box.bottom - room.bottom, box.top - room.top));
+}
+
+export function nextLift(
+  lifted: number,
+  box: Span,
+  room: Span,
+  ratio: number,
+): number | undefined {
+  const lift = liftOf(
+    { top: box.top + lifted, bottom: box.bottom + lifted },
+    room,
+  );
+  return withinDevicePixel(lift, lifted, ratio) ? undefined : lift;
 }
 
 export function hiddenLines(
