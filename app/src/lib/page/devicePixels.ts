@@ -13,7 +13,7 @@ export interface DisplayWindow {
   };
 }
 
-export function withinDevicePixel(
+export function withinHalfDevicePixel(
   place: number,
   other: number,
   ratio: number,

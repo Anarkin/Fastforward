@@ -57,13 +57,16 @@ const fixedSleeps = 23;
 const geometry =
   /getBoundingClientRect|offset(?:Width|Height|Top|Left)|client(?:Width|Height)|scroll(?:Width|Height|Top|Left)/;
 
-const tolerant = /\b(?:withinDevicePixel|menuFit|nextLift)\(/;
+const tolerant = /\b(?:withinHalfDevicePixel|menuFit|nextLift)\(/;
 
 function measuresIntoItsOwnState(text: string): number[] {
   const lines: number[] = [];
-  let at = text.indexOf('useLayoutEffect(');
-  while (at !== -1) {
-    const open = text.indexOf('{', at);
+  for (const effect of text.matchAll(/\buse(?:Layout)?Effect\(/g)) {
+    const arrow = text.indexOf('=>', effect.index);
+    const open = text.indexOf('{', effect.index);
+    if (text.slice(arrow + 2, open).trim() !== '') {
+      continue;
+    }
     let depth = 0;
     let end = open;
     for (; end < text.length; end++) {
@@ -74,21 +77,23 @@ function measuresIntoItsOwnState(text: string): number[] {
       }
     }
     const body = text.slice(open, end);
-    const deps = (/^\}\s*,\s*\[([^\]]*)\]/.exec(text.slice(end))?.[1] ?? '')
+    const listed = /^\}\s*,\s*\[([^\]]*)\]/.exec(text.slice(end))?.[1];
+    const deps = (listed ?? '')
       .split(',')
-      .map((name) => name.trim());
+      .map((name) => name.trim().split(/[.?]/)[0] ?? '');
     const stores = Array.from(
       body.matchAll(/\bset([A-Z]\w*)\(/g),
       ([, name = '']) => `${name.charAt(0).toLowerCase()}${name.slice(1)}`,
     );
-    if (
-      geometry.test(body) &&
-      stores.some((name) => deps.includes(name)) &&
-      !tolerant.test(body)
-    ) {
-      lines.push(text.slice(0, at).split('\n').length);
+    const again =
+      listed === undefined
+        ? stores.length > 0
+        : stores.some((name) => deps.includes(name));
+    if (geometry.test(body) && again && !tolerant.test(body)) {
+      lines.push(
+        text.slice(0, effect.index).split(String.fromCharCode(10)).length,
+      );
     }
-    at = text.indexOf('useLayoutEffect(', end);
   }
   return lines;
 }
@@ -124,7 +129,7 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
-  test('compares what a layout effect measures with what it stored within a device pixel, through menuFit, nextLift or withinDevicePixel, where the effect runs again once that changes, as the browser lays out in 64ths of a device pixel, so at 125% a menu moved into the window measured 0.00006 pixels past its edge at every pass and moving it by that again and again crashed the page; the slot a tab visits is a whole index, and what a diff reveals is only cleared', () => {
+  test('compares what an effect measures with what it stored within half a device pixel, through menuFit, nextLift or withinHalfDevicePixel, where the effect runs again once that changes or after every render, as the browser lays out in 64ths of a device pixel, so at 125% a menu moved into the window measured 0.00006 pixels past its edge at every pass and moving it by that again and again crashed the page; the slot a tab visits is a whole index, and what a diff reveals is only cleared', () => {
     assert.deepStrictEqual(
       ['lib', 'shell', 'tools', 'components'].flatMap((folder) =>
         filesIn(folder).filter(

@@ -1,4 +1,4 @@
-import { withinDevicePixel } from '../../../lib/page/devicePixels';
+import { withinHalfDevicePixel } from '../../../lib/page/devicePixels';
 import {
   hovered,
   modifierKey,
@@ -64,7 +64,7 @@ export function nextLift(
     { top: box.top + lifted, bottom: box.bottom + lifted },
     room,
   );
-  return withinDevicePixel(lift, lifted, ratio) ? undefined : lift;
+  return withinHalfDevicePixel(lift, lifted, ratio) ? undefined : lift;
 }
 
 export function hiddenLines(

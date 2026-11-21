@@ -4,7 +4,7 @@ import {
   devicePixelSize,
   snapOffset,
   watchDevicePixels,
-  withinDevicePixel,
+  withinHalfDevicePixel,
   type DisplayWindow,
 } from '../../../../lib/page/devicePixels';
 
@@ -40,19 +40,19 @@ suite('Device pixels', () => {
     for (const ratio of ratios) {
       for (const place of [0, 12.8, 683.99]) {
         assert.strictEqual(
-          withinDevicePixel(place, place + 1 / 64 / ratio, ratio),
+          withinHalfDevicePixel(place, place + 1 / 64 / ratio, ratio),
           true,
         );
         assert.strictEqual(
-          withinDevicePixel(place, place - 0.49 / ratio, ratio),
+          withinHalfDevicePixel(place, place - 0.49 / ratio, ratio),
           true,
         );
         assert.strictEqual(
-          withinDevicePixel(place, place + 1 / ratio, ratio),
+          withinHalfDevicePixel(place, place + 1 / ratio, ratio),
           false,
         );
         assert.strictEqual(
-          withinDevicePixel(place, place - 2 / ratio, ratio),
+          withinHalfDevicePixel(place, place - 2 / ratio, ratio),
           false,
         );
       }

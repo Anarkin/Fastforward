@@ -1,4 +1,4 @@
-import { withinDevicePixel } from './devicePixels';
+import { withinHalfDevicePixel } from './devicePixels';
 import { menuGap } from './menuControls';
 
 export interface MenuFit {
@@ -25,7 +25,7 @@ function sameLength(
 ): boolean {
   return length === undefined || other === undefined
     ? length === other
-    : withinDevicePixel(length, other, ratio);
+    : withinHalfDevicePixel(length, other, ratio);
 }
 
 export function menuFit(
@@ -41,7 +41,7 @@ export function menuFit(
   const past = box.right + was - (view.width - menuGap);
   const moved = Math.max(0, Math.min(past, box.left + was - menuGap));
   return sameLength(fit?.tallest, tallest, view.ratio) &&
-    withinDevicePixel(was, moved, view.ratio)
+    withinHalfDevicePixel(was, moved, view.ratio)
     ? undefined
     : { tallest, moved };
 }
