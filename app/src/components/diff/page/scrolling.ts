@@ -6,10 +6,10 @@ export function diffScrollTop(
   move: ListMove,
   scrollTop: number,
   viewport: number,
-  total: number,
+  end: number,
   line = uniformHeight,
 ): number | undefined {
-  const bottom = Math.max(0, total - viewport);
+  const bottom = Math.max(0, end);
   let target: number;
   switch (move) {
     case 'down':
@@ -63,7 +63,7 @@ export function keyedScrollTop(
   move: ListMove | undefined,
   scrolled: number,
   viewport: number,
-  total: number,
+  end: number,
   lineHeight: number,
   changeTops: () => readonly number[],
 ): number | undefined {
@@ -75,7 +75,7 @@ export function keyedScrollTop(
       changeMargin(lineHeight),
     );
   }
-  return move && diffScrollTop(move, scrolled, viewport, total, lineHeight);
+  return move && diffScrollTop(move, scrolled, viewport, end, lineHeight);
 }
 
 export function firstChangeTop(

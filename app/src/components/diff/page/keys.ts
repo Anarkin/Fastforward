@@ -43,12 +43,13 @@ export function diffKeyDown(
   }
   const step = keyPressed(diffKeymap.change, event);
   const move = listMoveOf(event);
+  const viewport = event.currentTarget.clientHeight;
   const top = keyedScrollTop(
     step,
     move,
     follower.current?.aim() ?? event.currentTarget.scrollTop,
-    event.currentTarget.clientHeight,
-    virtualizer.getTotalSize(),
+    viewport,
+    follower.current?.end() ?? virtualizer.getTotalSize() - viewport,
     lineHeight,
     () =>
       changeStarts(rows).map(

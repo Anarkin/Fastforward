@@ -13,21 +13,21 @@ import {
 
 suite('Diff keys', () => {
   test('scrolls a line with the arrows, as the terminal, the viewer and the commander do, a screen less a line with the page keys, and to either end', () => {
-    assert.strictEqual(diffScrollTop('down', 100, 400, 2000), 122);
-    assert.strictEqual(diffScrollTop('up', 40, 400, 2000), 18);
-    assert.strictEqual(diffScrollTop('up', 10, 400, 2000), 0);
-    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000), 478);
-    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000), 122);
-    assert.strictEqual(diffScrollTop('first', 500, 400, 2000), 0);
-    assert.strictEqual(diffScrollTop('last', 0, 400, 2000), 1600);
-    assert.strictEqual(diffScrollTop('last', 0, 400, 300), 0);
+    assert.strictEqual(diffScrollTop('down', 100, 400, 1600), 122);
+    assert.strictEqual(diffScrollTop('up', 40, 400, 1600), 18);
+    assert.strictEqual(diffScrollTop('up', 10, 400, 1600), 0);
+    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 1600), 478);
+    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 1600), 122);
+    assert.strictEqual(diffScrollTop('first', 500, 400, 1600), 0);
+    assert.strictEqual(diffScrollTop('last', 0, 400, 1600), 1600);
+    assert.strictEqual(diffScrollTop('last', 0, 400, -100), 0);
   });
 
   test('scrolls by lines as tall as those of the diff', () => {
-    assert.strictEqual(diffScrollTop('down', 100, 400, 2000, 17), 117);
-    assert.strictEqual(diffScrollTop('up', 100, 400, 2000, 17), 83);
-    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 2000, 17), 483);
-    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 2000, 17), 117);
+    assert.strictEqual(diffScrollTop('down', 100, 400, 1600, 17), 117);
+    assert.strictEqual(diffScrollTop('up', 100, 400, 1600, 17), 83);
+    assert.strictEqual(diffScrollTop('pageDown', 100, 400, 1600, 17), 483);
+    assert.strictEqual(diffScrollTop('pageUp', 500, 400, 1600, 17), 117);
   });
 });
 
@@ -100,19 +100,19 @@ suite('Jumping between changes', () => {
   test('jumps to the change after or before where a smooth scroll is headed, as the arrows and page keys move from there too, as J pressed while the view glided went back to a change it had passed', () => {
     const headedTo = 440;
     assert.strictEqual(
-      keyedScrollTop(1, undefined, headedTo, 400, 2000, 22, changeTops),
+      keyedScrollTop(1, undefined, headedTo, 400, 1600, 22, changeTops),
       834,
     );
     assert.strictEqual(
-      keyedScrollTop(-1, undefined, headedTo, 400, 2000, 22, changeTops),
+      keyedScrollTop(-1, undefined, headedTo, 400, 1600, 22, changeTops),
       434,
     );
     assert.strictEqual(
-      keyedScrollTop(undefined, 'down', headedTo, 400, 2000, 22, changeTops),
+      keyedScrollTop(undefined, 'down', headedTo, 400, 1600, 22, changeTops),
       462,
     );
     assert.strictEqual(
-      keyedScrollTop(undefined, undefined, headedTo, 400, 2000, 22, changeTops),
+      keyedScrollTop(undefined, undefined, headedTo, 400, 1600, 22, changeTops),
       undefined,
     );
   });
