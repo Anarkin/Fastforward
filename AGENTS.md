@@ -51,5 +51,5 @@
 - Start no installed program a test doesn't need, as `gh`, whose first start took 9 seconds in CI
 - Rely on no window width, frame rate or speed of the machine
 - Reproduce a flaky test before fixing it: a first guess at its cause was wrong twice
-- Compare positions and sizes within a fraction of a pixel, never exactly: CI runs at 100%, but other screens scale by fractions
+- Compare positions and sizes within a fraction of a pixel, never exactly: CI runs Windows at 125% and the rest at 100%, nightly at 150% and 175%, while other screens scale by other fractions
 - Run a test that measures the page under a condition CI lacks, as another screen scale, before trusting it
