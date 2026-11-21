@@ -6,6 +6,7 @@ import { suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { barOf, barParts, paintedAt } from './scrollbarsShown';
 import { waitFor } from '../helpers/fixtures';
+import { waitForFocus } from './waits';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 
@@ -204,6 +205,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await look('editor');
   await page.keyboard.press('Escape');
   await page.locator('.editor').waitFor({ state: 'detached' });
+  await waitForFocus(page.locator('.viewer-body'), 'the viewer');
   await page.keyboard.press('Escape');
   await page.locator('.viewer').waitFor({ state: 'detached' });
   await page.locator('.tab.closing').first().waitFor({ state: 'detached' });
