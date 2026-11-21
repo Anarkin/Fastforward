@@ -130,7 +130,7 @@ for (const scale of [1, 1.25, 1.5]) {
         JSON.stringify({ scrolling: { smooth: false }, ...narrow }),
       );
       app = await launchApp(profile, {
-        before: [`--force-device-scale-factor=${scale}`],
+        scale,
       });
       page = await app.firstWindow();
       await rowOf('plain').waitFor();

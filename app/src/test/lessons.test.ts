@@ -147,6 +147,12 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
+  test('starts the app of an end-to-end test at a scale by the scale of launchApp alone, which a test asking for one passes rather than FASTFORWARD_TEST_SCALE, as each file named the switch of Chromium itself after the one the variable gave and only the order of the two picked the scale', () => {
+    assert.deepStrictEqual(filesWith('test/e2e', /force-device-scale-factor/), [
+      'test/e2e/appLaunch.ts',
+    ]);
+  });
+
   test('starts the app of an end-to-end test in launchApp alone, which keeps the pointer of the machine out of its windows, as a move of the real pointer took the pointer capture and dropped the tab a test dragged', () => {
     assert.deepStrictEqual(filesWith('test/e2e', /\b_electron\b/), [
       'test/e2e/appLaunch.ts',

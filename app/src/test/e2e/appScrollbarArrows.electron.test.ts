@@ -100,7 +100,7 @@ suite('Scrollbar arrows', () => {
         JSON.stringify({ text: { wordWrap: false } }),
       );
       const app = await launchApp(profile, {
-        before: [`--force-device-scale-factor=${scale}`],
+        scale,
       });
       try {
         const page = await app.firstWindow();

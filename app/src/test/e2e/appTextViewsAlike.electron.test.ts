@@ -375,7 +375,7 @@ suite('App text views alike', () => {
       }),
     );
     app = await launchApp(profile, {
-      before: [`--force-device-scale-factor=${scale}`],
+      scale,
     });
     page = await app.firstWindow();
   });

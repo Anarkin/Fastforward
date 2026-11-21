@@ -160,7 +160,7 @@ for (const scale of ['1', '1.25', '1.5']) {
         }),
       );
       app = await launchApp(profile, {
-        before: [`--force-device-scale-factor=${scale}`],
+        scale: Number(scale),
       });
       page = await app.firstWindow();
       await page.locator('.commander-pane').first().waitFor();

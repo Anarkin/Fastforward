@@ -106,7 +106,7 @@ suite('App git tabs shown again', () => {
       }),
     );
     app = await launchApp(profile, {
-      before: ['--force-device-scale-factor=1'],
+      scale: 1,
     });
     page = await app.firstWindow();
     await sizedWindow(app);

@@ -150,7 +150,7 @@ suite('Commit bubbles', () => {
     test(`breaks the bubbles of a commit at ${scale * 100}% onto a line of their own only where the next would no longer fit the one before, at every width the column is dragged to, narrower and wider as far as it goes, if the window leaves it room to move at all, each row as tall as its lines and no more, and keeps the height the list scrolls through the same from its start to its end, as the list guessed one line of bubbles for a commit before drawing it and grew as it drew one with many, its thumb shrinking`, async () => {
       const folder = tempFolder('commit-bubbles');
       const app = await launchApp((await crowdedProfile(folder)).profile, {
-        before: [`--force-device-scale-factor=${scale}`],
+        scale,
       });
       try {
         const page = await app.firstWindow();

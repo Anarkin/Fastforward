@@ -172,7 +172,7 @@ suite('App at a scale of 125%', () => {
       JSON.stringify(baseSettings),
     );
     app = await launchApp(profile, {
-      before: [`--force-device-scale-factor=${scale}`],
+      scale,
     });
     page = await app.firstWindow();
     await page.locator('.commit', { hasText: 'first' }).click();
