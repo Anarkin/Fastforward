@@ -9,9 +9,17 @@
 
 .scrollbar-mark {
   position: absolute;
+  top: round(var(--mark-top, 0%), var(--device-pixel, 1px));
   left: 25%;
   right: 25%;
-  min-height: 2px;
+  height: max(
+    round(var(--mark-height, 0%), var(--device-pixel, 1px)),
+    round(
+      up,
+      calc(2px - var(--device-pixel, 1px) / 64),
+      var(--device-pixel, 1px)
+    )
+  );
 }
 
 .scrollbar-mark.added {

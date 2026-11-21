@@ -10,27 +10,55 @@ import { removeFolder, tempFolder } from '../helpers/tempFolders';
 function thinLinesOffPixels(): string[] {
   const ratio = devicePixelRatio;
   const thinnest = 3;
-  const found = new Set<string>();
-  for (const element of document.querySelectorAll('body *')) {
-    const style = getComputedStyle(element);
-    const painted =
-      !/^(?:transparent|rgba\(\d+, \d+, \d+, 0\))$/.test(
-        style.backgroundColor,
-      ) || style.backgroundImage !== 'none';
-    if (style.visibility !== 'visible' || !painted) {
-      continue;
-    }
-    const { width, height } = element.getBoundingClientRect();
-    for (const [side, thick] of [
-      ['wide', width],
-      ['tall', height],
+  const off: [Element, string, string, number][] = [];
+  const check = (
+    element: Element,
+    pseudo: string,
+    wide: number,
+    tall: number,
+  ) => {
+    for (const [side, length] of [
+      ['wide', wide],
+      ['tall', tall],
     ] as const) {
-      const device = thick * ratio;
+      const device = length * ratio;
       if (
         device > 0 &&
         device < thinnest &&
         Math.abs(device - Math.round(device)) >= 1 / 64
       ) {
+        off.push([element, pseudo, side, device]);
+      }
+    }
+  };
+  for (const element of document.querySelectorAll('body *')) {
+    for (const pseudo of ['::before', '::after']) {
+      const drawn = getComputedStyle(element, pseudo);
+      if (
+        !['none', 'normal'].includes(drawn.content) &&
+        drawn.display !== 'none'
+      ) {
+        check(
+          element,
+          pseudo,
+          parseFloat(drawn.width),
+          parseFloat(drawn.height),
+        );
+      }
+    }
+    const style = getComputedStyle(element);
+    const painted =
+      !/^(?:transparent|rgba\(\d+, \d+, \d+, 0\))$/.test(
+        style.backgroundColor,
+      ) || style.backgroundImage !== 'none';
+    if (style.visibility === 'visible' && painted) {
+      const { width, height } = element.getBoundingClientRect();
+      check(element, '', width, height);
+    }
+  }
+  return [
+    ...new Set(
+      off.map(([element, pseudo, side, device]) => {
         const parts: string[] = [];
         for (
           let at: Element | null = element;
@@ -43,11 +71,10 @@ function thinLinesOffPixels(): string[] {
             ),
           );
         }
-        found.add(`${parts.join(' > ')} ${side} ${device} device pixels`);
-      }
-    }
-  }
-  return [...found];
+        return `${parts.join(' > ')}${pseudo} ${side} ${device} device pixels`;
+      }),
+    ),
+  ];
 }
 
 async function viewsOf(page: Page): Promise<Record<string, string[]>> {
@@ -71,6 +98,12 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await page.keyboard.press('F3');
   await page.locator('.viewer-rows .viewer-row').first().waitFor();
   await look('viewer');
+  await page.keyboard.press('ControlOrMeta+F');
+  await page.keyboard.type('changed');
+  await page.locator('.scrollbar-mark').first().waitFor();
+  await look('viewer found');
+  await page.keyboard.press('Escape');
+  await page.locator('.scrollbar-mark').first().waitFor({ state: 'detached' });
   await page.keyboard.press('F4');
   await page.locator('.editor .cm-content').waitFor();
   await look('editor');
@@ -97,10 +130,12 @@ suite('Thin lines on whole device pixels', () => {
       const app = await (async () => {
         const repository = await tempRepository(path.join(folder, 'repo'));
         await repository.commit('first', {
-          'changed.txt': 'line\n'.repeat(40),
+          'changed.txt': 'line\n'.repeat(2000),
         });
         await repository.commit('second', {
-          'changed.txt': 'changed\n'.repeat(20) + 'line\n'.repeat(40),
+          'changed.txt': Array.from({ length: 2000 }, (_, at) =>
+            at % 100 === 0 ? 'changed\n' : 'line\n',
+          ).join(''),
         });
         fs.mkdirSync(profile, { recursive: true });
         fs.writeFileSync(

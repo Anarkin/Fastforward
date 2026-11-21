@@ -6,8 +6,20 @@ export interface ScrollbarMark {
   readonly height: number;
 }
 
+interface MarkPlace extends React.CSSProperties {
+  readonly '--mark-top': string;
+  readonly '--mark-height': string;
+}
+
 function percent(value: number): string {
   return `${value * 100}%`;
+}
+
+function placeOf(mark: ScrollbarMark, scale: number): MarkPlace {
+  return {
+    '--mark-top': percent(mark.top * scale),
+    '--mark-height': percent(mark.height * scale),
+  };
 }
 
 export const ScrollbarMarks = memo(function ScrollbarMarks({
@@ -25,10 +37,7 @@ export const ScrollbarMarks = memo(function ScrollbarMarks({
         <div
           key={`${mark.kind}:${mark.top}`}
           className={`scrollbar-mark ${mark.kind}`}
-          style={{
-            top: percent(mark.top * scale),
-            height: percent(mark.height * scale),
-          }}
+          style={placeOf(mark, scale)}
         />
       ))}
     </div>

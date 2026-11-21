@@ -75,8 +75,8 @@ class FindTicks implements PluginValue {
         ...ticks.map(({ top, height }) => {
           const mark = document.createElement('div');
           mark.className = 'scrollbar-mark match';
-          mark.style.top = percent(top);
-          mark.style.height = percent(height);
+          mark.style.setProperty('--mark-top', percent(top));
+          mark.style.setProperty('--mark-height', percent(height));
           return mark;
         }),
       );

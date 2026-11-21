@@ -33,11 +33,11 @@ suite('Marks of a diff on its scrollbar', () => {
   test('marks a diff shorter than the view where its rows are, not stretched over the whole track', () => {
     assert.match(
       marked(800),
-      /class="scrollbar-mark added" style="top:12.5%;height:25%"/,
+      /class="scrollbar-mark added" style="--mark-top:12.5%;--mark-height:25%"/,
     );
     assert.match(
       marked(200),
-      /class="scrollbar-mark added" style="top:25%;height:50%"/,
+      /class="scrollbar-mark added" style="--mark-top:25%;--mark-height:50%"/,
     );
   });
 

@@ -46,7 +46,7 @@ suite('Commander scroll body', () => {
   test('ticks the track where the matches are in the file by their bytes, as the scrollbar of a diff is marked', () => {
     assert.match(
       scrollBody([{ start: 512, end: 544 }]),
-      /class="scrollbar-mark match" style="top:50%;height:3.125%"/,
+      /class="scrollbar-mark match" style="--mark-top:50%;--mark-height:3.125%"/,
     );
     assert.doesNotMatch(scrollBody(), /scrollbar-mark /);
   });
