@@ -46,6 +46,23 @@ suite('The parts of a scrollbar', () => {
     });
   });
 
+  test('ends the thumb at the end of its track once scrolled to within a pixel of the end the rounded size of what it scrolls gives, as a list ends between pixels at 125%, so a menu scrolled to its end stood at 5432.8 of a range rounded to 5433 and its thumb a device pixel short of the end the browser drew it at', () => {
+    const menu = { scrollSize: 5913, clientSize: 480, scrolled: 5432.8 };
+    const parts = partsOf(480, 18, menu, 1.25);
+    assert.ok(parts.thumb);
+    assert.ok(
+      Math.abs(parts.end.from - (parts.thumb.from + parts.thumb.length)) <
+        1 / 64,
+      JSON.stringify(parts),
+    );
+    const before = partsOf(480, 18, { ...menu, scrolled: 5431 }, 1.25);
+    assert.ok(before.thumb);
+    assert.ok(
+      before.end.from - (before.thumb.from + before.thumb.length) > 0,
+      JSON.stringify(before),
+    );
+  });
+
   test('gives no thumb to a scrollbar with nothing to scroll or no room for one, and halves the buttons of a bar too short for both', () => {
     assert.strictEqual(
       partsOf(286, 14, { scrollSize: 286, clientSize: 286, scrolled: 0 }).thumb,

@@ -41,7 +41,10 @@ function thumbIn(
       Math.round((room * scrolled.clientSize) / scrolled.scrollSize),
     ),
   );
-  const at = Math.max(0, Math.min(range, scrolled.scrolled));
+  const at =
+    range - scrolled.scrolled < 1
+      ? range
+      : Math.max(0, Math.min(range, scrolled.scrolled));
   const along = Math.fround(Math.fround(at * (room - length)) / range);
   const cut = along > 0 && along < 1 ? 1 : Math.trunc(along);
   return { from: track.from + cut / scale, length: length / scale };
