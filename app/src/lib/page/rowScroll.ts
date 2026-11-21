@@ -109,7 +109,7 @@ export function followRows(
       ? snappedTop(top, rowHeight(), max())
       : snapTo(top, toward, max());
   const place = (top: number) => {
-    element.scrollTop = top;
+    element.scrollTop = top >= max() && top > 0 ? top + 1 : top;
     placed = element.scrollTop;
     seen = placed;
     onPlace(placed);

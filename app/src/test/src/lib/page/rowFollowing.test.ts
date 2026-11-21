@@ -5,7 +5,7 @@ import { followRows } from '../../../../lib/page/rowScroll';
 import { holdRest } from '../../../../lib/page/scrollSettings';
 import { rowScrollerOf } from '../../../../lib/page/scrollbarLinks';
 
-function followed(smooth: boolean, settles = true) {
+function followed(smooth: boolean, settles = true, furthest = 2000) {
   const dom = new JSDOM('<!doctype html><div id="list" tabindex="0"></div>');
   const element = dom.window.document.getElementById('list');
   assert.ok(element);
@@ -16,7 +16,7 @@ function followed(smooth: boolean, settles = true) {
     scrollTop: {
       get: () => top,
       set: (value: number) => {
-        top = Math.max(0, Math.min(2000, value));
+        top = Math.max(0, Math.min(furthest, value));
       },
     },
   });
@@ -99,7 +99,33 @@ function followed(smooth: boolean, settles = true) {
   };
 }
 
+function ended(go: (list: ReturnType<typeof followed>) => void): number {
+  const list = followed(true, true, 2000 + 4 / 7);
+  try {
+    go(list);
+    list.glided();
+    return list.top();
+  } finally {
+    list.close();
+  }
+}
+
 suite('Following a list scrolled by hand', () => {
+  test('glides to as far as the browser scrolls a list on End and on the wheel, rather than to the end the sizes it rounds give, as the editor and the commit list stopped a device pixel short of their end at 175%', () => {
+    assert.strictEqual(
+      ended(({ key }) => key('End')),
+      2000 + 4 / 7,
+    );
+    assert.strictEqual(
+      ended(({ wheel }) => {
+        for (let notch = 0; notch < 20; notch++) {
+          wheel(100, 1);
+        }
+      }),
+      2000 + 4 / 7,
+    );
+  });
+
   test('moves a list with its scrollbar dragged while scrolling glides, to where it is dragged at once, between rows too, as each move of the pointer began a glide of its own and the list lagged behind the hand, and settles on a whole row by a glide once the scrollbar is let go, unless set not to, where it stays as it was let go', () => {
     const { top, scrollbar, glided, close } = followed(true);
     try {
