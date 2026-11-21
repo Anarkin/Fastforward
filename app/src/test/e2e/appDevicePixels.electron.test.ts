@@ -99,22 +99,23 @@ async function coverMisses(
     );
     const { box } = await barOf(page, list, 'vertical');
     const { thumb } = await barParts(page, box, 'vertical');
-    const y = (thumb ?? box).top + 4;
+    const y = thumb === undefined ? box.top + 4 : thumb.top + thumb.height + 6;
     const from = Math.floor(box.left * ratio) - 3;
     const columns = Array.from({ length: 7 }, (_, index) => from + index);
-    const drawn = await paintedAt(
-      app,
-      page,
-      columns.map((x) => ({ x: x / ratio, y })),
-    );
+    const [inside, ...drawn] = await paintedAt(app, page, [
+      { x: box.left + box.width / 2, y },
+      ...columns.map((x) => ({ x: x / ratio, y })),
+    ]);
     const first = columns.find(
-      (_, index) => index > 0 && drawn[index] !== drawn[index - 1],
+      (_, index) =>
+        index > 0 && drawn[index] === inside && drawn[index - 1] !== inside,
     );
     await page.mouse.move(box.left + box.width / 2, y);
     await waitFor(
       () =>
         page.evaluate(
-          () => document.querySelector('[data-scrollbar-hover]') !== null,
+          () =>
+            document.querySelector('.scrollbar-cover.vertical.shown') !== null,
         ),
       `the scrollbar of ${list} to be pointed at`,
     );
