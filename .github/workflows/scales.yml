@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scale: ['1.5', '1.75']
+        scale: ['1', '1.5', '1.75']
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
