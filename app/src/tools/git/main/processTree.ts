@@ -7,10 +7,12 @@ type StoppableTree = Pick<
   'pid' | 'exitCode' | 'signalCode' | 'kill'
 >;
 
+export const treeStopWait = 5000;
+
 type ProgramStarter = (
   file: string,
   args: readonly string[],
-  options: { readonly windowsHide: boolean },
+  options: { readonly windowsHide: boolean; readonly timeout: number },
   ended: (error: Error | null) => void,
 ) => unknown;
 
@@ -34,17 +36,26 @@ export async function stopTree(
       return;
     }
     try {
-      await new Promise((resolve) => {
-        start(
-          join(
-            process.env.SystemRoot ?? 'C:\\Windows',
-            'System32',
-            'taskkill.exe',
-          ),
-          ['/pid', String(pid), '/t', '/f'],
-          { windowsHide: true },
-          resolve,
-        );
+      await new Promise((resolve, reject) => {
+        const waited = setTimeout(resolve, treeStopWait);
+        try {
+          start(
+            join(
+              process.env.SystemRoot ?? 'C:\\Windows',
+              'System32',
+              'taskkill.exe',
+            ),
+            ['/pid', String(pid), '/t', '/f'],
+            { windowsHide: true, timeout: treeStopWait },
+            () => {
+              clearTimeout(waited);
+              resolve(undefined);
+            },
+          );
+        } catch (error) {
+          clearTimeout(waited);
+          reject(error);
+        }
       });
     } finally {
       release();

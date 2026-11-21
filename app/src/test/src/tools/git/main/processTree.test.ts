@@ -1,7 +1,10 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
-import { suite, test } from 'vitest';
-import { stopTree } from '../../../../../tools/git/main/processTree';
+import { suite, test, vi } from 'vitest';
+import {
+  stopTree,
+  treeStopWait,
+} from '../../../../../tools/git/main/processTree';
 
 const taskkill = path.join(
   process.env.SystemRoot ?? 'C:\\Windows',
@@ -67,6 +70,40 @@ suite('Stopping a process and what it started', () => {
       `started ${taskkill} /pid 4321 /t /f`,
     ]);
     assert.deepStrictEqual(events, [...whileTaskkillRuns, 'released 4321']);
+  });
+
+  test('waits for taskkill only so long, letting go of the process then and having taskkill ended, as a taskkill started on a git ending by itself as it was stopped called back only 30 seconds later, and the git, the request that stopped it and the load of a tab waiting on that request all waited with it', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const { events, held, start } = recorded();
+      let options: unknown;
+
+      const stopped = stopTree(
+        runningChild(),
+        'win32',
+        held,
+        (file, args, given, ended) => {
+          options = given;
+          start(file, args, given, ended);
+        },
+      );
+      await vi.advanceTimersByTimeAsync(treeStopWait - 1);
+      const before = [...events];
+      await vi.advanceTimersByTimeAsync(1);
+      await stopped;
+
+      assert.deepStrictEqual(before, [
+        'held 4321',
+        `started ${taskkill} /pid 4321 /t /f`,
+      ]);
+      assert.deepStrictEqual(events, [...before, 'released 4321']);
+      assert.deepStrictEqual(options, {
+        windowsHide: true,
+        timeout: treeStopWait,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test('holds the process as soon as it is asked to stop it, before anything else runs, as only until the process is seen to have ended does its id surely name it', () => {
