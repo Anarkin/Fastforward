@@ -46,6 +46,7 @@ function followed(smooth: boolean, settles = true, furthest = 2000) {
   };
   return {
     top: () => top,
+    end: () => following.end(),
     glidingTo: () => following.glidingTo(),
     revealed: async (reveal: (seen: number) => number | undefined) => {
       following.reveals();
@@ -90,6 +91,7 @@ function followed(smooth: boolean, settles = true, furthest = 2000) {
       return places;
     },
     rest: () => vi.advanceTimersByTime(holdRest),
+    scrolled: () => element.dispatchEvent(new dom.window.Event('scroll')),
     close: () => {
       following.stop();
       vi.useRealTimers();
@@ -104,6 +106,7 @@ function ended(go: (list: ReturnType<typeof followed>) => void): number {
   try {
     go(list);
     list.glided();
+    list.scrolled();
     return list.top();
   } finally {
     list.close();
@@ -111,7 +114,16 @@ function ended(go: (list: ReturnType<typeof followed>) => void): number {
 }
 
 suite('Following a list scrolled by hand', () => {
-  test('glides to as far as the browser scrolls a list on End and on the wheel, rather than to the end the sizes it rounds give, as the editor and the commit list stopped a device pixel short of their end at 175%', () => {
+  test('tells the end it scrolls a list to, the one its keys and a key of a view that moves it itself aim at, as the End of a diff aimed at the height of its rows less that of the view and stopped a row short of the end of its follower', () => {
+    const list = followed(true);
+    try {
+      assert.strictEqual(list.end(), 2000);
+    } finally {
+      list.close();
+    }
+  });
+
+  test('glides to as far as the browser scrolls a list on End and on the wheel, rather than to the end the sizes it rounds give, and leaves it there as the browser tells of the scroll, as the editor and the commit list stopped a device pixel short of their end at 175%, snapped back to the end the rounded sizes give once the glide had ended', () => {
     assert.strictEqual(
       ended(({ key }) => key('End')),
       2000 + 4 / 7,

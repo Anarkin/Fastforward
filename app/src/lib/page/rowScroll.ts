@@ -66,6 +66,7 @@ const moveSteps: Readonly<Record<ListMove, (page: number) => number>> = {
 
 export interface RowFollower extends HeldScroller {
   readonly aim: () => number;
+  readonly end: () => number;
   readonly glidingTo: () => number | undefined;
   readonly scrollTo: (top: number, glides: boolean) => void;
   readonly reveals: () => void;
@@ -108,8 +109,10 @@ export function followRows(
     snapTo === undefined
       ? snappedTop(top, rowHeight(), max())
       : snapTo(top, toward, max());
+  const toEnd = (top: number) =>
+    top > 0 && max() > 0 && top >= max() - 1 ? max() + 1 : top;
   const place = (top: number) => {
-    element.scrollTop = top >= max() && top > 0 ? top + 1 : top;
+    element.scrollTop = toEnd(top);
     placed = element.scrollTop;
     seen = placed;
     onPlace(placed);
@@ -246,7 +249,7 @@ export function followRows(
     const scrolled = element.scrollTop;
     const snapped = snap(scrolled, Math.sign(scrolled - seen));
     if (Math.abs(snapped - scrolled) > onRow) {
-      element.scrollTop = snapped;
+      element.scrollTop = toEnd(snapped);
     }
     seen = element.scrollTop;
   };
@@ -280,6 +283,7 @@ export function followRows(
   }
   return {
     aim,
+    end: max,
     glidingTo: () => glide?.to,
     scrollTo,
     reveals,
