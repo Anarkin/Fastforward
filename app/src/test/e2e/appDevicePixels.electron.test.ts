@@ -99,10 +99,30 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
       ? []
       : [`ends ${end} device pixels down`];
   });
+  await page
+    .locator('.columns > .column')
+    .first()
+    .locator('.column-actions > .search-button')
+    .click();
+  await page.locator('.locations-popup .search-box-input').waitFor();
+  await page.keyboard.type('s');
+  await look('commit search');
+  await page.keyboard.press('Escape');
+  await page.locator('.locations-popup').waitFor({ state: 'detached' });
+  await page.locator('.tabs .tab-add').hover();
+  await page.locator('.card.tip').waitFor();
+  await look('tooltip');
+  await page.mouse.move(1, 1);
+  await page.locator('.card.tip').waitFor({ state: 'detached' });
   await page.locator('.tabs [role="tab"]').nth(1).click();
   const right = page.locator('.commander-pane').nth(1);
   await right.locator('.commander-row', { hasText: 'changed' }).click();
   await look('commander');
+  await page.keyboard.press('F7');
+  await page.locator('.prompt-input').waitFor();
+  await look('dialog');
+  await page.keyboard.press('Escape');
+  await page.locator('.prompt-input').waitFor({ state: 'detached' });
   await page.keyboard.press('F3');
   await page.locator('.viewer-rows .viewer-row').first().waitFor();
   await look('viewer');
@@ -119,6 +139,10 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await page.locator('.editor').waitFor({ state: 'detached' });
   await page.keyboard.press('Escape');
   await page.locator('.viewer').waitFor({ state: 'detached' });
+  await page.locator('.tab.closing').first().waitFor({ state: 'detached' });
+  await page.locator('.tabs [role="tab"]').nth(2).click();
+  await page.locator('.compare-view .diff-line.added').first().waitFor();
+  await look('diff of two files');
   await page.locator('.tabs .tab-add').click();
   await page.locator('.menu').first().waitFor();
   await look('menu');
@@ -132,7 +156,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
 
 suite('Thin lines on whole device pixels', () => {
   for (const scale of [1, 1.25, 1.5, 1.75]) {
-    test(`draws every thin line of the git, commander, viewer and editor tabs, a menu and the shortcuts a whole number of device pixels thick at ${scale * 100}%, and ends the row of tabs on a whole device pixel, as a line between pixels comes out one device pixel thick in one place and two in another, as the dividers of the tabs did at 125% and 175%, and the row of tabs ended on half of one at 150%, so every tool under it stood between pixels and the search of the commits could not scroll to the start of a row at its end`, async () => {
+    test(`draws every thin line of the git, commander, viewer, editor and diff tabs, the search of the commits, a dialog, a tooltip, a menu and the shortcuts a whole number of device pixels thick at ${scale * 100}%, and ends the row of tabs on a whole device pixel, as a line between pixels comes out one device pixel thick in one place and two in another, as the dividers of the tabs did at 125% and 175%, and the row of tabs ended on half of one at 150%, so every tool under it stood between pixels and the search of the commits could not scroll to the start of a row at its end`, async () => {
       const folder = tempFolder('device-pixels');
       const profile = path.join(folder, 'profile');
       const app = await (async () => {
@@ -146,12 +170,27 @@ suite('Thin lines on whole device pixels', () => {
           ).join(''),
         });
         fs.mkdirSync(profile, { recursive: true });
+        fs.writeFileSync(path.join(folder, 'old.txt'), 'line\n'.repeat(300));
+        fs.writeFileSync(
+          path.join(folder, 'new.txt'),
+          Array.from({ length: 300 }, (_, at) =>
+            at % 30 === 0 ? 'changed\n' : 'line\n',
+          ).join(''),
+        );
         fs.writeFileSync(
           path.join(profile, 'state.json'),
           JSON.stringify({
             tabs: [
               { id: '1', tool: 'git', root: repository.root },
               { id: '2', tool: 'commander', root: repository.root },
+              {
+                id: '3',
+                tool: 'diff',
+                compare: {
+                  old: path.join(folder, 'old.txt'),
+                  new: path.join(folder, 'new.txt'),
+                },
+              },
             ],
             activeTab: '1',
           }),
