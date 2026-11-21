@@ -14,6 +14,8 @@ const askingAtOnce = 16;
 
 let writes = 0;
 
+const recipe = 2;
+
 export function thumbnailKey(
   file: string,
   size: number,
@@ -22,7 +24,7 @@ export function thumbnailKey(
   pixelRatio: number,
 ): string {
   return createHash('sha256')
-    .update(JSON.stringify([file, size, modified, box, pixelRatio]))
+    .update(JSON.stringify([recipe, file, size, modified, box, pixelRatio]))
     .digest('hex');
 }
 

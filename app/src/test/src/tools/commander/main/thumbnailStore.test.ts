@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test, vi } from 'vitest';
@@ -32,6 +33,15 @@ suite('Thumbnail store', () => {
     ]) {
       assert.notStrictEqual(other, key);
     }
+  });
+
+  test('names a thumbnail by the way it was made too, so one made before its shape was taken from the size its image stores, a device pixel off at 125% and 150%, is made again', () => {
+    assert.notStrictEqual(
+      thumbnailKey('C:\\a.png', 10, 1000, 144, 1.5),
+      createHash('sha256')
+        .update(JSON.stringify(['C:\\a.png', 10, 1000, 144, 1.5]))
+        .digest('hex'),
+    );
   });
 
   test('keeps a thumbnail in a file of its own in its folder, made when first needed, until asked for again, even by a store started anew', async () => {
