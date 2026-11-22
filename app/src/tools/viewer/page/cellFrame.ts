@@ -134,19 +134,30 @@ export class CellFrame {
     width: number,
     height: number,
     color: number,
-  ): void {
+  ): number {
     if ((this.rectCount + 1) * rectBytes > this.rectData.byteLength) {
       this.rectData = doubled(this.rectData);
       this.rectPlaces = new Int16Array(this.rectData);
       this.rectColors = new Uint32Array(this.rectData);
     }
-    const at = this.rectCount * rectShorts;
+    this.rectAt(this.rectCount, x, y, width, height, color);
+    return this.rectCount++;
+  }
+
+  rectAt(
+    index: number,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color: number,
+  ): void {
+    const at = index * rectShorts;
     const places = this.rectPlaces;
     places[at] = x;
     places[at + 1] = y;
     places[at + 2] = width;
     places[at + 3] = height;
-    this.rectColors[this.rectCount * rectWords + 2] = color;
-    this.rectCount++;
+    this.rectColors[index * rectWords + 2] = color;
   }
 }

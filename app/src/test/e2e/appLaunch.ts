@@ -119,7 +119,7 @@ function scaleAsked(scale: number | undefined): string[] {
     : [`--force-device-scale-factor=${asked}`];
 }
 
-export const gpuWithoutOne = [
+const gpuWithoutOne = [
   '--enable-unsafe-webgpu',
   '--ignore-gpu-blocklist',
   ...(process.platform === 'linux' ? ['--use-webgpu-adapter=swiftshader'] : []),
@@ -147,7 +147,12 @@ export async function launchApp(
 ): Promise<ElectronApplication> {
   rememberProfile(profile);
   const app = await _electron.launch({
-    args: [...scaleAsked(scale), ...before, ...appArguments(profile, ...after)],
+    args: [
+      ...gpuWithoutOne,
+      ...scaleAsked(scale),
+      ...before,
+      ...appArguments(profile, ...after),
+    ],
     cwd: appFolder,
     colorScheme,
     ...(env === undefined ? {} : { env }),

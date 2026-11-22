@@ -17,6 +17,7 @@ import {
 } from './textCells';
 import { rowSegments, type ColoredText } from './textColors';
 import {
+  breakSelected,
   selectedIn,
   type CharRange,
   type TextSelection,
@@ -51,6 +52,7 @@ interface KeptRow {
   readonly colored: ColoredText | undefined;
   readonly marks: readonly FindMark[];
   readonly selected: CharRange | undefined;
+  readonly breakSelected: boolean;
   readonly blanks: boolean;
   readonly limit: number;
   readonly generation: number;
@@ -157,8 +159,19 @@ function drawRow(
   pieces: readonly DrawnPiece[],
   column: number,
   y: number,
+  withBreak: boolean,
 ): void {
-  drawPieces(drawing, pieces, column, y);
+  const end = drawPieces(drawing, pieces, column, y);
+  if (withBreak) {
+    const { advance, rowHeight } = drawing.tiles.metrics;
+    drawing.frame.rect(
+      (end - drawing.first) * advance,
+      y,
+      advance,
+      rowHeight,
+      drawing.palette.selectedFill,
+    );
+  }
   if (!drawing.blanks) {
     for (const run of blankRuns(row.hanging)) {
       if (run.tab) {
@@ -190,7 +203,8 @@ const drawingOn = (
   dot,
 });
 
-const rowKey = (row: ScreenRow): string => `${row.row.start}:${row.from}`;
+export const rowKey = (row: ScreenRow): string =>
+  `${row.row.start}:${row.from}`;
 
 const selectedOf = (
   { selection }: RowsLook,
@@ -201,6 +215,16 @@ const selectedOf = (
     from: part?.from ?? row.from,
     to: part?.to ?? row.to,
   });
+
+const breakSelectedOf = (
+  { selection }: RowsLook,
+  row: ScreenRow,
+  part: RowPart | undefined,
+): boolean =>
+  (part?.to ?? row.to) >= row.row.text.length &&
+  (part?.to ?? row.to) > (part?.from ?? row.from) &&
+  row.row.cut !== true &&
+  breakSelected(selection, row.row);
 
 function keptOf(
   { kept, tiles }: CellPainting,
@@ -219,6 +243,7 @@ function keptOf(
     before.colored === colored &&
     sameMarks(before.marks, marks) &&
     sameRange(before.selected, selectedOf(look, row, part)) &&
+    before.breakSelected === breakSelectedOf(look, row, part) &&
     before.blanks === showWhitespace &&
     before.limit === (wrapAt ?? Infinity) &&
     before.generation === tiles.generation
@@ -243,12 +268,14 @@ function drawnRow(
   const rectsFrom = frame.rectCount;
   const missing = frame.missing;
   const selected = selectedOf(look, row, part);
+  const withBreak = breakSelectedOf(look, row, part);
   drawRow(
     drawing,
     row,
     piecesOf(look.colored, row, marks, selected, from, to),
     column,
     y,
+    withBreak,
   );
   if (frame.missing !== missing) {
     return false;
@@ -261,6 +288,7 @@ function drawnRow(
     colored: look.colored,
     marks,
     selected,
+    breakSelected: withBreak,
     blanks: look.showWhitespace,
     limit: drawing.limit,
     generation: painting.tiles.generation,

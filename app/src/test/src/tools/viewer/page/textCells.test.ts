@@ -22,7 +22,7 @@ import {
   type FakePainter,
 } from './cellFixtures';
 
-const dot = { size: 2, left: 2, top: 7 };
+const dot = { size: 2, left: 2, top: 7, hairline: 1 };
 
 const dotsGray = 0xff6d6d6d;
 
@@ -234,6 +234,40 @@ suite('Cells of a text', () => {
         ['b', 'plain', 'rgb(38 79 120)'],
         ['c', 'black', 'rgb(38 79 120)'],
         ['d', 'plain', 'rgb(17 17 17)'],
+      ],
+    );
+  });
+
+  test('dots the spaces of what is selected or found over its ground, which is laid before them, as a ground laid after its text would cover them', () => {
+    const { frame } = drawn([{ text: 'a b', selected: true }, { text: ' ' }], {
+      blanks: true,
+    });
+
+    assert.deepStrictEqual(rectsIn(frame), [
+      { x: 0, y: 0, width: 21, height: 16, color: 0xff784f26 },
+      { x: 9, y: 7, width: 2, height: 2, color: dotsGray },
+      { x: 23, y: 7, width: 2, height: 2, color: dotsGray },
+    ]);
+  });
+
+  test('frames the find the search is at with a hairline in the ink of a find, above and below within its row and before and after it, once around what several pieces hold', () => {
+    const { frame } = drawn([
+      { text: 'a' },
+      { text: 'bc', kind: 'keyword', mark: 'current' },
+      { text: 'd', mark: 'current' },
+    ]);
+
+    assert.deepStrictEqual(
+      rectsIn(frame)
+        .filter(({ color }) => color === 0xff000000)
+        .map(({ x, y, width, height }) => [x, y, width, height]),
+      [
+        [7, 0, 14, 1],
+        [7, 15, 14, 1],
+        [6, 0, 1, 16],
+        [21, 0, 7, 1],
+        [21, 15, 7, 1],
+        [28, 0, 1, 16],
       ],
     );
   });

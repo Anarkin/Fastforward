@@ -5,8 +5,10 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { tempFolder } from '../helpers/tempFolders';
-import { closeOrKill, gpuWithoutOne, launchApp } from './appLaunch';
+import { closeOrKill, launchApp } from './appLaunch';
+import { seenRows } from './cellsSeen';
 import { writeSettings } from './settingsWritten';
+import { waitFor } from '../helpers/fixtures';
 import { untilSettled, waitForFocus } from './waits';
 
 const text = [
@@ -143,10 +145,14 @@ suite('App viewer drawn as cells', () => {
     };
   };
 
-  const drawn = async (cells: boolean, wordWrap: boolean): Promise<Seen> => {
+  const drawn = async (
+    cells: boolean,
+    wordWrap: boolean,
+    highlightOccurrences = false,
+  ): Promise<Seen> => {
     await writeSettings(page, profile, {
       scrolling: { smooth: false },
-      text: { wordWrap, highlightOccurrences: false, cells },
+      text: { wordWrap, highlightOccurrences, cells },
     });
     await page
       .locator(cells ? colored.cells : colored.elements)
@@ -225,11 +231,31 @@ suite('App viewer drawn as cells', () => {
     return last;
   };
 
-  const selectedBothWays = async (select: () => Promise<void>) => {
+  const marked = (cells: boolean) =>
+    cells
+      ? waitFor(
+          async () =>
+            (await seenRows(page)).some(({ marks }) =>
+              marks.some(({ name }) => name === 'occurrence'),
+            ),
+          'the occurrences marked in the cells',
+        )
+      : page
+          .locator('.viewer-rows mark.occurrence-match')
+          .first()
+          .waitFor({ state: 'attached' });
+
+  const selectedBothWays = async (
+    select: () => Promise<void>,
+    marking = false,
+  ) => {
     const ways: { copied: string; seen: Seen }[] = [];
     for (const cells of [false, true]) {
-      await drawn(cells, false);
+      await drawn(cells, false, marking);
       await select();
+      if (marking) {
+        await marked(cells);
+      }
       ways.push({ seen: await settled(), copied: await copied() });
     }
     const [elements, cells] = ways;
@@ -259,7 +285,7 @@ suite('App viewer drawn as cells', () => {
       path.join(profile, 'settings.user.json'),
       JSON.stringify({ scrolling: { smooth: false } }),
     );
-    app = await launchApp(profile, { before: gpuWithoutOne });
+    app = await launchApp(profile);
     page = await app.firstWindow();
     await page.locator('.viewer-sideways').first().waitFor();
   });
@@ -306,12 +332,47 @@ suite('App viewer drawn as cells', () => {
     const { unlike, ...seen } = await selectedBothWays(async () => {
       const word = await at(3, 24);
       await page.mouse.dblclick(word.x, word.y);
-    });
+    }, true);
 
     assert.deepStrictEqual(
       seen,
       { elements: 'count', cells: 'count', alike: true },
       `${unlike} of the ink unlike`,
+    );
+  });
+
+  test('keeps none of the text it draws as cells in elements, so nothing of the page is drawn over the cells or left behind as they scroll, and tells what it shows when asked', async () => {
+    await drawn(true, false, true);
+    const word = await at(3, 24);
+    await page.mouse.dblclick(word.x, word.y);
+    await marked(true);
+    const held = await page
+      .locator('.cell-rows')
+      .first()
+      .evaluate((host) => ({
+        elements: [...host.children].map((child) => child.tagName),
+        text: host.textContent,
+      }));
+    const rows = await seenRows(page);
+
+    assert.deepStrictEqual(
+      {
+        held,
+        first: rows[0]?.text,
+        kinds: rows[3]?.kinds.includes('keyword'),
+        selected: rows[3]?.selected,
+        marks: rows[4]?.marks,
+      },
+      {
+        held: { elements: ['CANVAS'], text: '' },
+        first: "import { useMemo } from 'react';",
+        kinds: true,
+        selected: { from: 22, to: 27 },
+        marks: [
+          { from: 15, to: 20, name: 'occurrence' },
+          { from: 46, to: 51, name: 'occurrence' },
+        ],
+      },
     );
   });
 

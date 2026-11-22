@@ -4,9 +4,11 @@ import { cellMetricsOf, textLookOf, type CellFont } from './cellLook';
 import {
   cellPainting,
   paintRows,
+  rowKey,
   type CellPainting,
   type ShownRows,
 } from './cellPainting';
+import { seenRows } from './cellsSeen';
 import { CellSelecting } from './cellSelecting';
 import { CellSurface } from './cellSurface';
 import type { GlyphTiles } from './glyphTiles';
@@ -86,6 +88,7 @@ export function dotBoxOf(
     size,
     left: Math.round((dotLook?.start ?? 0) * ratio),
     top: Math.floor((rowHeight - size) / 2 + onPixel),
+    hairline: Math.max(1, Math.floor(ratio + onPixel)),
   };
 }
 
@@ -157,6 +160,10 @@ export class CellView {
       (slice) => this.tiles.within(slice),
       () => this.tiles.flush(),
     );
+    host.seenRows = () =>
+      this.shown === undefined
+        ? []
+        : seenRows({ ...this.shown, selection: this.selecting.selection });
     this.selecting = new CellSelecting(host, canvas, {
       shown: () => this.shown,
       held: () => this.held,
@@ -223,8 +230,7 @@ export class CellView {
 
   private budgetFor({ rows }: ShownRows): number {
     const [first] = rows;
-    const firstRow =
-      first === undefined ? undefined : `${first.row.start}:${first.from}`;
+    const firstRow = first === undefined ? undefined : rowKey(first);
     const now = performance.now();
     const changed = firstRow !== this.firstRow;
     this.budget = rasterBudget(now - this.rowsAt, changed, this.budget);
@@ -259,6 +265,7 @@ export class CellView {
   };
 
   dispose(): void {
+    this.host.seenRows = undefined;
     this.selecting.dispose();
     this.idle.clear();
     cancelAnimationFrame(this.again);

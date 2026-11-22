@@ -12,17 +12,21 @@ suite('View of cells', () => {
       size: 2,
       left: 2,
       top: 8,
+      hairline: 1,
     });
     assert.deepStrictEqual(dotBoxOf(dotLook(12, 7.2, 0.8), 1.25, 23), {
       size: 2,
       left: 3,
       top: 10,
+      hairline: 1,
     });
     assert.deepStrictEqual(dotBoxOf(undefined, 1, 18), {
       size: 1,
       left: 0,
       top: 8,
+      hairline: 1,
     });
+    assert.strictEqual(dotBoxOf(undefined, 2, 36).hairline, 2);
   });
 
   test('gives a frame little time for new glyphs while the rows keep changing, so scrolling stays smooth, and plenty once they rested, so a text opened is drawn whole at once', () => {

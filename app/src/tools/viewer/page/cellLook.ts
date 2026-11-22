@@ -61,6 +61,7 @@ export function textLookOf(host: Element): TextLook {
     current: { ink: colorOf(current), ground: groundOf(current) },
     occurrence: { ink: undefined, ground: groundOf(occurrence) },
     selected: groundOf(selected),
+    outline: over(ground, parsedColor(colorOf(current))),
   };
   row.remove();
   return look;

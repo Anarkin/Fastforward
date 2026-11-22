@@ -34,6 +34,7 @@ export interface TextLook {
   readonly current: MarkLook;
   readonly occurrence: MarkLook;
   readonly selected: Rgba;
+  readonly outline: Rgba;
 }
 
 export interface TextPalette {
@@ -42,6 +43,7 @@ export interface TextPalette {
   readonly fills: Map<Mark, number>;
   readonly dotFill: number;
   readonly selectedFill: number;
+  readonly outline: number;
 }
 
 export const paletteOf = (look: TextLook): TextPalette => ({
@@ -50,12 +52,14 @@ export const paletteOf = (look: TextLook): TextPalette => ({
   fills: new Map(),
   dotFill: packedOf(look.dots),
   selectedFill: packedOf(look.selected),
+  outline: packedOf(look.outline),
 });
 
 export interface DotBox {
   readonly size: number;
   readonly left: number;
   readonly top: number;
+  readonly hairline: number;
 }
 
 export interface TextDrawing {
@@ -291,8 +295,12 @@ export function drawPieces(
   const { tiles, frame, first } = drawing;
   const { advance, rowHeight } = tiles.metrics;
   let column = from;
-  for (const { text, kind, mark, selected } of pieces) {
+  for (const [index, { text, kind, mark, selected }] of pieces.entries()) {
     const start = column;
+    const under =
+      mark !== undefined || selected === true
+        ? frame.rect(0, y, 0, 0, 0)
+        : undefined;
     column = drawText(
       drawing,
       text,
@@ -300,8 +308,9 @@ export function drawPieces(
       column,
       y,
     );
-    if ((mark !== undefined || selected === true) && column > start) {
-      frame.rect(
+    if (under !== undefined && column > start) {
+      frame.rectAt(
+        under,
         (start - first) * advance,
         y,
         (column - start) * advance,
@@ -310,6 +319,20 @@ export function drawPieces(
           ? drawing.palette.selectedFill
           : fillOf(drawing, mark),
       );
+    }
+    if (mark === 'current' && column > start) {
+      const { hairline } = drawing.dot;
+      const { outline } = drawing.palette;
+      const left = (start - first) * advance;
+      const width = (column - start) * advance;
+      frame.rect(left, y, width, hairline, outline);
+      frame.rect(left, y + rowHeight - hairline, width, hairline, outline);
+      if (pieces[index - 1]?.mark !== 'current') {
+        frame.rect(left - hairline, y, hairline, rowHeight, outline);
+      }
+      if (pieces[index + 1]?.mark !== 'current') {
+        frame.rect(left + width, y, hairline, rowHeight, outline);
+      }
     }
   }
   return column;

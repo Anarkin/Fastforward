@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  breakSelected,
   isEmpty,
   lineAt,
   ordered,
@@ -64,6 +65,22 @@ suite('Text selected in a file viewed', () => {
       }),
       undefined,
     );
+  });
+
+  test('says the line break after a row is selected in every row the selection runs on from into the text after it, the one it starts in too, and not in the one it ends in, nor in the row before the one it ends at the start of, as the browser marked none there', () => {
+    const selection = { anchor: from(17, 1), focus: from(6, 2) };
+
+    assert.deepStrictEqual(
+      rows.map((row) => breakSelected(selection, row)),
+      [false, true, true, false],
+    );
+    assert.deepStrictEqual(
+      rows.map((row) =>
+        breakSelected({ anchor: from(0, 2), focus: from(13, 0) }, row),
+      ),
+      [true, false, false, false],
+    );
+    assert.strictEqual(breakSelected(undefined, rows[1]), false);
   });
 
   test('selects the word a double click is on, or the one character under it where there is no word, and the whole row on a triple click', () => {

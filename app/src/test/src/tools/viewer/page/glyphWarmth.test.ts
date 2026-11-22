@@ -24,7 +24,7 @@ import {
 } from '../../../../../tools/viewer/page/textColors';
 import { fakePainter, look, tilesWith, widths } from './cellFixtures';
 
-const dot = { size: 2, left: 2, top: 7 };
+const dot = { size: 2, left: 2, top: 7, hairline: 1 };
 
 function warming(size = 4096, now: () => number = () => 0) {
   const painter = fakePainter();

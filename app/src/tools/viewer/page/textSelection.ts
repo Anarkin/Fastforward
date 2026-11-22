@@ -54,6 +54,20 @@ export function selectedIn(
   return to > from ? { from, to } : undefined;
 }
 
+export function breakSelected(
+  selection: TextSelection | undefined,
+  row: Pick<TextRow, 'start' | 'end'>,
+): boolean {
+  if (selection === undefined) {
+    return false;
+  }
+  const { first, last } = ordered(selection);
+  return (
+    row.start >= first.start &&
+    (last.start > row.end || (last.start === row.end && last.char > 0))
+  );
+}
+
 export function wordAt(
   row: Pick<TextRow, 'start' | 'text'>,
   char: number,

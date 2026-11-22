@@ -24,6 +24,19 @@ suite('Cells of a frame', () => {
     ]);
   });
 
+  test('lays a rectangle again where it was put, so one put before what it lies under takes its size once that is drawn, and stays under what was put after it', () => {
+    const frame = new CellFrame();
+    const under = frame.rect(0, 0, 0, 0, 0);
+    frame.rect(9, 7, 2, 2, 0xff6d6d6d);
+
+    frame.rectAt(under, 0, 0, 21, 16, 0xff784f26);
+
+    assert.deepStrictEqual(rectsIn(frame), [
+      { x: 0, y: 0, width: 21, height: 16, color: 0xff784f26 },
+      { x: 9, y: 7, width: 2, height: 2, color: 0xff6d6d6d },
+    ]);
+  });
+
   test('takes more tiles and rectangles than it first has room for, losing none', () => {
     const frame = new CellFrame();
     for (let at = 0; at < 20_000; at++) {

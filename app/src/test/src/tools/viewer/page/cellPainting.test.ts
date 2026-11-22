@@ -25,7 +25,7 @@ import {
   type FakePainter,
 } from './cellFixtures';
 
-const dot = { size: 2, left: 2, top: 7 };
+const dot = { size: 2, left: 2, top: 7, hairline: 1 };
 
 function rowOf(text: string, start: number, more: Partial<ScreenRow> = {}) {
   const row: ScreenRow = {
@@ -177,6 +177,7 @@ suite('Rows painted as cells', () => {
       rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
       [
         [14, 0, 14],
+        [28, 0, 7],
         [0, 16, 7],
       ],
     );
@@ -195,7 +196,53 @@ suite('Rows painted as cells', () => {
       rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
       [
         [14, 0, 14],
+        [28, 0, 7],
         [0, 16, 21],
+      ],
+    );
+  });
+
+  test('draws a cell of the selection after the end of each line the selection runs on from into the text after it, as the browser marked its line break selected, and none after an empty line, a row its line goes on from or the line the selection ends in, working a row out anew once its line break is selected no longer', () => {
+    const { frame, cells } = painting();
+    const long = rowOf('abcd', 0);
+    const rows = [
+      { ...long, to: 2 },
+      { ...long, from: 2, index: 1 },
+      rowOf('', 5),
+      rowOf('ef', 6),
+    ];
+    const selection = {
+      anchor: { start: 0, char: 1 },
+      focus: { start: 6, char: 1 },
+    };
+
+    paintRows(cells, shown(rows, { selection }), Infinity);
+
+    assert.deepStrictEqual(
+      rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
+      [
+        [7, 0, 7],
+        [0, 16, 14],
+        [14, 16, 7],
+        [0, 48, 7],
+      ],
+    );
+
+    const placedBefore = frame.placed;
+    paintRows(
+      cells,
+      shown(rows, {
+        selection: { ...selection, focus: { start: 5, char: 0 } },
+      }),
+      Infinity,
+    );
+
+    assert.strictEqual(frame.placed - placedBefore, 4);
+    assert.deepStrictEqual(
+      rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
+      [
+        [7, 0, 7],
+        [0, 16, 14],
       ],
     );
   });
