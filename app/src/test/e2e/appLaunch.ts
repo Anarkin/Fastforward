@@ -123,6 +123,7 @@ const gpuWithoutOne = [
   '--enable-unsafe-webgpu',
   '--ignore-gpu-blocklist',
   ...(process.platform === 'linux' ? ['--use-webgpu-adapter=swiftshader'] : []),
+  ...(process.platform === 'win32' ? ['--disable-gpu-rasterization'] : []),
 ];
 
 export function appArguments(profile: string, ...after: string[]): string[] {
