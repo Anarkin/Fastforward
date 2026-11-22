@@ -1,16 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
-  areaColumns,
-  hiddenChanges,
-  revealChange,
   revealFound,
   revealScroll,
   dottedColumns,
   sidewaysRoom,
   sideArea,
   textColumn,
-  visibleColumns,
   widestColumns,
 } from '../../../../../components/diff/page/overflow';
 import type { TextWidths } from '../../../../../lib/page/textWidths';
@@ -73,74 +69,6 @@ suite('Overflow', () => {
     assert.strictEqual(textColumn('a\t\tx', 3), 8);
   });
 
-  test('shows the columns between the scrolled edge and the room left before the far edge', () => {
-    assert.deepStrictEqual(visibleColumns(0, 100, 10), {
-      first: 0,
-      last: 10,
-    });
-    assert.deepStrictEqual(visibleColumns(25, 100, 10), {
-      first: 2.5,
-      last: 12.5,
-    });
-    assert.strictEqual(visibleColumns(0, 100, 0), undefined);
-  });
-
-  test('marks the nearest change hidden on each side, but not one partly shown', () => {
-    const text = 'aaaa bbbb cccc dddd eeee';
-    const words = [
-      { start: 0, end: 4 },
-      { start: 5, end: 9 },
-      { start: 10, end: 14 },
-      { start: 15, end: 19 },
-      { start: 20, end: 24 },
-    ];
-    assert.deepStrictEqual(
-      hiddenChanges(text, words, { first: 10, last: 15 }, monospace(1)),
-      { left: words[1], right: words[3] },
-    );
-    assert.deepStrictEqual(
-      hiddenChanges(text, words, { first: 12, last: 17 }, monospace(1)),
-      { left: words[1], right: words[4] },
-    );
-    assert.deepStrictEqual(
-      hiddenChanges(text, words, { first: 0, last: 30 }, monospace(1)),
-      { left: undefined, right: undefined },
-    );
-    assert.deepStrictEqual(
-      hiddenChanges(text, [], { first: 10, last: 15 }, monospace(1)),
-      { left: undefined, right: undefined },
-    );
-  });
-
-  test('counts a tab before a change in its columns', () => {
-    const words = [{ start: 2, end: 3 }];
-    assert.deepStrictEqual(
-      hiddenChanges('\t\tx', words, { first: 0, last: 8 }, monospace(1)),
-      { left: undefined, right: words[0] },
-    );
-    assert.deepStrictEqual(
-      hiddenChanges('\t\tx', words, { first: 0, last: 9 }, monospace(1)),
-      { left: undefined, right: undefined },
-    );
-  });
-
-  test('finds the hidden changes of a long line in one pass over it, however many tabs and changes it has', () => {
-    const text = '\tx'.repeat(100_000);
-    const words = Array.from({ length: 6000 }, (_, index) => ({
-      start: 1 + index * 30,
-      end: 5 + index * 30,
-    }));
-    const started = performance.now();
-    const hidden = hiddenChanges(
-      text,
-      words,
-      { first: 200_000, last: 210_000 },
-      monospace(1),
-    );
-    assert.ok(performance.now() - started < 1000);
-    assert.deepStrictEqual(hidden, { left: words[3333], right: words[3500] });
-  });
-
   test('counts a cluster other than printable ASCII as the columns it is drawn across, such as a CJK character, a letter with its accent or an emoji, a place within one counting as its start', () => {
     assert.strictEqual(textColumn('中中x', 2, drawnWidths), 3.5);
     assert.strictEqual(textColumn('中中x', 3, drawnWidths), 4.5);
@@ -155,43 +83,17 @@ suite('Overflow', () => {
     assert.strictEqual(textColumn(`${'中'.repeat(9)}\tx`, 10, drawnWidths), 20);
   });
 
-  test('marks a change hidden past the edge after text drawn wider than its characters count, scrolling to where it is drawn', () => {
+  test('scrolls to a match found after text drawn wider than its characters count, to where it is drawn', () => {
     const text = `${'中'.repeat(120)} word`;
     const word = { start: 121, end: 125 };
-    assert.deepStrictEqual(
-      hiddenChanges(text, [word], { first: 0, last: 150 }, drawnWidths),
-      { left: undefined, right: word },
-    );
     const view = { scrolled: 0, width: 600, room: 3000 };
-    const area = sideArea(view);
     assert.strictEqual(
-      revealChange(view, area, text, word, drawnWidths),
-      6 + 211 * 8 + 16 - 300,
-    );
-    assert.strictEqual(
-      revealFound(view, area, text, word, drawnWidths),
+      revealFound(view, sideArea(view), text, word, drawnWidths),
       6 + 211 * 8 + 16 - 300,
     );
   });
 
-  test('finds the hidden changes of a long line of wide characters in one pass over it', () => {
-    const text = '\t中'.repeat(100_000);
-    const words = Array.from({ length: 6000 }, (_, index) => ({
-      start: 1 + index * 30,
-      end: 5 + index * 30,
-    }));
-    const started = performance.now();
-    const hidden = hiddenChanges(
-      text,
-      words,
-      { first: 200_000, last: 210_000 },
-      drawnWidths,
-    );
-    assert.ok(performance.now() - started < 1000);
-    assert.deepStrictEqual(hidden, { left: words[3333], right: words[3500] });
-  });
-
-  test('scrolls a hidden change to the middle, within the room there is', () => {
+  test('scrolls what it reveals to the middle, within the room there is', () => {
     assert.strictEqual(revealScroll(500, 520, 200, 1000), 410);
     assert.strictEqual(revealScroll(20, 40, 200, 1000), 0);
     assert.strictEqual(revealScroll(1150, 1160, 200, 1000), 1000);
@@ -216,49 +118,6 @@ suite('Overflow', () => {
         sidewaysRoom(1, 7.5, 0),
       ],
       [0, 0, 2 * 6 + 8],
-    );
-  });
-
-  test('marks a place words were inserted on the other line, though it has no width', () => {
-    const text = 'x'.repeat(20);
-    const left = { start: 1, end: 1 };
-    const right = { start: 15, end: 15 };
-    assert.deepStrictEqual(
-      hiddenChanges(text, [left, right], { first: 2, last: 10 }, monospace(1)),
-      { left, right },
-    );
-  });
-
-  test('hides nothing past an edge there is no more to scroll to', () => {
-    const start = { scrolled: 0, width: 600, room: 900 };
-    assert.strictEqual(
-      areaColumns(start, sideArea(start), 10)?.first,
-      -Infinity,
-    );
-    const end = { ...start, scrolled: 900 };
-    assert.strictEqual(areaColumns(end, sideArea(end), 10)?.last, Infinity);
-  });
-
-  test('leaves out the line numbers, the padding and room for a marker on each edge', () => {
-    const view = { scrolled: 200, width: 600, room: 900 };
-    assert.deepStrictEqual(sideArea(view), { origin: 6, visible: 600 });
-    assert.deepStrictEqual(areaColumns(view, sideArea(view), 10), {
-      first: 21.2,
-      last: 77.6,
-    });
-  });
-
-  test('scrolls a hidden change into the middle of the text it is in', () => {
-    const view = { scrolled: 0, width: 600, room: 900 };
-    assert.strictEqual(
-      revealChange(
-        view,
-        sideArea(view),
-        'a'.repeat(100),
-        { start: 80, end: 84 },
-        monospace(10),
-      ),
-      6 + 820 - 300,
     );
   });
 

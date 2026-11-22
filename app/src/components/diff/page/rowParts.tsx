@@ -1,8 +1,4 @@
 import { labelTip, tip } from '../../../lib/page/tips';
-import { useSyncExternalStore } from 'react';
-import type { DiffLine } from './diff';
-import type { SidewaysShown } from './sidewaysShown';
-import type { FindRange } from './find';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
@@ -11,14 +7,6 @@ import { PreviewIcon } from '../../../lib/page/icons';
 import { SkeletonRows } from '../../../lib/page/skeleton';
 import { Twisty } from '../../../lib/page/tree';
 import { renamedPath } from '../../../lib/page/fileStatus';
-import {
-  areaColumns,
-  hiddenChanges,
-  revealChange,
-  type Sideways,
-  type TextArea,
-} from './overflow';
-import type { TextWidths } from '../../../lib/page/textWidths';
 import type { Change } from './rows';
 
 export function HunkDivider() {
@@ -140,66 +128,4 @@ export function DiffSkeleton({
       ))}
     </div>
   );
-}
-
-const edges = ['left', 'right'] as const;
-
-export function HiddenChangeMarks({
-  text,
-  words,
-  kind,
-  shown,
-  area,
-  widths,
-  place,
-  onReveal,
-}: {
-  text: string;
-  words: readonly FindRange[];
-  kind: DiffLine['kind'];
-  shown: SidewaysShown;
-  area: (view: Sideways) => TextArea;
-  widths: TextWidths;
-  place: (edge: 'left' | 'right') => React.CSSProperties;
-  onReveal: (scrolled: number) => void;
-}) {
-  const hiddenNow = () => {
-    const view = shown.read();
-    const columns =
-      view && words.length > 0 && kind !== 'context'
-        ? areaColumns(view, area(view), widths.char)
-        : undefined;
-    const hidden = columns && hiddenChanges(text, words, columns, widths);
-    return edges
-      .map((edge) => (hidden?.[edge] ? words.indexOf(hidden[edge]) : -1))
-      .join(' ');
-  };
-  const hidden = useSyncExternalStore(shown.subscribe, hiddenNow, hiddenNow)
-    .split(' ')
-    .map((index) => words[Number(index)]);
-  return edges.map((edge, side) => {
-    const word = hidden[side];
-    return (
-      word && (
-        <button
-          key={edge}
-          className={`hidden-change ${edge} ${kind}`}
-          {...labelTip(strings.diff.showHiddenChange)}
-          tabIndex={-1}
-          style={place(edge)}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => {
-            const view = shown.read();
-            if (view) {
-              onReveal(revealChange(view, area(view), text, word, widths));
-            }
-          }}
-        >
-          {edge === 'left'
-            ? strings.symbols.hiddenLeft
-            : strings.symbols.hiddenRight}
-        </button>
-      )
-    );
-  });
 }

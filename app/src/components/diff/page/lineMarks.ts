@@ -40,7 +40,7 @@ export interface CodeProps {
 
 const unmarked: readonly never[] = [];
 
-export function changedWords(
+function changedWords(
   words: WordRanges,
   key: string | undefined,
 ): readonly FindRange[] {

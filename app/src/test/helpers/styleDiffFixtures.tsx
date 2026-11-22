@@ -84,14 +84,12 @@ export function InlineLine({
   words = [],
   finds = [],
   current,
-  marker = false,
   whole = false,
 }: {
   readonly kind: 'context' | 'added' | 'removed';
   readonly words?: readonly FindRange[];
   readonly finds?: readonly FindRange[];
   readonly current?: FindRange;
-  readonly marker?: boolean;
   readonly whole?: boolean;
 }) {
   return (
@@ -113,7 +111,6 @@ export function InlineLine({
             />
           </span>
         </span>
-        {marker && <button className={`hidden-change left ${kind}`} />}
       </div>
     </DiffRow>
   );

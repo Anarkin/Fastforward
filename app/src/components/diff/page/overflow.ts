@@ -2,17 +2,7 @@ import type { FindRange } from './find';
 import type { DiffRow } from './rows';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type TextWidths } from '../../../lib/page/textWidths';
-import { codePadding, markerInset, markerWidth } from './textLayout';
-
-export interface Columns {
-  readonly first: number;
-  readonly last: number;
-}
-
-export interface HiddenChanges {
-  readonly left: FindRange | undefined;
-  readonly right: FindRange | undefined;
-}
+import { codePadding } from './textLayout';
 
 export function textColumn(
   text: string,
@@ -43,35 +33,6 @@ export function widestColumns(
   return widest;
 }
 
-export function visibleColumns(
-  scrolled: number,
-  width: number,
-  charWidth: number,
-): Columns | undefined {
-  return charWidth > 0
-    ? { first: scrolled / charWidth, last: (scrolled + width) / charWidth }
-    : undefined;
-}
-
-export function hiddenChanges(
-  text: string,
-  words: readonly FindRange[],
-  { first, last }: Columns,
-  widths: TextWidths,
-): HiddenChanges {
-  const columnAt = columnsOf(text, widths);
-  let left: FindRange | undefined;
-  for (const word of words) {
-    const start = columnAt(word.start);
-    if (columnAt(word.end) <= first) {
-      left = word;
-    } else if (start >= last) {
-      return { left, right: word };
-    }
-  }
-  return { left, right: undefined };
-}
-
 export function revealScroll(
   start: number,
   end: number,
@@ -80,8 +41,6 @@ export function revealScroll(
 ): number {
   return Math.max(0, Math.min(room, (start + end) / 2 - width / 2));
 }
-
-const markerRoom = markerInset + markerWidth + markerInset;
 
 export interface Sideways {
   readonly scrolled: number;
@@ -131,24 +90,6 @@ export function sideArea(view: Sideways): TextArea {
   return { origin: codePadding, visible: view.width };
 }
 
-export function areaColumns(
-  view: Sideways,
-  area: TextArea,
-  charWidth: number,
-): Columns | undefined {
-  const columns = visibleColumns(
-    view.scrolled - area.origin + markerRoom,
-    area.visible - 2 * markerRoom,
-    charWidth,
-  );
-  return (
-    columns && {
-      first: view.scrolled > 0 ? columns.first : -Infinity,
-      last: view.scrolled < view.room ? columns.last : Infinity,
-    }
-  );
-}
-
 function textSpan(
   area: TextArea,
   text: string,
@@ -160,17 +101,6 @@ function textSpan(
     start: area.origin + columnAt(range.start) * widths.char,
     end: area.origin + columnAt(range.end) * widths.char,
   };
-}
-
-export function revealChange(
-  view: Sideways,
-  area: TextArea,
-  text: string,
-  word: FindRange,
-  widths: TextWidths,
-): number {
-  const { start, end } = textSpan(area, text, word, widths);
-  return revealScroll(start, end, area.visible, view.room);
 }
 
 export function revealFound(

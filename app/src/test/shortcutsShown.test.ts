@@ -214,7 +214,6 @@ const keysAlone: readonly string[] = [
 ];
 
 const withoutShortcut: readonly string[] = [
-  'components/diff/page/rowParts.tsx: strings.diff.showHiddenChange',
   'components/diff/page/toggles.tsx: strings.diff.inline',
   'components/diff/page/toggles.tsx: strings.diff.showEntireFile',
   'components/diff/page/toggles.tsx: strings.diff.showWhitespaceChanges',

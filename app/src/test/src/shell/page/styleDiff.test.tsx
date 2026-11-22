@@ -19,7 +19,6 @@ import { sideSnaps } from '../../../../components/diff/page/codeSnap';
 import {
   codePadding,
   layoutVariables,
-  markerWidth,
   numberWidth,
 } from '../../../../components/diff/page/textLayout';
 import { diffRowClass } from '../../../../components/diff/page/rowClasses';
@@ -52,22 +51,18 @@ const below = (shown: React.ReactElement) =>
   withClass(rendered(shown), 'scroll-proxy-frame');
 
 suite('Style', () => {
-  test('places the hidden-change markers by the line numbers, padding and marker width the diff draws', () => {
+  test('sizes the line numbers and the padding of the code by the widths the diff counts its columns with', () => {
     const row = shownRow(
-      diffView(<DiffViewShown />, <InlineLine kind="added" marker />),
+      diffView(<DiffViewShown />, <InlineLine kind="added" />),
     );
     looks(withClass(row, 'number'), { width: 'var(--diff-number-width)' });
     looks(withClass(row, 'code'), { padding: '0 var(--diff-code-padding)' });
-    looks(withClass(row, 'hidden-change'), {
-      width: 'var(--diff-marker-width)',
-    });
     assert.deepStrictEqual(
       [
         layoutVariables['--diff-number-width'],
         layoutVariables['--diff-code-padding'],
-        layoutVariables['--diff-marker-width'],
       ],
-      [`${numberWidth}px`, `${codePadding}px`, `${markerWidth}px`],
+      [`${numberWidth}px`, `${codePadding}px`],
     );
   });
 

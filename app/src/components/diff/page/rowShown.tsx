@@ -18,8 +18,6 @@ import { lineKey } from './lines';
 import { imagePanes } from './imagePanes';
 import { ImageDiff } from './imagePreview';
 import { wholeImageUrl, type ImageOrigin } from './images';
-import { sideArea, type Sideways, type TextArea } from './overflow';
-import { markerInset, numberWidth } from './textLayout';
 import type { WrapColumns } from './rowMeasures';
 import { emptySide, sideSnaps } from './codeSnap';
 import type { WordRanges } from './wordDiff';
@@ -47,12 +45,6 @@ export interface DiffRowParts {
     kind: DiffLine['kind'] | undefined,
     wrapsAt: number | undefined,
   ) => ReactNode;
-  readonly hiddenMarks: (
-    key: string | undefined,
-    line: DiffLine,
-    area: (shown: Sideways) => TextArea,
-    place: (edge: 'left' | 'right') => React.CSSProperties,
-  ) => ReactNode;
 }
 
 export function DiffRowShown({
@@ -75,7 +67,6 @@ export function DiffRowShown({
     header,
     toggle,
     code,
-    hiddenMarks,
   },
 }: {
   readonly row: DiffRow;
@@ -188,11 +179,6 @@ export function DiffRowShown({
             look={dotLook}
             widths={widths}
           />
-          {hiddenMarks(keys[index].at(0), row.line, sideArea, (edge) =>
-            edge === 'left'
-              ? { left: 2 * numberWidth + markerInset }
-              : { right: markerInset },
-          )}
         </div>
       );
     case 'split':
@@ -227,16 +213,6 @@ export function DiffRowShown({
                   widths={widths}
                 />
               )}
-              {cell &&
-                hiddenMarks(
-                  lineKey(row.file, cell.index),
-                  cell.line,
-                  sideArea,
-                  (edge) =>
-                    edge === 'left'
-                      ? { left: numberWidth + markerInset }
-                      : { right: markerInset },
-                )}
             </div>
           ))}
         </div>

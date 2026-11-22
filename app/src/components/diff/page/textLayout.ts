@@ -8,7 +8,6 @@ declare module 'react' {
     readonly '--diff-tab-size'?: string;
     readonly '--diff-number-width'?: string;
     readonly '--diff-code-padding'?: string;
-    readonly '--diff-marker-width'?: string;
     readonly '--diff-word-padding-top'?: string;
     readonly '--diff-gap-width'?: string;
     readonly '--diff-word-padding-bottom'?: string;
@@ -21,8 +20,6 @@ declare module 'react' {
 
 export const numberWidth = 56;
 export const codePadding = 6;
-export const markerWidth = 14;
-export const markerInset = 2;
 
 export const unmeasured: WrapColumns = { left: Infinity, right: Infinity };
 
@@ -78,7 +75,6 @@ export const layoutVariables: React.CSSProperties = {
   '--diff-tab-size': String(tabSize),
   '--diff-number-width': `${numberWidth}px`,
   '--diff-code-padding': `${codePadding}px`,
-  '--diff-marker-width': `${markerWidth}px`,
 };
 
 export interface Edges {

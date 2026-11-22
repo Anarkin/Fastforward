@@ -27,7 +27,7 @@ import { wrapIndent } from '../../../lib/page/wordWrap';
 import type { RowFollower } from '../../../lib/page/rowScroll';
 import type { DiffLook } from './look';
 import type { DiffMeasures, DiffMeasuring } from './measures';
-import { widestColumns, type Sideways, type TextArea } from './overflow';
+import { widestColumns } from './overflow';
 import { cellWidthsOf } from '../../../lib/page/textWidths';
 import {
   type WholeFile,
@@ -47,12 +47,7 @@ import { unplaced, type DiffPlace } from './place';
 import type { PlaceChange } from './slice';
 import { useKeptPlace } from './placeKeeping';
 import { scrollOnToggle, stuckHeader } from './stuckHeader';
-import {
-  type LineMarks,
-  changedWords,
-  codeProps,
-  findRangesByLine,
-} from './lineMarks';
+import { type LineMarks, codeProps, findRangesByLine } from './lineMarks';
 import { useDiffMarks } from './rowMarks';
 import { Code } from './codeMarks';
 import { unmeasured, gapWidth, layoutVariables } from './textLayout';
@@ -71,7 +66,7 @@ import { useFoundJumps, useRevealFound } from './jumps';
 import { useLargeFileLoads } from './largeFiles';
 import { diffRowClass, stripedFrom } from './rowClasses';
 import { rowPlace } from '../../../lib/page/rowPlace';
-import { FileHeader, HiddenChangeMarks } from './rowParts';
+import { FileHeader } from './rowParts';
 import { useCodeSnap, useDiffText } from './text';
 import { useDiffFollow } from './follow';
 import { diffKeyDown } from './keys';
@@ -405,24 +400,6 @@ export function DiffView({
     (scrolled: number) => scrollTo(snappedLeft(scrolled, charWidth, Infinity)),
     [scrollTo, charWidth],
   );
-  const hiddenMarks = (
-    key: string | undefined,
-    line: DiffLine,
-    area: (shown: Sideways) => TextArea,
-    place: (edge: 'left' | 'right') => React.CSSProperties,
-  ) => (
-    <HiddenChangeMarks
-      text={line.text}
-      words={changedWords(words, key)}
-      kind={line.kind}
-      shown={shown}
-      area={area}
-      widths={widths}
-      place={place}
-      onReveal={reveal}
-    />
-  );
-
   const rowParts: DiffRowParts = {
     error,
     files,
@@ -439,7 +416,6 @@ export function DiffView({
     header,
     toggle,
     code,
-    hiddenMarks,
   };
   const renderRow = (row: DiffRow, index: number, top: number) => (
     <DiffRowShown row={row} index={index} top={top} parts={rowParts} />
@@ -469,7 +445,6 @@ export function DiffView({
     lineHeight,
     columnsIn,
     widths,
-    reveal,
   ];
 
   const items = virtualizer.getVirtualItems();
