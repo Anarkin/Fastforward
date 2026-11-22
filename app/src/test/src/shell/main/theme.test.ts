@@ -105,6 +105,7 @@ suite('Theme', () => {
       'shell/page/windowButtons.ts': [
         'rgba(${data[0]}, ${data[1]}, ${data[2]}, ${data[3] / 255})',
       ],
+      'tools/viewer/page/cellColors.ts': ['rgb(${red} ${green} ${blue})'],
     };
     for (const { name: file, text } of pageFiles()) {
       assert.deepStrictEqual(

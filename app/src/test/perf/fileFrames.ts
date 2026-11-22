@@ -7,6 +7,7 @@ import { afterAll, inject, suite, test } from 'vitest';
 import { barOf, barParts } from '../e2e/scrollbarsShown';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { launchedForPerf, measure } from './perfFixtures';
+import { perfBuild } from './perfData';
 import { dragged, heldKey, paced, sleep, wheelNotches } from './perfInput';
 
 const placed = process.env.FASTFORWARD_PERF_WINDOW;
@@ -68,7 +69,7 @@ const views = [
     name: 'viewer',
     tab: 1,
     pane: '.viewer-body',
-    rows: '.viewer-rows .viewer-row',
+    rows: '.viewer-rows .viewer-row, .viewer-rows .cell-rows[data-rows]',
     bar: '.viewer-body .scroll-proxy.vertical',
   },
   {
@@ -95,6 +96,10 @@ const views = [
 ] as const;
 
 const typed = 'const typed = value + 1; // typed here';
+
+const drawnAsCells =
+  process.env.FASTFORWARD_PERF_WEBGL !== undefined &&
+  path.basename(perfBuild) === process.env.FASTFORWARD_PERF_WEBGL;
 
 const slowestScenario = 600_000;
 
@@ -140,7 +145,10 @@ export function framesOfFile(
             activeTab: '1',
             ...windowPlace(),
           },
-          settings: { scrolling: { smooth: true }, text: { wordWrap } },
+          settings: {
+            scrolling: { smooth: true },
+            text: { wordWrap, ...(drawnAsCells && { webgl: true }) },
+          },
         },
         (page) => page.locator('.commander-pane').first().waitFor(),
       );
@@ -161,6 +169,7 @@ export function framesOfFile(
             times.rows = Math.round(performance.now() - from);
             await rows
               .locator('[class*="syntax-"]')
+              .or(perf().page.locator('.cell-rows[data-colored]'))
               .first()
               .waitFor({ timeout: 20_000 })
               .then(

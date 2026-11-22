@@ -666,6 +666,7 @@ suite('Architecture', () => {
         'components/diff/page/codeMarks.tsx',
         'components/diff/page/found.ts',
         'tools/editor/page/find.ts',
+        'tools/viewer/page/cellLook.ts',
         'tools/viewer/page/findMarks.tsx',
       ],
     );

@@ -31,7 +31,8 @@
     "wordWrap": false,
     "showWhitespace": true,
     "highlightSyntax": true,
-    "highlightOccurrences": true
+    "highlightOccurrences": true,
+    "webgl": false
   },
   "fonts": {
     "family": "-apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif",

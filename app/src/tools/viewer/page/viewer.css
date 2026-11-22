@@ -67,6 +67,11 @@
   min-height: calc(100% + (var(--viewer-lead) + 1) * var(--viewer-row-height));
 }
 
+.cell-rows {
+  position: relative;
+  display: block;
+}
+
 .viewer-gutter {
   position: absolute;
   top: 0;

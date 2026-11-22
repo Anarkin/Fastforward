@@ -13,9 +13,14 @@ import { useViewer, useViewerActions } from './store';
 import type { ViewerTabView } from './tabParts';
 import { textEnds, textThumb } from './textScroll';
 import { TextRow } from './textRow';
+import { CellRows } from './cellRows';
+import { cellsSupported } from './cellSurface';
+import type { ScreenRow } from './screenRows';
 import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
 import { useColors, useWholeText } from './wholeText';
+
+const cellMargin = 64;
 
 export function TextBody({
   encoding,
@@ -81,6 +86,8 @@ export function TextBody({
   const highlightOccurrences = useShell(
     (state) => state.textView.highlightOccurrences,
   );
+  const drawnAsCells =
+    useShell((state) => state.textView.webgl) && cellsSupported();
   const [copy, setCopy] = useState<string>();
   const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
   const wrapAt =
@@ -174,6 +181,26 @@ export function TextBody({
           encoding,
         ).find((mark) => mark.current)?.start;
   const jumps = find?.jump ?? 0;
+  const marksOf = (row: ScreenRow) =>
+    find === undefined || !finding
+      ? copiesIn(row.row.text)
+      : textMarks(
+          row.row,
+          find.query,
+          find.options,
+          find.matches,
+          find.current,
+          encoding,
+        );
+  const shownColumns =
+    columns !== undefined && Number.isFinite(columns) ? columns : 0;
+  const firstCell = whole ? Math.max(0, across - cellMargin) : 0;
+  const lastCell = whole
+    ? Math.min(
+        across + shownColumns + cellMargin,
+        Math.max(width ?? 0, shownColumns),
+      )
+    : shownColumns + 2;
 
   return (
     <ScrollBody
@@ -208,7 +235,23 @@ export function TextBody({
       onCopySelected={setCopy}
       copyMarked={copy}
     >
+      {table !== undefined && drawnAsCells && (
+        <CellRows
+          rows={shown}
+          parts={parts}
+          wrapAt={wrapAt}
+          colored={colored}
+          marksOf={marksOf}
+          showWhitespace={showWhitespace}
+          widths={widths}
+          font={font}
+          dotLook={dotLook}
+          first={firstCell}
+          columns={Math.max(1, lastCell - firstCell)}
+        />
+      )}
       {table !== undefined &&
+        !drawnAsCells &&
         shown.map((row, index) => (
           <TextRow
             key={`${row.row.start}:${row.from}`}
@@ -216,18 +259,7 @@ export function TextBody({
             part={parts[index]}
             columns={wrapAt}
             colored={colored}
-            marks={
-              find === undefined || !finding
-                ? copiesIn(row.row.text)
-                : textMarks(
-                    row.row,
-                    find.query,
-                    find.options,
-                    find.matches,
-                    find.current,
-                    encoding,
-                  )
-            }
+            marks={marksOf(row)}
             showWhitespace={showWhitespace}
             widths={widths}
             dotLook={dotLook}
