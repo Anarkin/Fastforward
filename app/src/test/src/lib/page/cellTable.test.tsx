@@ -6,6 +6,7 @@ import { act } from 'react';
 import { suite, test, vi } from 'vitest';
 import {
   cellsOf,
+  plainCells,
   terminalCells,
   useCellTable,
 } from '../../../../lib/page/cellTable';
@@ -125,6 +126,19 @@ suite('Widths of text in columns', () => {
       ['✅', 2],
     ] as const) {
       assert.strictEqual(cellsOf(cluster, table), cells, cluster);
+    }
+  });
+
+  test('counts a control character one column, as the picture drawn for it takes, where our terminal, which draws none, counts none, with its table and before it loads, as lines of them wrapped late and scrolled sideways short; and the tab, the line feed and the carriage return none before it loads, as before', async () => {
+    const table = await terminalCells();
+    for (const code of [0, 1, 8, 11, 12, 27, 31, 127]) {
+      const character = String.fromCharCode(code);
+      assert.strictEqual(cellsOf(character, table), 1, String(code));
+      assert.strictEqual(cellsOf(character, plainCells), 1, String(code));
+    }
+    for (const code of [9, 10, 13]) {
+      const character = String.fromCharCode(code);
+      assert.strictEqual(cellsOf(character, plainCells), 0, String(code));
     }
   });
 

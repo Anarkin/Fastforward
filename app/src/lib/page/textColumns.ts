@@ -6,7 +6,7 @@ export function columnsOf(
   text: string,
   widths: TextWidths | undefined,
 ): (index: number) => number {
-  const special = widths ? /[^ -~]/g : /\t/g;
+  const special = widths ? /[\t\n\r]|[^\0-\x7f]/g : /\t/g;
   let clusters: Intl.Segments | undefined;
   const clusterAt = (index: number) => {
     if (!widths || text[index] === '\t') {

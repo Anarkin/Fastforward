@@ -13,6 +13,7 @@ import { watchDevicePixels } from '../../lib/page/devicePixels';
 import { showGenericIcons } from './genericIcons';
 import { installTextCursors } from './textCursor';
 import { installTextHeights } from './textHeights';
+import { copyReal } from '../../lib/page/picturedCopy';
 
 declare global {
   interface Window {
@@ -61,6 +62,7 @@ watchDevicePixels(() => undefined);
 showGenericIcons();
 installTextHeights();
 installTextCursors();
+document.addEventListener('copy', copyReal);
 
 const root = document.getElementById('root');
 if (root) {

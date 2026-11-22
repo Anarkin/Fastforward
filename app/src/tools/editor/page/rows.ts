@@ -2,6 +2,8 @@ import { findClusterBreak } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type { Box } from '../../../lib/page/pixelBoxes';
 import { boxColumns } from '../../../lib/page/wrapBox';
+import { pictured } from '../../../lib/page/controlPictures';
+import { picturedIn } from './pictures';
 
 const onPixel = 1e-6;
 
@@ -32,6 +34,23 @@ export interface Character {
   readonly font: string;
 }
 
+function replacedRect(
+  view: EditorView,
+  from: number,
+  to: number,
+): { left: number; right: number; top: number; bottom: number } | null {
+  const start = view.coordsAtPos(from, 1);
+  const end = view.coordsAtPos(to, -1);
+  return start === null || end === null
+    ? null
+    : {
+        left: start.left,
+        right: end.right,
+        top: start.top,
+        bottom: start.bottom,
+      };
+}
+
 export function characterAt(
   view: EditorView,
   pos: number,
@@ -44,8 +63,15 @@ export function characterAt(
     return null;
   }
   const end = line.from + findClusterBreak(line.text, pos - line.from);
-  const text = view.state.doc.sliceString(pos, end);
-  const rect = text === '\t' ? null : view.coordsForChar(pos);
+  const written = view.state.doc.sliceString(pos, end);
+  const drawn = picturedIn(view, pos);
+  const text = drawn ? pictured(written) : written;
+  const rect =
+    written === '\t'
+      ? null
+      : drawn
+        ? replacedRect(view, pos, end)
+        : view.coordsForChar(pos);
   if (
     rect === null ||
     rect.right <= rect.left ||

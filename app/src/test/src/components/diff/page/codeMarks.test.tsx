@@ -76,6 +76,26 @@ suite('Drawing code', () => {
     );
   });
 
+  test('draws the control characters of a line as their pictures in place of them, in its colors and beside its spaces dotted, whether whitespace shows or not, as a line of them took Chromium 60 times as long to lay out as it does with the pictures, and marks a picture the file itself holds', () => {
+    assert.strictEqual(
+      wrapMarkup('a\u0001b\u001b[0m\u007f', undefined),
+      'a␁b␛[0m␡',
+    );
+    assert.strictEqual(
+      wrapMarkup(
+        '\u001b[31m x\u0007',
+        undefined,
+        [{ start: 0, end: 5, kind: 'string' }],
+        true,
+      ),
+      `<span class="syntax-string">␛[31m</span>${spaces(' ')}x␇`,
+    );
+    assert.strictEqual(
+      wrapMarkup('a␛b\u001b', undefined),
+      'a<span data-genuine="">␛</span>b␛',
+    );
+  });
+
   test('shows each run of spaces as one span dotted at each space and each tab as a sign over it when asked, inside the colors and matches, keeping the text as it is, as a sign over every space of a padded table slowed scrolling down', () => {
     const space = spaces(' ');
     const tab = `<span class="blank" data-glyph="${strings.symbols.tab}">\t</span>`;

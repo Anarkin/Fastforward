@@ -17,6 +17,7 @@ import { bracketPairs } from './brackets';
 import { syntaxColors } from './colors';
 import { appSelection } from './selection';
 import { appTextLook, blanksShown } from './text';
+import { controlPictures } from './pictures';
 import { rowScrolling } from './scroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { colorer } from '../../../components/syntax/page/colorer';
@@ -110,6 +111,7 @@ export function extensionsOf({
   onUpdate,
 }: EditorParts): Extension {
   return [
+    controlPictures,
     coloring.of(colors),
     appTextLook(table),
     appSelection(editorKeymap.rowEnd, cursor),

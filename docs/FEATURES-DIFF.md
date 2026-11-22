@@ -41,6 +41,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Ignore whitespace | Leave out changes of whitespace alone | — | Common | ✅ Yes | On by default; files with only whitespace changes are named on their header |
 | Show whitespace | Draw the spaces, tabs and line ends | . | Advanced | ✅ Yes | On by default; `.` |
+| Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | Each control character but the tab and the line ends as its picture, a column wide, as the viewer and the editor draw them and VS Code does, its changes marked as those of any character; copied as the character itself |
 | Line endings | Show changes of line endings, or ignore them | — | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it |
 | Encodings | Show files that aren't UTF-8 | — | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; diffs read files as UTF-8; git turns messages into UTF-8 |
 | Ignore case | Leave out changes of case alone | — | Advanced | ❌ No |  |

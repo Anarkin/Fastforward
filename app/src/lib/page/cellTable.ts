@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { IUnicodeVersionProvider, Terminal } from '@xterm/xterm';
+import { hasControls } from './controlPictures';
 
 export type CellTable = (cluster: string) => number;
 
 export const plainCells: CellTable = (cluster) =>
-  (cluster.codePointAt(0) ?? 0) < 0x20 ? 0 : 1;
+  (cluster.codePointAt(0) ?? 0) < 0x20 && !hasControls(cluster) ? 0 : 1;
 
 let loadedTable: CellTable | undefined;
 
@@ -52,7 +53,7 @@ function tableOf(addon: TableAddon): CellTable {
   const provider = registered.find((each) => each.version === graphemesVersion);
   return provider === undefined
     ? plainCells
-    : (cluster) => cellsBy(provider, cluster);
+    : (cluster) => (hasControls(cluster) ? 1 : cellsBy(provider, cluster));
 }
 
 export function terminalCells(): Promise<CellTable> {

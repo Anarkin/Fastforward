@@ -48,6 +48,14 @@ const inventedFiles = [
         `${'\t'.repeat(line % 9)}const value${line} = compute(${line}, "text ${line}"); // note ${line}`,
     ),
   ),
+  inventedFile('controls.txt', () =>
+    Array.from({ length: 4000 }, (_, line) =>
+      Array.from({ length: 150 }, (_character, at) => {
+        const code = (line * 31 + at * 53 + ((line * at) % 11)) % 128;
+        return String.fromCharCode([0, 9, 10, 13].includes(code) ? 65 : code);
+      }).join(''),
+    ),
+  ),
   inventedFile('emoji.md', () =>
     Array.from({ length: 8000 }, (_, line) =>
       words(

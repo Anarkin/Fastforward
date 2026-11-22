@@ -48,6 +48,53 @@ suite('Matches marked in a file viewed', () => {
     );
   });
 
+  test('draws the control characters of a row as their pictures, in its colors and marks and beside a tab signed, whether whitespace shows or not, as the diff does', () => {
+    const tab = String.fromCharCode(9);
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText pieces={[{ text: 'a\u0001b\u007f' }]} marks={[]} />,
+      ),
+      'a␁b␡',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText
+          pieces={[
+            { text: `\u001b[0m${tab}`, kind: 'string' as const },
+            { text: 'x\u0007' },
+          ]}
+          marks={[{ start: 5, end: 7, current: true }]}
+          blanks
+        />,
+      ),
+      `<span><span class="syntax-string">␛[0m<span class="blank" data-glyph="→">${tab}</span></span></span><mark class="find-match current">x␇</mark>`,
+    );
+  });
+
+  test('marks a picture the file itself holds, boxed or not, so that copying tells it from one drawn for a control character', () => {
+    const boxing = {
+      char: 10,
+      of: () => 20,
+      boxed: (cluster: string) => (cluster === '␇' ? 1 : undefined),
+    };
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText pieces={[{ text: 'a␛␡b\u001b' }]} marks={[]} />,
+      ),
+      'a<span data-genuine="">␛␡</span>b␛',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText
+          pieces={[{ text: 'a␇\u0007' }]}
+          marks={[]}
+          widths={boxing}
+        />,
+      ),
+      'a<span class="cell" data-genuine="">␇</span>␇',
+    );
+  });
+
   test('puts each character drawn wider or narrower than its columns in a box exactly as wide as them, as the diff does', () => {
     const boxing = {
       char: 10,

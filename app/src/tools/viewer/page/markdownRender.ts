@@ -1,6 +1,7 @@
 import type { DOMPurify } from 'dompurify';
 import type MarkdownIt from 'markdown-it';
 import type { StateCore } from 'markdown-it';
+import { hasControls, pictured } from '../../../lib/page/controlPictures';
 
 const tagsGitHubKeeps = [
   'h1',
@@ -145,6 +146,16 @@ function taskLists(state: StateCore): void {
   }
 }
 
+function picturedTexts(node: Node): void {
+  for (const child of node.childNodes) {
+    if (child.nodeType !== child.TEXT_NODE) {
+      picturedTexts(child);
+    } else if (hasControls(child.nodeValue ?? '')) {
+      child.nodeValue = pictured(child.nodeValue ?? '');
+    }
+  }
+}
+
 const cellAlignment = /^text-align:(left|center|right)$/;
 
 function tableAlignments(state: StateCore): void {
@@ -239,6 +250,7 @@ export function markdownRenderer(
       alt.textContent = img.getAttribute('alt');
       img.replaceWith(alt);
     }
+    picturedTexts(fragment);
     const html = document.createElement('div');
     html.append(fragment);
     return html.innerHTML;

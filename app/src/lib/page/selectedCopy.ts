@@ -7,6 +7,7 @@ import {
 } from 'react';
 import { soughtCopy } from '../shared/textMatches';
 import { scratchRange } from './scratchRange';
+import { realText } from './picturedCopy';
 
 const restMs = 250;
 
@@ -110,7 +111,7 @@ export function useSelectedCopy(
         within.contains(selection.anchorNode) &&
         within.contains(selection.focusNode);
       const selected = inside
-        ? soughtCopy(selection.toString().trim())
+        ? soughtCopy(realText(selection).trim())
         : undefined;
       clearTimeout(resting);
       if (selected === shown) {

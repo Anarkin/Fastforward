@@ -66,6 +66,7 @@ import { scrollbarHeldAttribute } from '../../../lib/page/scrollbars';
 import { leastMark, marksScale } from './changeMarks';
 import { snappedLeft } from '../../../lib/page/columnScroll';
 import { useLaterRows } from '../../../lib/page/laterRows';
+import { picturedRegion } from '../../../lib/page/picturedCopy';
 import { useFoundJumps, useRevealFound } from './jumps';
 import { useLargeFileLoads } from './largeFiles';
 import { diffRowClass, diffRowPlace } from './rowClasses';
@@ -542,6 +543,7 @@ export function DiffView({
   return (
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${whole && !split ? 'whole-file' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
+      {...picturedRegion}
       onMouseDown={(event) => {
         const side = selectionSide(
           event.target instanceof Element ? event.target : null,

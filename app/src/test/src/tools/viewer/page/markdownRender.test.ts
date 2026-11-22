@@ -41,6 +41,15 @@ suite('Markdown', () => {
     assert.match(html, /<li>plain<\/li>/);
   });
 
+  test('draws the control characters of a paragraph and of a code block as their pictures, as the viewer draws a text, leaving a picture the file itself holds as it is', () => {
+    const html = render(
+      ['bell \u0007 and ␛', '', '```', 'a\u001b[0m\u007f', '```'].join('\n'),
+      noImages,
+    );
+    assert.match(html, /<p>bell ␇ and ␛<\/p>/);
+    assert.match(html, /<code>a␛\[0m␡\n<\/code>/);
+  });
+
   test('aligns the columns of a table as its separator row says, as GitHub does, by the align it keeps rather than a style', () => {
     const html = render(
       ['| a | b | c | d |', '|:--|:-:|--:|---|', '| 1 | 2 | 3 | 4 |'].join(
