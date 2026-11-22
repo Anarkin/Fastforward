@@ -357,15 +357,19 @@ suite('App scrolling alike', () => {
     act: () => Promise<void>,
   ) => {
     const { pane, rows, across: moved } = views[name];
+    const read = () => (sideways ? across(name) : down(name));
     const once = async () => {
+      const from = (await read()).state;
       await page.evaluate(
         `(${String(recordPainted)})(${String(placeDown)}, ${String(placeAcross)}, ${JSON.stringify(pane)}, ${JSON.stringify(rows)}, ${JSON.stringify(sideways ? moved : null)})`,
       );
       await act();
-      const last = await untilSettled(
-        () => (sideways ? across(name) : down(name)),
-        `the ${name} to rest`,
-      );
+      await waitFor(
+        async () => (await read()).state !== from,
+        `the ${name} to move`,
+        3000,
+      ).catch(() => undefined);
+      const last = await untilSettled(read, `the ${name} to rest`);
       const painted = await page.evaluate(paintedPlaces);
       const samples = painted.map((each) => each.state);
       return {

@@ -1,6 +1,6 @@
 type Listener = () => void;
 
-export const bufferUsage = { copyDst: 8, vertex: 32, uniform: 64 } as const;
+export const bufferUsage = { copyDst: 8, uniform: 64, storage: 128 } as const;
 
 export const textureUsage = {
   copyDst: 2,

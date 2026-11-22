@@ -13,25 +13,42 @@ const placed = `
     1.0,
   );`;
 
-const corner = `vec2f(f32(vertex & 1u), f32(vertex >> 1u))`;
+const pulled = `
+@group(1) @binding(0) var<storage, read> records: array<u32>;
+
+fn low(word: u32) -> f32 {
+  return f32(bitcast<i32>(word << 16u) >> 16u);
+}
+
+fn high(word: u32) -> f32 {
+  return f32(bitcast<i32>(word) >> 16u);
+}
+
+fn pair(word: u32) -> vec2f {
+  return vec2f(low(word), high(word));
+}
+
+fn corner(vertex: u32) -> vec2f {
+  var corners = array<u32, 6>(0u, 1u, 2u, 2u, 1u, 3u);
+  let turned = corners[vertex % 6u];
+  return vec2f(f32(turned & 1u), f32(turned >> 1u));
+}`;
 
 const rectShader = `
 struct View { size: vec2f };
 @group(0) @binding(0) var<uniform> view: View;
+${pulled}
 
 struct Placed {
   @builtin(position) position: vec4f,
-  @location(0) fill: vec4f,
+  @location(0) @interpolate(flat) fill: vec4f,
 };
 
-@vertex fn placedRect(
-  @builtin(vertex_index) vertex: u32,
-  @location(0) box: vec4<i32>,
-  @location(1) fill: vec4f,
-) -> Placed {
-  let at = vec2f(box.xy) + ${corner} * vec2f(box.zw);
+@vertex fn placedRect(@builtin(vertex_index) vertex: u32) -> Placed {
+  let record = vertex / 6u * ${rectBytes / 4}u;
+  let at = pair(records[record]) + corner(vertex) * pair(records[record + 1u]);
   ${placed}
-  out.fill = fill;
+  out.fill = unpack4x8unorm(records[record + 2u]);
   return out;
 }
 
@@ -43,6 +60,7 @@ const tileShader = `
 struct View { size: vec2f };
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var tiles: texture_2d<f32>;
+${pulled}
 
 override lighter: f32 = 1.0;
 
@@ -52,17 +70,13 @@ struct Placed {
   @location(1) @interpolate(flat) under: vec3f,
 };
 
-@vertex fn placedTile(
-  @builtin(vertex_index) vertex: u32,
-  @location(0) place: vec2<i32>,
-  @location(1) tile: vec4<i32>,
-  @location(2) ground: vec4f,
-) -> Placed {
-  let reach = ${corner} * vec2f(tile.zw);
-  let at = vec2f(place) + reach;
+@vertex fn placedTile(@builtin(vertex_index) vertex: u32) -> Placed {
+  let record = vertex / 6u * ${tileBytes / 4}u;
+  let reach = corner(vertex) * pair(records[record + 2u]);
+  let at = pair(records[record]) + reach;
   ${placed}
-  out.texel = vec2f(tile.xy) + reach;
-  out.under = ground.rgb;
+  out.texel = pair(records[record + 1u]) + reach;
+  out.under = unpack4x8unorm(records[record + 3u]).rgb;
   return out;
 }
 
@@ -91,26 +105,7 @@ const kept: GPUBlendComponent = {
   dstFactor: 'one',
 };
 
-const rectLayout: GPUVertexBufferLayout = {
-  arrayStride: rectBytes,
-  stepMode: 'instance',
-  attributes: [
-    { shaderLocation: 0, offset: 0, format: 'sint16x4' },
-    { shaderLocation: 1, offset: 8, format: 'unorm8x4' },
-  ],
-};
-
-const tileLayout: GPUVertexBufferLayout = {
-  arrayStride: tileBytes,
-  stepMode: 'instance',
-  attributes: [
-    { shaderLocation: 0, offset: 0, format: 'sint16x2' },
-    { shaderLocation: 1, offset: 4, format: 'sint16x4' },
-    { shaderLocation: 2, offset: 12, format: 'unorm8x4' },
-  ],
-};
-
-const strip: GPUPrimitiveState = { topology: 'triangle-strip' };
+const cornersOfEach = 6;
 
 interface Glyphs {
   readonly key: string;
@@ -126,6 +121,7 @@ interface Measured {
 
 interface Room {
   buffer: GPUBuffer;
+  group: GPUBindGroup;
   size: number;
 }
 
@@ -138,6 +134,7 @@ class CellDrawing {
   readonly darker: GPURenderPipeline;
   readonly rectGroups: GPUBindGroupLayout;
   readonly tileGroups: GPUBindGroupLayout;
+  readonly recordGroups: GPUBindGroupLayout;
   private readonly glyphs = new Map<string, Glyphs>();
 
   constructor(private readonly device: GPUDevice) {
@@ -154,18 +151,26 @@ class CellDrawing {
         { binding: 1, visibility: shaderStage.fragment, texture: {} },
       ],
     });
+    this.recordGroups = device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: shaderStage.vertex,
+          buffer: { type: 'read-only-storage' },
+        },
+      ],
+    });
     const rectModule = device.createShaderModule({ code: rectShader });
     const tileModule = device.createShaderModule({ code: tileShader });
     this.rects = device.createRenderPipeline({
       layout: device.createPipelineLayout({
-        bindGroupLayouts: [this.rectGroups],
+        bindGroupLayouts: [this.rectGroups, this.recordGroups],
       }),
-      vertex: { module: rectModule, buffers: [rectLayout] },
+      vertex: { module: rectModule },
       fragment: { module: rectModule, targets: [{ format }] },
-      primitive: strip,
     });
     const tiled = device.createPipelineLayout({
-      bindGroupLayouts: [this.tileGroups],
+      bindGroupLayouts: [this.tileGroups, this.recordGroups],
     });
     const blended = (
       color: GPUBlendComponent,
@@ -173,13 +178,12 @@ class CellDrawing {
     ): GPURenderPipeline =>
       device.createRenderPipeline({
         layout: tiled,
-        vertex: { module: tileModule, buffers: [tileLayout] },
+        vertex: { module: tileModule },
         fragment: {
           module: tileModule,
           constants: { lighter },
           targets: [{ format, blend: { color, alpha: kept } }],
         },
-        primitive: strip,
       });
     this.lighter = blended(addedTo, 1);
     this.darker = blended(takenFrom, -1);
@@ -265,22 +269,27 @@ export class CellSurface {
   }
 
   private roomOf(size: number): Room {
+    const buffer = this.device.createBuffer({
+      size,
+      usage: bufferUsage.storage | bufferUsage.copyDst,
+    });
     return {
       size,
-      buffer: this.device.createBuffer({
-        size,
-        usage: bufferUsage.vertex | bufferUsage.copyDst,
+      buffer,
+      group: this.device.createBindGroup({
+        layout: this.drawing.recordGroups,
+        entries: [{ binding: 0, resource: { buffer } }],
       }),
     };
   }
 
-  private filled(room: Room, data: ArrayBuffer, bytes: number): GPUBuffer {
+  private filled(room: Room, data: ArrayBuffer, bytes: number): GPUBindGroup {
     if (bytes > room.size) {
       room.buffer.destroy();
       Object.assign(room, this.roomOf(Math.max(bytes, room.size * 2)));
     }
     this.device.queue.writeBuffer(room.buffer, 0, data, 0, bytes);
-    return room.buffer;
+    return room.group;
   }
 
   measured(key: string, metrics: CellMetrics, subpixel: boolean): GlyphTiles {
@@ -346,22 +355,22 @@ export class CellSurface {
     if (frame.rectCount > 0) {
       pass.setPipeline(drawing.rects);
       pass.setBindGroup(0, this.rectGroup);
-      pass.setVertexBuffer(
-        0,
+      pass.setBindGroup(
+        1,
         this.filled(this.rectRoom, frame.rects, frame.rectCount * rectBytes),
       );
-      pass.draw(4, frame.rectCount);
+      pass.draw(frame.rectCount * cornersOfEach);
     }
     if (frame.tileCount > 0) {
       pass.setBindGroup(0, measure.group);
-      pass.setVertexBuffer(
-        0,
+      pass.setBindGroup(
+        1,
         this.filled(this.tileRoom, frame.tiles, frame.tileCount * tileBytes),
       );
       pass.setPipeline(drawing.lighter);
-      pass.draw(4, frame.tileCount);
+      pass.draw(frame.tileCount * cornersOfEach);
       pass.setPipeline(drawing.darker);
-      pass.draw(4, frame.tileCount);
+      pass.draw(frame.tileCount * cornersOfEach);
     }
     pass.end();
     device.queue.submit([encoder.finish()]);
