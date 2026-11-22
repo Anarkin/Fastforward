@@ -232,16 +232,10 @@ suite('App editor', () => {
         async () => (await count.textContent()) === `${(press % 6) + 1} of 6`,
         `match ${(press % 6) + 1}`,
       );
-      let last = '';
-      let shown = await shownWhole();
-      await waitFor(async () => {
-        shown = await shownWhole();
-        const now = JSON.stringify(shown);
-        const settled = now === last;
-        last = now;
-        await new Promise((resolve) => setTimeout(resolve, 150));
-        return settled;
-      }, 'the text to stop scrolling');
+      const shown = await untilSettled(
+        shownWhole,
+        'the text to stop scrolling',
+      );
       if (!shown.whole || !shown.onRows) {
         wrong.push(`${(press % 6) + 1}: ${JSON.stringify(shown)}`);
       }

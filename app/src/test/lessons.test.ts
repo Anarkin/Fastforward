@@ -52,7 +52,7 @@ const timesIn = (folder: string, pattern: RegExp) =>
     0,
   );
 
-const fixedSleeps = 23;
+const fixedSleeps = 22;
 
 const geometry =
   /getBoundingClientRect|offset(?:Width|Height|Top|Left)|client(?:Width|Height)|scroll(?:Width|Height|Top|Left)/;
