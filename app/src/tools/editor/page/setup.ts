@@ -18,6 +18,7 @@ import { syntaxColors } from './colors';
 import { appSelection } from './selection';
 import { appTextLook, blanksShown } from './text';
 import { controlPictures } from './pictures';
+import { drawnNearWhileHeld } from './nearViewport';
 import { rowScrolling } from './scroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { colorer } from '../../../components/syntax/page/colorer';
@@ -112,6 +113,7 @@ export function extensionsOf({
 }: EditorParts): Extension {
   return [
     controlPictures,
+    drawnNearWhileHeld,
     coloring.of(colors),
     appTextLook(table),
     appSelection(editorKeymap.rowEnd, cursor),

@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { assertFillsRows } from './markRows';
+import { barOf, barParts } from './scrollbarsShown';
 import {
   opened,
   profile,
@@ -537,5 +538,70 @@ suite('App editor', () => {
       async () => (await occurrencesMarked()) === 'xal',
       'the word at the cursor marked once the cursor moves',
     );
+  });
+
+  test('draws the lines in sight and only a few around them while its scrollbar is dragged by more than a view at a step, and as many around them as CodeMirror draws once it is dragged slowly and once it is let go', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'tall.txt'),
+      Array.from({ length: 3000 }, (_, index) => `line ${index}`).join('\n'),
+    );
+    await backToCommander();
+    await edit('tall.txt');
+    await content().locator('.cm-line').first().waitFor();
+    const scroller = '.editor .cm-scroller';
+    const seen = () =>
+      page.evaluate((selector) => {
+        const view = document.querySelector(selector);
+        const lines = view?.querySelectorAll('.cm-line');
+        const height = lines?.[0]?.getBoundingClientRect().height ?? 0;
+        const room = view?.clientHeight ?? 0;
+        return {
+          drawn: lines?.length ?? 0,
+          inSight: height > 0 ? Math.ceil(room / height) : 0,
+          room,
+          scrolls: (view?.scrollHeight ?? 0) - room,
+        };
+      }, scroller);
+    const { box } = await barOf(page, scroller, 'vertical');
+    const { thumb, start, end } = await barParts(page, box, 'vertical');
+    assert.ok(thumb, 'the scrollbar of the editor has no thumb');
+    const { room, scrolls } = await seen();
+    const scrolledByPixel =
+      scrolls / (box.height - start.height - end.height - thumb.height);
+    const quick = Math.ceil((2 * room) / scrolledByPixel);
+    const slow = Math.max(1, Math.floor(100 / scrolledByPixel));
+    const across = thumb.left + thumb.width / 2;
+    let down = thumb.top + thumb.height / 2;
+    const dragBy = async (pixels: number) => {
+      down += pixels;
+      await page.mouse.move(across, down);
+    };
+    const draws = (around: 'few' | 'many', when: string) =>
+      waitFor(async () => {
+        const { drawn, inSight } = await seen();
+        return around === 'few'
+          ? drawn > 0 && drawn <= inSight + 14
+          : drawn >= inSight + 40;
+      }, `${around} lines around those in sight ${when}`).catch(
+        async (error: unknown) => {
+          throw new Error(JSON.stringify(await seen()), { cause: error });
+        },
+      );
+    await page.mouse.move(across, down);
+    await page.mouse.down();
+    try {
+      await dragBy(quick);
+      await dragBy(quick);
+      await draws('few', 'while dragged quickly');
+      for (let step = 0; step < 6; step++) {
+        await dragBy(slow);
+      }
+      await draws('many', 'once dragged slowly');
+      await dragBy(quick);
+      await draws('few', 'once dragged quickly again');
+    } finally {
+      await page.mouse.up();
+    }
+    await draws('many', 'once let go');
   });
 });
