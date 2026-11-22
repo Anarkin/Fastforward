@@ -82,14 +82,13 @@ function elementOf(node: Node): Element | null {
   return node instanceof Element ? node : node.parentElement;
 }
 
-export function realText(selection: Selection): string {
+const scaledInCell = '.cell > span';
+
+const flattening = 'data-copying';
+
+function realIn(selection: Selection, range: Range, within: Element): string {
   const shown = selection.toString();
-  if (!hasPictures(shown) || selection.rangeCount === 0) {
-    return shown;
-  }
-  const range = selection.getRangeAt(0);
-  const within = elementOf(range.commonAncestorContainer)?.closest(region);
-  if (within === null || within === undefined) {
+  if (!hasPictures(shown)) {
     return shown;
   }
   const kept = [...within.querySelectorAll<HTMLElement>(genuine)].filter(
@@ -113,6 +112,29 @@ export function realText(selection: Selection): string {
     each.style.userSelect = selectable[at];
   }
   return realOf(shown, withoutGenuine);
+}
+
+export function realText(selection: Selection): string {
+  if (selection.rangeCount === 0) {
+    return selection.toString();
+  }
+  const range = selection.getRangeAt(0);
+  const within = elementOf(range.commonAncestorContainer)?.closest(region);
+  if (within === null || within === undefined) {
+    return selection.toString();
+  }
+  const boxed = [...within.querySelectorAll(scaledInCell)].some((each) =>
+    range.intersectsNode(each),
+  );
+  if (!boxed) {
+    return realIn(selection, range, within);
+  }
+  within.setAttribute(flattening, '');
+  try {
+    return realIn(selection, range, within);
+  } finally {
+    within.removeAttribute(flattening);
+  }
 }
 
 export function copyReal(event: ClipboardEvent): void {

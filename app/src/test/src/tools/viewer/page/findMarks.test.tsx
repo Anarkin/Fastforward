@@ -91,7 +91,30 @@ suite('Matches marked in a file viewed', () => {
           widths={boxing}
         />,
       ),
-      'a<span class="cell" data-genuine="">␇</span>␇',
+      'a<span class="cell" data-genuine="">␇</span><span class="cell">␇</span>',
+    );
+  });
+
+  test('puts the picture of a control character in a box a column wide, shrunk to it, where the font draws it wider or narrower, as any character, as a font without the pictures left them to another of the system, off the columns, and leaves it in the text where the font draws it a column wide', () => {
+    const lacking = {
+      char: 10,
+      of: () => 10,
+      boxed: (cluster: string) => (/[␇␛]/.test(cluster) ? 1 : undefined),
+      scaled: (cluster: string) => (cluster === '␛' ? 0.5 : undefined),
+    };
+    const having = { char: 10, of: () => 10, boxed: () => undefined };
+    const text = 'a\u0007b\u001b[0m';
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText pieces={[{ text }]} marks={[]} widths={lacking} />,
+      ),
+      'a<span class="cell">␇</span>b<span class="cell"><span style="font-size:0.5em">␛</span></span>[0m',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText pieces={[{ text }]} marks={[]} widths={having} />,
+      ),
+      'a␇b␛[0m',
     );
   });
 

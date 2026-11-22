@@ -30,8 +30,9 @@ const shown = groups.map((codes) =>
 );
 const keptWritten = padded(`kept ␛${escape}`);
 const keptShown = padded('kept ␛␛');
+const boxedRow = `boxed 😀 and 中${' '.repeat(5)}|`;
 const fileOf = (last: string) =>
-  [ruler, ...written, keptWritten, last, ''].join(lineFeed);
+  [ruler, ...written, keptWritten, boxedRow, last, ''].join(lineFeed);
 
 const views = [
   {
@@ -258,12 +259,13 @@ suite('App control pictures', () => {
     );
   });
 
-  test('copies the control characters themselves out of the viewer, the editor and the diff, not the pictures drawn for them, and keeps a picture the file itself holds', async () => {
+  test('copies the control characters themselves out of the viewer, the editor and the diff, not the pictures drawn for them, keeps a picture the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
     const found: Record<string, unknown> = {};
     for (const view of views) {
       found[view.name] = [
         legible(await copiedFrom(view, shown[0] ?? '')),
         legible(await copiedFrom(view, keptShown)),
+        legible(await copiedFrom(view, boxedRow)),
       ];
     }
     assert.deepStrictEqual(
@@ -271,7 +273,7 @@ suite('App control pictures', () => {
       Object.fromEntries(
         views.map((view) => [
           view.name,
-          [legible(written[0]), legible(keptWritten)],
+          [legible(written[0]), legible(keptWritten), legible(boxedRow)],
         ]),
       ),
     );
@@ -279,9 +281,7 @@ suite('App control pictures', () => {
 
   test('draws a picture of the editor in the color of the code around it, inside the span that colors it, as the viewer and the diff do, where it stood outside in the color of plain text', async () => {
     await page.locator('.tabs .tab').nth(5).click();
-    const pictures = page.locator('.editor .cm-line span', {
-      hasText: /^[␛␇]$/,
-    });
+    const pictures = page.locator('.editor .cm-line .control-picture');
     await page.locator('.editor .cm-line .syntax-string').first().waitFor();
     await pictures.first().waitFor();
     assert.deepStrictEqual(

@@ -49,6 +49,10 @@
   width: calc(2 * var(--text-advance));
 }
 
+[data-copying] .cell {
+  display: inline-block;
+}
+
 .cell.zero {
   width: 0;
 }

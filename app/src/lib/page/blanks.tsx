@@ -1,6 +1,13 @@
 import { Fragment } from 'react';
 import { cellClass, cellParts } from './cellParts';
-import { hasPictures, pictureRuns, pictured } from './controlPictures';
+import {
+  everyPicture,
+  hasControls,
+  hasPictures,
+  pictureRuns,
+  pictured,
+  picturesAndControls,
+} from './controlPictures';
 import type { TextWidths } from './textWidths';
 import {
   blank,
@@ -12,19 +19,75 @@ import {
 
 const genuinePicture = { 'data-genuine': '' };
 
-function shownText(text: string): string | React.ReactNode[] {
-  if (!hasPictures(text)) {
-    return pictured(text);
+const picturesBoxed = new WeakMap<TextWidths, boolean>();
+
+function boxesPictures(widths: TextWidths): boolean {
+  let boxes = picturesBoxed.get(widths);
+  if (boxes === undefined) {
+    boxes = everyPicture.some((each) => widths.boxed?.(each) !== undefined);
+    picturesBoxed.set(widths, boxes);
   }
-  return text.split(pictureRuns).map((part, index) =>
-    index % 2 === 1 ? (
-      <span key={index} {...genuinePicture}>
-        {part}
-      </span>
-    ) : (
-      pictured(part)
-    ),
+  return boxes;
+}
+
+function boxed(
+  text: string,
+  cells: number,
+  scale: number | undefined,
+  key: number,
+  genuine: boolean,
+) {
+  return (
+    <span
+      key={key}
+      className={cellClass(cells)}
+      {...(genuine && genuinePicture)}
+    >
+      {scale === undefined ? (
+        text
+      ) : (
+        <span style={{ fontSize: `${scale}em` }}>{text}</span>
+      )}
+    </span>
   );
+}
+
+function shownText(
+  text: string,
+  boxing: TextWidths | undefined,
+): string | React.ReactNode[] {
+  const boxes =
+    boxing !== undefined && hasControls(text) && boxesPictures(boxing);
+  if (!boxes) {
+    return hasPictures(text)
+      ? text.split(pictureRuns).map((part, index) =>
+          index % 2 === 1 ? (
+            <span key={index} {...genuinePicture}>
+              {part}
+            </span>
+          ) : (
+            pictured(part)
+          ),
+        )
+      : pictured(text);
+  }
+  return text.split(picturesAndControls).map((part, index) => {
+    if (index % 2 === 0) {
+      return part;
+    }
+    if (!hasControls(part)) {
+      return (
+        <span key={index} {...genuinePicture}>
+          {part}
+        </span>
+      );
+    }
+    const shown = pictured(part);
+    const cells = boxing.boxed?.(shown);
+    return cells === undefined
+      ? shown
+      : boxed(shown, cells, boxing.scaled?.(shown), index, false);
+  });
 }
 
 function keyed(shown: string | React.ReactNode[], key: number) {
@@ -38,26 +101,13 @@ function keyed(shown: string | React.ReactNode[], key: number) {
 function boxedText(text: string, widths: TextWidths): React.ReactNode {
   const parts = cellParts(text, widths);
   if (parts.length === 1 && parts[0].cells === undefined) {
-    return shownText(text);
+    return shownText(text, widths);
   }
-  return parts.map((part, index) => {
-    if (part.cells === undefined) {
-      return keyed(shownText(part.text), index);
-    }
-    return (
-      <span
-        key={index}
-        className={cellClass(part.cells)}
-        {...(hasPictures(part.text) && genuinePicture)}
-      >
-        {part.scale === undefined ? (
-          part.text
-        ) : (
-          <span style={{ fontSize: `${part.scale}em` }}>{part.text}</span>
-        )}
-      </span>
-    );
-  });
+  return parts.map((part, index) =>
+    part.cells === undefined
+      ? keyed(shownText(part.text, widths), index)
+      : boxed(part.text, part.cells, part.scale, index, hasPictures(part.text)),
+  );
 }
 
 function blankShown(
@@ -75,7 +125,7 @@ function blankShown(
   }
   if (!(spaces ? blank : signedBlank).test(part)) {
     return widths === undefined ? (
-      keyed(shownText(part), key)
+      keyed(shownText(part, undefined), key)
     ) : (
       <Fragment key={key}>{boxedText(part, widths)}</Fragment>
     );
@@ -105,7 +155,9 @@ export function DrawnText({
 }): React.ReactNode {
   const boxing = widths?.boxed === undefined ? undefined : widths;
   if (!blanks || !(spaces ? blank : signedBlank).test(text)) {
-    return boxing === undefined ? shownText(text) : boxedText(text, boxing);
+    return boxing === undefined
+      ? shownText(text, undefined)
+      : boxedText(text, boxing);
   }
   return Array.from(
     text.matchAll(spaces ? spacesBlanksAndText : signedBlanksAndText),

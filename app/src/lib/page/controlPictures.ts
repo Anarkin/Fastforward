@@ -29,8 +29,14 @@ export const controlCharacters = (): RegExp => new RegExp(controlClass, 'g');
 
 export const pictureRuns = new RegExp(`(${pictureClass}+)`);
 
+export const picturesAndControls = new RegExp(
+  `(${pictureClass}+|${controlClass})`,
+);
+
 export const pictureOf = (code: number): string =>
   String.fromCharCode(pictureCode(code));
+
+export const everyPicture: readonly string[] = codes.map(pictureOf);
 
 export const hasControls = (text: string): boolean => control.test(text);
 
