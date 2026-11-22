@@ -553,14 +553,20 @@ suite('Style', () => {
     }
   });
 
-  test('keeps the arrow cursor of a desktop app but for resizing, the fields showing the text cursor of their own', () => {
+  test('keeps the arrow cursor of a desktop app but for resizing and over the text drawn as cells, which the browser takes for no text and shows no text cursor over by itself, the fields and the text of elements showing the text cursor of their own', () => {
     assert.deepStrictEqual(
       [
         ...new Set(
           [...css.matchAll(/cursor: ([^;]+);/g)].map((match) => match[1]),
         ),
-      ],
-      ['col-resize'],
+      ].toSorted(),
+      ['col-resize', 'text'],
+    );
+    assert.deepStrictEqual(
+      [...css.matchAll(/([^{}]+)\{[^{}]*cursor: text;/g)].map((match) =>
+        match[1].trim(),
+      ),
+      ['.cell-canvas'],
     );
   });
 
