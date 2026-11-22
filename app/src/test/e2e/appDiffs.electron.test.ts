@@ -119,7 +119,11 @@ suite('App', () => {
           for (const code of document.querySelectorAll('.diff-line .code')) {
             const text = code.textContent ?? '';
             const kind = expected.get(text);
-            if (kind !== undefined && !code.querySelector(`.${kind}`)) {
+            if (
+              kind !== undefined &&
+              !code.matches(`.${kind}`) &&
+              !code.querySelector(`.${kind}`)
+            ) {
               uncolored.push(text);
             }
           }

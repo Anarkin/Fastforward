@@ -3,6 +3,7 @@ import { EditorState, Text, type TransactionSpec } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import {
   coloredLinesOf,
+  colorsOfLine,
   keepColoredLines,
   lineEdit,
   linesMeet,
@@ -78,6 +79,37 @@ suite('Lines of the editor to color again', () => {
       }),
       { from: 0, removed: 3, lines: ['>a', 'b', '>c'] },
     );
+  });
+});
+
+suite('Colors of a line of the editor', () => {
+  test('are the color most of its tokens have, for the line itself, and the tokens of other colors and the plain text between tokens, worked out once for the tokens and the text they color and again once the line is typed in, as the editor asks for them at every step it scrolls', () => {
+    const text = 'let a = [1];';
+    const at = (piece: string, kind: 'keyword' | 'number') => {
+      const start = text.indexOf(piece);
+      return { start, end: start + piece.length, kind };
+    };
+    const tokens = [
+      at('let', 'keyword'),
+      at('=', 'keyword'),
+      at('[', 'keyword'),
+      at('1', 'number'),
+      at('];', 'keyword'),
+    ];
+    const colors = colorsOfLine(text, tokens);
+    assert.deepStrictEqual(colors, {
+      common: 'keyword',
+      others: [{ start: 3, end: 6, kind: 'plain' }, at('1', 'number')],
+    });
+    assert.strictEqual(colorsOfLine(text, tokens), colors);
+    const typed = colorsOfLine('let ab = [1];', tokens);
+    assert.notStrictEqual(typed, colors);
+    assert.deepStrictEqual(typed.others[0], {
+      start: 3,
+      end: 6,
+      kind: 'plain',
+    });
+    assert.notStrictEqual(colorsOfLine(text, [...tokens]), colors);
   });
 });
 

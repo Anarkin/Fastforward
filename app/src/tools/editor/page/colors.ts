@@ -20,13 +20,17 @@ import { partLines } from '../../../components/syntax/page/parts';
 import { replacedIn } from '../../../lib/page/replacedIn';
 import type { SyntaxRange } from '../../../components/syntax/page/engine';
 import { hasSwapped } from '../../../lib/page/controlPictures';
+import {
+  lineColors,
+  type ColoredRange,
+} from '../../../components/syntax/page/lineColors';
 
 const recolored = StateEffect.define();
 
 const kindMarks = new Map<string, Decoration>();
 
 function markOf(
-  kind: SyntaxRange['kind'],
+  kind: string,
   inclusiveStart = false,
   inclusiveEnd = false,
 ): Decoration {
@@ -41,6 +45,40 @@ function markOf(
     kindMarks.set(key, mark);
   }
   return mark;
+}
+
+const kindLines = new Map<string, Decoration>();
+
+function lineOf(kind: string): Decoration {
+  let line = kindLines.get(kind);
+  if (line === undefined) {
+    line = Decoration.line({ class: `syntax-${kind}` });
+    kindLines.set(kind, line);
+  }
+  return line;
+}
+
+interface LineColors {
+  readonly common: string | undefined;
+  readonly others: readonly ColoredRange[];
+}
+
+const coloredLines = new WeakMap<
+  readonly SyntaxRange[],
+  { readonly text: string; readonly colors: LineColors }
+>();
+
+export function colorsOfLine(
+  text: string,
+  tokens: readonly SyntaxRange[],
+): LineColors {
+  const kept = coloredLines.get(tokens);
+  if (kept?.text === text) {
+    return kept.colors;
+  }
+  const colors = lineColors(text, tokens);
+  coloredLines.set(tokens, { text, colors });
+  return colors;
 }
 
 function linesOf(doc: Text, first: number, last: number): string[] {
@@ -107,6 +145,8 @@ function shownLines(view: EditorView): { first: number; last: number } {
 }
 
 const uncolored: EditedColors = { edit: () => {}, stop: () => {} };
+
+const uncoloredLine: LineColors = { common: undefined, others: [] };
 
 type ColoredLines = (readonly SyntaxRange[] | undefined)[];
 
@@ -211,6 +251,7 @@ class Colors implements PluginValue {
   private build(view: EditorView): DecorationSet {
     const { doc } = view.state;
     const marks: Range<Decoration>[] = [];
+    let classed = 0;
     for (const { from, to } of view.visibleRanges) {
       for (let at = from; at <= to;) {
         const line = doc.lineAt(at);
@@ -218,8 +259,17 @@ class Colors implements PluginValue {
         const windowFrom = Math.max(from, line.from) - line.from;
         const windowTo = Math.min(to, line.to) - line.from;
         const pictured = hasSwapped(line.text);
+        const tokens = this.lines[line.number - 1];
+        const { common, others } =
+          tokens === undefined || tokens.length === 0
+            ? uncoloredLine
+            : colorsOfLine(line.text, tokens);
+        if (common !== undefined && classed !== line.number) {
+          classed = line.number;
+          marks.push(lineOf(common).range(line.from));
+        }
         for (const { start, end, kind } of tokensIn(
-          this.lines[line.number - 1] ?? [],
+          others,
           windowFrom,
           windowTo,
         )) {

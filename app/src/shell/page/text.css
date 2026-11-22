@@ -360,6 +360,11 @@ mark.match,
     calc(-1 * var(--hairline)) 0 var(--color-search-match-foreground);
 }
 
+.diff-line .syntax-plain,
+.cm-editor.editor-text .syntax-plain {
+  color: var(--color-foreground);
+}
+
 .diff-line .syntax-keyword,
 .markdown .syntax-keyword,
 .cm-editor.editor-text .syntax-keyword {

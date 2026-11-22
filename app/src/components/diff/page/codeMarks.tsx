@@ -1,6 +1,5 @@
 import { memo, Fragment } from 'react';
 import { type FindRange } from './find';
-import type { SyntaxRange } from '../../syntax/page/engine';
 import { DrawnText } from '../../../lib/page/blanks';
 import {
   breakOffsets,
@@ -14,6 +13,7 @@ import { CodeBlocks } from './codeBlocks';
 import { keptWrapStarts } from '../../../lib/page/wrapStarts';
 import { spaceColumnsAt } from '../../../lib/page/rowBreaks';
 import { DotRowsShown } from '../../../lib/page/dotRowsShown';
+import { lineColors, type ColoredRange } from '../../syntax/page/lineColors';
 
 function firstFrom(offsets: readonly number[], at: number): number {
   let low = 0;
@@ -131,7 +131,7 @@ export function MarkedCode({
   to = text.length,
 }: {
   readonly text: string;
-  readonly syntax: readonly SyntaxRange[];
+  readonly syntax: readonly ColoredRange[];
   readonly words: readonly FindRange[];
   readonly wordClass: string;
   readonly found: readonly FindRange[];
@@ -253,10 +253,11 @@ export const Code = memo(function Code({
   placed,
 }: CodeProps) {
   const layered = whitespace && dotLook !== undefined && breaksMarked(text);
+  const { common, others } = lineColors(text, syntax);
   const draw = (from?: number, to?: number) => (
     <MarkedCode
       text={text}
-      syntax={syntax}
+      syntax={others}
       words={words}
       wordClass={wordClass}
       found={finds}
@@ -272,7 +273,7 @@ export const Code = memo(function Code({
   );
   return (
     <span
-      className="code"
+      className={common === undefined ? 'code' : `code syntax-${common}`}
       ref={placed}
       style={
         indent

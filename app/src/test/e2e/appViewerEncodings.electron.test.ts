@@ -19,7 +19,12 @@ const firstKeywords = () =>
   page
     .locator('.viewer-rows .viewer-row')
     .evaluateAll((rows) =>
-      rows.map((row) => row.querySelector('.syntax-keyword')?.textContent),
+      rows.map((row) =>
+        row.matches('.syntax-keyword')
+          ? Array.from(row.childNodes).find((node) => node.nodeType === 3)
+              ?.textContent
+          : row.querySelector('.syntax-keyword')?.textContent,
+      ),
     );
 
 suite('App commander', () => {

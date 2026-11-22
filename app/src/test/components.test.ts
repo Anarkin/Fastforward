@@ -42,6 +42,7 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/syntax/page/engine.ts',
     'components/syntax/page/languageChoice.tsx',
     'components/syntax/page/languageMenu.ts',
+    'components/syntax/page/lineColors.ts',
     'components/syntax/page/parts.ts',
     'components/syntax/shared/colorLimit.ts',
   ],

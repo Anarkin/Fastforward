@@ -1,12 +1,12 @@
 import { wholeClusters } from '../../../lib/page/wholeClusters';
 import type { FindRange } from './find';
-import type { SyntaxRange } from '../../syntax/page/engine';
+import type { ColoredRange } from '../../syntax/page/lineColors';
 
 export interface CodePiece {
   readonly start: number;
   readonly end: number;
   readonly find: 'match' | 'current' | 'occurrence' | undefined;
-  readonly token: SyntaxRange['kind'] | undefined;
+  readonly token: string | undefined;
   readonly tokenFrom: number | undefined;
   readonly word: boolean;
   readonly wordFrom: number | undefined;
@@ -35,7 +35,7 @@ function covering<T extends FindRange>(
 
 export function codePieces(
   text: string,
-  syntax: readonly SyntaxRange[],
+  syntax: readonly ColoredRange[],
   words: readonly FindRange[],
   found: readonly FindRange[],
   foundNow: FindRange | undefined,

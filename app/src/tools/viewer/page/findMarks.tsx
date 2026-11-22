@@ -1,4 +1,5 @@
-import type { CodeSegment } from './codeSegments';
+import { Fragment } from 'react';
+import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import { DrawnText } from '../../../lib/page/blanks';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { type FindMark, markPieces } from './markPieces';
@@ -9,7 +10,7 @@ export function MarkedText({
   blanks = false,
   widths,
 }: {
-  pieces: readonly CodeSegment[];
+  pieces: readonly ColoredSegment[];
   marks: readonly FindMark[];
   blanks?: boolean;
   widths?: TextWidths;
@@ -30,7 +31,7 @@ export function MarkedText({
             <span className={`syntax-${kind}`}>{drawn(text)}</span>
           );
         return mark === undefined ? (
-          <span key={index}>{colored}</span>
+          <Fragment key={index}>{colored}</Fragment>
         ) : (
           <mark
             key={index}

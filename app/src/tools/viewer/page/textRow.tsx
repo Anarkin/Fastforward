@@ -8,35 +8,7 @@ import { MarkedText } from './findMarks';
 import type { FindMark } from './markPieces';
 import { marksWithin, piecesWithin, type ScreenRow } from './screenRows';
 import { rowSegments, type ColoredText } from './textColors';
-
-function RowText({
-  shown,
-  from,
-  to,
-  colored,
-  marks,
-  blanks,
-  widths,
-}: {
-  shown: ScreenRow;
-  from: number;
-  to: number;
-  colored: ColoredText | undefined;
-  marks: readonly FindMark[];
-  blanks: boolean;
-  widths: TextWidths | undefined;
-}) {
-  const { row } = shown;
-  const pieces = (colored && rowSegments(colored, row)) ?? [{ text: row.text }];
-  return (
-    <MarkedText
-      pieces={piecesWithin(pieces, from, to)}
-      marks={marksWithin(marks, from, to)}
-      blanks={blanks}
-      widths={widths}
-    />
-  );
-}
+import { segmentColors } from '../../../components/syntax/page/lineColors';
 
 interface RowPart {
   readonly from: number;
@@ -106,9 +78,18 @@ export const TextRow = memo(function TextRow({
 }: TextRowProps) {
   const from = part?.from ?? row.from;
   const to = part?.to ?? row.to;
+  const { common, others } = segmentColors(
+    piecesWithin(
+      (colored && rowSegments(colored, row.row)) ?? [{ text: row.row.text }],
+      from,
+      to,
+    ),
+  );
   return (
     <div
-      className="viewer-row"
+      className={
+        common === undefined ? 'viewer-row' : `viewer-row syntax-${common}`
+      }
       data-key={`${row.row.start}:${row.from}`}
       data-continues={
         row.to < row.row.text.length || row.row.cut === true ? '' : undefined
@@ -121,12 +102,9 @@ export const TextRow = memo(function TextRow({
           : undefined
       }
     >
-      <RowText
-        shown={row}
-        from={from}
-        to={to}
-        colored={colored}
-        marks={marks}
+      <MarkedText
+        pieces={others}
+        marks={marksWithin(marks, from, to)}
         blanks={showWhitespace}
         widths={widths}
       />

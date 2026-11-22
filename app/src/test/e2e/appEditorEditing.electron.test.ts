@@ -435,7 +435,10 @@ suite('App editor', () => {
     await backToCommander();
     await edit('block.json');
     await waitFor(async () => (await editedText()) === '{\n}\n', 'the text');
-    await content().locator('.cm-line [class^="syntax-"]').first().waitFor();
+    await content()
+      .locator('.cm-line[class*="syntax-"], .cm-line [class^="syntax-"]')
+      .first()
+      .waitFor();
     await content().locator('.cm-line').first().click();
     await page.keyboard.press('Home');
     let seen = await bracketAndCursor();

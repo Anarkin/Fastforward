@@ -1,6 +1,6 @@
 import type { ByteRange, TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
-import type { CodeSegment } from './codeSegments';
+import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import { copiesIn, matchesIn } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import { wholeClusters } from '../../../lib/page/wholeClusters';
@@ -19,7 +19,7 @@ export interface FindMark {
   readonly occurrence?: true;
 }
 
-export interface MarkedPiece extends CodeSegment {
+export interface MarkedPiece extends ColoredSegment {
   readonly mark: 'match' | 'current' | 'occurrence' | undefined;
 }
 
@@ -191,7 +191,7 @@ export function hexMarks(marks: readonly FindMark[]): FindMark[] {
 }
 
 export function markPieces(
-  pieces: readonly CodeSegment[],
+  pieces: readonly ColoredSegment[],
   found: readonly FindMark[],
 ): MarkedPiece[] {
   const marks = wholeClusters(

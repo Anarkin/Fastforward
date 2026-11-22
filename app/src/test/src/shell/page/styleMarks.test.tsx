@@ -11,6 +11,7 @@ import {
   type MarkupElement,
 } from '../../../helpers/markup';
 import {
+  body,
   currentMatchOutline,
   looks,
   paddingOf,
@@ -310,6 +311,36 @@ suite('Style', () => {
         cascaded(colored, 'color'),
         'var(--color-syntax-keyword)',
         mark,
+      );
+    }
+  });
+
+  test('colors the text between the tokens of a line that took the color of most of its tokens for its own in the color text has in no token, the one the app draws its text in, so a line drawn with fewer elements looks as it did', () => {
+    assert.strictEqual(cascaded(body, 'color'), 'var(--color-foreground)');
+    const plain = <span className="syntax-plain">a</span>;
+    for (const shown of [
+      <div key="diff" className="diff-view">
+        <div className="diff-line">
+          <span className="code syntax-keyword">{plain}</span>
+        </div>
+      </div>,
+      <div key="viewer" className="viewer-rows">
+        <div className="viewer-row syntax-keyword">{plain}</div>
+      </div>,
+      <div key="editor" className="cm-editor editor-text">
+        <div className="cm-content">
+          <div className="cm-line syntax-keyword">{plain}</div>
+        </div>
+      </div>,
+    ]) {
+      const line = rendered(shown);
+      assert.strictEqual(
+        cascaded(withClass(line, 'syntax-keyword'), 'color'),
+        'var(--color-syntax-keyword)',
+      );
+      assert.strictEqual(
+        cascaded(withClass(line, 'syntax-plain'), 'color'),
+        'var(--color-foreground)',
       );
     }
   });

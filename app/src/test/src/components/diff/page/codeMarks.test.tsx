@@ -309,6 +309,50 @@ suite('Drawing code', () => {
     );
   });
 
+  test('gives a line the color most of its tokens have, drawing those tokens as its own text, one piece where they stand side by side, and an element only around the tokens of other colors and the text between tokens, which keeps the plain color, a changed word and a find match inside as before; a line with no such color is drawn as it was', () => {
+    const text = 'let a = [b(1), c];';
+    const at = (piece: string, kind: 'keyword' | 'function' | 'number') => {
+      const start = text.indexOf(piece);
+      return { start, end: start + piece.length, kind };
+    };
+    const props = {
+      text,
+      syntax: [
+        at('let', 'keyword'),
+        at('=', 'keyword'),
+        at('[', 'keyword'),
+        at('b', 'function'),
+        at('(', 'keyword'),
+        at('1', 'number'),
+        at('),', 'keyword'),
+        at('];', 'keyword'),
+      ],
+      words: [],
+      wordClass: 'word-added',
+      finds: [],
+      current: undefined,
+      whitespace: false,
+    };
+    assert.strictEqual(
+      renderToStaticMarkup(<Code {...props} />),
+      '<span class="code syntax-keyword">let<span class="syntax-plain"> a </span>= [<span class="syntax-function">b</span>(<span class="syntax-number">1</span>),<span class="syntax-plain"> c</span>];</span>',
+    );
+    const word = { start: text.indexOf('a'), end: text.indexOf('=') + 1 };
+    const found = { start: text.indexOf('c'), end: text.indexOf('c') + 1 };
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <Code {...props} words={[word]} finds={[found]} current={undefined} />,
+      ),
+      '<span class="code syntax-keyword">let<span class="syntax-plain"> <span class="word-added">a </span></span><span class="word-added">=</span> [<span class="syntax-function">b</span>(<span class="syntax-number">1</span>),<span class="syntax-plain"> <mark class="find-match ">c</mark></span>];</span>',
+    );
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <Code {...props} text="alpha = beta" syntax={[at('=', 'keyword')]} />,
+      ),
+      '<span class="code">alpha <span class="syntax-keyword">=</span> beta</span>',
+    );
+  });
+
   test('draws the spaces of a line as plain text while they are shown, dotted by one layer over the line rather than a span around each run, in a line not wrapped by a layer of its own at the columns of its spaces, in a wrapped one by its wrap marks, keeping the signs of tabs, and the spans in a line too long to mark', () => {
     const props = {
       syntax: [],

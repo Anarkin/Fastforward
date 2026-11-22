@@ -122,37 +122,56 @@ const drawn = () =>
       return [getComputedStyle(element).backgroundColor, wanted];
     });
 
+const coloredIn = (line: number, kind: string) =>
+  content()
+    .locator('.cm-line')
+    .nth(line)
+    .evaluate((shown, wanted) => {
+      const own = shown.matches(`.${wanted}`);
+      const texts = document.createTreeWalker(shown, NodeFilter.SHOW_TEXT);
+      const ownText: string[] = [];
+      for (let node = texts.nextNode(); node; node = texts.nextNode()) {
+        if (node.parentElement?.closest('[class*="syntax-"]') === shown) {
+          ownText.push(node.textContent ?? '');
+        }
+      }
+      return {
+        own,
+        text: own
+          ? ownText.join('')
+          : Array.from(
+              shown.querySelectorAll(`.${wanted}`),
+              (each) => each.textContent ?? '',
+            ).join(''),
+        others: Array.from(
+          shown.querySelectorAll('[class^="syntax-"]'),
+          (each) => `${each.className}:${each.textContent ?? ''}`,
+        ),
+      };
+    }, `syntax-${kind}`);
+
 suite('App editor', () => {
   sharedEditorApp();
 
-  test('colors the code edited by its language as the viewer does, coloring again as it is typed', async () => {
+  test('colors the code edited by its language as the viewer does, coloring again as it is typed, a line in the color most of its tokens have with an element only around its other tokens and the plain text between tokens, as an element around every token made the editor twice as slow to scroll a source file', async () => {
     await backToCommander();
     await edit('code.ts');
-    const keywords = content()
-      .locator('.cm-line')
-      .first()
-      .locator('.syntax-keyword');
-    await keywords.first().waitFor();
-    assert.strictEqual(await keywords.first().textContent(), 'const');
+    await content().locator('.cm-line.syntax-keyword').first().waitFor();
+    assert.deepStrictEqual(await coloredIn(0, 'keyword'), {
+      own: true,
+      text: 'const= ;',
+      others: ['syntax-plain: a ', 'syntax-number:1'],
+    });
     await toStart();
     await page.keyboard.type('// ');
     await waitFor(
-      async () =>
-        (
-          await content()
-            .locator('.cm-line')
-            .first()
-            .locator('.syntax-comment')
-            .allTextContents()
-        ).join('') === '// const a = 1;',
+      async () => (await coloredIn(0, 'comment')).text === '// const a = 1;',
       'the line colored as a comment',
     );
-    await content()
-      .locator('.cm-line')
-      .nth(1)
-      .locator('.syntax-keyword')
-      .first()
-      .waitFor();
+    await waitFor(
+      async () => (await coloredIn(1, 'keyword')).text !== '',
+      'the next line still colored',
+    );
   });
 
   test('shows the whitespace, as it does by default, the spaces dotted, the tabs signed and a sign after each line that ends in CRLF, hides it once its button is pressed, and shows it again', async () => {

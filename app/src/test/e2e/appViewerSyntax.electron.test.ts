@@ -56,8 +56,20 @@ const lastKeyword = () =>
   page
     .locator('.viewer-rows .viewer-row')
     .last()
-    .locator('.syntax-keyword')
-    .count();
+    .evaluate((row) =>
+      row.matches('.syntax-keyword')
+        ? 1
+        : row.querySelectorAll('.syntax-keyword').length,
+    );
+
+const firstKeyword = () =>
+  page.evaluate(() => {
+    const colored = document.querySelector('.viewer-rows .syntax-keyword');
+    return colored?.matches('.viewer-row')
+      ? Array.from(colored.childNodes).find((node) => node.nodeType === 3)
+          ?.textContent
+      : colored?.textContent;
+  });
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -68,16 +80,12 @@ suite('App commander', () => {
       await select('code');
       await page.keyboard.press('F3');
       await waitFor(
-        async () =>
-          (await page
-            .locator('.viewer-row .syntax-keyword')
-            .first()
-            .textContent()) === 'const',
+        async () => (await firstKeyword()) === 'const',
         'the keyword colored',
       );
       const colors = await page.evaluate(() => {
-        const keyword = document.querySelector('.viewer-row .syntax-keyword');
-        const plain = document.querySelector('.viewer-row');
+        const keyword = document.querySelector('.viewer-rows .syntax-keyword');
+        const plain = document.querySelector('.viewer-rows .syntax-plain');
         return keyword && plain
           ? [getComputedStyle(keyword).color, getComputedStyle(plain).color]
           : [];
@@ -88,7 +96,7 @@ suite('App commander', () => {
       assert.strictEqual(await checkedLanguage(), '✓Auto: TypeScript');
       await page.keyboard.press('Escape');
       await chooseLanguage('plain');
-      await page.locator('.viewer-row .syntax-keyword').first().waitFor({
+      await page.locator('.viewer-rows .syntax-keyword').first().waitFor({
         state: 'detached',
       });
       assert.strictEqual(await languageLabel(), 'Plain Text');
@@ -99,12 +107,12 @@ suite('App commander', () => {
       await reopen();
       assert.strictEqual(await languageLabel(), 'Plain Text');
       await chooseLanguage('typescript');
-      await page.locator('.viewer-row .syntax-keyword').first().waitFor();
+      await page.locator('.viewer-rows .syntax-keyword').first().waitFor();
       assert.strictEqual(savedText(profile, 'highlightSyntax'), false);
       await reopen();
       assert.strictEqual(await languageLabel(), 'Plain Text');
       await chooseLanguage('auto');
-      await page.locator('.viewer-row .syntax-keyword').first().waitFor();
+      await page.locator('.viewer-rows .syntax-keyword').first().waitFor();
       assert.strictEqual(await languageLabel(), 'TypeScript');
       await waitFor(
         () => savedText(profile, 'highlightSyntax') === undefined,
@@ -120,11 +128,7 @@ suite('App commander', () => {
       assert.strictEqual(await languageLabel(), 'Plain Text');
       await chooseLanguage('javascript');
       await waitFor(
-        async () =>
-          (await page
-            .locator('.viewer-row .syntax-keyword')
-            .first()
-            .textContent()) === 'const',
+        async () => (await firstKeyword()) === 'const',
         'the text colored in the language chosen',
       );
       assert.strictEqual(await languageLabel(), 'JavaScript');
@@ -172,7 +176,7 @@ suite('App commander', () => {
             .locator('.viewer-rows .viewer-row')
             .first()
             .textContent()) === 'let first = 1;' &&
-          (await page.locator('.viewer-row .syntax-keyword').count()) > 0,
+          (await page.locator('.viewer-rows .syntax-keyword').count()) > 0,
         'the first line of a file over a megabyte colored',
       );
       await page.keyboard.press('Escape');
@@ -211,7 +215,7 @@ suite('App commander', () => {
       );
       await page.waitForTimeout(300);
       assert.strictEqual(
-        await page.locator('.viewer-row .syntax-keyword').count(),
+        await page.locator('.viewer-rows .syntax-keyword').count(),
         0,
       );
       await page.keyboard.press('Escape');

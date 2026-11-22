@@ -12,7 +12,25 @@ suite('Matches marked in a file viewed', () => {
           marks={[{ start: 0, end: 2, current: false, occurrence: true }]}
         />,
       ),
-      '<mark class="occurrence-match">ab</mark><span> c</span>',
+      '<mark class="occurrence-match">ab</mark> c',
+    );
+  });
+
+  test('draws a piece of a row as its text alone, in an element only where it has a color or a mark, as an element around every piece, a second one around each colored piece, made a screen of code 1,994 elements rather than 490', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <MarkedText
+          pieces={[
+            { text: 'let ' },
+            { text: 'a', kind: 'plain' },
+            { text: ' = ' },
+            { text: '1', kind: 'number' },
+            { text: ';' },
+          ]}
+          marks={[]}
+        />,
+      ),
+      'let <span class="syntax-plain">a</span> = <span class="syntax-number">1</span>;',
     );
   });
 
@@ -71,7 +89,7 @@ suite('Matches marked in a file viewed', () => {
           blanks
         />,
       ),
-      `<span><span class="syntax-string">\u001b[0m<span class="blank" data-glyph="→">${tab}</span></span></span><mark class="find-match current">x␌</mark>`,
+      `<span class="syntax-string">\u001b[0m<span class="blank" data-glyph="→">${tab}</span></span><mark class="find-match current">x␌</mark>`,
     );
   });
 
