@@ -60,15 +60,19 @@ suite('Git repository', () => {
     }
   });
 
-  test('keeps fetching and pushing while git prints anything, however long that takes, giving up only once it prints nothing for the whole timeout', async () => {
+  test('keeps fetching and pushing while git prints anything, however long that takes, giving up only once it prints nothing for the whole timeout, the git that prints given three times the timeout of the quiet one, as a machine kept busy by other tests took over two seconds to start the programs between two prints and a git that was printing was stopped', async () => {
     const folder = tempFolder('slow-remote');
-    const slowly = (command: string, saying: string): string => {
+    const slowly = (
+      command: string,
+      saying: string,
+      { timeout }: { readonly timeout: number },
+    ): string => {
       const script = path
         .join(folder, `${command}-${saying ? 'chatty' : 'quiet'}.sh`)
         .replaceAll('\\', '/');
       fs.writeFileSync(
         script,
-        `#!/bin/sh\ni=0\nwhile [ $i -lt 12 ]; do ${saying}sleep 0.2; i=$((i+1)); done\nexec git ${command} "$@"\n`,
+        `#!/bin/sh\ni=0\nwhile [ $i -lt ${Math.ceil(timeout / 200) + 2} ]; do ${saying}sleep 0.2; i=$((i+1)); done\nexec git ${command} "$@"\n`,
         { mode: 0o755 },
       );
       return script;
@@ -81,8 +85,9 @@ suite('Git repository', () => {
       await local.commit('one');
       await local.git('remote', 'add', 'origin', upstream.root);
       const chatty = 'echo working >&2; ';
-      const options = { timeout: 2000 };
-      const push = () =>
+      const whilePrinting = { timeout: 6000 };
+      const whileQuiet = { timeout: 2000 };
+      const push = (options: { readonly timeout: number }) =>
         pushRef(
           gitPath,
           local.root,
@@ -94,38 +99,40 @@ suite('Git repository', () => {
       await local.git(
         'config',
         'remote.origin.receivepack',
-        slowly('receive-pack', chatty),
+        slowly('receive-pack', chatty, whilePrinting),
       );
-      await push();
+      await push(whilePrinting);
       await local.git(
         'config',
         'remote.origin.uploadpack',
-        slowly('upload-pack', chatty),
+        slowly('upload-pack', chatty, whilePrinting),
       );
-      await assert.doesNotReject(fetchAllRemotes(gitPath, local.root, options));
+      await assert.doesNotReject(
+        fetchAllRemotes(gitPath, local.root, whilePrinting),
+      );
       await local.commit('two');
       await local.git(
         'config',
         'remote.origin.receivepack',
-        slowly('receive-pack', ''),
+        slowly('receive-pack', '', whileQuiet),
       );
       await assert.rejects(
-        push(),
+        push(whileQuiet),
         /git push printed nothing for 2 seconds, so it was stopped/,
       );
       await local.git(
         'config',
         'remote.origin.uploadpack',
-        slowly('upload-pack', ''),
+        slowly('upload-pack', '', whileQuiet),
       );
       await assert.rejects(
-        fetchAllRemotes(gitPath, local.root, options),
+        fetchAllRemotes(gitPath, local.root, whileQuiet),
         /git fetch printed nothing for 2 seconds, so it was stopped/,
       );
     } finally {
       removeFolder(folder);
     }
-  });
+  }, 120_000);
 
   test('says why a fetch failed without the progress git printed before it, keeping the lines ssh ends with a carriage return', async () => {
     const folder = tempFolder('failing-remote');
