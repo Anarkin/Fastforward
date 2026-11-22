@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import { cellParts } from '../../../../lib/page/cellParts';
 
 suite('Widths of text in columns', () => {
@@ -71,5 +71,53 @@ suite('Widths of text in columns', () => {
     asked.length = 0;
     cellParts(`${'x'.repeat(200)}č${'y'.repeat(200)}`, boxing);
     assert.deepStrictEqual(asked, ['č']);
+  });
+
+  test('cuts nothing where every character beyond ASCII stands alone among ASCII, learning once for each such character how it joins its neighbors, as a line with seven of them apart was cut seven times at every draw, a sixth of the script of a diff scrolled; a mark joining the letter before it, a sign joining the digit after it and characters beyond ASCII side by side are cut as before', () => {
+    const boxing = {
+      char: 10,
+      of: () => 10,
+      boxed: (cluster: string) => (/[ĉ中]|́|؀/u.test(cluster) ? 2 : undefined),
+    };
+    const marked = 'x́';
+    const signed = '؀1';
+    const cuts = vi.spyOn(Intl.Segmenter.prototype, 'segment');
+    try {
+      const apart = 'a ĉ b ñ c ĉ d';
+      cellParts(apart, boxing);
+      cuts.mockClear();
+      assert.deepStrictEqual(cellParts(apart, boxing), [
+        { text: 'a ' },
+        { text: 'ĉ', cells: 2, scale: undefined },
+        { text: ' b ñ c ' },
+        { text: 'ĉ', cells: 2, scale: undefined },
+        { text: ' d' },
+      ]);
+      assert.deepStrictEqual(cellParts('ĉaĉ', boxing), [
+        { text: 'ĉ', cells: 2, scale: undefined },
+        { text: 'a' },
+        { text: 'ĉ', cells: 2, scale: undefined },
+      ]);
+      assert.strictEqual(cuts.mock.calls.length, 0);
+      assert.deepStrictEqual(
+        cellParts(`a${marked}b ${signed} 中中 ĉ`, boxing),
+        [
+          { text: 'a' },
+          { text: marked, cells: 2, scale: undefined },
+          { text: 'b ' },
+          { text: signed, cells: 2, scale: undefined },
+          { text: ' ' },
+          { text: '中', cells: 2, scale: undefined },
+          { text: '中', cells: 2, scale: undefined },
+          { text: ' ' },
+          { text: 'ĉ', cells: 2, scale: undefined },
+        ],
+      );
+      assert.deepStrictEqual(cellParts('؀á', boxing), [
+        { text: '؀á', cells: 2, scale: undefined },
+      ]);
+    } finally {
+      cuts.mockRestore();
+    }
   });
 });

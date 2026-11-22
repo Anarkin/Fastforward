@@ -1,4 +1,4 @@
-import { graphemes, nonAscii } from './graphemes';
+import { graphemes, nonAscii, standsAlone } from './graphemes';
 import type { TextWidths } from './textWidths';
 
 const cellClasses = ['cell zero', 'cell', 'cell wide'];
@@ -16,20 +16,33 @@ export type CellPart =
 
 const beyondAscii = /[^\0-\x7f]+/g;
 
-function stretchesBeyondAscii(text: string): [number, number][] {
-  const stretches: [number, number][] = [];
+interface Stretch {
+  readonly from: number;
+  to: number;
+  joined: boolean;
+}
+
+function stretchesBeyondAscii(text: string): Stretch[] {
+  const stretches: Stretch[] = [];
   for (const run of text.matchAll(beyondAscii)) {
     const from = Math.max(0, run.index - 1);
     const to = Math.min(text.length, run.index + run[0].length + 1);
+    const joined = run[0].length > 1 || !standsAlone(run[0]);
     const last = stretches.at(-1);
-    if (last !== undefined && from <= last[1]) {
-      last[1] = to;
+    if (last !== undefined && from <= last.to) {
+      last.to = to;
+      last.joined ||= joined;
     } else {
-      stretches.push([from, to]);
+      stretches.push({ from, to, joined });
     }
   }
   return stretches;
 }
+
+const clustersOf = (stretch: string, joined: boolean): Iterable<string> =>
+  joined
+    ? Array.from(graphemes.segment(stretch), ({ segment }) => segment)
+    : stretch;
 
 export function cellParts(text: string, widths: TextWidths): CellPart[] {
   if (widths.boxed === undefined || !nonAscii.test(text)) {
@@ -38,20 +51,20 @@ export function cellParts(text: string, widths: TextWidths): CellPart[] {
   const parts: CellPart[] = [];
   let plain = '';
   let taken = 0;
-  for (const [from, to] of stretchesBeyondAscii(text)) {
+  for (const { from, to, joined } of stretchesBeyondAscii(text)) {
     plain += text.slice(taken, from);
     taken = to;
-    for (const { segment } of graphemes.segment(text.slice(from, to))) {
-      const cells = nonAscii.test(segment) ? widths.boxed(segment) : undefined;
+    for (const cluster of clustersOf(text.slice(from, to), joined)) {
+      const cells = nonAscii.test(cluster) ? widths.boxed(cluster) : undefined;
       if (cells === undefined) {
-        plain += segment;
+        plain += cluster;
         continue;
       }
       if (plain !== '') {
         parts.push({ text: plain });
         plain = '';
       }
-      parts.push({ text: segment, cells, scale: widths.scaled?.(segment) });
+      parts.push({ text: cluster, cells, scale: widths.scaled?.(cluster) });
     }
   }
   plain += text.slice(taken);
