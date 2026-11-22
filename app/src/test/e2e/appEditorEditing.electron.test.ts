@@ -19,6 +19,7 @@ import {
   sharedEditorApp,
 } from './editorAppFixtures';
 import { writeSettings } from './settingsWritten';
+import { untilSettled } from './waits';
 import { strings } from '../../lib/shared/strings';
 
 const status = () => page.locator('.editor .column-status-text').textContent();
@@ -281,6 +282,79 @@ suite('App editor', () => {
       await writeSettings(page, profile, Object(JSON.parse(before)));
       await content().waitFor();
     }
+  });
+
+  test('leaves a line of thousands of characters as drawn while the cursor moves and text is typed in other lines, and draws its end once the cursor goes there, as CodeMirror drew the end of every such line above the cursor whenever the cursor was scrolled to, and its start again right after, a thousand elements of one line made twice a key', async () => {
+    const end = 'the end of the wide line';
+    const wide = `the start ${Array.from({ length: 900 }, (_, at) => `word${at}`).join(' ')} ${end}`;
+    const lines = [
+      wide,
+      ...Array.from({ length: 60 }, (_, at) => `narrow ${at + 1}`),
+    ];
+    fs.writeFileSync(path.join(opened, 'wide.txt'), `${lines.join('\n')}\n`);
+    await backToCommander();
+    await edit('wide.txt');
+    await waitFor(
+      async () => (await editedText()).includes('\nnarrow 1\n'),
+      'the text',
+    );
+    await toStart();
+    for (let row = 0; row < 10; row++) {
+      await page.keyboard.press('ArrowDown');
+    }
+    await waitFor(
+      async () => (await cursorLine()) === 'narrow 10',
+      'the cursor in a narrow line',
+    );
+    const wideLine = page.locator('.editor .cm-line').first();
+    const drawn = await untilSettled(
+      () => wideLine.evaluate((line) => line.textContent ?? ''),
+      'the wide line drawn',
+    );
+    assert.ok(drawn.startsWith('the start word0 '), drawn.slice(0, 40));
+    assert.ok(drawn.length < wide.length, 'part of the wide line left undrawn');
+    await wideLine.evaluate((line) => {
+      const changes = { count: 0 };
+      Reflect.set(window, 'wideLineChanges', changes);
+      new MutationObserver((seen) => {
+        changes.count += seen.length;
+      }).observe(line, { childList: true, subtree: true, characterData: true });
+    });
+    for (let row = 0; row < 4; row++) {
+      await page.keyboard.press('ArrowDown');
+    }
+    await page.keyboard.type('typed');
+    await waitFor(
+      async () => (await cursorLine()) === 'typednarrow 14',
+      'the text typed in a narrow line',
+    );
+    const changes = await untilSettled(
+      () =>
+        page.evaluate((): unknown => Reflect.get(window, 'wideLineChanges')),
+      'the wide line to rest',
+    );
+    assert.deepStrictEqual(changes, { count: 0 });
+    assert.strictEqual(
+      await wideLine.evaluate((line) => line.textContent ?? ''),
+      drawn,
+    );
+
+    for (let key = 0; key < 'typed'.length; key++) {
+      await page.keyboard.press('ControlOrMeta+Z');
+    }
+    await waitFor(
+      async () => (await cursorLine()) === 'narrow 14',
+      'the typing undone',
+    );
+    await page.keyboard.press('ControlOrMeta+Home');
+    await page.keyboard.press('End');
+    await waitFor(
+      async () =>
+        (await wideLine.evaluate((line) => line.textContent ?? '')).endsWith(
+          end,
+        ),
+      'the end of the wide line drawn',
+    );
   });
 
   test('moves the cursor itself a character or a word left or right and to the start of the row, selecting with Shift, over the places a wrapped line may break, where the caret of the browser stood still, as right before an opening bracket', async () => {

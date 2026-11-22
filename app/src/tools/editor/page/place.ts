@@ -6,6 +6,7 @@ import type {
 } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { restoreWhen } from '../../../lib/page/restore';
+import { keepLineGapsSteady } from './steadyGaps';
 
 export interface EditorPlace {
   readonly from: number;
@@ -182,6 +183,7 @@ export function editorAt(
     state,
     scrollTo: back === undefined ? undefined : backTo(state.doc, back),
   });
+  keepLineGapsSteady(view);
   return {
     view,
     stop: back === undefined ? () => {} : shownWhenBack(view, back, onShown),
