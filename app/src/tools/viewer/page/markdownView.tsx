@@ -11,50 +11,56 @@ import { mermaidDrawer, showDiagrams } from './diagrams';
 import { markdownRenderer, type Render } from './markdownRender';
 import { onceMade } from '../../../lib/page/onceMade';
 import { colorCode } from '../../../components/syntax/page/colorer';
-import { codeSegments } from './codeSegments';
-import { elementWidths, type TextWidths } from '../../../lib/page/textWidths';
+import { elementWidths, fontOf, spacingOf } from '../../../lib/page/textWidths';
 import { useCellTable } from '../../../lib/page/cellTable';
-import {
-  cellNodes,
-  boxCodeBlocks,
-  showBlocks,
-  showImages,
-  type MarkdownImages,
-} from './markdownBlocks';
+import { fontDotLook } from '../../../lib/page/dotLook';
+import { useShell } from '../../../shell/page/store';
+import { CodeBlocks } from './codeBlocks';
+import type { CodeLook } from './codeCells';
+import { showBlocks, showImages, type MarkdownImages } from './markdownBlocks';
 
 const codeLanguage = /(?:^|\s)language-(\S+)/;
 
-function colorCodeBlocks(
-  element: ParentNode,
-  widths: TextWidths | undefined,
-): () => void {
+const drawnCode = 'pre > code:not(.language-mermaid)';
+
+function drawCodeBlocks(element: Element, blocks: CodeBlocks): () => void {
   const leaving = new AbortController();
-  for (const code of element.querySelectorAll('pre > code')) {
+  for (const code of element.querySelectorAll<HTMLElement>(drawnCode)) {
     const language = codeLanguage.exec(code.className)?.[1];
     const text = code.textContent;
+    blocks.add(code, text);
     if (language === undefined) {
       continue;
     }
     void colorCode(language, text, leaving.signal).then((lines) => {
-      if (leaving.signal.aborted || !lines || code.textContent !== text) {
-        return;
+      if (!leaving.signal.aborted && lines) {
+        blocks.colored(code, lines);
       }
-      code.replaceChildren(
-        ...codeSegments(text, lines)
-          .map(({ text: part, kind }) => {
-            if (kind === undefined) {
-              return cellNodes(code, part, widths);
-            }
-            const span = document.createElement('span');
-            span.className = `syntax-${kind}`;
-            span.append(...cellNodes(code, part, widths));
-            return [span];
-          })
-          .flat(),
-      );
     });
   }
-  return () => leaving.abort();
+  return () => {
+    leaving.abort();
+    blocks.removeIn(element);
+  };
+}
+
+function codeLookOf(
+  code: Element,
+  widths: ReturnType<typeof elementWidths>,
+  showWhitespace: boolean,
+  marking: boolean,
+): CodeLook | undefined {
+  if (widths === undefined) {
+    return undefined;
+  }
+  const family = fontOf(code);
+  return {
+    font: { char: widths.char, family, spacing: spacingOf(code) },
+    dotLook: fontDotLook(family, widths.char, 1 / devicePixelRatio),
+    widths,
+    showWhitespace,
+    marking,
+  };
 }
 
 let loaded: Render | undefined;
@@ -133,7 +139,10 @@ export function MarkdownPane({
     }
     return render(text, imagePathOf ?? noImages);
   }, [render, text, imagePathOf, table]);
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const marking = useShell((state) => state.textView.highlightOccurrences);
   const content = useRef<HTMLDivElement>(null);
+  const code = useRef<CodeBlocks>(undefined);
   const drawn = useRef(new Map<Element, () => void>());
   const drawnDark = useRef(dark);
   const showDocumentImages = useEffectEvent((element: ParentNode) => {
@@ -163,14 +172,15 @@ export function MarkdownPane({
           fontFamily: getComputedStyle(element).fontFamily,
         }),
       );
-    const code = element.querySelector('pre > code');
-    const widths =
-      code === null || table === undefined
-        ? undefined
-        : elementWidths(code, table);
+    const blocks = (code.current ??= new CodeBlocks(element));
+    const first = element.querySelector(drawnCode);
+    if (first !== null && table !== undefined) {
+      blocks.relooked(
+        codeLookOf(first, elementWidths(first, table), showWhitespace, marking),
+      );
+    }
     for (const block of added) {
-      boxCodeBlocks(block, widths);
-      const stopColoring = colorCodeBlocks(block, widths);
+      const stopColoring = drawCodeBlocks(block, blocks);
       const stopDiagrams = showDiagrams(block, drawer);
       drawn.current.set(block, () => {
         stopColoring();
@@ -178,12 +188,14 @@ export function MarkdownPane({
       });
     }
     showDocumentImages(element);
-  }, [html, dark, table]);
+  }, [html, dark, table, showWhitespace, marking]);
   useEffect(() => {
     const element = content.current;
     const blocks = drawn.current;
     return () => {
       stopDrawing(blocks);
+      code.current?.dispose();
+      code.current = undefined;
       element?.replaceChildren();
     };
   }, []);

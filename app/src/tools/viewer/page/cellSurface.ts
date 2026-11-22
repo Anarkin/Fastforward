@@ -112,10 +112,15 @@ const tileLayout: GPUVertexBufferLayout = {
 
 const strip: GPUPrimitiveState = { topology: 'triangle-strip' };
 
-interface Measured {
+interface Glyphs {
   readonly key: string;
   readonly atlas: GlyphAtlas;
   readonly tiles: GlyphTiles;
+  users: number;
+}
+
+interface Measured {
+  readonly glyphs: Glyphs;
   readonly group: GPUBindGroup;
 }
 
@@ -124,44 +129,25 @@ interface Room {
   size: number;
 }
 
-export class CellSurface {
-  readonly canvas: HTMLCanvasElement;
-  readonly frame = new CellFrame();
-  private readonly context: GPUCanvasContext;
-  private readonly view: GPUBuffer;
-  private readonly rects: GPURenderPipeline;
-  private readonly lighter: GPURenderPipeline;
-  private readonly darker: GPURenderPipeline;
-  private readonly rectGroup: GPUBindGroup;
-  private readonly tileGroups: GPUBindGroupLayout;
-  private readonly rectRoom: Room;
-  private readonly tileRoom: Room;
-  private measure: Measured | undefined;
-  private ground: Rgba = [0, 0, 0, 1];
+const sparesKept = 1;
 
-  constructor(
-    private readonly device: GPUDevice,
-    page: Document = document,
-  ) {
-    this.canvas = page.createElement('canvas');
-    this.canvas.className = 'cell-canvas';
-    const context: unknown = this.canvas.getContext('webgpu');
-    if (!isGpuContext(context)) {
-      throw new Error('No WebGPU to draw cells with');
-    }
-    this.context = context;
-    const format = navigator.gpu.getPreferredCanvasFormat();
-    context.configure({ device, format, alphaMode: 'opaque' });
-    this.view = device.createBuffer({
-      size: 16,
-      usage: bufferUsage.uniform | bufferUsage.copyDst,
-    });
+class CellDrawing {
+  readonly format = navigator.gpu.getPreferredCanvasFormat();
+  readonly rects: GPURenderPipeline;
+  readonly lighter: GPURenderPipeline;
+  readonly darker: GPURenderPipeline;
+  readonly rectGroups: GPUBindGroupLayout;
+  readonly tileGroups: GPUBindGroupLayout;
+  private readonly glyphs = new Map<string, Glyphs>();
+
+  constructor(private readonly device: GPUDevice) {
+    const { format } = this;
     const sized: GPUBindGroupLayoutEntry = {
       binding: 0,
       visibility: shaderStage.vertex,
       buffer: {},
     };
-    const rectGroups = device.createBindGroupLayout({ entries: [sized] });
+    this.rectGroups = device.createBindGroupLayout({ entries: [sized] });
     this.tileGroups = device.createBindGroupLayout({
       entries: [
         sized,
@@ -171,7 +157,9 @@ export class CellSurface {
     const rectModule = device.createShaderModule({ code: rectShader });
     const tileModule = device.createShaderModule({ code: tileShader });
     this.rects = device.createRenderPipeline({
-      layout: device.createPipelineLayout({ bindGroupLayouts: [rectGroups] }),
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [this.rectGroups],
+      }),
       vertex: { module: rectModule, buffers: [rectLayout] },
       fragment: { module: rectModule, targets: [{ format }] },
       primitive: strip,
@@ -195,8 +183,81 @@ export class CellSurface {
       });
     this.lighter = blended(addedTo, 1);
     this.darker = blended(takenFrom, -1);
+  }
+
+  taken(key: string, metrics: CellMetrics, subpixel: boolean): Glyphs {
+    let glyphs = this.glyphs.get(key);
+    if (glyphs === undefined) {
+      const atlas = new GlyphAtlas(this.device, metrics, subpixel);
+      glyphs = {
+        key,
+        atlas,
+        tiles: new GlyphTiles(metrics, atlas.size, atlas),
+        users: 0,
+      };
+    }
+    this.glyphs.delete(key);
+    this.glyphs.set(key, glyphs);
+    glyphs.users++;
+    return glyphs;
+  }
+
+  left(glyphs: Glyphs): void {
+    glyphs.users--;
+    const unused = [...this.glyphs.values()].filter(({ users }) => users === 0);
+    for (const spare of unused.slice(0, -sparesKept)) {
+      spare.atlas.dispose();
+      this.glyphs.delete(spare.key);
+    }
+  }
+}
+
+const drawings = new WeakMap<GPUDevice, CellDrawing>();
+
+function drawingOf(device: GPUDevice): CellDrawing {
+  let drawing = drawings.get(device);
+  if (drawing === undefined) {
+    drawing = new CellDrawing(device);
+    drawings.set(device, drawing);
+  }
+  return drawing;
+}
+
+export class CellSurface {
+  readonly canvas: HTMLCanvasElement;
+  readonly frame = new CellFrame();
+  private readonly context: GPUCanvasContext;
+  private readonly drawing: CellDrawing;
+  private readonly view: GPUBuffer;
+  private readonly rectGroup: GPUBindGroup;
+  private readonly rectRoom: Room;
+  private readonly tileRoom: Room;
+  private measure: Measured | undefined;
+  private ground: Rgba = [0, 0, 0, 1];
+
+  constructor(
+    private readonly device: GPUDevice,
+    page: Document = document,
+  ) {
+    this.canvas = page.createElement('canvas');
+    this.canvas.className = 'cell-canvas';
+    const context: unknown = this.canvas.getContext('webgpu');
+    if (!isGpuContext(context)) {
+      throw new Error('No WebGPU to draw cells with');
+    }
+    this.context = context;
+    this.drawing = drawingOf(device);
+    context.configure({
+      device,
+      format: this.drawing.format,
+      alphaMode: 'opaque',
+    });
+    this.view = device.createBuffer({
+      size: 16,
+      usage: bufferUsage.uniform | bufferUsage.copyDst,
+    });
     this.rectGroup = device.createBindGroup({
-      layout: rectGroups,
+      layout: this.drawing.rectGroups,
       entries: [{ binding: 0, resource: { buffer: this.view } }],
     });
     this.rectRoom = this.roomOf(firstRoom);
@@ -223,23 +284,24 @@ export class CellSurface {
   }
 
   measured(key: string, metrics: CellMetrics, subpixel: boolean): GlyphTiles {
-    if (this.measure?.key !== key) {
-      this.measure?.atlas.dispose();
-      const atlas = new GlyphAtlas(this.device, metrics, subpixel);
+    if (this.measure?.glyphs.key !== key) {
+      const before = this.measure?.glyphs;
+      const glyphs = this.drawing.taken(key, metrics, subpixel);
+      if (before !== undefined) {
+        this.drawing.left(before);
+      }
       this.measure = {
-        key,
-        atlas,
-        tiles: new GlyphTiles(metrics, atlas.size, atlas),
+        glyphs,
         group: this.device.createBindGroup({
-          layout: this.tileGroups,
+          layout: this.drawing.tileGroups,
           entries: [
             { binding: 0, resource: { buffer: this.view } },
-            { binding: 1, resource: atlas.texture.createView() },
+            { binding: 1, resource: glyphs.atlas.texture.createView() },
           ],
         }),
       };
     }
-    return this.measure.tiles;
+    return this.measure.glyphs.tiles;
   }
 
   grounded(ground: Rgba): void {
@@ -255,11 +317,11 @@ export class CellSurface {
   }
 
   draw(): void {
-    const { device, frame, canvas, measure, ground } = this;
+    const { device, frame, canvas, measure, ground, drawing } = this;
     if (measure === undefined || canvas.width === 0 || canvas.height === 0) {
       return;
     }
-    measure.tiles.flush();
+    measure.glyphs.tiles.flush();
     device.queue.writeBuffer(
       this.view,
       0,
@@ -282,7 +344,7 @@ export class CellSurface {
       ],
     });
     if (frame.rectCount > 0) {
-      pass.setPipeline(this.rects);
+      pass.setPipeline(drawing.rects);
       pass.setBindGroup(0, this.rectGroup);
       pass.setVertexBuffer(
         0,
@@ -296,9 +358,9 @@ export class CellSurface {
         0,
         this.filled(this.tileRoom, frame.tiles, frame.tileCount * tileBytes),
       );
-      pass.setPipeline(this.lighter);
+      pass.setPipeline(drawing.lighter);
       pass.draw(4, frame.tileCount);
-      pass.setPipeline(this.darker);
+      pass.setPipeline(drawing.darker);
       pass.draw(4, frame.tileCount);
     }
     pass.end();
@@ -307,7 +369,10 @@ export class CellSurface {
 
   dispose(): void {
     this.canvas.remove();
-    this.measure?.atlas.dispose();
+    if (this.measure !== undefined) {
+      this.drawing.left(this.measure.glyphs);
+      this.measure = undefined;
+    }
     this.rectRoom.buffer.destroy();
     this.tileRoom.buffer.destroy();
     this.view.destroy();

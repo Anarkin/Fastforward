@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
+import { ShellStore, createShellStore } from '../../../../../shell/page/store';
 import { documentImagePath } from '../../../../../tools/viewer/page/documentImages';
 import { MarkdownPane } from '../../../../../tools/viewer/page/markdownView';
 import { waitFor } from '../../../../helpers/fixtures';
@@ -33,6 +34,14 @@ async function previewing(
         schemeChanged.delete(listener),
     }),
     reportError: (error: unknown) => reported.push(error),
+    requestAnimationFrame: (frame: () => void) => setTimeout(frame),
+    cancelAnimationFrame: (frame: ReturnType<typeof setTimeout>) =>
+      clearTimeout(frame),
+    devicePixelRatio: 1,
+    ResizeObserver: class {
+      observe(): void {}
+      disconnect(): void {}
+    },
     IS_REACT_ACT_ENVIRONMENT: true,
   };
   const saved = Object.fromEntries(
@@ -44,11 +53,16 @@ async function previewing(
     const main = dom.window.document.querySelector('main');
     assert.ok(main);
     const root = createRoot(main);
+    const shell = createShellStore(() => undefined);
     await check({
       preview: main,
       show: async (text) => {
         await act(async () => {
-          root.render(<MarkdownPane text={text} images={images} />);
+          root.render(
+            <ShellStore value={shell}>
+              <MarkdownPane text={text} images={images} />
+            </ShellStore>,
+          );
         });
         await waitFor(async () => {
           await act(() => new Promise((resolve) => setTimeout(resolve, 10)));

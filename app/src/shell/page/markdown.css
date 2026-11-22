@@ -1,5 +1,6 @@
 .markdown {
   line-height: 1.5;
+  user-select: text;
 }
 
 .markdown > :first-child {
@@ -124,6 +125,14 @@
   tab-size: 4;
   overflow-wrap: normal;
   white-space: pre;
+}
+
+.code-cells {
+  position: relative;
+}
+
+.code-cells > .cell-rows {
+  position: absolute;
 }
 
 .markdown table {

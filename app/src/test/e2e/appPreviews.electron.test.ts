@@ -5,7 +5,8 @@ import type { JSHandle } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { page, repository, sharedApp } from './appFixtures';
-import { gridLines, linesOffGrid } from './gridLines';
+import { cellsOf, copied, keepCopied } from './cellsSeen';
+import { gridLines } from './gridLines';
 import { waitFor, writeOver } from '../helpers/fixtures';
 
 const viewDiagram = async (
@@ -44,6 +45,8 @@ const closeViewer = async () => {
     await page.locator('.viewer').waitFor({ state: 'detached' });
   }
 };
+
+const codeCells = '.viewer .markdown pre code .cell-rows';
 
 suite('App', () => {
   sharedApp({
@@ -85,7 +88,7 @@ suite('App', () => {
     }
   });
 
-  test('draws the code blocks of a Markdown document viewed on the grid of our terminal, as the viewer and the diff draw text, so code padded for a terminal lines up in the preview too, its tabs stopping on that grid rather than every eight spaces of the font of the pre around it', async () => {
+  test('draws the code blocks of a Markdown document viewed as cells on the grid of our terminal, as the viewer draws text, so code padded for a terminal lines up in the preview too, its tabs stopping on that grid and its spaces dotted while whitespace is shown, on its key here too; a word of the code is selected on a double click and copied, as in a file viewed, and the prose around it selected with the pointer, which drops what was selected in the code', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'grid.md' }).click();
     await page
@@ -93,15 +96,72 @@ suite('App', () => {
       .getByRole('button', { name: strings.diff.viewFile })
       .click();
     try {
-      const code = page.locator('.viewer .markdown pre code');
-      await code.waitFor();
+      await page.locator('.viewer .markdown pre code').waitFor();
+      const code = cellsOf(page, codeCells);
       const onGrid = gridLines.slice(1).map(() => 0);
+      const barsOff = async () => {
+        const last: number[] = [];
+        for (const { row, column } of await code.glyphs('|')) {
+          last[row] = Math.max(last[row] ?? 0, column);
+        }
+        const [ruler, ...rows] = last;
+        return rows.map((column) => column - (ruler ?? Number.NaN));
+      };
       let offsets: number[] = [];
       await waitFor(async () => {
-        offsets = await code.evaluate(linesOffGrid);
+        offsets = await barsOff();
         return JSON.stringify(offsets) === JSON.stringify(onGrid);
       }, 'the bars on the grid').catch(() => undefined);
       assert.deepStrictEqual(offsets, onGrid);
+
+      const dots = async () => (await code.dots()).length;
+      await waitFor(async () => (await dots()) > 0, 'the spaces dotted');
+      await page.locator('.viewer .viewer-body').first().focus();
+      await page.keyboard.press('.');
+      await waitFor(
+        async () => (await dots()) === 0,
+        'the spaces of the code plain once whitespace is hidden',
+      );
+      await page.keyboard.press('.');
+      await waitFor(async () => (await dots()) > 0, 'the spaces dotted again');
+
+      const word = await code.point(3, 16);
+      await page.mouse.dblclick(word.x, word.y);
+      await waitFor(
+        async () =>
+          (await code.rows()).some(({ selected }) => selected !== undefined),
+        'the word selected in the code block',
+      );
+      await keepCopied(page);
+      await page.keyboard.press('ControlOrMeta+C');
+      await waitFor(
+        async () => (await copied(page)) !== undefined,
+        'the word copied',
+      );
+      const fromCode = await copied(page);
+      const prose = page.locator('.viewer .markdown h1').first();
+      const heading = await prose.boundingBox();
+      assert.ok(heading, 'the document has no heading');
+      await page.mouse.move(heading.x + 2, heading.y + heading.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(
+        heading.x + heading.width / 2,
+        heading.y + heading.height / 2,
+        { steps: 4 },
+      );
+      await page.mouse.up();
+      assert.deepStrictEqual(
+        {
+          fromCode,
+          prose:
+            (await page.evaluate(() => getSelection()?.toString() ?? ''))
+              .length > 0,
+          codeStillSelected: (await code.rows()).some(
+            ({ selected }) => selected !== undefined,
+          ),
+        },
+        { fromCode: 'party', prose: true, codeStillSelected: false },
+      );
     } finally {
       await closeViewer();
     }
@@ -167,7 +227,18 @@ suite('App', () => {
     try {
       await viewDiagram('uncommitted');
       await preview.locator('.markdown-diagram img').waitFor();
-      await preview.locator('.syntax-keyword', { hasText: 'const' }).waitFor();
+      await waitFor(
+        async () =>
+          (
+            await cellsOf(
+              page,
+              '.viewer .markdown .language-ts .cell-rows',
+            ).rows()
+          )
+            .flatMap(({ pieces }) => pieces)
+            .some(({ kind, text }) => kind === 'keyword' && text === 'const'),
+        'the code colored',
+      );
       watching = await page.evaluateHandle(() => {
         const undrawn: string[] = [];
         const observer = new MutationObserver(() => {
@@ -178,7 +249,16 @@ suite('App', () => {
           if (shown?.querySelector('pre:not([hidden]) .language-mermaid')) {
             undrawn.push('diagram code');
           }
-          if (!shown?.querySelector('.language-ts .syntax-keyword')) {
+          const code = shown?.querySelector('.language-ts .cell-rows');
+          if (
+            !(code instanceof HTMLElement) ||
+            code.querySelector('canvas') === null ||
+            code
+              .seenRows?.()
+              .some(({ pieces }) =>
+                pieces.some(({ kind }) => kind === 'keyword'),
+              ) !== true
+          ) {
             undrawn.push('colored code');
           }
         });

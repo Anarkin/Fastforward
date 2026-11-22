@@ -59,6 +59,12 @@ export interface CellViewFont {
 export interface CellViewEvents {
   readonly chosen: (copy: string | undefined) => void;
   readonly move: (rows: number) => void;
+  readonly began?: () => void;
+}
+
+export interface CellPlace {
+  readonly origin: () => { readonly left: number; readonly top: number };
+  readonly area: () => DOMRect | undefined;
 }
 
 export interface CellViewShown {
@@ -148,6 +154,11 @@ export class CellView {
     private readonly host: HTMLElement,
     private readonly rows: Element,
     private readonly looked: CellViewFont,
+    private readonly place: CellPlace = {
+      origin: () =>
+        rows.parentElement?.getBoundingClientRect() ?? { left: 0, top: 0 },
+      area: () => rows.parentElement?.getBoundingClientRect(),
+    },
   ) {
     this.key = viewKey(looked, this.ratio, generation);
     this.surface = surfacesOf(device).taken();
@@ -174,9 +185,10 @@ export class CellView {
       shown: () => this.shown,
       held: () => this.held,
       cell: () => this.tiles.metrics,
-      area: () => rows.parentElement?.getBoundingClientRect(),
+      area: this.place.area,
       pressedAs: (press) => clicked(viewerKeymap.selectText, press),
       changed: this.paint,
+      began: () => this.events?.began?.(),
       chosen: (copy) => this.events?.chosen(copy),
       move: (by) => this.events?.move(by),
     });
@@ -184,8 +196,8 @@ export class CellView {
   }
 
   private nudged(): Nudge {
-    const area = this.rows.parentElement?.getBoundingClientRect();
-    return nudgeOf(area?.left ?? 0, area?.top ?? 0, this.ratio);
+    const { left, top } = this.place.origin();
+    return nudgeOf(left, top, this.ratio);
   }
 
   private placed(nudge: Nudge): {
@@ -254,6 +266,10 @@ export class CellView {
     return this.selecting.selection;
   }
 
+  clearSelection(): void {
+    this.selecting.clear();
+  }
+
   show({
     shown,
     columns,
@@ -291,7 +307,6 @@ export class CellView {
   private readonly relook = () => {
     const look = textLookOf(this.rows);
     this.surface.grounded(look.ground);
-    this.tiles.restyled();
     this.painting.palette = paletteOf(look);
     this.painting.kept.clear();
     this.idle.clear();

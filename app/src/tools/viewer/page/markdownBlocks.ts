@@ -1,44 +1,4 @@
 import { imagePath } from './markdownRender';
-import { cellClass, cellParts } from '../../../lib/page/cellParts';
-import type { TextWidths } from '../../../lib/page/textWidths';
-
-export function cellNodes(
-  code: Element,
-  text: string,
-  widths: TextWidths | undefined,
-): (Node | string)[] {
-  if (widths === undefined) {
-    return [text];
-  }
-  return cellParts(text, widths).map((part) => {
-    if (part.cells === undefined) {
-      return part.text;
-    }
-    const box = code.ownerDocument.createElement('span');
-    box.className = cellClass(part.cells);
-    if (part.scale === undefined) {
-      box.textContent = part.text;
-      return box;
-    }
-    const glyph = code.ownerDocument.createElement('span');
-    glyph.style.fontSize = `${part.scale}em`;
-    glyph.textContent = part.text;
-    box.append(glyph);
-    return box;
-  });
-}
-
-export function boxCodeBlocks(
-  element: ParentNode,
-  widths: TextWidths | undefined,
-): void {
-  for (const code of element.querySelectorAll('pre > code')) {
-    const shown = cellNodes(code, code.textContent, widths);
-    if (shown.some((node) => typeof node !== 'string')) {
-      code.replaceChildren(...shown);
-    }
-  }
-}
 
 const blockSources = new WeakMap<Node, string>();
 

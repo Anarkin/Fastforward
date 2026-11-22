@@ -13,6 +13,12 @@ const image: ViewerKeys = {
   readsText: false,
   showsImage: true,
 };
+const document: ViewerKeys = {
+  mode: 'preview',
+  readsText: false,
+  showsImage: false,
+  showsCode: true,
+};
 
 suite('Viewer keys', () => {
   test('finds in the file on Mod+F and shows it as hex, text or a preview on 1, 2 and 3, whatever it shows', () => {
@@ -44,6 +50,16 @@ suite('Viewer keys', () => {
     for (const key of ['l', 'w', '.']) {
       assert.strictEqual(viewerKey(keyPress(key), hex), undefined, key);
     }
+  });
+
+  test('shows and hides whitespace on its key while a Markdown document is previewed too, as its code blocks dot their spaces as a text does, and leaves wrapping and the language to a text', () => {
+    assert.deepStrictEqual(viewerKey(keyPress('.'), document), {
+      kind: 'whitespace',
+    });
+    for (const key of ['l', 'w']) {
+      assert.strictEqual(viewerKey(keyPress(key), document), undefined, key);
+    }
+    assert.strictEqual(viewerKey(keyPress('.'), image), undefined);
   });
 
   test('opens the menu of the versions of the file on V, whatever it shows', () => {

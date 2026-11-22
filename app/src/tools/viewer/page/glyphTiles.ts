@@ -209,9 +209,4 @@ export class GlyphTiles {
     this.full = false;
     this.waiting = false;
   }
-
-  restyled(): void {
-    this.styles.clear();
-    this.reset();
-  }
 }

@@ -130,15 +130,25 @@ suite('Tiles of the glyphs drawn', () => {
     assert.strictEqual(tiles.ascii(style, 98), 1);
   });
 
-  test('forgets every style and glyph when the look changes, as the colors they were drawn in are gone', () => {
+  test('keeps the glyphs of one look while those of another are drawn, each ink on each ground a style of its own, as the views of a window share the tiles and a theme switched back to finds its glyphs there', () => {
     const painter = fakePainter();
     const tiles = tilesWith(painter);
     const style = tiles.style('plain', ground);
-    tiles.ascii(style, 97);
+    const letter = tiles.ascii(style, 97);
 
-    tiles.restyled();
+    const other = tiles.style('plain', [255, 255, 255, 1]);
+    const lettered = tiles.ascii(other, 97);
 
-    assert.notStrictEqual(tiles.style('plain', ground), style);
-    assert.deepStrictEqual([tiles.count, tiles.generation], [0, 1]);
+    assert.notStrictEqual(other, style);
+    assert.notStrictEqual(lettered, letter);
+    assert.deepStrictEqual(
+      [
+        tiles.style('plain', ground),
+        tiles.ascii(tiles.style('plain', ground), 97),
+        tiles.count,
+        tiles.generation,
+      ],
+      [style, letter, 2, 0],
+    );
   });
 });

@@ -122,6 +122,7 @@ export function Viewer() {
   const detectedLanguage = languageOf(file);
   const language = shownLanguage(languageChoice, detectedLanguage);
   const showsImage = mode === 'preview' && preview === 'image';
+  const showsCode = mode === 'preview' && preview === 'markdown';
   const toggleRealSize = () => changeImageView({ realSize: !realSize });
   const choose = (wanted: ViewMode) => {
     if (shownModes.some((each) => each.mode === wanted)) {
@@ -185,7 +186,12 @@ export function Viewer() {
       className="column viewer"
       ref={viewer}
       onKeyDown={(event) => {
-        const pressed = viewerKey(event, { mode, readsText, showsImage });
+        const pressed = viewerKey(event, {
+          mode,
+          readsText,
+          showsImage,
+          showsCode,
+        });
         if (pressed === undefined) {
           return;
         }
@@ -302,7 +308,7 @@ export function Viewer() {
                 </button>
               </Toolbar>
             )}
-            {readsText && (
+            {(readsText || showsCode) && (
               <Toolbar className="viewer-toggles">
                 <button
                   className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
@@ -317,17 +323,19 @@ export function Viewer() {
                 >
                   <ShowWhitespaceIcon />
                 </button>
-                <button
-                  className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-                  {...labelTip(strings.common.wrap, {
-                    keys: keysOf(viewerKeymap.wrap),
-                  })}
-                  aria-pressed={wordWrap}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => changeTextView({ wordWrap: !wordWrap })}
-                >
-                  <WordWrapIcon />
-                </button>
+                {readsText && (
+                  <button
+                    className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
+                    {...labelTip(strings.common.wrap, {
+                      keys: keysOf(viewerKeymap.wrap),
+                    })}
+                    aria-pressed={wordWrap}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => changeTextView({ wordWrap: !wordWrap })}
+                  >
+                    <WordWrapIcon />
+                  </button>
+                )}
               </Toolbar>
             )}
           </Toolbar>

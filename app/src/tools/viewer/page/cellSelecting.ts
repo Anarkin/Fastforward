@@ -26,6 +26,7 @@ export interface Selecting {
   readonly area: () => DOMRect | undefined;
   readonly pressedAs: (press: MouseEvent) => 'start' | 'extend' | undefined;
   readonly changed: () => void;
+  readonly began: () => void;
   readonly chosen: (copy: string | undefined) => void;
   readonly move: (rows: number) => void;
 }
@@ -110,6 +111,7 @@ export class CellSelecting {
       return;
     }
     const extending = way === 'extend';
+    this.on.began();
     this.select(pressed(this.selection, under, press.detail, extending));
     this.dragging = press.detail === 1 || extending;
     const page = this.host.ownerDocument;
@@ -163,6 +165,12 @@ export class CellSelecting {
     copying.preventDefault();
     copying.clipboardData?.setData('text/plain', copied);
   };
+
+  clear(): void {
+    if (this.selection !== undefined) {
+      this.select(undefined);
+    }
+  }
 
   rowsChanged(): void {
     if (this.selection === undefined) {

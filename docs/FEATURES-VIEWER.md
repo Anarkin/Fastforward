@@ -38,7 +38,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Images | Preview images | — | Common | ✅ Yes | 3: fitted, a large one shrunk to the viewer and a small one at its real size, never larger, or at their real size with F, an SVG drawn among them |
-| Markdown | Preview Markdown rendered | — | Advanced | ✅ Yes | 3: `markdown-it`, its code colored, its diagrams drawn and its images next to it shown |
+| Markdown | Preview Markdown rendered | — | Advanced | ✅ Yes | 3: `markdown-it`, its diagrams drawn and its images next to it shown; its code blocks colored and drawn as cells as a file viewed is, on its grid and its rows as tall, their whitespace marked while it is shown, on its key and its button here too, a word or a stretch of a block selected and copied as in a file viewed and its other copies marked; its prose selected with the pointer and copied |
 | PDF | Preview PDFs | — | Common | ✅ Yes | 3: `pdfjs-dist`, read by ranges, searched with Mod+F, zoomed with Mod and the wheel, opened again where it was left; none locked with a password |
 | Media | Play audio and video | — | Common | ❌ No |  |
 | Other documents | Preview office documents and others | — | Advanced | ❌ No |  |

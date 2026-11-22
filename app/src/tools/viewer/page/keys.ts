@@ -17,11 +17,12 @@ export interface ViewerKeys {
   readonly mode: ViewMode;
   readonly readsText: boolean;
   readonly showsImage: boolean;
+  readonly showsCode?: boolean;
 }
 
 export function viewerKey(
   event: Parameters<typeof keyPressed>[1],
-  { mode, readsText, showsImage }: ViewerKeys,
+  { mode, readsText, showsImage, showsCode = false }: ViewerKeys,
 ): ViewerAct | undefined {
   if (keyPressed(viewerKeymap.find, event) !== undefined) {
     return { kind: 'find' };
@@ -52,7 +53,7 @@ export function viewerKey(
     return { kind: 'wrap' };
   }
   if (
-    readsText &&
+    (readsText || showsCode) &&
     keyPressed(viewerKeymap.showWhitespace, event) !== undefined
   ) {
     return { kind: 'whitespace' };

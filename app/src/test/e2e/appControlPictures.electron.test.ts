@@ -6,7 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { cellPoint, viewerTexts } from './cellsSeen';
+import { cellPoint, cellsOf, viewerTexts } from './cellsSeen';
 import { untilSettled, waitForFocus } from './waits';
 
 const character = (code: number) => String.fromCharCode(code);
@@ -442,8 +442,13 @@ suite('App control pictures', () => {
       legible(await preview.locator('p').first().textContent()),
       legible(`A bell ${character(7)} in a sentence, fed␌on.`),
     );
+    const code = cellsOf(page, '.markdown pre > code .cell-rows');
+    await waitFor(
+      async () => (await code.rows()).length > 0,
+      'the code block drawn',
+    );
     assert.strictEqual(
-      legible((await preview.locator('pre > code').textContent())?.trimEnd()),
+      legible((await code.rows()).map(({ text }) => text).join(lineFeed)),
       legible(`${escape}[0m${character(127)}␌`),
     );
     assert.deepStrictEqual(await fontsDrawing('.markdown p', 'A bell'), [

@@ -145,3 +145,52 @@ export async function rightOfCell(page: Page, column: number): Promise<number> {
     ? Number.NaN
     : first.left + (column + 1 - first.column) * first.advance;
 }
+
+export interface CellsOf {
+  readonly rows: () => Promise<readonly SeenRow[]>;
+  readonly glyphs: (cluster: string) => Promise<readonly SeenGlyph[]>;
+  readonly dots: () => Promise<readonly SeenGlyph[]>;
+  readonly point: (
+    row: number,
+    column: number,
+  ) => Promise<{ readonly x: number; readonly y: number }>;
+}
+
+export function cellsOf(page: Page, host: string): CellsOf {
+  const rows = (): Promise<readonly SeenRow[]> =>
+    page.evaluate((selector) => {
+      const found = document.querySelector(selector);
+      return found instanceof HTMLElement &&
+        found.querySelector('canvas') !== null
+        ? (found.seenRows?.() ?? [])
+        : [];
+    }, host);
+  return {
+    rows,
+    glyphs: (cluster) =>
+      page.evaluate(
+        ([selector, drawn]) => {
+          const found = document.querySelector(selector);
+          return found instanceof HTMLElement
+            ? (found.seenGlyphs?.(drawn) ?? [])
+            : [];
+        },
+        [host, cluster] as const,
+      ),
+    dots: () =>
+      page.evaluate((selector) => {
+        const found = document.querySelector(selector);
+        return found instanceof HTMLElement ? (found.seenDots?.() ?? []) : [];
+      }, host),
+    point: async (row, column) => {
+      const seen = (await rows())[row];
+      if (seen === undefined) {
+        throw new Error(`${host} draws no row ${row}`);
+      }
+      return {
+        x: seen.left + (column - seen.column + 0.5) * seen.advance,
+        y: seen.top + seen.height / 2,
+      };
+    },
+  };
+}

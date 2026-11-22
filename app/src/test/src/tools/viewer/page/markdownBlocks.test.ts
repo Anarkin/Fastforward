@@ -5,7 +5,6 @@ import markdownIt from 'markdown-it';
 import { afterAll, suite, test } from 'vitest';
 import { documentImagePath } from '../../../../../tools/viewer/page/documentImages';
 import {
-  boxCodeBlocks,
   showBlocks,
   showImages,
 } from '../../../../../tools/viewer/page/markdownBlocks';
@@ -76,27 +75,5 @@ suite('Markdown blocks', () => {
     const [kept, keptToo, third] = page.children;
     assert.deepStrictEqual([kept, keptToo], [first, second]);
     assert.deepStrictEqual(shown, { added: [third], removed: [] });
-  });
-
-  test('puts each character of a code block drawn wider or narrower than its columns in a box exactly as wide as them, as the viewer and the diff do, shrinking a glyph wider than its box, and leaves the code outside blocks alone', () => {
-    const { document } = new JSDOM(
-      '<main><pre><code>a😀b中</code></pre><p><code>x😀</code></p><pre><code>plain</code></pre></main>',
-    ).window;
-    const main = document.querySelector('main');
-    assert.ok(main);
-    boxCodeBlocks(main, {
-      char: 10,
-      of: () => 20,
-      boxed: (cluster) => (/[😀中]/u.test(cluster) ? 2 : undefined),
-      scaled: (cluster) => (cluster === '😀' ? 0.875 : undefined),
-    });
-    assert.deepStrictEqual(
-      [...main.querySelectorAll('code')].map((code) => code.innerHTML),
-      [
-        'a<span class="cell wide"><span style="font-size: 0.875em;">😀</span></span>b<span class="cell wide">中</span>',
-        'x😀',
-        'plain',
-      ],
-    );
   });
 });
