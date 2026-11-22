@@ -9,7 +9,7 @@ import {
 } from '../../../lib/page/wordWrap';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { type CodeProps } from './lineMarks';
-import { codePieces, piecesWithin } from './codePieces';
+import { codePieces, piecesWithin, type CodePiece } from './codePieces';
 import { CodeBlocks } from './codeBlocks';
 import { keptWrapStarts } from '../../../lib/page/wrapStarts';
 import { spaceColumnsAt } from '../../../lib/page/rowBreaks';
@@ -77,6 +77,44 @@ function breakable(
 
 const noCopies: readonly FindRange[] = [];
 
+const sameWord = (one: CodePiece, other: CodePiece) =>
+  one.wordFrom !== undefined && one.wordFrom === other.wordFrom;
+
+const sameToken = (one: CodePiece, other: CodePiece) =>
+  one.tokenFrom !== undefined && one.tokenFrom === other.tokenFrom;
+
+function runEnd(
+  pieces: readonly CodePiece[],
+  at: number,
+  same: (one: CodePiece, other: CodePiece) => boolean,
+): number {
+  let end = at + 1;
+  while (end < pieces.length && same(pieces[at], pieces[end])) {
+    end++;
+  }
+  return end;
+}
+
+function runsOf(
+  pieces: readonly CodePiece[],
+  same: (one: CodePiece, other: CodePiece) => boolean,
+): CodePiece[][] {
+  const runs: CodePiece[][] = [];
+  for (let at = 0; at < pieces.length;) {
+    const end = runEnd(pieces, at, same);
+    runs.push(pieces.slice(at, end));
+    at = end;
+  }
+  return runs;
+}
+
+const colored = (group: readonly CodePiece[], content: React.ReactNode) =>
+  group[0].token === undefined ? (
+    content
+  ) : (
+    <span className={`syntax-${group[0].token}`}>{content}</span>
+  );
+
 export function MarkedCode({
   text,
   syntax,
@@ -127,30 +165,65 @@ export function MarkedCode({
   }
   const gap = (has: boolean) =>
     has && <span className={`word-gap ${wordClass}`} />;
-  const drawn = piecesWithin(pieces, from, to).map(
-    ({ start, end, find, token, word, gapBefore }) => {
-      const piece = text.slice(start, end);
-      let content: React.ReactNode =
-        find === 'occurrence' ? (
-          <mark className="occurrence-match">{shown(piece, start)}</mark>
-        ) : find ? (
-          <mark className={`find-match ${find === 'current' ? 'current' : ''}`}>
-            {shown(piece, start)}
-          </mark>
-        ) : (
-          shown(piece, start)
-        );
-      if (token) {
-        content = <span className={`syntax-${token}`}>{content}</span>;
-      }
-      return (
-        <Fragment key={start}>
-          {gap(gapBefore)}
-          {word ? <span className={wordClass}>{content}</span> : content}
-        </Fragment>
-      );
-    },
-  );
+  const leaf = ({ start, end, find }: CodePiece) => {
+    const piece = text.slice(start, end);
+    return find === 'occurrence' ? (
+      <mark className="occurrence-match">{shown(piece, start)}</mark>
+    ) : find ? (
+      <mark className={`find-match ${find === 'current' ? 'current' : ''}`}>
+        {shown(piece, start)}
+      </mark>
+    ) : (
+      shown(piece, start)
+    );
+  };
+  const grouped = (
+    run: readonly CodePiece[],
+    same: (one: CodePiece, other: CodePiece) => boolean,
+    wrapped: (
+      group: readonly CodePiece[],
+      content: React.ReactNode,
+    ) => React.ReactNode,
+  ) =>
+    runsOf(run, same).map((group, index) => (
+      <Fragment key={group[0].start}>
+        {index > 0 && gap(group[0].gapBefore)}
+        {wrapped(
+          group,
+          group.map((piece, at) => (
+            <Fragment key={piece.start}>
+              {at > 0 && gap(piece.gapBefore)}
+              {leaf(piece)}
+            </Fragment>
+          )),
+        )}
+      </Fragment>
+    ));
+  const changed = (group: readonly CodePiece[], content: React.ReactNode) =>
+    group[0].word ? <span className={wordClass}>{content}</span> : content;
+  const within = piecesWithin(pieces, from, to);
+  const drawn: React.ReactNode[] = [];
+  for (let at = 0; at < within.length;) {
+    const first = within[at];
+    const wordEnd = runEnd(within, at, sameWord);
+    const tokenEnd = runEnd(within, at, sameToken);
+    const wordOutside = first.word && wordEnd >= tokenEnd;
+    const end = wordOutside
+      ? wordEnd
+      : first.token === undefined
+        ? at + 1
+        : tokenEnd;
+    const run = within.slice(at, end);
+    drawn.push(
+      <Fragment key={first.start}>
+        {gap(first.gapBefore)}
+        {wordOutside
+          ? changed(run, grouped(run, sameToken, colored))
+          : colored(run, grouped(run, sameWord, changed))}
+      </Fragment>,
+    );
+    at = end;
+  }
   return gapAfter && to === text.length ? (
     <>
       {drawn}

@@ -19,6 +19,25 @@ function spaces(run: string): string {
   return `<span class="spaces">${run}</span>`;
 }
 
+function marked(
+  text: string,
+  syntax: React.ComponentProps<typeof MarkedCode>['syntax'],
+  words: React.ComponentProps<typeof MarkedCode>['words'],
+): string {
+  return renderToStaticMarkup(
+    <>
+      <MarkedCode
+        text={text}
+        syntax={syntax}
+        words={words}
+        wordClass={'word-added'}
+        found={[]}
+        foundNow={undefined}
+      />
+    </>,
+  );
+}
+
 function wrapMarkup(
   text: string,
   indent: number | undefined,
@@ -392,7 +411,7 @@ suite('Drawing code', () => {
     );
     assert.strictEqual(
       html,
-      'let <span class="word-added">s</span><span class="word-added"><mark class="find-match current">um</mark></span><mark class="find-match current"> =</mark> 1',
+      'let <span class="word-added">s<mark class="find-match current">um</mark></span><mark class="find-match current"> =</mark> 1',
     );
   });
 
@@ -414,7 +433,7 @@ suite('Drawing code', () => {
     );
     assert.strictEqual(
       html,
-      '<span class="syntax-keyword">a</span><span class="word-gap word-removed"></span><span class="syntax-keyword">b</span>c<span class="word-gap word-removed"></span>',
+      '<span class="syntax-keyword">a<span class="word-gap word-removed"></span>b</span>c<span class="word-gap word-removed"></span>',
     );
   });
 
@@ -459,10 +478,46 @@ suite('Drawing code', () => {
           />
         </>,
       ),
-      '<span class="word-added"><span class="syntax-keyword">le</span></span>' +
-        '<span class="word-added"><span class="syntax-keyword"><mark class="find-match ">t</mark></span></span>' +
-        '<span class="word-added"><mark class="find-match "> s</mark></span>' +
-        '<span class="word-added">um</span> = <span class="syntax-number">1</span>',
+      '<span class="word-added">' +
+        '<span class="syntax-keyword">le<mark class="find-match ">t</mark></span>' +
+        '<mark class="find-match "> s</mark>um</span>' +
+        ' = <span class="syntax-number">1</span>',
+    );
+  });
+
+  test('draws a token once around the changed words inside it, and a changed word once around the tokens inside it, rather than a span of each for every piece between their edges, as a line of one string with ten changed words took thirty spans where eleven do, and a diff of such lines 5,500 elements a screen', () => {
+    assert.strictEqual(
+      marked(
+        'abcdefgh',
+        [{ start: 0, end: 8, kind: 'string' }],
+        [
+          { start: 1, end: 2 },
+          { start: 4, end: 6 },
+        ],
+      ),
+      '<span class="syntax-string">a<span class="word-added">b</span>cd<span class="word-added">ef</span>gh</span>',
+    );
+    assert.strictEqual(
+      marked(
+        'ab cd',
+        [
+          { start: 0, end: 2, kind: 'keyword' },
+          { start: 3, end: 5, kind: 'number' },
+        ],
+        [{ start: 0, end: 5 }],
+      ),
+      '<span class="word-added"><span class="syntax-keyword">ab</span> <span class="syntax-number">cd</span></span>',
+    );
+    assert.strictEqual(
+      marked(
+        'abcdef',
+        [
+          { start: 0, end: 3, kind: 'keyword' },
+          { start: 3, end: 6, kind: 'string' },
+        ],
+        [{ start: 2, end: 4 }],
+      ),
+      '<span class="syntax-keyword">ab<span class="word-added">c</span></span><span class="syntax-string"><span class="word-added">d</span>ef</span>',
     );
   });
 

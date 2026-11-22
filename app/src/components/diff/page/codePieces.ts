@@ -2,12 +2,14 @@ import { wholeClusters } from '../../../lib/page/wholeClusters';
 import type { FindRange } from './find';
 import type { SyntaxRange } from '../../syntax/page/engine';
 
-interface CodePiece {
+export interface CodePiece {
   readonly start: number;
   readonly end: number;
   readonly find: 'match' | 'current' | 'occurrence' | undefined;
   readonly token: SyntaxRange['kind'] | undefined;
+  readonly tokenFrom: number | undefined;
   readonly word: boolean;
+  readonly wordFrom: number | undefined;
   readonly gapBefore: boolean;
 }
 
@@ -75,6 +77,8 @@ export function codePieces(
       find !== undefined &&
       current?.start === find.start &&
       current.end === find.end;
+    const token = tokenAt(start, end);
+    const word = wordAt(start, end);
     return {
       start,
       end,
@@ -86,8 +90,10 @@ export function codePieces(
           : isCurrent
             ? ('current' as const)
             : ('match' as const),
-      token: tokenAt(start, end)?.kind,
-      word: wordAt(start, end) !== undefined,
+      token: token?.kind,
+      tokenFrom: token?.start,
+      word: word !== undefined,
+      wordFrom: word?.start,
       gapBefore: gaps.has(start),
     };
   });
