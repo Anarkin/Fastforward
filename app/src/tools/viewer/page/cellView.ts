@@ -7,6 +7,8 @@ import {
   type ShownRows,
 } from './cellPainting';
 import { CellSurface } from './cellSurface';
+import type { GlyphTiles } from './glyphTiles';
+import { poolOf } from './surfacePool';
 import { paletteOf, type DotBox } from './textCells';
 
 const scrollingBudget = 2;
@@ -24,10 +26,22 @@ const onPixel = 1e-6;
 const inLayoutUnits = (device: number) =>
   Math.round(device * layoutUnits) / layoutUnits;
 
+const surfaces = poolOf(
+  () => new CellSurface(),
+  (surface) => {
+    surface.onRestored = undefined;
+    surface.canvas.remove();
+  },
+  (surface) => surface.dispose(),
+);
+
 export interface CellViewFont {
   readonly font: CellFont;
   readonly dotLook: DotLook | undefined;
 }
+
+export const viewKey = ({ font }: CellViewFont, ratio: number): string =>
+  `${font.family}|${font.char}|${font.spacing}|${ratio}`;
 
 export function dotBoxOf(
   dotLook: DotLook | undefined,
@@ -54,7 +68,9 @@ export function rasterBudget(
 }
 
 export class CellView {
+  readonly key: string;
   private readonly surface: CellSurface;
+  private readonly tiles: GlyphTiles;
   private readonly painting: CellPainting;
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
   private shown: ShownRows | undefined;
@@ -65,30 +81,36 @@ export class CellView {
   private budget = restingBudget;
 
   constructor(
-    readonly canvas: HTMLCanvasElement,
-    private readonly host: Element,
-    { font, dotLook }: CellViewFont,
+    private readonly host: HTMLElement,
+    private readonly rows: Element,
+    looked: CellViewFont,
   ) {
     const ratio = devicePixelRatio;
-    const area = host.parentElement?.getBoundingClientRect();
+    this.key = viewKey(looked, ratio);
+    const area = rows.parentElement?.getBoundingClientRect();
     const left = inLayoutUnits((area?.left ?? 0) * ratio);
     const top = inLayoutUnits((area?.top ?? 0) * ratio);
     const shift = left - Math.round(left);
+    const subpixel = ratio < subpixelBelow;
+    this.surface = surfaces.taken();
+    const { canvas } = this.surface;
     canvas.style.left = `${-shift / ratio}px`;
     canvas.style.top = `${(Math.round(top) - top) / ratio}px`;
-    const look = textLookOf(host);
-    this.surface = new CellSurface(
-      canvas,
-      cellMetricsOf(host, font, ratio, shift),
-      ratio < subpixelBelow,
+    host.append(canvas);
+    const look = textLookOf(rows);
+    this.tiles = this.surface.measured(
+      `${this.key}|${shift}|${subpixel}`,
+      cellMetricsOf(rows, looked.font, ratio, shift),
+      subpixel,
     );
     this.surface.grounded(look.ground);
     this.painting = cellPainting(
-      this.surface.tiles,
+      this.tiles,
       this.surface.frame,
       paletteOf(look),
-      dotBoxOf(dotLook, ratio, this.surface.tiles.metrics.rowHeight),
+      dotBoxOf(looked.dotLook, ratio, this.tiles.metrics.rowHeight),
     );
+    this.surface.onRestored = this.paint;
     this.scheme.addEventListener('change', this.relook);
   }
 
@@ -99,9 +121,9 @@ export class CellView {
   }
 
   private readonly relook = () => {
-    const look = textLookOf(this.host);
+    const look = textLookOf(this.rows);
     this.surface.grounded(look.ground);
-    this.surface.tiles.restyled();
+    this.tiles.restyled();
     this.painting.palette = paletteOf(look);
     this.painting.kept.clear();
     this.paint();
@@ -123,16 +145,16 @@ export class CellView {
 
   private readonly paint = () => {
     cancelAnimationFrame(this.again);
-    const { shown, surface } = this;
+    const { shown, surface, tiles } = this;
     if (shown === undefined) {
       return;
     }
-    const { advance, rowHeight } = surface.tiles.metrics;
+    const { advance, rowHeight } = tiles.metrics;
     surface.sized(this.columns * advance, shown.rows.length * rowHeight);
     const whole = paintRows(this.painting, shown, this.budgetFor(shown));
     surface.draw();
-    if (surface.tiles.full) {
-      surface.tiles.reset();
+    if (tiles.full) {
+      tiles.reset();
     }
     if (!whole) {
       this.again = requestAnimationFrame(this.paint);
@@ -142,6 +164,6 @@ export class CellView {
   dispose(): void {
     cancelAnimationFrame(this.again);
     this.scheme.removeEventListener('change', this.relook);
-    this.surface.dispose();
+    surfaces.givenBack(this.surface);
   }
 }

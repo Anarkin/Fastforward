@@ -10,7 +10,7 @@ const mostTextureSize = 4096;
 
 export class GlyphAtlas implements GlyphPainter {
   readonly size: number;
-  readonly texture: WebGLTexture;
+  texture: WebGLTexture;
   private readonly canvas: OffscreenCanvas;
   private readonly stage: OffscreenCanvasRenderingContext2D;
   private readonly padX: number;
@@ -38,6 +38,11 @@ export class GlyphAtlas implements GlyphPainter {
     }
     this.stage = stage;
     stage.textBaseline = 'alphabetic';
+    this.texture = this.textured();
+  }
+
+  textured(): WebGLTexture {
+    const { gl } = this;
     this.texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, this.texture);
     gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, this.size, this.size);
@@ -45,6 +50,11 @@ export class GlyphAtlas implements GlyphPainter {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return this.texture;
+  }
+
+  dispose(): void {
+    this.gl.deleteTexture(this.texture);
   }
 
   paint(

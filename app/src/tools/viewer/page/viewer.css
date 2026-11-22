@@ -69,7 +69,12 @@
 
 .cell-rows {
   position: relative;
-  display: block;
+}
+
+.cell-canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
 }
 
 .viewer-gutter {

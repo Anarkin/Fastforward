@@ -215,6 +215,41 @@ suite('App viewer drawn as cells', () => {
     assert.deepStrictEqual(seen, alike, `${unlike} of the ink unlike`);
   });
 
+  test('draws its cells again once the GPU gave its context back after losing it, as nothing else draws the text', async () => {
+    const before = await drawn(true, false);
+    await page.evaluate(async () => {
+      const canvas = document.querySelector('.cell-canvas');
+      const lost =
+        canvas instanceof HTMLCanvasElement
+          ? canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')
+          : undefined;
+      await new Promise((resolve) => {
+        canvas?.addEventListener('webglcontextlost', resolve, { once: true });
+        lost?.loseContext();
+      });
+      await new Promise((resolve) => setTimeout(resolve));
+      lost?.restoreContext();
+    });
+    let after = await shot();
+    await untilSettled(
+      async () => {
+        after = await shot();
+        return after.hash;
+      },
+      'the cells drawn again',
+      { accepted: () => after.inked > leastInk },
+    );
+
+    assert.deepStrictEqual(
+      {
+        inked: after.inked > leastInk,
+        alike: unlikeShare(before, after) < mostUnlike,
+      },
+      { inked: true, alike: true },
+      `${unlikeShare(before, after)} of the ink unlike`,
+    );
+  });
+
   test('follows the theme as it changes while the cells are shown, drawing them in the colors the elements take', async () => {
     const dark = await page.evaluate(
       () => matchMedia('(prefers-color-scheme: dark)').matches,

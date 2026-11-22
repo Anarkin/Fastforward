@@ -99,27 +99,79 @@ export function cellsSupported(page: Document = document): boolean {
   return known;
 }
 
-export class CellSurface {
-  readonly tiles: GlyphTiles;
-  readonly frame = new CellFrame();
-  private readonly gl: WebGL2RenderingContext;
-  private readonly atlas: GlyphAtlas;
-  private readonly tileProgram: WebGLProgram;
-  private readonly rectProgram: WebGLProgram;
-  private readonly tileArray: WebGLVertexArrayObject;
-  private readonly rectArray: WebGLVertexArrayObject;
-  private readonly tileBuffer: WebGLBuffer;
-  private readonly rectBuffer: WebGLBuffer;
-  private readonly tileSize: WebGLUniformLocation | null;
-  private readonly tileLighter: WebGLUniformLocation | null;
-  private readonly rectSize: WebGLUniformLocation | null;
+interface Drawing {
+  readonly tileProgram: WebGLProgram;
+  readonly rectProgram: WebGLProgram;
+  readonly tileArray: WebGLVertexArrayObject;
+  readonly rectArray: WebGLVertexArrayObject;
+  readonly tileBuffer: WebGLBuffer;
+  readonly rectBuffer: WebGLBuffer;
+  readonly tileSize: WebGLUniformLocation | null;
+  readonly tileLighter: WebGLUniformLocation | null;
+  readonly rectSize: WebGLUniformLocation | null;
+}
 
-  constructor(
-    private readonly canvas: HTMLCanvasElement,
-    metrics: CellMetrics,
-    subpixel: boolean,
-  ) {
-    const gl = canvas.getContext('webgl2', {
+function drawingOf(gl: WebGL2RenderingContext): Drawing {
+  gl.disable(gl.DEPTH_TEST);
+  gl.blendFunc(gl.ONE, gl.ONE);
+  const tileProgram = programOf(gl, tileVertex, tileFragment);
+  const tileArray = gl.createVertexArray();
+  const tileBuffer = gl.createBuffer();
+  gl.bindVertexArray(tileArray);
+  gl.bindBuffer(gl.ARRAY_BUFFER, tileBuffer);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 2, gl.SHORT, false, tileBytes, 0);
+  gl.vertexAttribDivisor(0, 1);
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 4, gl.SHORT, false, tileBytes, 4);
+  gl.vertexAttribDivisor(1, 1);
+  gl.enableVertexAttribArray(2);
+  gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, tileBytes, 12);
+  gl.vertexAttribDivisor(2, 1);
+  const rectProgram = programOf(gl, rectVertex, rectFragment);
+  const rectArray = gl.createVertexArray();
+  const rectBuffer = gl.createBuffer();
+  gl.bindVertexArray(rectArray);
+  gl.bindBuffer(gl.ARRAY_BUFFER, rectBuffer);
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0, 4, gl.SHORT, false, rectBytes, 0);
+  gl.vertexAttribDivisor(0, 1);
+  gl.enableVertexAttribArray(1);
+  gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, true, rectBytes, 8);
+  gl.vertexAttribDivisor(1, 1);
+  gl.bindVertexArray(null);
+  return {
+    tileProgram,
+    rectProgram,
+    tileArray,
+    rectArray,
+    tileBuffer,
+    rectBuffer,
+    tileSize: gl.getUniformLocation(tileProgram, 'size'),
+    tileLighter: gl.getUniformLocation(tileProgram, 'lighter'),
+    rectSize: gl.getUniformLocation(rectProgram, 'size'),
+  };
+}
+
+interface Measured {
+  readonly key: string;
+  readonly atlas: GlyphAtlas;
+  readonly tiles: GlyphTiles;
+}
+
+export class CellSurface {
+  readonly canvas: HTMLCanvasElement;
+  readonly frame = new CellFrame();
+  onRestored: (() => void) | undefined;
+  private readonly gl: WebGL2RenderingContext;
+  private drawing: Drawing;
+  private measure: Measured | undefined;
+  private ground: Rgba = [0, 0, 0, 1];
+
+  constructor(page: Document = document) {
+    this.canvas = page.createElement('canvas');
+    this.canvas.className = 'cell-canvas';
+    const gl = this.canvas.getContext('webgl2', {
       alpha: false,
       antialias: false,
       depth: false,
@@ -130,44 +182,38 @@ export class CellSurface {
       throw new Error('No WebGL to draw cells with');
     }
     this.gl = gl;
-    this.atlas = new GlyphAtlas(gl, metrics, subpixel);
-    this.tiles = new GlyphTiles(metrics, this.atlas.size, this.atlas);
-    gl.disable(gl.DEPTH_TEST);
-    gl.blendFunc(gl.ONE, gl.ONE);
+    this.drawing = drawingOf(gl);
+    this.canvas.addEventListener('webglcontextlost', this.lost);
+    this.canvas.addEventListener('webglcontextrestored', this.restored);
+  }
 
-    this.tileProgram = programOf(gl, tileVertex, tileFragment);
-    this.tileSize = gl.getUniformLocation(this.tileProgram, 'size');
-    this.tileLighter = gl.getUniformLocation(this.tileProgram, 'lighter');
-    this.tileArray = gl.createVertexArray();
-    this.tileBuffer = gl.createBuffer();
-    gl.bindVertexArray(this.tileArray);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.tileBuffer);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 2, gl.SHORT, false, tileBytes, 0);
-    gl.vertexAttribDivisor(0, 1);
-    gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 4, gl.SHORT, false, tileBytes, 4);
-    gl.vertexAttribDivisor(1, 1);
-    gl.enableVertexAttribArray(2);
-    gl.vertexAttribPointer(2, 4, gl.UNSIGNED_BYTE, true, tileBytes, 12);
-    gl.vertexAttribDivisor(2, 1);
+  private readonly lost = (event: Event) => {
+    event.preventDefault();
+  };
 
-    this.rectProgram = programOf(gl, rectVertex, rectFragment);
-    this.rectSize = gl.getUniformLocation(this.rectProgram, 'size');
-    this.rectArray = gl.createVertexArray();
-    this.rectBuffer = gl.createBuffer();
-    gl.bindVertexArray(this.rectArray);
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.rectBuffer);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 4, gl.SHORT, false, rectBytes, 0);
-    gl.vertexAttribDivisor(0, 1);
-    gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, true, rectBytes, 8);
-    gl.vertexAttribDivisor(1, 1);
-    gl.bindVertexArray(null);
+  private readonly restored = () => {
+    this.drawing = drawingOf(this.gl);
+    this.measure?.atlas.textured();
+    this.measure?.tiles.reset();
+    this.grounded(this.ground);
+    this.onRestored?.();
+  };
+
+  measured(key: string, metrics: CellMetrics, subpixel: boolean): GlyphTiles {
+    if (this.measure?.key !== key) {
+      this.measure?.atlas.dispose();
+      const atlas = new GlyphAtlas(this.gl, metrics, subpixel);
+      this.measure = {
+        key,
+        atlas,
+        tiles: new GlyphTiles(metrics, atlas.size, atlas),
+      };
+    }
+    return this.measure.tiles;
   }
 
   grounded(ground: Rgba): void {
+    this.ground = ground;
     this.canvas.style.background = cssOf(ground);
     this.gl.clearColor(ground[0] / 255, ground[1] / 255, ground[2] / 255, 1);
   }
@@ -180,16 +226,20 @@ export class CellSurface {
   }
 
   draw(): void {
-    const { gl, frame, canvas } = this;
-    this.tiles.flush();
+    const { gl, frame, canvas, measure } = this;
+    if (measure === undefined || gl.isContextLost()) {
+      return;
+    }
+    const drawing = this.drawing;
+    measure.tiles.flush();
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.clear(gl.COLOR_BUFFER_BIT);
     if (frame.rectCount > 0) {
       gl.disable(gl.BLEND);
-      gl.useProgram(this.rectProgram);
-      gl.uniform2f(this.rectSize, canvas.width, canvas.height);
-      gl.bindVertexArray(this.rectArray);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.rectBuffer);
+      gl.useProgram(drawing.rectProgram);
+      gl.uniform2f(drawing.rectSize, canvas.width, canvas.height);
+      gl.bindVertexArray(drawing.rectArray);
+      gl.bindBuffer(gl.ARRAY_BUFFER, drawing.rectBuffer);
       gl.bufferData(
         gl.ARRAY_BUFFER,
         new Uint8Array(frame.rects, 0, frame.rectCount * rectBytes),
@@ -198,29 +248,32 @@ export class CellSurface {
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, frame.rectCount);
     }
     if (frame.tileCount > 0) {
-      gl.useProgram(this.tileProgram);
-      gl.uniform2f(this.tileSize, canvas.width, canvas.height);
-      gl.bindVertexArray(this.tileArray);
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.tileBuffer);
+      gl.useProgram(drawing.tileProgram);
+      gl.uniform2f(drawing.tileSize, canvas.width, canvas.height);
+      gl.bindVertexArray(drawing.tileArray);
+      gl.bindBuffer(gl.ARRAY_BUFFER, drawing.tileBuffer);
       gl.bufferData(
         gl.ARRAY_BUFFER,
         new Uint8Array(frame.tiles, 0, frame.tileCount * tileBytes),
         gl.STREAM_DRAW,
       );
       gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, this.atlas.texture);
+      gl.bindTexture(gl.TEXTURE_2D, measure.atlas.texture);
       gl.enable(gl.BLEND);
       gl.blendEquation(gl.FUNC_ADD);
-      gl.uniform1f(this.tileLighter, 1);
+      gl.uniform1f(drawing.tileLighter, 1);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, frame.tileCount);
       gl.blendEquation(gl.FUNC_REVERSE_SUBTRACT);
-      gl.uniform1f(this.tileLighter, -1);
+      gl.uniform1f(drawing.tileLighter, -1);
       gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, frame.tileCount);
     }
     gl.bindVertexArray(null);
   }
 
   dispose(): void {
+    this.canvas.removeEventListener('webglcontextlost', this.lost);
+    this.canvas.removeEventListener('webglcontextrestored', this.restored);
+    this.canvas.remove();
     this.gl.getExtension('WEBGL_lose_context')?.loseContext();
   }
 }

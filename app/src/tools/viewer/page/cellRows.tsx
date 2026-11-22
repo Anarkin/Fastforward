@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { DotLook } from '../../../lib/page/dotLook';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { CellFont } from './cellLook';
 import type { RowPart } from './cellPainting';
-import { CellView } from './cellView';
+import { CellView, viewKey } from './cellView';
 import type { FindMark } from './markPieces';
 import type { ScreenRow } from './screenRows';
 import type { ColoredText } from './textColors';
@@ -35,26 +35,25 @@ export function CellRows({
   first,
   columns,
 }: CellRowsProps) {
-  const canvas = useRef<HTMLCanvasElement>(null);
+  const host = useRef<HTMLDivElement>(null);
   const view = useRef<CellView>(undefined);
   const ratio = devicePixelRatio;
-  const look = `${font.family}|${font.char}|${font.spacing}|${ratio}`;
   useLayoutEffect(() => {
-    const element = canvas.current;
-    const host = element?.parentElement;
-    if (!element || !host || !(font.char > 0) || widths === undefined) {
+    const element = host.current;
+    const around = element?.parentElement;
+    if (!element || !around || !(font.char > 0) || widths === undefined) {
       return;
     }
-    if (view.current?.canvas !== element) {
+    if (view.current?.key !== viewKey({ font, dotLook }, ratio)) {
       view.current?.dispose();
-      view.current = new CellView(element, host, { font, dotLook });
+      view.current = new CellView(element, around, { font, dotLook });
     }
     view.current.show(
       { rows, parts, wrapAt, colored, marksOf, showWhitespace, widths, first },
       columns,
     );
   });
-  useEffect(
+  useLayoutEffect(
     () => () => {
       view.current?.dispose();
       view.current = undefined;
@@ -63,9 +62,8 @@ export function CellRows({
   );
   const advance = Math.round(font.char * ratio) / ratio;
   return (
-    <canvas
-      key={look}
-      ref={canvas}
+    <div
+      ref={host}
       className="cell-rows"
       data-rows={rows.length > 0 ? rows.length : undefined}
       data-colored={
