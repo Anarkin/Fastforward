@@ -342,4 +342,24 @@ suite('Lessons from past mistakes', () => {
       ['shell/page/window.css'],
     );
   });
+
+  test('hides the Dock in every workflow that runs the tests on macOS, as it grew and shrank as their apps started and the room it left a window on the low screen of those machines went from 674 pixels to 675 and 677 within a run, each window as tall as the room at its start, so a tab moved to a window of its own drew a row more than it left and a menu 70% of the window tall stood on a half pixel', () => {
+    const workflows = path.join(sources, '..', '..', '.github', 'workflows');
+    const hidesTheDock =
+      /if: runner\.os == 'macOS'\s+run: \|\s+defaults write com\.apple\.dock autohide -bool true\s+killall Dock\s/;
+    assert.deepStrictEqual(
+      fs
+        .readdirSync(workflows)
+        .filter((file) => {
+          const text = fs.readFileSync(path.join(workflows, file), 'utf8');
+          return (
+            /macos/.test(text) &&
+            /npm test|vitest run/.test(text) &&
+            !hidesTheDock.test(text)
+          );
+        })
+        .toSorted(),
+      [],
+    );
+  });
 });

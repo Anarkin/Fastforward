@@ -99,6 +99,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: Set-DisplayResolution -Width 1920 -Height 1080 -Force
+      - name: Hide the Dock
+        if: runner.os == 'macOS'
+        run: |
+          defaults write com.apple.dock autohide -bool true
+          killall Dock
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
