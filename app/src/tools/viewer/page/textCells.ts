@@ -85,8 +85,10 @@ const joins = (next: number) => next >= 0x300 && !alone(next);
 
 const standsAlone = (code: number, next: number) => alone(code) && !joins(next);
 
+type Styled = Pick<TextDrawing, 'tiles' | 'palette'>;
+
 function styleOf(
-  { tiles, palette }: TextDrawing,
+  { tiles, palette }: Styled,
   kind: string | undefined,
   mark: Mark,
 ): GlyphStyle {
@@ -158,6 +160,16 @@ function placed(
     tiles.tileHeight,
     style.packed,
   );
+}
+
+export function textStyles(styled: Styled): GlyphStyle[] {
+  return [
+    ...new Set(
+      [undefined, ...styled.palette.look.kinds.keys()].map((kind) =>
+        styleOf(styled, kind, undefined),
+      ),
+    ),
+  ];
 }
 
 export function drawSign(

@@ -97,9 +97,9 @@ const views = [
 
 const typed = 'const typed = value + 1; // typed here';
 
-const drawnAsCells =
-  process.env.FASTFORWARD_PERF_WEBGL !== undefined &&
-  path.basename(perfBuild) === process.env.FASTFORWARD_PERF_WEBGL;
+const drawnAsCells = (process.env.FASTFORWARD_PERF_WEBGL ?? '')
+  .split(',')
+  .includes(path.basename(perfBuild));
 
 const slowestScenario = 600_000;
 

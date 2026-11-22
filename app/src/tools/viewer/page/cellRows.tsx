@@ -4,6 +4,7 @@ import type { TextWidths } from '../../../lib/page/textWidths';
 import type { CellFont } from './cellLook';
 import type { RowPart } from './cellPainting';
 import { CellView, viewKey } from './cellView';
+import type { RowAhead } from './glyphWarmth';
 import type { FindMark } from './markPieces';
 import type { ScreenRow } from './screenRows';
 import type { ColoredText } from './textColors';
@@ -18,6 +19,8 @@ interface CellRowsProps {
   readonly widths: TextWidths | undefined;
   readonly font: CellFont;
   readonly dotLook: DotLook | undefined;
+  readonly ahead: readonly RowAhead[];
+  readonly text: string | undefined;
   readonly first: number;
   readonly columns: number;
 }
@@ -32,6 +35,8 @@ export function CellRows({
   widths,
   font,
   dotLook,
+  ahead,
+  text,
   first,
   columns,
 }: CellRowsProps) {
@@ -51,6 +56,8 @@ export function CellRows({
     view.current.show(
       { rows, parts, wrapAt, colored, marksOf, showWhitespace, widths, first },
       columns,
+      ahead,
+      text,
     );
   });
   useLayoutEffect(

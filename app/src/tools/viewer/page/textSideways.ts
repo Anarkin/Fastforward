@@ -70,7 +70,7 @@ export function useSideways({
   }
   const shownColumns =
     columns !== undefined && Number.isFinite(columns) ? columns : 0;
-  const parts = shown.map((row) =>
+  const partOf = (row: ScreenRow) =>
     whole
       ? shownWithin(
           row.row.text,
@@ -80,10 +80,10 @@ export function useSideways({
           across + shownColumns + sidewaysMargin,
           counting,
         )
-      : { from: row.from, to: row.to, column: row.indent },
-  );
+      : { from: row.from, to: row.to, column: row.indent };
   return {
     width: whole && wide.key === widthKey ? wide.columns : undefined,
-    parts,
+    parts: shown.map(partOf),
+    partOf,
   };
 }

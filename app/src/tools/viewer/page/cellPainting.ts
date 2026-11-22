@@ -2,7 +2,7 @@ import { blankRuns } from '../../../lib/page/rowBreaks';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { strings } from '../../../lib/shared/strings';
 import type { TextRow } from '../shared/protocol';
-import type { CellFrame, KeptCells } from './cellFrame';
+import { CellFrame, type KeptCells } from './cellFrame';
 import type { GlyphTiles } from './glyphTiles';
 import { markPieces, type FindMark } from './markPieces';
 import { marksWithin, piecesWithin, type ScreenRow } from './screenRows';
@@ -23,15 +23,18 @@ export interface RowPart {
   readonly column: number;
 }
 
-export interface ShownRows {
-  readonly rows: readonly ScreenRow[];
-  readonly parts: readonly (RowPart | undefined)[];
+export interface RowsLook {
   readonly wrapAt: number | undefined;
   readonly colored: ColoredText | undefined;
   readonly marksOf: (row: ScreenRow) => readonly FindMark[];
   readonly showWhitespace: boolean;
   readonly widths: TextWidths;
   readonly first: number;
+}
+
+export interface ShownRows extends RowsLook {
+  readonly rows: readonly ScreenRow[];
+  readonly parts: readonly (RowPart | undefined)[];
 }
 
 interface KeptRow {
@@ -53,6 +56,7 @@ interface KeptRow {
 export interface CellPainting {
   readonly tiles: GlyphTiles;
   readonly frame: CellFrame;
+  readonly scratch: CellFrame;
   readonly dot: DotBox;
   readonly kept: Map<string, KeptRow>;
   palette: TextPalette;
@@ -64,9 +68,17 @@ export const cellPainting = (
   frame: CellFrame,
   palette: TextPalette,
   dot: DotBox,
-): CellPainting => ({ tiles, frame, dot, kept: new Map(), palette, paints: 0 });
+): CellPainting => ({
+  tiles,
+  frame,
+  scratch: new CellFrame(),
+  dot,
+  kept: new Map(),
+  palette,
+  paints: 0,
+});
 
-const keptScreens = 4;
+const keptScreens = 8;
 
 function piecesOf(
   colored: ColoredText | undefined,
@@ -112,94 +124,153 @@ function drawRow(
   }
 }
 
+const drawingOn = (
+  { tiles, palette, dot }: CellPainting,
+  frame: CellFrame,
+  { widths, showWhitespace, first, wrapAt }: RowsLook,
+): TextDrawing => ({
+  tiles,
+  frame,
+  palette,
+  widths,
+  blanks: showWhitespace,
+  first,
+  limit: wrapAt ?? Infinity,
+  dot,
+});
+
+const rowKey = (row: ScreenRow): string => `${row.row.start}:${row.from}`;
+
+function keptOf(
+  { kept, tiles }: CellPainting,
+  { colored, showWhitespace, wrapAt }: RowsLook,
+  row: ScreenRow,
+  part: RowPart | undefined,
+  marks: readonly FindMark[],
+): KeptRow | undefined {
+  const before = kept.get(rowKey(row));
+  return before !== undefined &&
+    before.row.text === row.row.text &&
+    before.from === (part?.from ?? row.from) &&
+    before.to === (part?.to ?? row.to) &&
+    before.column === (part?.column ?? 0) &&
+    before.colored === colored &&
+    sameMarks(before.marks, marks) &&
+    before.blanks === showWhitespace &&
+    before.limit === (wrapAt ?? Infinity) &&
+    before.generation === tiles.generation
+    ? before
+    : undefined;
+}
+
+function drawnRow(
+  painting: CellPainting,
+  drawing: TextDrawing,
+  look: RowsLook,
+  row: ScreenRow,
+  part: RowPart | undefined,
+  marks: readonly FindMark[],
+  y: number,
+): boolean {
+  const { frame } = drawing;
+  const from = part?.from ?? row.from;
+  const to = part?.to ?? row.to;
+  const column = part?.column ?? 0;
+  const tilesFrom = frame.tileCount;
+  const rectsFrom = frame.rectCount;
+  const missing = frame.missing;
+  drawRow(
+    drawing,
+    row,
+    piecesOf(look.colored, row, marks, from, to),
+    column,
+    y,
+  );
+  if (frame.missing !== missing) {
+    return false;
+  }
+  painting.kept.set(rowKey(row), {
+    row: row.row,
+    from,
+    to,
+    column,
+    colored: look.colored,
+    marks,
+    blanks: look.showWhitespace,
+    limit: drawing.limit,
+    generation: painting.tiles.generation,
+    first: look.first,
+    y,
+    cells: frame.kept(tilesFrom, rectsFrom),
+    used: painting.paints,
+  });
+  return true;
+}
+
+function forgetOldest({ kept }: CellPainting, most: number): void {
+  if (kept.size <= most) {
+    return;
+  }
+  const oldest = [...kept]
+    .toSorted(([, one], [, other]) => one.used - other.used)
+    .slice(0, kept.size - Math.ceil(most / 2));
+  for (const [key] of oldest) {
+    kept.delete(key);
+  }
+}
+
 export function paintRows(
   painting: CellPainting,
-  {
-    rows,
-    parts,
-    wrapAt,
-    colored,
-    marksOf,
-    showWhitespace,
-    widths,
-    first,
-  }: ShownRows,
+  shown: ShownRows,
   budget: number,
 ): boolean {
-  const { tiles, frame, kept } = painting;
+  const { tiles, frame } = painting;
+  const { rows, parts, marksOf, first } = shown;
   const { advance, rowHeight } = tiles.metrics;
-  const drawing: TextDrawing = {
-    tiles,
-    frame,
-    palette: painting.palette,
-    widths,
-    blanks: showWhitespace,
-    first,
-    limit: wrapAt ?? Infinity,
-    dot: painting.dot,
-  };
-  const { generation } = tiles;
-  const paint = ++painting.paints;
+  const drawing = drawingOn(painting, frame, shown);
+  painting.paints++;
   frame.reset();
   tiles.within(budget);
   for (let index = 0; index < rows.length; index++) {
     const row = rows[index];
     const y = index * rowHeight;
     const part = parts[index];
-    const from = part?.from ?? row.from;
-    const to = part?.to ?? row.to;
-    const column = part?.column ?? 0;
     const marks = marksOf(row);
-    const key = `${row.row.start}:${row.from}`;
-    const before = kept.get(key);
-    if (
-      before !== undefined &&
-      before.row.text === row.row.text &&
-      before.from === from &&
-      before.to === to &&
-      before.column === column &&
-      before.colored === colored &&
-      sameMarks(before.marks, marks) &&
-      before.blanks === showWhitespace &&
-      before.limit === drawing.limit &&
-      before.generation === generation
-    ) {
+    const before = keptOf(painting, shown, row, part, marks);
+    if (before === undefined) {
+      drawnRow(painting, drawing, shown, row, part, marks, y);
+    } else {
       frame.append(
         before.cells,
         (before.first - first) * advance,
         y - before.y,
       );
-      before.used = paint;
-      continue;
-    }
-    const tilesFrom = frame.tileCount;
-    const rectsFrom = frame.rectCount;
-    const missing = frame.missing;
-    drawRow(drawing, row, piecesOf(colored, row, marks, from, to), column, y);
-    if (frame.missing === missing) {
-      kept.set(key, {
-        row: row.row,
-        from,
-        to,
-        column,
-        colored,
-        marks,
-        blanks: showWhitespace,
-        limit: drawing.limit,
-        generation,
-        first,
-        y,
-        cells: frame.kept(tilesFrom, rectsFrom),
-        used: paint,
-      });
+      before.used = painting.paints;
     }
   }
-  if (kept.size > rows.length * keptScreens) {
-    for (const [key, row] of kept) {
-      if (row.used !== paint) {
-        kept.delete(key);
-      }
-    }
-  }
+  forgetOldest(painting, Math.max(1, rows.length) * keptScreens);
   return frame.missing === 0;
+}
+
+export function prepareRow(
+  painting: CellPainting,
+  look: RowsLook,
+  row: ScreenRow,
+  part: RowPart | undefined,
+): boolean {
+  const marks = look.marksOf(row);
+  if (keptOf(painting, look, row, part, marks) !== undefined) {
+    return true;
+  }
+  const { scratch } = painting;
+  scratch.reset();
+  return drawnRow(
+    painting,
+    drawingOn(painting, scratch, look),
+    look,
+    row,
+    part,
+    marks,
+    0,
+  );
 }

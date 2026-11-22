@@ -14,6 +14,7 @@ import type { ViewerTabView } from './tabParts';
 import { textEnds, textThumb } from './textScroll';
 import { TextRow } from './textRow';
 import { CellRows } from './cellRows';
+import type { RowAhead } from './glyphWarmth';
 import { cellsSupported } from './cellSurface';
 import type { ScreenRow } from './screenRows';
 import { useTextRows } from './textRows';
@@ -21,6 +22,10 @@ import { steppedColumn, useSideways } from './textSideways';
 import { useColors, useWholeText } from './wholeText';
 
 const cellMargin = 64;
+
+const aheadScreens = 3;
+
+const noRowsAhead: readonly RowAhead[] = [];
 
 export function TextBody({
   encoding,
@@ -114,7 +119,7 @@ export function TextBody({
   const text = useWholeText(viewing, language !== undefined || whole, encoding);
   const colored = useColors(tab, language, encoding, text);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 2);
-  const { width, parts } = useSideways({
+  const { width, parts, partOf } = useSideways({
     whole,
     text,
     rows,
@@ -246,6 +251,20 @@ export function TextBody({
           widths={widths}
           font={font}
           dotLook={dotLook}
+          ahead={
+            drawnAsCells
+              ? [
+                  ...loaded.rows.slice(
+                    loaded.top + shown.length,
+                    loaded.top + shown.length * aheadScreens,
+                  ),
+                  ...loaded.rows
+                    .slice(Math.max(0, loaded.top - shown.length), loaded.top)
+                    .toReversed(),
+                ].map((row) => ({ row, part: partOf(row) }))
+              : noRowsAhead
+          }
+          text={text?.text}
           first={firstCell}
           columns={Math.max(1, lastCell - firstCell)}
         />

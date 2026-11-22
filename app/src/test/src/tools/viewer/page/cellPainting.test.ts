@@ -212,19 +212,22 @@ suite('Rows painted as cells', () => {
     );
   });
 
-  test('forgets the rows it no longer shows once it keeps more than four screens of them', () => {
+  test('forgets the rows drawn longest ago once it keeps more than eight screens of them, down to four', () => {
     const { cells } = painting();
-    const rows = Array.from({ length: 5 }, (_, at) => rowOf(`r${at}`, at * 4));
+    const rows = Array.from({ length: 9 }, (_, at) => rowOf(`r${at}`, at * 4));
 
-    for (const row of rows.slice(0, 4)) {
+    for (const row of rows.slice(0, 8)) {
       paintRows(cells, shown([row]), Infinity);
     }
 
-    assert.strictEqual(cells.kept.size, 4);
+    assert.strictEqual(cells.kept.size, 8);
 
-    paintRows(cells, shown([rows[4]]), Infinity);
+    paintRows(cells, shown([rows[8]]), Infinity);
 
-    assert.deepStrictEqual([...cells.kept.keys()], ['16:0']);
+    assert.deepStrictEqual(
+      [...cells.kept.keys()],
+      ['20:0', '24:0', '28:0', '32:0'],
+    );
   });
 
   test('draws every row anew once the atlas started over, as the tiles it kept are stale', () => {

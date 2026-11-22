@@ -171,6 +171,10 @@ export class GlyphTiles {
     return tile;
   }
 
+  get filled(): number {
+    return Math.min(1, (this.shelfY + this.tileHeight) / this.size);
+  }
+
   within(budget: number): void {
     this.until = this.now() + budget;
   }

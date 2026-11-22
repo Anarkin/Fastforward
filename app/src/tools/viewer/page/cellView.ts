@@ -8,8 +8,11 @@ import {
 } from './cellPainting';
 import { CellSurface } from './cellSurface';
 import type { GlyphTiles } from './glyphTiles';
+import { asciiJob, linesJob, rowsJob, type RowAhead } from './glyphWarmth';
+import { IdleWork, pageIdling } from './idleWork';
 import { poolOf } from './surfacePool';
-import { paletteOf, type DotBox } from './textCells';
+import { paletteOf, textStyles, type DotBox } from './textCells';
+import type { ColoredText } from './textColors';
 
 const scrollingBudget = 2;
 
@@ -73,7 +76,10 @@ export class CellView {
   private readonly tiles: GlyphTiles;
   private readonly painting: CellPainting;
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
+  private readonly idle: IdleWork;
   private shown: ShownRows | undefined;
+  private read: { text: string | undefined; colored: ColoredText | undefined } =
+    { text: undefined, colored: undefined };
   private columns = 0;
   private again = 0;
   private rowsAt = 0;
@@ -112,12 +118,46 @@ export class CellView {
     );
     this.surface.onRestored = this.paint;
     this.scheme.addEventListener('change', this.relook);
+    this.idle = new IdleWork(
+      pageIdling(),
+      (slice) => this.tiles.within(slice),
+      () => this.tiles.flush(),
+    );
+    this.warm();
   }
 
-  show(shown: ShownRows, columns: number): void {
+  private warm(): void {
+    this.idle.put(
+      'letters',
+      asciiJob(
+        this.tiles,
+        textStyles({ tiles: this.tiles, palette: this.painting.palette }),
+      ),
+    );
+  }
+
+  show(
+    shown: ShownRows,
+    columns: number,
+    ahead: readonly RowAhead[],
+    text: string | undefined,
+  ): void {
     this.shown = shown;
     this.columns = columns;
     this.paint();
+    this.idle.put('rows', rowsJob(this.painting, shown, ahead));
+    const colored =
+      shown.colored?.parts.at(-1)?.done === true ? shown.colored : undefined;
+    if (
+      text !== undefined &&
+      (text !== this.read.text || colored !== this.read.colored)
+    ) {
+      this.read = { text, colored };
+      this.idle.put(
+        'file',
+        linesJob(this.painting, { ...shown, colored }, text),
+      );
+    }
   }
 
   private readonly relook = () => {
@@ -126,6 +166,9 @@ export class CellView {
     this.tiles.restyled();
     this.painting.palette = paletteOf(look);
     this.painting.kept.clear();
+    this.idle.clear();
+    this.read = { text: undefined, colored: undefined };
+    this.warm();
     this.paint();
   };
 
@@ -155,6 +198,7 @@ export class CellView {
     surface.draw();
     if (tiles.full) {
       tiles.reset();
+      this.warm();
     }
     if (!whole) {
       this.again = requestAnimationFrame(this.paint);
@@ -162,6 +206,7 @@ export class CellView {
   };
 
   dispose(): void {
+    this.idle.clear();
     cancelAnimationFrame(this.again);
     this.scheme.removeEventListener('change', this.relook);
     surfaces.givenBack(this.surface);
