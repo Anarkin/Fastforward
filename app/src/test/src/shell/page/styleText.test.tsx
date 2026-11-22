@@ -266,7 +266,7 @@ suite('Style', () => {
     });
   });
 
-  test('draws the spaces shown in the diff and the viewer as square dots on one layer over the line, each as tall as it is wide in whole device pixels and starting on a whole device pixel in the middle of its row, where the layer puts it across, with no element over each space or run, as an element a space of a line of prose slowed scrolling down', () => {
+  test('draws the spaces shown in the diff as square dots on one layer over the line, each as tall as it is wide in whole device pixels and starting on a whole device pixel in the middle of its row, where the layer puts it across, with no element over each space or run, as an element a space of a line of prose slowed scrolling down', () => {
     const layer = withClass(
       shownRow(
         diffView(
@@ -310,20 +310,6 @@ suite('Style', () => {
       compact(cascaded(layer, '--space-dot-start')),
       spaceDotStart,
     );
-    assert.strictEqual(
-      cascaded(
-        withClass(
-          rendered(
-            <div className="viewer-row">
-              <span className="dot-rows" />
-            </div>,
-          ),
-          'dot-rows',
-        ),
-        '--dot-row',
-      ),
-      'var(--viewer-row-height)',
-    );
   });
 
   test('keeps the run of spaces of a line too long to dot on one layer dotted in its own background, each dot as on the layer', () => {
@@ -348,15 +334,7 @@ suite('Style', () => {
     looks(run, { content: undefined }, { pseudoElement: '::before' });
   });
 
-  test('marks the spaces hanging at the end of a wrapped row of the diff and the viewer with the same dots, on that row, leaving them to the spaces drawn in the diff while whitespace is shown', () => {
-    const viewer = withClass(
-      rendered(
-        <div className="viewer-row">
-          <span className="viewer-wrap-spaces" />
-        </div>,
-      ),
-      'viewer-wrap-spaces',
-    );
+  test('marks the spaces hanging at the end of a wrapped row of the diff with dots, on that row, leaving them to the spaces drawn in the diff while whitespace is shown', () => {
     const dotted = squareDots;
     looks(
       withClass(
@@ -387,13 +365,6 @@ suite('Style', () => {
       ),
       { display: 'none' },
     );
-    looks(viewer, {
-      position: 'absolute',
-      top: '0',
-      height: '100%',
-      'pointer-events': 'none',
-      ...dotted,
-    });
     for (const marks of [
       withClass(
         shownRow(
@@ -404,7 +375,6 @@ suite('Style', () => {
         ),
         'wrap-spaces',
       ),
-      viewer,
     ]) {
       assert.strictEqual(
         compact(cascaded(marks, 'background-image')),

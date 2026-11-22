@@ -37,9 +37,10 @@ const viewing = (tab: string, version = '1') =>
   ({ type: 'viewing', tab, size: longFile.size, version }) as const;
 
 const rowsShown = ({ document }: ShownTool) =>
-  [...document.querySelectorAll('.viewer-rows .viewer-row')].map(
-    (row) => row.textContent,
-  );
+  document
+    .querySelector<HTMLElement>('.viewer-rows .cell-rows')
+    ?.seenRows?.()
+    .map(({ text }) => text) ?? [];
 
 const asksSince = (tool: ShownTool, since: number) =>
   tool.posted

@@ -1,3 +1,4 @@
+import { viewerMarks, viewerTexts } from './cellsSeen';
 import { page } from './commanderAppFixtures';
 
 export const shownState = () =>
@@ -7,6 +8,12 @@ export const shownState = () =>
       viewing: viewer?.getAttribute('data-file') ?? null,
       text:
         viewer instanceof HTMLElement ? viewer.innerText.slice(0, 300) : null,
+      rows: [...(viewer?.querySelectorAll('.cell-rows') ?? [])].flatMap(
+        (host) =>
+          host instanceof HTMLElement
+            ? (host.seenRows?.() ?? []).slice(0, 6).map(({ text }) => text)
+            : [],
+      ),
       selected: [...document.querySelectorAll('.commander-row.selected')].map(
         (row) => row.textContent,
       ),
@@ -22,16 +29,8 @@ export const closeViewer = async () => {
       .catch(() => undefined);
   }
 };
-export const firstViewerRow = async () =>
-  (await page.locator('.viewer-rows .viewer-row').first().textContent()) ?? '';
-export const findMarks = () =>
-  page
-    .locator('.viewer-rows .find-match')
-    .evaluateAll((elements) =>
-      elements.map((element) => [
-        element.textContent,
-        element.classList.contains('current'),
-      ]),
-    );
+export const rowTexts = () => viewerTexts(page);
+export const firstViewerRow = async () => (await rowTexts())[0] ?? '';
+export const findMarks = () => viewerMarks(page);
 export const findCount = () =>
   page.locator('.viewer .search-count').textContent();

@@ -14,8 +14,8 @@ import {
   type ColumnsIn,
   type RowBreak,
 } from '../../../lib/page/rowBreaks';
-import { hasDots, type DotRows } from '../../../lib/page/dotRows';
-import { DotRowsShown } from '../../../lib/page/dotRowsShown';
+import { hasDots, type DotRows } from './dotRows';
+import { DotRowsShown } from './dotRowsShown';
 import type { DotLook } from '../../../lib/page/dotLook';
 import {
   breaksMarked,

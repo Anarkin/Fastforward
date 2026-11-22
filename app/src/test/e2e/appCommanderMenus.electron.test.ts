@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import { viewerRows } from './cellsSeen';
 import { wheelsByWholeRows } from './scrollProbes';
 import { barOf, barParts } from './scrollbarsShown';
 import { menuRows } from '../../lib/page/menuControls';
@@ -113,7 +114,7 @@ suite('App commander', () => {
     chosen.push(await toggleBookmark(), await toggleBookmark());
 
     await page.keyboard.press('F3');
-    await page.locator('.viewer .viewer-rows .viewer-row').first().waitFor();
+    await page.locator(viewerRows).first().waitFor();
     await choose('.viewer-encoding', '.menu-item[aria-checked="true"]');
     chosen.push(await focusIn('.viewer-body'));
     await choose('.viewer .language-button', '.menu-item[aria-checked="true"]');
@@ -130,7 +131,7 @@ suite('App commander', () => {
     try {
       await select('menu');
       await page.keyboard.press('F3');
-      await page.locator('.viewer-rows .viewer-row').first().waitFor();
+      await page.locator(viewerRows).first().waitFor();
       await page.keyboard.press('l');
       const menu = page.locator(languageMenu);
       await menu.waitFor();
@@ -233,7 +234,7 @@ suite('App commander', () => {
     fs.writeFileSync(path.join(opened, 'wheel.ts'), 'const a = 1;');
     await select('wheel');
     await page.keyboard.press('F3');
-    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    await page.locator(viewerRows).first().waitFor();
     await page.keyboard.press('l');
     const menu = page.locator('.viewer .language-button .menu');
     await menu.waitFor();
@@ -254,7 +255,7 @@ suite('App commander', () => {
     try {
       await select('track');
       await page.keyboard.press('F3');
-      await page.locator('.viewer-rows .viewer-row').first().waitFor();
+      await page.locator(viewerRows).first().waitFor();
       const label = page.locator('.viewer .language-button .menu-button-label');
       const language = await label.textContent();
       await page.keyboard.press('l');

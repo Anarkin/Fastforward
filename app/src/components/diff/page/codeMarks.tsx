@@ -12,7 +12,7 @@ import { codePieces, piecesWithin, type CodePiece } from './codePieces';
 import { CodeBlocks } from './codeBlocks';
 import { keptWrapStarts } from '../../../lib/page/wrapStarts';
 import { spaceColumnsAt } from '../../../lib/page/rowBreaks';
-import { DotRowsShown } from '../../../lib/page/dotRowsShown';
+import { DotRowsShown } from './dotRowsShown';
 import { lineColors, type ColoredRange } from '../../syntax/page/lineColors';
 
 function firstFrom(offsets: readonly number[], at: number): number {

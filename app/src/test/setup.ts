@@ -5,6 +5,11 @@ import { assertNoFoldersLeft } from './helpers/tempFolders';
 
 const programs = new ProgramsStarted(expect.getState().testPath ?? '');
 
+Object.defineProperty(navigator, 'gpu', {
+  configurable: true,
+  value: { requestAdapter: () => new Promise(() => undefined) },
+});
+
 afterEach(() => {
   programs.testEnded();
 });

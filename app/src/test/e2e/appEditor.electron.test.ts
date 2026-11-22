@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { viewerRows, viewerShows, viewerTexts } from './cellsSeen';
 import { storedZip } from '../helpers/zips';
 import {
   opened,
@@ -259,7 +260,7 @@ suite('App editor', () => {
     await backToCommander();
     await select('top.txt');
     await page.keyboard.press('F3');
-    await page.locator('.viewer', { hasText: 'the top of the zip!' }).waitFor();
+    await viewerShows(page, 'the top of the zip!');
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
     await right().locator('.virtual-rows').focus();
@@ -273,16 +274,18 @@ suite('App editor', () => {
     await backToCommander();
     await select('long.txt');
     await page.keyboard.press('F3');
-    const rows = page.locator('.viewer .viewer-rows .viewer-row');
-    await rows.first().waitFor();
+    await page.locator(viewerRows).first().waitFor();
     const tabs = await page.locator('.tabs [role="tab"]').count();
     const viewerTab = await activeIndex();
     await page.keyboard.press('End');
-    await rows.filter({ hasText: 'line 400' }).waitFor();
+    await waitFor(
+      async () => (await viewerTexts(page)).includes('line 400'),
+      'the end of the file',
+    );
     let shownTop = '';
     await waitFor(async () => {
       const was = shownTop;
-      shownTop = (await rows.first().textContent()) ?? '';
+      shownTop = (await viewerTexts(page))[0] ?? '';
       await new Promise((resolve) => setTimeout(resolve, 200));
       return shownTop === was;
     }, 'the viewer to stop scrolling');
@@ -307,7 +310,7 @@ suite('App editor', () => {
       'the line at the top of the editor',
     );
     await page.locator('.tabs [role="tab"]').nth(viewerTab).click();
-    await rows.first().waitFor();
+    await page.locator(viewerRows).first().waitFor();
     await page.locator('.viewer .column-body').first().focus();
     await page.keyboard.press('F4');
     await waitFor(

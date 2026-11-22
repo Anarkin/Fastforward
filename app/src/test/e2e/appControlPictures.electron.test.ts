@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
+import { cellPoint, viewerTexts } from './cellsSeen';
 import { untilSettled, waitForFocus } from './waits';
 
 const character = (code: number) => String.fromCharCode(code);
@@ -38,13 +39,14 @@ const denseLines = [
   ),
 ];
 
+const viewer = {
+  name: 'viewer',
+  tab: 1,
+  pane: '.viewer-body',
+  rows: '.viewer-rows .cell-rows',
+} as const;
+
 const views = [
-  {
-    name: 'viewer',
-    tab: 1,
-    pane: '.viewer-body',
-    rows: '.viewer-rows .viewer-row',
-  },
   {
     name: 'editor',
     tab: 2,
@@ -65,7 +67,7 @@ const views = [
   },
 ] as const;
 
-type View = (typeof views)[number];
+type View = (typeof views)[number] | typeof viewer;
 
 interface Shown {
   readonly name: string;
@@ -171,9 +173,11 @@ suite('App control pictures', () => {
     await page.locator('.tabs .tab').nth(view.tab).click();
     await waitFor(
       async () =>
-        (await page.evaluate(drawnRows, view.rows)).some(
-          (row) => row.text === first,
-        ),
+        view.name === 'viewer'
+          ? (await viewerTexts(page)).includes(first)
+          : (await page.evaluate(drawnRows, view.rows)).some(
+              (row) => row.text === first,
+            ),
       `the first row in the ${view.name}`,
     );
   };
@@ -207,6 +211,10 @@ suite('App control pictures', () => {
       await waitForFocus(page.locator(view.pane), 'the editor');
       await page.keyboard.press('Home');
       await page.keyboard.press('Shift+End');
+    } else if (view.name === 'viewer') {
+      const inRow = await cellPoint(page, row, 1);
+      await page.mouse.click(inRow.x, inRow.y, { clickCount: 3 });
+      await waitForFocus(page.locator(view.pane).first(), 'the viewer');
     } else {
       await page.locator(view.pane).first().focus();
       assert.ok(
@@ -289,8 +297,16 @@ suite('App control pictures', () => {
     await closeOrKill(app);
   });
 
-  test('draws every control character in the viewer, the editor and both sides of the diff where it stands in the text, by the font the app makes for them, each exactly a column wide, the form feed as its picture, which Chromium draws as nothing, so every character of a row stands on its column and the bar after them under the bar of the ruler', async () => {
+  test('draws every control character in the editor and both sides of the diff where it stands in the text, by the font the app makes for them, each exactly a column wide, the form feed as its picture, which Chromium draws as nothing, so every character of a row stands on its column and the bar after them under the bar of the ruler, and shows the viewer every row as the file has it, its cells drawing each character by its picture in a cell', async () => {
     const found: Record<string, unknown> = {};
+    await show(viewer);
+    const viewed = await viewerTexts(page);
+    assert.deepStrictEqual(
+      [...written, keptWritten]
+        .filter((text) => viewed.includes(text))
+        .map(legible),
+      [...written, keptWritten].map(legible),
+    );
     for (const view of views) {
       await show(view);
       const rows = await untilSettled(
@@ -329,7 +345,7 @@ suite('App control pictures', () => {
 
   test('copies the control characters as they are out of the viewer, the editor and the diff, the form feed itself, not the picture drawn for it, keeps a picture of it the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
     const found: Record<string, unknown> = {};
-    for (const view of views) {
+    for (const view of [viewer, ...views]) {
       found[view.name] = [
         legible(await copiedFrom(view, 1)),
         legible(await copiedFrom(view, 2)),
@@ -340,7 +356,7 @@ suite('App control pictures', () => {
     assert.deepStrictEqual(
       found,
       Object.fromEntries(
-        views.map((view) => [
+        [viewer, ...views].map((view) => [
           view.name,
           [
             legible(written[0]),
@@ -376,12 +392,18 @@ suite('App control pictures', () => {
     );
   });
 
-  test('draws a file dense in control characters in the editor as in the viewer, every one by the font where it stands in the text, with no element of its own, each line as wide as one of as many dots, as an element for the picture of each took longer to paint than the characters to lay out, so the editor left such a file in boxes, off the columns', async () => {
+  test('draws a file dense in control characters in the editor, every one by the font where it stands in the text, with no element of its own, each line as wide as one of as many dots, as an element for the picture of each took longer to paint than the characters to lay out, so the editor left such a file in boxes, off the columns, and shows the viewer its rows as written', async () => {
     const found: Record<string, unknown> = {};
-    const tabs = [
-      { name: 'editor', tab: 6, rows: '.editor .cm-line' },
-      { name: 'viewer', tab: 7, rows: '.viewer-rows .viewer-row' },
-    ];
+    const tabs = [{ name: 'editor', tab: 6, rows: '.editor .cm-line' }];
+    await show({ ...viewer, tab: 7 }, denseLines[0]);
+    const viewed = await untilSettled(
+      () => viewerTexts(page),
+      'the rows of the viewer',
+    );
+    found.viewer = {
+      rows: viewed.length >= 20,
+      asWritten: viewed.every((text, at) => text === denseLines[at]),
+    };
     for (const view of tabs) {
       await show(view, denseLines[0]);
       const rows = await untilSettled(
@@ -406,7 +428,10 @@ suite('App control pictures', () => {
       elements: 0,
       fonts: [`${controlFont} 60`],
     };
-    assert.deepStrictEqual(found, { editor: expected, viewer: expected });
+    assert.deepStrictEqual(found, {
+      editor: expected,
+      viewer: { rows: true, asWritten: true },
+    });
   });
 
   test('draws the control characters of a Markdown file previewed by the font too, in its text and in its code, the form feed as its picture', async () => {

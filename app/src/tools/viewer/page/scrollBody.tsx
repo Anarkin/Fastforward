@@ -1,5 +1,4 @@
 import type { Sentence } from '../../../lib/shared/sentences';
-import { useSelectedCopy } from '../../../lib/page/selectedCopy';
 import { Words } from '../../../lib/page/name';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import {
@@ -24,7 +23,6 @@ import { useShell } from '../../../shell/page/store';
 import { wrapColumns } from '../../../lib/page/wordWrap';
 import { boxColumns } from '../../../lib/page/wrapBox';
 import { type Ends, type Thumb } from './scrollThumbs';
-import { copiedRows, type RowText } from './rowCopy';
 import { picturedRegion } from '../../../lib/page/picturedCopy';
 import { MatchTicks } from './scrollbar';
 import { ScrollProxy } from '../../../lib/page/scrollProxy';
@@ -63,13 +61,9 @@ export function ScrollBody({
   settled = false,
   onLeft,
   reveal,
-  rowText,
   matches = noMatches,
   size = 0,
   lead = 0,
-  copiesWatched = false,
-  onCopySelected,
-  copyMarked,
   children,
 }: {
   thumb: Thumb | undefined;
@@ -88,23 +82,12 @@ export function ScrollBody({
   settled?: boolean;
   onLeft?: (left: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
-  rowText?: (row: Element) => RowText | undefined;
   matches?: readonly ByteRange[];
   size?: number;
   lead?: number;
-  copiesWatched?: boolean;
-  onCopySelected?: (copy: string | undefined) => void;
-  copyMarked?: string;
   children: React.ReactNode;
 }) {
   const body = useRef<HTMLDivElement>(null);
-  useSelectedCopy(
-    body,
-    'data-key',
-    copiesWatched && onCopySelected !== undefined,
-    (copy) => onCopySelected?.(copy),
-    copyMarked,
-  );
   const probe = useRef<HTMLDivElement>(null);
   const sideways = useRef<HTMLDivElement>(null);
   const rowsBox = useRef<HTMLDivElement>(null);
@@ -364,17 +347,6 @@ export function ScrollBody({
       tabIndex={0}
       data-column-focus=""
       {...picturedRegion}
-      onCopy={(event) => {
-        const copied = copiedRows(
-          getSelection(),
-          event.currentTarget.querySelector('.viewer-rows'),
-          rowText,
-        );
-        if (copied !== undefined) {
-          event.preventDefault();
-          event.clipboardData.setData('text/plain', copied);
-        }
-      }}
       onWheel={(event) => turned(event.nativeEvent)}
       onKeyDown={(event) => {
         const sidestep = keyPressed(viewerKeymap.scrollSideways, event);

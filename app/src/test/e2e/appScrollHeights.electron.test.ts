@@ -4,6 +4,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { writeSettings } from './settingsWritten';
 import { untilSettled } from './waits';
+import { untilRowsShown } from './rowsShown';
 import { everyView, views, type ViewName } from './scrollbarViews';
 import { scrollbarProfile, settingsWith } from './scrollbarFixture';
 
@@ -24,7 +25,7 @@ suite('App scroll heights', () => {
 
   const show = async (name: ViewName) => {
     await page.locator('.tabs .tab').nth(views[name].tab).click();
-    await page.locator(views[name].rows).nth(5).waitFor();
+    await untilRowsShown(page, views[name].rows, 6);
     await page.locator(views[name].vertical).first().waitFor();
     await page.mouse.move(2, 2);
   };

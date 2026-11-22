@@ -4,9 +4,11 @@ import * as path from 'node:path';
 import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
+import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { alikeWithin } from './alikeWithin';
-import { waitForFocus } from './waits';
+import { seenDots, seenGlyphs, seenRows } from './cellsSeen';
+import { untilSettled, waitForFocus } from './waits';
 import {
   markedNames,
   opened,
@@ -64,53 +66,76 @@ const hundredths = (value: number) => Math.round(value * 100) / 100;
 
 const layoutUnit = 1 / 32;
 
-const viewerLayout = (): Promise<Layout> =>
-  page.locator('.viewer-body').evaluate((body) => {
-    const origin = body.getBoundingClientRect();
+const viewerOrigin = async () => {
+  const body = await page.locator('.viewer-body').boundingBox();
+  if (body === null) {
+    throw new Error('No viewer');
+  }
+  return body;
+};
+
+const viewerLayout = async (): Promise<Layout> => {
+  const origin = await viewerOrigin();
+  const edge = await page.locator('.viewer-body').evaluate((body) => {
     const box = body.querySelector('.viewer-rows');
     if (box === null) {
       throw new Error('No rows');
     }
-    const style = getComputedStyle(box);
-    const range = document.createRange();
-    const starts: number[] = [];
-    const rows = [...box.querySelectorAll('.viewer-row')].flatMap((row) => {
-      const [start = 0, from = 0] = (row.getAttribute('data-key') ?? '')
-        .split(':')
-        .map(Number);
-      if (!starts.includes(start)) {
-        starts.push(start);
-      }
-      const first = document
-        .createTreeWalker(row, NodeFilter.SHOW_TEXT)
-        .nextNode();
-      if (!(first instanceof Text) || first.length === 0) {
-        return [];
-      }
-      range.setStart(first, 0);
-      range.setEnd(first, 1);
-      const rect = range.getBoundingClientRect();
-      return [
-        {
-          line: starts.indexOf(start),
-          from,
-          x: rect.left - origin.left,
-          y: rect.top - origin.top,
-        },
-      ];
-    });
-    return {
-      edge:
-        box.getBoundingClientRect().right -
-        parseFloat(style.paddingRight) -
-        origin.left,
-      rows,
-      breaks: [...box.querySelectorAll('.viewer-break')].map((mark) => {
-        const rect = mark.getBoundingClientRect();
-        return { x: rect.left - origin.left, y: rect.top - origin.top };
-      }),
-    };
+    return (
+      box.getBoundingClientRect().right -
+      parseFloat(getComputedStyle(box).paddingRight) -
+      body.getBoundingClientRect().left
+    );
   });
+  const textInset = await page
+    .locator('.viewer-probe')
+    .first()
+    .evaluate((probe) => {
+      const first = document
+        .createTreeWalker(probe, NodeFilter.SHOW_TEXT)
+        .nextNode();
+      const range = document.createRange();
+      if (first !== null) {
+        range.setStart(first, 0);
+        range.setEnd(first, 1);
+      }
+      return (
+        range.getBoundingClientRect().top - probe.getBoundingClientRect().top
+      );
+    });
+  const seen = await seenRows(page);
+  const starts: number[] = [];
+  const rows = seen.flatMap(({ key, text, left, top }) => {
+    const [start = 0, from = 0] = key.split(':').map(Number);
+    if (!starts.includes(start)) {
+      starts.push(start);
+    }
+    return text.length === 0
+      ? []
+      : [
+          {
+            line: starts.indexOf(start),
+            from,
+            x: left - origin.x,
+            y: top + textInset - origin.y,
+          },
+        ];
+  });
+  const breaks = (await seenGlyphs(page, strings.symbols.breaks)).flatMap(
+    ({ row, column }) => {
+      const at = seen[row];
+      return at === undefined
+        ? []
+        : [
+            {
+              x: at.left + (column - at.column) * at.advance - origin.x,
+              y: at.top - origin.y,
+            },
+          ];
+    },
+  );
+  return { edge, rows, breaks };
+};
 
 const editorLayout = (): Promise<Layout> =>
   page.locator('.editor-body').evaluate((body) => {
@@ -205,11 +230,61 @@ const hangingMarks = async (body: string, marks: string): Promise<Hanging[]> =>
     }))
     .toSorted((a, b) => a.y - b.y || a.x - b.x);
 
-const showWhitespace = () =>
-  page
-    .locator('.viewer')
-    .getByRole('button', { name: 'Show Whitespace' })
-    .click();
+const whitespaceButton = (pressed?: boolean) =>
+  page.locator('.viewer').getByRole('button', {
+    name: 'Show Whitespace',
+    ...(pressed === undefined ? {} : { pressed }),
+  });
+
+const showWhitespace = () => whitespaceButton().click();
+
+const viewerHanging = async (): Promise<Hanging[]> => {
+  const origin = await viewerOrigin();
+  const seen = await seenRows(page);
+  const placed = (
+    row: number,
+    column: number,
+    columns: number,
+    kind: string,
+  ) => {
+    const at = seen[row];
+    return at === undefined
+      ? []
+      : [
+          {
+            kind,
+            x: hundredths(
+              at.left + (column - at.column) * at.advance - origin.x,
+            ),
+            y: hundredths(at.top - origin.y),
+            width: hundredths(columns * at.advance),
+          },
+        ];
+  };
+  const runs: { row: number; column: number; columns: number }[] = [];
+  for (const { row, column } of (await seenDots(page)).toSorted(
+    (one, other) => one.row - other.row || one.column - other.column,
+  )) {
+    const last = runs.at(-1);
+    if (
+      last !== undefined &&
+      last.row === row &&
+      last.column + last.columns === column
+    ) {
+      last.columns++;
+    } else {
+      runs.push({ row, column, columns: 1 });
+    }
+  }
+  return [
+    ...runs.flatMap(({ row, column, columns }) =>
+      placed(row, column, columns, 'spaces'),
+    ),
+    ...(await seenGlyphs(page, strings.symbols.tab)).flatMap(
+      ({ row, column }) => placed(row, column, 1, 'blank'),
+    ),
+  ].toSorted((a, b) => a.y - b.y || a.x - b.x);
+};
 
 interface DiffWrap {
   readonly text: string;
@@ -353,19 +428,20 @@ suite('App', () => {
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
       await wrapLongLines();
-      await page.locator('.viewer-break').first().waitFor();
-      const viewed = rounded(await viewerLayout());
-      await showWhitespace();
-      await page.locator('.viewer-wrap-spaces').first().waitFor();
-      const viewedHanging = await hangingMarks(
-        '.viewer-body',
-        '.viewer-wrap-spaces, .viewer-wrap-blank',
+      const viewed = await untilSettled(
+        async () => rounded(await viewerLayout()),
+        'the viewer to settle, its breaks marked',
+        { accepted: ({ breaks }) => breaks.length > 0 },
       );
       await showWhitespace();
-      await page
-        .locator('.viewer-wrap-spaces')
-        .first()
-        .waitFor({ state: 'detached' });
+      await whitespaceButton(false).waitFor();
+      const viewedHanging = await untilSettled(
+        viewerHanging,
+        'the blanks hanging in the viewer',
+        { accepted: (hanging) => hanging.length > 0 },
+      );
+      await showWhitespace();
+      await whitespaceButton(true).waitFor();
 
       await page.keyboard.press('F4');
       await page.locator('.editor .cm-content').waitFor();

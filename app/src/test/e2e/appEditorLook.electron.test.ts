@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { viewerRows } from './cellsSeen';
 import { strings } from '../../lib/shared/strings';
 import {
   opened,
@@ -245,9 +246,15 @@ suite('App editor', () => {
     await backToCommander();
     await select('columns.txt');
     await page.keyboard.press('F3');
-    const viewerRow = page.locator('.viewer .viewer-rows .viewer-row').first();
-    await viewerRow.waitFor();
-    const inViewer = await viewerRow.evaluate(firstLeftOf);
+    await page.locator(viewerRows).first().waitFor();
+    const inViewer = await page
+      .locator('.viewer-rows .cell-rows')
+      .first()
+      .evaluate(
+        (host) =>
+          host.getBoundingClientRect().left -
+          parseFloat(getComputedStyle(host).marginLeft),
+      );
     await page.keyboard.press('F4');
     await waitFor(
       async () => (await editedText()) === 'first line\nsecond\n',

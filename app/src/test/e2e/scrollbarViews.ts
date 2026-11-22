@@ -10,7 +10,7 @@ export const views = {
   },
   viewer: {
     tab: 1,
-    rows: '.viewer-row:not(.viewer-probe)',
+    rows: '.viewer-rows .cell-rows',
     vertical: '.viewer-body .scroll-proxy.vertical',
     horizontal: '.viewer-sideways',
     marks: '.viewer-body .scrollbar-marks',

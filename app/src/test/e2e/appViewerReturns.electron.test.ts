@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { seenRows, viewerRows } from './cellsSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import {
@@ -108,16 +109,14 @@ suite('App viewer tabs shown again', () => {
 
   const count = () =>
     page.locator('.viewer .search-count').textContent({ timeout: 1000 });
-  const currentRow = () =>
-    page
-      .locator('.viewer-rows .viewer-row', {
-        has: page.locator('.find-match.current'),
-      })
-      .textContent({ timeout: 1000 });
+  const currentRow = async () =>
+    (await seenRows(page)).find(({ marks }) =>
+      marks.some(({ name }) => name === 'current'),
+    )?.text ?? null;
 
   test('brings back a file viewed with its find open, its query, the second match counted, marked and shown, and the caret where it was in the box, from a commander tab, the tab of another tool and the viewer of another file, which shows no find of it', async () => {
     await showTab(page, envTab);
-    await page.locator('.viewer-rows .viewer-row').first().click();
+    await page.locator(viewerRows).first().click();
     await page.keyboard.press('ControlOrMeta+F');
     await page.keyboard.type('adam');
     await waitFor(async () => (await count()) === '1 of 10', 'the count').catch(
@@ -188,7 +187,7 @@ suite('App viewer tabs shown again', () => {
 
   test('brings back a file viewed with its long lines unwrapped, scrolled down and sideways, from every other tab', async () => {
     await showTab(page, wideTab);
-    await page.locator('.viewer-rows .viewer-row').first().click();
+    await page.locator(viewerRows).first().click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await page
       .getByRole('button', { name: 'Wrap Long Lines', pressed: false })

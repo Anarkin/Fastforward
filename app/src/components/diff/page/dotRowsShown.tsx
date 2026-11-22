@@ -1,4 +1,4 @@
-import type { DotLook } from './dotLook';
+import type { DotLook } from '../../../lib/page/dotLook';
 import { dotsStyle, hasDots, type DotRows } from './dotRows';
 
 export function DotRowsShown({

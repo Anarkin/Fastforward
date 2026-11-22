@@ -10,22 +10,18 @@ import {
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { shownState, closeViewer, firstViewerRow } from './viewerAppFixtures';
+import { seenRows } from './cellsSeen';
+import {
+  shownState,
+  closeViewer,
+  firstViewerRow,
+  rowTexts,
+} from './viewerAppFixtures';
 
-const rowTexts = () =>
-  page.locator('.viewer-rows .viewer-row').allTextContents();
-
-const firstKeywords = () =>
-  page
-    .locator('.viewer-rows .viewer-row')
-    .evaluateAll((rows) =>
-      rows.map((row) =>
-        row.matches('.syntax-keyword')
-          ? Array.from(row.childNodes).find((node) => node.nodeType === 3)
-              ?.textContent
-          : row.querySelector('.syntax-keyword')?.textContent,
-      ),
-    );
+const firstKeywords = async () =>
+  (await seenRows(page)).map(
+    ({ pieces }) => pieces.find(({ kind }) => kind === 'keyword')?.text,
+  );
 
 suite('App commander', () => {
   sharedCommanderApp();

@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { viewerRows } from './cellsSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { settledLooks, tabs } from './tabReturns';
@@ -49,7 +50,7 @@ suite('What a tab shows once settled', () => {
     (await settledLooks(page)).text.split(newline).slice(0, 2);
 
   test('reads what the page drew after the last key, though the page stalls right after the key for longer than a tab takes to settle, rather than what it showed before the key, which a stalled page shows unchanged for as long', async () => {
-    await page.locator('.viewer-rows .viewer-row').first().click();
+    await page.locator(viewerRows).first().click();
     await page.keyboard.press('ControlOrMeta+F');
     await page.keyboard.type('adam');
     await waitFor(

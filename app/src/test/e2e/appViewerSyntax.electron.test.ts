@@ -15,7 +15,8 @@ import {
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { shownState, closeViewer } from './viewerAppFixtures';
+import { seenRows, viewerRows } from './cellsSeen';
+import { shownState, closeViewer, rowTexts } from './viewerAppFixtures';
 
 const languageLabel = () =>
   page.locator('.viewer .language-button .menu-button-label').textContent();
@@ -44,7 +45,7 @@ const reopen = async () => {
   );
   await page.keyboard.press('F3');
   await page
-    .locator('.viewer-rows .viewer-row')
+    .locator(viewerRows)
     .first()
     .waitFor()
     .catch(async (error: unknown) => {
@@ -52,24 +53,22 @@ const reopen = async () => {
     });
 };
 
-const lastKeyword = () =>
-  page
-    .locator('.viewer-rows .viewer-row')
-    .last()
-    .evaluate((row) =>
-      row.matches('.syntax-keyword')
-        ? 1
-        : row.querySelectorAll('.syntax-keyword').length,
+const keywordsOf = async (rows: 'every' | 'last') =>
+  (await seenRows(page))
+    .slice(rows === 'last' ? -1 : 0)
+    .flatMap(({ pieces }) =>
+      pieces.filter(({ kind }) => kind === 'keyword').map(({ text }) => text),
     );
 
-const firstKeyword = () =>
-  page.evaluate(() => {
-    const colored = document.querySelector('.viewer-rows .syntax-keyword');
-    return colored?.matches('.viewer-row')
-      ? Array.from(colored.childNodes).find((node) => node.nodeType === 3)
-          ?.textContent
-      : colored?.textContent;
-  });
+const lastKeyword = async () => (await keywordsOf('last')).length;
+
+const firstKeyword = async () => (await keywordsOf('every'))[0];
+
+const colored = (wanted: boolean) =>
+  waitFor(
+    async () => (await keywordsOf('every')).length > 0 === wanted,
+    wanted ? 'the keywords colored' : 'no keyword colored',
+  );
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -83,22 +82,12 @@ suite('App commander', () => {
         async () => (await firstKeyword()) === 'const',
         'the keyword colored',
       );
-      const colors = await page.evaluate(() => {
-        const keyword = document.querySelector('.viewer-rows .syntax-keyword');
-        const plain = document.querySelector('.viewer-rows .syntax-plain');
-        return keyword && plain
-          ? [getComputedStyle(keyword).color, getComputedStyle(plain).color]
-          : [];
-      });
-      assert.notStrictEqual(colors[0], colors[1]);
       assert.strictEqual(await languageLabel(), 'TypeScript');
       await page.keyboard.press('l');
       assert.strictEqual(await checkedLanguage(), '✓Auto: TypeScript');
       await page.keyboard.press('Escape');
       await chooseLanguage('plain');
-      await page.locator('.viewer-rows .syntax-keyword').first().waitFor({
-        state: 'detached',
-      });
+      await colored(false);
       assert.strictEqual(await languageLabel(), 'Plain Text');
       await waitFor(
         () => savedText(profile, 'highlightSyntax') === false,
@@ -107,12 +96,12 @@ suite('App commander', () => {
       await reopen();
       assert.strictEqual(await languageLabel(), 'Plain Text');
       await chooseLanguage('typescript');
-      await page.locator('.viewer-rows .syntax-keyword').first().waitFor();
+      await colored(true);
       assert.strictEqual(savedText(profile, 'highlightSyntax'), false);
       await reopen();
       assert.strictEqual(await languageLabel(), 'Plain Text');
       await chooseLanguage('auto');
-      await page.locator('.viewer-rows .syntax-keyword').first().waitFor();
+      await colored(true);
       assert.strictEqual(await languageLabel(), 'TypeScript');
       await waitFor(
         () => savedText(profile, 'highlightSyntax') === undefined,
@@ -124,7 +113,7 @@ suite('App commander', () => {
       fs.writeFileSync(path.join(opened, 'script.txt'), 'const answer = 42;');
       await select('script');
       await page.keyboard.press('F3');
-      await page.locator('.viewer-rows .viewer-row').first().waitFor();
+      await page.locator(viewerRows).first().waitFor();
       assert.strictEqual(await languageLabel(), 'Plain Text');
       await chooseLanguage('javascript');
       await waitFor(
@@ -155,10 +144,8 @@ suite('App commander', () => {
       await page.keyboard.press('End');
       await waitFor(
         async () =>
-          (await page
-            .locator('.viewer-rows .viewer-row')
-            .last()
-            .textContent()) === 'let a5999 = 1;' && (await lastKeyword()) > 0,
+          (await rowTexts()).at(-1) === 'let a5999 = 1;' &&
+          (await lastKeyword()) > 0,
         'the last line colored',
       );
       await page.keyboard.press('Escape');
@@ -172,11 +159,8 @@ suite('App commander', () => {
       await page.keyboard.press('F3');
       await waitFor(
         async () =>
-          (await page
-            .locator('.viewer-rows .viewer-row')
-            .first()
-            .textContent()) === 'let first = 1;' &&
-          (await page.locator('.viewer-rows .syntax-keyword').count()) > 0,
+          (await rowTexts())[0] === 'let first = 1;' &&
+          (await keywordsOf('every')).length > 0,
         'the first line of a file over a megabyte colored',
       );
       await page.keyboard.press('Escape');
@@ -204,20 +188,11 @@ suite('App commander', () => {
       await select('large');
       await page.keyboard.press('F3');
       await waitFor(
-        async () =>
-          (
-            (await page
-              .locator('.viewer-rows .viewer-row')
-              .first()
-              .textContent()) ?? ''
-          ).startsWith('const big'),
+        async () => ((await rowTexts())[0] ?? '').startsWith('const big'),
         'the large file shown',
       );
       await page.waitForTimeout(300);
-      assert.strictEqual(
-        await page.locator('.viewer-rows .syntax-keyword').count(),
-        0,
-      );
+      assert.deepStrictEqual(await keywordsOf('every'), []);
       await page.keyboard.press('Escape');
       await page.locator('.viewer').waitFor({ state: 'detached' });
       const files = ['code.ts', 'lines.ts', 'over.ts', 'over.md', 'large.ts'];

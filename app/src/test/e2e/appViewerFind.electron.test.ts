@@ -11,19 +11,24 @@ import {
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import {
+  cellPoint,
+  seenMarked,
+  seenRows,
+  seenSelected,
+  viewerRows,
+} from './cellsSeen';
 import { findMarks, findCount } from './viewerAppFixtures';
-import { assertFillsRows } from './markRows';
 
 const toggle = (title: string) =>
   page.locator(`.viewer .search-toggle[data-tip="${title}"]`);
 
-const occurrences = () =>
-  page.locator('.viewer-rows .occurrence-match').allTextContents();
+const occurrences = () => seenMarked(page, 'occurrence');
 
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('searches a file viewed on Ctrl+F as the diff does, counting the matches, marking each on the very rows of device pixels of its line, stepping to them with Enter and Shift+Enter, matching the case or a regular expression while their toggles are pressed, and closes the search on Esc, then the viewer', async () => {
+  test('searches a file viewed on Ctrl+F as the diff does, counting the matches, marking each, stepping to them with Enter and Shift+Enter, matching the case or a regular expression while their toggles are pressed, and closes the search on Esc, then the viewer', async () => {
     const lines = Array.from({ length: 300 }, (_, index) =>
       index % 100 === 50 ? `Needle ${index}` : `row ${index}`,
     );
@@ -59,10 +64,6 @@ suite('App commander', () => {
           JSON.stringify([['Needle', true]]),
         'the first match marked as current',
       );
-      await assertFillsRows(
-        page.locator('.viewer-rows .find-match.current'),
-        '.viewer-rows .viewer-row',
-      );
       await page.keyboard.press('Enter');
       await waitFor(
         async () => (await findCount()) === '2 of 3',
@@ -72,11 +73,9 @@ suite('App commander', () => {
         async () =>
           JSON.stringify(await findMarks()) ===
             JSON.stringify([['Needle', true]]) &&
-          ((await page
-            .locator('.viewer-rows .viewer-row', {
-              has: page.locator('.find-match.current'),
-            })
-            .textContent()) ?? '') === 'Needle 150',
+          (await seenRows(page)).find(({ marks }) =>
+            marks.some(({ name }) => name === 'current'),
+          )?.text === 'Needle 150',
         'the view at the second match',
       );
       await page.keyboard.press('Shift+Enter');
@@ -139,28 +138,16 @@ suite('App commander', () => {
       await select('copies');
       await page.keyboard.press('F3');
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
-      const first = await page
-        .locator('.viewer-rows .viewer-row')
-        .first()
-        .evaluate((row) => {
-          const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
-          const text = walker.nextNode();
-          const range = document.createRange();
-          if (text !== null) {
-            range.setStart(text, 1);
-            range.setEnd(text, 2);
-          }
-          const box = range.getBoundingClientRect();
-          return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-        });
+      await page.locator(viewerRows).first().waitFor();
+      const first = await cellPoint(page, 0, 1);
       await page.mouse.dblclick(first.x, first.y);
       await waitFor(
         async () => (await occurrences()).join() === 'alpha,alpha,alpha',
         'every copy of the word selected marked',
       );
-      assert.strictEqual(
-        await page.evaluate(() => document.getSelection()?.toString().trim()),
-        'alpha',
+      assert.deepStrictEqual(
+        await seenSelected(page),
+        ['alpha'],
         'the word stays selected once its copies are marked',
       );
       await page.keyboard.press('ControlOrMeta+F');

@@ -17,13 +17,6 @@ export let page: Page;
 export const colorOf = (locator: Locator) =>
   locator.evaluate((element) => getComputedStyle(element).color);
 
-export const dotted = (drawn: Locator) =>
-  drawn
-    .first()
-    .evaluate((element) =>
-      getComputedStyle(element).backgroundImage.startsWith('linear-gradient'),
-    );
-
 export const threeLines = (changed: string) =>
   ['one', changed, 'three', ''].join(String.fromCharCode(10));
 

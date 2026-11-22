@@ -1,5 +1,11 @@
 import { fontDotLook } from '../../../lib/page/dotLook';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { ScrollBody } from './scrollBody';
 import type { Viewing } from './viewing';
@@ -12,10 +18,9 @@ import { plainCells, useCellTable } from '../../../lib/page/cellTable';
 import { useViewer, useViewerActions } from './store';
 import type { ViewerTabView } from './tabParts';
 import { textEnds, textThumb } from './textScroll';
-import { TextRow } from './textRow';
 import { CellRows } from './cellRows';
-import type { RowAhead } from './glyphWarmth';
-import { gpuSupported } from './gpuDevice';
+import { gpuRefused, watchGpu } from './gpuDevice';
+import { strings } from '../../../lib/shared/strings';
 import type { ScreenRow } from './screenRows';
 import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
@@ -24,8 +29,6 @@ import { useColors, useWholeText } from './wholeText';
 const cellMargin = 64;
 
 const aheadScreens = 3;
-
-const noRowsAhead: readonly RowAhead[] = [];
 
 const noCopy = () => undefined;
 
@@ -93,8 +96,7 @@ export function TextBody({
   const highlightOccurrences = useShell(
     (state) => state.textView.highlightOccurrences,
   );
-  const drawnAsCells =
-    useShell((state) => state.textView.cells) && gpuSupported();
+  const refused = useSyncExternalStore(watchGpu, gpuRefused);
   const [copy, setCopy] = useState<string>();
   const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
   const wrapAt =
@@ -159,17 +161,6 @@ export function TextBody({
     },
     [keepSideways],
   );
-  const texts = new Map(
-    shown.map((row, index) => [
-      `${row.row.start}:${row.from}`,
-      {
-        text: row.row.text.slice(row.from, row.to),
-        from: (parts[index]?.from ?? row.from) - row.from,
-      },
-    ]),
-  );
-  const rowText = (element: Element) =>
-    texts.get(element.getAttribute('data-key') ?? '');
   const finding = find !== undefined && find.query !== '';
   const target = find?.current;
   const matched =
@@ -222,7 +213,7 @@ export function TextBody({
       onFont={onFont}
       move={move}
       jump={jump}
-      error={viewing.error}
+      error={viewing.error ?? (refused ? strings.viewer.noGpu : undefined)}
       width={width}
       wrapped={!whole}
       onSideways={onAcross}
@@ -237,12 +228,8 @@ export function TextBody({
               asked: jumps,
             }
       }
-      rowText={rowText}
-      copiesWatched={highlightOccurrences && !finding}
-      onCopySelected={setCopy}
-      copyMarked={copy}
     >
-      {table !== undefined && drawnAsCells && (
+      {table !== undefined && (
         <CellRows
           rows={shown}
           parts={parts}
@@ -253,19 +240,15 @@ export function TextBody({
           widths={widths}
           font={font}
           dotLook={dotLook}
-          ahead={
-            drawnAsCells
-              ? [
-                  ...loaded.rows.slice(
-                    loaded.top + shown.length,
-                    loaded.top + shown.length * aheadScreens,
-                  ),
-                  ...loaded.rows
-                    .slice(Math.max(0, loaded.top - shown.length), loaded.top)
-                    .toReversed(),
-                ].map((row) => ({ row, part: partOf(row) }))
-              : noRowsAhead
-          }
+          ahead={[
+            ...loaded.rows.slice(
+              loaded.top + shown.length,
+              loaded.top + shown.length * aheadScreens,
+            ),
+            ...loaded.rows
+              .slice(Math.max(0, loaded.top - shown.length), loaded.top)
+              .toReversed(),
+          ].map((row) => ({ row, part: partOf(row) }))}
           held={loaded.rows}
           text={text?.text}
           onSelected={highlightOccurrences && !finding ? setCopy : noCopy}
@@ -274,21 +257,6 @@ export function TextBody({
           columns={Math.max(1, lastCell - firstCell)}
         />
       )}
-      {table !== undefined &&
-        !drawnAsCells &&
-        shown.map((row, index) => (
-          <TextRow
-            key={`${row.row.start}:${row.from}`}
-            row={row}
-            part={parts[index]}
-            columns={wrapAt}
-            colored={colored}
-            marks={marksOf(row)}
-            showWhitespace={showWhitespace}
-            widths={widths}
-            dotLook={dotLook}
-          />
-        ))}
     </ScrollBody>
   );
 }

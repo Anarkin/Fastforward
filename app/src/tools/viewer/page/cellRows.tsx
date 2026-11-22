@@ -3,6 +3,7 @@ import type { DotLook } from '../../../lib/page/dotLook';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { CellFont } from './cellLook';
 import type { RowPart } from './cellPainting';
+import { seenRows } from './cellsSeen';
 import { CellView, viewKey } from './cellView';
 import type { RowAhead } from './glyphWarmth';
 import { gpuDevice, gpuGeneration, watchGpu } from './gpuDevice';
@@ -51,6 +52,38 @@ export function CellRows({
   const view = useRef<CellView>(undefined);
   const ratio = devicePixelRatio;
   const generation = useSyncExternalStore(watchGpu, gpuGeneration);
+  const advance = Math.round(font.char * ratio) / ratio;
+  useLayoutEffect(() => {
+    const element = host.current;
+    if (!element || widths === undefined) {
+      return;
+    }
+    element.seenRows = () => {
+      const box = (
+        element.querySelector('canvas') ?? element
+      ).getBoundingClientRect();
+      const { left } = element.getBoundingClientRect();
+      return seenRows(
+        {
+          rows,
+          parts,
+          wrapAt,
+          colored,
+          marksOf,
+          showWhitespace,
+          widths,
+          first,
+          selection: view.current?.selection,
+        },
+        {
+          left,
+          top: box.top,
+          advance,
+          rowHeight: box.height / Math.max(1, rows.length),
+        },
+      );
+    };
+  });
   useLayoutEffect(() => {
     const element = host.current;
     const around = element?.parentElement;
@@ -89,14 +122,16 @@ export function CellRows({
       events: { chosen: onSelected, move },
     });
   });
-  useLayoutEffect(
-    () => () => {
+  useLayoutEffect(() => {
+    const element = host.current;
+    return () => {
       view.current?.dispose();
       view.current = undefined;
-    },
-    [],
-  );
-  const advance = Math.round(font.char * ratio) / ratio;
+      if (element) {
+        element.seenRows = undefined;
+      }
+    };
+  }, []);
   return (
     <div
       ref={host}

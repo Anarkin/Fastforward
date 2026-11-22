@@ -14,6 +14,7 @@ import {
   sharedCommanderApp,
   wrapLongLines,
 } from './commanderAppFixtures';
+import { copied, dragOver, keepCopied, seenRows } from './cellsSeen';
 import { barOf, barParts } from './scrollbarsShown';
 import { firstViewerRow } from './viewerAppFixtures';
 
@@ -48,38 +49,15 @@ suite('App commander', () => {
         const { width, shown } = await across();
         return width > shown + 100;
       }, 'the long line too wide to show');
-      const drawn =
-        (await page
-          .locator('.viewer-rows .viewer-row')
-          .first()
-          .textContent()) ?? '';
+      const drawn = await firstViewerRow();
       assert.ok(drawn.length < long.length, String(drawn.length));
-      await page.evaluate(() => {
-        const shown = [
-          ...document.querySelectorAll('.viewer-rows .viewer-row'),
-        ];
-        const range = document.createRange();
-        range.setStartBefore(shown[0] ?? document.body);
-        range.setEnd(shown[1]?.firstChild ?? document.body, 2);
-        getSelection()?.removeAllRanges();
-        getSelection()?.addRange(range);
-        window.addEventListener(
-          'copy',
-          (event) =>
-            Reflect.set(
-              window,
-              'copied',
-              event.clipboardData?.getData('text/plain'),
-            ),
-          { once: true },
-        );
-      });
+      await dragOver(page, [0, 0], [1, 2]);
+      await keepCopied(page);
       await page.keyboard.press('ControlOrMeta+C');
       assert.strictEqual(
-        await page.evaluate((): unknown => Reflect.get(window, 'copied')),
+        await copied(page),
         `${long}${String.fromCharCode(10)}ro`,
       );
-      await page.evaluate(() => getSelection()?.removeAllRanges());
 
       const below = await barOf(page, '.viewer-sideways', 'horizontal');
       const { thumb } = await barParts(page, below.box, 'horizontal');
@@ -138,20 +116,24 @@ suite('App commander', () => {
       await page.keyboard.press('ControlOrMeta+F');
       await page.keyboard.type('found');
       await page.keyboard.press('Enter');
-      await waitFor(
-        () =>
-          page.evaluate(() => {
-            const mark = document.querySelector('.find-match.current');
-            const area = document.querySelector('.viewer-sideways');
-            if (mark === null || area === null) {
-              return false;
-            }
-            const box = mark.getBoundingClientRect();
-            const shown = area.getBoundingClientRect();
-            return box.left >= shown.left && box.right <= shown.right;
-          }),
-        'the match brought into view',
-      );
+      await waitFor(async () => {
+        const shown = await sideways.boundingBox();
+        const found = (await seenRows(page)).flatMap(
+          ({ left, advance, marks }) =>
+            marks
+              .filter(({ name }) => name === 'current')
+              .map(({ from, to }) => ({
+                left: left + from * advance,
+                right: left + to * advance,
+              })),
+        )[0];
+        return (
+          shown !== null &&
+          found !== undefined &&
+          found.left >= shown.x &&
+          found.right <= shown.x + shown.width
+        );
+      }, 'the match brought into view');
       await page.keyboard.press('Escape');
 
       await page.keyboard.press('w');
@@ -196,21 +178,10 @@ suite('App commander', () => {
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
       await wrapLongLines(false);
-      const widthAndAdvance = () =>
-        sideways.evaluate((element) => {
-          const range = document.createRange();
-          const row =
-            element.querySelector('.viewer-rows .viewer-row') ?? element;
-          range.selectNodeContents(row);
-          const dots = row.querySelector('.dot-rows');
-          if (dots !== null) {
-            range.setEndBefore(dots);
-          }
-          return {
-            width: element.scrollWidth,
-            char: range.getBoundingClientRect().width / 'row 0'.length,
-          };
-        });
+      const widthAndAdvance = async () => ({
+        width: await sideways.evaluate((element) => element.scrollWidth),
+        char: (await seenRows(page))[0]?.advance ?? 0,
+      });
       await waitFor(async () => {
         const { width, char } = await widthAndAdvance();
         return char > 0 && width >= long.length * char;

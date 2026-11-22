@@ -49,11 +49,17 @@ async function caretAt(tool: ShownTool, at: number): Promise<void> {
 const countShown = ({ document }: ShownTool) =>
   document.querySelector('.viewer .search-count')?.textContent;
 
-const currentRow = ({ document }: ShownTool) =>
-  document.querySelector('.viewer-row:has(.find-match.current)')?.textContent;
+const seen = ({ document }: ShownTool) =>
+  document
+    .querySelector<HTMLElement>('.viewer-rows .cell-rows')
+    ?.seenRows?.() ?? [];
 
-const marked = ({ document }: ShownTool) =>
-  document.querySelectorAll('.viewer .find-match').length;
+const currentRow = (tool: ShownTool) =>
+  seen(tool).find(({ marks }) => marks.some(({ name }) => name === 'current'))
+    ?.text;
+
+const marked = (tool: ShownTool) =>
+  seen(tool).reduce((count, { marks }) => count + marks.length, 0);
 
 function assertFindAsLeft(tool: ShownTool): void {
   const box = findBox(tool);

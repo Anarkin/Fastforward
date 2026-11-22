@@ -125,6 +125,17 @@ export class GlyphTiles {
     return style.others.get(cluster);
   }
 
+  tilesOf(cluster: string): number[] {
+    const code = cluster.length === 1 ? cluster.charCodeAt(0) : asciiCodes;
+    return [...this.styles.values()]
+      .map(
+        (style) =>
+          style.others.get(cluster) ??
+          (code < asciiCodes ? style.ascii[code] : unknown),
+      )
+      .filter((tile) => tile >= 0);
+  }
+
   glyph(
     style: GlyphStyle,
     cluster: string,

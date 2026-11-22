@@ -6,6 +6,7 @@ import { suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { barOf, barParts, paintedAt } from './scrollbarsShown';
 import { waitFor } from '../helpers/fixtures';
+import { viewerRows } from './cellsSeen';
 import { waitForFocus } from './waits';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
@@ -192,7 +193,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await page.keyboard.press('Escape');
   await page.locator('.prompt-input').waitFor({ state: 'detached' });
   await page.keyboard.press('F3');
-  await page.locator('.viewer-rows .viewer-row').first().waitFor();
+  await page.locator(viewerRows).first().waitFor();
   await look('viewer');
   await page.keyboard.press('ControlOrMeta+F');
   await page.keyboard.type('changed');

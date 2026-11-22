@@ -100,7 +100,12 @@ for (const smooth of [true, false]) {
         if (view.name === 'viewer') {
           await pane.focus();
           await page.keyboard.press('2');
-          await page.locator('.viewer-row').nth(8).waitFor();
+          await page
+            .locator(
+              '.viewer :is(.viewer-row:not(.viewer-probe), .cell-rows[data-rows]:has(canvas))',
+            )
+            .first()
+            .waitFor();
         }
         await sleep(1500);
         const { box } = await barOf(page, view.down, 'vertical');

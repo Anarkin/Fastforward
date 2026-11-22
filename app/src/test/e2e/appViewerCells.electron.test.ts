@@ -4,14 +4,23 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { seenRows } from './cellsSeen';
+import {
+  cellPoint,
+  copied,
+  dragOver,
+  keepCopied,
+  seenMarked,
+  seenRows,
+  seenSelected,
+} from './cellsSeen';
 import { writeSettings } from './settingsWritten';
-import { waitFor } from '../helpers/fixtures';
 import { untilSettled, waitForFocus } from './waits';
 
-const text = [
+const lines = [
+  '// the cursor of the editor stands in this line',
   "import { useMemo } from 'react';",
   '',
   '// a comment with a tab\tin it and  two spaces',
@@ -25,7 +34,7 @@ const text = [
     { length: 80 },
     (_, line) => `const value${line} = ${line} * 2; // line ${line}`,
   ),
-].join('\n');
+];
 
 const edgeLevels = 16;
 
@@ -33,20 +42,35 @@ const mostUnlike = 0.01;
 
 const leastInk = 2000;
 
+const comparedRows = 14;
+
+const comparedWidth = 560;
+
+const afterWide = 7;
+
 interface Seen {
   readonly brightness: Float32Array;
   readonly inked: number;
+  readonly hash: string;
+}
+
+interface Box {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+interface From {
+  readonly left: number;
+  readonly top: number;
+  readonly row: number;
 }
 
 function blurredBrightness(
   pixels: Buffer,
   width: number,
-  box: {
-    readonly left: number;
-    readonly top: number;
-    readonly width: number;
-    readonly height: number;
-  },
+  box: Box,
 ): Float32Array {
   const plain = new Float32Array(box.width * box.height);
   for (let y = 0; y < box.height; y++) {
@@ -91,18 +115,59 @@ function unlikeShare(one: Seen, other: Seen): number {
   return unlike / Math.max(1, one.inked);
 }
 
+function firstCharOf(line: Element): From {
+  const first = document
+    .createTreeWalker(line, NodeFilter.SHOW_TEXT)
+    .nextNode();
+  const range = document.createRange();
+  if (first !== null) {
+    range.setStart(first, 0);
+    range.setEnd(first, 1);
+  }
+  const box = line.getBoundingClientRect();
+  return {
+    left: range.getBoundingClientRect().left,
+    top: box.top,
+    row: box.height,
+  };
+}
+
 suite('App viewer drawn as cells', () => {
   let app: ElectronApplication;
   let page: Page;
   let profile: string;
 
-  const colored = {
-    elements:
-      '.viewer-rows .viewer-row[class*="syntax-"], .viewer-rows .viewer-row [class*="syntax-"]',
-    cells: '.viewer-rows .cell-rows[data-rows][data-colored]',
+  const show = async (tool: 'viewer' | 'editor') => {
+    await page
+      .locator('.tabs .tab')
+      .nth(tool === 'viewer' ? 0 : 1)
+      .click();
+    await page
+      .locator(
+        tool === 'viewer'
+          ? '.viewer-rows .cell-rows[data-rows][data-colored]:has(canvas)'
+          : '.editor .cm-line [class*="syntax-"]',
+      )
+      .first()
+      .waitFor({ state: 'attached', timeout: 30_000 });
   };
 
-  const shot = async (): Promise<Seen & { readonly hash: string }> => {
+  let firstCompared = 1;
+
+  const viewedFrom = async (): Promise<From> => {
+    const row = (await seenRows(page))[firstCompared];
+    assert.ok(row, 'the viewer draws no row to compare from');
+    return {
+      left: row.left - row.column * row.advance,
+      top: row.top,
+      row: row.height,
+    };
+  };
+
+  const editedFrom = (): Promise<From> =>
+    page.locator('.editor .cm-line').nth(firstCompared).evaluate(firstCharOf);
+
+  const shot = async (from: From): Promise<Seen> => {
     const png = await page.screenshot();
     const taken = await app.evaluate(({ nativeImage }, encoded) => {
       const image = nativeImage.createFromBuffer(
@@ -114,26 +179,14 @@ suite('App viewer drawn as cells', () => {
       };
     }, png.toString('base64'));
     const ratio = taken.width / (await page.evaluate(() => innerWidth));
-    const area = await page
-      .locator('.viewer-sideways')
-      .first()
-      .evaluate((element) => {
-        const { left, top } = element.getBoundingClientRect();
-        return {
-          left,
-          top,
-          width: element.clientWidth,
-          height: element.clientHeight,
-        };
-      });
     const brightness = blurredBrightness(
       Buffer.from(taken.pixels, 'base64'),
       taken.width,
       {
-        left: Math.ceil(area.left * ratio),
-        top: Math.ceil(area.top * ratio),
-        width: Math.floor(area.width * ratio) - 1,
-        height: Math.floor(area.height * ratio) - 1,
+        left: Math.round(from.left * ratio),
+        top: Math.round(from.top * ratio),
+        width: Math.round(comparedWidth * ratio),
+        height: Math.round(comparedRows * from.row * ratio),
       },
     );
     return {
@@ -145,127 +198,47 @@ suite('App viewer drawn as cells', () => {
     };
   };
 
-  const drawn = async (
-    cells: boolean,
-    wordWrap: boolean,
-    highlightOccurrences = false,
+  const settled = async (
+    from: () => Promise<From>,
+    what: string,
+    accepted: (seen: Seen) => boolean = () => true,
   ): Promise<Seen> => {
-    await writeSettings(page, profile, {
-      scrolling: { smooth: false },
-      text: { wordWrap, highlightOccurrences, cells },
-    });
-    await page
-      .locator(cells ? colored.cells : colored.elements)
-      .first()
-      .waitFor({ state: 'attached', timeout: 30_000 });
-    let last = await shot();
+    let last = await shot(await from());
     await untilSettled(
       async () => {
-        last = await shot();
+        last = await shot(await from());
         return last.hash;
       },
-      `the viewer drawn as ${cells ? 'cells' : 'elements'}`,
+      what,
+      { accepted: () => accepted(last) },
     );
     return last;
   };
 
-  const bothWays = async (wordWrap: boolean) => {
-    const elements = await drawn(false, wordWrap);
-    const cells = await drawn(true, wordWrap);
+  const drawn = async (wordWrap: boolean, highlightOccurrences = false) => {
+    await writeSettings(page, profile, {
+      scrolling: { smooth: false },
+      text: { wordWrap, highlightOccurrences },
+    });
+    await show('viewer');
+  };
+
+  const bothTools = async (wordWrap: boolean, from = 1) => {
+    firstCompared = from;
+    await drawn(wordWrap);
+    const cells = await settled(viewedFrom, 'the viewer drawn as cells');
+    await show('editor');
+    const elements = await settled(editedFrom, 'the editor drawn');
+    await show('viewer');
     return {
-      elementsInked: elements.inked > leastInk,
+      editorInked: elements.inked > leastInk,
       cellsInked: cells.inked > leastInk,
       alike: unlikeShare(elements, cells) < mostUnlike,
       unlike: unlikeShare(elements, cells),
     };
   };
 
-  const alike = { elementsInked: true, cellsInked: true, alike: true };
-
-  const at = async (line: number, column: number) => {
-    const { advance, row, left, top } = await page.evaluate(() => {
-      const probe = document.querySelector('.viewer-probe');
-      const area = document.querySelector('.viewer-sideways');
-      if (probe === null || area === null) {
-        throw new Error('The viewer shows no text');
-      }
-      const style = getComputedStyle(probe);
-      const box = probe.getBoundingClientRect();
-      const shown = area.getBoundingClientRect();
-      return {
-        advance:
-          (box.width -
-            parseFloat(style.paddingLeft) -
-            parseFloat(style.paddingRight)) /
-          1000,
-        row: box.height,
-        left: shown.left,
-        top: shown.top,
-      };
-    });
-    return { x: left + column * advance + 1, y: top + (line + 0.5) * row };
-  };
-
-  const copied = async () => {
-    await waitForFocus(page.locator('.viewer-body').first(), 'the viewer');
-    return page.evaluate(() => {
-      const clipboardData = new DataTransfer();
-      const copy = new ClipboardEvent('copy', {
-        clipboardData,
-        bubbles: true,
-        cancelable: true,
-      });
-      document.activeElement?.dispatchEvent(copy);
-      return copy.defaultPrevented
-        ? clipboardData.getData('text/plain')
-        : (getSelection()?.toString() ?? '');
-    });
-  };
-
-  const settled = async () => {
-    let last = await shot();
-    await untilSettled(async () => {
-      last = await shot();
-      return last.hash;
-    }, 'the selection drawn');
-    return last;
-  };
-
-  const marked = (cells: boolean) =>
-    cells
-      ? waitFor(
-          async () =>
-            (await seenRows(page)).some(({ marks }) =>
-              marks.some(({ name }) => name === 'occurrence'),
-            ),
-          'the occurrences marked in the cells',
-        )
-      : page
-          .locator('.viewer-rows mark.occurrence-match')
-          .first()
-          .waitFor({ state: 'attached' });
-
-  const selectedBothWays = async (
-    select: () => Promise<void>,
-    marking = false,
-  ) => {
-    const ways: { copied: string; seen: Seen }[] = [];
-    for (const cells of [false, true]) {
-      await drawn(cells, false, marking);
-      await select();
-      if (marking) {
-        await marked(cells);
-      }
-      ways.push({ seen: await settled(), copied: await copied() });
-    }
-    const [elements, cells] = ways;
-    return {
-      elements: elements.copied,
-      cells: cells.copied,
-      alike: unlikeShare(elements.seen, cells.seen) < mostUnlike,
-      unlike: unlikeShare(elements.seen, cells.seen),
-    };
-  };
+  const alike = { editorInked: true, cellsInked: true, alike: true };
 
   beforeAll(async () => {
     const folder = tempFolder('viewer-cells');
@@ -273,11 +246,14 @@ suite('App viewer drawn as cells', () => {
     const file = path.join(folder, 'opened', 'cells.ts');
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.mkdirSync(profile, { recursive: true });
-    fs.writeFileSync(file, text);
+    fs.writeFileSync(file, lines.join('\n'));
     fs.writeFileSync(
       path.join(profile, 'state.json'),
       JSON.stringify({
-        tabs: [{ id: '1', tool: 'viewer', root: file }],
+        tabs: [
+          { id: '1', tool: 'viewer', root: file },
+          { id: '2', tool: 'editor', root: file },
+        ],
         activeTab: '1',
       }),
     );
@@ -294,58 +270,50 @@ suite('App viewer drawn as cells', () => {
     await closeOrKill(app);
   });
 
-  test('draws a file as cells where its elements stood, alike to the brightness of every pixel but for the edges of glyphs: code in its colors, a tab signed and spaces dotted, wide characters in two cells, control characters as their pictures and a line longer than the window', async () => {
-    const { unlike, ...seen } = await bothWays(false);
+  test('draws a file viewed as the editor draws the same file, alike to the brightness of every pixel but for the edges of glyphs: code in its colors, a tab signed and spaces dotted, wide characters in two cells, control characters as their pictures and a line longer than the window', async () => {
+    const { unlike, ...seen } = await bothTools(false);
 
     assert.deepStrictEqual(seen, alike, `${unlike} of the ink unlike`);
   });
 
-  test('draws wrapped lines as cells where their elements stood, each break marked', async () => {
-    const { unlike, ...seen } = await bothWays(true);
+  test('draws wrapped lines as the editor draws them, each break marked, from the line after the wide characters, whose quotes the editor draws out of place once its lines wrap', async () => {
+    const { unlike, ...seen } = await bothTools(true, afterWide);
 
     assert.deepStrictEqual(seen, alike, `${unlike} of the ink unlike`);
   });
 
-  test('selects the text the pointer is dragged over, from the character it was pressed before to the one it was let go before, through a tab and whole rows, drawn as the selection of the elements is, and copies it with its line breaks', async () => {
+  test('selects the text the pointer is dragged over, from the character it was pressed before to the one it was let go before, through a tab and whole rows, and copies it with its line breaks', async () => {
     const dragged = [
       'function sized(count: number): string {',
       "\tconst label = count > 9000 ? 'many' : `few ${count}`;",
       '  return [',
-    ].join('\n');
-    const { unlike, ...seen } = await selectedBothWays(async () => {
-      const from = await at(3, 7);
-      const to = await at(5, 10);
-      await page.mouse.move(from.x, from.y);
-      await page.mouse.down();
-      await page.mouse.move(to.x, to.y, { steps: 6 });
-      await page.mouse.up();
-    });
+    ];
+    await drawn(false);
+
+    await dragOver(page, [4, 7], [6, 10]);
+    await waitForFocus(page.locator('.viewer-body').first(), 'the viewer');
+    await keepCopied(page);
+    await page.keyboard.press('ControlOrMeta+C');
+    await waitFor(
+      async () => (await copied(page)) !== undefined,
+      'the selection copied',
+    );
 
     assert.deepStrictEqual(
-      seen,
-      { elements: dragged, cells: dragged, alike: true },
-      `${unlike} of the ink unlike`,
+      [await copied(page), await seenSelected(page)],
+      [dragged.join('\n'), dragged],
     );
   });
 
-  test('selects the word a double click is on and marks its other occurrences once it rested, as the elements do', async () => {
-    const { unlike, ...seen } = await selectedBothWays(async () => {
-      const word = await at(3, 24);
-      await page.mouse.dblclick(word.x, word.y);
-    }, true);
+  test('selects the word a double click is on and marks its other occurrences once it rested, keeping none of the text it draws in elements, so nothing of the page is drawn over the cells, and tells what it shows when asked', async () => {
+    await drawn(false, true);
+    const word = await cellPoint(page, 4, 24);
 
-    assert.deepStrictEqual(
-      seen,
-      { elements: 'count', cells: 'count', alike: true },
-      `${unlike} of the ink unlike`,
-    );
-  });
-
-  test('keeps none of the text it draws as cells in elements, so nothing of the page is drawn over the cells or left behind as they scroll, and tells what it shows when asked', async () => {
-    await drawn(true, false, true);
-    const word = await at(3, 24);
     await page.mouse.dblclick(word.x, word.y);
-    await marked(true);
+    await waitFor(
+      async () => (await seenMarked(page, 'occurrence')).length > 0,
+      'the occurrences marked in the cells',
+    );
     const held = await page
       .locator('.cell-rows')
       .first()
@@ -358,26 +326,25 @@ suite('App viewer drawn as cells', () => {
     assert.deepStrictEqual(
       {
         held,
-        first: rows[0]?.text,
-        kinds: rows[3]?.kinds.includes('keyword'),
-        selected: rows[3]?.selected,
-        marks: rows[4]?.marks,
+        second: rows[1]?.text,
+        keyword: rows[4]?.pieces.find(({ kind }) => kind === 'keyword')?.text,
+        selected: await seenSelected(page),
+        marked: await seenMarked(page, 'occurrence'),
       },
       {
         held: { elements: ['CANVAS'], text: '' },
-        first: "import { useMemo } from 'react';",
-        kinds: true,
-        selected: { from: 22, to: 27 },
-        marks: [
-          { from: 15, to: 20, name: 'occurrence' },
-          { from: 46, to: 51, name: 'occurrence' },
-        ],
+        second: "import { useMemo } from 'react';",
+        keyword: 'export',
+        selected: ['count'],
+        marked: ['count', 'count', 'count'],
       },
     );
   });
 
   test('draws its cells again with the device the GPU gives it once the one it had is lost, as nothing else draws the text', async () => {
-    const before = await drawn(true, false);
+    firstCompared = 1;
+    await drawn(false);
+    const before = await settled(viewedFrom, 'the viewer drawn as cells');
     const lost = await page.evaluate(() => {
       const canvas = document.querySelector('.cell-canvas');
       const context: unknown =
@@ -392,14 +359,10 @@ suite('App viewer drawn as cells', () => {
       return device !== undefined;
     });
     assert.ok(lost, 'the canvas of the cells has no device to lose');
-    let after = await shot();
-    await untilSettled(
-      async () => {
-        after = await shot();
-        return after.hash;
-      },
+    const after = await settled(
+      viewedFrom,
       'the cells drawn again',
-      { accepted: () => after.inked > leastInk },
+      (seen) => seen.inked > leastInk,
     );
 
     assert.deepStrictEqual(
@@ -412,23 +375,27 @@ suite('App viewer drawn as cells', () => {
     );
   });
 
-  test('follows the theme as it changes while the cells are shown, drawing them in the colors the elements take', async () => {
+  test('follows the theme as it changes while the cells are shown, drawing them in the colors the editor takes', async () => {
     const dark = await page.evaluate(
       () => matchMedia('(prefers-color-scheme: dark)').matches,
     );
-    await drawn(true, false);
+    firstCompared = 1;
+    await drawn(false);
+    const before = await settled(viewedFrom, 'the viewer drawn as cells');
     try {
       await page.emulateMedia({ colorScheme: dark ? 'light' : 'dark' });
-      let cells = await shot();
-      await untilSettled(async () => {
-        cells = await shot();
-        return cells.hash;
-      }, 'the cells in the colors of the other theme');
-      const elements = await drawn(false, false);
+      const cells = await settled(
+        viewedFrom,
+        'the cells in the colors of the other theme',
+        (seen) => seen.hash !== before.hash,
+      );
+      await show('editor');
+      const elements = await settled(editedFrom, 'the editor drawn');
+      await show('viewer');
 
       assert.deepStrictEqual(
         {
-          elementsInked: elements.inked > leastInk,
+          editorInked: elements.inked > leastInk,
           cellsInked: cells.inked > leastInk,
           alike: unlikeShare(elements, cells) < mostUnlike,
         },

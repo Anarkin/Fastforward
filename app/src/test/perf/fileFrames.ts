@@ -7,7 +7,6 @@ import { afterAll, inject, suite, test } from 'vitest';
 import { barOf, barParts } from '../e2e/scrollbarsShown';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { launchedForPerf, measure } from './perfFixtures';
-import { perfBuild } from './perfData';
 import { dragged, heldKey, paced, sleep, wheelNotches } from './perfInput';
 
 const placed = process.env.FASTFORWARD_PERF_WINDOW;
@@ -69,7 +68,7 @@ const views = [
     name: 'viewer',
     tab: 1,
     pane: '.viewer-body',
-    rows: '.viewer-rows .viewer-row, .viewer-rows .cell-rows[data-rows]',
+    rows: '.viewer-rows .viewer-row, .viewer-rows .cell-rows[data-rows]:has(canvas)',
     bar: '.viewer-body .scroll-proxy.vertical',
   },
   {
@@ -96,10 +95,6 @@ const views = [
 ] as const;
 
 const typed = 'const typed = value + 1; // typed here';
-
-const drawnAsCells = (process.env.FASTFORWARD_PERF_CELLS ?? '')
-  .split(',')
-  .includes(path.basename(perfBuild));
 
 const slowestScenario = 600_000;
 
@@ -147,7 +142,7 @@ export function framesOfFile(
           },
           settings: {
             scrolling: { smooth: true },
-            text: { wordWrap, ...(drawnAsCells && { cells: true }) },
+            text: { wordWrap },
           },
         },
         (page) => page.locator('.commander-pane').first().waitFor(),

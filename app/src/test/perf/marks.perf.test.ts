@@ -27,7 +27,7 @@ const tools = [
   {
     name: 'viewer',
     tab: 0,
-    rows: '.viewer-rows .viewer-row',
+    rows: '.viewer-rows :is(.viewer-row, .cell-rows[data-rows]:has(canvas))',
     pane: '.viewer-body',
   },
   {
@@ -45,27 +45,43 @@ const tools = [
 ] as const;
 
 async function colonSelected(page: Page, rows: string): Promise<void> {
-  const place = await page
+  const cells = await page
     .locator(rows)
-    .nth(3)
-    .evaluate((row) => {
-      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        const at = node.textContent?.indexOf(':') ?? -1;
-        if (at !== -1) {
-          const range = document.createRange();
-          range.setStart(node, at);
-          range.setEnd(node, at + 1);
-          const box = range.getBoundingClientRect();
-          return {
-            left: box.left + 0.5,
-            right: box.right - 0.5,
-            y: box.top + box.height / 2,
-          };
+    .first()
+    .evaluate((host) =>
+      host instanceof HTMLElement ? host.seenRows?.()[3] : undefined,
+    );
+  const drawn =
+    cells === undefined || !cells.text.includes(':')
+      ? undefined
+      : {
+          left: cells.left + (cells.text.indexOf(':') + 0.1) * cells.advance,
+          right: cells.left + (cells.text.indexOf(':') + 0.9) * cells.advance,
+          y: cells.top + cells.height / 2,
+        };
+  const place =
+    drawn ??
+    (await page
+      .locator(rows)
+      .nth(3)
+      .evaluate((row) => {
+        const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          const at = node.textContent?.indexOf(':') ?? -1;
+          if (at !== -1) {
+            const range = document.createRange();
+            range.setStart(node, at);
+            range.setEnd(node, at + 1);
+            const box = range.getBoundingClientRect();
+            return {
+              left: box.left + 0.5,
+              right: box.right - 0.5,
+              y: box.top + box.height / 2,
+            };
+          }
         }
-      }
-      return undefined;
-    });
+        return undefined;
+      }));
   assert.ok(place, 'no colon to select');
   await page.mouse.move(place.left, place.y);
   await page.mouse.down();
@@ -93,11 +109,12 @@ suite('Frames of the copies of a colon marked', () => {
     const shown = async () => {
       const { page } = perf();
       await page.locator('.tabs .tab').nth(tool.tab).click();
-      await page.locator(tool.rows).nth(10).waitFor();
+      const drawn = page.locator(tool.rows);
+      await (tool.name === 'viewer' ? drawn.first() : drawn.nth(10)).waitFor();
       if (tool.name === 'viewer') {
         await page.locator(tool.pane).first().focus();
         await page.keyboard.press('2');
-        await page.locator(tool.rows).nth(10).waitFor();
+        await drawn.first().waitFor();
       }
       await sleep(1000);
     };

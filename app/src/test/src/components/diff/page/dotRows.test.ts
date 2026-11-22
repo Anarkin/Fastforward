@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { dotLook } from '../../../../lib/page/dotLook';
-import { dotsStyle } from '../../../../lib/page/dotRows';
+import { dotLook } from '../../../../../lib/page/dotLook';
+import { dotsStyle } from '../../../../../components/diff/page/dotRows';
 
 const look = dotLook(14, 8, 1);
 

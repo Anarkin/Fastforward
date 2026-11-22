@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import { viewerTexts } from './cellsSeen';
 import {
   opened,
   profile,
@@ -132,13 +133,7 @@ suite('App commander', () => {
     );
     await page.keyboard.press('2');
     await waitFor(
-      async () =>
-        (
-          (await page
-            .locator('.viewer-rows .viewer-row')
-            .first()
-            .textContent()) ?? ''
-        ).startsWith('<svg'),
+      async () => ((await viewerTexts(page))[0] ?? '').startsWith('<svg'),
       'the SVG source',
     );
     await close();

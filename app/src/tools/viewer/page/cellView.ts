@@ -8,7 +8,7 @@ import {
   type CellPainting,
   type ShownRows,
 } from './cellPainting';
-import { seenRows } from './cellsSeen';
+import { seenDots, seenGlyphs } from './cellsSeen';
 import { CellSelecting } from './cellSelecting';
 import { CellSurface } from './cellSurface';
 import type { GlyphTiles } from './glyphTiles';
@@ -19,6 +19,7 @@ import type { ScreenRow } from './screenRows';
 import { poolOf, type Pool } from './surfacePool';
 import { paletteOf, textStyles, type DotBox } from './textCells';
 import type { ColoredText } from './textColors';
+import type { TextSelection } from './textSelection';
 
 const scrollingBudget = 2;
 
@@ -160,10 +161,14 @@ export class CellView {
       (slice) => this.tiles.within(slice),
       () => this.tiles.flush(),
     );
-    host.seenRows = () =>
-      this.shown === undefined
-        ? []
-        : seenRows({ ...this.shown, selection: this.selecting.selection });
+    host.seenGlyphs = (cluster) =>
+      seenGlyphs(
+        this.surface.frame,
+        this.tiles,
+        cluster,
+        this.shown?.first ?? 0,
+      );
+    host.seenDots = () => seenDots(this.painting, this.shown?.first ?? 0);
     this.selecting = new CellSelecting(host, canvas, {
       shown: () => this.shown,
       held: () => this.held,
@@ -185,6 +190,10 @@ export class CellView {
         textStyles({ tiles: this.tiles, palette: this.painting.palette }),
       ),
     );
+  }
+
+  get selection(): TextSelection | undefined {
+    return this.selecting.selection;
   }
 
   show({ shown, columns, ahead, held, text, events }: CellViewShown): void {
@@ -265,7 +274,8 @@ export class CellView {
   };
 
   dispose(): void {
-    this.host.seenRows = undefined;
+    this.host.seenGlyphs = undefined;
+    this.host.seenDots = undefined;
     this.selecting.dispose();
     this.idle.clear();
     cancelAnimationFrame(this.again);

@@ -5,6 +5,7 @@ import type { ElectronApplication, Locator, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { scrollbarProfile, settingsWith } from './scrollbarFixture';
+import { untilRowsShown } from './rowsShown';
 import { everyView, views, type ViewName } from './scrollbarViews';
 import { waitFor } from '../helpers/fixtures';
 import { untilSettled } from './waits';
@@ -139,7 +140,7 @@ suite('App scrolled to its ends', () => {
       async () => {
         const view = views[name];
         await page.locator('.tabs .tab').nth(view.tab).click();
-        await page.locator(view.rows).nth(5).waitFor();
+        await untilRowsShown(page, view.rows, 6);
         const scroller = page.locator(view.vertical).first();
         const seen: Record<string, { stopped: number; furthest: number }> = {};
         try {

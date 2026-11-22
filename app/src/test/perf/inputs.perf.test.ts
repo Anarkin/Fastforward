@@ -132,7 +132,12 @@ for (const wordWrap of [false, true]) {
           if (tool.name === 'viewer') {
             await pane.focus();
             await page.keyboard.press('2');
-            await page.locator('.viewer-row').nth(1).waitFor();
+            await page
+              .locator(
+                '.viewer :is(.viewer-row:not(.viewer-probe), .cell-rows[data-rows]:has(canvas))',
+              )
+              .first()
+              .waitFor();
           } else {
             await page.locator('.editor .cm-line').first().waitFor();
           }

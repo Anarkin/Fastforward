@@ -1054,6 +1054,8 @@ export const strings = {
       `Documents over ${megabytes} MB are not previewed.`,
     versionNotEdited: (file: string) =>
       sentence`${namedFile(file)} is shown as git keeps a version of it, not as it is on disk, so it can't be edited.`,
+    noGpu:
+      'Text is drawn by the GPU, and this computer lets Fastforward use none.',
   },
   encodings: {
     encoding: 'Encoding',

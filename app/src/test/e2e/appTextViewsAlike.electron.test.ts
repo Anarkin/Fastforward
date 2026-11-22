@@ -4,9 +4,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
+import { seenGlyphs, seenRows } from './cellsSeen';
 import { windowOfPage } from './cursorWindow';
 import { barOf, barParts } from './scrollbarsShown';
 import { untilSettled, waitForFocus } from './waits';
@@ -215,8 +217,61 @@ suite('App text views alike', () => {
   let app: ElectronApplication;
   let page: Page;
 
+  const seenInViewer = async (feature: number): Promise<Seen> => {
+    const box = await page.locator(views.viewer.pane).first().boundingBox();
+    assert.ok(box, 'the viewer has no box');
+    const pane = {
+      left: box.x,
+      top: box.y,
+      right: box.x + box.width,
+      bottom: box.y + box.height,
+    };
+    const rows = await seenRows(page);
+    const word = `What feature ${feature} `.slice(0, 4);
+    const line = `feature ${feature} does`;
+    return {
+      pane,
+      advance: rows[0]?.advance ?? 0,
+      marks: rows.flatMap((row) => {
+        const at = row.text.indexOf(word);
+        return at === -1 || !row.text.includes(line)
+          ? []
+          : [
+              {
+                left: row.left + at * row.advance,
+                top: row.top,
+                height: row.height,
+                lineLeft: pane.left,
+              },
+            ];
+      }),
+      numbers: [],
+      breaks: (await seenGlyphs(page, strings.symbols.breaks))
+        .flatMap(({ row, column }) => {
+          const at = rows[row];
+          if (at === undefined) {
+            return [];
+          }
+          const left = at.left + (column - at.column) * at.advance;
+          return [
+            {
+              left,
+              top: at.top,
+              right: left + at.advance,
+              bottom: at.top + at.height,
+            },
+          ];
+        })
+        .filter((mark) => mark.top >= pane.top && mark.bottom <= pane.bottom)
+        .toSorted((a, b) => a.top - b.top || a.left - b.left)
+        .slice(0, 3),
+    };
+  };
+
   const seen = (name: ViewName, feature = 0) =>
-    page.locator(views[name].pane).first().evaluate(seenIn, feature);
+    name === 'viewer'
+      ? seenInViewer(feature)
+      : page.locator(views[name].pane).first().evaluate(seenIn, feature);
 
   const show = async (name: ViewName) => {
     const { tab, pane, split } = views[name];

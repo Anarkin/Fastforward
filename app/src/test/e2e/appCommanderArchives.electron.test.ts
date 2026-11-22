@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import { viewerShows } from './cellsSeen';
 import { storedZip } from '../helpers/zips';
 import {
   opened,
@@ -42,7 +43,7 @@ suite('App commander', () => {
     await select('top');
     await page.keyboard.press('F3');
     await page.locator('.tabs .tab.active', { hasText: 'top.txt' }).waitFor();
-    await page.locator('.viewer', { hasText: 'the top of the zip' }).waitFor();
+    await viewerShows(page, 'the top of the zip');
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
 

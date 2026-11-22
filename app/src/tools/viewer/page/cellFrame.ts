@@ -72,6 +72,40 @@ export class CellFrame {
     this.tileCount++;
   }
 
+  tilesPlaced(): { x: number; y: number; u: number; v: number }[] {
+    const places = this.tilePlaces;
+    return Array.from({ length: this.tileCount }, (_, tile) => {
+      const at = tile * tileShorts;
+      return {
+        x: places[at],
+        y: places[at + 1],
+        u: places[at + 2],
+        v: places[at + 3],
+      };
+    });
+  }
+
+  rectsPlaced(): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: number;
+  }[] {
+    const places = this.rectPlaces;
+    const colors = this.rectColors;
+    return Array.from({ length: this.rectCount }, (_, rect) => {
+      const at = rect * rectShorts;
+      return {
+        x: places[at],
+        y: places[at + 1],
+        width: places[at + 2],
+        height: places[at + 3],
+        color: colors[rect * rectWords + 2],
+      };
+    });
+  }
+
   kept(tilesFrom: number, rectsFrom: number): KeptCells {
     return {
       tiles: new Uint8Array(

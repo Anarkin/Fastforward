@@ -1,14 +1,24 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { packedPart } from '../../../../../components/syntax/page/parts';
-import type { ShownRows } from '../../../../../tools/viewer/page/cellPainting';
-import { seenRows } from '../../../../../tools/viewer/page/cellsSeen';
+import { CellFrame } from '../../../../../tools/viewer/page/cellFrame';
+import {
+  cellPainting,
+  paintRows,
+  type ShownRows,
+} from '../../../../../tools/viewer/page/cellPainting';
+import {
+  seenDots,
+  seenGlyphs,
+  seenRows,
+} from '../../../../../tools/viewer/page/cellsSeen';
+import { paletteOf } from '../../../../../tools/viewer/page/textCells';
 import type { ScreenRow } from '../../../../../tools/viewer/page/screenRows';
 import {
   coloredText,
   withPart,
 } from '../../../../../tools/viewer/page/textColors';
-import { widths } from './cellFixtures';
+import { fakePainter, look, tilesWith, widths } from './cellFixtures';
 
 function rowOf(text: string, start: number, more: Partial<ScreenRow> = {}) {
   const row: ScreenRow = {
@@ -43,8 +53,17 @@ function shown(
   };
 }
 
+const place = { left: 100, top: 50, advance: 7, rowHeight: 18 };
+
+const placed = (row: number, column = 0) => ({
+  left: 100 + column * 7,
+  top: 50 + row * 18,
+  height: 18,
+  advance: 7,
+});
+
 suite('Rows the cells show, told when asked', () => {
-  test('tells of each row drawn its text, the kinds of code in it and where its line breaks or goes on, so a test reads what the cells show though no element holds it', () => {
+  test('tells of each row drawn its text, where on the page it stands and how wide its cells are, the pieces of code in it with their kinds and where its line breaks or goes on, so a test reads what the cells show though no element holds it', () => {
     const colored = withPart(
       coloredText('const one\nlast\n', 'utf-8', false),
       packedPart([[{ start: 0, end: 5, kind: 'keyword' }], [], []], 0, true),
@@ -61,13 +80,18 @@ suite('Rows the cells show, told when asked', () => {
           ],
           { colored },
         ),
+        place,
       ),
       [
         {
           key: '0:0',
           text: 'const ',
           column: 0,
-          kinds: ['keyword', 'plain'],
+          ...placed(0),
+          pieces: [
+            { text: 'const', kind: 'keyword' },
+            { text: ' ', kind: 'plain' },
+          ],
           marks: [],
           selected: undefined,
           breakAt: 6,
@@ -77,7 +101,8 @@ suite('Rows the cells show, told when asked', () => {
           key: '0:6',
           text: 'one',
           column: 0,
-          kinds: ['plain'],
+          ...placed(1),
+          pieces: [{ text: 'one', kind: 'plain' }],
           marks: [],
           selected: undefined,
           breakAt: undefined,
@@ -87,7 +112,8 @@ suite('Rows the cells show, told when asked', () => {
           key: '10:0',
           text: 'last',
           column: 0,
-          kinds: ['plain'],
+          ...placed(2),
+          pieces: [{ text: 'last', kind: 'plain' }],
           marks: [],
           selected: undefined,
           breakAt: undefined,
@@ -97,12 +123,13 @@ suite('Rows the cells show, told when asked', () => {
     );
   });
 
-  test('tells what a find found, the find the search is at, the occurrences of a selection and what is selected, each counted from the first character of the part of the row shown, which starts at its column', () => {
+  test('tells what a find found, the find the search is at, the occurrences of a selection and what is selected, each counted from the first character of the part of the row shown, which starts at its column, as many cells after the first column the canvas shows', () => {
     const row = rowOf('one two one two', 0);
 
     const [seen] = seenRows(
       shown([row], {
         parts: [{ from: 4, to: 15, column: 4 }],
+        first: 1,
         marksOf: () => [
           { start: 0, end: 3, current: false },
           { start: 4, end: 7, current: true },
@@ -113,13 +140,15 @@ suite('Rows the cells show, told when asked', () => {
           focus: { start: 0, char: 15 },
         },
       }),
+      place,
     );
 
     assert.deepStrictEqual(
-      [seen.text, seen.column, seen.marks, seen.selected],
+      [seen.text, seen.column, seen.left, seen.marks, seen.selected],
       [
         'two one two',
         4,
+        121,
         [
           { from: 0, to: 3, name: 'current' },
           { from: 4, to: 7, name: 'occurrence' },
@@ -127,5 +156,62 @@ suite('Rows the cells show, told when asked', () => {
         { from: 8, to: 11 },
       ],
     );
+  });
+
+  test('tells where the frame draws a glyph, the row and the column of each cell it is put in, in whatever color, counted from the first column of the text though the canvas starts further on, so a test sees what the cells draw line up', () => {
+    const tiles = tilesWith(fakePainter());
+    const cells = cellPainting(tiles, new CellFrame(), paletteOf(look), {
+      size: 2,
+      left: 2,
+      top: 7,
+      hairline: 1,
+    });
+    const colored = withPart(
+      coloredText('ab|\n中|a\n', 'utf-8', false),
+      packedPart([[], [{ start: 0, end: 4, kind: 'keyword' }], []], 0, true),
+    );
+    const rows = [rowOf('ab|', 0), rowOf('中|a', 4)];
+
+    paintRows(cells, shown(rows, { colored, first: 1 }), Infinity);
+
+    assert.deepStrictEqual(seenGlyphs(cells.frame, tiles, '|', 1), [
+      { row: 0, column: 2 },
+      { row: 1, column: 2 },
+    ]);
+    assert.deepStrictEqual(seenGlyphs(cells.frame, tiles, '中', 1), [
+      { row: 1, column: 0 },
+    ]);
+    assert.deepStrictEqual(seenGlyphs(cells.frame, tiles, 'z', 1), []);
+  });
+
+  test('tells where the frame dots a space, the row and the column of each, and none of the grounds laid under what is selected, so a test sees whitespace shown and hidden', () => {
+    const tiles = tilesWith(fakePainter());
+    const cells = cellPainting(tiles, new CellFrame(), paletteOf(look), {
+      size: 2,
+      left: 2,
+      top: 7,
+      hairline: 1,
+    });
+    const rows = [rowOf('a b', 0), rowOf(' cd ', 4)];
+    const selection = {
+      anchor: { start: 0, char: 0 },
+      focus: { start: 4, char: 2 },
+    };
+
+    paintRows(
+      cells,
+      shown(rows, { showWhitespace: true, first: 1, selection }),
+      Infinity,
+    );
+
+    assert.deepStrictEqual(seenDots(cells, 1), [
+      { row: 0, column: 1 },
+      { row: 1, column: 0 },
+      { row: 1, column: 3 },
+    ]);
+
+    paintRows(cells, shown(rows, { first: 1, selection }), Infinity);
+
+    assert.deepStrictEqual(seenDots(cells, 1), []);
   });
 });

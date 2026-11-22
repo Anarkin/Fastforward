@@ -12,7 +12,7 @@ import type { TextRequest } from '../shared/protocol';
 import type { DiffFile, DiffLine } from './diff';
 import type { LoadedText } from './sideTexts';
 import { type FindMatch, type FindRange } from './find';
-import { useSelectedCopy } from '../../../lib/page/selectedCopy';
+import { useSelectedCopy } from './selectedCopy';
 import { copiesIn } from '../../../lib/shared/textMatches';
 import { lineKey } from './lines';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';

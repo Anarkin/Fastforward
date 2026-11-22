@@ -5,9 +5,9 @@ import {
   useRef,
   type RefObject,
 } from 'react';
-import { soughtCopy } from '../shared/textMatches';
-import { scratchRange } from './scratchRange';
-import { realText } from './picturedCopy';
+import { soughtCopy } from '../../../lib/shared/textMatches';
+import { scratchRange } from '../../../lib/page/scratchRange';
+import { realText } from '../../../lib/page/picturedCopy';
 
 const restMs = 250;
 

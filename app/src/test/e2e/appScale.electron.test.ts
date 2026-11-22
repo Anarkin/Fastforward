@@ -9,6 +9,7 @@ import { barOf, barParts, type Axis } from './scrollbarsShown';
 import { onceDrawn } from './waits';
 import { longLines } from './wrappingSamples';
 import { waitFor } from '../helpers/fixtures';
+import { viewerRows, viewerTexts } from './cellsSeen';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { rounded } from './rounding';
@@ -456,16 +457,14 @@ suite('App at a scale of 125%', () => {
     const side = page.locator('.commander-pane').nth(1);
     await side.locator('.commander-row', { hasText: 'long' }).click();
     await page.keyboard.press('F3');
-    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    await page.locator(viewerRows).first().waitFor();
     try {
       await page.keyboard.press('End');
       await waitFor(
         async () =>
-          (await page
-            .locator('.viewer-row', {
-              hasText: `line${longLines.length - 1} `,
-            })
-            .count()) > 0,
+          (await viewerTexts(page)).some((text) =>
+            text.includes(`line${longLines.length - 1} `),
+          ),
         'the last line of the file',
       );
       const beside = await partAgainstLine(
@@ -497,7 +496,7 @@ suite('App at a scale of 125%', () => {
     const side = page.locator('.commander-pane').nth(1);
     await side.locator('.commander-row', { hasText: 'long' }).click();
     await page.keyboard.press('F3');
-    await page.locator('.viewer-rows .viewer-row').first().waitFor();
+    await page.locator(viewerRows).first().waitFor();
     try {
       const sizes = await page
         .locator('.viewer-body .scroll-proxy.vertical')

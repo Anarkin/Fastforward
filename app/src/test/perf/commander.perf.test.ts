@@ -58,6 +58,9 @@ function commanderWith(smooth: boolean) {
   return { perf, page, right, row, select, openFolder, backUp };
 }
 
+const viewerRows =
+  '.viewer :is(.viewer-row:not(.viewer-probe), .cell-rows[data-rows]:has(canvas))';
+
 suite('Frames of the commander, the viewer and the editor', () => {
   const { perf, page, right, row, select, openFolder, backUp } =
     commanderWith(true);
@@ -111,10 +114,7 @@ suite('Frames of the commander, the viewer and the editor', () => {
   test('scrolling a log of 30 MB in the viewer with a mouse wheel', async () => {
     await select(stem(logFile));
     await page().keyboard.press('F3');
-    await page()
-      .locator('.viewer .viewer-row:not(.viewer-probe)')
-      .first()
-      .waitFor();
+    await page().locator(viewerRows).first().waitFor();
     const result = await measure(perf(), 'viewer: 30 MB log, wheel', () =>
       wheelNotches(page(), page().locator('.viewer-body'), 40),
     );
@@ -128,10 +128,7 @@ suite('Frames of the commander, the viewer and the editor', () => {
     await page().keyboard.press('F3');
     await page().locator('.viewer').waitFor();
     await page().keyboard.press('2');
-    await page()
-      .locator('.viewer .viewer-row:not(.viewer-probe)')
-      .first()
-      .waitFor();
+    await page().locator(viewerRows).first().waitFor();
     const result = await measure(perf(), 'viewer: padded table, wheel', () =>
       wheelNotches(page(), page().locator('.viewer-body'), 40),
     );
@@ -168,10 +165,7 @@ suite('Frames of the commander, the viewer and the editor', () => {
   test('scrolling a file of 20,000 lines of code in the viewer with a mouse wheel', async () => {
     await select(stem(codeFile));
     await page().keyboard.press('F3');
-    await page()
-      .locator('.viewer .viewer-row:not(.viewer-probe)')
-      .first()
-      .waitFor();
+    await page().locator(viewerRows).first().waitFor();
     const result = await measure(perf(), 'viewer: 20,000 lines, wheel', () =>
       wheelNotches(page(), page().locator('.viewer-body'), 40),
     );

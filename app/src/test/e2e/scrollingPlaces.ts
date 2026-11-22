@@ -10,7 +10,7 @@ export const views = {
   viewer: {
     tab: 1,
     pane: '.viewer-body',
-    rows: '.viewer-row:not(.viewer-probe)',
+    rows: '.viewer-rows .cell-rows',
     vertical: '.viewer-body .scroll-proxy.vertical',
     horizontal: '.viewer-sideways',
     across: '.viewer-sideways',
@@ -74,10 +74,16 @@ export function placeDown(pane: Element, rows: string): Place {
     top +
     (parseFloat(getComputedStyle(pane).scrollPaddingTop) || 0);
   const boxes = [...pane.querySelectorAll(rows)]
-    .map((row) => ({
-      box: row.getBoundingClientRect(),
-      text: (row.textContent ?? '').slice(0, 24),
-    }))
+    .flatMap((row) => {
+      const seen = row instanceof HTMLElement ? row.seenRows?.() : undefined;
+      const box = row.getBoundingClientRect();
+      return seen === undefined
+        ? [{ box, text: (row.textContent ?? '').slice(0, 24) }]
+        : seen.map(({ text, left, top: at, height }) => ({
+            box: new DOMRect(left, at, box.width, height),
+            text: text.slice(0, 24),
+          }));
+    })
     .filter(({ box }) => box.height > 0 && box.bottom > top + covered + 0.5)
     .toSorted((one, other) => one.box.top - other.box.top);
   const [first] = boxes;

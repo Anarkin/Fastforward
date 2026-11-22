@@ -1,4 +1,4 @@
-import type { DotLook } from './dotLook';
+import type { DotLook } from '../../../lib/page/dotLook';
 
 export type DotRows = readonly (readonly number[])[];
 

@@ -4,6 +4,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
+import { viewerTexts } from './cellsSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { fileName, rowsShown } from './commanderRows';
 
@@ -80,10 +81,7 @@ export const closeShownTab = async () => {
   await page.keyboard.press('Escape');
   await waitFor(async () => (await tabCount()) === count - 1, 'the tab closed');
 };
-const viewerText = () =>
-  page
-    .locator('.viewer .viewer-rows .viewer-row')
-    .evaluateAll((rows) => rows.map((row) => row.textContent ?? '').join('\n'));
+const viewerText = async () => (await viewerTexts(page)).join('\n');
 export const backAndView = async (name: string) => {
   await backToCommander();
   await select(name);

@@ -7,6 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
+import { rowsShown, untilRowsShown } from './rowsShown';
 import { barOf, barParts, type Axis } from './scrollbarsShown';
 import { writeSettings } from './settingsWritten';
 import { untilSettled } from './waits';
@@ -141,10 +142,7 @@ suite('App scrolling alike', () => {
       }
       await tiles.first().waitFor();
     }
-    await page
-      .locator(`${pane} ${rows}`)
-      .nth(rowUnder(name, fitting))
-      .waitFor();
+    await untilRowsShown(page, `${pane} ${rows}`, rowUnder(name, fitting) + 1);
     await page
       .locator(name === 'editor' ? '.editor .cm-content' : pane)
       .first()
@@ -303,24 +301,30 @@ suite('App scrolling alike', () => {
     await show(name, true);
     const { pane, rows, across: sideways } = views[name];
     const box = await center(name);
-    const stroked = page.locator(`${pane} ${rows}`).nth(rowUnder(name, true));
-    const stroke = (by: { deltaX?: number; deltaY?: number }) =>
-      stroked.evaluate((row, delta) => {
-        const bounds = row.getBoundingClientRect();
-        const at = {
-          x: bounds.left + bounds.width / 3,
-          y: bounds.top + bounds.height / 2,
-        };
-        for (let swipe = 0; swipe < 3; swipe++) {
-          (document.elementFromPoint(at.x, at.y) ?? row).dispatchEvent(
-            new WheelEvent('wheel', {
-              ...delta,
-              bubbles: true,
-              cancelable: true,
-            }),
-          );
-        }
-      }, by);
+    const stroke = async (by: { deltaX?: number; deltaY?: number }) => {
+      const stroked = (await rowsShown(page, `${pane} ${rows}`))[
+        rowUnder(name, true)
+      ];
+      assert.ok(stroked, `the ${name} has no row to stroke`);
+      await page.evaluate(
+        ([x, y, delta]) => {
+          for (let swipe = 0; swipe < 3; swipe++) {
+            (document.elementFromPoint(x, y) ?? document.body).dispatchEvent(
+              new WheelEvent('wheel', {
+                ...delta,
+                bubbles: true,
+                cancelable: true,
+              }),
+            );
+          }
+        },
+        [
+          stroked.left + stroked.width / 3,
+          stroked.top + stroked.height / 2,
+          by,
+        ] as const,
+      );
+    };
     const read = async () => {
       const place = await down(name);
       const left = sideways === undefined ? '' : (await across(name)).state;

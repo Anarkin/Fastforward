@@ -5,6 +5,7 @@ import { strings } from '../../lib/shared/strings';
 import { app, page, repository, sharedApp } from './appFixtures';
 import { waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
+import { viewerShows, viewerTexts } from './cellsSeen';
 
 const focused = () =>
   page.evaluate(() => document.activeElement?.textContent ?? '');
@@ -154,11 +155,8 @@ suite('App', () => {
       .click();
     const viewer = page.locator('.viewer');
     try {
-      await viewer.getByText('two').waitFor();
-      assert.strictEqual(
-        await viewer.getByText('2', { exact: true }).count(),
-        0,
-      );
+      await viewerShows(page, 'two');
+      assert.strictEqual((await viewerTexts(page)).includes('2'), false);
       assert.strictEqual(
         await page.locator('.viewer-path').textContent(),
         path.join(repository.root, 'changed.txt'),
@@ -193,7 +191,7 @@ suite('App', () => {
       '[role="tab"][aria-selected="true"] .tab-folder',
     );
     try {
-      await viewer.getByText('two').waitFor();
+      await viewerShows(page, 'two');
       await trigger.waitFor();
       assert.deepStrictEqual(
         [await trigger.textContent(), await tabFolder.textContent()],
@@ -215,7 +213,7 @@ suite('App', () => {
         ],
       );
       await page.locator('.menu-item', { hasText: newest }).click();
-      await viewer.getByText('2', { exact: true }).waitFor();
+      await viewerShows(page, '2', { exact: true });
       await waitFor(
         async () =>
           (await trigger.textContent()) === newest &&
@@ -242,8 +240,7 @@ suite('App', () => {
         hasText: strings.commander.openWithViewer,
       })
       .click();
-    const viewer = page.locator('.viewer');
-    await viewer.getByText('2', { exact: true }).waitFor();
+    await viewerShows(page, '2', { exact: true });
     await page.locator('.viewer .column-body').first().focus();
     await page.keyboard.press('Shift+F3');
     const triggers = page.locator(
@@ -300,7 +297,7 @@ suite('App', () => {
       await page.locator('.compare-view').waitFor({ state: 'detached' });
       await page.locator('.viewer .column-body').first().focus();
       await page.keyboard.press('Escape');
-      await viewer.waitFor({ state: 'detached' });
+      await page.locator('.viewer').waitFor({ state: 'detached' });
     }
   });
 

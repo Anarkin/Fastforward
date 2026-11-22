@@ -16,65 +16,86 @@ export function isGpuContext(context: unknown): context is GPUCanvasContext {
   );
 }
 
-interface Gpu {
-  device: GPUDevice | undefined;
-  generation: number;
-  asked: boolean;
+interface Lost {
+  readonly lost: Promise<unknown>;
 }
 
-const gpu: Gpu = { device: undefined, generation: 0, asked: false };
-
-const listeners = new Set<Listener>();
-
-function told(): void {
-  gpu.generation++;
-  for (const listener of listeners) {
-    listener();
-  }
+interface Asked<Device> {
+  requestAdapter(): Promise<{
+    requestDevice(): Promise<Device | undefined>;
+  } | null>;
 }
 
-function ask(): void {
-  gpu.asked = true;
-  void navigator.gpu
-    .requestAdapter()
-    .then((adapter) => adapter?.requestDevice())
-    .then(
-      (made) => {
+interface Gpu<Device> {
+  readonly device: () => Device | undefined;
+  readonly generation: () => number;
+  readonly refused: () => boolean;
+  readonly watch: (listener: Listener) => () => void;
+}
+
+export function gpuOf<Device extends Lost>(page: {
+  readonly gpu?: Asked<Device> | undefined;
+}): Gpu<Device> {
+  const listeners = new Set<Listener>();
+  let device: Device | undefined;
+  let generation = 0;
+  let asked = false;
+  let refused = false;
+  const told = () => {
+    generation++;
+    for (const listener of listeners) {
+      listener();
+    }
+  };
+  const refuse = () => {
+    refused = true;
+    told();
+  };
+  const ask = (gpu: Asked<Device>) => {
+    asked = true;
+    void gpu
+      .requestAdapter()
+      .then((adapter) => adapter?.requestDevice())
+      .then((made) => {
         if (made === undefined) {
+          refuse();
           return;
         }
-        gpu.device = made;
+        device = made;
         told();
         void made.lost.then(() => {
-          if (gpu.device === made) {
-            gpu.device = undefined;
+          if (device === made) {
+            device = undefined;
             told();
-            ask();
+            ask(gpu);
           }
         });
-      },
-      () => undefined,
-    );
-}
-
-export function gpuSupported(
-  page: { readonly gpu?: unknown } = navigator,
-): boolean {
-  return typeof page.gpu === 'object' && page.gpu !== null;
-}
-
-export function gpuDevice(): GPUDevice | undefined {
-  if (!gpu.asked && gpuSupported()) {
-    ask();
-  }
-  return gpu.device;
-}
-
-export const gpuGeneration = (): number => gpu.generation;
-
-export function watchGpu(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
+      }, refuse);
+  };
+  return {
+    device: () => {
+      if (!asked && page.gpu !== undefined) {
+        ask(page.gpu);
+      }
+      return device;
+    },
+    generation: () => generation,
+    refused: () => refused || page.gpu === undefined,
+    watch: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
   };
 }
+
+const gpu = gpuOf<GPUDevice>(navigator);
+
+export const gpuDevice = gpu.device;
+
+export const gpuGeneration = gpu.generation;
+
+export const gpuRefused = gpu.refused;
+
+export const watchGpu = gpu.watch;

@@ -14,10 +14,10 @@ import {
   right,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { firstViewerRow } from './viewerAppFixtures';
+import { cellPoint, seenSelected, viewerRows, viewerShows } from './cellsSeen';
+import { firstViewerRow, rowTexts } from './viewerAppFixtures';
 
-const firstRowText = () =>
-  page.locator('.viewer-rows .viewer-row').first().textContent();
+const firstRowText = () => rowTexts().then((texts) => texts[0]);
 
 const nextFrame = () =>
   page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
@@ -70,7 +70,7 @@ const placesOf = () =>
     const start = box('.column-title .column-start');
     const actions = box('.column-title .column-actions');
     const text = box('.path-text');
-    const row = box('.viewer-rows .viewer-row');
+    const row = box('.viewer-rows .cell-rows');
     const layoutUnit = 1 / 64;
     return {
       inHeader: viewer.querySelector('.column-title .path-title') !== null,
@@ -83,19 +83,17 @@ const placesOf = () =>
   });
 
 function watchKeptRow(text: string): void {
-  const seen: { inBox: number; shown: number }[] = [];
+  const seen: number[] = [];
   Reflect.set(window, 'keptRowSeen', seen);
   Reflect.set(window, 'keptRowWatched', true);
   const frame = () => {
-    const rows = document.querySelector('.viewer-rows');
-    const row = [...(rows?.querySelectorAll('.viewer-row') ?? [])].find(
-      (each) => each.textContent === text,
-    );
-    if (row instanceof HTMLElement) {
-      seen.push({
-        inBox: row.offsetTop,
-        shown: Math.round(row.getBoundingClientRect().top),
-      });
+    const host = document.querySelector('.viewer-rows .cell-rows');
+    const row =
+      host instanceof HTMLElement
+        ? host.seenRows?.().find((each) => each.text === text)
+        : undefined;
+    if (row !== undefined) {
+      seen.push(Math.round(row.top));
     }
     if (Reflect.get(window, 'keptRowWatched') === true) {
       requestAnimationFrame(frame);
@@ -104,18 +102,22 @@ function watchKeptRow(text: string): void {
   frame();
 }
 
-function keptRowSeen(): { inBox: number; shown: number }[] {
+function keptRowSeen(): number[] {
   Reflect.set(window, 'keptRowWatched', false);
   const seen: unknown = Reflect.get(window, 'keptRowSeen');
-  return Array.isArray(seen) ? seen : [];
+  return Array.isArray(seen)
+    ? seen.filter((each) => typeof each === 'number')
+    : [];
 }
 
 const restingAt = () =>
   page.locator('.viewer-sideways').evaluate((box) => {
-    const row = box.querySelector('.viewer-row')?.getBoundingClientRect();
-    return row === undefined
+    const host = box.querySelector('.cell-rows');
+    const height =
+      host instanceof HTMLElement ? host.seenRows?.()[0]?.height : undefined;
+    return height === undefined
       ? NaN
-      : Math.round((box.scrollTop / row.height) * 100) / 100;
+      : Math.round((box.scrollTop / height) * 100) / 100;
   });
 
 suite('App commander', () => {
@@ -160,7 +162,7 @@ suite('App commander', () => {
   test('puts the path of a file viewed on a line of its own under the buttons of its header, starting where the editor starts its path, the empty column of line numbers before its text, the buttons staying at the edges of the header', async () => {
     await select('notes');
     await page.keyboard.press('F3');
-    await page.locator('.viewer .viewer-rows .viewer-row').first().waitFor();
+    await page.locator(viewerRows).first().waitFor();
     assert.deepStrictEqual(await placesOf(), {
       inHeader: false,
       underHeader: true,
@@ -250,9 +252,7 @@ suite('App commander', () => {
         return false;
       }, 'the long rows');
       await page.keyboard.press('End');
-      await page
-        .locator('.viewer-row', { hasText: `long ${lines.length - 1}.` })
-        .waitFor();
+      await viewerShows(page, `long ${lines.length - 1}.`);
       seen.push(await untilSettled(viewerThumb, 'the thumb to rest'));
       assert.ok(
         seen.every((each) => Math.abs(each.height - first.height) < 0.5),
@@ -318,14 +318,9 @@ suite('App commander', () => {
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
 
-      await page
-        .locator('.viewer-rows .viewer-row')
-        .nth(3)
-        .dblclick({ position: { x: 12, y: 4 } });
-      assert.strictEqual(
-        await page.evaluate(() => getSelection()?.toString().trim()),
-        'row',
-      );
+      const inWord = await cellPoint(page, 3, 1);
+      await page.mouse.dblclick(inWord.x, inWord.y);
+      assert.deepStrictEqual(await seenSelected(page), ['row']);
       const { box: bar } = await barOf(page, viewerBar, 'vertical');
       const styled = await page.evaluate(() =>
         parseFloat(
@@ -355,11 +350,7 @@ suite('App commander', () => {
       );
       await page.keyboard.press('End');
       await waitFor(
-        async () =>
-          (await page
-            .locator('.viewer-rows .viewer-row')
-            .last()
-            .textContent()) === 'row 199',
+        async () => (await rowTexts()).at(-1) === 'row 199',
         'the last row',
       );
       const x = bar.left + bar.width / 2;
@@ -394,11 +385,13 @@ suite('App commander', () => {
         const frames: { share: number; row: string }[] = [];
         Reflect.set(window, 'thumbFrames', frames);
         const record = () => {
+          const host = document.querySelector('.viewer-rows .cell-rows');
           frames.push({
             share: proxy.scrollTop / (proxy.scrollHeight - proxy.clientHeight),
             row:
-              document.querySelector('.viewer-rows .viewer-row')?.textContent ??
-              '',
+              (host instanceof HTMLElement
+                ? host.seenRows?.()[0]?.text
+                : undefined) ?? '',
           });
           if (Reflect.get(window, 'thumbFrames') === frames) {
             requestAnimationFrame(record);
@@ -465,7 +458,7 @@ suite('App commander', () => {
     }
   });
 
-  test('keeps each row of a file viewed where it is in its box while the file glides, the box scrolling by instead, so only the rows that come into view are painted, as every row was painted again at each row glided by, a quarter of the frames of a glide through long lines coming late; and leaves the box scrolled by the same 64 rows whenever it rests, wherever in the file', async () => {
+  test('glides the rows of a file viewed by as its box scrolls, and leaves the box scrolled by the same 64 rows whenever it rests, wherever in the file', async () => {
     const lines = Array.from({ length: 200 }, (_, index) => `kept ${index}`);
     fs.writeFileSync(
       path.join(opened, 'kept.txt'),
@@ -490,13 +483,9 @@ suite('App commander', () => {
     );
     const rested = await untilSettled(restingAt, 'the rows to rest');
     const seen = await page.evaluate(keptRowSeen);
-    const places = (key: 'inBox' | 'shown') => [
-      ...new Set(seen.map((each) => each[key])),
-    ];
 
     assert.deepStrictEqual([atFirst, rested], [64, 64]);
-    assert.ok(places('shown').length >= 2, JSON.stringify(seen));
-    assert.ok(places('inBox').length <= 2, JSON.stringify(seen));
+    assert.ok(new Set(seen).size >= 2, JSON.stringify(seen));
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
   });

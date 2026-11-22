@@ -104,7 +104,6 @@ suite('Shell store', () => {
         showWhitespace: true,
         highlightSyntax: false,
         highlightOccurrences: false,
-        cells: false,
       },
     });
     receive({ type: 'imageView', view: { realSize: true } });
@@ -128,7 +127,6 @@ suite('Shell store', () => {
       showWhitespace: true,
       highlightSyntax: false,
       highlightOccurrences: false,
-      cells: false,
     });
     assert.deepStrictEqual(state.imageView, { realSize: true });
     assert.deepStrictEqual(state.update, { kind: 'checking' });

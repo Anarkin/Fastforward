@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { rowsShown, untilRowsShown } from './rowsShown';
 import { closeOrKill, launchApp } from './appLaunch';
 import {
   barOf,
@@ -53,7 +54,7 @@ suite('App scrollbars alike', () => {
 
   const show = async (name: ViewName) => {
     await page.locator('.tabs .tab').nth(views[name].tab).click();
-    await page.locator(views[name].rows).nth(5).waitFor();
+    await untilRowsShown(page, views[name].rows, 6);
     await page.locator(views[name].vertical).first().waitFor();
     await page.mouse.move(2, 2);
     await untilSettled(
@@ -124,17 +125,14 @@ suite('App scrollbars alike', () => {
 
   const firstRow = async (name: ViewName) => {
     const { box } = await bar(name, 'vertical');
-    return page.locator(views[name].rows).evaluateAll(
-      (rows, from) =>
-        rows
-          .map((row) => ({
-            text: (row.textContent ?? '').slice(0, 24),
-            top: Math.round(row.getBoundingClientRect().top - from),
-          }))
-          .filter(({ top }) => top >= 0)
-          .toSorted((one, other) => one.top - other.top)[0],
-      Math.round(box.top) - 1,
-    );
+    const from = Math.round(box.top) - 1;
+    return (await rowsShown(page, views[name].rows))
+      .map(({ text, top }) => ({
+        text: text.slice(0, 24),
+        top: Math.round(top - from),
+      }))
+      .filter(({ top }) => top >= 0)
+      .toSorted((one, other) => one.top - other.top)[0];
   };
 
   const movedFrom = async (name: ViewName, text: string) => {
@@ -301,10 +299,7 @@ suite('App scrollbars alike', () => {
         { x: parts.thumb.left + parts.thumb.width + 8, y: middle(across).y },
         middle(parts.thumb),
       ]);
-      const before = await page
-        .locator(views[name].rows)
-        .nth(3)
-        .evaluate((row) => row.textContent);
+      const before = (await rowsShown(page, views[name].rows))[3]?.text;
       await page.mouse.click(middle(parts.end).x, middle(parts.end).y);
       await rested(name);
       const moved = (await barParts(page, across, 'horizontal')).thumb;
@@ -362,23 +357,15 @@ suite('App scrollbars alike', () => {
           name === 'editor' ? 'ControlOrMeta+End' : 'End',
         );
         await rested(name);
-        const last = await untilSettled(
-          () =>
-            page.locator(views[name].rows).evaluateAll((rows) => {
-              const [lowest] = rows
-                .map((row) => ({
-                  text: row.textContent.slice(0, 40),
-                  box: row.getBoundingClientRect(),
-                }))
-                .filter(({ box }) => box.height > 0)
-                .toSorted((one, other) => other.box.top - one.box.top);
-              return {
-                text: lowest?.text ?? '',
-                bottom: lowest?.box.bottom ?? 0,
-              };
-            }),
-          `the last row of the ${name}`,
-        );
+        const last = await untilSettled(async () => {
+          const [lowest] = (await rowsShown(page, views[name].rows))
+            .filter(({ height }) => height > 0)
+            .toSorted((one, other) => other.top - one.top);
+          return {
+            text: lowest?.text.slice(0, 40) ?? '',
+            bottom: lowest?.bottom ?? 0,
+          };
+        }, `the last row of the ${name}`);
         const ends = /line 399 |file-399/.test(last.text);
         await page.keyboard.press(
           name === 'editor' ? 'ControlOrMeta+Home' : 'Home',

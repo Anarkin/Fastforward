@@ -4,90 +4,98 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
-import { barsOffGrid, gridLines, gridRuler } from './gridLines';
+import {
+  copied,
+  dragOver,
+  keepCopied,
+  rightOfCell,
+  seenDots,
+  seenGlyphs,
+  seenRows,
+  viewerMarks,
+} from './cellsSeen';
+import { gridLines, gridRuler } from './gridLines';
 import { waitForFocus } from './waits';
 import {
   opened,
   profile,
   page,
-  dotted,
   savedText,
   rowNames,
   select,
   sharedCommanderApp,
   wrapLongLines,
 } from './commanderAppFixtures';
-import { firstViewerRow } from './viewerAppFixtures';
+import { firstViewerRow, rowTexts } from './viewerAppFixtures';
 
-const layout = () =>
-  page.locator('.viewer-body').evaluate((body) => {
-    const shown = body.querySelector('.viewer-rows');
-    const leftOf = (row: Element | undefined, offset: number) => {
-      const walker = document.createTreeWalker(
-        row ?? body,
-        NodeFilter.SHOW_TEXT,
-      );
-      let node = walker.nextNode();
-      let at = offset;
-      while (node instanceof Text && at >= node.length) {
-        at -= node.length;
-        node = walker.nextNode();
-      }
-      if (!(node instanceof Text)) {
-        return Number.NaN;
-      }
-      const range = document.createRange();
-      range.setStart(node, at);
-      range.setEnd(node, at + 1);
-      return range.getBoundingClientRect().left;
-    };
-    const each = [...body.querySelectorAll('.viewer-rows .viewer-row')];
-    const edge = body.getBoundingClientRect().right;
-    return {
-      fits:
-        (shown?.getBoundingClientRect().width ?? Infinity) <=
-        body.clientWidth + 0.5,
-      marks: [...body.querySelectorAll('.viewer-break')].map(
-        (mark) => mark.getBoundingClientRect().right <= edge,
-      ),
-      indented: Math.abs(leftOf(each[2], 0) - leftOf(each[1], 4)) < 0.5,
-    };
-  });
+const edge = async () => {
+  const body = await page.locator('.viewer-body').boundingBox();
+  return body === null ? Number.NaN : body.x + body.width;
+};
 
-const laidOut = () =>
-  page.locator('.viewer-body').evaluate((body) =>
-    [...body.querySelectorAll('.viewer-rows .viewer-row')].map((row) => {
-      const texts: Text[] = [];
-      const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
-      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-        if (node instanceof Text && node.length > 0) {
-          texts.push(node);
-        }
-      }
-      const range = document.createRange();
-      let textEnd = Number.NaN;
-      let visibleEnd = Number.NaN;
-      for (const node of texts) {
-        for (let at = 0; at < node.length; at++) {
-          range.setStart(node, at);
-          range.setEnd(node, at + 1);
-          const cell = node.parentElement?.closest('.cell');
-          textEnd = (cell ?? range).getBoundingClientRect().right;
-          if (node.data[at] !== ' ') {
-            visibleEnd = textEnd;
-          }
-        }
-      }
-      const mark = row.querySelector('.viewer-break')?.getBoundingClientRect();
-      return {
-        inside: visibleEnd <= row.getBoundingClientRect().right + 0.5,
-        marked:
-          mark === undefined ||
-          (mark.left > visibleEnd - mark.width / 2 &&
-            mark.left < textEnd + mark.width / 2),
-      };
-    }),
+const breaks = () => seenGlyphs(page, strings.symbols.breaks);
+
+const dots = async () => (await seenDots(page)).length;
+
+const returns = async () =>
+  (await seenGlyphs(page, strings.symbols.carriageReturn)).length;
+
+const layout = async () => {
+  const seen = await seenRows(page);
+  const right = await edge();
+  const marks = await Promise.all(
+    (await breaks()).map(
+      async ({ column }) => (await rightOfCell(page, column)) <= right,
+    ),
   );
+  return {
+    fits: await page
+      .locator('.viewer-body')
+      .evaluate(
+        (body) =>
+          (body.querySelector('.viewer-rows')?.getBoundingClientRect().width ??
+            Infinity) <=
+          body.clientWidth + 0.5,
+      ),
+    marks,
+    indented:
+      Math.abs(
+        (seen[2]?.left ?? Number.NaN) -
+          ((seen[1]?.left ?? 0) + 4 * (seen[1]?.advance ?? 0)),
+      ) < 0.5,
+  };
+};
+
+const laidOut = async () => {
+  const seen = await seenRows(page);
+  const right = await edge();
+  const wide = await seenGlyphs(page, '中');
+  const inside = await Promise.all(
+    wide.map(
+      async ({ column }) =>
+        (await rightOfCell(page, column + 1)) <= right + 0.5,
+    ),
+  );
+  const marked = await Promise.all(
+    (await breaks()).map(async ({ row, column }) => ({
+      inside: (await rightOfCell(page, column)) <= right + 0.5,
+      marked: column === seen[row]?.breakAt,
+    })),
+  );
+  return [
+    ...inside.map((within) => ({ inside: within, marked: true })),
+    ...marked,
+  ];
+};
+
+const lastBars = async () => {
+  const columns: number[] = [];
+  for (const { row, column } of await seenGlyphs(page, '|')) {
+    columns[row] = Math.max(columns[row] ?? 0, column);
+  }
+  const [ruler, ...rows] = columns;
+  return rows.map((column) => column - (ruler ?? Number.NaN));
+};
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -101,7 +109,6 @@ suite('App commander', () => {
       path.join(opened, 'long.txt'),
       ['short', line, 'after'].join(String.fromCharCode(10)),
     );
-    const rows = page.locator('.viewer-rows .viewer-row');
     try {
       await select('long');
       await page.keyboard.press('F3');
@@ -111,8 +118,11 @@ suite('App commander', () => {
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
       await wrapLongLines();
-      await waitFor(async () => (await rows.count()) > 4, 'the line to wrap');
-      const wrapped = await rows.allTextContents();
+      await waitFor(
+        async () => (await rowTexts()).length > 4,
+        'the line to wrap',
+      );
+      const wrapped = await rowTexts();
       assert.strictEqual(wrapped.slice(1, -1).join(''), line);
       assert.strictEqual(wrapped.at(-1), 'after');
       assert.deepStrictEqual(await layout(), {
@@ -120,68 +130,52 @@ suite('App commander', () => {
         marks: wrapped.slice(2, -1).map(() => true),
         indented: true,
       });
-      await page.evaluate(() => {
-        const shown = [
-          ...document.querySelectorAll('.viewer-rows .viewer-row'),
-        ];
-        const range = document.createRange();
-        range.setStartBefore(shown[1] ?? document.body);
-        range.setEnd(shown.at(-1)?.firstChild ?? document.body, 3);
-        getSelection()?.removeAllRanges();
-        getSelection()?.addRange(range);
-        window.addEventListener(
-          'copy',
-          (event) =>
-            Reflect.set(
-              window,
-              'copied',
-              event.clipboardData?.getData('text/plain'),
-            ),
-          { once: true },
-        );
-      });
+      await dragOver(page, [1, 0], [wrapped.length - 1, 3]);
+      await keepCopied(page);
       await page.keyboard.press('ControlOrMeta+C');
       assert.strictEqual(
-        await page.evaluate((): unknown => Reflect.get(window, 'copied')),
+        await copied(page),
         `${line}${String.fromCharCode(10)}aft`,
       );
 
       await page.keyboard.press('w');
-      await waitFor(async () => (await rows.count()) === 3, 'the line whole');
-      const unwrapped = await rows.allTextContents();
+      await waitFor(
+        async () => (await rowTexts()).length === 3,
+        'the line whole',
+      );
+      const unwrapped = await rowTexts();
       assert.deepStrictEqual(
         [unwrapped[0], line.startsWith(unwrapped[1] ?? '-'), unwrapped[2]],
         ['short', true, 'after'],
       );
       assert.strictEqual((await layout()).fits, false);
-      assert.strictEqual(await page.locator('.viewer-break').count(), 0);
+      assert.deepStrictEqual(await breaks(), []);
       await waitFor(
         () => savedText(profile, 'wordWrap') === undefined,
         'the wrapping left to the default',
       );
 
       await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-      await waitFor(async () => (await rows.count()) > 4, 'the line wrapped');
+      await waitFor(
+        async () => (await rowTexts()).length > 4,
+        'the line wrapped',
+      );
       await waitFor(
         () => savedText(profile, 'wordWrap') === true,
         'the wrapping saved',
       );
 
-      const spaces = page.locator('.viewer-rows .dot-rows');
-      const hanging = page.locator('.viewer-rows .viewer-wrap-spaces');
+      const every = line.split(' ').length - 1;
       await waitFor(
-        async () => (await spaces.count()) > 0,
-        'the spaces drawn, as whitespace is shown by default',
+        async () => (await seenDots(page)).length === every,
+        'every space dotted, as whitespace is shown by default',
       );
-      assert.strictEqual(await dotted(spaces), true);
-      assert.strictEqual(await hanging.count(), 0);
       await page.keyboard.press('.');
+      const wraps = (await breaks()).length;
       await waitFor(
-        async () => (await hanging.count()) > 0,
+        async () => (await seenDots(page)).length === wraps,
         'only the spaces the rows wrap at marked once whitespace is hidden',
       );
-      assert.strictEqual(await dotted(hanging), true);
-      assert.strictEqual(await spaces.count(), 0);
       await waitFor(
         () => savedText(profile, 'showWhitespace') === false,
         'whitespace hidden saved',
@@ -189,7 +183,7 @@ suite('App commander', () => {
       assert.strictEqual(savedText(profile, 'wordWrap'), true);
       await page.keyboard.press('.');
       await waitFor(
-        async () => (await spaces.count()) > 0,
+        async () => (await seenDots(page)).length === every,
         'the spaces drawn again',
       );
       await waitFor(
@@ -220,7 +214,6 @@ suite('App commander', () => {
       path.join(opened, 'longer.txt'),
       ['short', line, 'after'].join(String.fromCharCode(10)),
     );
-    const rows = page.locator('.viewer-rows .viewer-row');
     try {
       await select('longer');
       await page.keyboard.press('F3');
@@ -232,10 +225,10 @@ suite('App commander', () => {
       await wrapLongLines();
       await page.keyboard.press('End');
       await waitFor(
-        async () => (await rows.allTextContents()).at(-1) === 'after',
+        async () => (await rowTexts()).at(-1) === 'after',
         'the last row',
       );
-      const wrapped = (await rows.allTextContents()).filter(
+      const wrapped = (await rowTexts()).filter(
         (row) => row !== 'short' && row !== 'after',
       );
       assert.ok(wrapped.length > 1, String(wrapped.length));
@@ -250,7 +243,7 @@ suite('App commander', () => {
         async () => (await firstViewerRow()) === 'short',
         'the first row again',
       );
-      const whole = await rows.allTextContents();
+      const whole = await rowTexts();
       assert.deepStrictEqual(
         [whole.length, whole[0], line.startsWith(whole[1] ?? '-'), whole[2]],
         [3, 'short', true, 'after'],
@@ -279,7 +272,6 @@ suite('App commander', () => {
       path.join(opened, 'padded.txt'),
       ['short', padded, ' '.repeat(400), 'after'].join(String.fromCharCode(10)),
     );
-    const rows = page.locator('.viewer-rows .viewer-row');
     const sideways = page.locator('.viewer-sideways');
     const overflow = () =>
       sideways.evaluate((element) => ({
@@ -296,19 +288,20 @@ suite('App commander', () => {
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
       await wrapLongLines();
       await waitFor(
-        async () => (await rows.count()) > 5,
+        async () => (await rowTexts()).length > 5,
         'the padded line to wrap',
       );
-      await page.locator('.viewer-rows .dot-rows').first().waitFor();
+      await waitFor(async () => (await dots()) > 0, 'the spaces dotted');
+      const shown = await dots();
       assert.deepStrictEqual(await overflow(), { wider: false, left: 0 });
       await page.keyboard.press('.');
-      await page
-        .locator('.viewer-rows .dot-rows')
-        .first()
-        .waitFor({ state: 'detached' });
+      await waitFor(async () => (await dots()) < shown, 'whitespace hidden');
       assert.deepStrictEqual(await overflow(), { wider: false, left: 0 });
       await page.keyboard.press('.');
-      await page.locator('.viewer-rows .dot-rows').first().waitFor();
+      await waitFor(
+        async () => (await dots()) === shown,
+        'the spaces dotted again',
+      );
       await page.keyboard.press('w');
       await waitFor(
         async () => (await overflow()).wider,
@@ -346,7 +339,6 @@ suite('App commander', () => {
       path.join(opened, 'chinese.txt'),
       ['short', line, 'after'].join(String.fromCharCode(10)),
     );
-    const rows = page.locator('.viewer-rows .viewer-row');
     try {
       await select('chinese');
       await page.keyboard.press('F3');
@@ -355,8 +347,13 @@ suite('App commander', () => {
         'the first row',
       );
       await wrapLongLines();
-      await waitFor(async () => (await rows.count()) > 4, 'the line to wrap');
+      await waitFor(
+        async () => (await rowTexts()).length > 4,
+        'the line to wrap',
+      );
+      await waitFor(async () => (await breaks()).length > 2, 'its breaks');
       const shown = await laidOut();
+      assert.ok(shown.length > 150, String(shown.length));
       assert.deepStrictEqual(
         shown,
         shown.map(() => ({ inside: true, marked: true })),
@@ -376,9 +373,6 @@ suite('App commander', () => {
 
   test('marks the carriage return of each Windows line end of a file viewed once whitespace is shown, as the diff does', async () => {
     fs.writeFileSync(path.join(opened, 'crlf.txt'), 'one\r\ntwo\r\n');
-    const returns = page.locator(
-      `.viewer-rows .blank[data-glyph="${strings.symbols.carriageReturn}"]`,
-    );
     try {
       await select('crlf');
       await page.keyboard.press('F3');
@@ -387,12 +381,12 @@ suite('App commander', () => {
         'the first row',
       );
       await waitFor(
-        async () => (await returns.count()) === 2,
+        async () => (await returns()) === 2,
         'a sign at the end of each line, as whitespace is shown by default',
       );
       await page.keyboard.press('.');
       await waitFor(
-        async () => (await returns.count()) === 0,
+        async () => (await returns()) === 0,
         'no sign once whitespace is hidden',
       );
       await page.keyboard.press('.');
@@ -418,7 +412,6 @@ suite('App commander', () => {
       path.join(opened, 'grid.txt'),
       gridLines.join(String.fromCharCode(10)),
     );
-    const rows = page.locator('.viewer-rows .viewer-row');
     try {
       await select('grid');
       await page.keyboard.press('F3');
@@ -427,11 +420,15 @@ suite('App commander', () => {
         'the first row',
       );
       await waitFor(
-        async () => (await rows.count()) === gridLines.length,
+        async () => (await rowTexts()).length === gridLines.length,
         'every row',
       );
+      await waitFor(
+        async () => (await lastBars()).length === gridLines.length - 1,
+        'the bar of every row drawn',
+      );
       assert.deepStrictEqual(
-        await rows.evaluateAll(barsOffGrid),
+        await lastBars(),
         gridLines.slice(1).map(() => 0),
       );
       await page.keyboard.press('ControlOrMeta+F');
@@ -440,9 +437,12 @@ suite('App commander', () => {
         'the search',
       );
       await page.keyboard.type('Cafe');
-      await page.locator('.viewer .find-match').first().waitFor();
+      await waitFor(
+        async () => (await viewerMarks(page)).length > 0,
+        'the match marked',
+      );
       assert.deepStrictEqual(
-        await rows.evaluateAll(barsOffGrid),
+        await lastBars(),
         gridLines.slice(1).map(() => 0),
       );
     } finally {

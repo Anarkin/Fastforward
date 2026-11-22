@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { viewerRows } from './cellsSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { showTab } from './tabReturns';
@@ -42,7 +43,7 @@ suite('App started again', () => {
     let app: ElectronApplication | undefined = await launchApp(profile);
     try {
       let page = await app.firstWindow();
-      await page.locator('.viewer-rows .viewer-row').first().click();
+      await page.locator(viewerRows).first().click();
       await page.keyboard.press('ControlOrMeta+F');
       await page.keyboard.type('adam');
       await waitFor(

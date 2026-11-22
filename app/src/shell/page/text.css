@@ -209,7 +209,6 @@ input {
 
 .spaces,
 .wrap-spaces,
-.viewer-wrap-spaces,
 .dot-rows {
   --space-dot: max(
     var(--device-pixel, 1px),
@@ -223,8 +222,7 @@ input {
 }
 
 .spaces,
-.wrap-spaces,
-.viewer-wrap-spaces {
+.wrap-spaces {
   background-image: linear-gradient(
     to right,
     transparent var(--space-dot-start),
