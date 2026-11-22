@@ -9,10 +9,10 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { untilSettled, waitForFocus } from './waits';
 
 const character = (code: number) => String.fromCharCode(code);
-const pictureOf = (code: number) =>
-  character(code === 127 ? 0x2421 : 0x2400 + code);
 const lineFeed = character(10);
+const formFeed = character(12);
 const escape = character(27);
+const controlFont = 'Fastforward Controls';
 
 const groups = [
   [1, 2, 3, 4, 5, 6, 7, 8],
@@ -25,14 +25,18 @@ const ruler = padded('....:....1....:....2');
 const written = groups.map((codes) =>
   padded(`x ${codes.map(character).join('')}`),
 );
-const shown = groups.map((codes) =>
-  padded(`x ${codes.map(pictureOf).join('')}`),
-);
-const keptWritten = padded(`kept ␛${escape}`);
-const keptShown = padded('kept ␛␛');
+const drawn = (text: string) => text.replaceAll(formFeed, '␌');
+const keptWritten = padded(`kept ␌${formFeed}␛${escape}`);
 const boxedRow = `boxed 😀 and 中${' '.repeat(5)}|`;
 const fileOf = (last: string) =>
   [ruler, ...written, keptWritten, boxedRow, last, ''].join(lineFeed);
+const denseLines = [
+  `x${'.'.repeat(60)}|`,
+  ...Array.from(
+    { length: 40 },
+    (_, line) => `x${character(1 + (line % 8)).repeat(60)}|`,
+  ),
+];
 
 const views = [
   {
@@ -63,38 +67,61 @@ const views = [
 
 type View = (typeof views)[number];
 
+interface Shown {
+  readonly name: string;
+  readonly tab: number;
+  readonly rows: string;
+}
+
 interface DrawnRow {
   readonly text: string;
   readonly bar: number | undefined;
+  readonly offColumns: number;
 }
 
 function drawnRows(selector: string): DrawnRow[] {
+  const range = document.createRange();
   return [...document.querySelectorAll(selector)].map((row) => {
     let text = '';
     let bar: number | undefined;
+    const lefts: number[] = [];
     const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       if (node.parentElement?.closest('[aria-hidden="true"]')) {
         continue;
       }
       const part = node.textContent ?? '';
-      const at = part.lastIndexOf('|');
-      if (at !== -1) {
-        const range = document.createRange();
+      for (let at = 0; at < part.length; at++) {
         range.setStart(node, at);
         range.setEnd(node, at + 1);
-        bar = range.getBoundingClientRect().left;
+        const { left } = range.getBoundingClientRect();
+        lefts.push(left);
+        if (part[at] === '|') {
+          bar = left;
+        }
       }
       text += part;
     }
-    return { text, bar };
+    const column = lefts.length > 1 ? (lefts.at(1) ?? 0) - (lefts[0] ?? 0) : 0;
+    const plain = text
+      .split('')
+      .every(
+        (each) => each.charCodeAt(0) < 0x80 || each === '␌' || each === '␛',
+      );
+    return {
+      text,
+      bar,
+      offColumns: plain
+        ? lefts.filter(
+            (left, at) => Math.abs(left - (lefts[0] ?? 0) - at * column) > 0.02,
+          ).length
+        : 0,
+    };
   });
 }
 
-function selectRow([selector, text]: readonly [string, string]): boolean {
-  const row = [...document.querySelectorAll(selector)].find((each) =>
-    (each.textContent ?? '').includes(text),
-  );
+function selectRow([selector, at]: readonly [string, number]): boolean {
+  const row = document.querySelectorAll(selector)[at];
   if (row === undefined) {
     return false;
   }
@@ -120,6 +147,17 @@ function keepCopied(): void {
   );
 }
 
+function markRowWith([selector, text]: readonly [string, string]): boolean {
+  for (const marked of document.querySelectorAll('[data-fonts-of]')) {
+    marked.removeAttribute('data-fonts-of');
+  }
+  const row = [...document.querySelectorAll(selector)].find((each) =>
+    (each.textContent ?? '').includes(text),
+  );
+  row?.setAttribute('data-fonts-of', '');
+  return row !== undefined;
+}
+
 const legible = (text: unknown) =>
   typeof text === 'string'
     ? text.replace(/[^ -~]/g, (each) => `<${each.charCodeAt(0).toString(16)}>`)
@@ -129,28 +167,50 @@ suite('App control pictures', () => {
   let app: ElectronApplication;
   let page: Page;
 
-  const show = async (view: View) => {
+  const show = async (view: Shown, first = ruler) => {
     await page.locator('.tabs .tab').nth(view.tab).click();
     await waitFor(
       async () =>
         (await page.evaluate(drawnRows, view.rows)).some(
-          (row) => row.text === ruler,
+          (row) => row.text === first,
         ),
-      `the ruler in the ${view.name}`,
+      `the first row in the ${view.name}`,
     );
   };
 
-  const copiedFrom = async (view: View, row: string) => {
+  const fontsDrawing = async (rows: string, text: string) => {
+    assert.ok(await page.evaluate(markRowWith, [rows, text] as const), text);
+    const session = await page.context().newCDPSession(page);
+    try {
+      await session.send('DOM.enable');
+      await session.send('CSS.enable');
+      const { root } = await session.send('DOM.getDocument', { depth: 0 });
+      const { nodeId } = await session.send('DOM.querySelector', {
+        nodeId: root.nodeId,
+        selector: '[data-fonts-of]',
+      });
+      const { fonts } = await session.send('CSS.getPlatformFontsForNode', {
+        nodeId,
+      });
+      return fonts
+        .filter((font) => font.isCustomFont)
+        .map((font) => `${font.familyName} ${font.glyphCount}`);
+    } finally {
+      await session.detach();
+    }
+  };
+
+  const copiedFrom = async (view: View, row: number) => {
     await show(view);
     if (view.name === 'editor') {
-      await page.locator(view.rows, { hasText: row.slice(0, 6) }).click();
+      await page.locator(view.rows).nth(row).click();
       await waitForFocus(page.locator(view.pane), 'the editor');
       await page.keyboard.press('Home');
       await page.keyboard.press('Shift+End');
     } else {
       await page.locator(view.pane).first().focus();
       assert.ok(
-        await page.evaluate(selectRow, [view.rows, row.slice(0, 6)] as const),
+        await page.evaluate(selectRow, [view.rows, row] as const),
         `no row to select in the ${view.name}`,
       );
     }
@@ -183,10 +243,10 @@ suite('App control pictures', () => {
     fs.writeFileSync(
       markdown,
       [
-        `A bell ${character(7)} in a sentence.`,
+        `A bell ${character(7)} in a sentence, fed${formFeed}on.`,
         '',
         '```',
-        `${escape}[0m${character(127)}`,
+        `${escape}[0m${character(127)}${formFeed}`,
         '```',
         '',
       ].join(lineFeed),
@@ -194,13 +254,10 @@ suite('App control pictures', () => {
     const code = path.join(opened, 'colored.ts');
     fs.writeFileSync(
       code,
-      `export const bell = '${escape}ring${character(7)}';${lineFeed}`,
+      `export const fed = '${formFeed}page${escape}';${lineFeed}`,
     );
     const dense = path.join(opened, 'dense.txt');
-    fs.writeFileSync(
-      dense,
-      Array.from({ length: 40 }, () => `x${escape.repeat(20)}|`).join(lineFeed),
-    );
+    fs.writeFileSync(dense, denseLines.join(lineFeed));
     fs.writeFileSync(
       path.join(profile, 'state.json'),
       JSON.stringify({
@@ -212,6 +269,7 @@ suite('App control pictures', () => {
           { id: '5', tool: 'viewer', root: markdown },
           { id: '6', tool: 'editor', root: code },
           { id: '7', tool: 'editor', root: dense },
+          { id: '8', tool: 'viewer', root: dense },
         ],
         activeTab: '2',
       }),
@@ -231,7 +289,7 @@ suite('App control pictures', () => {
     await closeOrKill(app);
   });
 
-  test('draws every control character as its picture in the viewer, the editor and both sides of the diff, each a column wide, the form feed, the group separator and the delete too, which Chromium drew as nothing or narrower, so the bar after them stands under the bar of the ruler', async () => {
+  test('draws every control character in the viewer, the editor and both sides of the diff where it stands in the text, by the font the app makes for them, each exactly a column wide, the form feed as its picture, which Chromium draws as nothing, so every character of a row stands on its column and the bar after them under the bar of the ruler', async () => {
     const found: Record<string, unknown> = {};
     for (const view of views) {
       await show(view);
@@ -245,10 +303,12 @@ suite('App control pictures', () => {
           .map((row) => Math.round((row.bar ?? 0) * 100) / 100),
       );
       found[view.name] = {
-        drawn: [...shown, keptShown].filter((text) =>
-          rows.some((row) => row.text === text),
-        ),
+        drawn: [...written.map(drawn), drawn(keptWritten)]
+          .filter((text) => rows.some((row) => row.text === text))
+          .map(legible),
         bars: bars.size,
+        offColumns: rows.reduce((sum, row) => sum + row.offColumns, 0),
+        fonts: await fontsDrawing(view.rows, 'x \u0001'),
       };
     }
     assert.deepStrictEqual(
@@ -256,19 +316,25 @@ suite('App control pictures', () => {
       Object.fromEntries(
         views.map((view) => [
           view.name,
-          { drawn: [...shown, keptShown], bars: 1 },
+          {
+            drawn: [...written.map(drawn), drawn(keptWritten)].map(legible),
+            bars: 1,
+            offColumns: 0,
+            fonts: [`${controlFont} 8`],
+          },
         ]),
       ),
     );
   });
 
-  test('copies the control characters themselves out of the viewer, the editor and the diff, not the pictures drawn for them, keeps a picture the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
+  test('copies the control characters as they are out of the viewer, the editor and the diff, the form feed itself, not the picture drawn for it, keeps a picture of it the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
     const found: Record<string, unknown> = {};
     for (const view of views) {
       found[view.name] = [
-        legible(await copiedFrom(view, shown[0] ?? '')),
-        legible(await copiedFrom(view, keptShown)),
-        legible(await copiedFrom(view, boxedRow)),
+        legible(await copiedFrom(view, 1)),
+        legible(await copiedFrom(view, 2)),
+        legible(await copiedFrom(view, written.length + 1)),
+        legible(await copiedFrom(view, written.length + 2)),
       ];
     }
     assert.deepStrictEqual(
@@ -276,55 +342,87 @@ suite('App control pictures', () => {
       Object.fromEntries(
         views.map((view) => [
           view.name,
-          [legible(written[0]), legible(keptWritten), legible(boxedRow)],
+          [
+            legible(written[0]),
+            legible(written[1]),
+            legible(keptWritten),
+            legible(boxedRow),
+          ],
         ]),
       ),
     );
   });
 
-  test('draws a picture of the editor in the color of the code around it, inside the span that colors it, as the viewer and the diff do, where it stood outside in the color of plain text', async () => {
+  test('draws the picture of a form feed in the editor in the color of the code around it, inside the span that colors it, as the viewer and the diff do, and the other control characters as text of that span, with no element of their own', async () => {
     await page.locator('.tabs .tab').nth(5).click();
+    const colored = page.locator('.editor .cm-line .syntax-string').first();
+    await colored.waitFor();
     const pictures = page.locator('.editor .cm-line .control-picture');
-    await page.locator('.editor .cm-line .syntax-string').first().waitFor();
     await pictures.first().waitFor();
     assert.deepStrictEqual(
-      await pictures.evaluateAll((drawn) =>
-        drawn.map((each) => [
+      await pictures.evaluateAll((shown) =>
+        shown.map((each) => [
           each.textContent,
           each.parentElement?.className,
           getComputedStyle(each).color ===
             getComputedStyle(each.parentElement ?? each).color,
         ]),
       ),
-      [
-        ['␛', 'syntax-string', true],
-        ['␇', 'syntax-string', true],
-      ],
+      [['␌', 'syntax-string', true]],
+    );
+    assert.strictEqual(
+      legible(await colored.textContent()),
+      legible(`␌page${escape}`),
     );
   });
 
-  test('leaves a file of more than eight control characters a line as it is in the editor, where an element for each picture took longer to paint at every frame than the characters took to lay out', async () => {
-    await page.locator('.tabs .tab').nth(6).click();
-    const line = page.locator('.editor .cm-line').first();
-    await waitFor(
-      async () => ((await line.textContent()) ?? '').endsWith('|'),
-      'the dense file in the editor',
-    );
-    assert.strictEqual(await line.textContent(), `x${escape.repeat(20)}|`);
-    assert.strictEqual(await line.locator('span').count(), 0);
+  test('draws a file dense in control characters in the editor as in the viewer, every one by the font where it stands in the text, with no element of its own, each line as wide as one of as many dots, as an element for the picture of each took longer to paint than the characters to lay out, so the editor left such a file in boxes, off the columns', async () => {
+    const found: Record<string, unknown> = {};
+    const tabs = [
+      { name: 'editor', tab: 6, rows: '.editor .cm-line' },
+      { name: 'viewer', tab: 7, rows: '.viewer-rows .viewer-row' },
+    ];
+    for (const view of tabs) {
+      await show(view, denseLines[0]);
+      const rows = await untilSettled(
+        () => page.evaluate(drawnRows, view.rows),
+        `the rows of the ${view.name}`,
+      );
+      found[view.name] = {
+        rows: rows.length >= 20,
+        asWritten: rows.every((row, at) => row.text === denseLines[at]),
+        bars: new Set(rows.map((row) => Math.round((row.bar ?? 0) * 100) / 100))
+          .size,
+        offColumns: rows.reduce((sum, row) => sum + row.offColumns, 0),
+        elements: await page.locator(view.rows).nth(1).locator('*').count(),
+        fonts: await fontsDrawing(view.rows, 'x\u0001'),
+      };
+    }
+    const expected = {
+      rows: true,
+      asWritten: true,
+      bars: 1,
+      offColumns: 0,
+      elements: 0,
+      fonts: [`${controlFont} 60`],
+    };
+    assert.deepStrictEqual(found, { editor: expected, viewer: expected });
   });
 
-  test('draws the control characters of a Markdown file previewed as their pictures, in its text and in its code', async () => {
+  test('draws the control characters of a Markdown file previewed by the font too, in its text and in its code, the form feed as its picture', async () => {
     await page.locator('.tabs .tab').nth(4).click();
     const preview = page.locator('.markdown');
     await preview.locator('pre > code').waitFor();
     assert.strictEqual(
-      await preview.locator('p').first().textContent(),
-      'A bell ␇ in a sentence.',
+      legible(await preview.locator('p').first().textContent()),
+      legible(`A bell ${character(7)} in a sentence, fed␌on.`),
     );
     assert.strictEqual(
-      (await preview.locator('pre > code').textContent())?.trimEnd(),
-      '␛[0m␡',
+      legible((await preview.locator('pre > code').textContent())?.trimEnd()),
+      legible(`${escape}[0m${character(127)}␌`),
     );
+    assert.deepStrictEqual(await fontsDrawing('.markdown p', 'A bell'), [
+      `${controlFont} 2`,
+    ]);
   });
 });

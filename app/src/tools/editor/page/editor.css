@@ -54,3 +54,8 @@
   font-size: var(--monospace-font-size);
   color: var(--foreground);
 }
+
+.cm-editor .cm-widgetBuffer:has(+ .control-picture),
+.cm-editor .control-picture + .cm-widgetBuffer {
+  position: absolute;
+}

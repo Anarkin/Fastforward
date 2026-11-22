@@ -41,13 +41,20 @@ suite('Markdown', () => {
     assert.match(html, /<li>plain<\/li>/);
   });
 
-  test('draws the control characters of a paragraph and of a code block as their pictures, as the viewer draws a text, leaving a picture the file itself holds as it is', () => {
+  test('leaves the control characters of a paragraph and of a code block in the text, for the font of the app to draw as the viewer draws a text, and swaps the form feed alone for its picture, leaving a picture the file itself holds as it is', () => {
+    const formFeed = String.fromCharCode(12);
     const html = render(
-      ['bell \u0007 and ␛', '', '```', 'a\u001b[0m\u007f', '```'].join('\n'),
+      [
+        `bell \u0007 and ␛ fed${formFeed}on`,
+        '',
+        '```',
+        `a\u001b[0m\u007f${formFeed}`,
+        '```',
+      ].join('\n'),
       noImages,
     );
-    assert.match(html, /<p>bell ␇ and ␛<\/p>/);
-    assert.match(html, /<code>a␛\[0m␡\n<\/code>/);
+    assert.ok(html.includes('<p>bell \u0007 and ␛ fed␌on</p>'), html);
+    assert.ok(html.includes('<code>a\u001b[0m\u007f␌\n</code>'), html);
   });
 
   test('aligns the columns of a table as its separator row says, as GitHub does, by the align it keeps rather than a style', () => {

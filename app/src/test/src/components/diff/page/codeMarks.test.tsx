@@ -95,23 +95,24 @@ suite('Drawing code', () => {
     );
   });
 
-  test('draws the control characters of a line as their pictures in place of them, in its colors and beside its spaces dotted, whether whitespace shows or not, as a line of them took Chromium 60 times as long to lay out as it does with the pictures, and marks a picture the file itself holds', () => {
+  test('leaves the control characters of a line in its text, in its colors and beside its spaces dotted, whether whitespace shows or not, for the font of the app to draw each a column wide, as Chromium looked through the fonts of the system for each and took 60 times as long to lay a line of them out, and swaps the form feed alone for its picture, marking one the file itself holds', () => {
+    const formFeed = String.fromCharCode(12);
     assert.strictEqual(
-      wrapMarkup('a\u0001b\u001b[0m\u007f', undefined),
-      'a␁b␛[0m␡',
+      wrapMarkup(`a\u0001b\u001b[0m\u007f${formFeed}`, undefined),
+      'a\u0001b\u001b[0m\u007f␌',
     );
     assert.strictEqual(
       wrapMarkup(
-        '\u001b[31m x\u0007',
+        `\u001b[31m x${formFeed}`,
         undefined,
         [{ start: 0, end: 5, kind: 'string' }],
         true,
       ),
-      `<span class="syntax-string">␛[31m</span>${spaces(' ')}x␇`,
+      `<span class="syntax-string">\u001b[31m</span>${spaces(' ')}x␌`,
     );
     assert.strictEqual(
-      wrapMarkup('a␛b\u001b', undefined),
-      'a<span data-genuine="">␛</span>b␛',
+      wrapMarkup(`a␌b␛${formFeed}`, undefined),
+      'a<span data-genuine="">␌</span>b␛␌',
     );
   });
 

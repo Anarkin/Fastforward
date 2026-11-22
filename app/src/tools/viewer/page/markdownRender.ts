@@ -1,7 +1,7 @@
 import type { DOMPurify } from 'dompurify';
 import type MarkdownIt from 'markdown-it';
 import type { StateCore } from 'markdown-it';
-import { hasControls, pictured } from '../../../lib/page/controlPictures';
+import { hasSwapped, pictured } from '../../../lib/page/controlPictures';
 
 const tagsGitHubKeeps = [
   'h1',
@@ -150,7 +150,7 @@ function picturedTexts(node: Node): void {
   for (const child of node.childNodes) {
     if (child.nodeType !== child.TEXT_NODE) {
       picturedTexts(child);
-    } else if (hasControls(child.nodeValue ?? '')) {
+    } else if (hasSwapped(child.nodeValue ?? '')) {
       child.nodeValue = pictured(child.nodeValue ?? '');
     }
   }

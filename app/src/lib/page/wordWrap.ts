@@ -5,6 +5,7 @@ import {
   type Box,
 } from './lineBreaks';
 import type { TextWidths } from './textWidths';
+import { pictured } from './controlPictures';
 import { tabSize, tabStop } from './tabStops';
 
 const blankKind = 1;
@@ -105,10 +106,11 @@ function breaksOf(
   boxes: readonly Box[] = [],
 ): (at: number) => boolean {
   const markedAt = marked ? breaksAt : marksNoBreak;
-  if (boxes.length === 0 && !nonAscii.test(text)) {
+  const drawn = pictured(text);
+  if (boxes.length === 0 && !nonAscii.test(drawn)) {
     return (at) => markedAt(text, at) || asciiBreakAt(text, at);
   }
-  const flags = lineBreaks(text, boxes);
+  const flags = lineBreaks(drawn, boxes);
   return (at) => flags[at] === 1 || markedAt(text, at);
 }
 

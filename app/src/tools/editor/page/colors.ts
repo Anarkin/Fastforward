@@ -19,7 +19,7 @@ import type {
 import { partLines } from '../../../components/syntax/page/parts';
 import { replacedIn } from '../../../lib/page/replacedIn';
 import type { SyntaxRange } from '../../../components/syntax/page/engine';
-import { hasControls } from '../../../lib/page/controlPictures';
+import { hasSwapped } from '../../../lib/page/controlPictures';
 
 const recolored = StateEffect.define();
 
@@ -217,7 +217,7 @@ class Colors implements PluginValue {
         at = line.to + 1;
         const windowFrom = Math.max(from, line.from) - line.from;
         const windowTo = Math.min(to, line.to) - line.from;
-        const pictured = hasControls(line.text);
+        const pictured = hasSwapped(line.text);
         for (const { start, end, kind } of tokensIn(
           this.lines[line.number - 1] ?? [],
           windowFrom,
@@ -229,8 +229,8 @@ class Colors implements PluginValue {
             marks.push(
               markOf(
                 kind,
-                pictured && hasControls(line.text.charAt(markFrom)),
-                pictured && hasControls(line.text.charAt(markTo - 1)),
+                pictured && hasSwapped(line.text.charAt(markFrom)),
+                pictured && hasSwapped(line.text.charAt(markTo - 1)),
               ).range(line.from + markFrom, line.from + markTo),
             );
           }

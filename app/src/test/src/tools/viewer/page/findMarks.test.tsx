@@ -48,73 +48,70 @@ suite('Matches marked in a file viewed', () => {
     );
   });
 
-  test('draws the control characters of a row as their pictures, in its colors and marks and beside a tab signed, whether whitespace shows or not, as the diff does', () => {
+  test('leaves the control characters of a row in its text, in its colors and marks and beside a tab signed, whether whitespace shows or not, as the diff does, for the font of the app to draw each a column wide, and swaps the form feed alone for its picture, which Chromium draws as nothing whatever font has it', () => {
     const tab = String.fromCharCode(9);
+    const formFeed = String.fromCharCode(12);
     assert.strictEqual(
       renderToStaticMarkup(
-        <MarkedText pieces={[{ text: 'a\u0001b\u007f' }]} marks={[]} />,
+        <MarkedText
+          pieces={[{ text: `a\u0001b\u007f${formFeed}` }]}
+          marks={[]}
+        />,
       ),
-      'a␁b␡',
+      'a\u0001b\u007f␌',
     );
     assert.strictEqual(
       renderToStaticMarkup(
         <MarkedText
           pieces={[
             { text: `\u001b[0m${tab}`, kind: 'string' as const },
-            { text: 'x\u0007' },
+            { text: `x${formFeed}` },
           ]}
           marks={[{ start: 5, end: 7, current: true }]}
           blanks
         />,
       ),
-      `<span><span class="syntax-string">␛[0m<span class="blank" data-glyph="→">${tab}</span></span></span><mark class="find-match current">x␇</mark>`,
+      `<span><span class="syntax-string">\u001b[0m<span class="blank" data-glyph="→">${tab}</span></span></span><mark class="find-match current">x␌</mark>`,
     );
   });
 
-  test('marks a picture the file itself holds, boxed or not, so that copying tells it from one drawn for a control character', () => {
+  test('marks a picture of the form feed the file itself holds, boxed or not, so that copying tells it from one drawn for a form feed, and leaves the other pictures a file holds as any character', () => {
+    const formFeed = String.fromCharCode(12);
     const boxing = {
       char: 10,
       of: () => 20,
-      boxed: (cluster: string) => (cluster === '␇' ? 1 : undefined),
+      boxed: (cluster: string) => (cluster === '␌' ? 1 : undefined),
     };
     assert.strictEqual(
       renderToStaticMarkup(
-        <MarkedText pieces={[{ text: 'a␛␡b\u001b' }]} marks={[]} />,
+        <MarkedText pieces={[{ text: `a␌␛b${formFeed}` }]} marks={[]} />,
       ),
-      'a<span data-genuine="">␛␡</span>b␛',
+      'a<span data-genuine="">␌</span>␛b␌',
     );
     assert.strictEqual(
       renderToStaticMarkup(
         <MarkedText
-          pieces={[{ text: 'a␇\u0007' }]}
+          pieces={[{ text: `a␌${formFeed}` }]}
           marks={[]}
           widths={boxing}
         />,
       ),
-      'a<span class="cell" data-genuine="">␇</span><span class="cell">␇</span>',
+      'a<span class="cell" data-genuine="">␌</span>␌',
     );
   });
 
-  test('puts the picture of a control character in a box a column wide, shrunk to it, where the font draws it wider or narrower, as any character, as a font without the pictures left them to another of the system, off the columns, and leaves it in the text where the font draws it a column wide', () => {
-    const lacking = {
+  test('puts no control character in a box, whatever the font of the user draws, as the font of the app draws each a column wide, where a picture swapped in for each needed a box wherever a font drew it wider or narrower, an element for each', () => {
+    const boxing = {
       char: 10,
       of: () => 10,
-      boxed: (cluster: string) => (/[␇␛]/.test(cluster) ? 1 : undefined),
-      scaled: (cluster: string) => (cluster === '␛' ? 0.5 : undefined),
+      boxed: (cluster: string) => (/[^ -~]/.test(cluster) ? 1 : undefined),
     };
-    const having = { char: 10, of: () => 10, boxed: () => undefined };
-    const text = 'a\u0007b\u001b[0m';
+    const text = 'a\u0007b\u001b[0m\u007f';
     assert.strictEqual(
       renderToStaticMarkup(
-        <MarkedText pieces={[{ text }]} marks={[]} widths={lacking} />,
+        <MarkedText pieces={[{ text }]} marks={[]} widths={boxing} />,
       ),
-      'a<span class="cell">␇</span>b<span class="cell"><span style="font-size:0.5em">␛</span></span>[0m',
-    );
-    assert.strictEqual(
-      renderToStaticMarkup(
-        <MarkedText pieces={[{ text }]} marks={[]} widths={having} />,
-      ),
-      'a␇b␛[0m',
+      text,
     );
   });
 

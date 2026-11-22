@@ -44,6 +44,15 @@ suite('Line breaks', () => {
     assert.deepStrictEqual(breaksOf('a.b,c|d&e'), []);
   });
 
+  test('breaks after a hyphen or a question mark before a delete character, as Chromium does, whose table of ASCII ends in it, and nowhere beside the other control characters, which it leaves out of the table and never asks ICU about, so a row of the editor ended a character later than the viewer counted', () => {
+    const deleteCharacter = String.fromCharCode(0x7f);
+    const escape = String.fromCharCode(0x1b);
+    assert.deepStrictEqual(breaksOf(`a-${deleteCharacter}b`), [2]);
+    assert.deepStrictEqual(breaksOf(`a?${deleteCharacter}b`), [2]);
+    assert.deepStrictEqual(breaksOf(`a)${deleteCharacter}(b`), []);
+    assert.deepStrictEqual(breaksOf(`a-${escape}b?${escape}(c`), []);
+  });
+
   test('breaks after a hyphen before a digit only after a letter or digit, so a minus sign stays with its number', () => {
     assert.deepStrictEqual(breaksOf('x-1'), [2]);
     assert.deepStrictEqual(breaksOf('1-2'), [2]);

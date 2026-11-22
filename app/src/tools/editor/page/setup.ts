@@ -111,7 +111,7 @@ export function extensionsOf({
   onUpdate,
 }: EditorParts): Extension {
   return [
-    controlPictures(table),
+    controlPictures,
     coloring.of(colors),
     appTextLook(table),
     appSelection(editorKeymap.rowEnd, cursor),

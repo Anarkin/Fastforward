@@ -16,8 +16,12 @@ function breaksBetweenAscii(befores: string, afters: string): void {
 const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const digits = '0123456789';
 breaksBetweenAscii('!"#%&)*+,.:;=>\\]|}~', '(<[{');
-breaksBetweenAscii('-', `"#%&'(*+-<=>@[\\^_\`{|~${letters}`);
-breaksBetweenAscii('?', `#$%&(*+-<=>@[\\^_\`{|~${digits}${letters}`);
+const deleteCharacter = String.fromCharCode(0x7f);
+breaksBetweenAscii('-', `"#%&'(*+-<=>@[\\^_\`{|~${deleteCharacter}${letters}`);
+breaksBetweenAscii(
+  '?',
+  `#$%&(*+-<=>@[\\^_\`{|~${deleteCharacter}${digits}${letters}`,
+);
 
 const hyphen = 0x2d;
 const ideographicSpace = 0x3000;

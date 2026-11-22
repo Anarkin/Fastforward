@@ -7,7 +7,6 @@ import { type TextWidths } from '../../../lib/page/textWidths';
 import type { ColumnsIn } from '../../../lib/page/rowBreaks';
 import type { DotLook } from '../../../lib/page/dotLook';
 import { beyondAscii } from './rowMeasures';
-import { hasControls } from '../../../lib/page/controlPictures';
 
 export interface LineMarks {
   readonly syntax: ReadonlyMap<string, readonly SyntaxRange[]>;
@@ -74,8 +73,7 @@ export function codeProps(
       key !== undefined && key === marks.foundKey ? marks.found : undefined,
     copies: marks.copiesOf?.(text) ?? unmarked,
     whitespace: marks.whitespace,
-    widths:
-      beyondAscii.test(text) || hasControls(text) ? marks.widths : undefined,
+    widths: beyondAscii.test(text) ? marks.widths : undefined,
   };
 }
 

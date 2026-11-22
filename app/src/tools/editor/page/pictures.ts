@@ -1,9 +1,4 @@
-import {
-  Facet,
-  type Extension,
-  type Range,
-  type Text,
-} from '@codemirror/state';
+import type { Extension, Range } from '@codemirror/state';
 import {
   Decoration,
   ViewPlugin,
@@ -12,26 +7,13 @@ import {
   type EditorView,
   type ViewUpdate,
 } from '@codemirror/view';
-import { cellClass } from '../../../lib/page/cellParts';
-import type { CellTable } from '../../../lib/page/cellTable';
 import {
-  controlCharacters,
   pictureOf,
+  swappedCharacters,
 } from '../../../lib/page/controlPictures';
-import { elementWidths, type TextWidths } from '../../../lib/page/textWidths';
-
-const picturedALine = 8;
-
-const picturedAnyway = 500;
-
-const pictureClass = 'control-picture';
 
 class Picture extends WidgetType {
-  constructor(
-    private readonly shown: string,
-    private readonly cells: number | undefined,
-    private readonly scale: number | undefined,
-  ) {
+  constructor(private readonly shown: string) {
     super();
   }
 
@@ -40,27 +22,13 @@ class Picture extends WidgetType {
   }
 
   override eq(other: Picture): boolean {
-    return (
-      other.shown === this.shown &&
-      other.cells === this.cells &&
-      other.scale === this.scale
-    );
+    return other.shown === this.shown;
   }
 
   toDOM(): HTMLElement {
     const picture = document.createElement('span');
-    picture.className =
-      this.cells === undefined
-        ? pictureClass
-        : `${pictureClass} ${cellClass(this.cells)}`;
-    if (this.scale === undefined) {
-      picture.textContent = this.shown;
-    } else {
-      const glyph = document.createElement('span');
-      glyph.style.fontSize = `${this.scale}em`;
-      glyph.textContent = this.shown;
-      picture.append(glyph);
-    }
+    picture.className = 'control-picture';
+    picture.textContent = this.shown;
     return picture;
   }
 
@@ -69,108 +37,51 @@ class Picture extends WidgetType {
   }
 }
 
-const pictures = new Map<string, Decoration>();
+const pictures = new Map<number, Decoration>();
 
-function pictureFor(code: number, widths: TextWidths | undefined): Decoration {
-  const shown = pictureOf(code);
-  const cells = widths?.boxed?.(shown);
-  const scale = cells === undefined ? undefined : widths?.scaled?.(shown);
-  const key = `${code} ${cells} ${scale}`;
-  let picture = pictures.get(key);
+function pictureFor(code: number): Decoration {
+  let picture = pictures.get(code);
   if (picture === undefined) {
-    picture = Decoration.replace({ widget: new Picture(shown, cells, scale) });
-    pictures.set(key, picture);
+    picture = Decoration.replace({ widget: new Picture(pictureOf(code)) });
+    pictures.set(code, picture);
   }
   return picture;
 }
 
-const controls = controlCharacters();
+const swapped = swappedCharacters();
 
-export function controlsIn(text: string): number {
-  let count = 0;
-  for (const found of text.matchAll(controls)) {
-    count += found[0].length;
-  }
-  return count;
-}
-
-export function controlsOf(doc: Text): number {
-  let count = 0;
-  for (const part of doc.iter()) {
-    count += controlsIn(part);
-  }
-  return count;
-}
-
-export const picturedAt = (controlCount: number, lines: number): boolean =>
-  controlCount <= Math.max(picturedAnyway, lines * picturedALine);
-
-function picturesIn(
-  view: EditorView,
-  widths: TextWidths | undefined,
-): DecorationSet {
+export function picturesIn(
+  ranges: readonly { readonly from: number; readonly to: number }[],
+  textOf: (from: number, to: number) => string,
+): Range<Decoration>[] {
   const found: Range<Decoration>[] = [];
-  for (const { from, to } of view.visibleRanges) {
-    for (const each of view.state.doc
-      .sliceString(from, to)
-      .matchAll(controls)) {
+  for (const { from, to } of ranges) {
+    for (const each of textOf(from, to).matchAll(swapped)) {
       const at = from + each.index;
-      found.push(pictureFor(each[0].charCodeAt(0), widths).range(at, at + 1));
+      found.push(pictureFor(each[0].charCodeAt(0)).range(at, at + 1));
     }
   }
-  return Decoration.set(found);
+  return found;
 }
 
-const cellsCounted = Facet.define<CellTable, CellTable | undefined>({
-  combine: (tables) => tables[0],
-});
+const drawn = (view: EditorView): DecorationSet =>
+  Decoration.set(
+    picturesIn(view.visibleRanges, (from, to) =>
+      view.state.doc.sliceString(from, to),
+    ),
+  );
 
 class Pictures {
   decorations: DecorationSet;
-  private count: number;
-  private widths: TextWidths | undefined;
-  private table: CellTable | undefined;
 
   constructor(view: EditorView) {
-    this.count = controlsOf(view.state.doc);
-    this.decorations = this.shown(view);
+    this.decorations = drawn(view);
   }
 
   update(update: ViewUpdate): void {
-    if (update.docChanged) {
-      update.changes.iterChanges((from, to, _fromNew, _toNew, inserted) => {
-        this.count +=
-          controlsIn(inserted.toString()) -
-          controlsIn(update.startState.doc.sliceString(from, to));
-      });
+    if (update.docChanged || update.viewportChanged) {
+      this.decorations = drawn(update.view);
     }
-    const measured =
-      (update.geometryChanged ||
-        update.state.facet(cellsCounted) !== this.table) &&
-      this.measure(update.view);
-    if (measured || update.docChanged || update.viewportChanged) {
-      this.decorations = this.shown(update.view);
-    }
-  }
-
-  private measure(view: EditorView): boolean {
-    const table = view.state.facet(cellsCounted);
-    if (table === undefined || !view.contentDOM.isConnected) {
-      return false;
-    }
-    const widths = elementWidths(view.contentDOM, table);
-    if (table === this.table && widths?.char === this.widths?.char) {
-      return false;
-    }
-    this.table = table;
-    this.widths = widths;
-    return true;
-  }
-
-  private shown(view: EditorView): DecorationSet {
-    return picturedAt(this.count, view.state.doc.lines)
-      ? picturesIn(view, this.widths)
-      : Decoration.none;
   }
 }
 
@@ -178,10 +89,7 @@ const shownPictures = ViewPlugin.fromClass(Pictures, {
   decorations: (plugin) => plugin.decorations,
 });
 
-export const controlPictures = (table: CellTable): Extension => [
-  cellsCounted.of(table),
-  shownPictures,
-];
+export const controlPictures: Extension = shownPictures;
 
 export function picturedIn(view: EditorView, pos: number): boolean {
   let pictured = false;
