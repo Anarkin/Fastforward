@@ -19,6 +19,23 @@ interface TestShards {
     weights: ReadonlyMap<string, number>,
     count: number,
   ) => string[][];
+  readonly projectsRunAFileAtATime: readonly string[];
+  readonly ShardsByDuration: new (context: {
+    readonly config: {
+      readonly root: string;
+      readonly shard: { readonly index: number; readonly count: number };
+    };
+  }) => {
+    shard(specifications: readonly Specification[]): Promise<Specification[]>;
+  };
+}
+
+interface Specification {
+  readonly moduleId: string;
+  readonly project: {
+    readonly name: string;
+    readonly config: { readonly maxWorkers: number };
+  };
 }
 
 async function loadTestShards(): Promise<TestShards> {
@@ -30,10 +47,42 @@ async function loadTestShards(): Promise<TestShards> {
   return loaded;
 }
 
+interface TestsConfigured {
+  readonly default: {
+    readonly test: {
+      readonly projects: readonly {
+        readonly test: {
+          readonly name: string;
+          readonly fileParallelism?: boolean;
+        };
+      }[];
+    };
+  };
+}
+
+async function loadTestsConfigured(): Promise<TestsConfigured> {
+  const loaded: TestsConfigured = await import(
+    pathToFileURL(path.join(__dirname, '..', '..', '..', 'vitest.config.mts'))
+      .href
+  );
+  return loaded;
+}
+
 const loadOf = (shard: readonly string[], weights: Map<string, number>) =>
   shard.reduce((sum, file) => sum + (weights.get(file) ?? 0), 0);
 
 suite('Shards balanced by how long their files take', () => {
+  test('takes for run a file at a time the very projects the tests are set up to run so, told by their names, which every machine reads alike, where the workers a machine has for a project follow its processors', async () => {
+    const { projectsRunAFileAtATime } = await loadTestShards();
+    const configured = await loadTestsConfigured();
+    assert.deepStrictEqual(
+      configured.default.test.projects
+        .filter((project) => project.test.fileParallelism === false)
+        .map((project) => project.test.name),
+      projectsRunAFileAtATime,
+    );
+  });
+
   test('weighs a file of a project run one file at a time by its seconds and the time to load it, and one of a project run side by side by its share of the workers', async () => {
     const { weightsOf, secondsToLoadAFile } = await loadTestShards();
     assert.deepStrictEqual(
@@ -120,6 +169,46 @@ suite('Shards balanced by how long their files take', () => {
       .filter((shard) => !shard.includes('returns.electron.test.ts'))
       .map((shard) => loadOf(shard, weights));
     assert.ok(Math.max(...loads) - Math.min(...loads) <= 11, loads.join(', '));
+  });
+
+  test('splits the files alike on machines that have other workers for a project, weighing by workers every machine counts alike, one where a project runs a file at a time and three where it runs them side by side, as one macOS machine of a run of CI had other processors than the three beside it and split the files another way, so 204 test files ran on no machine, 204 on two, and the run passed', async () => {
+    const { ShardsByDuration } = await loadTestShards();
+    const root = path.join(__dirname, '..', '..', '..');
+    const specifications = (workers: number) =>
+      Array.from({ length: 60 }, (_, index) => {
+        const alone = index % 4 === 0;
+        return {
+          moduleId: path.join(
+            root,
+            'src',
+            'test',
+            alone ? `app${index}.electron.test.ts` : `unit${index}.test.ts`,
+          ),
+          project: {
+            name: alone ? 'electron' : 'unit',
+            config: { maxWorkers: alone ? 1 : workers },
+          },
+        };
+      });
+    const shardOf = async (workers: number, index: number) =>
+      (
+        await new ShardsByDuration({
+          config: { root, shard: { index, count: 4 } },
+        }).shard(specifications(workers))
+      ).map(({ moduleId }) => moduleId);
+    const split: string[] = [];
+    for (const index of [1, 2, 3, 4]) {
+      const onTwoWorkers = await shardOf(2, index);
+      assert.deepStrictEqual(await shardOf(7, index), onTwoWorkers);
+      assert.deepStrictEqual(await shardOf(1, index), onTwoWorkers);
+      split.push(...onTwoWorkers);
+    }
+    assert.deepStrictEqual(
+      split.toSorted(),
+      specifications(2)
+        .map(({ moduleId }) => moduleId)
+        .toSorted(),
+    );
   });
 
   test('shards alike whatever order the files come in, so every shard of a run takes its part of one split', async () => {

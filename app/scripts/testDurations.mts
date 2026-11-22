@@ -103,10 +103,17 @@ export async function latestDurations(
     const platform = platformsOfRunners[runner];
     const report = path.join(folder, artifact, reportFile);
     if (platform !== undefined && fs.existsSync(report)) {
-      Object.assign(
-        (byPlatform[platform] ??= {}),
-        secondsOfReport(JSON.parse(fs.readFileSync(report, 'utf8'))),
+      const merged = (byPlatform[platform] ??= {});
+      const seconds = secondsOfReport(
+        JSON.parse(fs.readFileSync(report, 'utf8')),
       );
+      const twice = Object.keys(seconds).filter((file) => file in merged);
+      if (twice.length > 0) {
+        throw new Error(
+          `The shards of ${platform} ran ${twice.length} files twice, as ${twice.toSorted()[0]}: its machines split the files in different ways, so as many files ran on none of them`,
+        );
+      }
+      Object.assign(merged, seconds);
     }
   }
   return Object.fromEntries(

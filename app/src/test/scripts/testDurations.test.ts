@@ -182,6 +182,48 @@ suite('Durations of the test files read from CI', () => {
     assert.strictEqual(mostAtOnce, Object.keys(artifacts).length);
   });
 
+  test('refuses the durations of a run in which two shards of a system ran the same file, saying how many files and one of them, as its machines then split the files in different ways and as many files ran on none of them, which the durations would lack: one macOS machine of four did, 204 test files ran on none, and the run passed', async () => {
+    const { artifactPrefix, reportFile, latestDurations } =
+      await loadTestDurations();
+    const downloads = tempFolder('test-durations');
+    folder = downloads;
+    const artifacts: Record<string, Report> = {
+      [`${artifactPrefix}Linux-0`]: reportOf([
+        '/work/app/src/test/b.test.ts',
+        2,
+      ]),
+      [`${artifactPrefix}macOS-6`]: reportOf(
+        ['/Users/runner/app/src/test/a.test.ts', 3],
+        ['/Users/runner/app/src/test/b.test.ts', 1],
+        ['/Users/runner/app/src/test/c.test.ts', 1],
+      ),
+      [`${artifactPrefix}macOS-7`]: reportOf(
+        ['/Users/runner/app/src/test/b.test.ts', 2],
+        ['/Users/runner/app/src/test/c.test.ts', 2],
+        ['/Users/runner/app/src/test/d.test.ts', 1],
+      ),
+    };
+    const gh: Gh = (...args) => {
+      if (args[1] === 'list') {
+        return Promise.resolve(JSON.stringify([{ databaseId: 42 }]));
+      }
+      if (args[0] === 'api') {
+        return Promise.resolve(Object.keys(artifacts).join('\n'));
+      }
+      const [, , , , name = '', , into = ''] = args;
+      fs.mkdirSync(into, { recursive: true });
+      fs.writeFileSync(
+        path.join(into, reportFile),
+        JSON.stringify(artifacts[name]),
+      );
+      return Promise.resolve('');
+    };
+    await assert.rejects(
+      latestDurations(gh, downloads),
+      /The shards of darwin ran 2 files twice, as src\/test\/b\.test\.ts/,
+    );
+  });
+
   test('says so when no run of CI on main has passed', async () => {
     const { latestDurations } = await loadTestDurations();
     await assert.rejects(

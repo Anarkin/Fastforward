@@ -13,6 +13,13 @@ const secondsOfAFileNeverTimed = 1;
 
 export const secondsToLoadAFile = 0.3;
 
+const workersSideBySide = 3;
+
+export const projectsRunAFileAtATime: readonly string[] = ['electron', 'perf'];
+
+const workersToWeighBy = (project: string): number =>
+  projectsRunAFileAtATime.includes(project) ? 1 : workersSideBySide;
+
 export function weightsOf(
   files: readonly TestFile[],
   seconds: Readonly<Record<string, number>>,
@@ -81,7 +88,7 @@ export class ShardsByDuration extends BaseSequencer {
     const files = specifications.map((specification) => ({
       file: fileOf(specification),
       project: specification.project.name,
-      workers: specification.project.config.maxWorkers,
+      workers: workersToWeighBy(specification.project.name),
     }));
     const shards = balancedShards(
       weightsOf(files, readDurations()[process.platform] ?? {}),
