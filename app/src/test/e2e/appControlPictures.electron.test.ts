@@ -6,7 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { waitForFocus } from './waits';
+import { untilSettled, waitForFocus } from './waits';
 
 const character = (code: number) => String.fromCharCode(code);
 const pictureOf = (code: number) =>
@@ -235,7 +235,10 @@ suite('App control pictures', () => {
     const found: Record<string, unknown> = {};
     for (const view of views) {
       await show(view);
-      const rows = await page.evaluate(drawnRows, view.rows);
+      const rows = await untilSettled(
+        () => page.evaluate(drawnRows, view.rows),
+        `the rows of the ${view.name}`,
+      );
       const bars = new Set(
         rows
           .filter((row) => row.bar !== undefined)

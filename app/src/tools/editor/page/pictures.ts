@@ -129,6 +129,7 @@ class Pictures {
   decorations: DecorationSet;
   private count: number;
   private widths: TextWidths | undefined;
+  private table: CellTable | undefined;
 
   constructor(view: EditorView) {
     this.count = controlsOf(view.state.doc);
@@ -143,7 +144,10 @@ class Pictures {
           controlsIn(update.startState.doc.sliceString(from, to));
       });
     }
-    const measured = update.geometryChanged && this.measure(update.view);
+    const measured =
+      (update.geometryChanged ||
+        update.state.facet(cellsCounted) !== this.table) &&
+      this.measure(update.view);
     if (measured || update.docChanged || update.viewportChanged) {
       this.decorations = this.shown(update.view);
     }
@@ -155,9 +159,10 @@ class Pictures {
       return false;
     }
     const widths = elementWidths(view.contentDOM, table);
-    if (widths?.char === this.widths?.char) {
+    if (table === this.table && widths?.char === this.widths?.char) {
       return false;
     }
+    this.table = table;
     this.widths = widths;
     return true;
   }
