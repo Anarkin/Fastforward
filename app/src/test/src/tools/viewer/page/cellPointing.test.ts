@@ -34,7 +34,7 @@ const shown = (
   rows,
   parts: rows.map(() => undefined),
   wrapAt: undefined,
-  colored: undefined,
+  segmentsOf: undefined,
   marksOf: () => [],
   showWhitespace: false,
   widths,

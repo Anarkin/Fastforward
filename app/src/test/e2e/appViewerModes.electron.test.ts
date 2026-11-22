@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import { cellPoint, seenMarked, seenSelected } from './cellsSeen';
 import { waitForFocus } from './waits';
 import {
   opened,
@@ -12,7 +13,7 @@ import {
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { firstViewerRow } from './viewerAppFixtures';
+import { firstViewerRow, rowTexts } from './viewerAppFixtures';
 
 const pressedMode = () =>
   page
@@ -90,19 +91,27 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         (await firstViewerRow()) ===
-        '0000000000 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F................',
+        '00000000   00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F   ................',
       'the first row in hex',
+    );
+    const pair = await cellPoint(page, 0, 11);
+    await page.mouse.dblclick(pair.x, pair.y);
+    await waitFor(
+      async () => (await seenMarked(page, 'occurrence')).length > 1,
+      'the other copies of the pair selected marked in the hex view, as in a text',
+    );
+    assert.deepStrictEqual(
+      [
+        await seenSelected(page),
+        [...new Set(await seenMarked(page, 'occurrence'))],
+      ],
+      [['00'], ['00']],
     );
 
     await page.keyboard.press('End');
     await waitFor(
       async () =>
-        (
-          (await page
-            .locator('.viewer-rows .viewer-row')
-            .last()
-            .textContent()) ?? ''
-        ).startsWith('0000FFF0F0 F1'),
+        ((await rowTexts()).at(-1) ?? '').startsWith('0000FFF0   F0 F1'),
       'the last row',
     );
 

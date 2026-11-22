@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import { dotLook } from '../../../../../lib/page/dotLook';
 import {
   dotBoxOf,
+  nudgeOf,
   rasterBudget,
 } from '../../../../../tools/viewer/page/cellView';
 
@@ -27,6 +28,20 @@ suite('View of cells', () => {
       hairline: 1,
     });
     assert.strictEqual(dotBoxOf(undefined, 2, 36).hairline, 2);
+  });
+
+  test('moves the canvas onto the whole device pixel nearest to where the text starts, across and down, and says by what part of a pixel its glyphs are to be drawn off it, none where the text starts on a pixel', () => {
+    assert.deepStrictEqual(nudgeOf(16.4, 71.2, 1.25), {
+      shift: -0.5,
+      left: 0.4,
+      top: 0,
+    });
+    assert.deepStrictEqual(nudgeOf(16, 71.6, 1.25), {
+      shift: 0,
+      left: 0,
+      top: 0.4,
+    });
+    assert.deepStrictEqual(nudgeOf(70, 88, 1), { shift: 0, left: 0, top: 0 });
   });
 
   test('gives a frame little time for new glyphs while the rows keep changing, so scrolling stays smooth, and plenty once they rested, so a text opened is drawn whole at once', () => {

@@ -1,6 +1,6 @@
 import type { TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
-import type { CodeSegment } from './codeSegments';
+import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import type { FindMark } from './markPieces';
@@ -224,11 +224,11 @@ export function partOfRow(
 }
 
 export function piecesWithin(
-  pieces: readonly CodeSegment[],
+  pieces: readonly ColoredSegment[],
   from: number,
   to: number,
-): CodeSegment[] {
-  const within: CodeSegment[] = [];
+): ColoredSegment[] {
+  const within: ColoredSegment[] = [];
   let at = 0;
   for (const piece of pieces) {
     const end = at + piece.text.length;

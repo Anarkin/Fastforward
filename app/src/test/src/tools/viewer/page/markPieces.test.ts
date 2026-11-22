@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   byteMarks,
+  hexLineMarks,
   hexMarks,
   markPieces,
   occurrenceMarks,
@@ -162,6 +163,25 @@ suite('Matches marked in a file viewed', () => {
         { start: 0, end: 5, current: false },
         { start: 21, end: 27, current: true },
         { start: 46, end: 48, current: false },
+      ],
+    );
+  });
+
+  test('marks the bytes found in a row of hex twice, on their pairs of digits and on their characters, each from where its column starts in the line', () => {
+    assert.deepStrictEqual(
+      hexLineMarks(
+        [
+          { start: 0, end: 2, current: false },
+          { start: 15, end: 16, current: true },
+        ],
+        11,
+        62,
+      ),
+      [
+        { start: 11, end: 16, current: false },
+        { start: 57, end: 59, current: true },
+        { start: 62, end: 64, current: false },
+        { start: 77, end: 78, current: true },
       ],
     );
   });

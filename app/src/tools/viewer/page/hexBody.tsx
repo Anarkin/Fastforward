@@ -4,11 +4,23 @@ import {
   useMemo,
   useState,
   useEffectEvent,
+  useSyncExternalStore,
 } from 'react';
 import { RowRequests } from './rowRequests';
 import type { ViewerFind } from './find';
-import { byteMarks, hexMarks } from './markPieces';
-import { MarkedText } from './findMarks';
+import {
+  byteMarks,
+  hexLineMarks,
+  occurrencesOf,
+  type FindMark,
+} from './markPieces';
+import { useShell } from '../../../shell/page/store';
+import { CellRows } from './cellRows';
+import { useCellFont } from './cellFont';
+import { gpuRefused, watchGpu } from './gpuDevice';
+import type { RowAhead } from './glyphWarmth';
+import type { ScreenRow } from './screenRows';
+import { strings } from '../../../lib/shared/strings';
 
 const rowsAboveMatch = 2;
 import { ScrollBody } from './scrollBody';
@@ -16,8 +28,10 @@ import { rowEnds } from './scrollThumbs';
 import {
   byteText,
   bytesToAsk,
+  hexLine,
   hexRow,
   hexRowBytes,
+  hexSegments,
   offsetDigits,
   type LoadedBytes,
 } from './hex';
@@ -30,6 +44,12 @@ type Bytes = KeptBytes;
 export type ByteLayout = 'hex' | 'text';
 
 const minTextColumns = 16;
+
+const noMarks: readonly FindMark[] = [];
+
+const noRowsAhead: readonly RowAhead[] = [];
+
+const noCopy = () => undefined;
 
 export function ByteBody({
   layout,
@@ -51,6 +71,7 @@ export function ByteBody({
     keepPlace,
   } = useViewerActions();
   const { tab, version } = viewing;
+  const refused = useSyncExternalStore(watchGpu, gpuRefused);
   const size = viewing.size ?? 0;
   const [screen, setScreen] = useState(1);
   const [columns, setColumns] = useState(minTextColumns);
@@ -168,30 +189,75 @@ export function ByteBody({
       goToMatch();
     }
   }, [jumps]);
+  const finding = find !== undefined && find.query !== '';
+  const highlightOccurrences = useShell(
+    (state) => state.textView.highlightOccurrences,
+  );
+  const [copy, setCopy] = useState<string>();
+  const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
   const marksOf = (offset: number, length: number) =>
     find === undefined
       ? []
       : byteMarks(offset, length, find.matches, find.current);
 
   const digits = offsetDigits(size);
-  const rows = Array.from(
+  const segmentsOf = useMemo(
+    () =>
+      layout === 'hex'
+        ? (row: { readonly text: string }) => hexSegments(row.text, digits)
+        : undefined,
+    [layout, digits],
+  );
+  const { font, onFont, table, widths, dotLook } = useCellFont();
+  const marks = new Map<number, readonly FindMark[]>();
+  const rows: ScreenRow[] = Array.from(
     { length: Math.max(0, Math.min(rowCount - top, screen + 2)) },
     (_, index) => {
       const offset = (top + index) * rowBytes;
       const from = bytes === undefined ? -1 : offset - bytes.start;
-      const held =
+      const data =
         bytes !== undefined &&
         from >= 0 &&
-        from + Math.min(rowBytes, size - offset) <= bytes.data.length;
+        from + Math.min(rowBytes, size - offset) <= bytes.data.length
+          ? bytes.data.slice(from, from + rowBytes)
+          : undefined;
+      const found = data === undefined ? [] : marksOf(offset, data.length);
+      const line =
+        layout === 'hex'
+          ? hexLine(hexRow(offset, data ?? [], digits), data !== undefined)
+          : undefined;
+      const text = line?.text ?? (data === undefined ? '' : byteText(data));
+      if (found.length > 0) {
+        marks.set(
+          offset,
+          line === undefined
+            ? found
+            : hexLineMarks(found, line.bytesAt, line.textAt),
+        );
+      }
+      const end = offset + rowBytes;
       return {
-        offset,
-        data: held ? bytes.data.slice(from, from + rowBytes) : undefined,
+        start: offset,
+        end,
+        row: {
+          start: offset,
+          end,
+          text,
+          ...(layout === 'text' && { cut: true as const }),
+        },
+        index: 0,
+        from: 0,
+        to: text.length,
+        indent: 0,
+        breakAt: undefined,
+        hanging: [],
       };
     },
   );
 
   return (
     <ScrollBody
+      numbered={layout === 'text'}
       matches={find?.matches}
       size={size}
       thumb={
@@ -206,49 +272,42 @@ export function ByteBody({
       lead={top}
       onScreen={setScreen}
       onColumns={setColumns}
+      onFont={onFont}
       move={move}
       jump={jump}
-      error={viewing.error}
+      error={viewing.error ?? (refused ? strings.viewer.noGpu : undefined)}
       keptLeft={keptLeft}
       settled={bytes !== undefined}
       onLeft={onLeft}
     >
-      {rows.map(({ offset, data }) => {
-        if (layout === 'text') {
-          return (
-            <div className="viewer-row" key={offset}>
-              {data && (
-                <MarkedText
-                  pieces={[{ text: byteText(data) }]}
-                  marks={marksOf(offset, data.length)}
-                />
-              )}
-            </div>
-          );
-        }
-        const row = hexRow(offset, data ?? [], digits);
-        return (
-          <div className="viewer-row hex-row" key={offset}>
-            <span className="hex-offset">{row.offset}</span>
-            {data && (
-              <span className="hex-bytes">
-                <MarkedText
-                  pieces={[{ text: row.hex }]}
-                  marks={hexMarks(marksOf(offset, data.length))}
-                />
-              </span>
-            )}
-            {data && (
-              <span className="hex-text">
-                <MarkedText
-                  pieces={[{ text: row.text }]}
-                  marks={marksOf(offset, data.length)}
-                />
-              </span>
-            )}
-          </div>
-        );
-      })}
+      {table !== undefined && (
+        <CellRows
+          rows={rows}
+          parts={rows.map(() => undefined)}
+          wrapAt={undefined}
+          colored={undefined}
+          segmentsOf={segmentsOf}
+          marksOf={(row) =>
+            finding ? (marks.get(row.start) ?? noMarks) : copiesIn(row.row.text)
+          }
+          showWhitespace={false}
+          widths={widths}
+          font={font}
+          dotLook={dotLook}
+          ahead={noRowsAhead}
+          held={rows}
+          text={undefined}
+          onSelected={highlightOccurrences && !finding ? setCopy : noCopy}
+          move={move}
+          first={0}
+          columns={Math.max(
+            1,
+            layout === 'hex'
+              ? hexLine(hexRow(0, [], digits)).textAt + hexRowBytes
+              : rowBytes,
+          )}
+        />
+      )}
     </ScrollBody>
   );
 }

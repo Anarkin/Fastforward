@@ -1,4 +1,3 @@
-import { fontDotLook } from '../../../lib/page/dotLook';
 import {
   useCallback,
   useMemo,
@@ -13,8 +12,9 @@ import type { ViewerFind } from './find';
 import { occurrencesOf, textMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
 import { columnAt } from './columns';
-import { cellWidthsOf, textWidths } from '../../../lib/page/textWidths';
-import { plainCells, useCellTable } from '../../../lib/page/cellTable';
+import { cellWidthsOf } from '../../../lib/page/textWidths';
+import { plainCells } from '../../../lib/page/cellTable';
+import { useCellFont } from './cellFont';
 import { useViewer, useViewerActions } from './store';
 import type { ViewerTabView } from './tabParts';
 import { textEnds, textThumb } from './textScroll';
@@ -24,6 +24,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { ScreenRow } from './screenRows';
 import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
+import { segmentsFrom } from './textColors';
 import { useColors, useWholeText } from './wholeText';
 
 const cellMargin = 64;
@@ -68,29 +69,8 @@ export function TextBody({
   const [measured, setMeasured] = useState<number>();
   const screen = measured ?? 1;
   const [columns, setColumns] = useState<number>();
-  const [font, setFont] = useState({ char: 0, family: '', spacing: 0 });
-  const onFont = useCallback(
-    (char: number, family: string, spacing: number) =>
-      setFont((last) =>
-        last.char === char && last.family === family && last.spacing === spacing
-          ? last
-          : { char, family, spacing },
-      ),
-    [],
-  );
-  const table = useCellTable();
-  const widths = useMemo(
-    () =>
-      font.char > 0 && table !== undefined
-        ? textWidths(font.char, font.family, font.spacing, table)
-        : undefined,
-    [font, table],
-  );
+  const { font, onFont, table, widths, dotLook } = useCellFont();
   const counting = widths ?? cellWidthsOf(table ?? plainCells);
-  const dotLook = useMemo(
-    () => fontDotLook(font.family, font.char, 1 / devicePixelRatio),
-    [font],
-  );
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const highlightOccurrences = useShell(
@@ -122,6 +102,7 @@ export function TextBody({
   const whole = wrapAt === undefined;
   const text = useWholeText(viewing, language !== undefined || whole, encoding);
   const colored = useColors(tab, language, encoding, text);
+  const segmentsOf = useMemo(() => colored && segmentsFrom(colored), [colored]);
   const shown = loaded.rows.slice(loaded.top, loaded.top + screen + 2);
   const { width, parts, partOf } = useSideways({
     whole,
@@ -235,6 +216,7 @@ export function TextBody({
           parts={parts}
           wrapAt={wrapAt}
           colored={colored}
+          segmentsOf={segmentsOf}
           marksOf={marksOf}
           showWhitespace={showWhitespace}
           widths={widths}

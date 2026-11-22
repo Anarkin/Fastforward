@@ -1,3 +1,4 @@
+import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import { maxBytesAsked } from '../shared/protocol';
 
 export const hexRowBytes = 16;
@@ -25,6 +26,40 @@ export interface HexRow {
   readonly offset: string;
   readonly hex: string;
   readonly text: string;
+}
+
+export const offsetKind = 'offset';
+
+const columnGap = '   ';
+
+export interface HexLine {
+  readonly text: string;
+  readonly bytesAt: number;
+  readonly textAt: number;
+  readonly segments: readonly ColoredSegment[];
+}
+
+export function hexSegments(text: string, digits: number): ColoredSegment[] {
+  return [
+    { text: text.slice(0, digits), kind: offsetKind },
+    ...(text.length > digits ? [{ text: text.slice(digits) }] : []),
+  ];
+}
+
+export function hexLine(
+  { offset, hex, text: characters }: HexRow,
+  read = true,
+): HexLine {
+  const text = read
+    ? `${offset}${columnGap}${hex}${columnGap}${characters}`
+    : offset;
+  const bytesAt = offset.length + columnGap.length;
+  return {
+    text,
+    bytesAt,
+    textAt: bytesAt + hex.length + columnGap.length,
+    segments: hexSegments(text, offset.length),
+  };
 }
 
 export interface LoadedBytes {

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { viewerTexts } from './cellsSeen';
 import {
   opened,
   page,
@@ -226,7 +227,10 @@ suite('App file tabs', () => {
     written('short-b.txt', 'short b\n');
     await backAndView('long-a.txt');
     await page.keyboard.press('1');
-    await page.locator('.viewer .hex-row').first().waitFor();
+    await waitFor(
+      async () => /^[0-9A-F]{8} /.test((await viewerTexts(page))[0] ?? ''),
+      'the file in hex',
+    );
     await page.keyboard.press('End');
     await closeShownTab();
     await backAndView('short-b.txt');

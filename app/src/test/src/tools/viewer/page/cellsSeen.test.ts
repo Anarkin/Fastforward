@@ -16,6 +16,7 @@ import { paletteOf } from '../../../../../tools/viewer/page/textCells';
 import type { ScreenRow } from '../../../../../tools/viewer/page/screenRows';
 import {
   coloredText,
+  segmentsFrom,
   withPart,
 } from '../../../../../tools/viewer/page/textColors';
 import { fakePainter, look, tilesWith, widths } from './cellFixtures';
@@ -44,7 +45,7 @@ function shown(
     rows,
     parts: rows.map(() => undefined),
     wrapAt: undefined,
-    colored: undefined,
+    segmentsOf: undefined,
     marksOf: () => [],
     showWhitespace: false,
     widths,
@@ -78,7 +79,7 @@ suite('Rows the cells show, told when asked', () => {
             { ...line, from: 6, index: 1 },
             rowOf('last', 10),
           ],
-          { colored },
+          { segmentsOf: segmentsFrom(colored) },
         ),
         place,
       ),
@@ -172,7 +173,11 @@ suite('Rows the cells show, told when asked', () => {
     );
     const rows = [rowOf('ab|', 0), rowOf('中|a', 4)];
 
-    paintRows(cells, shown(rows, { colored, first: 1 }), Infinity);
+    paintRows(
+      cells,
+      shown(rows, { segmentsOf: segmentsFrom(colored), first: 1 }),
+      Infinity,
+    );
 
     assert.deepStrictEqual(seenGlyphs(cells.frame, tiles, '|', 1), [
       { row: 0, column: 2 },

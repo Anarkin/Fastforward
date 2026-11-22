@@ -15,7 +15,7 @@ import {
   type TextDrawing,
   type TextPalette,
 } from './textCells';
-import { rowSegments, type ColoredText } from './textColors';
+import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import {
   breakSelected,
   selectedIn,
@@ -29,9 +29,13 @@ export interface RowPart {
   readonly column: number;
 }
 
+export type SegmentsOf = (
+  row: TextRow,
+) => readonly ColoredSegment[] | undefined;
+
 export interface RowsLook {
   readonly wrapAt: number | undefined;
-  readonly colored: ColoredText | undefined;
+  readonly segmentsOf: SegmentsOf | undefined;
   readonly marksOf: (row: ScreenRow) => readonly FindMark[];
   readonly showWhitespace: boolean;
   readonly widths: TextWidths;
@@ -49,7 +53,7 @@ interface KeptRow {
   readonly from: number;
   readonly to: number;
   readonly column: number;
-  readonly colored: ColoredText | undefined;
+  readonly segmentsOf: SegmentsOf | undefined;
   readonly marks: readonly FindMark[];
   readonly selected: CharRange | undefined;
   readonly breakSelected: boolean;
@@ -123,7 +127,7 @@ function selectedPieces(
 }
 
 function piecesOf(
-  colored: ColoredText | undefined,
+  segmentsOf: SegmentsOf | undefined,
   row: ScreenRow,
   marks: readonly FindMark[],
   selected: CharRange | undefined,
@@ -131,7 +135,7 @@ function piecesOf(
   to: number,
 ): readonly DrawnPiece[] {
   const segments = piecesWithin(
-    (colored && rowSegments(colored, row.row)) ?? [{ text: row.row.text }],
+    segmentsOf?.(row.row) ?? [{ text: row.row.text }],
     from,
     to,
   );
@@ -233,14 +237,14 @@ function keptOf(
   part: RowPart | undefined,
   marks: readonly FindMark[],
 ): KeptRow | undefined {
-  const { colored, showWhitespace, wrapAt } = look;
+  const { segmentsOf, showWhitespace, wrapAt } = look;
   const before = kept.get(rowKey(row));
   return before !== undefined &&
     before.row.text === row.row.text &&
     before.from === (part?.from ?? row.from) &&
     before.to === (part?.to ?? row.to) &&
     before.column === (part?.column ?? 0) &&
-    before.colored === colored &&
+    before.segmentsOf === segmentsOf &&
     sameMarks(before.marks, marks) &&
     sameRange(before.selected, selectedOf(look, row, part)) &&
     before.breakSelected === breakSelectedOf(look, row, part) &&
@@ -272,7 +276,7 @@ function drawnRow(
   drawRow(
     drawing,
     row,
-    piecesOf(look.colored, row, marks, selected, from, to),
+    piecesOf(look.segmentsOf, row, marks, selected, from, to),
     column,
     y,
     withBreak,
@@ -285,7 +289,7 @@ function drawnRow(
     from,
     to,
     column,
-    colored: look.colored,
+    segmentsOf: look.segmentsOf,
     marks,
     selected,
     breakSelected: withBreak,

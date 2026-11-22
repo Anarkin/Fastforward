@@ -126,6 +126,11 @@ function markedRowSegments(
     : segments;
 }
 
+export const segmentsFrom =
+  (colored: ColoredText) =>
+  (row: TextRow): CodeSegment[] | undefined =>
+    rowSegments(colored, row);
+
 export function rowSegments(
   colored: ColoredText,
   row: TextRow,

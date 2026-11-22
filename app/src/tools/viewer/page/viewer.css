@@ -171,11 +171,6 @@
   color: var(--color-foreground-muted);
 }
 
-.hex-bytes,
-.hex-text {
-  margin-left: calc(var(--text-advance) * 3);
-}
-
 .viewer-preview,
 .viewer-pdf {
   margin: 0 var(--line-right, 0px) var(--line-below, 0px) 0;

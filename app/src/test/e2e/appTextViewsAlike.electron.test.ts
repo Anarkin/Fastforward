@@ -8,7 +8,7 @@ import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { seenGlyphs, seenRows } from './cellsSeen';
+import { seenGlyphs, seenRows, viewerTexts } from './cellsSeen';
 import { windowOfPage } from './cursorWindow';
 import { barOf, barParts } from './scrollbarsShown';
 import { untilSettled, waitForFocus } from './waits';
@@ -614,6 +614,55 @@ suite('App text views alike', () => {
     assert.deepStrictEqual(
       found,
       narrower.map(() => alike(hangingDotted)),
+    );
+  });
+
+  test('puts the canvas of the cells on the whole device pixel nearest to where the text starts, in a file viewed as text, which starts between two, and in its hex view, which starts on one, so neither is drawn a device pixel off once its layout settles', async () => {
+    await show('viewer');
+    const starts = () =>
+      page
+        .locator('.viewer-rows .cell-rows')
+        .first()
+        .evaluate((host) => {
+          const canvas = host.querySelector('canvas');
+          return canvas === null
+            ? undefined
+            : {
+                text: host.getBoundingClientRect().left * devicePixelRatio,
+                canvas: canvas.getBoundingClientRect().left * devicePixelRatio,
+              };
+        });
+    const placed = async (what: string) => {
+      const found = await untilSettled(starts, what, {
+        accepted: (now) => now !== undefined,
+      });
+      assert.ok(found, what);
+      return {
+        onPixel: Math.abs(found.canvas - Math.round(found.canvas)) < 0.01,
+        nearest: Math.abs(found.canvas - found.text) <= 0.51,
+        between: Math.abs(found.text - Math.round(found.text)) > 0.01,
+      };
+    };
+
+    const asText = await placed('the canvas of the text');
+    await page.keyboard.press('1');
+    await waitFor(
+      async () => /^[0-9A-F]{8} /.test((await viewerTexts(page))[0] ?? ''),
+      'the file in hex',
+    );
+    const asHex = await placed('the canvas of the hex view');
+    await page.keyboard.press('2');
+    await waitFor(
+      async () => (await viewerTexts(page)).some((row) => row.includes('|')),
+      'the file as text again',
+    );
+
+    assert.deepStrictEqual(
+      { asText, asHex },
+      {
+        asText: { onPixel: true, nearest: true, between: true },
+        asHex: { onPixel: true, nearest: true, between: false },
+      },
     );
   });
 });

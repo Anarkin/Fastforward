@@ -1,5 +1,6 @@
 import { over, parsedColor } from './cellColors';
 import type { CellMetrics } from './glyphTiles';
+import { offsetKind } from './hex';
 import type { TextLook } from './textCells';
 
 const kinds = [
@@ -36,6 +37,7 @@ export function textLookOf(host: Element): TextLook {
   );
   const muted = made('span', '');
   muted.style.color = 'var(--muted-foreground)';
+  colored.push([offsetKind, made('span', 'hex-offset')]);
   const match = made('mark', 'find-match');
   const current = made('mark', 'find-match current');
   const occurrence = made('mark', 'occurrence-match');

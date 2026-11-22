@@ -35,7 +35,7 @@ function warming(size = 4096, now: () => number = () => 0) {
 
 const rowsLook: RowsLook = {
   wrapAt: undefined,
-  colored: undefined,
+  segmentsOf: undefined,
   marksOf: () => [],
   showWhitespace: false,
   widths,
@@ -161,7 +161,7 @@ suite('Glyphs drawn before they are needed', () => {
     const { painter, painting } = warming();
 
     const steps = finished(
-      linesJob(painting, rowsLook, 'plain\n中文 and 中\nmore\n한'),
+      linesJob(painting, rowsLook, 'plain\n中文 and 中\nmore\n한', undefined),
     );
 
     assert.deepStrictEqual(
@@ -185,7 +185,7 @@ suite('Glyphs drawn before they are needed', () => {
       packedPart([[{ start: 4, end: 7, kind: 'string' }], []], 0, true),
     );
 
-    finished(linesJob(painting, { ...rowsLook, colored }, text));
+    finished(linesJob(painting, rowsLook, text, colored));
 
     assert.deepStrictEqual(
       painter.painted

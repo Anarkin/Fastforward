@@ -654,11 +654,7 @@ suite('Architecture', () => {
     const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
     assert.deepStrictEqual(
       code.filter((file) => /<mark\b/.test(read(file))),
-      [
-        'lib/page/highlight.tsx',
-        'components/diff/page/codeMarks.tsx',
-        'tools/viewer/page/findMarks.tsx',
-      ],
+      ['lib/page/highlight.tsx', 'components/diff/page/codeMarks.tsx'],
     );
     assert.deepStrictEqual(
       code.filter((file) => /\bfind-match\b/.test(read(file))),
@@ -667,7 +663,6 @@ suite('Architecture', () => {
         'components/diff/page/found.ts',
         'tools/editor/page/find.ts',
         'tools/viewer/page/cellLook.ts',
-        'tools/viewer/page/findMarks.tsx',
       ],
     );
     assert.deepStrictEqual(

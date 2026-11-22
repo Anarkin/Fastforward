@@ -143,12 +143,12 @@ suite('What a viewer tab keeps', () => {
       await tool.answerRows(longFile);
       await tool.press('1');
       await tool.answerBytes(bytes);
-      const hexRows = () =>
-        [...tool.document.querySelectorAll('.hex-row')].map(
-          (row) => row.textContent,
-        );
+      const hexRows = () => rowsShown(tool);
       const left = hexRows();
-      assert.ok(left.length > 1 && left.every((row) => row !== ''));
+      assert.ok(
+        left.length > 1 && left.every((row) => /^[0-9A-F]{8} {3}\S/.test(row)),
+        JSON.stringify(left.slice(0, 2)),
+      );
 
       await awayAndBack(tool);
       assert.deepStrictEqual(hexRows(), left);

@@ -1,14 +1,18 @@
 import { Fragment } from 'react';
-import { cellClass, cellParts } from './cellParts';
-import { hasPictures, pictureRuns, pictured } from './controlPictures';
-import type { TextWidths } from './textWidths';
+import { cellClass, cellParts } from '../../../lib/page/cellParts';
+import {
+  hasPictures,
+  pictureRuns,
+  pictured,
+} from '../../../lib/page/controlPictures';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import {
   blank,
   blankSignOf,
   signedBlank,
   signedBlanksAndText,
   spacesBlanksAndText,
-} from './blankSigns';
+} from '../../../lib/page/blankSigns';
 
 const genuinePicture = { 'data-genuine': '' };
 

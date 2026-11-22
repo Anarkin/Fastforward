@@ -9,7 +9,7 @@ import { notDrawn, type GlyphStyle, type GlyphTiles } from './glyphTiles';
 import type { IdleJob } from './idleWork';
 import type { ScreenRow } from './screenRows';
 import { drawPieces } from './textCells';
-import { rowSegments } from './textColors';
+import { rowSegments, type ColoredText } from './textColors';
 
 const firstPrintable = 33;
 
@@ -73,12 +73,12 @@ export function rowsJob(
 
 export function linesJob(
   painting: CellPainting,
-  look: RowsLook,
+  look: Pick<RowsLook, 'widths' | 'showWhitespace'>,
   text: string,
+  colored: ColoredText | undefined,
 ): IdleJob {
   const { tiles, scratch } = painting;
   const { generation } = tiles;
-  const { colored } = look;
   let line = 0;
   let from = 0;
   const next = (): string | undefined => {

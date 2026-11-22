@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   byteText,
   bytesToAsk,
+  hexLine,
   hexRow,
   offsetDigits,
 } from '../../../../../tools/viewer/page/hex';
@@ -17,6 +18,31 @@ suite('Hex rows of a file viewed', () => {
       offset: '00000020',
       hex: '48 00 6C 6C 6F 2C 20 68  65 78 20 76 69 65 77 FF',
       text: 'H.llo, hex view.',
+    });
+  });
+
+  test('writes a row of hex as one line of cells, three columns between its offset, its bytes and its characters, the offset a piece of its own for its color, and says where its bytes and its characters start', () => {
+    const bytes = [...Buffer.from('Hello, hex view!')];
+
+    assert.deepStrictEqual(hexLine(hexRow(0x20, bytes, 8)), {
+      text: '00000020   48 65 6C 6C 6F 2C 20 68  65 78 20 76 69 65 77 21   Hello, hex view!',
+      bytesAt: 11,
+      textAt: 62,
+      segments: [
+        { text: '00000020', kind: 'offset' },
+        {
+          text: '   48 65 6C 6C 6F 2C 20 68  65 78 20 76 69 65 77 21   Hello, hex view!',
+        },
+      ],
+    });
+  });
+
+  test('writes a row of hex whose bytes are not read yet as its offset alone', () => {
+    assert.deepStrictEqual(hexLine(hexRow(0x20, [], 8), false), {
+      text: '00000020',
+      bytesAt: 11,
+      textAt: 62,
+      segments: [{ text: '00000020', kind: 'offset' }],
     });
   });
 

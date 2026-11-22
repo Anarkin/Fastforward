@@ -1,6 +1,6 @@
 import { memo, Fragment } from 'react';
 import { type FindRange } from './find';
-import { DrawnText } from '../../../lib/page/blanks';
+import { DrawnText } from './blanks';
 import {
   breakOffsets,
   breaksMarked,

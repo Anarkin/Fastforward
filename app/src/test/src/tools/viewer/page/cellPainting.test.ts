@@ -11,6 +11,7 @@ import type { ScreenRow } from '../../../../../tools/viewer/page/screenRows';
 import { paletteOf } from '../../../../../tools/viewer/page/textCells';
 import {
   coloredText,
+  segmentsFrom,
   withPart,
 } from '../../../../../tools/viewer/page/textColors';
 import { packedPart } from '../../../../../components/syntax/page/parts';
@@ -51,7 +52,7 @@ function shown(
     rows,
     parts: rows.map(() => undefined),
     wrapAt: undefined,
-    colored: undefined,
+    segmentsOf: undefined,
     marksOf: () => [],
     showWhitespace: false,
     widths,
@@ -132,18 +133,22 @@ suite('Rows painted as cells', () => {
     );
     paintRows(cells, shown([first]), Infinity);
 
-    paintRows(cells, shown([first], { colored }), Infinity);
+    const segmentsOf = segmentsFrom(colored);
+    paintRows(cells, shown([first], { segmentsOf }), Infinity);
     paintRows(
       cells,
       shown([first], {
-        colored,
+        segmentsOf,
         marksOf: () => [{ start: 0, end: 1, current: false }],
       }),
       Infinity,
     );
     paintRows(
       cells,
-      shown([rowOf('a b', 0)], { colored: undefined, showWhitespace: true }),
+      shown([rowOf('a b', 0)], {
+        segmentsOf: undefined,
+        showWhitespace: true,
+      }),
       Infinity,
     );
 

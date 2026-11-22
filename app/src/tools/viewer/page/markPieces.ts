@@ -190,6 +190,20 @@ export function hexMarks(marks: readonly FindMark[]): FindMark[] {
   }));
 }
 
+export function hexLineMarks(
+  marks: readonly FindMark[],
+  bytesAt: number,
+  textAt: number,
+): FindMark[] {
+  const from = (column: number, shifted: readonly FindMark[]) =>
+    shifted.map((mark) => ({
+      ...mark,
+      start: mark.start + column,
+      end: mark.end + column,
+    }));
+  return [...from(bytesAt, hexMarks(marks)), ...from(textAt, marks)];
+}
+
 export function markPieces(
   pieces: readonly ColoredSegment[],
   found: readonly FindMark[],

@@ -85,6 +85,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the lines of the text, counted as the go-to-line prompt opens',
   'tools/editor/page/view.ts mounts':
     'a trigger: counts the views of the text mounted, only to apply the find to each',
+  'tools/viewer/page/hexBody.tsx copy':
+    'a moment: the text selected whose copies are marked, told by the cells once the selection rests; the selection goes with a tab change, and the copies with it',
   'tools/viewer/page/hexBody.tsx columns':
     'a measure: the bytes that fit in a row, measured anew from the body once mounted',
   'tools/viewer/page/hexBody.tsx screen':
@@ -117,14 +119,14 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: the row the rows are counted from while they glide, set anew once they rest',
   'tools/viewer/page/scrollBody.tsx screen':
     'a measure: the rows that fit, measured anew by a resize observer once mounted',
+  'tools/viewer/page/cellFont.ts font':
+    'a measure: the font of the text, measured anew from a probe row once mounted',
   'tools/viewer/page/scrollBody.tsx track':
     'a measure: the height of the scrollbar track, measured anew once mounted',
   'tools/viewer/page/textBody.tsx copy':
-    'a moment: the text selected whose copies are marked, read from the selection of the page once it rests; the selection goes with a tab change, and the copies with it',
+    'a moment: the text selected whose copies are marked, told by the cells once the selection rests; the selection goes with a tab change, and the copies with it',
   'tools/viewer/page/textBody.tsx columns':
     'a measure: the columns that fit, measured anew from the body once mounted',
-  'tools/viewer/page/textBody.tsx font':
-    'a measure: the font of the text, measured anew from a probe row once mounted',
   'tools/viewer/page/textBody.tsx measured':
     'a measure: the rows that fit, measured anew from the body once mounted',
   'tools/viewer/page/textRows.ts estimate':

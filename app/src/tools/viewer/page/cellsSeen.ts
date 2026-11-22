@@ -3,7 +3,6 @@ import { rowKey, type CellPainting, type ShownRows } from './cellPainting';
 import type { GlyphTiles } from './glyphTiles';
 import type { FindMark } from './markPieces';
 import { marksWithin, piecesWithin } from './screenRows';
-import { rowSegments } from './textColors';
 import { selectedIn, type CharRange } from './textSelection';
 
 interface SeenMark {
@@ -58,7 +57,7 @@ const nameOf = ({ current, occurrence }: FindMark): SeenMark['name'] =>
   occurrence === true ? 'occurrence' : current ? 'current' : 'match';
 
 export function seenRows(
-  { rows, parts, colored, marksOf, selection, first }: ShownRows,
+  { rows, parts, segmentsOf, marksOf, selection, first }: ShownRows,
   place: SeenPlace,
 ): SeenRow[] {
   return rows.map((row, index) => {
@@ -76,7 +75,7 @@ export function seenRows(
       height: place.rowHeight,
       advance: place.advance,
       pieces: piecesWithin(
-        (colored && rowSegments(colored, row.row)) ?? [{ text: row.row.text }],
+        segmentsOf?.(row.row) ?? [{ text: row.row.text }],
         from,
         to,
       ).map(({ text, kind }) => ({ text, kind: kind ?? plain })),

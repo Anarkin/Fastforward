@@ -51,6 +51,7 @@ suite('App commander', () => {
       async () => (await rowTexts()).at(-1) === 'ligne 299 é',
       'the end of the text',
     );
+    const textFrom = (await seenRows(page))[0]?.left;
     await page.keyboard.press('e');
     const encodingItems = page.locator('.viewer-encoding .menu-item');
     assert.strictEqual(
@@ -63,6 +64,14 @@ suite('App commander', () => {
     await waitFor(
       async () => (await rowTexts()).join('').includes('2.9.9. .é.'),
       'the end of the file as bytes',
+    );
+    assert.deepStrictEqual(
+      [
+        (await seenRows(page))[0]?.left,
+        await page.locator('.viewer-gutter.numbered').count(),
+      ],
+      [textFrom, 1],
+      'the bytes start after the column of line numbers, as the text did',
     );
     await page.keyboard.press('e');
     await page.locator('.viewer-encoding .search-box-input').waitFor();

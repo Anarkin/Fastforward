@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import type { DotLook } from '../../../lib/page/dotLook';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { CellFont } from './cellLook';
-import type { RowPart } from './cellPainting';
+import type { RowPart, SegmentsOf } from './cellPainting';
 import { seenRows } from './cellsSeen';
 import { CellView, viewKey } from './cellView';
 import type { RowAhead } from './glyphWarmth';
@@ -16,6 +16,7 @@ interface CellRowsProps {
   readonly parts: readonly (RowPart | undefined)[];
   readonly wrapAt: number | undefined;
   readonly colored: ColoredText | undefined;
+  readonly segmentsOf: SegmentsOf | undefined;
   readonly marksOf: (row: ScreenRow) => readonly FindMark[];
   readonly showWhitespace: boolean;
   readonly widths: TextWidths | undefined;
@@ -35,6 +36,7 @@ export function CellRows({
   parts,
   wrapAt,
   colored,
+  segmentsOf,
   marksOf,
   showWhitespace,
   widths,
@@ -68,7 +70,7 @@ export function CellRows({
           rows,
           parts,
           wrapAt,
-          colored,
+          segmentsOf,
           marksOf,
           showWhitespace,
           widths,
@@ -109,7 +111,7 @@ export function CellRows({
         rows,
         parts,
         wrapAt,
-        colored,
+        segmentsOf,
         marksOf,
         showWhitespace,
         widths,
@@ -119,6 +121,7 @@ export function CellRows({
       ahead,
       held,
       text,
+      colored,
       events: { chosen: onSelected, move },
     });
   });

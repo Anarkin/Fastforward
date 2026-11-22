@@ -67,6 +67,7 @@ export interface CellViewShown {
   readonly ahead: readonly RowAhead[];
   readonly held: readonly ScreenRow[];
   readonly text: string | undefined;
+  readonly colored: ColoredText | undefined;
   readonly events: CellViewEvents;
 }
 
@@ -93,6 +94,22 @@ export function dotBoxOf(
   };
 }
 
+export interface Nudge {
+  readonly shift: number;
+  readonly left: number;
+  readonly top: number;
+}
+
+export function nudgeOf(left: number, top: number, ratio: number): Nudge {
+  const across = inLayoutUnits(left * ratio);
+  const down = inLayoutUnits(top * ratio);
+  return {
+    shift: across - Math.round(across),
+    left: (Math.round(across) - across) / ratio,
+    top: (Math.round(down) - down) / ratio,
+  };
+}
+
 export function rasterBudget(
   sinceRowsChanged: number,
   rowsChanged: boolean,
@@ -107,8 +124,10 @@ export function rasterBudget(
 export class CellView {
   readonly key: string;
   private readonly surface: CellSurface;
-  private readonly tiles: GlyphTiles;
-  private readonly painting: CellPainting;
+  private readonly ratio = devicePixelRatio;
+  private nudge: Nudge | undefined;
+  private tiles: GlyphTiles;
+  private painting: CellPainting;
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
   private readonly idle: IdleWork;
   private readonly selecting: CellSelecting;
@@ -128,33 +147,15 @@ export class CellView {
     generation: number,
     private readonly host: HTMLElement,
     private readonly rows: Element,
-    looked: CellViewFont,
+    private readonly looked: CellViewFont,
   ) {
-    const ratio = devicePixelRatio;
-    this.key = viewKey(looked, ratio, generation);
-    const area = rows.parentElement?.getBoundingClientRect();
-    const left = inLayoutUnits((area?.left ?? 0) * ratio);
-    const top = inLayoutUnits((area?.top ?? 0) * ratio);
-    const shift = left - Math.round(left);
-    const subpixel = ratio < subpixelBelow;
+    this.key = viewKey(looked, this.ratio, generation);
     this.surface = surfacesOf(device).taken();
     const { canvas } = this.surface;
-    canvas.style.left = `${-shift / ratio}px`;
-    canvas.style.top = `${(Math.round(top) - top) / ratio}px`;
     host.append(canvas);
-    const look = textLookOf(rows);
-    this.tiles = this.surface.measured(
-      `${this.key}|${shift}|${subpixel}`,
-      cellMetricsOf(rows, looked.font, ratio, shift),
-      subpixel,
-    );
-    this.surface.grounded(look.ground);
-    this.painting = cellPainting(
-      this.tiles,
-      this.surface.frame,
-      paletteOf(look),
-      dotBoxOf(looked.dotLook, ratio, this.tiles.metrics.rowHeight),
-    );
+    const { tiles, painting } = this.placed(this.nudged());
+    this.tiles = tiles;
+    this.painting = painting;
     this.scheme.addEventListener('change', this.relook);
     this.idle = new IdleWork(
       pageIdling(),
@@ -182,6 +183,63 @@ export class CellView {
     this.warm();
   }
 
+  private nudged(): Nudge {
+    const area = this.rows.parentElement?.getBoundingClientRect();
+    return nudgeOf(area?.left ?? 0, area?.top ?? 0, this.ratio);
+  }
+
+  private placed(nudge: Nudge): {
+    readonly tiles: GlyphTiles;
+    readonly painting: CellPainting;
+  } {
+    const { surface, rows, looked, ratio } = this;
+    this.nudge = nudge;
+    surface.canvas.style.left = `${nudge.left}px`;
+    surface.canvas.style.top = `${nudge.top}px`;
+    const subpixel = ratio < subpixelBelow;
+    const look = textLookOf(rows);
+    const tiles = surface.measured(
+      `${this.key}|${nudge.shift}|${subpixel}`,
+      cellMetricsOf(rows, looked.font, ratio, nudge.shift),
+      subpixel,
+    );
+    surface.grounded(look.ground);
+    return {
+      tiles,
+      painting: cellPainting(
+        tiles,
+        surface.frame,
+        paletteOf(look),
+        dotBoxOf(looked.dotLook, ratio, tiles.metrics.rowHeight),
+      ),
+    };
+  }
+
+  private replaced(): void {
+    const nudge = this.nudged();
+    const before = this.nudge;
+    if (
+      before !== undefined &&
+      before.shift === nudge.shift &&
+      before.left === nudge.left &&
+      before.top === nudge.top
+    ) {
+      return;
+    }
+    if (before?.shift === nudge.shift) {
+      this.nudge = nudge;
+      this.surface.canvas.style.left = `${nudge.left}px`;
+      this.surface.canvas.style.top = `${nudge.top}px`;
+      return;
+    }
+    const { tiles, painting } = this.placed(nudge);
+    this.tiles = tiles;
+    this.painting = painting;
+    this.idle.clear();
+    this.read = { text: undefined, colored: undefined };
+    this.warm();
+  }
+
   private warm(): void {
     this.idle.put(
       'letters',
@@ -196,7 +254,16 @@ export class CellView {
     return this.selecting.selection;
   }
 
-  show({ shown, columns, ahead, held, text, events }: CellViewShown): void {
+  show({
+    shown,
+    columns,
+    ahead,
+    held,
+    text,
+    colored: colors,
+    events,
+  }: CellViewShown): void {
+    this.replaced();
     this.shown = shown;
     this.columns = columns;
     this.held = held;
@@ -211,17 +278,13 @@ export class CellView {
         ahead,
       ),
     );
-    const colored =
-      shown.colored?.parts.at(-1)?.done === true ? shown.colored : undefined;
+    const colored = colors?.parts.at(-1)?.done === true ? colors : undefined;
     if (
       text !== undefined &&
       (text !== this.read.text || colored !== this.read.colored)
     ) {
       this.read = { text, colored };
-      this.idle.put(
-        'file',
-        linesJob(this.painting, { ...shown, colored }, text),
-      );
+      this.idle.put('file', linesJob(this.painting, shown, text, colored));
     }
   }
 
