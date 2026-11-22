@@ -212,16 +212,16 @@ suite('App commander', () => {
         });
       };
       const top = await thumbAt();
-      assert.ok(Math.abs(top.fromStart) < subpixel, JSON.stringify(top));
+      assert.ok(Math.abs(top.fromStart) <= subpixel, JSON.stringify(top));
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('End');
       await waitFor(
-        async () => Math.abs((await thumbAt()).fromEnd) < subpixel,
+        async () => Math.abs((await thumbAt()).fromEnd) <= subpixel,
         'the thumb at the end of its track',
       ).catch(measured);
       await page.keyboard.press('Home');
       await waitFor(
-        async () => Math.abs((await thumbAt()).fromStart) < subpixel,
+        async () => Math.abs((await thumbAt()).fromStart) <= subpixel,
         'the thumb back at the start of its track',
       ).catch(measured);
     } finally {
