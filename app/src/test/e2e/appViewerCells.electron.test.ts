@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { tempFolder } from '../helpers/tempFolders';
-import { closeOrKill, launchApp } from './appLaunch';
+import { closeOrKill, gpuWithoutOne, launchApp } from './appLaunch';
 import { writeSettings } from './settingsWritten';
 import { untilSettled, waitForFocus } from './waits';
 
@@ -146,7 +146,7 @@ suite('App viewer drawn as cells', () => {
   const drawn = async (cells: boolean, wordWrap: boolean): Promise<Seen> => {
     await writeSettings(page, profile, {
       scrolling: { smooth: false },
-      text: { wordWrap, highlightOccurrences: false, webgl: cells },
+      text: { wordWrap, highlightOccurrences: false, cells },
     });
     await page
       .locator(cells ? colored.cells : colored.elements)
@@ -259,7 +259,7 @@ suite('App viewer drawn as cells', () => {
       path.join(profile, 'settings.user.json'),
       JSON.stringify({ scrolling: { smooth: false } }),
     );
-    app = await launchApp(profile);
+    app = await launchApp(profile, { before: gpuWithoutOne });
     page = await app.firstWindow();
     await page.locator('.viewer-sideways').first().waitFor();
   });
@@ -315,21 +315,22 @@ suite('App viewer drawn as cells', () => {
     );
   });
 
-  test('draws its cells again once the GPU gave its context back after losing it, as nothing else draws the text', async () => {
+  test('draws its cells again with the device the GPU gives it once the one it had is lost, as nothing else draws the text', async () => {
     const before = await drawn(true, false);
-    await page.evaluate(async () => {
+    const lost = await page.evaluate(() => {
       const canvas = document.querySelector('.cell-canvas');
-      const lost =
+      const context: unknown =
         canvas instanceof HTMLCanvasElement
-          ? canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')
+          ? canvas.getContext('webgpu')
+          : null;
+      const device =
+        context instanceof GPUCanvasContext
+          ? context.getConfiguration()?.device
           : undefined;
-      await new Promise((resolve) => {
-        canvas?.addEventListener('webglcontextlost', resolve, { once: true });
-        lost?.loseContext();
-      });
-      await new Promise((resolve) => setTimeout(resolve));
-      lost?.restoreContext();
+      device?.destroy();
+      return device !== undefined;
     });
+    assert.ok(lost, 'the canvas of the cells has no device to lose');
     let after = await shot();
     await untilSettled(
       async () => {

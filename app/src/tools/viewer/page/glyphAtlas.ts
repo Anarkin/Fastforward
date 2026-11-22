@@ -1,3 +1,4 @@
+import { textureUsage } from './gpuDevice';
 import {
   tilePadding,
   type CellMetrics,
@@ -10,7 +11,7 @@ const mostTextureSize = 4096;
 
 export class GlyphAtlas implements GlyphPainter {
   readonly size: number;
-  texture: WebGLTexture;
+  readonly texture: GPUTexture;
   private readonly canvas: OffscreenCanvas;
   private readonly stage: OffscreenCanvasRenderingContext2D;
   private readonly padX: number;
@@ -19,7 +20,7 @@ export class GlyphAtlas implements GlyphPainter {
   private font = '';
 
   constructor(
-    private readonly gl: WebGL2RenderingContext,
+    private readonly device: GPUDevice,
     private readonly metrics: CellMetrics,
     subpixel: boolean,
   ) {
@@ -27,10 +28,7 @@ export class GlyphAtlas implements GlyphPainter {
     this.padX = padX;
     this.padY = padY;
     this.tileHeight = tileHeight;
-    this.size = Math.min(
-      mostTextureSize,
-      Number(gl.getParameter(gl.MAX_TEXTURE_SIZE)),
-    );
+    this.size = Math.min(mostTextureSize, device.limits.maxTextureDimension2D);
     this.canvas = new OffscreenCanvas(this.size, tileHeight);
     const stage = this.canvas.getContext('2d', { alpha: !subpixel });
     if (stage === null) {
@@ -38,23 +36,18 @@ export class GlyphAtlas implements GlyphPainter {
     }
     this.stage = stage;
     stage.textBaseline = 'alphabetic';
-    this.texture = this.textured();
-  }
-
-  textured(): WebGLTexture {
-    const { gl } = this;
-    this.texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, this.size, this.size);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    return this.texture;
+    this.texture = device.createTexture({
+      size: [this.size, this.size],
+      format: 'rgba8unorm',
+      usage:
+        textureUsage.textureBinding |
+        textureUsage.copyDst |
+        textureUsage.renderAttachment,
+    });
   }
 
   dispose(): void {
-    this.gl.deleteTexture(this.texture);
+    this.texture.destroy();
   }
 
   paint(
@@ -81,18 +74,10 @@ export class GlyphAtlas implements GlyphPainter {
   }
 
   upload(shelf: number): void {
-    const { gl } = this;
-    gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.texSubImage2D(
-      gl.TEXTURE_2D,
-      0,
-      0,
-      shelf,
-      this.size,
-      this.tileHeight,
-      gl.RGBA,
-      gl.UNSIGNED_BYTE,
-      this.canvas,
+    this.device.queue.copyExternalImageToTexture(
+      { source: this.canvas },
+      { texture: this.texture, origin: [0, shelf] },
+      [this.size, this.tileHeight],
     );
   }
 }

@@ -5,7 +5,7 @@ const textViewSchema = record({
   showWhitespace: flag(),
   highlightSyntax: flag(),
   highlightOccurrences: flag(),
-  webgl: flag(),
+  cells: flag(),
 });
 
 export type TextView = Infer<typeof textViewSchema>;

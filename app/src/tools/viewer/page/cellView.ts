@@ -14,7 +14,7 @@ import { asciiJob, linesJob, rowsJob, type RowAhead } from './glyphWarmth';
 import { IdleWork, pageIdling } from './idleWork';
 import { viewerKeymap } from './keymap';
 import type { ScreenRow } from './screenRows';
-import { poolOf } from './surfacePool';
+import { poolOf, type Pool } from './surfacePool';
 import { paletteOf, textStyles, type DotBox } from './textCells';
 import type { ColoredText } from './textColors';
 
@@ -33,14 +33,20 @@ const onPixel = 1e-6;
 const inLayoutUnits = (device: number) =>
   Math.round(device * layoutUnits) / layoutUnits;
 
-const surfaces = poolOf(
-  () => new CellSurface(),
-  (surface) => {
-    surface.onRestored = undefined;
-    surface.canvas.remove();
-  },
-  (surface) => surface.dispose(),
-);
+const pools = new WeakMap<GPUDevice, Pool<CellSurface>>();
+
+function surfacesOf(device: GPUDevice): Pool<CellSurface> {
+  let pool = pools.get(device);
+  if (pool === undefined) {
+    pool = poolOf(
+      () => new CellSurface(device),
+      (surface) => surface.canvas.remove(),
+      (surface) => surface.dispose(),
+    );
+    pools.set(device, pool);
+  }
+  return pool;
+}
 
 export interface CellViewFont {
   readonly font: CellFont;
@@ -63,8 +69,12 @@ export interface CellViewShown {
 
 const noRows: readonly ScreenRow[] = [];
 
-export const viewKey = ({ font }: CellViewFont, ratio: number): string =>
-  `${font.family}|${font.char}|${font.spacing}|${ratio}`;
+export const viewKey = (
+  { font }: CellViewFont,
+  ratio: number,
+  generation: number,
+): string =>
+  `${font.family}|${font.char}|${font.spacing}|${ratio}|${generation}`;
 
 export function dotBoxOf(
   dotLook: DotLook | undefined,
@@ -110,18 +120,20 @@ export class CellView {
   private budget = restingBudget;
 
   constructor(
+    private readonly device: GPUDevice,
+    generation: number,
     private readonly host: HTMLElement,
     private readonly rows: Element,
     looked: CellViewFont,
   ) {
     const ratio = devicePixelRatio;
-    this.key = viewKey(looked, ratio);
+    this.key = viewKey(looked, ratio, generation);
     const area = rows.parentElement?.getBoundingClientRect();
     const left = inLayoutUnits((area?.left ?? 0) * ratio);
     const top = inLayoutUnits((area?.top ?? 0) * ratio);
     const shift = left - Math.round(left);
     const subpixel = ratio < subpixelBelow;
-    this.surface = surfaces.taken();
+    this.surface = surfacesOf(device).taken();
     const { canvas } = this.surface;
     canvas.style.left = `${-shift / ratio}px`;
     canvas.style.top = `${(Math.round(top) - top) / ratio}px`;
@@ -139,7 +151,6 @@ export class CellView {
       paletteOf(look),
       dotBoxOf(looked.dotLook, ratio, this.tiles.metrics.rowHeight),
     );
-    this.surface.onRestored = this.paint;
     this.scheme.addEventListener('change', this.relook);
     this.idle = new IdleWork(
       pageIdling(),
@@ -252,6 +263,6 @@ export class CellView {
     this.idle.clear();
     cancelAnimationFrame(this.again);
     this.scheme.removeEventListener('change', this.relook);
-    surfaces.givenBack(this.surface);
+    surfacesOf(this.device).givenBack(this.surface);
   }
 }

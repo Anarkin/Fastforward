@@ -97,7 +97,7 @@ const views = [
 
 const typed = 'const typed = value + 1; // typed here';
 
-const drawnAsCells = (process.env.FASTFORWARD_PERF_WEBGL ?? '')
+const drawnAsCells = (process.env.FASTFORWARD_PERF_CELLS ?? '')
   .split(',')
   .includes(path.basename(perfBuild));
 
@@ -147,7 +147,7 @@ export function framesOfFile(
           },
           settings: {
             scrolling: { smooth: true },
-            text: { wordWrap, ...(drawnAsCells && { webgl: true }) },
+            text: { wordWrap, ...(drawnAsCells && { cells: true }) },
           },
         },
         (page) => page.locator('.commander-pane').first().waitFor(),

@@ -1,10 +1,11 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
 import type { DotLook } from '../../../lib/page/dotLook';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { CellFont } from './cellLook';
 import type { RowPart } from './cellPainting';
 import { CellView, viewKey } from './cellView';
 import type { RowAhead } from './glyphWarmth';
+import { gpuDevice, gpuGeneration, watchGpu } from './gpuDevice';
 import type { FindMark } from './markPieces';
 import type { ScreenRow } from './screenRows';
 import type { ColoredText } from './textColors';
@@ -49,15 +50,26 @@ export function CellRows({
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<CellView>(undefined);
   const ratio = devicePixelRatio;
+  const generation = useSyncExternalStore(watchGpu, gpuGeneration);
   useLayoutEffect(() => {
     const element = host.current;
     const around = element?.parentElement;
-    if (!element || !around || !(font.char > 0) || widths === undefined) {
+    const device = gpuDevice();
+    if (
+      !element ||
+      !around ||
+      !device ||
+      !(font.char > 0) ||
+      widths === undefined
+    ) {
       return;
     }
-    if (view.current?.key !== viewKey({ font, dotLook }, ratio)) {
+    if (view.current?.key !== viewKey({ font, dotLook }, ratio, generation)) {
       view.current?.dispose();
-      view.current = new CellView(element, around, { font, dotLook });
+      view.current = new CellView(device, generation, element, around, {
+        font,
+        dotLook,
+      });
     }
     view.current.show({
       shown: {

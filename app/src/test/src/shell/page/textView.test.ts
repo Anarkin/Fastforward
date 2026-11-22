@@ -10,7 +10,7 @@ suite('How text is shown until it is chosen', () => {
       showWhitespace: true,
       highlightSyntax: true,
       highlightOccurrences: true,
-      webgl: false,
+      cells: false,
     });
     assert.deepStrictEqual(defaultSettings().text, defaultTextView);
   });

@@ -15,7 +15,7 @@ import { textEnds, textThumb } from './textScroll';
 import { TextRow } from './textRow';
 import { CellRows } from './cellRows';
 import type { RowAhead } from './glyphWarmth';
-import { cellsSupported } from './cellSurface';
+import { gpuSupported } from './gpuDevice';
 import type { ScreenRow } from './screenRows';
 import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
@@ -94,7 +94,7 @@ export function TextBody({
     (state) => state.textView.highlightOccurrences,
   );
   const drawnAsCells =
-    useShell((state) => state.textView.webgl) && cellsSupported();
+    useShell((state) => state.textView.cells) && gpuSupported();
   const [copy, setCopy] = useState<string>();
   const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
   const wrapAt =

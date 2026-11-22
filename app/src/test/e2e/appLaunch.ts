@@ -119,6 +119,12 @@ function scaleAsked(scale: number | undefined): string[] {
     : [`--force-device-scale-factor=${asked}`];
 }
 
+export const gpuWithoutOne = [
+  '--enable-unsafe-webgpu',
+  '--ignore-gpu-blocklist',
+  ...(process.platform === 'linux' ? ['--use-webgpu-adapter=swiftshader'] : []),
+];
+
 export function appArguments(profile: string, ...after: string[]): string[] {
   return [appFolder, `--user-data-dir=${profile}`, ...after];
 }
