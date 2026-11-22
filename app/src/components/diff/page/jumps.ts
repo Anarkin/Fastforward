@@ -9,9 +9,11 @@ import {
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { DiffRow } from './rows';
 import { changeMargin, changeStarts, firstChangeTop } from './scrolling';
-import { foundEdges, foundMiddle, foundScroll } from './found';
+import { foundEdges, foundMiddle, foundRows, foundScroll } from './found';
+import { wrappedRows } from '../../cells/page/lines';
+import { paneLine } from './paneLines';
 import { jumpStep, type FindMatch } from './find';
-import { rowLines } from './rowMeasures';
+import { beyondAscii, rowLines, type WrapColumns } from './rowMeasures';
 import { readSideBox } from './sideways';
 
 export function useFoundJumps({
@@ -121,7 +123,9 @@ export function useRevealFound({
   reveal,
   virtualizer,
   lineHeight,
+  cells,
 }: {
+  readonly cells?: WrapColumns | undefined;
   readonly list: RefObject<HTMLDivElement | null>;
   readonly revealing: string | undefined;
   readonly setRevealing: (revealing: string | undefined) => void;
@@ -155,20 +159,49 @@ export function useRevealFound({
       return;
     }
     if (wordWrap) {
-      const row = element.querySelector(`.virtual-row[data-index="${index}"]`);
-      const edges = row ? foundEdges(row) : undefined;
       const start = virtualizer
         .getVirtualItems()
         .find((item) => item.index === index)?.start;
-      if (row && edges && start !== undefined) {
-        const box = element.getBoundingClientRect();
+      if (start === undefined) {
+        return;
+      }
+      const box = element.getBoundingClientRect();
+      const row = element.querySelector(`.virtual-row[data-index="${index}"]`);
+      const top =
+        cells === undefined
+          ? row?.getBoundingClientRect().top
+          : box.top + start - element.scrollTop;
+      const edges =
+        cells === undefined
+          ? row && foundEdges(row)
+          : [0, 1].flatMap((pane) => {
+              const lined = paneLine(rows, keys, pane, index);
+              if (
+                lined === undefined ||
+                lined.key !== foundKey ||
+                top === undefined
+              ) {
+                return [];
+              }
+              const within = foundRows(
+                wrappedRows(
+                  lined.line,
+                  pane === 0 ? cells.left : cells.right,
+                  beyondAscii.test(lined.line.text) ? widths : undefined,
+                ),
+                found,
+                lineHeight,
+              );
+              return [{ top: top + within.top, bottom: top + within.bottom }];
+            })[0];
+      if (top !== undefined && edges) {
         const middle = foundMiddle(
           edges,
           {
             top: box.top + rowLines.file * lineHeight,
             bottom: box.top + element.clientHeight,
           },
-          { top: row.getBoundingClientRect().top, start },
+          { top, start },
         );
         if (middle !== undefined) {
           virtualizer.scrollToOffset(middle, { align: 'center' });
@@ -200,5 +233,6 @@ export function useRevealFound({
     reveal,
     virtualizer,
     lineHeight,
+    cells,
   ]);
 }

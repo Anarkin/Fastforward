@@ -5,4 +5,5 @@ export const defaultTextView: TextView = {
   showWhitespace: true,
   highlightSyntax: true,
   highlightOccurrences: true,
+  diffCells: false,
 };

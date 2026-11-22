@@ -1,24 +1,11 @@
 import type { TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
-import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
-import type { FindMark } from './markPieces';
+import type { ScreenRow } from '../../../components/cells/page/lines';
 import { bytesOf } from './encodedBytes';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type TextWidths } from '../../../lib/page/textWidths';
-
-export interface ScreenRow {
-  readonly start: number;
-  readonly end: number;
-  readonly row: TextRow;
-  readonly index: number;
-  readonly from: number;
-  readonly to: number;
-  readonly indent: number;
-  readonly breakAt: number | undefined;
-  readonly hanging: RowBreak['blanks'];
-}
 
 interface Wrapping {
   readonly columns: number;
@@ -221,38 +208,4 @@ export function partOfRow(
     0,
     Math.min(1, (byte - row.start) / (next.start - row.start)),
   );
-}
-
-export function piecesWithin(
-  pieces: readonly ColoredSegment[],
-  from: number,
-  to: number,
-): ColoredSegment[] {
-  const within: ColoredSegment[] = [];
-  let at = 0;
-  for (const piece of pieces) {
-    const end = at + piece.text.length;
-    if (end > from && at < to) {
-      within.push({
-        ...piece,
-        text: piece.text.slice(Math.max(0, from - at), to - at),
-      });
-    }
-    at = end;
-  }
-  return within;
-}
-
-export function marksWithin(
-  marks: readonly FindMark[],
-  from: number,
-  to: number,
-): FindMark[] {
-  return marks
-    .filter((mark) => mark.end > from && mark.start < to)
-    .map((mark) => ({
-      ...mark,
-      start: Math.max(mark.start, from) - from,
-      end: Math.min(mark.end, to) - from,
-    }));
 }

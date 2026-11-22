@@ -659,10 +659,10 @@ suite('Architecture', () => {
     assert.deepStrictEqual(
       code.filter((file) => /\bfind-match\b/.test(read(file))),
       [
+        'components/cells/page/cellLook.ts',
         'components/diff/page/codeMarks.tsx',
         'components/diff/page/found.ts',
         'tools/editor/page/find.ts',
-        'tools/viewer/page/cellLook.ts',
       ],
     );
     assert.deepStrictEqual(

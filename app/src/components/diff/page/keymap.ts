@@ -30,6 +30,10 @@ export const diffKeymap = {
   wheelSideways: bind('Diff', strings.actions.wheelSideways, {
     'Shift+Wheel': true,
   }),
+  selectText: bind('Diff', strings.actions.selectText, {
+    Click: 'start',
+    'Shift+Click': 'extend',
+  } as const),
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
   language: bind('Diff', strings.actions.chooseLanguage, { L: true }),

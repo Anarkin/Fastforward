@@ -1,3 +1,4 @@
+import { type ScreenRow } from '../../../components/cells/page/lines';
 import {
   useCallback,
   useEffect,
@@ -18,7 +19,6 @@ import {
   rowWithByte,
   rowWithChar,
   screenRows,
-  type ScreenRow,
   partOfRow,
 } from './screenRows';
 import {

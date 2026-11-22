@@ -1,17 +1,25 @@
+import { occurrencesOf } from '../../../components/cells/page/marks';
+import type { ScreenRow } from '../../../components/cells/page/lines';
 import type { LineRanges } from '../../../components/syntax/page/engine';
 import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import type { DotLook } from '../../../lib/page/dotLook';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { TextRow } from '../shared/protocol';
-import type { CellFont } from './cellLook';
-import type { SegmentsOf, ShownRows } from './cellPainting';
-import { seenRows, type SeenRow } from './cellsSeen';
-import { CellView } from './cellView';
-import { cellWindow, holds, type CellWindow } from './cellWindow';
+import type { CellFont } from '../../../components/cells/page/cellLook';
+import type {
+  SegmentsOf,
+  ShownRows,
+} from '../../../components/cells/page/cellPainting';
+import { seenRows, type SeenRow } from '../../../components/cells/page/seen';
+import { CellView } from '../../../components/cells/page/cellView';
+import {
+  cellWindow,
+  holds,
+  type CellWindow,
+} from '../../../components/cells/page/cellWindow';
+import { rowLooks } from './rowLooks';
 import { codeSegments } from './codeSegments';
-import { columnsOf, shownWithin } from './columns';
-import { occurrencesOf } from './markPieces';
-import type { ScreenRow } from './screenRows';
+import { columnsOf, shownWithin } from '../../../components/cells/page/columns';
 
 const lineBreak = '\n';
 
@@ -169,8 +177,6 @@ export class CodeCells {
       columns,
       ahead: noRowsAhead,
       held: this.rows,
-      text: undefined,
-      colored: undefined,
       events: {
         chosen: (copy) => {
           this.copiesIn = occurrencesOf(this.look.marking ? copy : undefined);
@@ -242,6 +248,7 @@ export class CodeCells {
       this.host,
       this.code,
       { font: this.look.font, dotLook: this.look.dotLook },
+      rowLooks,
       {
         origin: () => {
           const at = this.host.getBoundingClientRect();

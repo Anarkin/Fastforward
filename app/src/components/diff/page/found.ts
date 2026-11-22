@@ -1,4 +1,4 @@
-import type { FindMatch } from './find';
+import type { FindMatch, FindRange } from './find';
 import { revealFound, sideArea, type Sideways } from './overflow';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { DiffRow } from './rows';
@@ -36,6 +36,20 @@ export function foundMiddle(
     return undefined;
   }
   return row.start + (found.top + found.bottom) / 2 - row.top;
+}
+
+export function foundRows(
+  parts: readonly { readonly from: number; readonly to: number }[],
+  { start, end }: FindRange,
+  lineHeight: number,
+): Edges {
+  const reached = parts.findIndex((part) => part.to > start);
+  const first = reached === -1 ? Math.max(0, parts.length - 1) : reached;
+  const last = Math.max(
+    first,
+    parts.findLastIndex((part) => part.from < end),
+  );
+  return { top: first * lineHeight, bottom: (last + 1) * lineHeight };
 }
 
 export function foundEdges(element: Element): Edges | undefined {

@@ -1,10 +1,14 @@
+import type { ScreenRow } from '../../../components/cells/page/lines';
 import { useMemo, useState } from 'react';
 import { wholeLineBytes } from '../shared/protocol';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import { keptColumnsOf, shownWithin, widestColumns } from './columns';
+import {
+  keptColumnsOf,
+  shownWithin,
+  widestColumns,
+} from '../../../components/cells/page/columns';
 import { bytesOf } from './encodedBytes';
-import type { ScreenRow } from './screenRows';
 import type { WholeText } from './textColors';
 
 const sidewaysStep = 32;

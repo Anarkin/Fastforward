@@ -4,6 +4,7 @@ import type { TextWidths } from '../../../../../lib/page/textWidths';
 import type { DiffRow } from '../../../../../components/diff/page/rows';
 import {
   foundMiddle,
+  foundRows,
   foundScroll,
 } from '../../../../../components/diff/page/found';
 
@@ -94,6 +95,28 @@ suite('Diff scrolling to a match', () => {
     assert.strictEqual(
       foundMiddle({ top: 100, bottom: 117 }, view, row),
       undefined,
+    );
+  });
+
+  test('finds the rows of a wrapped line a match is on from where the line breaks, the first through the last of them, as the cells have no mark to measure', () => {
+    const parts = [
+      { from: 0, to: 40 },
+      { from: 40, to: 80 },
+      { from: 80, to: 95 },
+    ];
+    assert.deepStrictEqual(
+      [
+        foundRows(parts, { start: 4, end: 9 }, 18),
+        foundRows(parts, { start: 38, end: 44 }, 18),
+        foundRows(parts, { start: 80, end: 95 }, 18),
+        foundRows(parts, { start: 40, end: 40 }, 18),
+      ],
+      [
+        { top: 0, bottom: 18 },
+        { top: 0, bottom: 36 },
+        { top: 36, bottom: 54 },
+        { top: 18, bottom: 36 },
+      ],
     );
   });
 });

@@ -1,14 +1,27 @@
-import { useLayoutEffect, useRef, useSyncExternalStore } from 'react';
+import type { FindMark } from '../../../components/cells/page/marks';
+import type { ScreenRow } from '../../../components/cells/page/lines';
+import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { DotLook } from '../../../lib/page/dotLook';
 import type { TextWidths } from '../../../lib/page/textWidths';
-import type { CellFont } from './cellLook';
-import type { RowPart, SegmentsOf } from './cellPainting';
-import { seenRows } from './cellsSeen';
-import { CellView, viewKey } from './cellView';
-import type { RowAhead } from './glyphWarmth';
-import { gpuDevice, gpuGeneration, watchGpu } from './gpuDevice';
-import type { FindMark } from './markPieces';
-import type { ScreenRow } from './screenRows';
+import type { CellFont } from '../../../components/cells/page/cellLook';
+import type {
+  RowPart,
+  SegmentsOf,
+} from '../../../components/cells/page/cellPainting';
+import { seenRows } from '../../../components/cells/page/seen';
+import {
+  CellView,
+  viewKey,
+  type Warming,
+} from '../../../components/cells/page/cellView';
+import type { RowAhead } from '../../../components/cells/page/glyphWarmth';
+import {
+  gpuDevice,
+  gpuGeneration,
+  watchGpu,
+} from '../../../components/cells/page/gpuDevice';
+import { linesJob } from './lineWarmth';
+import { rowLooks } from './rowLooks';
 import type { ColoredText } from './textColors';
 
 interface CellRowsProps {
@@ -55,6 +68,17 @@ export function CellRows({
   const ratio = devicePixelRatio;
   const generation = useSyncExternalStore(watchGpu, gpuGeneration);
   const advance = Math.round(font.char * ratio) / ratio;
+  const whole = colored?.parts.at(-1)?.done === true ? colored : undefined;
+  const warming = useMemo(
+    () =>
+      text === undefined
+        ? undefined
+        : {
+            job: (...[painting, look]: Parameters<Warming['job']>) =>
+              linesJob(painting, look, text, whole),
+          },
+    [text, whole],
+  );
   useLayoutEffect(() => {
     const element = host.current;
     if (!element || widths === undefined) {
@@ -101,10 +125,14 @@ export function CellRows({
     }
     if (view.current?.key !== viewKey({ font, dotLook }, ratio, generation)) {
       view.current?.dispose();
-      view.current = new CellView(device, generation, element, around, {
-        font,
-        dotLook,
-      });
+      view.current = new CellView(
+        device,
+        generation,
+        element,
+        around,
+        { font, dotLook },
+        rowLooks,
+      );
     }
     view.current.show({
       shown: {
@@ -120,8 +148,7 @@ export function CellRows({
       columns,
       ahead,
       held,
-      text,
-      colored,
+      warming,
       events: { chosen: onSelected, move },
     });
   });

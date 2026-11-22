@@ -11,6 +11,21 @@ import {
 } from './helpers/sourceGraph';
 
 const componentDoors: Readonly<Record<string, readonly string[]>> = {
+  cells: [
+    'components/cells/page/cellFont.ts',
+    'components/cells/page/cellLook.ts',
+    'components/cells/page/cellPainting.ts',
+    'components/cells/page/cellView.ts',
+    'components/cells/page/cellWindow.ts',
+    'components/cells/page/seen.ts',
+    'components/cells/page/columns.ts',
+    'components/cells/page/glyphWarmth.ts',
+    'components/cells/page/gpuDevice.ts',
+    'components/cells/page/idleWork.ts',
+    'components/cells/page/lines.ts',
+    'components/cells/page/marks.ts',
+    'components/cells/page/textCells.ts',
+  ],
   encodings: [
     'components/encodings/main/codePages.ts',
     'components/encodings/main/encodingDetection.ts',
@@ -148,7 +163,19 @@ suite('Components', () => {
     );
   });
 
-  test('keeps a component only while two parts or more use it, as what one tool alone uses belongs to that tool', () => {
+  test('keeps a component only while two parts or more use it, themselves or through another component, as what one tool alone uses belongs to that tool', () => {
+    const reaches = (
+      file: string,
+      component: string,
+      seen: Set<string>,
+    ): boolean =>
+      usesOf(file).some(
+        (target) =>
+          componentOf(target) === component ||
+          (componentOf(target) !== undefined &&
+            !seen.has(target) &&
+            reaches(target, component, seen.add(target))),
+      );
     assert.deepStrictEqual(
       components.filter(
         (component) =>
@@ -157,9 +184,7 @@ suite('Components', () => {
               .filter(
                 (file) =>
                   !file.startsWith('components/') &&
-                  usesOf(file).some(
-                    (target) => componentOf(target) === component,
-                  ),
+                  reaches(file, component, new Set()),
               )
               .map(partOf),
           ).size < 2,

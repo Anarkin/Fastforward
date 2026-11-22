@@ -119,7 +119,7 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: the row the rows are counted from while they glide, set anew once they rest',
   'tools/viewer/page/scrollBody.tsx screen':
     'a measure: the rows that fit, measured anew by a resize observer once mounted',
-  'tools/viewer/page/cellFont.ts font':
+  'components/cells/page/cellFont.ts font':
     'a measure: the font of the text, measured anew from a probe row once mounted',
   'tools/viewer/page/scrollBody.tsx track':
     'a measure: the height of the scrollbar track, measured anew once mounted',

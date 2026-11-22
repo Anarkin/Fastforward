@@ -1,6 +1,10 @@
 import type { LineRanges } from '../../../components/syntax/page/engine';
 import { CodeCells, type CodeLook } from './codeCells';
-import { gpuDevice, gpuGeneration, watchGpu } from './gpuDevice';
+import {
+  gpuDevice,
+  gpuGeneration,
+  watchGpu,
+} from '../../../components/cells/page/gpuDevice';
 
 export class CodeBlocks {
   private readonly cells = new Map<Element, CodeCells>();

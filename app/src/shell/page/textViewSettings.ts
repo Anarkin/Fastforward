@@ -7,6 +7,7 @@ export function useTextViewSettings() {
   const highlightOccurrences = useShell(
     (state) => state.textView.highlightOccurrences,
   );
+  const diffCells = useShell((state) => state.textView.diffCells);
   const scrolling = useShell((state) => state.scrolling);
   const { changeTextView } = useShellActions();
   return {
@@ -14,6 +15,7 @@ export function useTextViewSettings() {
     showWhitespace,
     highlightSyntax,
     highlightOccurrences,
+    diffCells,
     scrolling,
     changeTextView,
   };

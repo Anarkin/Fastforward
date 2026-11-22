@@ -412,3 +412,18 @@
 .diff-skeleton .file-header .bar {
   margin: 0.2em 0;
 }
+
+.diff-view .diff-cells {
+  position: absolute;
+}
+
+.diff-ruler {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.diff-filler {
+  pointer-events: none;
+}

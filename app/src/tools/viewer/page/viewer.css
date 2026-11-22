@@ -67,18 +67,6 @@
   min-height: calc(100% + (var(--viewer-lead) + 1) * var(--viewer-row-height));
 }
 
-.cell-rows {
-  position: relative;
-  user-select: none;
-}
-
-.cell-canvas {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  cursor: text;
-}
-
 .viewer-gutter {
   position: absolute;
   top: 0;

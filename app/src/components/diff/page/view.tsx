@@ -33,6 +33,7 @@ import {
   type WholeFile,
   type DiffRow,
   type FileHeaderRow,
+  isCode,
   waitingRows,
   diffRows,
   fileNotes,
@@ -70,6 +71,9 @@ import { FileHeader } from './rowParts';
 import { useCodeSnap, useDiffText } from './text';
 import { useDiffFollow } from './follow';
 import { diffKeyDown } from './keys';
+import { CellHosts, CellRuler, Fillers } from './cellParts';
+import { useDiffCells } from './cellsShown';
+import { fillerRuns } from './fillers';
 
 export function DiffView({
   error,
@@ -124,6 +128,7 @@ export function DiffView({
     showWhitespace,
     highlightSyntax,
     highlightOccurrences = false,
+    cells: asCells = false,
     scrolling,
     root,
     language: chosenLanguage,
@@ -132,13 +137,8 @@ export function DiffView({
   } = look;
   const list = useRef<HTMLDivElement>(null);
   const [copy, setCopy] = useState<string>();
-  useSelectedCopy(
-    list,
-    'data-index',
-    highlightOccurrences && !findsText,
-    setCopy,
-    copy,
-  );
+  const marking = highlightOccurrences && !findsText;
+  useSelectedCopy(list, 'data-index', marking && !asCells, setCopy, copy);
   const copiesOf = useMemo(() => {
     if (copy === undefined) {
       return undefined;
@@ -451,6 +451,52 @@ export function DiffView({
   useLayoutEffect(() => {
     shownRow.current = items[0]?.index ?? 0;
   }, [items]);
+  const font = measures.text?.font ?? '';
+  const spacing = measures.text?.spacing ?? 0;
+  const placed = virtualizer.measurementsCache;
+  const { spacer, host } = useDiffCells(asCells, list, shown, {
+    rows,
+    keys,
+    wrapping,
+    widths,
+    font: { char: charWidth, family: font, spacing },
+    dotLook,
+    lineHeight,
+    showWhitespace,
+    syntax,
+    words,
+    finds: rangesByLine,
+    foundKey,
+    found,
+    copiesOf,
+    placeOf: (index) => placed[index],
+    sideways: scrolledNow,
+    chosen: (chosen) => setCopy(marking ? chosen : undefined),
+    sized: (index, height) => virtualizer.resizeItem(index, height),
+    stamp: [
+      rows,
+      keys,
+      split,
+      whole,
+      wrapping?.left,
+      wrapping?.right,
+      widths,
+      charWidth,
+      font,
+      spacing,
+      dotLook,
+      lineHeight,
+      showWhitespace,
+      syntax,
+      words,
+      rangesByLine,
+      foundKey,
+      found,
+      copiesOf,
+      placed,
+      snap,
+    ],
+  });
   useLayoutEffect(() => {
     if (room !== undefined && scrolledNow() > room) {
       scrollTo(room);
@@ -474,6 +520,7 @@ export function DiffView({
     reveal,
     virtualizer,
     lineHeight,
+    cells: asCells ? wrapping : undefined,
   });
   const marked = virtualizer.getTotalSize();
   const viewport = virtualizer.scrollRect?.height ?? 0;
@@ -575,9 +622,17 @@ export function DiffView({
         )}
         <div
           className="virtual-spacer"
+          ref={spacer}
           style={{ height: virtualizer.getTotalSize() + endPadding }}
         >
           <TextProbe onMeasure={measureText} />
+          {asCells && (
+            <>
+              <CellRuler split={split} numbers={whole ? 1 : 2} />
+              <CellHosts panes={split ? 2 : 1} host={host} />
+              <Fillers runs={fillerRuns(rows, items)} />
+            </>
+          )}
           {wordWrap && (
             <WrapProbe
               key={split ? 'split' : whole ? 'whole' : 'inline'}
@@ -588,6 +643,9 @@ export function DiffView({
           )}
           {items.map((item) => {
             const row = rows[item.index];
+            if (asCells && isCode(row)) {
+              return null;
+            }
             const height = rowHeight(row, wordWrap, lineHeight, columns);
             return (
               <div

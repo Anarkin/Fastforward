@@ -1,5 +1,5 @@
 import type { Page } from 'playwright-core';
-import type { SeenGlyph, SeenRow } from '../../tools/viewer/page/cellsSeen';
+import type { SeenGlyph, SeenRow } from '../../components/cells/page/seen';
 import { waitFor } from '../helpers/fixtures';
 
 export const viewerRows =

@@ -1,4 +1,9 @@
 import {
+  occurrencesOf,
+  type FindMark,
+} from '../../../components/cells/page/marks';
+import type { ScreenRow } from '../../../components/cells/page/lines';
+import {
   useCallback,
   useEffect,
   useMemo,
@@ -8,18 +13,12 @@ import {
 } from 'react';
 import { RowRequests } from './rowRequests';
 import type { ViewerFind } from './find';
-import {
-  byteMarks,
-  hexLineMarks,
-  occurrencesOf,
-  type FindMark,
-} from './markPieces';
+import { byteMarks, hexLineMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
 import { CellRows } from './cellRows';
-import { useCellFont } from './cellFont';
-import { gpuRefused, watchGpu } from './gpuDevice';
-import type { RowAhead } from './glyphWarmth';
-import type { ScreenRow } from './screenRows';
+import { useCellFont } from '../../../components/cells/page/cellFont';
+import { gpuRefused, watchGpu } from '../../../components/cells/page/gpuDevice';
+import type { RowAhead } from '../../../components/cells/page/glyphWarmth';
 import { strings } from '../../../lib/shared/strings';
 
 const rowsAboveMatch = 2;

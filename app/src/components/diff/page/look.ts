@@ -11,6 +11,7 @@ export interface DiffLook {
   readonly showWhitespace: boolean;
   readonly highlightSyntax: boolean;
   readonly highlightOccurrences?: boolean;
+  readonly cells?: boolean;
   readonly scrolling: ScrollSettings;
   readonly root: string | undefined;
   readonly language: string | undefined;

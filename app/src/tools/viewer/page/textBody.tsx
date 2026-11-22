@@ -1,3 +1,5 @@
+import { occurrencesOf } from '../../../components/cells/page/marks';
+import type { ScreenRow } from '../../../components/cells/page/lines';
 import {
   useCallback,
   useMemo,
@@ -9,19 +11,18 @@ import { type TextEncoding } from '../../../components/encodings/shared/textEnco
 import { ScrollBody } from './scrollBody';
 import type { Viewing } from './viewing';
 import type { ViewerFind } from './find';
-import { occurrencesOf, textMarks } from './markPieces';
+import { textMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
-import { columnAt } from './columns';
+import { columnAt } from '../../../components/cells/page/columns';
 import { cellWidthsOf } from '../../../lib/page/textWidths';
 import { plainCells } from '../../../lib/page/cellTable';
-import { useCellFont } from './cellFont';
+import { useCellFont } from '../../../components/cells/page/cellFont';
 import { useViewer, useViewerActions } from './store';
 import type { ViewerTabView } from './tabParts';
 import { textEnds, textThumb } from './textScroll';
 import { CellRows } from './cellRows';
-import { gpuRefused, watchGpu } from './gpuDevice';
+import { gpuRefused, watchGpu } from '../../../components/cells/page/gpuDevice';
 import { strings } from '../../../lib/shared/strings';
-import type { ScreenRow } from './screenRows';
 import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
 import { segmentsFrom } from './textColors';

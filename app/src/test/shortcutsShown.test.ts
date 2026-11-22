@@ -141,6 +141,7 @@ const keysAlone: readonly string[] = [
   'commanderKeymap.transferItems',
   'compareKeymap.closeCompare',
   'diffKeymap.change',
+  'diffKeymap.selectText',
   'diffKeymap.sideways',
   'diffKeymap.stopFinding',
   'diffKeymap.wheelSideways',

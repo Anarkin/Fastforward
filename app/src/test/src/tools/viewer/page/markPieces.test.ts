@@ -1,12 +1,14 @@
 import * as assert from 'node:assert';
+import {
+  markPieces,
+  occurrenceMarks,
+  occurrencesOf,
+} from '../../../../../components/cells/page/marks';
 import { suite, test } from 'vitest';
 import {
   byteMarks,
   hexLineMarks,
   hexMarks,
-  markPieces,
-  occurrenceMarks,
-  occurrencesOf,
   textMarks,
 } from '../../../../../tools/viewer/page/markPieces';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';

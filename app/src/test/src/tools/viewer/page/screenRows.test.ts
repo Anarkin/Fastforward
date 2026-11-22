@@ -1,11 +1,13 @@
 import * as assert from 'node:assert';
+import {
+  marksWithin,
+  piecesWithin,
+} from '../../../../../components/cells/page/lines';
 import { suite, test } from 'vitest';
 import type { TextWidths } from '../../../../../lib/page/textWidths';
 import type { TextRow } from '../../../../../tools/viewer/shared/protocol';
 import {
   firstOf,
-  marksWithin,
-  piecesWithin,
   partOfRow,
   rowWithByte,
   rowWithChar,
