@@ -19,8 +19,64 @@ const count = () => page.locator('.viewer .search-count').textContent();
 const toggle = (title: string) =>
   page.locator(`.viewer .search-toggle[data-tip="${title}"]`);
 
+const pdfSheets = () =>
+  page.evaluate(
+    () =>
+      [...document.head.querySelectorAll('style')].filter((sheet) =>
+        (sheet.textContent ?? '').includes('pdfViewer.css'),
+      ).length,
+  );
+
 suite('App commander', () => {
   sharedCommanderApp();
+
+  test('brings the styles of PDF.js into the page only while a PDF is shown, its pages laid out by them, and takes them out once it is closed, as every element the app draws was matched against their rules', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'styled.pdf'),
+      pdfOf(
+        [['A page laid out by the styles of its viewer']],
+        'fedcba9876543210fedcba9876543210',
+      ),
+    );
+    const scroller = page.locator('.viewer .pdf-scroll');
+    try {
+      assert.strictEqual(await pdfSheets(), 0);
+      await select('styled');
+      await page.keyboard.press('F3');
+      const text = page.locator('.viewer .textLayer', {
+        hasText: 'A page laid out',
+      });
+      await text.waitFor();
+      assert.strictEqual(await pdfSheets(), 1);
+      assert.deepStrictEqual(
+        await text.evaluate((layer) => {
+          const { position, overflow } = getComputedStyle(layer);
+          const shown = layer.closest('.page');
+          return {
+            position,
+            overflow,
+            page: shown === null ? '' : getComputedStyle(shown).position,
+          };
+        }),
+        { position: 'absolute', overflow: 'clip', page: 'relative' },
+      );
+      await waitForFocus(scroller, 'the PDF');
+      await page.keyboard.press('Escape');
+      await page.locator('.viewer').waitFor({ state: 'detached' });
+      assert.strictEqual(await pdfSheets(), 0);
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await scroller.focus();
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'styled.pdf'));
+      await waitFor(
+        async () => !(await rowNames()).includes('styled.pdf'),
+        'the file to be gone from the list',
+      );
+    }
+  });
 
   test('previews a PDF, searching it on Ctrl+F without leaving the preview, in the case of the query while its toggle is pressed and never by a regular expression, and opens it again where it was left', async () => {
     fs.writeFileSync(

@@ -10,6 +10,7 @@ import { setWheeled } from '../../../lib/page/scrollbarLinks';
 import type { PdfPlace } from '../shared/pdf';
 import type { ShownPdf } from './pdfDocument';
 import type { PdfFound } from './pdfFinds';
+import { holdPdfStyles, type HeldPdfStyles } from './pdfStyles';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 
 export function PdfPane({
@@ -43,8 +44,18 @@ export function PdfPane({
   const queryEvent = useEffectEvent(() => query);
   const optionsEvent = useEffectEvent(() => options);
   const opened = useRef(false);
+  const styles = useRef<HeldPdfStyles>(undefined);
 
   useLayoutEffect(() => () => shown.current?.tellPlace(), []);
+
+  useEffect(() => {
+    const held = holdPdfStyles(document);
+    styles.current = held;
+    return () => {
+      styles.current = undefined;
+      held.release();
+    };
+  }, []);
 
   useEffect(() => {
     const element = container.current;
@@ -67,37 +78,39 @@ export function PdfPane({
     }
     setFailure(undefined);
     const leaving = new AbortController();
-    void import('./pdfDocument.js').then(({ showPdf, pdfFailure }) => {
-      if (leaving.signal.aborted) {
-        return;
-      }
-      const failed = (error: unknown) => {
-        if (!leaving.signal.aborted) {
-          setFailure(pdfFailure(error));
+    void Promise.all([import('./pdfDocument.js'), styles.current?.loaded]).then(
+      ([{ showPdf, pdfFailure }]) => {
+        if (leaving.signal.aborted) {
+          return;
         }
-      };
-      void showPdf(
-        element,
-        url,
-        size,
-        {
-          placeOf: (fingerprint) => placeOfEvent(fingerprint),
-          onPlace: (fingerprint, place) => placeEvent(fingerprint, place),
-          onFound: (found) => foundEvent(found),
-          onFailure: failed,
-        },
-        leaving.signal,
-      ).then((pdf: ShownPdf | undefined) => {
-        if (pdf !== undefined && !leaving.signal.aborted) {
-          shown.current = pdf;
-          shownEvent(pdf);
-          const finding = queryEvent();
-          if (finding !== '') {
-            pdf.find(finding, optionsEvent(), 0);
+        const failed = (error: unknown) => {
+          if (!leaving.signal.aborted) {
+            setFailure(pdfFailure(error));
           }
-        }
-      }, failed);
-    });
+        };
+        void showPdf(
+          element,
+          url,
+          size,
+          {
+            placeOf: (fingerprint) => placeOfEvent(fingerprint),
+            onPlace: (fingerprint, place) => placeEvent(fingerprint, place),
+            onFound: (found) => foundEvent(found),
+            onFailure: failed,
+          },
+          leaving.signal,
+        ).then((pdf: ShownPdf | undefined) => {
+          if (pdf !== undefined && !leaving.signal.aborted) {
+            shown.current = pdf;
+            shownEvent(pdf);
+            const finding = queryEvent();
+            if (finding !== '') {
+              pdf.find(finding, optionsEvent(), 0);
+            }
+          }
+        }, failed);
+      },
+    );
     const zoom = (event: WheelEvent) => {
       if (wheeled(zoomKeys, event) === undefined || event.deltaY === 0) {
         return;

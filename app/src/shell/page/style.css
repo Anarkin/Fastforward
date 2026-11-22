@@ -1,4 +1,3 @@
-@import 'pdfjs-dist/web/pdf_viewer.css' layer(pdfjs);
 @import './window.css';
 @import './tabs.css';
 @import './popups.css';

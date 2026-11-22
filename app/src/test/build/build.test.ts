@@ -186,6 +186,18 @@ suite('Release build', { timeout: 30_000 }, () => {
     assert.deepStrictEqual(bundled(loaded), []);
   });
 
+  test('keeps the styles of PDF.js out of the stylesheet of the page, in a sheet of their own a PDF shown loads, as every element the app draws was matched against their 370 nested rules, which took more than half of the time a screen of the diff took to restyle', async () => {
+    const { outputs } = (await releaseBuild('webviewOptions')).metafile;
+    const ofPdfJs = (file: string) =>
+      Object.keys(outputs[file]?.inputs ?? {}).filter((input) =>
+        input.startsWith('node_modules/pdfjs-dist/'),
+      );
+    assert.deepStrictEqual(ofPdfJs('dist/webview.css'), []);
+    assert.deepStrictEqual(ofPdfJs('dist/pdfViewer.css'), [
+      'node_modules/pdfjs-dist/web/pdf_viewer.css',
+    ]);
+  });
+
   test('leaves node-pty out of the bundle, unpacked from the asar and not rebuilt, as Electron loads its native modules and runs its helpers only from files on disk, and its prebuilt modules need no rebuild', async () => {
     const { outputs } = (await releaseBuild('mainOptions')).metafile;
     assert.deepStrictEqual(

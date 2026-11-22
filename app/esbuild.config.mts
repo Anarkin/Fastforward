@@ -37,6 +37,7 @@ export function webviewOptions(production: boolean): BuildOptions {
       thumbnailWorker: 'src/tools/commander/page/thumbnailWorker.ts',
       flatWorker: 'src/tools/commander/page/flatWorker.ts',
       pdfWorker: 'node_modules/pdfjs-dist/build/pdf.worker.mjs',
+      pdfViewer: 'node_modules/pdfjs-dist/web/pdf_viewer.css',
     },
     format: 'esm',
     splitting: true,
