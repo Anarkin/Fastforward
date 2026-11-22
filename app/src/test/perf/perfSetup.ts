@@ -43,7 +43,7 @@ function savedResults(folder: string): SavedResult[] {
     .toSorted((a, b) => a.startedAt - b.startedAt);
 }
 
-export default function setup(project: TestProject): () => void {
+export default async function setup(project: TestProject): Promise<() => void> {
   assertProductionBuild();
   const packaged = path.join(perfBuild, 'package.json');
   if (!fs.existsSync(packaged)) {
@@ -54,7 +54,7 @@ export default function setup(project: TestProject): () => void {
     process.env.FASTFORWARD_PERF_RESULTS ??
     path.join(appFolder, 'perf-results', stamp);
   fs.mkdirSync(results, { recursive: true });
-  project.provide('perfData', perfData());
+  project.provide('perfData', await perfData());
   project.provide('perfResults', results);
   return () => {
     const saved = savedResults(results);

@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  eventsKept,
   traceEventsOf,
   frameSummary,
   framesIn,
@@ -18,6 +19,22 @@ const page = 7;
 const other = 8;
 const main = 1;
 const compositor = 2;
+
+const painted = (name: string, node = 'SPAN') => ({
+  args: { data: { nodeName: node } },
+  name,
+  ph: 'X',
+  pid: page,
+  tid: main,
+  ts: 1,
+});
+
+const streamed = (events: readonly object[]) =>
+  [
+    '{"traceEvents":[',
+    events.map((each) => JSON.stringify(each)).join(',\n'),
+    '],"metadata":{}}',
+  ].join('\n');
 
 const threadNames: TraceEvent[] = [
   {
@@ -488,5 +505,27 @@ suite('Reading a trace', () => {
     assert.deepStrictEqual(traceEventsOf(JSON.stringify([event])), [event]);
     assert.strictEqual(traceEventsOf(' protobuf'), undefined);
     assert.strictEqual(traceEventsOf('{"metadata":{}}'), undefined);
+  });
+
+  test('leaves the events named out of a trace read in pieces cut anywhere, as those of each image painted, thousands a step of a screen of whitespace dots, made a trace too long to read, and keeps one that ends the list, so the list stays whole', () => {
+    const whole = streamed([
+      painted('RunTask'),
+      painted('PaintImage'),
+      painted('Paint', '"name":"PaintImage"'),
+      painted('PaintImage'),
+      painted('RunTask'),
+      painted('PaintImage'),
+    ]);
+    for (const size of [1, 7, 64, whole.length]) {
+      const kept = eventsKept(['PaintImage']);
+      for (let at = 0; at < whole.length; at += size) {
+        kept.read(whole.slice(at, at + size));
+      }
+      assert.deepStrictEqual(
+        traceEventsOf(kept.text())?.map(({ name }) => name),
+        ['RunTask', 'Paint', 'RunTask', 'PaintImage'],
+        `in pieces of ${size}`,
+      );
+    }
   });
 });

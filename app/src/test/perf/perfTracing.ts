@@ -1,20 +1,25 @@
 import type { CDPSession, Page } from 'playwright-core';
+import { eventsKept } from './perfTrace';
+
+const leftOut = ['PaintImage'];
+
+const bufferKilobytes = 1024 * 1024;
 
 async function readStream(
   session: CDPSession,
   handle: string,
 ): Promise<string> {
-  const chunks: string[] = [];
+  const kept = eventsKept(leftOut);
   for (;;) {
     const chunk = await session.send('IO.read', { handle });
-    chunks.push(
+    kept.read(
       chunk.base64Encoded === true
         ? Buffer.from(chunk.data, 'base64').toString('utf8')
         : chunk.data,
     );
     if (chunk.eof) {
       await session.send('IO.close', { handle });
-      return chunks.join('');
+      return kept.text();
     }
   }
 }
@@ -30,6 +35,7 @@ export async function startTracing(
     traceConfig: {
       includedCategories: [...included],
       excludedCategories: ['*'],
+      traceBufferSizeInKb: bufferKilobytes,
     },
   });
   return async () => {

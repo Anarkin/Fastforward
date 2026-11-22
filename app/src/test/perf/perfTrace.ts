@@ -396,3 +396,26 @@ export function traceEventsOf(
       : undefined;
   return Array.isArray(events) ? (events as readonly TraceEvent[]) : undefined;
 }
+
+export interface EventsKept {
+  readonly read: (piece: string) => void;
+  readonly text: () => string;
+}
+
+export function eventsKept(leftOut: readonly string[]): EventsKept {
+  const named = leftOut.map((name) => `"name":"${name}","ph"`);
+  const kept: string[] = [];
+  let rest = '';
+  return {
+    read: (piece) => {
+      const lines = `${rest}${piece}`.split('\n');
+      rest = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.endsWith(',') || !named.some((mark) => line.includes(mark))) {
+          kept.push(line);
+        }
+      }
+    },
+    text: () => [...kept, rest].join('\n'),
+  };
+}

@@ -55,9 +55,28 @@ interface FilesPlan {
   readonly limits: Readonly<Record<string, number>>;
 }
 
+interface HeavyFiles {
+  readonly heavyFiles: () => readonly {
+    readonly name: string;
+    readonly before: string;
+    readonly after: string;
+  }[];
+}
+
 const platforms: readonly Platform[] = ['win32', 'darwin', 'linux'];
 
+const scripts = path.join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  '..',
+  'scripts',
+  'playground',
+);
+
 let filesPlan: FilesPlan;
+let heavy: HeavyFiles;
 const plans = new Map<string, Plan>();
 
 const planFor = (platform: Platform, large = false): Plan => {
@@ -118,20 +137,13 @@ const sortedColors = (colors: Iterable<string | undefined>) =>
 suite('Playground of files', () => {
   beforeAll(async () => {
     const loaded: FilesPlan = await import(
-      pathToFileURL(
-        path.join(
-          __dirname,
-          '..',
-          '..',
-          '..',
-          '..',
-          'scripts',
-          'playground',
-          'filesPlan.mts',
-        ),
-      ).href
+      pathToFileURL(path.join(scripts, 'filesPlan.mts')).href
     );
     filesPlan = loaded;
+    const generated: HeavyFiles = await import(
+      pathToFileURL(path.join(scripts, 'heavyFiles.mts')).href
+    );
+    heavy = generated;
   });
 
   test('holds a file of every extension of every default color group, a program by its exec bit outside Windows, and files no group colors, so that every group shows', () => {
@@ -512,6 +524,25 @@ suite('Playground of files', () => {
         contentOf(itemAt(made, other)),
       );
       assert.strictEqual(same, one.startsWith('compare/identical-'), one);
+    }
+  });
+
+  test('holds the heavy files the frames are measured over in a folder named perf, both versions of each side by side and paired to compare, on every system', () => {
+    const files = heavy.heavyFiles();
+    for (const platform of platforms) {
+      const made = planFor(platform);
+      assert.strictEqual(countUnder(made, 'perf'), files.length * 2, platform);
+      for (const { name, before, after } of files) {
+        const { name: stem, ext } = path.posix.parse(name);
+        const old = `perf/${stem}-v1${ext}`;
+        const changed = `perf/${stem}-v2${ext}`;
+        assert.strictEqual(contentOf(itemAt(made, old)).toString(), before);
+        assert.strictEqual(contentOf(itemAt(made, changed)).toString(), after);
+        assert.ok(
+          made.pairs.some(([one, other]) => one === old && other === changed),
+          name,
+        );
+      }
     }
   });
 

@@ -3,9 +3,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { deflateSync } from 'node:zlib';
+import { pathToFileURL } from 'node:url';
 import { pngChunk } from '../e2e/images';
 
-const version = 2;
+const version = 5;
 
 export const perfBuild = path.resolve(
   __dirname,
@@ -19,6 +20,8 @@ export interface PerfData {
   readonly repository: string;
   readonly files: string;
   readonly flood: string;
+  readonly heavy: string;
+  readonly heavyFiles: readonly HeavyFile[];
 }
 
 export const hugeFile = 'huge.ts';
@@ -119,6 +122,52 @@ function makeRepository(root: string): void {
   git(root, ['init', '-q', '-b', 'main']);
   git(root, ['fast-import', '--quiet'], historyStream(40_000));
   git(root, ['reset', '-q', '--hard', 'main']);
+}
+
+const asPerf = ['-c', 'user.name=Perf', '-c', 'user.email=perf@example.com'];
+
+interface HeavyFile {
+  readonly name: string;
+  readonly heavy: string;
+  readonly oneLine?: true;
+}
+
+interface HeavyVersions extends HeavyFile {
+  readonly before: string;
+  readonly after: string;
+}
+
+async function heavyVersions(): Promise<readonly HeavyVersions[]> {
+  const made: { readonly heavyFiles: () => readonly HeavyVersions[] } =
+    await import(
+      pathToFileURL(
+        path.join(
+          __dirname,
+          '..',
+          '..',
+          '..',
+          'scripts',
+          'playground',
+          'heavyFiles.mts',
+        ),
+      ).href
+    );
+  return made.heavyFiles();
+}
+
+function makeHeavy(root: string, files: readonly HeavyVersions[]): void {
+  fs.mkdirSync(root, { recursive: true });
+  git(root, ['init', '-q', '-b', 'main']);
+  git(root, ['config', 'core.autocrlf', 'false']);
+  for (const { name, before } of files) {
+    fs.writeFileSync(path.join(root, name), before);
+  }
+  git(root, ['add', '.']);
+  git(root, [...asPerf, 'commit', '-q', '-m', 'Add the heavy files']);
+  for (const { name, after } of files) {
+    fs.writeFileSync(path.join(root, name), after);
+    git(root, [...asPerf, 'commit', '-q', '-am', `Change ${name}`]);
+  }
 }
 
 function gradientPng(size: number, hue: number): Buffer {
@@ -247,19 +296,27 @@ process.stdin.once('data', () => {
 });
 `;
 
-export function perfData(
+export async function perfData(
   folder = path.join(os.tmpdir(), `fastforward-perf-data-${version}`),
-): PerfData {
+): Promise<PerfData> {
+  const versions = await heavyVersions();
   const data = {
     repository: path.join(folder, 'repository'),
     files: path.join(folder, 'files'),
     flood: path.join(folder, 'flood.mjs'),
+    heavy: path.join(folder, 'heavy'),
+    heavyFiles: versions.map(({ name, heavy, oneLine }) => ({
+      name,
+      heavy,
+      ...(oneLine === true && { oneLine }),
+    })),
   };
   const ready = path.join(folder, 'ready');
   if (!fs.existsSync(ready)) {
     fs.rmSync(folder, { recursive: true, force: true });
     makeRepository(data.repository);
     makeFiles(data.files);
+    makeHeavy(data.heavy, versions);
     fs.writeFileSync(ready, '');
   }
   fs.writeFileSync(data.flood, floodScript);
