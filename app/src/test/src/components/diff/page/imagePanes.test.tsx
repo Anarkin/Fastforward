@@ -27,11 +27,11 @@ suite('Diff rows', () => {
       ],
     );
     const markup = renderToStaticMarkup(
-      <ImageDiff panes={imagePanes(origin, added)} />,
+      <ImageDiff panes={imagePanes(origin, added)} top={36} />,
     );
     assert.match(
       markup,
-      /<div class="image-pane filler"><div class="image-frame"><\/div><\/div>/,
+      /<div class="image-pane filler" style="--diff-row-top:36px"><div class="image-frame"><\/div><\/div>/,
     );
     assert.match(markup, /class="image-pane"/);
   });

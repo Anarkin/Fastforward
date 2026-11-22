@@ -69,7 +69,8 @@ import { useLaterRows } from '../../../lib/page/laterRows';
 import { picturedRegion } from '../../../lib/page/picturedCopy';
 import { useFoundJumps, useRevealFound } from './jumps';
 import { useLargeFileLoads } from './largeFiles';
-import { diffRowClass, diffRowPlace } from './rowClasses';
+import { diffRowClass, stripedFrom } from './rowClasses';
+import { rowPlace } from '../../../lib/page/rowPlace';
 import { FileHeader, HiddenChangeMarks } from './rowParts';
 import { useCodeSnap, useDiffText } from './text';
 import { useDiffFollow } from './follow';
@@ -440,8 +441,8 @@ export function DiffView({
     code,
     hiddenMarks,
   };
-  const renderRow = (row: DiffRow, index: number) => (
-    <DiffRowShown row={row} index={index} parts={rowParts} />
+  const renderRow = (row: DiffRow, index: number, top: number) => (
+    <DiffRowShown row={row} index={index} top={top} parts={rowParts} />
   );
 
   const rowInputs = [
@@ -619,11 +620,12 @@ export function DiffView({
                 className={diffRowClass(row.kind)}
                 data-index={item.index}
                 ref={height === undefined ? virtualizer.measureElement : null}
-                style={diffRowPlace(item.start, height)}
+                style={rowPlace(item.start, height)}
               >
                 <RowContent
                   row={row}
                   index={item.index}
+                  top={stripedFrom(row, item.start)}
                   inputs={rowInputs}
                   render={renderRow}
                 />

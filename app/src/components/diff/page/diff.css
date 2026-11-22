@@ -159,10 +159,6 @@
   margin-left: var(--diff-snap-inline, 0px);
 }
 
-.split-line > .split-side {
-  margin-left: var(--diff-side-snap, 0px);
-}
-
 .diff-line .number {
   flex: none;
   box-sizing: border-box;

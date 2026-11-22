@@ -4,14 +4,20 @@ import type { DiffRow } from './rows';
 interface RowInput {
   readonly row: DiffRow;
   readonly index: number;
+  readonly top: number;
   readonly inputs: readonly unknown[];
-  readonly render: (row: DiffRow, index: number) => React.ReactNode;
+  readonly render: (
+    row: DiffRow,
+    index: number,
+    top: number,
+  ) => React.ReactNode;
 }
 
 export function sameRowInput(before: RowInput, after: RowInput): boolean {
   return (
     before.row === after.row &&
     before.index === after.index &&
+    before.top === after.top &&
     before.inputs.length === after.inputs.length &&
     before.inputs.every((input, at) => Object.is(input, after.inputs[at]))
   );
@@ -20,9 +26,10 @@ export function sameRowInput(before: RowInput, after: RowInput): boolean {
 export const RowContent = memo(function RowContent({
   row,
   index,
+  top,
   render,
 }: RowInput) {
-  return render(row, index);
+  return render(row, index, top);
 }, sameRowInput);
 
 export function rowsRoom(dragged: boolean, viewHeight: number): number {

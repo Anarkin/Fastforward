@@ -7,6 +7,7 @@ import { cascaded, matchingRules } from '../../../helpers/cascade';
 import { Columns } from '../../../helpers/styleFixtures';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import {
+  css,
   noop,
   compact,
   looks,
@@ -14,6 +15,7 @@ import {
   after,
   currentMatchOutline,
 } from './stylesheetFixtures';
+import { sideSnaps } from '../../../../components/diff/page/codeSnap';
 import {
   codePadding,
   layoutVariables,
@@ -202,6 +204,7 @@ suite('Style', () => {
             { side: 'old', url: undefined },
             { side: 'new', url: 'a.png' },
           ]}
+          top={0}
         />
       </div>,
     );
@@ -277,7 +280,7 @@ suite('Style', () => {
     });
   });
 
-  test('moves each line of code onto whole device pixels by less than one, each side of a side-by-side diff on its own, by layout rather than a transform, which would cost the text its subpixel antialiasing', () => {
+  test('moves each line of code onto whole device pixels by less than one, each side of a side-by-side diff on its own, by layout rather than a transform, which would cost the text its subpixel antialiasing, the margin of a side written on the side itself rather than as a variable for a rule to read, which every element of the side inherited', () => {
     const inline = shownRow(
       diffView(<DiffViewShown />, <InlineLine kind="added" />),
     );
@@ -295,8 +298,13 @@ suite('Style', () => {
       'split-side',
     );
     for (const side of [left, right]) {
-      looks(side, { 'margin-left': 'var(--diff-side-snap, 0px)' });
+      looks(side, { 'margin-left': undefined });
     }
+    assert.deepStrictEqual(sideSnaps, [
+      { marginLeft: 'var(--diff-snap-left, 0px)' },
+      { marginLeft: 'var(--diff-snap-right, 0px)' },
+    ]);
+    assert.doesNotMatch(css, /--diff-side-snap/);
   });
 
   test('keeps the marks of a diff over the track of its scrollbar, between its buttons, inside the line their column draws, as their thumbs reach the edges of their boxes', () => {

@@ -15,7 +15,6 @@ declare module 'react' {
     readonly '--diff-snap-inline'?: string;
     readonly '--diff-snap-left'?: string;
     readonly '--diff-snap-right'?: string;
-    readonly '--diff-side-snap'?: string;
     readonly '--wrap-indent'?: string;
   }
 }

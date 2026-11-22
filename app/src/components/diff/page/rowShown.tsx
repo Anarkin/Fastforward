@@ -21,7 +21,7 @@ import { wholeImageUrl, type ImageOrigin } from './images';
 import { sideArea, type Sideways, type TextArea } from './overflow';
 import { markerInset, numberWidth } from './textLayout';
 import type { WrapColumns } from './rowMeasures';
-import { sideSnaps } from './codeSnap';
+import { emptySide, sideSnaps } from './codeSnap';
 import type { WordRanges } from './wordDiff';
 import { WrapMarks } from './wrapMarks';
 import type { DotLook } from '../../../lib/page/dotLook';
@@ -58,6 +58,7 @@ export interface DiffRowParts {
 export function DiffRowShown({
   row,
   index,
+  top,
   parts: {
     error,
     files,
@@ -79,6 +80,7 @@ export function DiffRowShown({
 }: {
   readonly row: DiffRow;
   readonly index: number;
+  readonly top: number;
   readonly parts: DiffRowParts;
 }): ReactNode {
   switch (row.kind) {
@@ -145,7 +147,9 @@ export function DiffRowShown({
         const url = wholeImageUrl(origin, whole);
         return url && <WholeImage url={url} />;
       }
-      return <ImageDiff panes={imagePanes(origin, files[row.file])} />;
+      return (
+        <ImageDiff panes={imagePanes(origin, files[row.file])} top={top} />
+      );
     }
     case 'skeleton':
       return (
@@ -198,7 +202,7 @@ export function DiffRowShown({
             <div
               key={side}
               className={`diff-line text-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')} ${cell ? wholeChangeClass(words, lineKey(row.file, cell.index)) : ''}`}
-              style={sideSnaps[side]}
+              style={cell ? sideSnaps[side] : emptySide(side, top)}
             >
               <span className="number">
                 {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}

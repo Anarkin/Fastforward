@@ -1,4 +1,3 @@
-import { rowPlace } from '../../../lib/page/rowPlace';
 import type { NumberedLine } from './changeBlocks';
 import type { DiffRow } from './rows';
 
@@ -24,9 +23,10 @@ export function splitSideClass(
   return cell.line.kind === change ? change : '';
 }
 
-export function diffRowPlace(
-  start: number,
-  height: number | undefined,
-): React.CSSProperties {
-  return { ...rowPlace(start, height), '--diff-row-top': `${start}px` };
+export function stripedFrom(row: DiffRow, start: number): number {
+  return row.kind === 'image' ||
+    (row.kind === 'split' &&
+      (row.left === undefined || row.right === undefined))
+    ? start
+    : 0;
 }

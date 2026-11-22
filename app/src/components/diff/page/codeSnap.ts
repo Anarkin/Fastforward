@@ -2,9 +2,18 @@ import { snapOffset } from '../../../lib/page/devicePixels';
 import { codePadding } from './textLayout';
 
 export const sideSnaps: readonly React.CSSProperties[] = [
-  { '--diff-side-snap': 'var(--diff-snap-left)' },
-  { '--diff-side-snap': 'var(--diff-snap-right)' },
+  { marginLeft: 'var(--diff-snap-left, 0px)' },
+  { marginLeft: 'var(--diff-snap-right, 0px)' },
 ];
+
+export const stripesFrom = (top: number): React.CSSProperties => ({
+  '--diff-row-top': `${top}px`,
+});
+
+export const emptySide = (side: number, top: number): React.CSSProperties => ({
+  ...sideSnaps[side],
+  ...stripesFrom(top),
+});
 
 export interface CodeSnap {
   readonly inline: number;

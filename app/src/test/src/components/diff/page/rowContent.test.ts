@@ -48,9 +48,15 @@ suite('Drawing code', () => {
   test('draws a row anew only once the row or what it is drawn from changed, not on every scroll of the diff, as drawing every row shown on every step of a drag made dragging the scrollbar of a large diff slow', () => {
     const row: DiffRow = { kind: 'hunk', file: 0 };
     const words = new Map();
-    const drawn = (inputs: readonly unknown[], index = 3, shown = row) => ({
+    const drawn = (
+      inputs: readonly unknown[],
+      index = 3,
+      shown = row,
+      top = 0,
+    ) => ({
       row: shown,
       index,
+      top,
       inputs,
       render: () => null,
     });
@@ -61,6 +67,10 @@ suite('Drawing code', () => {
     assert.ok(!sameRowInput(drawn([words, 17]), drawn([words, 17], 4)));
     assert.ok(
       !sameRowInput(drawn([words, 17]), drawn([words, 17], 3, { ...row })),
+    );
+    assert.ok(
+      !sameRowInput(drawn([words, 17]), drawn([words, 17], 3, row, 36)),
+      'a row told it is further down',
     );
   });
 });
