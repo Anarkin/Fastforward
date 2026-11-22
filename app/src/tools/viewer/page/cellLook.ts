@@ -39,6 +39,8 @@ export function textLookOf(host: Element): TextLook {
   const match = made('mark', 'find-match');
   const current = made('mark', 'find-match current');
   const occurrence = made('mark', 'occurrence-match');
+  const selected = made('span', '');
+  selected.style.background = 'var(--selection-background)';
   const ground = over(
     [0, 0, 0, 1],
     parsedColor(
@@ -58,6 +60,7 @@ export function textLookOf(host: Element): TextLook {
     match: { ink: colorOf(match), ground: groundOf(match) },
     current: { ink: colorOf(current), ground: groundOf(current) },
     occurrence: { ink: undefined, ground: groundOf(occurrence) },
+    selected: groundOf(selected),
   };
   row.remove();
   return look;

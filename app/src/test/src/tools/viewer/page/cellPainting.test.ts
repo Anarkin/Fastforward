@@ -163,6 +163,43 @@ suite('Rows painted as cells', () => {
     );
   });
 
+  test('marks the part of each row that is selected, and works a row out anew once what is selected of it changes, the rows the selection does not reach taken from the cells kept', () => {
+    const { frame, cells } = painting();
+    const rows = [rowOf('abcd', 0), rowOf('efgh', 5), rowOf('ijkl', 10)];
+    const selection = {
+      anchor: { start: 0, char: 2 },
+      focus: { start: 5, char: 1 },
+    };
+
+    paintRows(cells, shown(rows, { selection }), Infinity);
+
+    assert.deepStrictEqual(
+      rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
+      [
+        [14, 0, 14],
+        [0, 16, 7],
+      ],
+    );
+
+    const placedBefore = frame.placed;
+    paintRows(
+      cells,
+      shown(rows, {
+        selection: { ...selection, focus: { start: 5, char: 3 } },
+      }),
+      Infinity,
+    );
+
+    assert.strictEqual(frame.placed - placedBefore, 4);
+    assert.deepStrictEqual(
+      rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
+      [
+        [14, 0, 14],
+        [0, 16, 21],
+      ],
+    );
+  });
+
   test('says the frame is not whole while a glyph is missing, and keeps no row with one, so the next frame draws the row whole', () => {
     let now = 0;
     const { painter, cells } = painting(() => now);

@@ -216,6 +216,28 @@ suite('Cells of a text', () => {
     );
   });
 
+  test('lays the ground of the selection under what is selected, a row high, its glyphs drawn for that ground in the ink they had, what a find found among them too', () => {
+    const { frame, painter } = drawn([
+      { text: 'ab', selected: true },
+      { text: 'c', mark: 'match', selected: true },
+      { text: 'd' },
+    ]);
+
+    assert.deepStrictEqual(rectsIn(frame), [
+      { x: 0, y: 0, width: 14, height: 16, color: 0xff784f26 },
+      { x: 14, y: 0, width: 7, height: 16, color: 0xff784f26 },
+    ]);
+    assert.deepStrictEqual(
+      painter.painted.map(({ shown, ink, ground }) => [shown, ink, ground]),
+      [
+        ['a', 'plain', 'rgb(38 79 120)'],
+        ['b', 'plain', 'rgb(38 79 120)'],
+        ['c', 'black', 'rgb(38 79 120)'],
+        ['d', 'plain', 'rgb(17 17 17)'],
+      ],
+    );
+  });
+
   test('counts a glyph there was no time to draw as missing and leaves its cells empty, the text after it standing where it would', () => {
     let now = 0;
     const { frame, painter, end } = drawn([{ text: 'a中b' }], {

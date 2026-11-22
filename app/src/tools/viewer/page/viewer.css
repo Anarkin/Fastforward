@@ -69,6 +69,7 @@
 
 .cell-rows {
   position: relative;
+  user-select: none;
 }
 
 .cell-canvas {

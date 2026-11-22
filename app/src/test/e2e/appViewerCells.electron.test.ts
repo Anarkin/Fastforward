@@ -7,7 +7,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { writeSettings } from './settingsWritten';
-import { untilSettled } from './waits';
+import { untilSettled, waitForFocus } from './waits';
 
 const text = [
   "import { useMemo } from 'react';",
@@ -176,6 +176,71 @@ suite('App viewer drawn as cells', () => {
 
   const alike = { elementsInked: true, cellsInked: true, alike: true };
 
+  const at = async (line: number, column: number) => {
+    const { advance, row, left, top } = await page.evaluate(() => {
+      const probe = document.querySelector('.viewer-probe');
+      const area = document.querySelector('.viewer-sideways');
+      if (probe === null || area === null) {
+        throw new Error('The viewer shows no text');
+      }
+      const style = getComputedStyle(probe);
+      const box = probe.getBoundingClientRect();
+      const shown = area.getBoundingClientRect();
+      return {
+        advance:
+          (box.width -
+            parseFloat(style.paddingLeft) -
+            parseFloat(style.paddingRight)) /
+          1000,
+        row: box.height,
+        left: shown.left,
+        top: shown.top,
+      };
+    });
+    return { x: left + column * advance + 1, y: top + (line + 0.5) * row };
+  };
+
+  const copied = async () => {
+    await waitForFocus(page.locator('.viewer-body').first(), 'the viewer');
+    return page.evaluate(() => {
+      const clipboardData = new DataTransfer();
+      const copy = new ClipboardEvent('copy', {
+        clipboardData,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.activeElement?.dispatchEvent(copy);
+      return copy.defaultPrevented
+        ? clipboardData.getData('text/plain')
+        : (getSelection()?.toString() ?? '');
+    });
+  };
+
+  const settled = async () => {
+    let last = await shot();
+    await untilSettled(async () => {
+      last = await shot();
+      return last.hash;
+    }, 'the selection drawn');
+    return last;
+  };
+
+  const selectedBothWays = async (select: () => Promise<void>) => {
+    const ways: { copied: string; seen: Seen }[] = [];
+    for (const cells of [false, true]) {
+      await drawn(cells, false);
+      await select();
+      ways.push({ seen: await settled(), copied: await copied() });
+    }
+    const [elements, cells] = ways;
+    return {
+      elements: elements.copied,
+      cells: cells.copied,
+      alike: unlikeShare(elements.seen, cells.seen) < mostUnlike,
+      unlike: unlikeShare(elements.seen, cells.seen),
+    };
+  };
+
   beforeAll(async () => {
     const folder = tempFolder('viewer-cells');
     profile = path.join(folder, 'profile');
@@ -213,6 +278,41 @@ suite('App viewer drawn as cells', () => {
     const { unlike, ...seen } = await bothWays(true);
 
     assert.deepStrictEqual(seen, alike, `${unlike} of the ink unlike`);
+  });
+
+  test('selects the text the pointer is dragged over, from the character it was pressed before to the one it was let go before, through a tab and whole rows, drawn as the selection of the elements is, and copies it with its line breaks', async () => {
+    const dragged = [
+      'function sized(count: number): string {',
+      "\tconst label = count > 9000 ? 'many' : `few ${count}`;",
+      '  return [',
+    ].join('\n');
+    const { unlike, ...seen } = await selectedBothWays(async () => {
+      const from = await at(3, 7);
+      const to = await at(5, 10);
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(to.x, to.y, { steps: 6 });
+      await page.mouse.up();
+    });
+
+    assert.deepStrictEqual(
+      seen,
+      { elements: dragged, cells: dragged, alike: true },
+      `${unlike} of the ink unlike`,
+    );
+  });
+
+  test('selects the word a double click is on and marks its other occurrences once it rested, as the elements do', async () => {
+    const { unlike, ...seen } = await selectedBothWays(async () => {
+      const word = await at(3, 24);
+      await page.mouse.dblclick(word.x, word.y);
+    });
+
+    assert.deepStrictEqual(
+      seen,
+      { elements: 'count', cells: 'count', alike: true },
+      `${unlike} of the ink unlike`,
+    );
   });
 
   test('draws its cells again once the GPU gave its context back after losing it, as nothing else draws the text', async () => {

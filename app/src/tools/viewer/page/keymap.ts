@@ -42,6 +42,10 @@ export const viewerKeymap = {
   language: bind('Text', strings.actions.chooseLanguage, { L: true }),
   wrap: bind('Text', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Text', strings.actions.showWhitespace, { '.': true }),
+  selectText: bind('Text', strings.actions.selectText, {
+    Click: 'start',
+    'Shift+Click': 'extend',
+  } as const),
   find: bind(
     'Searching',
     strings.actions.findInFile,

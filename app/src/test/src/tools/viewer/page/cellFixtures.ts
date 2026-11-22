@@ -92,6 +92,7 @@ export const look: TextLook = {
   match: { ink: 'black', ground: [255, 204, 0, 1] },
   current: { ink: 'black', ground: [255, 204, 0, 1] },
   occurrence: { ink: undefined, ground: [65, 54, 14, 1] },
+  selected: [38, 79, 120, 1],
 };
 
 export interface TileSeen {

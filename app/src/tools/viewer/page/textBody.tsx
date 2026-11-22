@@ -27,6 +27,8 @@ const aheadScreens = 3;
 
 const noRowsAhead: readonly RowAhead[] = [];
 
+const noCopy = () => undefined;
+
 export function TextBody({
   encoding,
   language,
@@ -264,7 +266,10 @@ export function TextBody({
                 ].map((row) => ({ row, part: partOf(row) }))
               : noRowsAhead
           }
+          held={loaded.rows}
           text={text?.text}
+          onSelected={highlightOccurrences && !finding ? setCopy : noCopy}
+          move={move}
           first={firstCell}
           columns={Math.max(1, lastCell - firstCell)}
         />

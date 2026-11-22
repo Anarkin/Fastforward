@@ -384,6 +384,7 @@ export const strings = {
       'Move the cursor to the start or the end of the file, or select up to it',
     scrollSideways: 'Scroll sideways',
     chooseEncoding: 'Choose the encoding of the text',
+    selectText: 'Select text, or reach from where the selection began',
     chooseLanguage: 'Choose the language the text is colored in',
     findInFile: 'Search the file',
     viewDiffFile: 'View the file shown in a tab of its own',

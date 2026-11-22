@@ -20,7 +20,10 @@ interface CellRowsProps {
   readonly font: CellFont;
   readonly dotLook: DotLook | undefined;
   readonly ahead: readonly RowAhead[];
+  readonly held: readonly ScreenRow[];
   readonly text: string | undefined;
+  readonly onSelected: (copy: string | undefined) => void;
+  readonly move: (rows: number) => void;
   readonly first: number;
   readonly columns: number;
 }
@@ -36,7 +39,10 @@ export function CellRows({
   font,
   dotLook,
   ahead,
+  held,
   text,
+  onSelected,
+  move,
   first,
   columns,
 }: CellRowsProps) {
@@ -53,12 +59,23 @@ export function CellRows({
       view.current?.dispose();
       view.current = new CellView(element, around, { font, dotLook });
     }
-    view.current.show(
-      { rows, parts, wrapAt, colored, marksOf, showWhitespace, widths, first },
+    view.current.show({
+      shown: {
+        rows,
+        parts,
+        wrapAt,
+        colored,
+        marksOf,
+        showWhitespace,
+        widths,
+        first,
+      },
       columns,
       ahead,
+      held,
       text,
-    );
+      events: { chosen: onSelected, move },
+    });
   });
   useLayoutEffect(
     () => () => {

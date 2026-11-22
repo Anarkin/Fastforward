@@ -1,4 +1,5 @@
 import type { DotLook } from '../../../lib/page/dotLook';
+import { clicked } from '../../../lib/shared/keymap';
 import { cellMetricsOf, textLookOf, type CellFont } from './cellLook';
 import {
   cellPainting,
@@ -6,10 +7,13 @@ import {
   type CellPainting,
   type ShownRows,
 } from './cellPainting';
+import { CellSelecting } from './cellSelecting';
 import { CellSurface } from './cellSurface';
 import type { GlyphTiles } from './glyphTiles';
 import { asciiJob, linesJob, rowsJob, type RowAhead } from './glyphWarmth';
 import { IdleWork, pageIdling } from './idleWork';
+import { viewerKeymap } from './keymap';
+import type { ScreenRow } from './screenRows';
 import { poolOf } from './surfacePool';
 import { paletteOf, textStyles, type DotBox } from './textCells';
 import type { ColoredText } from './textColors';
@@ -42,6 +46,22 @@ export interface CellViewFont {
   readonly font: CellFont;
   readonly dotLook: DotLook | undefined;
 }
+
+export interface CellViewEvents {
+  readonly chosen: (copy: string | undefined) => void;
+  readonly move: (rows: number) => void;
+}
+
+export interface CellViewShown {
+  readonly shown: ShownRows;
+  readonly columns: number;
+  readonly ahead: readonly RowAhead[];
+  readonly held: readonly ScreenRow[];
+  readonly text: string | undefined;
+  readonly events: CellViewEvents;
+}
+
+const noRows: readonly ScreenRow[] = [];
 
 export const viewKey = ({ font }: CellViewFont, ratio: number): string =>
   `${font.family}|${font.char}|${font.spacing}|${ratio}`;
@@ -77,6 +97,9 @@ export class CellView {
   private readonly painting: CellPainting;
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
   private readonly idle: IdleWork;
+  private readonly selecting: CellSelecting;
+  private held = noRows;
+  private events: CellViewEvents | undefined;
   private shown: ShownRows | undefined;
   private read: { text: string | undefined; colored: ColoredText | undefined } =
     { text: undefined, colored: undefined };
@@ -123,6 +146,16 @@ export class CellView {
       (slice) => this.tiles.within(slice),
       () => this.tiles.flush(),
     );
+    this.selecting = new CellSelecting(host, canvas, {
+      shown: () => this.shown,
+      held: () => this.held,
+      cell: () => this.tiles.metrics,
+      area: () => rows.parentElement?.getBoundingClientRect(),
+      pressedAs: (press) => clicked(viewerKeymap.selectText, press),
+      changed: this.paint,
+      chosen: (copy) => this.events?.chosen(copy),
+      move: (by) => this.events?.move(by),
+    });
     this.warm();
   }
 
@@ -136,16 +169,21 @@ export class CellView {
     );
   }
 
-  show(
-    shown: ShownRows,
-    columns: number,
-    ahead: readonly RowAhead[],
-    text: string | undefined,
-  ): void {
+  show({ shown, columns, ahead, held, text, events }: CellViewShown): void {
     this.shown = shown;
     this.columns = columns;
+    this.held = held;
+    this.events = events;
+    this.selecting.rowsChanged();
     this.paint();
-    this.idle.put('rows', rowsJob(this.painting, shown, ahead));
+    this.idle.put(
+      'rows',
+      rowsJob(
+        this.painting,
+        { ...shown, selection: this.selecting.selection },
+        ahead,
+      ),
+    );
     const colored =
       shown.colored?.parts.at(-1)?.done === true ? shown.colored : undefined;
     if (
@@ -194,7 +232,11 @@ export class CellView {
     }
     const { advance, rowHeight } = tiles.metrics;
     surface.sized(this.columns * advance, shown.rows.length * rowHeight);
-    const whole = paintRows(this.painting, shown, this.budgetFor(shown));
+    const whole = paintRows(
+      this.painting,
+      { ...shown, selection: this.selecting.selection },
+      this.budgetFor(shown),
+    );
     surface.draw();
     if (tiles.full) {
       tiles.reset();
@@ -206,6 +248,7 @@ export class CellView {
   };
 
   dispose(): void {
+    this.selecting.dispose();
     this.idle.clear();
     cancelAnimationFrame(this.again);
     this.scheme.removeEventListener('change', this.relook);

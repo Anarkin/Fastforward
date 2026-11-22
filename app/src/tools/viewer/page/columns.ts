@@ -100,6 +100,28 @@ export function widestColumns(
   return widest;
 }
 
+export function charAtColumn(
+  text: string,
+  from: number,
+  to: number,
+  startColumn: number,
+  column: number,
+  widths?: TextWidths,
+): number {
+  const step = stepsOf(text, widths);
+  let at = from;
+  let reached = startColumn;
+  while (at < to) {
+    const moved = step(at, reached);
+    if (column < (reached + moved.column) / 2) {
+      break;
+    }
+    at = moved.next;
+    reached = moved.column;
+  }
+  return at;
+}
+
 export function shownWithin(
   text: string,
   from: number,

@@ -230,6 +230,7 @@ suite('Shortcuts popup', () => {
           'Choose the language the text is colored in',
           'Turn line wrapping on or off',
           'Show or hide whitespace',
+          'Select text, or reach from where the selection began',
         ],
       ],
       [

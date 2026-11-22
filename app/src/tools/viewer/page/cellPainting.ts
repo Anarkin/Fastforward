@@ -16,6 +16,11 @@ import {
   type TextPalette,
 } from './textCells';
 import { rowSegments, type ColoredText } from './textColors';
+import {
+  selectedIn,
+  type CharRange,
+  type TextSelection,
+} from './textSelection';
 
 export interface RowPart {
   readonly from: number;
@@ -30,6 +35,7 @@ export interface RowsLook {
   readonly showWhitespace: boolean;
   readonly widths: TextWidths;
   readonly first: number;
+  readonly selection?: TextSelection | undefined;
 }
 
 export interface ShownRows extends RowsLook {
@@ -44,6 +50,7 @@ interface KeptRow {
   readonly column: number;
   readonly colored: ColoredText | undefined;
   readonly marks: readonly FindMark[];
+  readonly selected: CharRange | undefined;
   readonly blanks: boolean;
   readonly limit: number;
   readonly generation: number;
@@ -80,10 +87,44 @@ export const cellPainting = (
 
 const keptScreens = 8;
 
+function selectedPieces(
+  pieces: readonly DrawnPiece[],
+  selected: CharRange | undefined,
+): readonly DrawnPiece[] {
+  if (selected === undefined) {
+    return pieces;
+  }
+  const split: DrawnPiece[] = [];
+  let at = 0;
+  for (const piece of pieces) {
+    const end = at + piece.text.length;
+    const from = Math.max(at, selected.from);
+    const to = Math.min(end, selected.to);
+    if (to <= from) {
+      split.push(piece);
+    } else {
+      if (from > at) {
+        split.push({ ...piece, text: piece.text.slice(0, from - at) });
+      }
+      split.push({
+        ...piece,
+        text: piece.text.slice(from - at, to - at),
+        selected: true,
+      });
+      if (to < end) {
+        split.push({ ...piece, text: piece.text.slice(to - at) });
+      }
+    }
+    at = end;
+  }
+  return split;
+}
+
 function piecesOf(
   colored: ColoredText | undefined,
   row: ScreenRow,
   marks: readonly FindMark[],
+  selected: CharRange | undefined,
   from: number,
   to: number,
 ): readonly DrawnPiece[] {
@@ -92,10 +133,20 @@ function piecesOf(
     from,
     to,
   );
-  return marks.length === 0
-    ? segments
-    : markPieces(segments, marksWithin(marks, from, to));
+  return selectedPieces(
+    marks.length === 0
+      ? segments
+      : markPieces(segments, marksWithin(marks, from, to)),
+    selected && { from: selected.from - from, to: selected.to - from },
+  );
 }
+
+const sameRange = (one: CharRange | undefined, other: CharRange | undefined) =>
+  one === other ||
+  (one !== undefined &&
+    other !== undefined &&
+    one.from === other.from &&
+    one.to === other.to);
 
 const sameMarks = (one: readonly FindMark[], other: readonly FindMark[]) =>
   one === other || (one.length === 0 && other.length === 0);
@@ -141,13 +192,24 @@ const drawingOn = (
 
 const rowKey = (row: ScreenRow): string => `${row.row.start}:${row.from}`;
 
+const selectedOf = (
+  { selection }: RowsLook,
+  row: ScreenRow,
+  part: RowPart | undefined,
+): CharRange | undefined =>
+  selectedIn(selection, row.row, {
+    from: part?.from ?? row.from,
+    to: part?.to ?? row.to,
+  });
+
 function keptOf(
   { kept, tiles }: CellPainting,
-  { colored, showWhitespace, wrapAt }: RowsLook,
+  look: RowsLook,
   row: ScreenRow,
   part: RowPart | undefined,
   marks: readonly FindMark[],
 ): KeptRow | undefined {
+  const { colored, showWhitespace, wrapAt } = look;
   const before = kept.get(rowKey(row));
   return before !== undefined &&
     before.row.text === row.row.text &&
@@ -156,6 +218,7 @@ function keptOf(
     before.column === (part?.column ?? 0) &&
     before.colored === colored &&
     sameMarks(before.marks, marks) &&
+    sameRange(before.selected, selectedOf(look, row, part)) &&
     before.blanks === showWhitespace &&
     before.limit === (wrapAt ?? Infinity) &&
     before.generation === tiles.generation
@@ -179,10 +242,11 @@ function drawnRow(
   const tilesFrom = frame.tileCount;
   const rectsFrom = frame.rectCount;
   const missing = frame.missing;
+  const selected = selectedOf(look, row, part);
   drawRow(
     drawing,
     row,
-    piecesOf(look.colored, row, marks, from, to),
+    piecesOf(look.colored, row, marks, selected, from, to),
     column,
     y,
   );
@@ -196,6 +260,7 @@ function drawnRow(
     column,
     colored: look.colored,
     marks,
+    selected,
     blanks: look.showWhitespace,
     limit: drawing.limit,
     generation: painting.tiles.generation,

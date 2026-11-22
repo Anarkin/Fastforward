@@ -33,6 +33,7 @@ export interface TextLook {
   readonly match: MarkLook;
   readonly current: MarkLook;
   readonly occurrence: MarkLook;
+  readonly selected: Rgba;
 }
 
 export interface TextPalette {
@@ -40,6 +41,7 @@ export interface TextPalette {
   readonly styles: Map<string, GlyphStyle>;
   readonly fills: Map<Mark, number>;
   readonly dotFill: number;
+  readonly selectedFill: number;
 }
 
 export const paletteOf = (look: TextLook): TextPalette => ({
@@ -47,6 +49,7 @@ export const paletteOf = (look: TextLook): TextPalette => ({
   styles: new Map(),
   fills: new Map(),
   dotFill: packedOf(look.dots),
+  selectedFill: packedOf(look.selected),
 });
 
 export interface DotBox {
@@ -70,6 +73,7 @@ export interface DrawnPiece {
   readonly text: string;
   readonly kind?: string | undefined;
   readonly mark?: Mark;
+  readonly selected?: boolean;
 }
 
 const alone = (code: number) =>
@@ -91,15 +95,22 @@ function styleOf(
   { tiles, palette }: Styled,
   kind: string | undefined,
   mark: Mark,
+  selected = false,
 ): GlyphStyle {
-  const key = mark === undefined ? (kind ?? '') : `${kind ?? ''}/${mark}`;
+  const key =
+    mark === undefined && !selected
+      ? (kind ?? '')
+      : `${kind ?? ''}/${mark ?? ''}/${selected ? 'selected' : ''}`;
   let style = palette.styles.get(key);
   if (style === undefined) {
     const { look } = palette;
     const colored =
       (kind === undefined ? undefined : look.kinds.get(kind)) ?? look.plain;
     const marked = mark === undefined ? undefined : look[mark];
-    style = tiles.style(marked?.ink ?? colored, marked?.ground ?? look.ground);
+    style = tiles.style(
+      marked?.ink ?? colored,
+      selected ? look.selected : (marked?.ground ?? look.ground),
+    );
     palette.styles.set(key, style);
   }
   return style;
@@ -280,16 +291,24 @@ export function drawPieces(
   const { tiles, frame, first } = drawing;
   const { advance, rowHeight } = tiles.metrics;
   let column = from;
-  for (const { text, kind, mark } of pieces) {
+  for (const { text, kind, mark, selected } of pieces) {
     const start = column;
-    column = drawText(drawing, text, styleOf(drawing, kind, mark), column, y);
-    if (mark !== undefined && column > start) {
+    column = drawText(
+      drawing,
+      text,
+      styleOf(drawing, kind, mark, selected),
+      column,
+      y,
+    );
+    if ((mark !== undefined || selected === true) && column > start) {
       frame.rect(
         (start - first) * advance,
         y,
         (column - start) * advance,
         rowHeight,
-        fillOf(drawing, mark),
+        selected === true
+          ? drawing.palette.selectedFill
+          : fillOf(drawing, mark),
       );
     }
   }
