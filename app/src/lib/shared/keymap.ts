@@ -254,6 +254,15 @@ export function modifierKey(press: KeyPress): boolean {
   return modifierKeys.has(press.key);
 }
 
+const composingKey = 'Process';
+
+export function composes(event: object): boolean {
+  return (
+    ('isComposing' in event && event.isComposing === true) ||
+    ('key' in event && event.key === composingKey)
+  );
+}
+
 const rightButton = 2;
 
 export function menuFromKeyboard(event: { readonly button: number }): boolean {

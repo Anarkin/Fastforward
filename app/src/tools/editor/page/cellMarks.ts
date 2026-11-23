@@ -1,4 +1,4 @@
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { bracketPairs } from './brackets';
 import type { DocMark } from './cellLines';
 import { findMarks } from './find';
@@ -54,11 +54,11 @@ interface Kept {
   readonly marks: readonly DocMark[];
 }
 
-const shown = new WeakMap<EditorView, Kept>();
+const shown = new WeakMap<EditorSurface, Kept>();
 
 const none: readonly Place[] = [];
 
-export function marksShown(view: EditorView): readonly DocMark[] {
+export function marksShown(view: EditorSurface): readonly DocMark[] {
   const finds = findMarks(view.state);
   const occurrences = view.hasFocus ? occurrencesShown(view) : none;
   const brackets = view.hasFocus ? bracketPairs(view.state) : none;

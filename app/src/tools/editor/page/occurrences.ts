@@ -5,11 +5,11 @@ import {
   type Extension,
 } from '@codemirror/state';
 import {
-  ViewPlugin,
-  type EditorView,
-  type PluginValue,
-  type ViewUpdate,
-} from '@codemirror/view';
+  surfacePlugin,
+  type EditorSurface,
+  type SurfacePart,
+  type SurfaceUpdate,
+} from './surface';
 import { copiesIn, maxMatches } from '../../../lib/shared/textMatches';
 import { findsText } from './find';
 import { stepsWords } from './nextOccurrence';
@@ -129,20 +129,20 @@ const rested = StateEffect.define();
 
 const none: readonly Place[] = [];
 
-const marking = new WeakMap<EditorView, OccurrenceMarks>();
+const marking = new WeakMap<EditorSurface, OccurrenceMarks>();
 
-class OccurrenceMarks implements PluginValue {
+class OccurrenceMarks implements SurfacePart {
   found: readonly Place[];
   private sought: Sought | undefined;
   private resting: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(private readonly view: EditorView) {
+  constructor(private readonly view: EditorSurface) {
     this.sought = soughtIn(view.state);
     this.found = this.build(view);
     marking.set(view, this);
   }
 
-  update(update: ViewUpdate): void {
+  update(update: SurfaceUpdate): void {
     const moved = update.docChanged || update.viewportChanged;
     if (update.transactions.length === 0 && !moved) {
       return;
@@ -177,18 +177,18 @@ class OccurrenceMarks implements PluginValue {
     }
   }
 
-  private build(view: EditorView): readonly Place[] {
+  private build(view: EditorSurface): readonly Place[] {
     const { sought } = this;
     return sought === undefined
       ? none
-      : foundIn(view.state, sought, view.visibleRanges);
+      : foundIn(view.state, sought, [view.viewport]);
   }
 }
 
-export const occurrencesShown = (view: EditorView): readonly Place[] =>
+export const occurrencesShown = (view: EditorSurface): readonly Place[] =>
   marking.get(view)?.found ?? none;
 
 export const editorOccurrences: Extension = [
   pausedField,
-  ViewPlugin.fromClass(OccurrenceMarks),
+  surfacePlugin((view) => new OccurrenceMarks(view)),
 ];

@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
 import { toggleComment } from '@codemirror/commands';
 import { Compartment, EditorState } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
 import { suite, test } from 'vitest';
+import { linesWrapped } from '../../../../../tools/editor/page/surface';
 import {
   bracketsClosed,
   occurrencesMarked,
@@ -72,9 +72,10 @@ suite('The state of the editor', () => {
       cursor: defaultCursorLook,
       onUpdate: noop,
     });
+    const wrapped = linesWrapped.of(true);
     const chosen = stateOf(shown('one', 0), undefined, extensions).update({
       effects: [
-        wrapping.reconfigure(EditorView.lineWrapping),
+        wrapping.reconfigure(wrapped),
         blanking.reconfigure(blanksShown.of(true)),
         closing.reconfigure(bracketsClosed),
         occurring.reconfigure(occurrencesMarked(false)),
@@ -89,7 +90,8 @@ suite('The state of the editor', () => {
     );
 
     assert.strictEqual(next.doc.toString(), 'two');
-    assert.strictEqual(wrapping.get(next), EditorView.lineWrapping);
+    assert.strictEqual(wrapping.get(next), wrapped);
+    assert.strictEqual(next.facet(linesWrapped), true);
     assert.strictEqual(next.facet(blanksShown), true);
     assert.strictEqual(closing.get(next), bracketsClosed);
     assert.deepStrictEqual(occurring.get(next), occurrencesMarked(false));

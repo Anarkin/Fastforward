@@ -32,6 +32,21 @@ suite('Ticks on the track of a scrollbar', () => {
     assert.deepStrictEqual(tickJoiner(1 / 64).ticks(), []);
   });
 
+  test('joins the ticks of lines that meet, though the end of one and the start of the next were worked out apart and differ by the rounding of their last digit, as the matches of the lines one after another of a text edited at 125% showed as ticks a hairline apart', () => {
+    const row = 17.6;
+    const total = 40 * row;
+    const joined = tickJoiner(0);
+    for (let line = 0; line < 40; line++) {
+      joined.add((line * row) / total, (line * row + row) / total);
+    }
+
+    const ticks = joined.ticks();
+    assert.deepStrictEqual(
+      ticks.map(({ top, height }) => [top, Math.round(height * 1e9) / 1e9]),
+      [[0, 1]],
+    );
+  });
+
   test('draws no more ticks than a track has room for at two pixels each, however many places there are to tick', () => {
     const track = 700;
     const joined = tickJoiner(leastTick / track);

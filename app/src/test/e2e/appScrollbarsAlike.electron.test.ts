@@ -33,7 +33,7 @@ import {
 
 const gutterOf = (name: ViewName) =>
   name === 'editor'
-    ? '.editor .cm-content'
+    ? '.editor .editor-content'
     : name === 'diff'
       ? '.diff-view .virtual-row .split-code'
       : '.viewer-gutter';
@@ -337,7 +337,7 @@ suite('App scrollbars alike', () => {
     const ended: readonly ViewName[] = ['commander', ...textViews];
     const focused: Partial<Record<ViewName, string>> = {
       viewer: '.viewer-body',
-      editor: '.editor .cm-content',
+      editor: '.editor .editor-content',
       diff: '.diff-view > .virtual-rows',
     };
     for (const smooth of [true, false]) {
@@ -503,7 +503,7 @@ suite('App scrollbars alike', () => {
         minimaps: await page.locator('.diff-minimap').count(),
         diff: await found('diff', '.diff-view > .virtual-rows', 'changed'),
         viewer: await found('viewer', '.viewer-body', 'line 20'),
-        editor: await found('editor', '.editor .cm-content', 'line 20'),
+        editor: await found('editor', '.editor .editor-content', 'line 20'),
       },
       { changes: true, minimaps: 0, diff: true, viewer: true, editor: true },
     );
@@ -681,7 +681,7 @@ suite('App scrollbars alike', () => {
           .filter(({ wide }) => Math.abs(wide - size) >= 1),
         commander: shown('commander').includes('virtual-rows'),
         viewer: shown('viewer').filter((of) => of === 'scroll-proxy').length,
-        editor: shown('editor').includes('cm-scroller'),
+        editor: shown('editor').includes('editor-scroller'),
         diff: shown('diff').filter((of) => of === 'scroll-proxy').length,
         commits: shown('commit list').includes('virtual-rows'),
         Markdown: shown('Markdown').includes('column-body'),

@@ -249,12 +249,8 @@ suite('Style', () => {
         '::after',
       ],
       [
-        <div key="editor" className="cm-editor editor-text">
-          <div className="cm-content" />
-        </div>,
-        <div key="editor" className="cm-editor editor-text">
-          <div className="cm-content cm-lineWrapping" />
-        </div>,
+        <div key="editor" className="editor-surface" />,
+        <div key="editor" className="editor-surface wrapped" />,
         '::after',
       ],
       [
@@ -370,11 +366,7 @@ suite('Style', () => {
       background: 'var(--color-search-match)',
       'border-radius': undefined,
     };
-    for (const classes of [
-      'cm-editor editor-text',
-      'viewer-row',
-      'diff-line',
-    ]) {
+    for (const classes of ['editor-surface', 'viewer-row', 'diff-line']) {
       looks(found(classes, false), { ...match, 'box-shadow': undefined });
       looks(found(classes, true), {
         ...match,
@@ -434,10 +426,7 @@ suite('Style', () => {
     }
     looks(
       withClass(
-        inside(
-          'cm-editor editor-text',
-          <mark className="occurrence-match">(</mark>,
-        ),
+        inside('editor-surface', <mark className="occurrence-match">(</mark>),
         'occurrence-match',
       ),
       {
@@ -465,18 +454,6 @@ suite('Style', () => {
         selected,
       );
     }
-    const editor = rendered(
-      <div className="cm-editor editor-text editor-selection">
-        <div className="cm-scroller">
-          <div className="cm-line">x</div>
-        </div>
-      </div>,
-    );
-    looks(
-      withClass(editor, 'cm-line'),
-      { 'background-color': 'transparent' },
-      selected,
-    );
     looks(
       withClass(
         inside('pdf-pane', <div className="textLayer">{text}</div>),

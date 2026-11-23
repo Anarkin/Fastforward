@@ -56,7 +56,7 @@ suite('App started again', () => {
         'the second match',
       );
       await showTab(page, 1);
-      await page.locator('.editor .cm-content').click();
+      await page.locator('.editor .editor-content').click();
       await page.keyboard.press('ControlOrMeta+F');
       await page.keyboard.type('eve');
       await waitFor(

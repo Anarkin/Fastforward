@@ -11,7 +11,7 @@ import {
   EditorState,
   StateEffect,
 } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { useShell } from '../../../shell/page/store';
 import { blanksShown } from './text';
 import { useCellTable } from '../../../lib/page/cellTable';
@@ -42,6 +42,7 @@ import {
   stateKeepDelay,
   bracketsClosed,
   occurrencesMarked,
+  wrappedLines,
   extensionsOf,
   stateOf,
   settingsKept,
@@ -101,7 +102,7 @@ export function useEditorView(language: string | undefined) {
   const [mounts, setMounts] = useState(0);
   const table = useCellTable();
   const host = useRef<HTMLDivElement>(null);
-  const view = useRef<EditorView | undefined>(undefined);
+  const view = useRef<EditorSurface | undefined>(undefined);
   const wrapping = useRef(new Compartment());
   const blanking = useRef(new Compartment());
   const closing = useRef(new Compartment());
@@ -217,7 +218,7 @@ export function useEditorView(language: string | undefined) {
     const mounted = (state: EditorState, back?: EditorPlace) => {
       stopSettling();
       settling = back !== undefined;
-      const made = editorAt(element, state, back, () => {
+      const made = editorAt(element, state, table, back, () => {
         settling = false;
       });
       stopSettling = made.stop;
@@ -355,9 +356,7 @@ export function useEditorView(language: string | undefined) {
 
   useEffect(() => {
     view.current?.dispatch({
-      effects: wrapping.current.reconfigure(
-        wordWrap ? EditorView.lineWrapping : [],
-      ),
+      effects: wrapping.current.reconfigure(wrappedLines(wordWrap)),
     });
   }, [wordWrap]);
 

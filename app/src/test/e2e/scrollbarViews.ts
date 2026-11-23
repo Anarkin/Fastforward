@@ -17,10 +17,10 @@ export const views = {
   },
   editor: {
     tab: 2,
-    rows: '.editor .cm-line',
-    vertical: '.editor .cm-scroller',
-    horizontal: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
-    marks: '.editor .cm-editor > .scrollbar-marks',
+    rows: '.editor .editor-cells',
+    vertical: '.editor .editor-scroller',
+    horizontal: '.editor .editor-surface > .scroll-proxy-frame .scroll-proxy',
+    marks: '.editor .editor-surface > .scrollbar-marks',
   },
   diff: {
     tab: 3,

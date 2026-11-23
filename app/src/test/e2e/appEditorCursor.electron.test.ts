@@ -28,7 +28,7 @@ function drawnSelection(editor: JSHandle<PageEditor>): Promise<Drawn> {
     await new Promise((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(resolve)),
     );
-    const dom = document.querySelector('.editor-probe .cm-editor');
+    const dom = document.querySelector('.editor-probe .editor-surface');
     const view =
       dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
     if (view === null) {
@@ -49,9 +49,9 @@ function drawnSelection(editor: JSHandle<PageEditor>): Promise<Drawn> {
     );
     const edge = textLeft + (columns + 1) * advance;
     const cursor = view.dom
-      .querySelector('.cm-cursor-primary')
+      .querySelector('.editor-cursor-primary')
       ?.getBoundingClientRect();
-    const element = view.dom.querySelector('.cm-cursor-primary');
+    const element = view.dom.querySelector('.editor-cursor-primary');
     const clip = { left: -Infinity, right: Infinity };
     for (
       let holder = element?.parentElement ?? null;
@@ -107,7 +107,7 @@ async function select(
 ): Promise<Drawn> {
   await editor.evaluate(
     (app, range) => {
-      const dom = document.querySelector('.editor-probe .cm-editor');
+      const dom = document.querySelector('.editor-probe .editor-surface');
       const view =
         dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
       view?.focus();
@@ -173,7 +173,7 @@ async function cursorOnCharacter(
   head: number,
 ): Promise<OnCharacter> {
   await editor.evaluate((app, at) => {
-    const dom = document.querySelector('.editor-probe .cm-editor');
+    const dom = document.querySelector('.editor-probe .editor-surface');
     const view =
       dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
     view?.focus();
@@ -186,11 +186,11 @@ async function cursorOnCharacter(
       await new Promise((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(resolve)),
       );
-      const dom = document.querySelector('.editor-probe .cm-editor');
+      const dom = document.querySelector('.editor-probe .editor-surface');
       const view =
         dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
       const cursor = view?.dom
-        .querySelector('.cm-cursor-primary')
+        .querySelector('.editor-cursor-primary')
         ?.getBoundingClientRect();
       const host = view?.dom.querySelector('.editor-cells');
       const rows = host instanceof HTMLElement ? (host.seenRows?.() ?? []) : [];
@@ -279,7 +279,7 @@ suite('App', () => {
     assert.ok(width >= 1, JSON.stringify(ended));
     assert.ok(nearPixel(ended.cursor?.shown, width), JSON.stringify(ended));
     const reach = await editor.evaluate((app) => {
-      const dom = document.querySelector('.editor-probe .cm-editor');
+      const dom = document.querySelector('.editor-probe .editor-surface');
       const view =
         dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
       if (view === null) {
@@ -337,12 +337,14 @@ suite('App', () => {
       start = await drawnSelection(editor);
       return start.placeOfHead !== undefined && start.cursor !== undefined;
     }, 'the cells of the editor to show its text');
-    const box = await page.locator('.editor-probe .cm-scroller').boundingBox();
+    const box = await page
+      .locator('.editor-probe .editor-scroller')
+      .boundingBox();
     assert.ok(box, 'the editor has no box');
     const y = (start.cursor?.top ?? 0) + 4;
     const reached = () =>
       editor.evaluate((app) => {
-        const dom = document.querySelector('.editor-probe .cm-editor');
+        const dom = document.querySelector('.editor-probe .editor-surface');
         const view =
           dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
         return {
@@ -424,7 +426,7 @@ suite('App', () => {
           if (box instanceof HTMLElement) {
             box.style.height = '300px';
           }
-          const editorBox = box.querySelector('.cm-editor');
+          const editorBox = box.querySelector('.editor-surface');
           if (editorBox instanceof HTMLElement) {
             editorBox.style.height = '100%';
           }

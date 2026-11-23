@@ -72,3 +72,27 @@ export const editorMarked = async (
 
 export const editorSelected = async (page: Page): Promise<string[]> =>
   (await editorLinesSeen(page)).flatMap(({ selected }) => selected);
+
+export async function editorRowPoint(
+  page: Page,
+  row: number,
+  column = 0,
+): Promise<{ readonly x: number; readonly y: number }> {
+  let seen: SeenRow | undefined;
+  await waitFor(async () => {
+    const top = await page
+      .locator('.editor .editor-scroller')
+      .evaluate((scroller) => scroller.getBoundingClientRect().top);
+    seen = (await editorRowsSeen(page)).filter((each) => each.top >= top - 0.5)[
+      row
+    ];
+    return seen !== undefined;
+  }, `row ${row} of the editor in sight`);
+  if (seen === undefined) {
+    throw new Error(`The editor shows no row ${row}`);
+  }
+  return {
+    x: seen.left + (column - seen.column + 0.5) * seen.advance,
+    y: seen.top + seen.height / 2,
+  };
+}

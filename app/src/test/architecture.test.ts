@@ -684,7 +684,7 @@ suite('Architecture', () => {
         .filter((rule) => rule.includes('::-webkit-scrollbar'))
         .map((rule) => rule.replace(/\s+/g, ' ').trim()),
       [
-        '.cm-editor.editor-text .cm-scroller::-webkit-scrollbar:horizontal { height: 0;',
+        '.editor-surface .editor-scroller::-webkit-scrollbar:horizontal { height: 0;',
       ],
     );
     assert.deepStrictEqual(

@@ -6,7 +6,7 @@ import {
   type Extension,
   type Text,
 } from '@codemirror/state';
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import {
   matchesIn,
@@ -161,11 +161,11 @@ export function findMarks(state: EditorState): readonly FoundMark[] {
 
 export const editorFind: Extension = findField;
 
-export function find(view: EditorView, query: FindQuery | undefined): void {
+export function find(view: EditorSurface, query: FindQuery | undefined): void {
   view.dispatch({ effects: setFind.of(query) });
 }
 
-export function step(view: EditorView, direction: 1 | -1): void {
+export function step(view: EditorSurface, direction: 1 | -1): void {
   const { state } = view;
   const { found } = findingOf(state);
   if (found.length === 0) {
@@ -184,7 +184,7 @@ export function step(view: EditorView, direction: 1 | -1): void {
   }
 }
 
-export function findNearest(view: EditorView): void {
+export function findNearest(view: EditorSurface): void {
   const { state } = view;
   const { found } = findingOf(state);
   const { from: at } = state.selection.main;
@@ -197,7 +197,7 @@ export function findNearest(view: EditorView): void {
   }
 }
 
-export function replace(view: EditorView, replacement: string): void {
+export function replace(view: EditorSurface, replacement: string): void {
   const { state } = view;
   const { query, found } = findingOf(state);
   const current = found[currentOf(state)];
@@ -218,7 +218,7 @@ export function replace(view: EditorView, replacement: string): void {
   step(view, 1);
 }
 
-export function replaceAll(view: EditorView, replacement: string): number {
+export function replaceAll(view: EditorSurface, replacement: string): number {
   const { state } = view;
   const { query, found } = findingOf(state);
   if (query === undefined || found.length === 0) {

@@ -118,7 +118,7 @@ suite('Cursor over the text under it and beside it', () => {
 
         await mountEditorAndField(parts, text, text.length);
         await parts.evaluate((inPage, length) => {
-          const dom = document.querySelector('.editor-probe .cm-editor');
+          const dom = document.querySelector('.editor-probe .editor-surface');
           const view =
             dom instanceof HTMLElement
               ? inPage.EditorView.findFromDOM(dom)
@@ -129,7 +129,7 @@ suite('Cursor over the text under it and beside it', () => {
           });
         }, text.length);
         const inEditor = await elementBox(
-          page.locator('.editor-probe .cm-cursor-primary'),
+          page.locator('.editor-probe .editor-cursor-primary'),
           ratio,
         );
         const second = await editorCell(text, 1);

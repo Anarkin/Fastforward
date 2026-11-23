@@ -1,3 +1,4 @@
+import { takesText } from './textContext';
 import { useEffect, useEffectEvent } from 'react';
 import {
   pressed,
@@ -28,7 +29,9 @@ function isElement(target: EventTarget | null): target is HTMLElement {
 function typing(target: EventTarget | null): boolean {
   return (
     isElement(target) &&
-    (target.isContentEditable || fields.has(target.tagName))
+    (target.isContentEditable ||
+      takesText(target) ||
+      fields.has(target.tagName))
   );
 }
 

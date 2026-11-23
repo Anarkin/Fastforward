@@ -15,12 +15,14 @@ import {
   EditorState,
   type Extension,
 } from '@codemirror/state';
-import { EditorView, type Command } from '@codemirror/view';
+import { surfaceEvents, type SurfaceCommand } from './surface';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { editorKeymap } from './keymap';
 import { nextOccurrence, occurrenceStepping } from './nextOccurrence';
 import { gridOf } from './grid';
 import { cursorsOnLines } from './gridMoves';
+
+type Command = SurfaceCommand;
 
 const indentOrInsert: Command = (view) => {
   const { state } = view;
@@ -159,7 +161,7 @@ export function editorKeys(actions: EditorKeyActions): Extension {
   return [
     EditorState.allowMultipleSelections.of(true),
     occurrenceStepping,
-    EditorView.domEventHandlers({
+    surfaceEvents({
       keydown(event, view) {
         const command = commandOf(event);
         if (command === undefined || !command(view)) {

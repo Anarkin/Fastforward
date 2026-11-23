@@ -3,12 +3,8 @@
   overflow: hidden;
 }
 
-.editor-body > .cm-editor {
+.editor-body > .editor-surface {
   height: 100%;
-}
-
-.editor-body > .cm-editor.cm-focused {
-  outline: none;
 }
 
 .editor-replace {
@@ -55,7 +51,7 @@
   color: var(--foreground);
 }
 
-.cm-editor .editor-cells {
+.editor-surface .editor-cells {
   position: absolute;
   top: 0;
   left: 0;

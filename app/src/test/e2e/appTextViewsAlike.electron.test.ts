@@ -47,8 +47,8 @@ const views = {
   },
   editor: {
     tab: 2,
-    pane: '.editor .cm-scroller',
-    below: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
+    pane: '.editor .editor-scroller',
+    below: '.editor .editor-surface > .scroll-proxy-frame .scroll-proxy',
     split: undefined,
     rowsOfChange: 1,
   },

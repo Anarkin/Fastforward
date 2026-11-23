@@ -1,10 +1,10 @@
 import { StateEffect, type Extension, type Text } from '@codemirror/state';
 import {
-  ViewPlugin,
-  type EditorView,
-  type PluginValue,
-  type ViewUpdate,
-} from '@codemirror/view';
+  surfacePlugin,
+  type EditorSurface,
+  type SurfacePart,
+  type SurfaceUpdate,
+} from './surface';
 import type {
   Colorer,
   EditedColors,
@@ -30,7 +30,7 @@ export interface LineEdit {
 }
 
 export function lineEdit(
-  update: Pick<ViewUpdate, 'changes' | 'startState' | 'state'>,
+  update: Pick<SurfaceUpdate, 'changes' | 'startState' | 'state'>,
 ): LineEdit | undefined {
   let fromA = Infinity;
   let toA = -Infinity;
@@ -69,7 +69,7 @@ export function linesMeet(
   return count > 0 && from <= shown.last && from + count > shown.first;
 }
 
-function shownLines(view: EditorView): { first: number; last: number } {
+function shownLines(view: EditorSurface): { first: number; last: number } {
   const { doc } = view.state;
   const { from, to } = view.viewport;
   return {
@@ -105,15 +105,15 @@ export function keepColoredLines(
   coloredTexts.set(doc, { language, lines });
 }
 
-const shownColors = new WeakMap<EditorView, Colors>();
+const shownColors = new WeakMap<EditorSurface, Colors>();
 
-class Colors implements PluginValue {
+class Colors implements SurfacePart {
   private lines: ColoredLines;
   private readonly session: EditedColors;
   colored = 0;
 
   constructor(
-    private readonly view: EditorView,
+    private readonly view: EditorSurface,
     colorer: Colorer,
     private readonly language: string,
     limit: number,
@@ -132,7 +132,7 @@ class Colors implements PluginValue {
   }
 
   private coloring(
-    view: EditorView,
+    view: EditorSurface,
     colorer: Colorer,
     language: string,
   ): EditedColors {
@@ -158,7 +158,7 @@ class Colors implements PluginValue {
     );
   }
 
-  update(update: ViewUpdate): void {
+  update(update: SurfaceUpdate): void {
     const edit = update.docChanged ? lineEdit(update) : undefined;
     if (edit !== undefined) {
       this.lines = replacedIn(
@@ -189,7 +189,7 @@ export interface ColorsShown {
 
 const uncoloredView: ColorsShown = { rangesOf: () => undefined, stamp: 0 };
 
-export function colorsShown(view: EditorView): ColorsShown {
+export function colorsShown(view: EditorSurface): ColorsShown {
   const colors = shownColors.get(view);
   return colors === undefined
     ? uncoloredView
@@ -206,5 +206,5 @@ export function syntaxColors(
 ): Extension {
   return language === undefined
     ? []
-    : ViewPlugin.define((view) => new Colors(view, colorer(), language, limit));
+    : surfacePlugin((view) => new Colors(view, colorer(), language, limit));
 }

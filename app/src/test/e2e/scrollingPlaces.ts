@@ -17,11 +17,11 @@ export const views = {
   },
   editor: {
     tab: 2,
-    pane: '.editor .cm-scroller',
-    rows: '.cm-line',
-    vertical: '.editor .cm-scroller',
-    horizontal: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
-    across: '.editor .cm-scroller',
+    pane: '.editor .editor-scroller',
+    rows: '.editor-cells',
+    vertical: '.editor .editor-scroller',
+    horizontal: '.editor .editor-surface > .scroll-proxy-frame .scroll-proxy',
+    across: '.editor .editor-scroller',
   },
   diff: {
     tab: 3,
@@ -117,7 +117,9 @@ export function placeAcross(moved: Element): Place {
   const probe = document.createElement('span');
   probe.style.cssText =
     'position: absolute; visibility: hidden; font-family: var(--monospace-font-family); font-size: var(--monospace-font-size); width: round(1ch, var(--device-pixel, 1px))';
-  (moved.closest('.diff-view, .viewer, .cm-editor') ?? moved).append(probe);
+  (moved.closest('.diff-view, .viewer, .editor-surface') ?? moved).append(
+    probe,
+  );
   const column = probe.getBoundingClientRect().width || 1;
   probe.remove();
   const columns = left / column;

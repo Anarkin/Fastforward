@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
+import { editorLinesSeen, editorRowPoint } from './editorSeen';
 import {
   comesBackFromEach,
   scrolledAround,
@@ -79,6 +80,10 @@ suite('App editor tabs shown again', () => {
 
   const count = () =>
     page.locator('.editor .search-count').textContent({ timeout: 1000 });
+  const clickRow = async (row: number) => {
+    const { x, y } = await editorRowPoint(page, row);
+    await page.mouse.click(x, y);
+  };
   const throughEveryOther = (what: string) =>
     comesBackFromEach(
       page,
@@ -88,7 +93,7 @@ suite('App editor tabs shown again', () => {
 
   test('brings back a file edited with its find and replace open, their text, the match it was at and the caret in the box it was in, from a commander tab, the tab of another tool and the editor of another file, which shows nothing of them', async () => {
     await showTab(page, editorTab);
-    await page.locator('.editor .cm-line').first().click();
+    await clickRow(0);
     await page.keyboard.press('ControlOrMeta+F');
     await page.keyboard.type('adam');
     await waitFor(async () => (await count()) === '1 of 10', 'the count');
@@ -123,7 +128,7 @@ suite('App editor tabs shown again', () => {
       .getByRole('button', { name: 'Wrap Long Lines', pressed: false })
       .waitFor();
     await page
-      .locator('.editor .cm-scroller')
+      .locator('.editor .editor-scroller')
       .evaluate((scroller) => scroller.scrollTo({ top: 3133, left: 213 }));
     await throughEveryOther('The editor scrolled');
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
@@ -135,19 +140,23 @@ suite('App editor tabs shown again', () => {
   test('brings back a file edited with its long lines wrapped, scrolled into the middle of a wrapped row, from every other tab', async () => {
     await showTab(page, editorTab);
     const wrappedRow = () =>
-      page.locator('.editor .cm-scroller').evaluate((scroller) => {
-        const heights = [...scroller.querySelectorAll('.cm-line')].map(
-          (line) => line.getBoundingClientRect().height,
-        );
-        const row = Math.min(...heights);
-        const index = heights.findIndex((height) => height > row * 1.5);
-        const line = scroller.querySelectorAll('.cm-line')[index];
+      page.locator('.editor .editor-scroller').evaluate((scroller) => {
+        const rows =
+          scroller.querySelector<HTMLElement>('.editor-cells')?.seenRows?.() ??
+          [];
+        const line =
+          rows[
+            rows.findIndex(
+              (row, at) =>
+                row.line === undefined && rows[at - 1]?.line !== undefined,
+            ) - 1
+          ];
         return line === undefined
           ? undefined
           : {
-              row,
+              row: line.height,
               top:
-                line.getBoundingClientRect().top -
+                line.top -
                 scroller.getBoundingClientRect().top +
                 scroller.scrollTop,
             };
@@ -159,12 +168,13 @@ suite('App editor tabs shown again', () => {
       throw new Error(
         `${String(error)}: ${JSON.stringify(
           await page
-            .locator('.editor .cm-scroller')
+            .locator('.editor .editor-scroller')
             .evaluate((scroller) =>
-              [...scroller.querySelectorAll('.cm-line')].map((line) => [
-                line.getBoundingClientRect().height,
-                line.textContent?.length,
-              ]),
+              (
+                scroller
+                  .querySelector<HTMLElement>('.editor-cells')
+                  ?.seenRows?.() ?? []
+              ).map((row) => [row.key, row.text.length]),
             ),
         )}`,
       );
@@ -172,7 +182,7 @@ suite('App editor tabs shown again', () => {
     const wrapped = await wrappedRow();
     assert.ok(wrapped);
     await page
-      .locator('.editor .cm-scroller')
+      .locator('.editor .editor-scroller')
       .evaluate(
         (scroller, { top, row }) => scroller.scrollTo({ top: top + row * 1.5 }),
         wrapped,
@@ -182,7 +192,7 @@ suite('App editor tabs shown again', () => {
 
   test('brings back a file edited scrolled to its middle while its find is open, at the same line and the same pixel of it, from every other tab', async () => {
     await showTab(page, editorTab);
-    await page.locator('.editor .cm-line').first().click();
+    await clickRow(0);
     await page.keyboard.press('ControlOrMeta+F');
     await page.keyboard.type('adam');
     await page
@@ -195,17 +205,26 @@ suite('App editor tabs shown again', () => {
 
   test('keeps the cursor and the place of a file with no changes here once it is read again for a change on disk made while its tab was away', async () => {
     await showTab(page, otherTab);
-    await page.locator('.editor .cm-line').nth(5).click();
+    await clickRow(5);
     await page.keyboard.press('End');
     const cursorLine = () =>
-      page.evaluate(
-        () =>
-          document.getSelection()?.focusNode?.parentElement?.closest('.cm-line')
-            ?.textContent,
-      );
+      page.evaluate(() => {
+        const cursor = document
+          .querySelector('.editor .editor-cursor-primary')
+          ?.getBoundingClientRect();
+        const text = document
+          .querySelector('.editor .editor-content')
+          ?.getBoundingClientRect();
+        const row = document
+          .querySelector<HTMLElement>('.editor .editor-cells')
+          ?.seenRows?.()[0]?.height;
+        return cursor === undefined || text === undefined || row === undefined
+          ? undefined
+          : String(Math.round((cursor.top - text.top) / row));
+      });
     assert.strictEqual(await cursorLine(), '5');
     await page
-      .locator('.editor .cm-scroller')
+      .locator('.editor .editor-scroller')
       .evaluate((scroller) => scroller.scrollTo({ top: 400 }));
     const left = await settledLooks(page);
     await showTab(page, commanderTab);
@@ -228,33 +247,25 @@ suite('App editor tabs shown again', () => {
     assert.deepStrictEqual(await settledLooks(page), left);
     assert.strictEqual(await cursorLine(), '5');
     await page
-      .locator('.editor .cm-scroller')
+      .locator('.editor .editor-scroller')
       .evaluate((scroller) =>
         scroller.scrollTo({ top: scroller.scrollHeight }),
       );
     await waitFor(
       async () =>
-        (
-          await page
-            .locator('.editor .cm-line')
-            .evaluateAll((all) => all.map((line) => line.textContent))
-        ).includes('added'),
+        (await editorLinesSeen(page)).some(({ text }) => text === 'added'),
       'the text read again',
     ).catch(async (error: unknown) => {
       throw new Error(
         `${String(error)}: ${JSON.stringify(
-          await page
-            .locator('.editor .cm-line')
-            .evaluateAll((all) =>
-              all.slice(-3).map((line) => line.textContent),
-            ),
+          (await editorLinesSeen(page)).slice(-3).map(({ text }) => text),
         )} ${await cursorLine()}`,
       );
     });
   });
 
   test('keeps the place scrolled to of a file shown while it is read again for a change on disk, though its cursor is out of view, rather than scrolling to the cursor', async () => {
-    const scroller = page.locator('.editor .cm-scroller');
+    const scroller = page.locator('.editor .editor-scroller');
     await scroller.evaluate((element) => element.scrollTo({ top: 400 }));
     const left = await settledLooks(page);
     const tall = await scroller.evaluate((element) => element.scrollHeight);

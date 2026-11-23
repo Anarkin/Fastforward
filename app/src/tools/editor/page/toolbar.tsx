@@ -2,7 +2,7 @@ import { editorKeymap } from './keymap';
 import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import type { ReactNode, RefObject } from 'react';
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { strings } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
@@ -34,7 +34,7 @@ export function EditorToolbar({
   language,
   onFind,
 }: {
-  view: RefObject<EditorView | undefined>;
+  view: RefObject<EditorSurface | undefined>;
   endingsShown: EndingsShown | undefined;
   language: ReactNode;
   onFind: () => void;

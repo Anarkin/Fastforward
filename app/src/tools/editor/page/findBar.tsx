@@ -1,6 +1,6 @@
 import { keysOf } from '../../../lib/shared/keymap';
 import type { ReactNode, RefObject } from 'react';
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { strings } from '../../../lib/shared/strings';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { SearchBar } from '../../../lib/page/searchBar';
@@ -22,7 +22,7 @@ export function EditorFindBar({
   findCount,
   children,
 }: {
-  view: RefObject<EditorView | undefined>;
+  view: RefObject<EditorSurface | undefined>;
   finder: EditorFinding;
   findCount: FindCount | undefined;
   children: ReactNode;

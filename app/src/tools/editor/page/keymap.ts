@@ -25,6 +25,18 @@ export const editorKeymap = {
     typing,
   ),
   newLine: bind('Editing', strings.actions.newLine, { Enter: true }, typing),
+  deleteCharacter: bind(
+    'Editing',
+    strings.actions.deleteCharacter,
+    { Backspace: -1, 'Shift+Backspace': -1, Delete: 1 } as const,
+    typing,
+  ),
+  deleteWord: bind(
+    'Editing',
+    strings.actions.deleteWord,
+    { 'Ctrl+Backspace': -1, 'Ctrl+Delete': 1 } as const,
+    typing,
+  ),
   indent: bind(
     'Editing',
     strings.actions.indent,
@@ -135,6 +147,12 @@ export const editorKeymap = {
   wheelSideways: bind('Moving', strings.actions.wheelSideways, {
     'Shift+Wheel': true,
   }),
+  selectAll: bind(
+    'Cursors',
+    strings.actions.selectAllText,
+    { 'Mod+A': true },
+    typing,
+  ),
   selectText: bind('Cursors', strings.actions.selectText, {
     Click: 'start',
     'Shift+Click': 'extend',

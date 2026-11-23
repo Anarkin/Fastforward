@@ -99,7 +99,7 @@ suite('Cursor', () => {
         );
         const editorArea = pixelBox(
           await page
-            .locator('.editor-probe .cm-content')
+            .locator('.editor-probe .editor-content')
             .evaluate((content) => {
               const { left, top, width, height } =
                 content.getBoundingClientRect();
@@ -192,7 +192,7 @@ suite('Cursor', () => {
     await focusEditor(parts, 1);
     await waitFor(
       async () =>
-        (await animationOf('.editor-probe .cm-cursorLayer')) === blinking,
+        (await animationOf('.editor-probe .editor-cursors')) === blinking,
       'the blinking cursor of the editor',
     );
     await focusField(1);
@@ -202,7 +202,7 @@ suite('Cursor', () => {
       blinking,
     );
     assert.strictEqual(
-      await animationOf('.editor-probe .cm-cursorLayer'),
+      await animationOf('.editor-probe .editor-cursors'),
       blinking,
       'the editor without the focus',
     );

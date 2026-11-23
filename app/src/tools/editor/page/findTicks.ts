@@ -1,10 +1,10 @@
 import type { Extension } from '@codemirror/state';
 import {
-  ViewPlugin,
-  type EditorView,
-  type PluginValue,
-  type ViewUpdate,
-} from '@codemirror/view';
+  surfacePlugin,
+  type EditorSurface,
+  type SurfacePart,
+  type SurfaceUpdate,
+} from './surface';
 import {
   leastTick,
   tickJoiner,
@@ -32,18 +32,14 @@ export function ticksOf(
   return joiner.ticks();
 }
 
-function linesOf(view: EditorView, found: readonly Found[]): Span[] {
-  const above = view.documentPadding.top;
+function linesOf(view: EditorSurface, found: readonly Found[]): Span[] {
   const spans: Span[] = [];
   let lineEnd = -1;
   for (const { from } of found) {
     if (from > lineEnd) {
       const block = view.lineBlockAt(from);
       lineEnd = block.to;
-      spans.push({
-        top: above + block.top,
-        bottom: above + block.top + block.height,
-      });
+      spans.push({ top: block.top, bottom: block.top + block.height });
     }
   }
   return spans;
@@ -51,11 +47,11 @@ function linesOf(view: EditorView, found: readonly Found[]): Span[] {
 
 const percent = (share: number) => `${share * 100}%`;
 
-class FindTicks implements PluginValue {
+class FindTicks implements SurfacePart {
   private readonly box = document.createElement('div');
   private drawn = '';
   private readonly measure = {
-    read: (view: EditorView): Tick[] => {
+    read: (view: EditorSurface): Tick[] => {
       const found = foundOf(view.state);
       return found.length === 0
         ? []
@@ -83,13 +79,13 @@ class FindTicks implements PluginValue {
     },
   };
 
-  constructor(private readonly view: EditorView) {
+  constructor(private readonly view: EditorSurface) {
     this.box.className = 'scrollbar-marks';
     view.dom.append(this.box);
     view.requestMeasure(this.measure);
   }
 
-  update(update: ViewUpdate): void {
+  update(update: SurfaceUpdate): void {
     if (
       foundOf(update.state) !== foundOf(update.startState) ||
       update.heightChanged ||
@@ -104,4 +100,6 @@ class FindTicks implements PluginValue {
   }
 }
 
-export const findTicks: Extension = ViewPlugin.fromClass(FindTicks);
+export const findTicks: Extension = surfacePlugin(
+  (view) => new FindTicks(view),
+);

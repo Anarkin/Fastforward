@@ -1,22 +1,22 @@
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { boxColumns } from '../../../lib/page/wrapBox';
 
 const onPixel = 1e-6;
 
-export function textAdvance(view: EditorView): number {
+export function textAdvance(view: EditorSurface): number {
   const pixel = 1 / devicePixelRatio;
   return Math.round(view.defaultCharacterWidth / pixel + onPixel) * pixel;
 }
 
-export const wrapColumnsOf = (view: EditorView): number =>
+export const wrapColumnsOf = (view: EditorSurface): number =>
   boxColumns(view.contentDOM, textAdvance(view));
 
-export const scrolledAcross = (view: EditorView): number =>
+export const scrolledAcross = (view: EditorSurface): number =>
   view.lineWrapping
     ? 0
     : Math.round(view.scrollDOM.scrollLeft * devicePixelRatio);
 
-export function textStart(view: EditorView): number {
+export function textStart(view: EditorSurface): number {
   const across = view.lineWrapping ? 0 : view.scrollDOM.scrollLeft;
   return (
     (view.contentDOM.getBoundingClientRect().left +
@@ -26,13 +26,16 @@ export function textStart(view: EditorView): number {
   );
 }
 
-export const textLeft = (view: EditorView): number =>
+export const textLeft = (view: EditorSurface): number =>
   (textStart(view) - scrolledAcross(view)) / devicePixelRatio;
 
-export function layerOrigin(view: EditorView): { left: number; top: number } {
+export function layerOrigin(view: EditorSurface): {
+  left: number;
+  top: number;
+} {
   const rect = view.scrollDOM.getBoundingClientRect();
   return {
-    left: rect.left - view.scrollDOM.scrollLeft * view.scaleX,
-    top: rect.top - view.scrollDOM.scrollTop * view.scaleY,
+    left: rect.left - view.scrollDOM.scrollLeft,
+    top: rect.top - view.scrollDOM.scrollTop,
   };
 }

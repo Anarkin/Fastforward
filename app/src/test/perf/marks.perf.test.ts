@@ -34,7 +34,7 @@ const tools = [
     name: 'editor',
     tab: 1,
     rows: '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
-    pane: '.editor .cm-scroller',
+    pane: '.editor :is(.cm-scroller, .editor-scroller)',
   },
   {
     name: 'diff',

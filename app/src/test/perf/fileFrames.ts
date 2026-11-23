@@ -74,9 +74,9 @@ const views = [
   {
     name: 'editor',
     tab: 2,
-    pane: '.editor .cm-scroller',
+    pane: '.editor :is(.cm-scroller, .editor-scroller)',
     rows: '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
-    bar: '.editor .cm-scroller',
+    bar: '.editor :is(.cm-scroller, .editor-scroller)',
   },
   {
     name: 'diff',
@@ -193,7 +193,10 @@ export function framesOfFile(
         const toTop = async () => {
           const { page } = perf();
           if (view.name === 'editor') {
-            await page.locator('.editor .cm-content').first().focus();
+            await page
+              .locator('.editor :is(.cm-content, .editor-content)')
+              .first()
+              .focus();
           } else {
             await pane().focus();
           }

@@ -48,7 +48,7 @@ const viewer = {
 const editor = {
   name: 'editor',
   tab: 2,
-  pane: '.editor .cm-content',
+  pane: '.editor .editor-content',
   rows: '.editor .editor-cells',
 } as const;
 

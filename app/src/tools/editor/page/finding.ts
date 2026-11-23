@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { find, findNearest, type FindAsk } from './find';
 import { lineBreak } from './setup';
 import { noKeptEditing, type KeptEditing } from './editing';
@@ -9,7 +9,7 @@ import type { EditorStoreState } from './state';
 type Changing<T> = T | ((was: T) => T);
 
 export function useEditorFinding(
-  view: RefObject<EditorView | undefined>,
+  view: RefObject<EditorSurface | undefined>,
   findAsk: FindAsk | undefined,
   tab: string | undefined,
   mounts: number,

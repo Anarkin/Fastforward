@@ -1,9 +1,10 @@
 import type { Extension } from '@codemirror/state';
 import {
-  ViewPlugin,
-  type EditorView,
-  type PluginValue,
-} from '@codemirror/view';
+  surfacePlugin,
+  type EditorSurface,
+  type SurfacePart,
+  type SurfaceUpdate,
+} from './surface';
 import {
   groundBehind,
   layerOf,
@@ -54,7 +55,7 @@ import {
 } from './cellLines';
 import { scrolledAcross, textAdvance, textStart, wrapColumnsOf } from './rows';
 
-const rowClass = 'cm-line';
+const rowClass = 'editor-row';
 
 const mostCanvas = 8192;
 
@@ -101,9 +102,9 @@ interface Painted {
   readonly row: number;
 }
 
-export type ShownOf = (view: EditorView) => LinesShown;
+export type ShownOf = (view: EditorSurface) => LinesShown;
 
-class EditorCells implements PluginValue {
+class EditorCells implements SurfacePart {
   private readonly host: HTMLDivElement;
   private readonly unwatched: () => void;
   private readonly lines = new Map<number, TextLine>();
@@ -121,7 +122,7 @@ class EditorCells implements PluginValue {
   private across = 0;
 
   constructor(
-    private readonly view: EditorView,
+    private readonly view: EditorSurface,
     private readonly table: CellTable,
     private readonly shownOf: ShownOf,
   ) {
@@ -138,8 +139,13 @@ class EditorCells implements PluginValue {
     this.later(true);
   }
 
-  update(): void {
-    this.later(true);
+  update(update: SurfaceUpdate): void {
+    this.later(
+      update.transactions.length > 0 ||
+        update.geometryChanged ||
+        update.heightChanged ||
+        update.focusChanged,
+    );
   }
 
   destroy(): void {
@@ -458,4 +464,4 @@ class EditorCells implements PluginValue {
 }
 
 export const editorCells = (table: CellTable, shownOf: ShownOf): Extension =>
-  ViewPlugin.define((view) => new EditorCells(view, table, shownOf));
+  surfacePlugin((view) => new EditorCells(view, table, shownOf));

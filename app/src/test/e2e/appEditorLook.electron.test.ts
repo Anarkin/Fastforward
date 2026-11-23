@@ -181,7 +181,7 @@ suite('App editor', () => {
     );
     await page.locator('.editor .editor-path').click();
     await page
-      .locator('.editor .cm-editor.cm-focused')
+      .locator('.editor .editor-surface.focused')
       .waitFor({ state: 'detached' });
     assert.deepStrictEqual(await editorSelected(page), ['one', 'two']);
   });
@@ -250,7 +250,7 @@ suite('App editor', () => {
       'the text',
     );
     await toStart();
-    const scroller = page.locator('.editor .cm-scroller');
+    const scroller = page.locator('.editor .editor-scroller');
     const dotted = async () => {
       const columns = (await cells().dots()).map(({ column }) => column);
       const advance = (await editorRowsSeen(page))[0]?.advance ?? 0;

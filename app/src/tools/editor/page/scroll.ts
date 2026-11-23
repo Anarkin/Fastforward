@@ -1,9 +1,10 @@
 import {
-  EditorView,
-  ViewPlugin,
-  type PluginValue,
-  type ViewUpdate,
-} from '@codemirror/view';
+  revealers,
+  surfacePlugin,
+  type EditorSurface,
+  type SurfacePart,
+  type SurfaceUpdate,
+} from './surface';
 import { Prec, type Extension } from '@codemirror/state';
 import {
   followRows,
@@ -25,20 +26,20 @@ import {
   type Shown,
 } from '../../../lib/page/scrollProxies';
 
-class RowScrolling implements PluginValue {
+class RowScrolling implements SurfacePart {
   readonly following: RowFollower;
   private readonly across: ColumnFollower;
   private padded: number | undefined;
   private readonly sizes = {
-    read: (view: EditorView): number =>
+    read: (view: EditorSurface): number =>
       rowPadding(
         view.scrollDOM.getBoundingClientRect().height,
         view.defaultLineHeight,
       ),
-    write: (padding: number, view: EditorView) => {
+    write: (padding: number, view: EditorSurface) => {
       if (padding !== this.padded) {
         this.padded = padding;
-        view.contentDOM.style.paddingBottom = `${padding}px`;
+        view.padBelow(padding);
       }
     },
   };
@@ -46,7 +47,7 @@ class RowScrolling implements PluginValue {
   private readonly bar: ScrollProxy;
   private readonly barFrame: HTMLElement;
   private readonly acrossShown = {
-    read: (view: EditorView) => {
+    read: (view: EditorSurface) => {
       const scroller = view.scrollDOM;
       const gutter =
         parseFloat(getComputedStyle(view.contentDOM).marginLeft) || 0;
@@ -79,7 +80,7 @@ class RowScrolling implements PluginValue {
   private readonly resized: ResizeObserver;
 
   constructor(
-    private readonly view: EditorView,
+    private readonly view: EditorSurface,
     scrolling: () => ScrollSettings,
   ) {
     const scroller = view.scrollDOM;
@@ -123,7 +124,7 @@ class RowScrolling implements PluginValue {
     view.requestMeasure(this.acrossShown);
   }
 
-  update(update: ViewUpdate): void {
+  update(update: SurfaceUpdate): void {
     if (update.geometryChanged) {
       update.view.requestMeasure(this.sizes);
       update.view.requestMeasure(this.acrossShown);
@@ -141,12 +142,11 @@ class RowScrolling implements PluginValue {
 }
 
 export function rowScrolling(scrolling: () => ScrollSettings): Extension {
-  const rows = ViewPlugin.define((view) => new RowScrolling(view, scrolling));
+  const rows = surfacePlugin((view) => new RowScrolling(view, scrolling));
   return [
     rows,
-    EditorView.cursorScrollMargin.of({ x: 5, y: 0 }),
     Prec.high(
-      EditorView.scrollHandler.of((view, _, { y }) => {
+      revealers.of((view, _, { y }) => {
         if (y === 'nearest') {
           view.plugin(rows)?.following.reveals();
         }

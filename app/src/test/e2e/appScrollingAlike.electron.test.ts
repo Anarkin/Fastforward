@@ -144,7 +144,7 @@ suite('App scrolling alike', () => {
     }
     await untilRowsShown(page, `${pane} ${rows}`, rowUnder(name, fitting) + 1);
     await page
-      .locator(name === 'editor' ? '.editor .cm-content' : pane)
+      .locator(name === 'editor' ? '.editor .editor-content' : pane)
       .first()
       .focus();
     await page.keyboard.press(

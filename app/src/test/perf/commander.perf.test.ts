@@ -160,7 +160,11 @@ suite('Frames of the commander, the viewer and the editor', () => {
       .first()
       .waitFor();
     const result = await measure(perf(), 'editor: padded table, wheel', () =>
-      wheelNotches(page(), page().locator('.editor .cm-scroller'), 40),
+      wheelNotches(
+        page(),
+        page().locator('.editor :is(.cm-scroller, .editor-scroller)'),
+        40,
+      ),
     );
     assert.ok(result.frames.updates > 0);
     await page().keyboard.press('Escape');
@@ -189,14 +193,22 @@ suite('Frames of the commander, the viewer and the editor', () => {
       .first()
       .waitFor();
     const result = await measure(perf(), 'editor: 20,000 lines, wheel', () =>
-      wheelNotches(page(), page().locator('.editor .cm-scroller'), 40),
+      wheelNotches(
+        page(),
+        page().locator('.editor :is(.cm-scroller, .editor-scroller)'),
+        40,
+      ),
     );
     assert.ok(result.frames.updates > 0);
   });
 
   test('typing into a file of 20,000 lines in the editor', async () => {
-    const lines = page().locator('.editor .cm-line');
-    await lines.nth(Math.floor((await lines.count()) / 2)).click();
+    const pane = page()
+      .locator('.editor :is(.cm-scroller, .editor-scroller)')
+      .first();
+    const box = await pane.boundingBox();
+    assert.ok(box);
+    await pane.click({ position: { x: box.width / 3, y: box.height / 2 } });
     await page().keyboard.press('End');
     const result = await measure(perf(), 'editor: typing', () =>
       page().keyboard.type(' const typed = input.size + 1;'.repeat(2), {

@@ -4,14 +4,14 @@ import {
   type Extension,
   type SelectionRange,
 } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import { surfaceEvents, type EditorSurface } from './surface';
 import type { Binding } from '../../../lib/shared/keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { gridOf } from './grid';
 import { extended, rowEnd } from './gridMoves';
 
 function moved(
-  view: EditorView,
+  view: EditorSurface,
   move: (range: SelectionRange) => SelectionRange,
 ): boolean {
   const { selection } = view.state;
@@ -31,7 +31,7 @@ function moved(
 
 export type RowEnd = 'move' | 'select';
 
-function toRowEnd(view: EditorView, how: RowEnd): boolean {
+function toRowEnd(view: EditorSurface, how: RowEnd): boolean {
   const grid = gridOf(view);
   return (
     grid === undefined ||
@@ -44,7 +44,7 @@ function toRowEnd(view: EditorView, how: RowEnd): boolean {
 
 export function rowEndKeys(binding: Binding<RowEnd>): Extension {
   return Prec.high(
-    EditorView.domEventHandlers({
+    surfaceEvents({
       keydown(event, view) {
         const how = keyPressed(binding, event);
         if (how === undefined) {

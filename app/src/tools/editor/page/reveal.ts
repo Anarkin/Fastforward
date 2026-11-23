@@ -1,15 +1,13 @@
 import type { Extension, SelectionRange } from '@codemirror/state';
-import { EditorView } from '@codemirror/view';
+import {
+  revealers,
+  type EditorSurface,
+  type RevealStrategy,
+  type Revealing,
+} from './surface';
 import { cellAt, gridOf, type GridCell } from './grid';
 
-type Strategy = 'nearest' | 'start' | 'end' | 'center';
-
-interface Revealing {
-  readonly x: Strategy;
-  readonly y: Strategy;
-  readonly xMargin: number;
-  readonly yMargin: number;
-}
+type Strategy = RevealStrategy;
 
 interface Span {
   readonly from: number;
@@ -51,24 +49,18 @@ export function movedInto(
   return 0;
 }
 
-function marginsOf(view: EditorView): {
+function marginsOf(view: EditorSurface): {
   readonly left: number;
   readonly right: number;
   readonly top: number;
   readonly bottom: number;
 } {
-  let left = parseFloat(getComputedStyle(view.contentDOM).marginLeft) || 0;
-  let right = 0;
-  let top = 0;
-  let bottom = 0;
-  for (const source of view.state.facet(EditorView.scrollMargins)) {
-    const margins = source(view);
-    left = Math.max(left, margins?.left ?? 0);
-    right = Math.max(right, margins?.right ?? 0);
-    top = Math.max(top, margins?.top ?? 0);
-    bottom = Math.max(bottom, margins?.bottom ?? 0);
-  }
-  return { left, right, top, bottom };
+  return {
+    left: parseFloat(getComputedStyle(view.contentDOM).marginLeft) || 0,
+    right: view.defaultCharacterWidth,
+    top: 0,
+    bottom: 0,
+  };
 }
 
 const united = (one: GridCell, other: GridCell): GridCell => {
@@ -86,9 +78,9 @@ const within = (margin: number, room: number) =>
   Math.max(Math.min(margin, room), -room);
 
 function revealOnGrid(
-  view: EditorView,
+  view: EditorSurface,
   range: SelectionRange,
-  { x, y, xMargin, yMargin }: Revealing,
+  { x, y, xMargin, yMargin }: Omit<Revealing, 'range'>,
 ): boolean {
   const grid = gridOf(view);
   if (grid === undefined) {
@@ -141,4 +133,4 @@ function revealOnGrid(
   return true;
 }
 
-export const gridReveal: Extension = EditorView.scrollHandler.of(revealOnGrid);
+export const gridReveal: Extension = revealers.of(revealOnGrid);

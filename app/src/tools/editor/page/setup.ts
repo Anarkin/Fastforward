@@ -1,4 +1,4 @@
-import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { closeBrackets } from '@codemirror/autocomplete';
 import { history, historyField } from '@codemirror/commands';
 import {
   Compartment,
@@ -6,12 +6,13 @@ import {
   Text,
   type Extension,
 } from '@codemirror/state';
-import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
+import { linesWrapped, surfaceUpdated, type SurfaceUpdate } from './surface';
+import { textInput } from './textInput';
+import { bracketsClose } from './typing';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { syntaxColors } from './colors';
 import { appSelection } from './selection';
 import { appTextLook, blanksShown } from './text';
-import { drawnNearWhileHeld } from './nearViewport';
 import { rowScrolling } from './scroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { colorer } from '../../../components/syntax/page/colorer';
@@ -63,8 +64,11 @@ export const occurrencesMarked = (on: boolean): Extension =>
 
 export const bracketsClosed: Extension = [
   closeBrackets(),
-  keymap.of(closeBracketsKeymap),
+  bracketsClose.of(true),
 ];
+
+export const wrappedLines = (wrapped: boolean): Extension =>
+  wrapped ? linesWrapped.of(true) : [];
 
 export interface EditorParts {
   readonly table: CellTable;
@@ -82,7 +86,7 @@ export interface EditorParts {
   readonly keys: EditorKeyActions;
   readonly scrolling: () => ScrollSettings;
   readonly cursor: CursorLook;
-  readonly onUpdate: (update: ViewUpdate) => void;
+  readonly onUpdate: (update: SurfaceUpdate) => void;
 }
 
 export function extensionsOf({
@@ -104,7 +108,6 @@ export function extensionsOf({
   onUpdate,
 }: EditorParts): Extension {
   return [
-    drawnNearWhileHeld,
     coloring.of(colors),
     appTextLook(table),
     appSelection(editorKeymap.rowEnd, cursor),
@@ -113,18 +116,14 @@ export function extensionsOf({
     editorFind,
     findTicks,
     occurring.of(occurrencesMarked(marksOccurrences)),
-    wrapping.of(wordWrap ? EditorView.lineWrapping : []),
+    wrapping.of(wrappedLines(wordWrap)),
     blanking.of(blanksShown.of(showWhitespace)),
     closing.of(closesBrackets ? bracketsClosed : []),
     EditorState.readOnly.of(readOnly),
-    EditorView.contentAttributes.of({
-      spellcheck: 'false',
-      autocorrect: 'off',
-      autocapitalize: 'off',
-    }),
     editorKeys(keys),
     rowScrolling(scrolling),
-    EditorView.updateListener.of(onUpdate),
+    textInput,
+    surfaceUpdated.of(onUpdate),
   ];
 }
 

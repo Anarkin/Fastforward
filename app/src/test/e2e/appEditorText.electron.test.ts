@@ -269,7 +269,7 @@ async function openLines(): Promise<Locator> {
 }
 
 const textAdvance = () =>
-  page.locator('.editor-probe .cm-scroller').evaluate((scroller) => {
+  page.locator('.editor-probe .editor-scroller').evaluate((scroller) => {
     const cell = document.createElement('span');
     cell.style.cssText =
       'display: inline-block; position: absolute; width: var(--text-advance)';
@@ -368,7 +368,7 @@ suite('App', () => {
     } = await editorLine(editor, editorLines[0] ?? '', 800, false);
     assert.ok(edited, 'the first line of the editor has no row');
     const editorLeft = await page
-      .locator('.editor-probe .cm-scroller')
+      .locator('.editor-probe .editor-scroller')
       .evaluate((scroller) => scroller.getBoundingClientRect().left);
     const halfPixel = 0.5 / (await page.evaluate(() => devicePixelRatio));
     const inDiff = {
@@ -404,7 +404,7 @@ suite('App', () => {
       if (box instanceof HTMLElement) {
         box.style.height = '300px';
       }
-      const editorBox = box.querySelector('.cm-editor');
+      const editorBox = box.querySelector('.editor-surface');
       if (editorBox instanceof HTMLElement) {
         editorBox.style.height = '100%';
       }
@@ -412,7 +412,7 @@ suite('App', () => {
     const columns = Math.floor(600 / (await textAdvance()) + 1e-6);
     for (const head of [60, 60_000, 120_000]) {
       await editor.evaluate((app, at) => {
-        const dom = document.querySelector('.editor-probe .cm-editor');
+        const dom = document.querySelector('.editor-probe .editor-surface');
         const view =
           dom instanceof HTMLElement ? app.EditorView.findFromDOM(dom) : null;
         view?.dispatch({ selection: { anchor: at }, scrollIntoView: true });

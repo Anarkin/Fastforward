@@ -98,7 +98,11 @@ const tools = [
     pane: '.viewer-body',
     bar: '.viewer-body .scroll-proxy.vertical',
   },
-  { name: 'editor', pane: '.editor .cm-scroller', bar: '.editor .cm-scroller' },
+  {
+    name: 'editor',
+    pane: '.editor :is(.cm-scroller, .editor-scroller)',
+    bar: '.editor :is(.cm-scroller, .editor-scroller)',
+  },
 ] as const;
 
 afterAll(() => removeFolder(invented));

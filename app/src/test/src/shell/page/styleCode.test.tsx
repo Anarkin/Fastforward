@@ -71,13 +71,13 @@ suite('Style', () => {
 
     const editor = withClass(
       rendered(
-        <div className="cm-editor editor-text">
-          <div className="cm-scroller">
-            <div className="cm-content cm-lineWrapping" />
+        <div className="editor-surface wrapped">
+          <div className="editor-scroller">
+            <div className="editor-content" />
           </div>
         </div>,
       ),
-      'cm-content',
+      'editor-content',
     );
     for (const wrapped of [
       inlineCode(true),

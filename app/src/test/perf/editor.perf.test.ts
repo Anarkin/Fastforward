@@ -20,7 +20,7 @@ fs.writeFileSync(
 
 afterAll(() => removeFolder(folder));
 
-const pane = '.editor .cm-scroller';
+const pane = '.editor :is(.cm-scroller, .editor-scroller)';
 
 const findMarked = (page: Page, marked: boolean) =>
   page.waitForFunction((wanted) => {
@@ -57,7 +57,10 @@ for (const wordWrap of [false, true]) {
 
     const intoTotal = async () => {
       const { page } = perf();
-      await page.locator('.editor .cm-line').first().click();
+      await page
+        .locator(pane)
+        .first()
+        .click({ position: { x: 120, y: 8 } });
       await page.keyboard.press('ControlOrMeta+Home');
       for (let word = 0; word < 5; word++) {
         await page.keyboard.press('Control+ArrowRight');

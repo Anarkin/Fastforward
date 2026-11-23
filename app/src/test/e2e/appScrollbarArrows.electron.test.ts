@@ -104,11 +104,13 @@ suite('Scrollbar arrows', () => {
       });
       try {
         const page = await app.firstWindow();
-        const scroller = page.locator('.editor .cm-scroller');
+        const scroller = page.locator('.editor .editor-scroller');
         const bar = page.locator(
-          '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
+          '.editor .editor-surface > .scroll-proxy-frame .scroll-proxy',
         );
-        await page.locator('.editor .cm-line').nth(5).waitFor();
+        await page
+          .locator('.editor .editor-cells[data-rows]:has(canvas)')
+          .waitFor();
         await scroller.evaluate((element) => {
           element.scrollTop = 200;
           element.scrollLeft = 100;

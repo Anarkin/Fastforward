@@ -19,13 +19,10 @@ import {
   activeTabName,
   toTabNamed,
   tabCount,
+  toStart,
 } from './editorAppFixtures';
 
-const toStartOfText = () =>
-  content()
-    .locator('.cm-line')
-    .first()
-    .click({ position: { x: 0, y: 2 } });
+const toStartOfText = toStart;
 
 const sharedNames = {
   'wcx_ftp.ini': '',

@@ -231,9 +231,9 @@ suite('Style', () => {
       <div key="viewer" className="viewer-rows">
         <div className="viewer-row syntax-keyword">{plain}</div>
       </div>,
-      <div key="editor" className="cm-editor editor-text">
-        <div className="cm-content">
-          <div className="cm-line syntax-keyword">{plain}</div>
+      <div key="editor" className="editor-surface">
+        <div className="editor-cells">
+          <div className="editor-row syntax-keyword">{plain}</div>
         </div>
       </div>,
     ]) {

@@ -4,7 +4,12 @@ import {
   type Extension,
   type SelectionRange,
 } from '@codemirror/state';
-import { EditorView, ViewPlugin, type PluginValue } from '@codemirror/view';
+import {
+  surfaceEvents,
+  surfacePlugin,
+  type EditorSurface,
+  type SurfacePart,
+} from './surface';
 import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
 import { clicked } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
@@ -34,7 +39,7 @@ export interface Pointed {
 }
 
 function pointedAt(
-  view: EditorView,
+  view: EditorSurface,
   grid: Grid,
   x: number,
   y: number,
@@ -113,12 +118,12 @@ function lineRange(state: EditorState, pos: number): SelectionRange {
   );
 }
 
-class Pointing implements PluginValue {
+class Pointing implements SurfacePart {
   private grip: Grip | undefined;
   private pointer = { x: 0, y: 0 };
   private reaching: ReturnType<typeof setInterval> | undefined;
 
-  constructor(private readonly view: EditorView) {}
+  constructor(private readonly view: EditorSurface) {}
 
   destroy(): void {
     this.up();
@@ -274,11 +279,11 @@ class Pointing implements PluginValue {
   };
 }
 
-const pointing = ViewPlugin.fromClass(Pointing);
+const pointing = surfacePlugin((view) => new Pointing(view));
 
 export const editorPointing: Extension = [
   pointing,
-  EditorView.domEventHandlers({
+  surfaceEvents({
     mousedown: (press, view) => view.plugin(pointing)?.pressed(press) ?? false,
     dragstart: () => true,
   }),

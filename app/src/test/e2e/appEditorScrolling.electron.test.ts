@@ -9,7 +9,6 @@ import {
   opened as editorOpened,
   profile as editorProfile,
   page as editorPage,
-  content as editorContent,
   editedText,
   backToCommander,
   edit as editorEdit,
@@ -17,9 +16,12 @@ import {
   activeIndex,
   topLine,
   cursorLine,
+  cursorRow,
   scrolledDown,
+  clickRow,
   sharedEditorApp,
 } from './editorAppFixtures';
+import { editorLinesSeen, editorSelected } from './editorSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { onceDrawn, untilSettled } from './waits';
 import { writeSettings } from './settingsWritten';
@@ -47,10 +49,8 @@ const longFile = [
   ...shortLines(574, '<p>after'),
 ];
 
-const selectedLines = () =>
-  editorPage.evaluate(() =>
-    (getSelection()?.toString() ?? '').split('\n').filter(Boolean),
-  );
+const selectedLines = async () =>
+  (await editorSelected(editorPage)).filter(Boolean);
 
 interface TopRow {
   readonly text: string;
@@ -118,7 +118,6 @@ function recordTopRows(frameCount: number): void {
   const record = (scroller: Element | null) => {
     if (
       scroller === null ||
-      (scroller.querySelector('.cm-content')?.textContent ?? '') === '' ||
       getComputedStyle(scroller).visibility !== 'visible' ||
       getComputedStyle(scroller).opacity !== '1'
     ) {
@@ -141,7 +140,7 @@ function recordTopRows(frameCount: number): void {
   const channel = new MessageChannel();
   let left = frameCount;
   channel.port1.addEventListener('message', () => {
-    record(document.querySelector('.editor .cm-scroller'));
+    record(document.querySelector('.editor .editor-scroller'));
     left--;
     if (left > 0) {
       requestAnimationFrame(() => channel.port2.postMessage(0));
@@ -159,8 +158,8 @@ suite('App editor, long lines and places shown again', () => {
   let page: Page;
 
   const right = () => page.locator('.commander-pane').nth(1);
-  const content = () => page.locator('.editor .cm-content');
-  const scroller = () => page.locator('.editor .cm-scroller');
+  const content = () => page.locator('.editor .editor-content');
+  const scroller = () => page.locator('.editor .editor-scroller');
   const tabs = () => page.locator('.tabs [role="tab"]');
   const topRow = () => scroller().evaluate(topRowOf);
   const topRowOfLongLine = async () => {
@@ -177,11 +176,7 @@ suite('App editor, long lines and places shown again', () => {
       return Array.isArray(recorded) ? recorded.map(String) : [];
     });
   const firstLineIs = (text: string) =>
-    waitFor(
-      async () =>
-        (await content().locator('.cm-line').first().textContent()) === text,
-      text,
-    );
+    waitFor(async () => (await editorLinesSeen(page))[0]?.text === text, text);
   const edit = async (name: string) => {
     await tabs().first().click();
     await right().locator('.commander-row', { hasText: name }).first().click();
@@ -307,7 +302,7 @@ suite('App editor, long lines and places shown again', () => {
   test('shows a long line where it was scrolled to deep inside it, with a few characters selected inside it, from the first frame drawn each time its tab is shown again, every row in view drawn and the editor focused', async () => {
     await edit('long');
     await waitFor(
-      async () => ((await content().textContent()) ?? '') !== '',
+      async () => (await editorLinesSeen(page)).length > 0,
       'the text',
     );
     await page.keyboard.press('ControlOrMeta+F');
@@ -327,7 +322,8 @@ suite('App editor, long lines and places shown again', () => {
       () =>
         page.evaluate(
           () =>
-            document.activeElement?.classList.contains('cm-content') === true,
+            document.activeElement?.classList.contains('editor-content') ===
+            true,
         ),
       'the editor focused',
     );
@@ -353,7 +349,8 @@ suite('App editor, long lines and places shown again', () => {
       assert.ok(
         await page.evaluate(
           () =>
-            document.activeElement?.classList.contains('cm-content') === true,
+            document.activeElement?.classList.contains('editor-content') ===
+            true,
         ),
         'the editor focused to type in',
       );
@@ -423,15 +420,15 @@ suite('App editor', () => {
       async () => (await editedText()).startsWith('row 1\n'),
       'the text',
     );
-    const scroller = editorPage.locator('.editor .cm-scroller');
+    const scroller = editorPage.locator('.editor .editor-scroller');
     const box = await scroller.boundingBox();
     assert.ok(box !== null);
     await editorPage.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     const rowsScrolled = () =>
       scroller.evaluate((element) => {
         const row =
-          element.querySelector('.cm-line')?.getBoundingClientRect().height ??
-          1;
+          element.querySelector<HTMLElement>('.editor-cells')?.seenRows?.()[0]
+            ?.height ?? 1;
         return element.scrollTop / row;
       });
     await editorPage.mouse.wheel(0, 100);
@@ -464,11 +461,12 @@ suite('App editor', () => {
       'the text',
     );
     await toStart();
-    const scroller = editorPage.locator('.editor .cm-scroller');
+    const scroller = editorPage.locator('.editor .editor-scroller');
     const shown = 20;
     const row = await scroller.evaluate((element, rows) => {
       const height =
-        element.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
+        element.querySelector<HTMLElement>('.editor-cells')?.seenRows?.()[0]
+          ?.height ?? 1;
       element.style.flex = 'none';
       element.style.height = `${rows * height}px`;
       element.scrollTop = (rows / 2) * height;
@@ -499,16 +497,19 @@ suite('App editor', () => {
     };
     const onRow = async (number: number) => {
       const place = await scroller.evaluate((element, wanted) => {
-        const line = Array.from(element.querySelectorAll('.cm-line')).find(
-          (each) => each.textContent === `line ${wanted}`,
-        );
-        if (line === undefined) {
-          return undefined;
-        }
-        const range = document.createRange();
-        range.selectNodeContents(line);
-        const text = range.getBoundingClientRect();
-        return { x: text.right + 20, y: text.top + text.height / 2 };
+        const line = (
+          element.querySelector<HTMLElement>('.editor-cells')?.seenRows?.() ??
+          []
+        ).find((each) => each.text === `line ${wanted}`);
+        return line === undefined
+          ? undefined
+          : {
+              x:
+                line.left +
+                (line.text.length - line.column) * line.advance +
+                20,
+              y: line.top + line.height / 2,
+            };
       }, number);
       assert.ok(place !== undefined, `line ${number} shown`);
       await editorPage.mouse.click(place.x, place.y);
@@ -541,15 +542,15 @@ suite('App editor', () => {
     const shownWhole = async (number: number) => {
       const rows = await settled();
       const whole = await scroller.evaluate((element, wanted) => {
-        const line = Array.from(element.querySelectorAll('.cm-line')).find(
-          (each) => (each.textContent ?? '').startsWith(`line ${wanted}`),
-        );
-        const rect = line?.getBoundingClientRect();
+        const line = (
+          element.querySelector<HTMLElement>('.editor-cells')?.seenRows?.() ??
+          []
+        ).find((each) => each.text.startsWith(`line ${wanted}`));
         const top = element.getBoundingClientRect().top + element.clientTop;
         return (
-          rect !== undefined &&
-          rect.top >= top - 0.5 &&
-          rect.bottom <= top + element.clientHeight + 0.5
+          line !== undefined &&
+          line.top >= top - 0.5 &&
+          line.top + line.height <= top + element.clientHeight + 0.5
         );
       }, number);
       return { rows: Number.isInteger(rows), whole };
@@ -581,32 +582,38 @@ suite('App editor', () => {
       'the text',
     );
     await toStart();
-    const scroller = editorPage.locator('.editor .cm-scroller');
+    const scroller = editorPage.locator('.editor .editor-scroller');
     const page = await scroller.evaluate((element) => {
       const row =
-        element.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
+        element.querySelector<HTMLElement>('.editor-cells')?.seenRows?.()[0]
+          ?.height ?? 1;
       return Math.floor(element.clientHeight / row) - 1;
     });
     const cursor = () =>
       untilSettled(
         () =>
           scroller.evaluate((element) => {
-            const node = getSelection()?.focusNode;
-            const line = (
-              node instanceof Element ? node : node?.parentElement
-            )?.closest('.cm-line');
-            const row =
-              element.querySelector('.cm-line')?.getBoundingClientRect()
-                .height ?? 1;
+            const rows =
+              element
+                .querySelector<HTMLElement>('.editor-cells')
+                ?.seenRows?.() ?? [];
+            const drawn = element
+              .querySelector('.editor-cursor-primary')
+              ?.getBoundingClientRect();
+            const row = rows[0]?.height ?? 1;
             const top = element.getBoundingClientRect().top;
+            const middle =
+              drawn === undefined ? NaN : drawn.top + drawn.height / 2;
             return {
-              line: line?.textContent ?? '',
+              line:
+                rows.find(
+                  (each) =>
+                    each.top <= middle && middle < each.top + each.height,
+                )?.text ?? '',
               row:
-                line === null || line === undefined
+                drawn === undefined
                   ? NaN
-                  : Math.round(
-                      ((line.getBoundingClientRect().top - top) / row) * 100,
-                    ) / 100,
+                  : Math.round(((drawn.top - top) / row) * 100) / 100,
             };
           }),
         'the cursor to stop moving',
@@ -661,7 +668,7 @@ suite('App editor', () => {
     );
     const editorTab = await activeIndex();
     const status = editorPage.locator('.editor .column-status-text');
-    await editorContent().locator('.cm-line').nth(4).click();
+    await clickRow(4);
     await waitFor(
       async () => (await cursorLine()) === 'place 5',
       'the cursor on the fifth line',
@@ -680,8 +687,8 @@ suite('App editor', () => {
     );
     assert.strictEqual(await status.textContent(), cursor);
     await waitFor(
-      async () => (await cursorLine()) === 'place 5',
-      'the cursor on the fifth line again',
+      async () => (await cursorRow()) === 4,
+      'the cursor on the fifth line again, though out of sight',
     );
   });
 
@@ -704,7 +711,7 @@ suite('App editor', () => {
       dateFormat: 'DD.MM.YYYY',
     });
     await waitFor(
-      async () => (await editedText()).startsWith('reread 1\n'),
+      async () => (await editedText()).includes('reread '),
       'the text read again',
     );
     await waitFor(

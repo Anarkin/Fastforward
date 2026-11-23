@@ -21,7 +21,7 @@ const endKeys: Record<ViewName, string> = {
 const focused: Record<ViewName, string> = {
   commander: views.commander.vertical,
   viewer: '.viewer-body',
-  editor: '.editor .cm-content',
+  editor: '.editor .editor-content',
   diff: views.diff.vertical,
   'commit list': views['commit list'].vertical,
 };

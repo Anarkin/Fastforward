@@ -65,7 +65,7 @@ suite('Closing the app a test started', () => {
       tool: 'editor',
       root: path.join(folderOpened, 'edited.txt'),
     }));
-    await page.locator('.editor .cm-content').click();
+    await page.locator('.editor .editor-content').click();
     await page.keyboard.type('changed ');
     await page.locator('nav.tabs .tab-unsaved').waitFor();
     await closeOrKill(started);

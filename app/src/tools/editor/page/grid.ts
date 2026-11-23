@@ -1,5 +1,5 @@
 import { findClusterBreak, type Line } from '@codemirror/state';
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
 import {
   wrappedRows,
@@ -37,7 +37,7 @@ export interface GridPlace {
 
 const cellWidths: TextWidths = { char: 1, of: (cluster) => cellsOf(cluster) };
 
-export function gridOf(view: EditorView): Grid | undefined {
+export function gridOf(view: EditorSurface): Grid | undefined {
   if (!view.contentDOM.isConnected) {
     return undefined;
   }
@@ -148,7 +148,7 @@ export function charAt(
 }
 
 export function cellAt(
-  view: EditorView,
+  view: EditorSurface,
   grid: Grid,
   pos: number,
   assoc: number,

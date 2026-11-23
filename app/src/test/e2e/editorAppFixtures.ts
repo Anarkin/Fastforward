@@ -4,7 +4,9 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
+import type { SeenRow } from '../../components/cells/page/seen';
 import { viewerTexts } from './cellsSeen';
+import { editorLinesSeen, editorRowPoint, editorRowsSeen } from './editorSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { fileName, rowsShown } from './commanderRows';
 
@@ -15,15 +17,10 @@ let app: ElectronApplication;
 export let page: Page;
 
 export const right = () => page.locator('.commander-pane').nth(1);
-export const content = () => page.locator('.editor .cm-content');
+export const content = () => page.locator('.editor .editor-content');
 export const activeTab = () => page.locator('.tabs .tab.active');
-export const editedText = () =>
-  content().evaluate((element) =>
-    Array.from(
-      element.querySelectorAll('.cm-line'),
-      (line) => line.textContent ?? '',
-    ).join('\n'),
-  );
+export const editedText = async (shown: Page = page) =>
+  (await editorLinesSeen(shown)).map(({ text }) => text).join('\n');
 const rowIndexOf = async (name: string) =>
   (await rowsShown(right())).findIndex((row) => fileName(row) === name);
 const selectedIndex = () =>
@@ -115,14 +112,17 @@ export const toTabNamed = async (name: string) => {
   await page.locator('.tabs .tab', { hasText: name }).first().click();
   await waitFor(async () => (await activeTabName()) === name, `${name} shown`);
 };
-export const toStart = () =>
-  content()
-    .locator('.cm-line')
-    .first()
-    .click({ position: { x: 0, y: 2 } });
+export const toStart = async () => {
+  await content().focus();
+  await page.keyboard.press('ControlOrMeta+Home');
+};
 export const toEnd = async () => {
-  await content().locator('.cm-line').last().click();
-  await page.keyboard.press('End');
+  await content().focus();
+  await page.keyboard.press('ControlOrMeta+End');
+};
+export const clickRow = async (row: number, column = 0) => {
+  const { x, y } = await editorRowPoint(page, row, column);
+  await page.mouse.click(x, y);
 };
 export const activeIndex = () =>
   page
@@ -130,27 +130,65 @@ export const activeIndex = () =>
     .evaluateAll((tabs) =>
       tabs.findIndex((tab) => tab.classList.contains('active')),
     );
-export const topLine = () =>
-  page.locator('.editor .cm-scroller').evaluate((scroller) => {
-    const top = scroller.getBoundingClientRect().top;
-    return (
-      Array.from(scroller.querySelectorAll('.cm-line')).find(
-        (line) => line.getBoundingClientRect().bottom > top + 1,
-      )?.textContent ?? ''
-    );
-  });
-export const cursorLine = (shown: Page = page) =>
-  shown.locator('.editor .cm-content').evaluate(() => {
-    const node = getSelection()?.focusNode;
-    const element = node instanceof Element ? node : node?.parentElement;
-    return element?.closest('.cm-line')?.textContent ?? '';
+const lineOfRow = (rows: readonly SeenRow[], row: number): string => {
+  for (let at = row; at >= 0; at--) {
+    const line = rows[at]?.line;
+    if (line !== undefined) {
+      return line;
+    }
+  }
+  return rows[row]?.text ?? '';
+};
+export const topLine = async () => {
+  const top = await page
+    .locator('.editor .editor-scroller')
+    .evaluate((scroller) => scroller.getBoundingClientRect().top);
+  const rows = await editorRowsSeen(page);
+  return lineOfRow(
+    rows,
+    rows.findIndex((row) => row.top + row.height > top + 1),
+  );
+};
+export const cursorLine = async (shown: Page = page) => {
+  const cursor = await shown
+    .locator('.editor .editor-cursor-primary')
+    .evaluateAll((cursors) => {
+      const box = cursors[0]?.getBoundingClientRect();
+      return box === undefined ? undefined : box.top + box.height / 2;
+    });
+  const rows = await editorRowsSeen(shown);
+  return cursor === undefined
+    ? ''
+    : lineOfRow(
+        rows,
+        rows.findIndex(
+          (row) => row.top <= cursor && cursor < row.top + row.height,
+        ),
+      );
+};
+export const cursorRow = (shown: Page = page) =>
+  shown.evaluate(() => {
+    const cursor = document
+      .querySelector('.editor .editor-cursor-primary')
+      ?.getBoundingClientRect();
+    const text = document
+      .querySelector('.editor .editor-content')
+      ?.getBoundingClientRect();
+    const row = document
+      .querySelector<HTMLElement>('.editor .editor-cells')
+      ?.seenRows?.()[0]?.height;
+    return cursor === undefined || text === undefined || row === undefined
+      ? undefined
+      : Math.round((cursor.top - text.top) / row);
   });
 export const scrolledDown = async (rows: number) => {
-  await page.locator('.editor .cm-scroller').evaluate((scroller, by) => {
-    const row =
-      scroller.querySelector('.cm-line')?.getBoundingClientRect().height ?? 1;
-    scroller.scrollTop = row * by;
-  }, rows);
+  const [first] = await editorRowsSeen(page);
+  await page.locator('.editor .editor-scroller').evaluate(
+    (scroller, top) => {
+      scroller.scrollTop = top;
+    },
+    (first?.height ?? 1) * rows,
+  );
   let shown = '';
   await waitFor(async () => {
     const was = shown;

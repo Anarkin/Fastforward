@@ -203,7 +203,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await page.keyboard.press('Escape');
   await page.locator('.scrollbar-mark').first().waitFor({ state: 'detached' });
   await page.keyboard.press('F4');
-  await page.locator('.editor .cm-content').waitFor();
+  await page.locator('.editor .editor-content').waitFor();
   await look('editor');
   await page.keyboard.press('Escape');
   await page.locator('.editor').waitFor({ state: 'detached' });

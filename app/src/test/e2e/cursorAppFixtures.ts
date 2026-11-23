@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type * as stateModule from '@codemirror/state';
-import type * as viewModule from '@codemirror/view';
+import { viewInPage, type ViewInPage } from './surfaceInPage';
 import * as esbuild from 'esbuild';
 import type { ElectronApplication, JSHandle, Page } from 'playwright-core';
 import { afterAll, beforeAll } from 'vitest';
@@ -45,8 +45,10 @@ const launchSwitches = [
 
 const clearLine = process.platform === 'win32' ? 'Escape' : 'Control+U';
 
-type PageParts = Pick<typeof viewModule, 'EditorView'> &
-  Pick<typeof stateModule, 'EditorSelection'> &
+type PageParts = { readonly EditorView: ViewInPage } & Pick<
+  typeof stateModule,
+  'EditorSelection'
+> &
   Pick<typeof editorTextModule, 'appTextLook'> &
   Pick<typeof editorSelectionModule, 'appSelection'> &
   Pick<typeof editorKeymapModule, 'editorKeymap'> &
@@ -73,7 +75,7 @@ export async function partsInPage(): Promise<JSHandle<PageParts>> {
   const built = await esbuild.build({
     stdin: {
       contents: [
-        "export { EditorView } from '@codemirror/view';",
+        ...viewInPage,
         "export { EditorSelection } from '@codemirror/state';",
         "export { appTextLook } from '../../tools/editor/page/text';",
         "export { appSelection } from '../../tools/editor/page/selection';",
@@ -259,7 +261,7 @@ export async function mountEditorAndField(
   await parts.evaluate(
     async (inPage, shown) => {
       for (const old of document.querySelectorAll('.cursor-probe')) {
-        const editor = old.querySelector('.cm-editor');
+        const editor = old.querySelector('.editor-surface');
         if (editor instanceof HTMLElement) {
           inPage.EditorView.findFromDOM(editor)?.destroy();
         }
@@ -270,19 +272,23 @@ export async function mountEditorAndField(
       box.style.cssText =
         'position: fixed; left: 40px; top: 160px; width: 300px; z-index: 10; background: var(--color-panel-background); --line-number-width: 0px; --line-number-gap: 0px';
       document.body.append(box);
-      const view = new inPage.EditorView({
-        doc: shown.text,
-        selection: inPage.EditorSelection.cursor(shown.head),
-        extensions: [
-          inPage.appTextLook(await inPage.terminalCells()),
-          inPage.appSelection(
-            inPage.editorKeymap.rowEnd,
-            inPage.pageCursorLook(),
-          ),
-        ],
-      });
+      const table = await inPage.terminalCells();
+      const view = inPage.EditorView.mounted(
+        box,
+        {
+          doc: shown.text,
+          selection: inPage.EditorSelection.cursor(shown.head),
+          extensions: [
+            inPage.appTextLook(table),
+            inPage.appSelection(
+              inPage.editorKeymap.rowEnd,
+              inPage.pageCursorLook(),
+            ),
+          ],
+        },
+        table,
+      );
       view.dom.style.outline = 'none';
-      box.append(view.dom);
       const fieldBox = document.createElement('div');
       fieldBox.className = 'cursor-probe field-probe';
       fieldBox.style.cssText =
@@ -302,7 +308,7 @@ export async function focusEditor(
   head: number,
 ): Promise<void> {
   await parts.evaluate((inPage, at) => {
-    const dom = document.querySelector('.editor-probe .cm-editor');
+    const dom = document.querySelector('.editor-probe .editor-surface');
     const view =
       dom instanceof HTMLElement ? inPage.EditorView.findFromDOM(dom) : null;
     view?.focus();

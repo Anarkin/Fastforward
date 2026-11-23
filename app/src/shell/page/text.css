@@ -20,11 +20,19 @@
   grid-column: 1 / -1;
 }
 
-.cm-editor.editor-text {
+.editor-surface {
   --text-advance: round(1ch, var(--device-pixel, 1px));
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-.cm-editor.editor-text .cm-scroller {
+.editor-surface .editor-scroller {
+  position: relative;
+  z-index: 0;
+  height: 100%;
+  overflow-anchor: none;
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
   line-height: round(
@@ -34,44 +42,44 @@
   letter-spacing: calc(var(--text-advance) - 1ch);
 }
 
-.cm-editor.editor-text .cm-scroller {
+.editor-surface .editor-scroller {
   margin: 0 var(--line-right, 0px)
     calc(var(--line-below, 0px) + var(--scrollbar-size)) 0;
   overflow: scroll;
 }
 
-.cm-editor.editor-text .cm-scroller::-webkit-scrollbar:horizontal {
+.editor-surface .editor-scroller::-webkit-scrollbar:horizontal {
   height: 0;
 }
 
-.cm-editor.editor-text:has(.cm-content.cm-lineWrapping) .cm-scroller {
+.editor-surface.wrapped .editor-scroller {
   --scrollbar-round-end: var(--corner-round, 0px);
   margin-bottom: var(--line-below, 0px);
   overflow-x: hidden;
 }
 
-.cm-editor.editor-text > .scroll-proxy-frame {
+.editor-surface > .scroll-proxy-frame {
   right: calc(var(--line-right, 0px) + var(--scrollbar-size));
   bottom: var(--line-below, 0px);
 }
 
-.cm-editor.editor-text:has(.cm-content.cm-lineWrapping) > .scroll-proxy-frame {
+.editor-surface.wrapped > .scroll-proxy-frame {
   display: none;
 }
 
-.cm-editor.editor-text > .scrollbar-marks {
+.editor-surface > .scrollbar-marks {
   top: var(--scrollbar-size);
   right: var(--line-right, 0px);
   bottom: calc(var(--line-below, 0px) + 2 * var(--scrollbar-size));
   width: var(--scrollbar-size);
 }
 
-.cm-editor.editor-text:has(.cm-content.cm-lineWrapping) > .scrollbar-marks {
+.editor-surface.wrapped > .scrollbar-marks {
   bottom: calc(var(--line-below, 0px) + var(--scrollbar-size));
 }
 
 .viewer-body:not(.wrapped)::after,
-.cm-editor.editor-text:not(:has(.cm-content.cm-lineWrapping))::after,
+.editor-surface:not(.wrapped)::after,
 .diff-view:not(.wrap)::before {
   content: '';
   position: absolute;
@@ -84,46 +92,33 @@
   pointer-events: none;
 }
 
-.cm-editor.editor-text .cm-content {
+.editor-surface .editor-content {
+  box-sizing: border-box;
+  height: calc(var(--text-height, 0px) + var(--rows-below, 0px));
+  min-height: 100%;
   margin-left: calc(var(--line-number-width) + var(--line-number-gap));
-  padding: 0;
-  color: transparent;
+  padding: 0 0 var(--rows-below, 0px);
+  outline: none;
 }
 
-.cm-editor.editor-text .cm-line {
-  height: calc(var(--rows, 1) * 1lh);
-  padding: 0;
-  overflow: hidden;
-}
-
-.cm-editor.editor-text .cm-content:not(.cm-lineWrapping) .cm-line.gridded {
-  width: calc(var(--columns) * var(--text-advance));
-}
-
-.cm-editor.editor-selection .cm-content:not(.cm-lineWrapping) {
+.editor-surface:not(.wrapped) .editor-content {
+  min-width: calc(var(--text-width, 0px) + var(--text-advance));
   padding-right: var(--text-advance);
 }
 
+.editor-surface .editor-cursors {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  contain: size style;
+  pointer-events: none;
+}
+
 .viewer-rows.wrapped,
-.cm-editor.editor-text .cm-content.cm-lineWrapping,
+.editor-surface.wrapped .editor-content,
 .diff-view.wrap .diff-line .code {
   padding-right: calc(2 * var(--text-advance) + var(--wrap-gap));
-}
-
-.cm-editor.editor-text .cm-content.cm-lineWrapping {
-  white-space: pre-wrap;
-  word-break: normal;
-  overflow-wrap: anywhere;
-}
-
-.cm-editor.editor-selection .cm-scroller .cm-line ::selection,
-.cm-editor.editor-selection .cm-scroller .cm-line::selection {
-  background-color: transparent;
-}
-
-.cm-editor.editor-selection .cm-scroller .cm-content,
-.cm-editor.editor-selection .cm-scroller .cm-line {
-  caret-color: transparent;
 }
 
 input {
@@ -161,7 +156,7 @@ kbd.match,
   background: var(--color-search-match);
 }
 
-.cm-editor.editor-text .occurrence-match,
+.editor-surface .occurrence-match,
 .viewer-rows .occurrence-match,
 .diff-view .occurrence-match {
   background: color-mix(
@@ -216,43 +211,43 @@ mark.match,
 }
 
 .diff-line .syntax-plain,
-.cm-editor.editor-text .syntax-plain {
+.editor-surface .syntax-plain {
   color: var(--color-foreground);
 }
 
 .diff-line .syntax-keyword,
 .markdown .syntax-keyword,
-.cm-editor.editor-text .syntax-keyword {
+.editor-surface .syntax-keyword {
   color: var(--color-syntax-keyword);
 }
 
 .diff-line .syntax-type,
 .markdown .syntax-type,
-.cm-editor.editor-text .syntax-type {
+.editor-surface .syntax-type {
   color: var(--color-syntax-type);
 }
 
 .diff-line .syntax-function,
 .markdown .syntax-function,
-.cm-editor.editor-text .syntax-function {
+.editor-surface .syntax-function {
   color: var(--color-syntax-function);
 }
 
 .diff-line .syntax-string,
 .markdown .syntax-string,
-.cm-editor.editor-text .syntax-string {
+.editor-surface .syntax-string {
   color: var(--color-syntax-string);
 }
 
 .diff-line .syntax-number,
 .markdown .syntax-number,
-.cm-editor.editor-text .syntax-number {
+.editor-surface .syntax-number {
   color: var(--color-syntax-number);
 }
 
 .diff-line .syntax-comment,
 .markdown .syntax-comment,
-.cm-editor.editor-text .syntax-comment {
+.editor-surface .syntax-comment {
   color: var(--color-syntax-comment);
 }
 

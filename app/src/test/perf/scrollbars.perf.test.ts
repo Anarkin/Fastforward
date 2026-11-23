@@ -26,9 +26,10 @@ const views = [
   {
     name: 'editor',
     tab: 2,
-    pane: '.editor .cm-scroller',
-    down: '.editor .cm-scroller',
-    across: '.editor .cm-editor > .scroll-proxy-frame .scroll-proxy',
+    pane: '.editor :is(.cm-scroller, .editor-scroller)',
+    down: '.editor :is(.cm-scroller, .editor-scroller)',
+    across:
+      '.editor :is(.cm-editor, .editor-surface) > .scroll-proxy-frame .scroll-proxy',
   },
   {
     name: 'diff',

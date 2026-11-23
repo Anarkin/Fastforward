@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { EditorView } from '@codemirror/view';
+import type { EditorSurface } from './surface';
 import { strings } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
@@ -11,7 +11,7 @@ export function EditorAsks({
   lineCount,
   setGoingToLine,
 }: {
-  view: RefObject<EditorView | undefined>;
+  view: RefObject<EditorSurface | undefined>;
   goingToLine: boolean;
   lineCount: number;
   setGoingToLine: (going: boolean) => void;

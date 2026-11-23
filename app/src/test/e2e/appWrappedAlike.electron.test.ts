@@ -84,7 +84,7 @@ const viewer: Viewed = {
 const editor: Viewed = {
   name: 'editor',
   body: '.editor-body',
-  box: '.cm-content',
+  box: '.editor-content',
   cells: '.editor .editor-cells',
 };
 
@@ -364,7 +364,7 @@ suite('App', () => {
       await whitespaceButton(true).waitFor();
 
       await page.keyboard.press('F4');
-      await page.locator('.editor .cm-content').waitFor();
+      await page.locator('.editor .editor-content').waitFor();
       const edited = await untilSettled(
         async () => rounded(await layoutOf(editor)),
         'the editor to settle, its breaks marked',

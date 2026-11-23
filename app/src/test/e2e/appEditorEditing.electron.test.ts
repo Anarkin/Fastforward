@@ -4,7 +4,6 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { editorMarked, editorRowsSeen, untilEditorLine } from './editorSeen';
-import { barOf, barParts } from './scrollbarsShown';
 import {
   opened,
   profile,
@@ -16,6 +15,7 @@ import {
   backToCommander,
   edit,
   toStart,
+  clickRow,
   cursorLine,
   sharedEditorApp,
 } from './editorAppFixtures';
@@ -74,7 +74,7 @@ const bracketAndCursor = async () => {
     cursor: onPixels(
       await page.evaluate(() => {
         const box = document
-          .querySelector('.editor .cm-cursor-primary')
+          .querySelector('.editor .editor-cursor-primary')
           ?.getBoundingClientRect();
         return box === undefined
           ? []
@@ -86,7 +86,7 @@ const bracketAndCursor = async () => {
 
 const shownWhole = async () => {
   const view = await page
-    .locator('.editor .cm-scroller')
+    .locator('.editor .editor-scroller')
     .evaluate((scroller) => {
       const top = scroller.getBoundingClientRect().top;
       return {
@@ -309,79 +309,6 @@ suite('App editor', () => {
     }
   });
 
-  test('leaves a line of thousands of characters as drawn while the cursor moves and text is typed in other lines, and draws its end once the cursor goes there, as CodeMirror drew the end of every such line above the cursor whenever the cursor was scrolled to, and its start again right after, a thousand elements of one line made twice a key', async () => {
-    const end = 'the end of the wide line';
-    const wide = `the start ${Array.from({ length: 900 }, (_, at) => `word${at}`).join(' ')} ${end}`;
-    const lines = [
-      wide,
-      ...Array.from({ length: 60 }, (_, at) => `narrow ${at + 1}`),
-    ];
-    fs.writeFileSync(path.join(opened, 'wide.txt'), `${lines.join('\n')}\n`);
-    await backToCommander();
-    await edit('wide.txt');
-    await waitFor(
-      async () => (await editedText()).includes('\nnarrow 1\n'),
-      'the text',
-    );
-    await toStart();
-    for (let row = 0; row < 10; row++) {
-      await page.keyboard.press('ArrowDown');
-    }
-    await waitFor(
-      async () => (await cursorLine()) === 'narrow 10',
-      'the cursor in a narrow line',
-    );
-    const wideLine = page.locator('.editor .cm-line').first();
-    const drawn = await untilSettled(
-      () => wideLine.evaluate((line) => line.textContent ?? ''),
-      'the wide line drawn',
-    );
-    assert.ok(drawn.startsWith('the start word0 '), drawn.slice(0, 40));
-    assert.ok(drawn.length < wide.length, 'part of the wide line left undrawn');
-    await wideLine.evaluate((line) => {
-      const changes = { count: 0 };
-      Reflect.set(window, 'wideLineChanges', changes);
-      new MutationObserver((seen) => {
-        changes.count += seen.length;
-      }).observe(line, { childList: true, subtree: true, characterData: true });
-    });
-    for (let row = 0; row < 4; row++) {
-      await page.keyboard.press('ArrowDown');
-    }
-    await page.keyboard.type('typed');
-    await waitFor(
-      async () => (await cursorLine()) === 'typednarrow 14',
-      'the text typed in a narrow line',
-    );
-    const changes = await untilSettled(
-      () =>
-        page.evaluate((): unknown => Reflect.get(window, 'wideLineChanges')),
-      'the wide line to rest',
-    );
-    assert.deepStrictEqual(changes, { count: 0 });
-    assert.strictEqual(
-      await wideLine.evaluate((line) => line.textContent ?? ''),
-      drawn,
-    );
-
-    for (let key = 0; key < 'typed'.length; key++) {
-      await page.keyboard.press('ControlOrMeta+Z');
-    }
-    await waitFor(
-      async () => (await cursorLine()) === 'narrow 14',
-      'the typing undone',
-    );
-    await page.keyboard.press('ControlOrMeta+Home');
-    await page.keyboard.press('End');
-    await waitFor(
-      async () =>
-        (await wideLine.evaluate((line) => line.textContent ?? '')).endsWith(
-          end,
-        ),
-      'the end of the wide line drawn',
-    );
-  });
-
   test('moves the cursor itself a character or a word left or right and to the start of the row, selecting with Shift, over the places a wrapped line may break, where the caret of the browser stood still, as right before an opening bracket', async () => {
     const settings = path.join(profile, 'settings.user.json');
     const before = fs.readFileSync(settings, 'utf8');
@@ -398,7 +325,7 @@ suite('App editor', () => {
         async () => (await editedText()) === `${line}\n`,
         'the text',
       );
-      await content().locator('.cm-line').first().click();
+      await clickRow(0);
       await reaches('End', [23]);
       await reaches(
         'ArrowLeft',
@@ -431,13 +358,13 @@ suite('App editor', () => {
       async () => (await editedText()) === 'call(a[0])\nopen(\n',
       'the text',
     );
-    await content().locator('.cm-line').first().click();
+    await clickRow(0);
     await page.keyboard.press('End');
     await waitFor(
       async () => (await editorMarked(page, 'occurrence')).join('') === '()',
       'the brackets around the call matched',
     );
-    await content().locator('.cm-line').nth(1).click();
+    await clickRow(1);
     await page.keyboard.press('End');
     await waitFor(
       async () => (await editorMarked(page, 'occurrence')).length === 0,
@@ -455,7 +382,7 @@ suite('App editor', () => {
       ({ kinds }) => Object.keys(kinds).some((kind) => kind !== 'plain'),
       'the code colored',
     );
-    await content().locator('.cm-line').first().click();
+    await clickRow(0);
     await page.keyboard.press('Home');
     let seen = await bracketAndCursor();
     await waitFor(
@@ -478,7 +405,7 @@ suite('App editor', () => {
     await backToCommander();
     await edit('words.txt');
     await waitFor(async () => (await editedText()) === words, 'the text');
-    await content().locator('.cm-line').first().click();
+    await clickRow(0);
     await page.keyboard.press('Home');
     await waitFor(
       async () => (await occurrencesMarked()) === 'total,total',
@@ -513,68 +440,109 @@ suite('App editor', () => {
     );
   });
 
-  test('draws the lines in sight and only a few around them while its scrollbar is dragged by more than a view at a step, and as many around them as CodeMirror draws once it is dragged slowly and once it is let go', async () => {
-    fs.writeFileSync(
-      path.join(opened, 'tall.txt'),
-      Array.from({ length: 3000 }, (_, index) => `line ${index}`).join('\n'),
-    );
+  test('shows what an input method composes as it composes it, each step in place of the one before, and the text it settles on in place of them all, as the editor takes what is typed itself, its text being in no element of the page', async () => {
+    fs.writeFileSync(path.join(opened, 'composed.txt'), 'one two\n');
     await backToCommander();
-    await edit('tall.txt');
-    await content().locator('.cm-line').first().waitFor();
-    const scroller = '.editor .cm-scroller';
-    const seen = () =>
-      page.evaluate((selector) => {
-        const view = document.querySelector(selector);
-        const lines = view?.querySelectorAll('.cm-line');
-        const height = lines?.[0]?.getBoundingClientRect().height ?? 0;
-        const room = view?.clientHeight ?? 0;
-        return {
-          drawn: lines?.length ?? 0,
-          inSight: height > 0 ? Math.ceil(room / height) : 0,
-          room,
-          scrolls: (view?.scrollHeight ?? 0) - room,
-        };
-      }, scroller);
-    const { box } = await barOf(page, scroller, 'vertical');
-    const { thumb, start, end } = await barParts(page, box, 'vertical');
-    assert.ok(thumb, 'the scrollbar of the editor has no thumb');
-    const { room, scrolls } = await seen();
-    const scrolledByPixel =
-      scrolls / (box.height - start.height - end.height - thumb.height);
-    const quick = Math.ceil((2 * room) / scrolledByPixel);
-    const slow = Math.max(1, Math.floor(100 / scrolledByPixel));
-    const across = thumb.left + thumb.width / 2;
-    let down = thumb.top + thumb.height / 2;
-    const dragBy = async (pixels: number) => {
-      down += pixels;
-      await page.mouse.move(across, down);
-    };
-    const draws = (around: 'few' | 'many', when: string) =>
-      waitFor(async () => {
-        const { drawn, inSight } = await seen();
-        return around === 'few'
-          ? drawn > 0 && drawn <= inSight + 14
-          : drawn >= inSight + 40;
-      }, `${around} lines around those in sight ${when}`).catch(
-        async (error: unknown) => {
-          throw new Error(JSON.stringify(await seen()), { cause: error });
-        },
-      );
-    await page.mouse.move(across, down);
-    await page.mouse.down();
+    await edit('composed.txt');
+    await waitFor(async () => (await editedText()) === 'one two\n', 'the text');
+    await toStart();
+    await waitFor(async () => (await status()) === 'Col 1', 'the start');
+    const session = await page.context().newCDPSession(page);
     try {
-      await dragBy(quick);
-      await dragBy(quick);
-      await draws('few', 'while dragged quickly');
-      for (let step = 0; step < 6; step++) {
-        await dragBy(slow);
-      }
-      await draws('many', 'once dragged slowly');
-      await dragBy(quick);
-      await draws('few', 'once dragged quickly again');
+      await session.send('Input.imeSetComposition', {
+        text: 'n',
+        selectionStart: 1,
+        selectionEnd: 1,
+      });
+      await waitFor(
+        async () => (await editedText()) === 'none two\n',
+        'the first letter composed',
+      );
+      await session.send('Input.imeSetComposition', {
+        text: 'ni',
+        selectionStart: 2,
+        selectionEnd: 2,
+      });
+      await waitFor(
+        async () => (await editedText()) === 'nione two\n',
+        'the second letter composed',
+      );
+      await session.send('Input.insertText', { text: '你' });
+      await waitFor(
+        async () =>
+          (await editedText()) === '你one two\n' &&
+          (await status()) === 'Col 3',
+        'the character it settled on, two cells wide',
+      );
+      await page.keyboard.type(' x');
+      await waitFor(
+        async () => (await editedText()) === '你 xone two\n',
+        'the text typed after it',
+      );
+      await page.keyboard.press('ControlOrMeta+S');
+      await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
     } finally {
-      await page.mouse.up();
+      await session.detach();
     }
-    await draws('many', 'once let go');
+  });
+
+  test('deletes the character before and after every cursor on Backspace and Delete, the word before one on Ctrl+Backspace and after one on Ctrl+Delete, selects the whole text on Ctrl+A, and cuts it to the clipboard and pastes it back, a line copied whole with nothing selected pasted above the line of the cursor', async () => {
+    const text = 'alpha beta\nalpha beta\n';
+    fs.writeFileSync(path.join(opened, 'deleted.txt'), text);
+    await backToCommander();
+    await edit('deleted.txt');
+    await waitFor(async () => (await editedText()) === text, 'the text');
+    await toStart();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Control+Alt+ArrowDown');
+    await waitFor(
+      async () => (await status())?.includes('2 cursors') === true,
+      'a cursor at the end of both lines',
+    );
+    await page.keyboard.press('Backspace');
+    await waitFor(
+      async () => (await editedText()) === 'alpha bet\nalpha bet\n',
+      'a character deleted before both cursors',
+    );
+    await page.keyboard.press('Control+Backspace');
+    await waitFor(
+      async () => (await editedText()) === 'alpha \nalpha \n',
+      'a word deleted before both cursors',
+    );
+    await page.keyboard.press('Home');
+    await page.keyboard.press('Delete');
+    await waitFor(
+      async () => (await editedText()) === 'lpha \nlpha \n',
+      'a character deleted after both cursors',
+    );
+    await page.keyboard.press('Control+Delete');
+    await waitFor(
+      async () => (await editedText()) === ' \n \n',
+      'a word deleted after both cursors',
+    );
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('ControlOrMeta+Home');
+    await page.keyboard.type('one');
+    await page.keyboard.press('ControlOrMeta+C');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ControlOrMeta+V');
+    await waitFor(
+      async () => (await editedText()) === 'one \none \n \n',
+      'the line copied whole pasted above the line of the cursor',
+    );
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.press('ControlOrMeta+X');
+    await waitFor(
+      async () => (await editedText()) === '',
+      'the whole text cut',
+    );
+    await page.keyboard.press('ControlOrMeta+V');
+    await page.keyboard.press('ControlOrMeta+V');
+    await waitFor(
+      async () => (await editedText()) === 'one \none \n \none \none \n \n',
+      'the text cut pasted twice',
+    );
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
   });
 });
