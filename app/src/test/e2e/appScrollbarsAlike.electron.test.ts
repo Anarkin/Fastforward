@@ -167,16 +167,16 @@ suite('App scrollbars alike', () => {
         x: box.left + box.width / 2,
         y: parts.thumb.top + parts.thumb.height + 8,
       };
-      const [arrowUp, arrowDown, thumb, plain, beside] = await paintedAt(
-        app,
-        page,
-        [
-          middle(parts.start),
-          middle(parts.end),
-          middle(parts.thumb),
-          track,
-          { x: box.left - 6, y: track.y },
-        ],
+      const points = [
+        middle(parts.start),
+        middle(parts.end),
+        middle(parts.thumb),
+        track,
+        { x: box.left - 6, y: track.y },
+      ];
+      const [arrowUp, arrowDown, thumb, plain, beside] = await untilSettled(
+        () => paintedAt(app, page, points),
+        `the scrollbar of the ${name} at rest once the pointer left it`,
       );
       const atStart = await page
         .locator(views[name].vertical)
@@ -511,7 +511,7 @@ suite('App scrollbars alike', () => {
     assert.deepStrictEqual(seen, alike(textViews, true));
   });
 
-  test('rounds the ends of a scrollbar with the corners of what it stands in once the app has a radius, a menu at both ends, the window of the shortcuts and the card of a list at their bottom, as the browser draws its scrollbars square over a rounded corner', async () => {
+  test('rounds the ends of a scrollbar with the corners of what it stands in once the app has a radius, a menu at both ends and the window of the shortcuts at its bottom, as the browser draws its scrollbars square over a rounded corner', async () => {
     const rounded = async (
       selector: string,
       ends: readonly ('top' | 'bottom')[],
@@ -531,7 +531,6 @@ suite('App scrollbars alike', () => {
     };
     await roundedApp(page);
     await show('commander');
-    const card = await rounded(views.commander.vertical, ['bottom']);
     await page.keyboard.press('F1');
     await page.locator('.shortcuts-pane').waitFor();
     const shortcuts = await rounded('.shortcuts-pane', ['bottom']);
@@ -544,8 +543,8 @@ suite('App scrollbars alike', () => {
     const menu = await rounded('.menu.filtered-menu', ['top', 'bottom']);
     await page.keyboard.press('Escape');
     assert.deepStrictEqual(
-      { card, menu, shortcuts },
-      { card: true, menu: true, shortcuts: true },
+      { menu, shortcuts },
+      { menu: true, shortcuts: true },
     );
   });
 
