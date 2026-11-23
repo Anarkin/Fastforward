@@ -41,11 +41,13 @@ suite('Cursor over the text under it and beside it', () => {
       await mountEditorAndField(parts, text, 1);
       await focusEditor(parts, 1);
       const cell = await editorCell(text, 1);
-      const editorShot = await settledShot(
-        (taken) => blockShown(taken, cell),
-        'the block of the editor on a character',
-      );
       const before = { ...cell, left: cell.left - cell.width };
+      const editorShot = await settledShot(
+        (taken) =>
+          blockShown(taken, cell) &&
+          glyphPlace(taken, before, true).box !== undefined,
+        'the block of the editor on a character, and the character before it drawn, as the cursor may show a frame before the text',
+      );
       const editorGlyph = glyphPlace(editorShot, cell, false);
       assertSamePlace(
         editorGlyph,
