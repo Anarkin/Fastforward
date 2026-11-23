@@ -40,21 +40,19 @@ suite('The tooltip of an element', () => {
     );
   });
 
-  test('tells a note under its words and rows of a name and its values under that, as the button of the preview of a file viewed lists the kinds of file it previews, and reads them back, each only where it is given', () => {
+  test('tells rows of a name and its values under its words, as the button of the preview of a file viewed lists the kinds of file it previews, and reads them back, only where they are given', () => {
     const rows = [
       { name: 'Markdown', values: '.md .markdown' },
       { name: 'PDF', values: '.pdf' },
     ];
     const told = tip('Preview', {
       keys: '3',
-      note: 'No preview for this kind of file. Supported types:',
       rows,
     });
 
     assert.deepStrictEqual(told, {
       'data-tip': 'Preview',
       'data-tip-keys': '3',
-      'data-tip-note': 'No preview for this kind of file. Supported types:',
       'data-tip-rows': JSON.stringify(rows),
     });
     assert.deepStrictEqual(tipOf(element(told, 'button')), {
@@ -62,7 +60,6 @@ suite('The tooltip of an element', () => {
       at: 'below-center',
       cut: false,
       keys: '3',
-      note: 'No preview for this kind of file. Supported types:',
       rows,
     });
     assert.deepStrictEqual(

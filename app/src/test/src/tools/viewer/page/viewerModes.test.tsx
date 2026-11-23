@@ -39,7 +39,7 @@ const kinds = [
 ];
 
 suite('The buttons a file viewed is viewed as', () => {
-  test('shows the button of the preview for a file it cannot preview too, disabled, its tooltip saying so and that the kinds below are those it supports, and leaves it enabled for a file it previews, its tooltip listing the kinds alone, as the button was missing and nothing said which files have a preview', () =>
+  test('shows the button of the preview for a file it cannot preview too, disabled, its tooltip listing the kinds it previews as for one it previews, and leaves it enabled for a file it previews, as the button was missing and nothing said which files have a preview', () =>
     inViewerTool(ViewerTool, async (tool) => {
       await viewed(tool, 'C:\\work\\notes.txt');
       const [hex, text, preview] = modeButtons(tool);
@@ -61,7 +61,6 @@ suite('The buttons a file viewed is viewed as', () => {
         at: 'below-center',
         cut: false,
         keys: '3',
-        note: 'No preview for this kind of file. Supported types:',
         rows: kinds,
       });
       await tool.press('3');

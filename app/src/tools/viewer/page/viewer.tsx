@@ -254,9 +254,6 @@ export function Viewer() {
                   {...labelTip(title, {
                     keys: keysOf(viewerKeymap.viewAs, each),
                     ...(each === 'preview' && {
-                      note: available(each)
-                        ? undefined
-                        : strings.viewer.noPreview,
                       rows: previewKinds(),
                     }),
                   })}

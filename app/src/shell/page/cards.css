@@ -35,10 +35,6 @@
   row-gap: 2px;
 }
 
-.card-note {
-  grid-column: 1 / -1;
-}
-
 .card-row-values {
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);

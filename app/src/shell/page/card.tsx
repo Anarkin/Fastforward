@@ -13,7 +13,6 @@ export function Card({
   said,
   error = false,
   keys,
-  note,
   rows,
   onClose,
   ...rest
@@ -22,12 +21,10 @@ export function Card({
   readonly said: Sentence;
   readonly error?: boolean;
   readonly keys?: string;
-  readonly note?: string | undefined;
   readonly rows?: readonly TipRow[] | undefined;
   readonly onClose?: () => void;
 } & Omit<React.ComponentProps<'div'>, 'className' | 'children'>) {
-  const detailed =
-    note !== undefined || (rows !== undefined && rows.length > 0);
+  const detailed = rows !== undefined && rows.length > 0;
   return (
     <div
       {...rest}
@@ -58,7 +55,6 @@ export function Card({
       )}
       {detailed && (
         <span className="card-details">
-          {note !== undefined && <span className="card-note">{note}</span>}
           {rows?.map(({ name, values }) => (
             <Fragment key={name}>
               <span className="card-row-name">{name}</span>

@@ -37,13 +37,12 @@ suite('The card a tooltip and a notice are drawn as', () => {
     );
   });
 
-  test('draws the note and the rows a tooltip tells under its words and their keys, the note first, a row its name and its values in monospace, and the keys right after the words rather than at the far end of the rows', () => {
+  test('draws the rows a tooltip tells under its words and their keys, a row its name and its values in monospace, and the keys right after the words rather than at the far end of the rows', () => {
     const html = renderToStaticMarkup(
       <Card
         kind="tip"
         said="Preview"
         keys="3"
-        note="No preview for this kind of file"
         rows={[
           { name: 'Markdown', values: '.md .markdown' },
           { name: 'PDF', values: '.pdf' },
@@ -53,7 +52,7 @@ suite('The card a tooltip and a notice are drawn as', () => {
 
     assert.match(
       html,
-      /^<div class="card tip info detailed"><span class="card-message">Preview<\/span><span class="shortcut-keys">.*<\/span><span class="card-details"><span class="card-note">No preview for this kind of file<\/span><span class="card-row-name">Markdown<\/span><code class="card-row-values">\.md \.markdown<\/code><span class="card-row-name">PDF<\/span><code class="card-row-values">\.pdf<\/code><\/span><\/div>$/,
+      /^<div class="card tip info detailed"><span class="card-message">Preview<\/span><span class="shortcut-keys">.*<\/span><span class="card-details"><span class="card-row-name">Markdown<\/span><code class="card-row-values">\.md \.markdown<\/code><span class="card-row-name">PDF<\/span><code class="card-row-values">\.pdf<\/code><\/span><\/div>$/,
     );
     const card = rendered(
       <Card
