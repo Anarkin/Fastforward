@@ -438,10 +438,14 @@
       ],
       "colors": {
         "light": {
-          "icon": "#1a5fb4"
+          "icon": "#1c4aa6",
+          "icon-label": "#fff",
+          "icon-accent": "#c01c28"
         },
         "dark": {
-          "icon": "#5294e2"
+          "icon": "#3a6fd8",
+          "icon-label": "#fff",
+          "icon-accent": "#ed333b"
         }
       }
     },

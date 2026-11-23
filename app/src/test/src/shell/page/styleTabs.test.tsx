@@ -760,5 +760,13 @@ suite('Style', () => {
         'var(--color-terminal-icon)',
       ],
     );
+    assert.strictEqual(
+      cascaded(withClass(bar, 'floppy-label'), 'fill'),
+      'var(--color-commander-icon-label)',
+    );
+    assert.strictEqual(
+      cascaded(withClass(bar, 'floppy-lines'), 'fill'),
+      'var(--color-commander-icon-accent)',
+    );
   });
 });

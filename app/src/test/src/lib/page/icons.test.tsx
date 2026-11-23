@@ -136,6 +136,13 @@ function strokesOfPaths(html: string): number[] {
 }
 
 suite('Icons', () => {
+  test('draws the floppy of the commander on as many units as the device pixels it takes, its label and shutter and its lines in colors of their own', () => {
+    const html = renderToStaticMarkup(<icons.ToolIcon tool="commander" />);
+    assert.match(html, /viewBox="0 0 16 16"/);
+    assert.match(html, /class="floppy-label"/);
+    assert.match(html, /class="floppy-lines"/);
+  });
+
   test('draws every straight stroke and dot of an icon on half a unit, so at 100% it fills a row or column of whole pixels rather than two half-tone ones', () => {
     const blurred = everyIcon().flatMap(({ name, html }) => {
       const off = strokedEdges(html).filter(

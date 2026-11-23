@@ -226,6 +226,14 @@
   color: var(--color-commander-icon);
 }
 
+.tool-commander .floppy-label {
+  fill: var(--color-commander-icon-label);
+}
+
+.tool-commander .floppy-lines {
+  fill: var(--color-commander-icon-accent);
+}
+
 .tool-terminal {
   color: var(--color-terminal-icon);
 }

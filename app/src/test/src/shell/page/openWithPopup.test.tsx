@@ -7,6 +7,7 @@ import { OpenWithPopup } from '../../../../shell/page/openWithPopup';
 import { strings } from '../../../../lib/shared/strings';
 import { createShellStore, ShellStore } from '../../../../shell/page/store';
 import { renderIn } from '../../../helpers/componentFixtures';
+import { withStillMediaQueries } from '../../../helpers/mediaQueries';
 
 const noop = () => undefined;
 
@@ -33,6 +34,7 @@ function question(
 suite('Open With popup', () => {
   test('names each folder it opens on a line of its own, as a name', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
+    withStillMediaQueries(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,
@@ -74,6 +76,7 @@ suite('Open With popup', () => {
 
   test('focuses the tool picked for the folders, and again once another question picks another while it is open', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
+    withStillMediaQueries(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,
@@ -114,6 +117,7 @@ suite('Open With popup', () => {
 
   test('moves between the tools that can open the folders by the arrows, Home and End, as menus do, wrapping around', async () => {
     const dom = new JSDOM('<!doctype html><main></main>');
+    withStillMediaQueries(dom.window);
     const globals = {
       window: dom.window,
       document: dom.window.document,

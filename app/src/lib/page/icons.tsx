@@ -1,4 +1,6 @@
 import { type ChangeKind } from './iconKinds';
+import { usePixelRatio } from './imageSizes';
+import { boxOutline, diskOutline, floppyDrawing } from './floppyDrawing';
 
 function Icon({
   children,
@@ -83,14 +85,6 @@ const toolSigns = {
       stroke="none"
     />
   ),
-  commander: (
-    <path
-      d="M2.75 1.5h9.25l2.5 2.5v9.25c0 .69-.56 1.25-1.25 1.25H2.75c-.69 0-1.25-.56-1.25-1.25V2.75c0-.69.56-1.25 1.25-1.25ZM4 2.75h6.5v2.75H4ZM8.25 3.25h1.25v1.75H8.25ZM4 8h8a.5.5 0 0 1 .5.5V13H3.5V8.5A.5.5 0 0 1 4 8Z"
-      fill="currentColor"
-      fillRule="evenodd"
-      stroke="none"
-    />
-  ),
   git: (
     <>
       <circle cx="5.5" cy="3.5" r="1.5" />
@@ -167,7 +161,52 @@ export function ImageIcon() {
   );
 }
 
-export function ToolIcon({ tool }: { tool: keyof typeof toolSigns }) {
+const toolIconSize = 16;
+
+function FloppyIcon() {
+  const drawing = floppyDrawing(Math.round(toolIconSize * usePixelRatio()));
+  const { size, shutter, shutterWindow, label, lines } = drawing;
+  return (
+    <svg
+      className="icon tool-icon tool-commander"
+      width={toolIconSize}
+      height={toolIconSize}
+      viewBox={`0 0 ${size} ${size}`}
+      aria-hidden="true"
+    >
+      <path
+        className="floppy-label"
+        d={`${boxOutline(label)}${boxOutline(shutter)}`}
+        stroke="none"
+      />
+      <path
+        d={[
+          diskOutline(drawing),
+          boxOutline(shutter),
+          boxOutline(shutterWindow),
+          boxOutline(label),
+        ].join(' ')}
+        fill="currentColor"
+        fillRule="evenodd"
+        stroke="none"
+      />
+      <path
+        className="floppy-lines"
+        d={lines.map(boxOutline).join('')}
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
+export function ToolIcon({
+  tool,
+}: {
+  tool: keyof typeof toolSigns | 'commander';
+}) {
+  if (tool === 'commander') {
+    return <FloppyIcon />;
+  }
   return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }
 
