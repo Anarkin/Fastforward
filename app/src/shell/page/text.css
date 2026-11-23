@@ -280,6 +280,13 @@ mark.match,
   cursor: text;
 }
 
+.cell-selection-watch {
+  position: absolute;
+  visibility: hidden;
+  background-color: var(--selection-background);
+  transition: background-color 1ms;
+}
+
 ::highlight(markdown-match) {
   color: var(--color-search-match-foreground);
   background-color: var(--color-search-match);

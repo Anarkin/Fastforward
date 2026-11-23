@@ -3,12 +3,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { onTestFinished, suite, test } from 'vitest';
 import {
+  app,
   folder,
+  openChangedFile,
   page,
   repository,
   savedSetting,
   sharedApp,
 } from './appFixtures';
+import { cellOf, untilDiffLine } from './diffSeen';
 import { waitForCount, waitForFocus } from './waits';
 import { wheelsByWholeRows } from './scrollProbes';
 import { locationRows } from '../../tools/git/page/locationKeys';
@@ -399,6 +402,45 @@ suite('App', () => {
     await active('files');
     await page.keyboard.press('j');
     await active('diff');
+  });
+
+  test('draws the text selected in the diff in the blue of the column with the keyboard, though its cells were drawn while the files had it, and in the gray of a column without it once the files have it again', async () => {
+    await openChangedFile();
+    await active('files');
+    const line = await untilDiffLine(
+      page,
+      ({ change, text }) => change === undefined && text === 'three',
+      'the line three',
+    );
+    const [row] = line.rows;
+    assert.ok(row);
+    const word = cellOf(row, 1);
+    await page.mouse.dblclick(word.x, word.y);
+    await active('diff');
+    const window = await app.browserWindow(page);
+    const selected = {
+      x: Math.ceil(row.left),
+      y: Math.ceil(row.top),
+      width: Math.floor(row.advance * 'three'.length),
+      height: Math.floor(row.height),
+    };
+    const spread = async () => {
+      const color = await window.evaluate(async (shown, area) => {
+        const bitmap = (await shown.webContents.capturePage(area)).toBitmap();
+        const counts = new Map<string, number>();
+        for (let at = 0; at < bitmap.length; at += 4) {
+          const key = [...bitmap.subarray(at, at + 3)].join(',');
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }
+        const [most] = [...counts].toSorted((a, b) => b[1] - a[1]);
+        return most === undefined ? [] : most[0].split(',').map(Number);
+      }, selected);
+      return Math.max(...color) - Math.min(...color);
+    };
+    await waitFor(async () => (await spread()) > 40, 'the selection in blue');
+    await page.keyboard.press('ArrowLeft');
+    await active('files');
+    await waitFor(async () => (await spread()) <= 3, 'the selection in gray');
   });
 
   test('counts under the commit list the commits of the history shown, in the font of the app', async () => {

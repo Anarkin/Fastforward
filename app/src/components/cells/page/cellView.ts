@@ -1,6 +1,6 @@
 import type { ScreenRow } from './lines';
 import type { DotLook } from '../../../lib/page/dotLook';
-import { cellMetricsOf, type CellFont } from './cellLook';
+import { cellMetricsOf, probedIn, type CellFont } from './cellLook';
 import {
   cellPainting,
   paintRows,
@@ -159,6 +159,7 @@ export class CellView {
   private tiles: GlyphTiles;
   private painting: CellPainting;
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
+  private readonly selectionWatch: HTMLElement;
   private readonly idle: IdleWork;
   private readonly selecting: CellSelecting;
   private held: CellViewShown['held'] = noRows;
@@ -195,6 +196,8 @@ export class CellView {
     this.tiles = tiles;
     this.painting = painting;
     this.scheme.addEventListener('change', this.relook);
+    this.selectionWatch = probedIn(host, 'span', 'cell-selection-watch');
+    this.selectionWatch.addEventListener('transitionend', this.relook);
     this.idle = new IdleWork(
       pageIdling(),
       (slice) => this.tiles.within(slice),
@@ -418,6 +421,7 @@ export class CellView {
     this.idle.clear();
     cancelAnimationFrame(this.again);
     this.scheme.removeEventListener('change', this.relook);
+    this.selectionWatch.remove();
     surfacesOf(this.device).givenBack(this.surface);
   }
 }
