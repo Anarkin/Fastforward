@@ -10,7 +10,7 @@
 
 - The key is the one the Lister of Total Commander uses for the feature, as most viewers of a file manager follow it; where Fastforward uses another, the notes say so
 
-- What the viewer shares with the editor and the diff, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, [FEATURES](FEATURES.md#common-text) says
+- What the viewer shares with the editor and the diff, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, and with every tool, the tabs and windows, the keyboard, the menus, the lists, the look and the settings of the app, [FEATURES](FEATURES.md) says
 
 ## Files
 

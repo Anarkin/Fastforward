@@ -10,6 +10,8 @@
 
 - The sequence is the escape sequence or variable programs use for the feature, where there is one; much of what they ask for is done by `xterm.js` itself, and the notes say so
 
+- What the terminal shares with every tool, the tabs and windows, the keyboard, the menus, the lists, the look and the settings of the app, [FEATURES](FEATURES.md#common-app) says
+
 ## Shells
 
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
@@ -40,7 +42,7 @@
 | Crash isolation | Keep a crash of the shells' process from taking the window | — | Advanced | ✅ Yes | `node-pty` runs in a utility process; when it stops, the tab shown says so and starts a new shell on Enter, the others once shown again |
 | Heavy output | Stay responsive while a program prints without end | — | Common | ✅ Yes | The shell is paused while 100,000 characters wait to be drawn, and goes on below 10,000 |
 | Split panes | Show several shells in one tab | — | Common | ❌ No |  |
-| Windows of their own | Open shells in more than one window | — | Common | ✅ Yes | Mod+N, Mod+Shift+N in a terminal, or New Window in the menu opens a window beside the one in front, with tabs of its own, a tab dragged out of its row into a window of its own that follows the pointer, or into the row of another window, which shows it while it is over the row, the only tab of a window moving its window, Esc putting it back, but on Wayland, or moved from its menu; closing a window closes its tabs, the last one quitting; every window comes back after a restart where it was |
+| Windows of their own | Open shells in more than one window | — | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-app) says, Mod+Shift+N in a terminal too |
 | Drop-down window | Show a terminal from the top of the screen on a hotkey | — | Advanced | ❌ No |  |
 | Broadcast input | Type into several shells at once | — | Advanced | ❌ No |  |
 | Rename a tab | Give a tab a name of one's own | — | Common | ❌ No | Named after the folder of its shell |
@@ -77,7 +79,6 @@
 | Context menu | Copy, paste and more from a right click | — | Common | ❌ No |  |
 | Selection | Select words and lines by clicking | — | Core | ✅ Yes | By `xterm.js`: a double click selects a word, a triple click a line |
 | Keys left to programs | Send the shell the keys the app doesn't need | — | Core | ✅ Yes | Every key but Ctrl+Tab, Ctrl+Shift+Tab, Mod+Shift+T, Mod+Shift+N, Mod+Shift+W, Mod+Shift+O and Mod+Shift+I, which opens the developer tools, reaches the shell, and Mod+C while text is selected |
-| Key bindings | Change the shortcuts | — | Common | ❌ No |  |
 | Option as Meta | Send Option as Meta on macOS | — | Common | ❌ No | Option types characters as macOS has it |
 | Full keyboard reporting | Tell programs every key and modifier | kitty keyboard protocol | Advanced | ❌ No |  |
 | Input methods | Compose text with an input method | — | Core | ✅ Yes | By `xterm.js` |
@@ -128,11 +129,9 @@
 
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Settings | Change the settings | — | Common | 🟡 Partial | JSON files, applied as saved and checked, no settings page; a new shell or arguments apply to the shells started after |
-| Command palette | Find any command by typing | — | Common | ❌ No |  |
+| Settings | Change the settings | — | Common | 🟡 Partial | As [FEATURES](FEATURES.md#common-app) says; a new shell or arguments apply to the shells started after |
 | Screen readers | Read the output to assistive technology | — | Common | ❌ No | `xterm.js`'s screen reader mode is off |
 | Triggers | Act on text that matches a pattern | — | Niche | ❌ No |  |
 | Recording | Record a session to play back | — | Niche | ❌ No |  |
-| AI | Explain errors and suggest commands with AI | — | Advanced | ❌ No |  |
 
 <!-- prettier-ignore-end -->

@@ -10,7 +10,7 @@
 
 - The key is the one Fastforward uses, as diff tools share few; what git diffs, a commit, the working tree or two commits, FEATURES-GIT says
 
-- What the diff shares with the viewer and the editor, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, [FEATURES](FEATURES.md#common-text) says
+- What the diff shares with the viewer and the editor, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, and with every tool, the tabs and windows, the keyboard, the menus, the lists, the look and the settings of the app, [FEATURES](FEATURES.md) says
 
 ## Tabs
 

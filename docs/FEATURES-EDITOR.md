@@ -10,7 +10,7 @@
 
 - The key is the one VS Code uses for the feature on Windows, as most editors follow it; where Fastforward uses another, the notes say so
 
-- What the editor shares with the viewer and the diff, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, [FEATURES](FEATURES.md#common-text) says
+- What the editor shares with the viewer and the diff, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, and with every tool, the tabs and windows, the keyboard, the menus, the lists, the look and the settings of the app, [FEATURES](FEATURES.md) says
 
 ## Files
 
@@ -108,7 +108,7 @@
 | Show whitespace | Draw the spaces, tabs and line ends | — | Common | ✅ Yes | By the whitespace button, as [FEATURES](FEATURES.md#common-text) says |
 | Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says |
 | Invisible characters | Draw the characters that show nothing, take no room or turn text around | — | Advanced | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says |
-| Cursor | Draw the cursor as a block, bar or underline, blinking or steady | — | Common | ✅ Yes | By the `cursor` settings, a blinking block by default, or a bar, an underline or an outline as thick as `cursor.width`, as the terminal draws it to the device pixel, in the `cursor` color of the theme, the focus color by default, the character under a block in its `cursor-text` color and its own font; the same without the focus, blinking too; the text boxes of the app draw it alike, in a window without the focus too, and nothing once they lose the focus; a selection fills the rows of device pixels the cursor fills, in the editor, the text boxes and the terminal alike |
+| Cursor | Draw the cursor as a block, bar or underline, blinking or steady | — | Common | ✅ Yes | By the `cursor` settings, a blinking block by default, or a bar, an underline or an outline as thick as `cursor.width`, as the terminal draws it to the device pixel, in the `cursor` color of the theme, the focus color by default, the character under a block in its `cursor-text` color and its own font; the same without the focus, blinking too; a selection fills the rows of device pixels the cursor fills, as in the text boxes and the terminal |
 | Status line | Show the line, column and selection | — | Common | 🟡 Partial | In monospace, the column counted in cells, as drawn, the characters selected as they are seen, by every cursor, and the cursors once there are several; no line number |
 | Minimap | Show the whole file in small beside it | — | Common | ❌ No |  |
 | Folding | Fold blocks of code away | Ctrl+Shift+[ | Common | ❌ No |  |
@@ -120,7 +120,6 @@
 | Keyboard | List every key of the editor | — | Common | ✅ Yes | In F1, under Editor; no key binds punctuation, so every key is the same on every layout |
 | Settings | Set how new files and indentation are | — | Common | ✅ Yes | The editor section of the settings, `tools.editor`: the line ending, charset and indentation of new files, by extension too, and whether brackets close as typed |
 | EditorConfig | Follow the .editorconfig of a project | — | Common | ✅ Yes | `end_of_line` and `charset` for new files, `indent_style`, `indent_size` and `tab_width` for indenting, and `trim_trailing_whitespace` and `insert_final_newline` for the lines edited, never changing the lines not edited |
-| Command palette | Find any command by typing | Ctrl+Shift+P | Common | ❌ No |  |
 | Screen readers | Read the text to assistive technology | — | Common | ❌ No | As [FEATURES](FEATURES.md#common-text) says |
 
 <!-- prettier-ignore-end -->
