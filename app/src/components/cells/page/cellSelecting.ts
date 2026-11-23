@@ -138,7 +138,7 @@ export class CellSelecting {
     const oneRow =
       selection !== undefined &&
       ordered(selection).first.start === ordered(selection).last.start;
-    return oneRow ? soughtCopy((this.kept?.text ?? '').trim()) : undefined;
+    return oneRow ? soughtCopy(this.kept?.text ?? '') : undefined;
   }
 
   private tell(): void {

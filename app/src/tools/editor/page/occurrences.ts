@@ -32,8 +32,6 @@ const pausedField = StateField.define<boolean>({
     transaction.docChanged || (paused && transaction.selection === undefined),
 });
 
-const blank = /^\s*$/u;
-
 function soughtIn(state: EditorState): Sought | undefined {
   if ((state.field(pausedField, false) ?? true) || findsText(state)) {
     return undefined;
@@ -59,7 +57,6 @@ function soughtIn(state: EditorState): Sought | undefined {
   const text = state.sliceDoc(main.from, main.to);
   if (
     text.includes(state.lineBreak) ||
-    blank.test(text) ||
     ranges.some(
       (range) =>
         range.to - range.from !== length ||

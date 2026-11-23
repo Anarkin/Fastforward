@@ -19,11 +19,14 @@ const wholeWord = { ...plainSearch, wholeWord: true };
 const regex = { ...plainSearch, regex: true };
 
 suite('Find in diff', () => {
-  test('takes a text selected for its occurrences to be marked only while it is on one line, not of whitespace alone and of 200 characters at most', () => {
+  test('takes a text selected for its occurrences to be marked only while it is on one line and of 200 characters at most, leaving out the spaces at its ends, as a double click takes the space after a word, but taking whitespace selected alone as it is, so a space selected marks the other spaces', () => {
     assert.strictEqual(soughtCopy('total'), 'total');
     assert.strictEqual(soughtCopy('a b'), 'a b');
+    assert.strictEqual(soughtCopy(' total '), 'total');
     assert.strictEqual(soughtCopy('x'.repeat(200)), 'x'.repeat(200));
-    for (const selected of ['', '  ', 'one\ntwo', 'x'.repeat(201)]) {
+    assert.strictEqual(soughtCopy(' '), ' ');
+    assert.strictEqual(soughtCopy('\t '), '\t ');
+    for (const selected of ['', 'one\ntwo', 'x'.repeat(201)]) {
       assert.strictEqual(
         soughtCopy(selected),
         undefined,

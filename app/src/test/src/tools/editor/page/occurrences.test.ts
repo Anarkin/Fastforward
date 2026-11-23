@@ -87,10 +87,21 @@ suite('The occurrences the editor marks', () => {
     );
   });
 
-  test('marks nothing for a selection across a line break, of whitespace alone or of more than 200 characters, nor for several cursors, and the other copies of one text selected in several places', () => {
+  test('marks the other copies of whitespace selected alone, as of any text selected, so a space selected marks the other spaces', () => {
+    assert.deepStrictEqual(
+      marked(stateOf(text, EditorSelection.single(5, 6))),
+      [
+        [7, ' '],
+        [28, ' '],
+        [34, ' '],
+        [42, ' '],
+      ],
+    );
+  });
+
+  test('marks nothing for a selection across a line break or of more than 200 characters, nor for several cursors, and the other copies of one text selected in several places', () => {
     for (const selection of [
       EditorSelection.single(17, 23),
-      EditorSelection.single(5, 6),
       EditorSelection.create([
         EditorSelection.cursor(2),
         EditorSelection.cursor(12),

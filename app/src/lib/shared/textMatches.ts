@@ -99,11 +99,10 @@ const longestCopy = 200;
 const blankOnly = /^\s*$/u;
 
 export function soughtCopy(selected: string): string | undefined {
-  return selected.length > longestCopy ||
-    selected.includes('\n') ||
-    blankOnly.test(selected)
+  const sought = blankOnly.test(selected) ? selected : selected.trim();
+  return sought === '' || sought.length > longestCopy || sought.includes('\n')
     ? undefined
-    : selected;
+    : sought;
 }
 
 export function copiesIn(
