@@ -32,6 +32,24 @@ suite('The parts of a scrollbar', () => {
     );
   });
 
+  test('gives a scrollbar wider than the others, as the one beside a text that marks changes and matches, buttons as long as those of the others rather than as long as it is wide, so a press just past a button lands on the track', () => {
+    assert.deepStrictEqual(
+      partsOf(
+        300,
+        36,
+        { scrollSize: 600, clientSize: 300, scrolled: 0 },
+        1,
+        18,
+      ),
+      {
+        start: { from: 0, length: 18 },
+        track: { from: 18, length: 264 },
+        thumb: { from: 18, length: 132 },
+        end: { from: 282, length: 18 },
+      },
+    );
+  });
+
   test('stands the thumb on the device pixel the browser cuts its place down to rather than the nearest, a pixel in once it is scrolled at all, at any scale, as a press on the first row of pixels of a thumb drawn a pixel higher than the page took it to be jumped as a press of the track', () => {
     assert.deepStrictEqual(thumbAt(1530), { from: 14 + 75, length: 24 });
     assert.deepStrictEqual(thumbAt(1), { from: 14 + 1, length: 24 });

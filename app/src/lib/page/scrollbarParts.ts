@@ -74,8 +74,9 @@ export function partsOf(
   size: number,
   scrolled: Scrolled,
   scale = 1,
+  buttonLength = size,
 ): Parts {
-  const button = Math.min(size, bar / 2);
+  const button = Math.min(buttonLength, bar / 2);
   const track = { from: button, length: Math.max(0, bar - 2 * button) };
   return {
     start: { from: 0, length: button },

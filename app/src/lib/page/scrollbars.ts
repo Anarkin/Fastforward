@@ -334,8 +334,17 @@ class Cover {
 
   private partsIn(box: Box, scroller: Element): Parts {
     const scrolled = scrolledOf(this.axis, scroller);
+    const button = parseFloat(
+      getComputedStyle(scroller).getPropertyValue('--scrollbar-size'),
+    );
     return this.axis === 'vertical'
-      ? partsOf(box.height, box.width, scrolled, devicePixelRatio)
+      ? partsOf(
+          box.height,
+          box.width,
+          scrolled,
+          devicePixelRatio,
+          Number.isNaN(button) ? box.width : button,
+        )
       : partsOf(box.width, box.height, scrolled, devicePixelRatio);
   }
 
