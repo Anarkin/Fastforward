@@ -1,3 +1,7 @@
+import {
+  isTextEncoding,
+  type TextEncoding,
+} from '../../encodings/shared/textEncodings';
 import { linkMode } from '../../../lib/shared/changes';
 
 type LineKind = 'context' | 'added' | 'removed';
@@ -31,6 +35,12 @@ export interface DiffFile {
   readonly copied?: true;
   readonly similarity?: number;
   readonly link?: LinkTargets;
+  readonly encodings?: Encodings;
+}
+
+interface Encodings {
+  readonly old: TextEncoding;
+  readonly new: TextEncoding;
 }
 
 interface ModeChange {
@@ -51,6 +61,7 @@ interface ParsedFile {
   oldPath?: string;
   copied: boolean;
   similarity?: number;
+  encodings?: Encodings;
   modes: { old?: string; new?: string };
   sideModes: Partial<Record<Side, string>>;
   binary: boolean;
@@ -191,6 +202,11 @@ export function parsePatch(patch: string): DiffFile[] {
       } else if (line.startsWith('deleted file mode ')) {
         file.addedOrDeleted = true;
         file.sideModes.old = line.slice('deleted file mode '.length);
+      } else if (line.startsWith('encoding ')) {
+        const [old, changed] = line.slice('encoding '.length).split(' ');
+        if (isTextEncoding(old) && isTextEncoding(changed)) {
+          file.encodings = { old, new: changed };
+        }
       } else if (line.startsWith('similarity index ')) {
         file.similarity = parseInt(line.slice('similarity index '.length), 10);
       } else if (line.startsWith('old mode ')) {
@@ -248,6 +264,7 @@ export function parsePatch(patch: string): DiffFile[] {
       oldPath,
       copied,
       similarity,
+      encodings,
       modes,
       binary,
       blobs,
@@ -270,6 +287,7 @@ export function parsePatch(patch: string): DiffFile[] {
         ? {}
         : { noNewlineAtEnd: lacksNewline.old ? 'old' : 'new' }),
       ...(link ? { link } : {}),
+      ...(encodings === undefined ? {} : { encodings }),
     };
   });
 }

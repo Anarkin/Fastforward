@@ -11,6 +11,8 @@ import { headCommit } from './commitLookup';
 import { blobOf, indexMode, readObjects } from './objects';
 import { runGit, runGitBytes } from './run';
 import { lstatFollowingNoLink } from './fileStats';
+import { decodedText } from '../../../components/encodings/main/encodingDetection';
+import { systemCodePage } from '../../../components/encodings/main/codePages';
 
 export const maxFileSize = 2 * 1024 * 1024;
 
@@ -58,10 +60,11 @@ export function isBinary(buffer: Buffer): boolean {
   return buffer.subarray(0, binaryProbe).includes(0);
 }
 
-function toContent(buffer: Buffer, id: string): FileContent {
-  return isBinary(buffer)
+async function toContent(buffer: Buffer, id: string): Promise<FileContent> {
+  const decoded = decodedText(buffer, await systemCodePage(process.platform));
+  return decoded === undefined
     ? binaryContent(id)
-    : { content: buffer.toString('utf8'), binary: false };
+    : { content: decoded.text, binary: false };
 }
 
 function submoduleContent(hash: string | undefined): FileContent {
@@ -77,10 +80,13 @@ export async function readBlobs(
   ids: readonly string[],
 ): Promise<Map<string, string>> {
   const texts = new Map<string, string>();
+  const codePage = await systemCodePage(process.platform);
   for (const read of await readObjects(gitPath, cwd, ids, maxFileSize)) {
     const blob = blobOf(read);
-    if (blob?.kind === 'object' && !isBinary(blob.content)) {
-      texts.set(blob.id, blob.content.toString('utf8'));
+    const decoded =
+      blob?.kind === 'object' ? decodedText(blob.content, codePage) : undefined;
+    if (blob?.kind === 'object' && decoded !== undefined) {
+      texts.set(blob.id, decoded.text);
     }
   }
   return texts;

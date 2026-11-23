@@ -17,6 +17,26 @@ export function byteOrderMarkOf(bytes: Buffer): TextEncoding | undefined {
   )?.[0];
 }
 
+const lastBackspace = 0x08;
+const firstShiftOut = 0x0e;
+const lastSubstitute = 0x1a;
+const firstFileSeparator = 0x1c;
+const lastUnitSeparator = 0x1f;
+
+function holdsControlsNoTextHolds(text: string): boolean {
+  for (let at = 0; at < text.length; at++) {
+    const code = text.charCodeAt(at);
+    if (
+      code <= lastBackspace ||
+      (code >= firstShiftOut && code <= lastSubstitute) ||
+      (code >= firstFileSeparator && code <= lastUnitSeparator)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const mostlyZero = 0.4;
 const rarelyZero = 0.02;
 
@@ -54,10 +74,10 @@ export function utf16Order(bytes: Buffer): 'utf-16le' | 'utf-16be' | undefined {
     return undefined;
   }
   try {
-    new TextDecoder(order, { fatal: true }).decode(
+    const text = new TextDecoder(order, { fatal: true }).decode(
       wholeUnits(sample, order === 'utf-16le'),
     );
-    return order;
+    return holdsControlsNoTextHolds(text) ? undefined : order;
   } catch {
     return undefined;
   }

@@ -146,6 +146,12 @@ export function fileNotes(file: DiffFile): Sentence[] {
           : strings.diff.renamedWithoutChanges,
     );
   }
+  if (file.encodings !== undefined) {
+    const { short } = strings.encodings;
+    notes.push(
+      strings.diff.readAs(short[file.encodings.old], short[file.encodings.new]),
+    );
+  }
   return notes;
 }
 

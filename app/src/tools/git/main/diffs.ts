@@ -46,13 +46,53 @@ import type { GitStorage } from './storage';
 import { changesOf, pickable, stillThere } from './tabState';
 import { type EarlyPatch, type Context, notInHistory } from './tabContext';
 import type { TreePaths } from './treePaths';
+import { decodedPatch, mayNeedDecoding } from './decodedPatch';
+import { decodedHunks } from './decodedHunks';
+import { blobOf, readObjects } from './objects';
+import { maxFileSize, repositoryFile } from './files';
+import { systemCodePage } from '../../../components/encodings/main/codePages';
+import * as fs from 'node:fs/promises';
 
 export class Diffs {
   constructor(
     private readonly storage: GitStorage,
     private readonly shell: () => ShellAccess,
     private readonly treePaths: TreePaths,
+    private readonly decodedCopies: string,
   ) {}
+
+  private async decoded(
+    context: Context,
+    hash: string,
+    patch: string,
+    scope: Pick<PatchScope, 'entireFile' | 'ignoreWhitespace'>,
+  ): Promise<string> {
+    if (!mayNeedDecoding(patch)) {
+      return patch;
+    }
+    const { gitPath, root } = context;
+    const onDisk = workingTreeSide(hash) && context.tab.area !== 'staged';
+    return decodedPatch(patch, {
+      bytesOf: async (id, path, side) => {
+        const [read] = await readObjects(gitPath, root, [id], maxFileSize);
+        const blob = blobOf(read);
+        if (blob?.kind === 'object') {
+          return blob.content;
+        }
+        if (!onDisk || side !== 'new') {
+          return undefined;
+        }
+        const file = repositoryFile(root, path);
+        const stats = await fs.stat(file).catch(() => undefined);
+        return stats?.isFile() === true && stats.size <= maxFileSize
+          ? fs.readFile(file)
+          : undefined;
+      },
+      hunksOf: (old, changed) =>
+        decodedHunks(gitPath, this.decodedCopies, old, changed, scope),
+      codePage: await systemCodePage(process.platform),
+    });
+  }
 
   async sendCommit(
     context: Context,
@@ -276,6 +316,10 @@ export class Diffs {
     if (scope.entireFile && whitespaceOnly) {
       patch = newSideUnchanged(await this.patchOf(context, hash, scope));
     }
+    patch = await this.decoded(context, hash, patch, {
+      entireFile: scope.entireFile,
+      ignoreWhitespace: ignoreWhitespace && !whitespaceOnly,
+    });
     if (context.tab.hash === hash && patch !== shownPatch) {
       context.post({
         type: 'fileDiff',
@@ -322,8 +366,11 @@ export class Diffs {
       throw error;
     }
     void this.shell().track(read.exited);
+    const patch = await this.decoded(context, hash, read.patch, {
+      ignoreWhitespace: this.storage.preferences.ignoreWhitespace,
+    });
     if (!signal.aborted) {
-      context.post({ type: 'prefetchedDiff', hash, patch: read.patch });
+      context.post({ type: 'prefetchedDiff', hash, patch });
     }
   }
 
@@ -483,6 +530,10 @@ export class Diffs {
           ),
         );
       }
+      patch = await this.decoded(context, hash, patch, {
+        entireFile,
+        ignoreWhitespace: ignoreWhitespace && whitespaceOnly.length === 0,
+      });
     } catch (error) {
       if (loading.signal.aborted) {
         return;

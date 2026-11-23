@@ -320,6 +320,40 @@ suite('Symbolic links', () => {
   });
 });
 
+const notesOf = (line: string) => {
+  const [file] = parsePatch(
+    [
+      'diff --git a/w.txt b/w.txt',
+      `index ${'a'.repeat(40)}..${'b'.repeat(40)} 100644`,
+      line,
+      '--- a/w.txt',
+      '+++ b/w.txt',
+      '@@ -1 +1 @@',
+      '-one',
+      '+two',
+    ].join('\n'),
+  );
+  assert.ok(file);
+  return fileNotes(file);
+};
+
+suite('Files read in other encodings', () => {
+  test('names on the header the encoding each side of a file was read in when it is not UTF-8, both once when alike, as the Compare tab names them, and nothing for a header naming no encoding or one unknown', () => {
+    assert.deepStrictEqual(
+      [
+        notesOf('encoding utf-16le utf-16le'),
+        notesOf('encoding windows-1252 utf-8'),
+        notesOf('encoding nothing-known utf-8'),
+      ],
+      [
+        [strings.diff.readAs('UTF-16 LE', 'UTF-16 LE')],
+        [strings.diff.readAs('1252', 'UTF-8')],
+        [],
+      ],
+    );
+  });
+});
+
 suite('Compared files', () => {
   test('gives files compared that differ in nothing the diff shows a header of their own, which says so, rather than a note in an empty diff', () => {
     for (const sideBySide of [false, true]) {

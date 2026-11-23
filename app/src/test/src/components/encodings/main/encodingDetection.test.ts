@@ -39,6 +39,16 @@ suite('The encoding of a file', () => {
       utf16Order(Buffer.from([0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0x7f, 0x45])),
       undefined,
     );
+    assert.strictEqual(
+      utf16Order(Buffer.from([0x89, 0x50, 0x00, 0x01])),
+      undefined,
+      'the start of a binary file read as characters of which one is a control character no text holds',
+    );
+    assert.strictEqual(
+      utf16Order(Buffer.from('a\tb\x0c\x1b[0m\r\n', 'utf16le')),
+      'utf-16le',
+      'the controls text holds: a tab, a form feed, an escape and the line ends',
+    );
   });
 
   test('tells UTF-8 from the bytes of other encodings, a character cut off at the end of what was read still UTF-8', () => {

@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { AutoFetch, fetchOrder } from './autoFetch';
 import { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
@@ -116,7 +117,12 @@ export function buildParts(
     rememberSelection: (context) => selections.remember(context),
     save,
   };
-  const diffs = new Diffs(storage, shell, treePaths);
+  const diffs = new Diffs(
+    storage,
+    shell,
+    treePaths,
+    join(host.viewedFiles, 'decoded'),
+  );
   const selections = new Selections(
     storage,
     diffs,

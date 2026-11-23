@@ -5,6 +5,7 @@ import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
+import { tempRepository } from '../helpers/repositories';
 import { closeOrKill, launchApp } from './appLaunch';
 import { cellsOf } from './cellsSeen';
 import { diffTexts } from './diffSeen';
@@ -130,6 +131,22 @@ suite('App, every view alike', () => {
         ];
       },
     );
+    const repository = await tempRepository(path.join(folder, 'repository'));
+    const committed = async (content: string, message: string) => {
+      for (const [name, { bytes }] of Object.entries(encoded)) {
+        fs.writeFileSync(
+          path.join(repository.root, `${name}.txt`),
+          bytes(content),
+        );
+      }
+      await repository.git('add', '.');
+      await repository.git('commit', '-m', message);
+    };
+    await committed(`${encodedLines.join('\n')}\n`, 'first');
+    await committed(
+      `${[...encodedLines, encodedChange].join('\n')}\n`,
+      'second',
+    );
     fs.writeFileSync(
       path.join(profile, 'state.json'),
       JSON.stringify({
@@ -142,6 +159,7 @@ suite('App, every view alike', () => {
           { id: '6', tool: 'viewer', root: text },
           { id: '7', tool: 'viewer', root: binary },
           ...encodedTabs,
+          { id: '14', tool: 'git', root: repository.root },
         ],
         activeTab: '2',
       }),
@@ -321,6 +339,28 @@ suite('App, every view alike', () => {
     };
     return { viewer, editor, diff };
   };
+
+  test('diffs the files of a commit in the encodings every other tool reads them in, in the git tab too, naming the encoding on the header of each, rather than taking a file of UTF-16 for binary and the bytes of a code page for UTF-8', async () => {
+    const inGit = '.repository:not(.compare-view)';
+    await page.locator('.tabs [role="tab"]').nth(13).click();
+    await page.locator('.commit', { hasText: 'second' }).first().click();
+    await waitFor(
+      async () => (await diffTexts(page, 'added', inGit)).length === 2,
+      'the lines added to both files',
+    );
+    assert.deepStrictEqual(
+      {
+        added: await diffTexts(page, 'added', inGit),
+        notes: await page
+          .locator(`${inGit} .file-header-note`)
+          .allTextContents(),
+      },
+      {
+        added: [encodedChange, encodedChange],
+        notes: ['Read as 1252', 'Read as UTF-16 LE'],
+      },
+    );
+  });
 
   test('reads a file of UTF-16 and a file of the code page of the system alike in every tool, the viewer and the editor naming the encoding they read it in, and the diff comparing its text and naming the encoding on its header, rather than taking a file of UTF-16 for binary and the bytes of a code page for UTF-8', async () => {
     const seen: Record<string, unknown> = {};
