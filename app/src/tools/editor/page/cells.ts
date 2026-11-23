@@ -115,6 +115,7 @@ class EditorCells implements PluginValue {
     | { readonly stamp: readonly unknown[]; readonly lines: LinesMarked }
     | undefined;
   private gone = false;
+  private queued = false;
   private anew = true;
   private across = 0;
 
@@ -150,23 +151,21 @@ class EditorCells implements PluginValue {
 
   private readonly scrolled = () => this.later(false);
 
-  private readonly showing = {
-    key: this,
-    read: () => {
+  private later(anew: boolean): void {
+    this.anew ||= anew;
+    if (this.queued) {
+      return;
+    }
+    this.queued = true;
+    queueMicrotask(() => {
+      this.queued = false;
       if (this.gone) {
         return;
       }
       const again = this.anew;
       this.anew = false;
       this.show(again);
-    },
-  };
-
-  private later(anew: boolean): void {
-    this.anew ||= anew;
-    if (!this.gone) {
-      this.view.requestMeasure(this.showing);
-    }
+    });
   }
 
   private left(): void {
