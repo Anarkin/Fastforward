@@ -77,6 +77,7 @@ function tabTip({ root, name, tool, compared }: TabInfo): Sentence {
 
 export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const tabs = useShell((state) => state.tabs ?? noTabs);
+  const known = useShell((state) => state.tabs !== undefined);
   const active = useShell((state) => state.active);
   const windows = useShell((state) => state.windows);
   const tearsOff = useShell((state) => state.tearsOff);
@@ -139,7 +140,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const visitor = visit?.tab.id;
   const dragging = drag.dragged !== undefined;
   const activeIndex = tabs.findIndex((tab) => tab.id === active);
-  const { placed, settled } = usePlacedTabs(shown, visitor);
+  const { placed, settled } = usePlacedTabs(shown, visitor, known);
   useVisitorSlides(drag.elements, visitor);
   const activeOpening = placed.some(
     ({ tab, motion }) => tab.id === active && motion === 'opening',

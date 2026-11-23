@@ -8,7 +8,10 @@ import { TabBar } from '../../../../shell/page/tabBar';
 
 async function inStrip(
   steps: (
-    show: (tabs: readonly TabInfo[], visit?: TabVisit) => Promise<void>,
+    show: (
+      tabs: readonly TabInfo[] | undefined,
+      visit?: TabVisit,
+    ) => Promise<void>,
     strip: () => Element,
     ended: (tab: Element) => Promise<void>,
   ) => Promise<void>,
@@ -43,13 +46,13 @@ async function inStrip(
     const main = dom.window.document.querySelector('main');
     assert.ok(main);
     const root = createRoot(main);
-    const show = (tabs: readonly TabInfo[], visit?: TabVisit) =>
+    const show = (tabs: readonly TabInfo[] | undefined, visit?: TabVisit) =>
       act(async () => {
         root.render(
           <ShellStore
             value={createShellStore(() => undefined, {
               tabs,
-              active: tabs[0]?.id,
+              active: tabs?.[0]?.id,
               visit,
             })}
           >
@@ -130,7 +133,7 @@ suite('Tab motions', () => {
 
   test('grows an opened tab from nothing, as Chrome does, but not the tabs shown first, which were open already', async () => {
     await inStrip(async (show, strip, ended) => {
-      await show([]);
+      await show(undefined);
       await show(named('a', 'b'));
       assert.deepStrictEqual(drawn(strip()), [
         ['a', 'tab', 'still'],
@@ -144,6 +147,15 @@ suite('Tab motions', () => {
       ]);
       await ended(strip().children[1]);
       assert.deepStrictEqual(drawn(strip())[1], ['c', 'tab', 'still']);
+    });
+  });
+
+  test('grows the first tab opened in a window shown with no tab, as it grows every tab opened after, rather than showing it at once as the tabs a window opens with', async () => {
+    await inStrip(async (show, strip) => {
+      await show(undefined);
+      await show([]);
+      await show(named('a'));
+      assert.deepStrictEqual(drawn(strip()), [['a', 'tab', 'opening']]);
     });
   });
 

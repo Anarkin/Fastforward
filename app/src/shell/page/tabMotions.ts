@@ -15,6 +15,7 @@ function placedTabs<T extends { readonly id: string }>(
   tabs: readonly T[],
   visitor?: string,
   departed?: string,
+  grows = before.length > 0,
 ): Placed<T>[] {
   const staying = new Map(
     before.flatMap((placed) =>
@@ -27,7 +28,7 @@ function placedTabs<T extends { readonly id: string }>(
         ? undefined
         : staying.has(tab.id)
           ? staying.get(tab.id)?.motion
-          : before.length > 0
+          : grows
             ? 'opening'
             : undefined;
     return motion ? { tab, motion } : { tab };
@@ -71,6 +72,7 @@ function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
 export function usePlacedTabs<T extends { readonly id: string }>(
   tabs: readonly T[],
   visitor: string | undefined,
+  known = true,
 ): {
   placed: readonly Placed<T>[];
   settled: (id: string) => void;
@@ -78,17 +80,23 @@ export function usePlacedTabs<T extends { readonly id: string }>(
   const [state, setState] = useState(() => ({
     tabs,
     visitor,
+    known,
     placed: placedTabs([], tabs),
   }));
   let placed = state.placed;
-  if (!sameList(state.tabs, tabs) || state.visitor !== visitor) {
+  if (
+    !sameList(state.tabs, tabs) ||
+    state.visitor !== visitor ||
+    state.known !== known
+  ) {
     placed = placedTabs(
       state.placed,
       tabs,
       visitor,
       state.visitor === visitor ? undefined : state.visitor,
+      state.known || state.placed.length > 0,
     );
-    setState({ tabs, visitor, placed });
+    setState({ tabs, visitor, known, placed });
   }
   const settled = useCallback(
     (id: string) =>
