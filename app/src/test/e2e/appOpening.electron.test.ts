@@ -13,12 +13,15 @@ interface Seen {
   readonly playing: boolean;
   readonly opening: boolean;
   readonly iconHidden: boolean | undefined;
+  readonly addHidden: boolean | undefined;
   readonly hash: string;
 }
 
 function seen(page: Page): Promise<Seen> {
   return page.evaluate(() => {
     const icon = document.querySelector('.tabs .title-bar-icon');
+    const add = document.querySelector('.tabs .tab-add');
+    const addStyle = add === null ? undefined : getComputedStyle(add);
     return {
       playing: document.documentElement.hasAttribute('data-opening'),
       opening: document.getElementById('opening') !== null,
@@ -26,6 +29,10 @@ function seen(page: Page): Promise<Seen> {
         icon === null
           ? undefined
           : getComputedStyle(icon).visibility === 'hidden',
+      addHidden:
+        addStyle === undefined
+          ? undefined
+          : addStyle.pointerEvents === 'none' && Number(addStyle.opacity) < 1,
       hash: location.hash,
     };
   });
@@ -38,16 +45,31 @@ async function playedThrough(page: Page): Promise<void> {
   await page.locator('.tabs .title-bar-icon').waitFor({ state: 'attached' });
   const playing = await seen(page);
   assert.ok(
-    !playing.opening || (playing.playing && playing.iconHidden === true),
+    !playing.opening ||
+      (playing.playing &&
+        playing.iconHidden === true &&
+        playing.addHidden === true),
     JSON.stringify(playing),
   );
   await page.locator('#opening').waitFor({ state: 'detached' });
+  await waitFor(
+    async () => (await seen(page)).addHidden === false,
+    'the + shown once the opening is done',
+  );
   assert.deepStrictEqual(await seen(page), {
     playing: false,
     opening: false,
     iconHidden: false,
+    addHidden: false,
     hash: '',
   });
+  await waitFor(
+    async () =>
+      (await page
+        .locator('.tabs .tab-add')
+        .evaluate((add) => getComputedStyle(add).opacity)) === '1',
+    'the + faded in whole',
+  );
 }
 
 suite('App opening', () => {
@@ -113,6 +135,7 @@ suite('App opening', () => {
       playing: false,
       opening: false,
       iconHidden: false,
+      addHidden: false,
       hash: '',
     });
     const unopened = await newWindow(page);
@@ -121,6 +144,7 @@ suite('App opening', () => {
       playing: false,
       opening: false,
       iconHidden: false,
+      addHidden: false,
       hash: '',
     });
   });
