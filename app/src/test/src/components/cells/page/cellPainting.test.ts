@@ -403,7 +403,7 @@ suite('Rows painted as cells', () => {
     assert.deepStrictEqual(grounds(), [[7, 42]]);
   });
 
-  test('blends the dot of a space with the ground it stands on, the color of a selection or of a find where it is selected or found, as a dot on text selected kept the shade it has on the plain ground, a shade off the dot an element drew there', () => {
+  test('blends the dot of a space with the ground it stands on, the color of a selection where it is selected, as a dot on text selected kept the shade it has on the plain ground, and draws the dot of a space found in the ink of what was found, as its text takes it, rather than washed out over the yellow of the find', () => {
     const seeThrough: TextLook = { ...look, dot: [255, 255, 255, 0.5] };
     const { cells } = painting(() => 0, seeThrough);
     const row = rowOf('a b c d', 0);
@@ -430,7 +430,7 @@ suite('Rows painted as cells', () => {
     assert.deepStrictEqual(dots(), [
       packedOf(look.dots),
       dotOn(filled(look.ground, look.selected)),
-      dotOn(filled(look.ground, look.match.ground)),
+      packedOf([0, 0, 0, 1]),
     ]);
   });
 

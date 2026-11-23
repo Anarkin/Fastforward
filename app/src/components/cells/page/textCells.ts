@@ -8,7 +8,7 @@ import { graphemes, nonAscii } from '../../../lib/page/graphemes';
 import { tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { strings } from '../../../lib/shared/strings';
-import { filled, over, packedOf, type Rgba } from './cellColors';
+import { filled, over, packedOf, parsedColor, type Rgba } from './cellColors';
 import type { CellFrame } from './cellFrame';
 import { notDrawn, type GlyphStyle, type GlyphTiles } from './glyphTiles';
 import { joins, standsAlone } from './joined';
@@ -102,10 +102,15 @@ function dotFillOn(
   let fill = palette.dotFills.get(key);
   if (fill === undefined) {
     const { dot, dots } = palette.look;
+    const ink =
+      mark === undefined || selected ? undefined : palette.look[mark].ink;
+    const ground = groundOn(palette, tint, mark, selected);
     fill = packedOf(
-      dot === undefined
-        ? dots
-        : over(groundOn(palette, tint, mark, selected), dot),
+      ink !== undefined
+        ? over(ground, parsedColor(ink))
+        : dot === undefined
+          ? dots
+          : over(ground, dot),
     );
     palette.dotFills.set(key, fill);
   }

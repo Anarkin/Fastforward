@@ -30,6 +30,8 @@ const dotsGray = 0xff6d6d6d;
 
 const yellow = 0xff00ccff;
 
+const matchInk = 0xff000000;
+
 const tintedLook: TextLook = {
   ...look,
   tints: new Map([
@@ -306,6 +308,24 @@ suite('Cells of a text', () => {
     ]);
   });
 
+  test('dots a space found in the ink of what was found, as the text found takes it, rather than laying the see-through dot over the yellow of the find, which washed it out, and keeps the dot of a space selected as it was', () => {
+    const { frame } = drawn(
+      [
+        { text: ' ', mark: 'match' },
+        { text: ' ', mark: 'match', selected: true },
+        { text: ' ' },
+      ],
+      { blanks: true, tinted: { ...look, dot: [255, 255, 255, 0.5] } },
+    );
+
+    assert.deepStrictEqual(
+      rectsIn(frame)
+        .filter(({ width }) => width === 2)
+        .map(({ color }) => color),
+      [matchInk, 0xffbca793, 0xff6d6d6d],
+    );
+  });
+
   test('frames the find the search is at with a hairline in the ink of a find, above and below within its row and before and after it, once around what several pieces hold', () => {
     const { frame } = drawn([
       { text: 'a' },
@@ -394,7 +414,7 @@ suite('Cells of a text', () => {
     );
     assert.deepStrictEqual(rectsIn(frame), [
       { x: 93, y: 0, width: 21, height: 16, color: yellow },
-      { x: 102, y: 7, width: 2, height: 2, color: dotsGray },
+      { x: 102, y: 7, width: 2, height: 2, color: matchInk },
     ]);
   });
 
