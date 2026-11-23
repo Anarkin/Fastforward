@@ -30,9 +30,7 @@ function seen(page: Page): Promise<Seen> {
           ? undefined
           : getComputedStyle(icon).visibility === 'hidden',
       addHidden:
-        addStyle === undefined
-          ? undefined
-          : addStyle.pointerEvents === 'none' && Number(addStyle.opacity) < 1,
+        addStyle === undefined ? undefined : addStyle.pointerEvents === 'none',
       hash: location.hash,
     };
   });
