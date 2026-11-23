@@ -52,7 +52,6 @@ export interface ShownGit {
   readonly stashes?: readonly StashInfo[];
   readonly tagRemote?: string;
   readonly bookmarks?: readonly Bookmark[];
-  readonly hideDimmed?: boolean;
   readonly elsewhere?: readonly string[];
   readonly tab?: Partial<TabView>;
 }
@@ -69,7 +68,6 @@ export function gitStore(
     stashes = [],
     tagRemote,
     bookmarks = [],
-    hideDimmed = false,
     elsewhere = [],
     tab = {},
   }: ShownGit = {},
@@ -88,7 +86,6 @@ export function gitStore(
       ...tab,
     },
     bookmarks,
-    hideDimmed,
     autoFetch,
     autoFetchMinutes,
     lastFetch,

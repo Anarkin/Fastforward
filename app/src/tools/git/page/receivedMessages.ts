@@ -74,7 +74,6 @@ export function received(state: GitState, message: GitToWebview): GitState {
         showAllFiles: message.showAllFiles,
         autoFetch: message.autoFetch,
         autoFetchMinutes: message.autoFetchMinutes,
-        hideDimmed: message.hideDimmedButtons,
       };
     case 'solo':
       return { ...state, solo: message.solo };

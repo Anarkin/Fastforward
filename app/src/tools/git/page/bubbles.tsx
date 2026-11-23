@@ -56,7 +56,6 @@ export function RefBubble({
   const menu = useContextMenu(refMenuTarget(info));
   const head = useGit((state) => state.tab.repository?.head);
   const checkedOut = isCheckedOut(info, head);
-  const hideDimmed = useGit((state) => state.hideDimmed);
   const pulling = useGit((state) =>
     checkedOut ? state.tab.pulling : state.tab.pullingBranch.includes(name),
   );
@@ -70,7 +69,6 @@ export function RefBubble({
   const shown = actions
     ? refActions(info, tracking, {
         head,
-        hideDimmed,
         elsewhere,
         tagRemote,
         tagsOnRemote,
@@ -110,7 +108,7 @@ export function RefBubble({
       {branchItems.length > 0 && (
         <span className="bubble-actions">{branchItems.map(actionButton)}</span>
       )}
-      {tagAction && <TagPushAction tag={name} idle={tagAction.idle} />}
+      {tagAction && <TagPushAction tag={name} />}
     </span>
   );
 }
@@ -161,22 +159,13 @@ interface Action {
   readonly act: () => void;
   readonly icon: React.ReactNode;
   readonly count?: number;
-  readonly idle?: boolean;
 }
 
-function actionButton({
-  key,
-  title,
-  running,
-  act,
-  icon,
-  count = 0,
-  idle = false,
-}: Action) {
+function actionButton({ key, title, running, act, icon, count = 0 }: Action) {
   return (
     <button
       key={key}
-      className={`bubble-action ${key} ${running ? 'running' : ''} ${idle ? 'idle' : ''}`}
+      className={`bubble-action ${key} ${running ? 'running' : ''}`}
       {...labelTip(title)}
       tabIndex={-1}
       disabled={running}
@@ -192,13 +181,7 @@ function actionButton({
   );
 }
 
-export function TagPushAction({
-  tag,
-  idle = false,
-}: {
-  tag: string;
-  idle?: boolean;
-}) {
+export function TagPushAction({ tag }: { tag: string }) {
   const remote = useGit((state) => state.tab.repository?.tagRemote);
   const running = useGit((state) => state.tab.pushingTag.includes(tag));
   const { pushTag: onPush } = useGitActions();
@@ -210,7 +193,6 @@ export function TagPushAction({
         running,
         act: () => onPush(tag),
         icon: <PushIcon />,
-        idle,
       })}
     </span>
   );

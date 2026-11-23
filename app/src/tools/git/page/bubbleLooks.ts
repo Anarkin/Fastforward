@@ -8,6 +8,9 @@ export type ActionKey = 'pull' | 'push';
 export interface ActionLook {
   readonly key: ActionKey;
   readonly count: number;
+}
+
+interface ActionWorth extends ActionLook {
   readonly idle: boolean;
 }
 
@@ -19,7 +22,6 @@ export interface BubbleLook {
 
 export interface RefSurroundings {
   readonly head: string | undefined;
-  readonly hideDimmed: boolean;
   readonly elsewhere: ReadonlySet<string>;
   readonly tagRemote: string | undefined;
   readonly tagsOnRemote: ReadonlySet<string>;
@@ -49,7 +51,7 @@ export function isCheckedOut(
 
 function trackedActions(
   tracking: Tracking | undefined,
-): [ActionLook, ActionLook] {
+): [ActionWorth, ActionWorth] {
   const counted = tracking !== undefined && !('gone' in tracking);
   const behind = counted ? tracking.behind : 0;
   const ahead = counted ? tracking.ahead : 0;
@@ -70,7 +72,7 @@ export function refActions(
   around: RefSurroundings,
 ): ActionLook[] {
   const [pull, push] = trackedActions(tracking);
-  const all: ActionLook[] = isCheckedOut(ref, around.head)
+  const all: ActionWorth[] = isCheckedOut(ref, around.head)
     ? [pull, push]
     : ref.kind === 'branch'
       ? [{ ...pull, idle: pull.idle || around.elsewhere.has(ref.name) }, push]
@@ -85,7 +87,9 @@ export function refActions(
             },
           ]
         : [];
-  return all.filter((action) => !around.hideDimmed || !action.idle);
+  return all
+    .filter((action) => !action.idle)
+    .map(({ key, count }) => ({ key, count }));
 }
 
 export function bubblesOn(

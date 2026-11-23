@@ -74,7 +74,6 @@ interface RowShown extends Partial<Parameters<typeof CommitRow>[0]> {
   readonly detached?: boolean;
   readonly head?: string;
   readonly headCommit?: string;
-  readonly hideDimmed?: boolean;
 }
 
 export function CommitRowShown({
@@ -83,7 +82,6 @@ export function CommitRowShown({
   detached = false,
   head,
   headCommit,
-  hideDimmed = false,
   ...props
 }: RowShown) {
   const commit = props.commit ?? commitInfo('a');
@@ -98,7 +96,6 @@ export function CommitRowShown({
         stashes: stash
           ? [{ name: 'stash@{0}', commit: commit.hash, message: '' }]
           : [],
-        hideDimmed,
       })}
     >
       <CommitRow

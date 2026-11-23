@@ -113,7 +113,7 @@ suite('Git store', () => {
     assert.deepStrictEqual(built.tagsOnRemote, new Set(['v1']));
     assert.deepStrictEqual(built.bookmarked, new Set([at]));
     store.getState().receive({ type: 'pulling', running: true });
-    store.getState().receive(layout(true));
+    store.getState().receive(layout());
     const kept = store.getState();
     assert.strictEqual(kept.elsewhere, built.elsewhere);
     assert.strictEqual(kept.tagsOnRemote, built.tagsOnRemote);
@@ -134,14 +134,6 @@ suite('Git store', () => {
       stashes: [],
     });
     assert.deepStrictEqual(store.getState().tagsOnRemote, new Set());
-  });
-
-  test('hides the dimmed buttons as the layout says', () => {
-    const store = createGitStore(noop);
-    store.getState().receive(layout(true));
-    assert.strictEqual(store.getState().hideDimmed, true);
-    store.getState().receive(layout(false));
-    assert.strictEqual(store.getState().hideDimmed, false);
   });
 
   test('posts pull, push and the pulls and pushes of a tag or another branch for the worktree shown, and nothing before one is shown', () => {
@@ -186,11 +178,9 @@ suite('Git store', () => {
 
   test('is made in the state it is given, with its collections built, as a page rendered to a string shows that state', () => {
     const store = createGitStore(noop, {
-      hideDimmed: true,
       bookmarks: [{ kind: 'commit', name: at }],
       worktrees: [worktree('/side', 'side')],
     });
-    assert.strictEqual(store.getInitialState().hideDimmed, true);
     assert.deepStrictEqual(store.getInitialState().bookmarked, new Set([at]));
     assert.deepStrictEqual(
       store.getInitialState().elsewhere,
@@ -210,7 +200,7 @@ suite('Git store', () => {
   test('keeps the layout the main process sends, with the column widths saved, or the default ones where they do not fit', () => {
     const store = createGitStore(noop);
     store.getState().receive({
-      ...layout(false),
+      ...layout(),
       columnWidths: [310],
       defaultColumnWidths: [300, 200],
       showEntireFile: false,
@@ -223,7 +213,7 @@ suite('Git store', () => {
     assert.strictEqual(state.collapseMerges, true);
     assert.strictEqual(state.autoFetchMinutes, 1);
     store.getState().receive({
-      ...layout(false),
+      ...layout(),
       columnWidths: [310, 210],
       defaultColumnWidths: [300, 200],
     });
@@ -278,7 +268,7 @@ suite('Git store', () => {
   test('resizes a column and resets it to its default width, telling the main process', () => {
     const { posted, store } = posting();
     store.getState().receive({
-      ...layout(false),
+      ...layout(),
       columnWidths: [310, 210],
       defaultColumnWidths: [300, 200],
     });

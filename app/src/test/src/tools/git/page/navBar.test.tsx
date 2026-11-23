@@ -146,7 +146,7 @@ suite('Navigation bar', () => {
     );
   });
 
-  test('pins fetching every few minutes next to the fetch button, hidden when the settings turn it off', () => {
+  test('pins fetching every few minutes next to the fetch button, disabled rather than left out when the settings give it no minutes', () => {
     tagWith(buttons({}), 'data-tip="Fetch Every Minute"');
     const on = tagWith(
       buttons({ autoFetch: true, autoFetchMinutes: 5 }),
@@ -156,9 +156,14 @@ suite('Navigation bar', () => {
       'active',
     );
     assert.match(on, /aria-pressed="true"/);
-    assert.doesNotMatch(
-      buttons({ autoFetch: true, autoFetchMinutes: 0 }),
-      /Fetch Every/,
+    assert.match(
+      tagWith(
+        buttons({ autoFetch: false, autoFetchMinutes: 0 }),
+        'data-tip="Fetch Every Few Minutes"',
+        'nav-button',
+        'toggle',
+      ),
+      /disabled=""/,
     );
   });
 

@@ -22,7 +22,6 @@ suite('Git preferences', () => {
       showAllFiles: defaults.tools.git.showAllFiles,
       autoFetch: defaults.tools.git.autoFetch,
       autoFetchMinutes: defaults.tools.git.autoFetchMinutes,
-      hideDimmedButtons: true,
     });
   });
 

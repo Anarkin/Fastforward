@@ -297,7 +297,6 @@ export type GitToWebview =
       readonly showAllFiles: boolean;
       readonly autoFetch: boolean;
       readonly autoFetchMinutes: number;
-      readonly hideDimmedButtons: boolean;
     }
   | { readonly type: 'bookmarks'; readonly bookmarks: readonly Bookmark[] }
   | { readonly type: 'solo'; readonly solo: boolean }

@@ -21,7 +21,6 @@ function useCommitSurroundings(): CommitSurroundings {
   const bookmarked = useGit((state) => state.bookmarked);
   const detached = useGit(detachedHead);
   const head = useGit((state) => state.tab.repository?.head);
-  const hideDimmed = useGit((state) => state.hideDimmed);
   const elsewhere = useGit((state) => state.elsewhere);
   const tagRemote = useGit((state) => state.tab.repository?.tagRemote);
   const tagsOnRemote = useGit((state) => state.tagsOnRemote);
@@ -32,7 +31,6 @@ function useCommitSurroundings(): CommitSurroundings {
       bookmarked,
       detached,
       head,
-      hideDimmed,
       elsewhere,
       tagRemote,
       tagsOnRemote,
@@ -43,7 +41,6 @@ function useCommitSurroundings(): CommitSurroundings {
       bookmarked,
       detached,
       head,
-      hideDimmed,
       elsewhere,
       tagRemote,
       tagsOnRemote,

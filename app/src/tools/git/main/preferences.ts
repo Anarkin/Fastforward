@@ -29,7 +29,6 @@ export class GitPreferences {
       showAllFiles: settings.showAllFiles,
       autoFetch: settings.autoFetch,
       autoFetchMinutes: this.fetchMinutes,
-      hideDimmedButtons: settings.hideDimmedButtons,
     };
   }
 

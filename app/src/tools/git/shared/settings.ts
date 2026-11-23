@@ -4,7 +4,6 @@ export interface GitSettings {
   readonly solo: boolean;
   readonly autoFetch: boolean;
   readonly autoFetchMinutes: number;
-  readonly hideDimmedButtons: boolean;
   readonly keepGitRunning: boolean;
   readonly columnWidths: readonly number[];
 }

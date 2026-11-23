@@ -449,7 +449,6 @@
       "solo": false,
       "autoFetch": true,
       "autoFetchMinutes": 1,
-      "hideDimmedButtons": true,
       "keepGitRunning": true,
       "columnWidths": [300, 300],
       "colors": {

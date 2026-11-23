@@ -97,16 +97,15 @@ export function NavButtons() {
             <span className={`fetch-mark ${status}`} />
           )}
         </button>
-        {autoFetchMinutes > 0 && (
-          <button
-            className={`nav-button toggle ${autoFetch ? 'active' : ''}`}
-            {...labelTip(strings.navigation.fetchEvery(autoFetchMinutes))}
-            aria-pressed={autoFetch}
-            onClick={() => onAutoFetch(!autoFetch)}
-          >
-            <PinIcon />
-          </button>
-        )}
+        <button
+          className={`nav-button toggle ${autoFetch ? 'active' : ''}`}
+          {...labelTip(strings.navigation.fetchEvery(autoFetchMinutes))}
+          aria-pressed={autoFetch}
+          disabled={autoFetchMinutes === 0}
+          onClick={() => onAutoFetch(!autoFetch)}
+        >
+          <PinIcon />
+        </button>
       </Toolbar>
     </Toolbar>
   );

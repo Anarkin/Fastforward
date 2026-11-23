@@ -46,11 +46,9 @@ function tagged(
   name: string,
   onRemote: string[],
   remote: string | undefined,
-  hideDimmed = false,
 ): string {
   return shownIn(
     {
-      hideDimmed,
       ...(remote === undefined ? {} : { tagRemote: remote }),
       refs: onRemote.map((tag) => ({
         kind: 'remote-tag',
@@ -66,14 +64,10 @@ function tagged(
 function otherBranch(
   name: string,
   tracking: Tracking | undefined,
-  {
-    hideDimmed = false,
-    elsewhere = [] as string[],
-    pulling = [] as readonly string[],
-  } = {},
+  { elsewhere = [] as string[], pulling = [] as readonly string[] } = {},
 ): string {
   return shownIn(
-    { head: 'main', hideDimmed, elsewhere, tab: { pullingBranch: pulling } },
+    { head: 'main', elsewhere, tab: { pullingBranch: pulling } },
     <RefBubble info={{ kind: 'branch', name }} tracking={tracking} actions />,
   );
 }
@@ -99,11 +93,19 @@ function buttonsIn(node: React.ReactNode): Clickable[] {
   return node.type === 'button' ? [node] : buttonsIn(node.props.children);
 }
 
-function clicksOn(info: BookmarkRef): GitToHost[] {
+const behindItsUpstream: Tracking = {
+  upstream: 'origin/x',
+  ahead: 0,
+  behind: 1,
+};
+
+function clicksOn(info: BookmarkRef, tracking?: Tracking): GitToHost[] {
   const posted: GitToHost[] = [];
   let buttons: Clickable[] = [];
   function Probe() {
-    buttons = buttonsIn(RefBubble({ info, actions: true }));
+    buttons = buttonsIn(
+      RefBubble({ info, actions: true, ...(tracking && { tracking }) }),
+    );
     return null;
   }
   renderToStaticMarkup(
@@ -122,28 +124,15 @@ function clicksOn(info: BookmarkRef): GitToHost[] {
   return posted;
 }
 
-function idleIn(markup: string, title: string): boolean {
-  return classesOf(tagWith(markup, `data-tip="${title}`, 'bubble-action')).has(
-    'idle',
-  );
-}
-
-function checkedOut(
-  tracking: Tracking | undefined,
-  hideDimmed: boolean,
-): string {
+function actionsWith(tracking: Tracking | undefined): string {
   return shownIn(
-    { head: 'main', hideDimmed },
+    { head: 'main' },
     <RefBubble
       info={{ kind: 'branch', name: 'main' }}
       tracking={tracking}
       actions
     />,
   );
-}
-
-function actionsWith(tracking: Tracking | undefined): string {
-  return checkedOut(tracking, false);
 }
 
 function actionButtonsOf(bubble: React.ReactNode): React.ReactElement<{
@@ -204,21 +193,21 @@ suite('Bubbles', () => {
     );
   });
 
-  test('puts pull and push on the bubble of the checked-out branch where asked, and on no bubble of a remote branch', () => {
-    const withActions = onMain(
-      <RefBubble info={{ kind: 'branch', name: 'main' }} actions />,
-    );
-    const bubble = tagWith(
-      withActions,
-      '',
-      'badge',
-      'checked-out',
-      'with-actions',
-    );
+  test('puts pull on the bubble of the checked-out branch while there is something to pull, and push while there is something to push or no upstream, where asked, and neither on a bubble of a remote branch', () => {
+    const behind = actionsWith({
+      upstream: 'origin/main',
+      ahead: 0,
+      behind: 2,
+    });
+    const bubble = tagWith(behind, '', 'badge', 'checked-out', 'with-actions');
     assert.match(bubble, /data-tip="main, checked out"/);
     assert.match(
-      withActions,
-      /^<span[^>]*><span class="bubble-name">main<\/span><span class="bubble-actions"><button class="bubble-action[^"]*" aria-label="Pull:[^"]*" data-tip="Pull:[^"]*" tabindex="-1">.*?<\/button><button class="bubble-action[^"]*" aria-label="Push:[^"]*" data-tip="Push:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
+      behind,
+      /^<span[^>]*><span class="bubble-name">main<\/span><span class="bubble-actions"><button class="bubble-action[^"]*" aria-label="Pull:[^"]*" data-tip="Pull:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
+    );
+    assert.match(
+      actionsWith(undefined),
+      /^<span[^>]*><span class="bubble-name">main<\/span><span class="bubble-actions"><button class="bubble-action[^"]*" aria-label="Push:[^"]*" data-tip="Push:[^"]*" tabindex="-1">.*?<\/button><\/span><\/span>$/,
     );
     for (const without of [
       <RefBubble key="a" info={{ kind: 'branch', name: 'main' }} />,
@@ -233,14 +222,13 @@ suite('Bubbles', () => {
   });
 
   test('names what pull and push do without naming the branch, as they sit on its bubble', () => {
-    const html = actionsWith(undefined);
     tagWith(
-      html,
+      actionsWith({ upstream: 'origin/main', ahead: 0, behind: 2 }),
       'data-tip="Pull: fetch every remote, then fast-forward to the upstream"',
       'bubble-action',
     );
     tagWith(
-      html,
+      actionsWith(undefined),
       'data-tip="Push: send the new commits to the upstream, or publish to the only remote when there is none"',
       'bubble-action',
     );
@@ -253,19 +241,24 @@ suite('Bubbles', () => {
       { head: 'main', tab: { root: '/repo' } },
       (message) => posted.push(message),
     );
-    const bubble = renderedBy(
-      RefBubble,
+    for (const props of [
+      {
+        info: { kind: 'branch', name: 'main' },
+        tracking: { upstream: 'origin/main', ahead: 0, behind: 2 },
+        actions: true,
+      },
       { info: { kind: 'branch', name: 'main' }, actions: true },
-      { git: store },
-    );
-    for (const button of actionButtonsOf(bubble)) {
-      button.props.onMouseDown({
-        preventDefault: () => calls.push('kept focus'),
-      });
-      button.props.onClick({
-        stopPropagation: () => calls.push('row left alone'),
-      });
-      calls.push(...postedTypes(posted.splice(0)));
+    ] as const) {
+      const bubble = renderedBy(RefBubble, props, { git: store });
+      for (const button of actionButtonsOf(bubble)) {
+        button.props.onMouseDown({
+          preventDefault: () => calls.push('kept focus'),
+        });
+        button.props.onClick({
+          stopPropagation: () => calls.push('row left alone'),
+        });
+        calls.push(...postedTypes(posted.splice(0)));
+      }
     }
     assert.deepStrictEqual(calls, [
       'kept focus',
@@ -277,7 +270,7 @@ suite('Bubbles', () => {
     ]);
   });
 
-  test('counts on the bubble the commits there are to pull and to push since the last fetch, dimming an arrow with nothing to do, both when the branch has diverged, though they stay clickable as a fetch may find more', () => {
+  test('counts on the bubble the commits there are to pull and to push since the last fetch, leaving out an arrow with nothing to do, both when the branch has diverged, and the bubble its plain look without any', () => {
     const behind = actionsWith({
       upstream: 'origin/main',
       ahead: 0,
@@ -287,76 +280,39 @@ suite('Bubbles', () => {
       behind,
       /data-tip="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span><\/button>/,
     );
-    assert.ok(
-      !classesOf(tagWith(behind, 'data-tip="Pull:', 'bubble-action')).has(
-        'idle',
-      ),
-    );
-    tagWith(behind, 'data-tip="Push:', 'bubble-action', 'idle');
+    assert.doesNotMatch(behind, /data-tip="Push:/);
     const ahead = actionsWith({ upstream: 'origin/main', ahead: 1, behind: 0 });
     assert.match(
       ahead,
       /data-tip="Push:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">1<\/span><\/button>/,
     );
-    assert.ok(
-      !classesOf(tagWith(ahead, 'data-tip="Push:', 'bubble-action')).has(
-        'idle',
-      ),
-    );
-    tagWith(ahead, 'data-tip="Pull:', 'bubble-action', 'idle');
-    const diverged = actionsWith({
-      upstream: 'origin/main',
-      ahead: 1,
-      behind: 2,
-    });
-    for (const [title, count] of [
-      ['Pull:', 2],
-      ['Push:', 1],
-    ] as const) {
-      assert.match(
-        diverged,
-        new RegExp(
-          `data-tip="${title}[^"]*"[^>]*><svg.*?</svg><span class="bubble-count">${count}</span></button>`,
-        ),
-      );
-      assert.doesNotMatch(
-        tagWith(diverged, `data-tip="${title}`, 'bubble-action', 'idle'),
-        /disabled/,
-      );
-    }
+    assert.doesNotMatch(ahead, /data-tip="Pull:/);
     for (const quiet of [
+      { upstream: 'origin/main', ahead: 1, behind: 2 },
       { upstream: 'origin/main', ahead: 0, behind: 0 },
       { upstream: 'origin/main', gone: true as const },
     ]) {
-      const markup = actionsWith(quiet);
-      for (const title of ['Pull:', 'Push:']) {
-        const button = tagWith(
-          markup,
-          `data-tip="${title}`,
-          'bubble-action',
-          'idle',
-        );
-        assert.doesNotMatch(button, /disabled/);
-      }
-      assert.doesNotMatch(markup, /bubble-count/);
+      assert.doesNotMatch(actionsWith(quiet), /bubble-action|with-actions/);
     }
     const unpublished = actionsWith(undefined);
-    tagWith(unpublished, 'data-tip="Pull:', 'bubble-action', 'idle');
-    assert.ok(
-      !classesOf(tagWith(unpublished, 'data-tip="Push:', 'bubble-action')).has(
-        'idle',
-      ),
-    );
+    assert.doesNotMatch(unpublished, /data-tip="Pull:|bubble-count/);
+    tagWith(unpublished, 'data-tip="Push:', 'bubble-action');
   });
 
-  test('disables pull and push on the bubble while each runs, marking it as running', () => {
-    for (const [running, title] of [
-      [{ pulling: true }, 'Pull:'],
-      [{ pushing: true }, 'Push:'],
+  test('disables pull and push on the bubble while each runs, marking it as running, and leaves the other alone', () => {
+    const behind = { upstream: 'origin/main', ahead: 0, behind: 2 };
+    const ahead = { upstream: 'origin/main', ahead: 1, behind: 0 };
+    for (const [running, title, tracking] of [
+      [{ pulling: true }, 'Pull:', behind],
+      [{ pushing: true }, 'Push:', ahead],
     ] as const) {
       const html = shownIn(
         { head: 'main', tab: running },
-        <RefBubble info={{ kind: 'branch', name: 'main' }} actions />,
+        <RefBubble
+          info={{ kind: 'branch', name: 'main' }}
+          tracking={tracking}
+          actions
+        />,
       );
       const busy = tagWith(
         html,
@@ -365,38 +321,33 @@ suite('Bubbles', () => {
         'running',
       );
       assert.match(busy, /disabled=""/);
-      const other = tagWith(
-        html,
-        `data-tip="${title === 'Pull:' ? 'Push:' : 'Pull:'}`,
-        'bubble-action',
-      );
-      assert.ok(!classesOf(other).has('running'));
-      assert.doesNotMatch(other, /disabled/);
     }
+    const other = tagWith(
+      shownIn(
+        { head: 'main', tab: { pushing: true } },
+        <RefBubble
+          info={{ kind: 'branch', name: 'main' }}
+          tracking={behind}
+          actions
+        />,
+      ),
+      'data-tip="Pull:',
+      'bubble-action',
+    );
+    assert.ok(!classesOf(other).has('running'));
+    assert.doesNotMatch(other, /disabled/);
   });
 
-  test('puts a push button on every local tag, as a tag can only be pushed, bright where the remote it would go to lacks it and dimmed where it has it or that remote is unknown, but on no remote tag', () => {
+  test('puts a push button on every local tag the remote it would go to lacks, as a tag can only be pushed, but none where that remote has it or is unknown, and none on a remote tag', () => {
     const missing = tagged('v1', ['v0'], 'origin');
     tagWith(missing, '', 'badge', 'tag', 'with-actions');
-    const bright = tagWith(
-      missing,
-      'data-tip="Push v1 to origin"',
-      'bubble-action',
-      'push',
-    );
-    assert.ok(!classesOf(bright).has('idle'));
-    tagWith(
+    tagWith(missing, 'data-tip="Push v1 to origin"', 'bubble-action', 'push');
+    for (const markup of [
       tagged('v1', ['v1'], 'origin'),
-      'data-tip="Push v1 to origin"',
-      'bubble-action',
-      'idle',
-    );
-    tagWith(
       tagged('v1', [], undefined),
-      'data-tip="Push v1"',
-      'bubble-action',
-      'idle',
-    );
+    ]) {
+      assert.doesNotMatch(markup, /bubble-action|with-actions/);
+    }
     assert.doesNotMatch(
       shownIn(
         { tagRemote: 'origin' },
@@ -409,7 +360,7 @@ suite('Bubbles', () => {
     );
   });
 
-  test('puts down and up arrows on every local branch that is not checked out, with its counts, bright by its state like the blue bubble', () => {
+  test('puts down and up arrows on a local branch that is not checked out while there is something to pull or push, with its counts, and none where there is nothing to do', () => {
     const behind = otherBranch('side', {
       upstream: 'origin/side',
       ahead: 0,
@@ -423,37 +374,29 @@ suite('Bubbles', () => {
       behind,
       /data-tip="Pull:[^"]*"[^>]*><svg.*?<\/svg><span class="bubble-count">2<\/span>/,
     );
-    assert.ok(!idleIn(behind, 'Pull:'));
-    assert.ok(idleIn(behind, 'Push:'));
+    assert.doesNotMatch(behind, /data-tip="Push:/);
     const ahead = otherBranch('side', {
       upstream: 'origin/side',
       ahead: 1,
       behind: 0,
     });
-    assert.ok(idleIn(ahead, 'Pull:') && !idleIn(ahead, 'Push:'));
+    tagWith(ahead, 'data-tip="Push:', 'bubble-action');
+    assert.doesNotMatch(ahead, /data-tip="Pull:/);
     for (const quiet of [
       otherBranch('side', { upstream: 'origin/side', ahead: 1, behind: 2 }),
       otherBranch('side', { upstream: 'origin/side', gone: true }),
       otherBranch('side', { upstream: 'origin/side', ahead: 0, behind: 0 }),
-    ]) {
-      assert.ok(idleIn(quiet, 'Pull:') && idleIn(quiet, 'Push:'));
-    }
-    const unpublished = otherBranch('side', undefined);
-    assert.ok(idleIn(unpublished, 'Pull:') && !idleIn(unpublished, 'Push:'));
-    const elsewhere = otherBranch(
-      'side',
-      { upstream: 'origin/side', ahead: 0, behind: 2 },
-      { elsewhere: ['side'] },
-    );
-    assert.ok(idleIn(elsewhere, 'Pull:'));
-    assert.doesNotMatch(
       otherBranch(
         'side',
-        { upstream: 'origin/side', ahead: 0, behind: 0 },
-        { hideDimmed: true },
+        { upstream: 'origin/side', ahead: 0, behind: 2 },
+        { elsewhere: ['side'] },
       ),
-      /bubble-action|with-actions/,
-    );
+    ]) {
+      assert.doesNotMatch(quiet, /bubble-action|with-actions/);
+    }
+    const unpublished = otherBranch('side', undefined);
+    tagWith(unpublished, 'data-tip="Push:', 'bubble-action');
+    assert.doesNotMatch(unpublished, /data-tip="Pull:/);
     assert.doesNotMatch(
       onMain(
         <>
@@ -467,21 +410,23 @@ suite('Bubbles', () => {
 
   test('pulls and pushes the branch of its bubble, marking only the arrow of that branch as running', () => {
     const posted: GitToHost[] = [];
-    const bubble = renderedBy(
-      RefBubble,
+    const store = gitStore(
+      { head: 'main', tab: { root: '/repo' } },
+      (message) => posted.push(message),
+    );
+    for (const props of [
       {
         info: { kind: 'branch', name: 'side' },
         tracking: { upstream: 'origin/side', ahead: 0, behind: 2 },
         actions: true,
       },
-      {
-        git: gitStore({ head: 'main', tab: { root: '/repo' } }, (message) =>
-          posted.push(message),
-        ),
-      },
-    );
-    for (const button of actionButtonsOf(bubble)) {
-      button.props.onClick({ stopPropagation: noop });
+      { info: { kind: 'branch', name: 'side' }, actions: true },
+    ] as const) {
+      for (const button of actionButtonsOf(
+        renderedBy(RefBubble, props, { git: store }),
+      )) {
+        button.props.onClick({ stopPropagation: noop });
+      }
     }
     assert.deepStrictEqual(postedTypes(posted), [
       'pullBranch side',
@@ -505,33 +450,6 @@ suite('Bubbles', () => {
       tagWith(calm, 'data-tip="Pull:', 'bubble-action'),
       /running|disabled/,
     );
-  });
-
-  test('hides the dimmed buttons when asked, leaving a bubble without any its plain look', () => {
-    tagWith(
-      tagged('v1', [], 'origin', true),
-      'data-tip="Push v1 to origin"',
-      'bubble-action',
-    );
-    for (const markup of [
-      tagged('v1', ['v1'], 'origin', true),
-      tagged('v1', [], undefined, true),
-      checkedOut({ upstream: 'origin/main', ahead: 0, behind: 0 }, true),
-    ]) {
-      assert.doesNotMatch(markup, /bubble-action|with-actions/);
-    }
-    const behind = checkedOut(
-      { upstream: 'origin/main', ahead: 0, behind: 2 },
-      true,
-    );
-    tagWith(behind, 'data-tip="Pull:', 'bubble-action', 'pull');
-    assert.doesNotMatch(behind, /data-tip="Push:/);
-    const shown = checkedOut(
-      { upstream: 'origin/main', ahead: 0, behind: 0 },
-      false,
-    );
-    tagWith(shown, 'data-tip="Pull:', 'bubble-action', 'idle');
-    tagWith(shown, 'data-tip="Push:', 'bubble-action', 'idle');
   });
 
   test('pushes the tag of its bubble without selecting its row or taking the keys from the list, marking only that tag as running while it pushes', () => {
@@ -583,14 +501,23 @@ suite('Bubbles', () => {
   });
 
   test('pulls and pushes the checked-out branch, another branch and a tag from their bubbles for the worktree shown', () => {
-    assert.deepStrictEqual(clicksOn({ kind: 'branch', name: 'main' }), [
-      { type: 'pull', root: '/repo' },
-      { type: 'push', root: '/repo' },
-    ]);
-    assert.deepStrictEqual(clicksOn({ kind: 'branch', name: 'side' }), [
-      { type: 'pullBranch', name: 'side', root: '/repo' },
-      { type: 'pushBranch', name: 'side', root: '/repo' },
-    ]);
+    for (const name of ['main', 'side']) {
+      assert.deepStrictEqual(
+        [
+          ...clicksOn({ kind: 'branch', name }, behindItsUpstream),
+          ...clicksOn({ kind: 'branch', name }),
+        ],
+        name === 'main'
+          ? [
+              { type: 'pull', root: '/repo' },
+              { type: 'push', root: '/repo' },
+            ]
+          : [
+              { type: 'pullBranch', name: 'side', root: '/repo' },
+              { type: 'pushBranch', name: 'side', root: '/repo' },
+            ],
+      );
+    }
     assert.deepStrictEqual(clicksOn({ kind: 'tag', name: 'v1' }), [
       { type: 'pushTag', name: 'v1', root: '/repo' },
     ]);
@@ -640,7 +567,7 @@ function layoutOf(markup: string): string {
         .filter(
           (name) =>
             name !== '' &&
-            !['checked-out', 'missing', 'idle', 'running'].includes(name),
+            !['checked-out', 'missing', 'running'].includes(name),
         );
       return `class="${kept.join(' ')}"`;
     });
@@ -659,12 +586,22 @@ suite('Bubble copies', () => {
     shown: ShownGit;
   }[] = [
     {
-      name: 'the checked-out branch, behind and ahead',
+      name: 'the checked-out branch, behind',
       ref: {
         kind: 'branch',
         name: 'main',
         commit: 'a',
-        tracking: tracked(12, 3),
+        tracking: tracked(0, 13),
+      },
+      shown: { head: 'main' },
+    },
+    {
+      name: 'the checked-out branch, ahead',
+      ref: {
+        kind: 'branch',
+        name: 'main',
+        commit: 'a',
+        tracking: tracked(2, 0),
       },
       shown: { head: 'main' },
     },
@@ -679,14 +616,14 @@ suite('Bubble copies', () => {
       shown: { head: 'main', elsewhere: ['other'] },
     },
     {
-      name: 'a branch level with its upstream, dimmed actions hidden',
+      name: 'a branch level with its upstream',
       ref: {
         kind: 'branch',
         name: 'level',
         commit: 'a',
         tracking: tracked(0, 0),
       },
-      shown: { head: 'main', hideDimmed: true },
+      shown: { head: 'main' },
     },
     {
       name: 'a tag the remote lacks',
@@ -694,9 +631,9 @@ suite('Bubble copies', () => {
       shown: { tagRemote: 'origin' },
     },
     {
-      name: 'a tag with no remote, dimmed actions hidden',
+      name: 'a tag with no remote',
       ref: { kind: 'tag', name: 'v1.3', commit: 'a' },
-      shown: { hideDimmed: true },
+      shown: {},
     },
     {
       name: 'a remote branch',
@@ -713,7 +650,6 @@ suite('Bubble copies', () => {
     test(`draws the hidden copy the commit list measures of ${name} as the bubble itself, its actions and counts alike, so the widths measured are those of the bubbles drawn`, () => {
       const look = lookOf({ type: 'ref', ref }, 'a', {
         head: shown.head,
-        hideDimmed: shown.hideDimmed ?? false,
         elsewhere: new Set(shown.elsewhere),
         tagRemote: shown.tagRemote,
         tagsOnRemote: new Set(),
@@ -734,7 +670,6 @@ suite('Bubble copies', () => {
     const hash = 'a'.repeat(40);
     const around = {
       head: undefined,
-      hideDimmed: false,
       elsewhere: new Set<string>(),
       tagRemote: undefined,
       tagsOnRemote: new Set<string>(),

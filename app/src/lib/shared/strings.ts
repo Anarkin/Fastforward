@@ -495,7 +495,11 @@ export const strings = {
     pull: 'Pull: fetch every remote, then fast-forward to the upstream',
     push: 'Push: send the new commits to the upstream, or publish to the only remote when there is none',
     fetchEvery: (minutes: number) =>
-      minutes === 1 ? 'Fetch Every Minute' : `Fetch Every ${minutes} Minutes`,
+      minutes === 0
+        ? 'Fetch Every Few Minutes'
+        : minutes === 1
+          ? 'Fetch Every Minute'
+          : `Fetch Every ${minutes} Minutes`,
   },
   search: {
     placeholder: 'Search…',

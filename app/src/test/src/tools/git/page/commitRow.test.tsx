@@ -198,10 +198,22 @@ function bubblesOf(
   );
 }
 
+const offered = (ahead: number, behind: number) =>
+  bubblesOf('a'.repeat(40), {
+    head: 'main',
+    refs: [
+      {
+        kind: 'branch',
+        name: 'main',
+        commit: 'a'.repeat(40),
+        tracking: { upstream: 'origin/main', ahead, behind },
+      },
+    ],
+  });
+
 suite('Commit list rows', () => {
   test("puts a commit's bubbles on one line that can break between them", () => {
     const html = bubblesOf('a'.repeat(40), {
-      hideDimmed: true,
       headCommit: 'a'.repeat(40),
       refs: [
         { kind: 'branch', name: 'main', commit: 'a'.repeat(40), tracking },
@@ -238,19 +250,14 @@ suite('Commit list rows', () => {
     assert.match(bubblesOf(hash, shown), /^<div class="bubble-line">/);
   });
 
-  test("offers pull and push on the checked-out branch's bubble in a commit's row", () => {
-    const html = bubblesOf('a'.repeat(40), {
-      head: 'main',
-      refs: [{ kind: 'branch', name: 'main', commit: 'a'.repeat(40) }],
-    });
-    assert.match(html, /class="bubble-action[^"]*" aria-label="Pull:/);
-    assert.match(html, /class="bubble-action[^"]*" aria-label="Push:/);
+  test("offers pull and push on the checked-out branch's bubble in a commit's row while each has something to do", () => {
+    assert.match(offered(0, 2), /class="bubble-action[^"]*" aria-label="Pull:/);
+    assert.match(offered(3, 0), /class="bubble-action[^"]*" aria-label="Push:/);
   });
 
   test("puts each remote's tag right after the local tag of its name, and the tags only on a remote after the rest", () => {
     const at = 'a'.repeat(40);
     const html = bubblesOf(at, {
-      hideDimmed: true,
       refs: [
         { kind: 'branch', name: 'main', commit: at, tracking },
         { kind: 'tag', name: 'v1', commit: at },
@@ -313,7 +320,6 @@ suite('Commit list rows', () => {
     const bubbles = (refs: RefInfo[], stash: boolean) =>
       bubblesOf(at, {
         bookmarks: [{ kind: 'commit', name: at }],
-        hideDimmed: true,
         refs,
         stashes: stash ? [{ name: 'stash@{0}', commit: at, message: '' }] : [],
       });

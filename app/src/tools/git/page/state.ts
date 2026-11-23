@@ -53,7 +53,6 @@ export interface GitSource extends DiffSource {
   readonly tab: TabView;
   readonly worktrees: readonly WorktreeInfo[] | undefined;
   readonly bookmarks: readonly Bookmark[];
-  readonly hideDimmed: boolean;
   readonly columnWidths: readonly number[];
   readonly defaultColumnWidths: readonly number[];
   readonly collapseMerges: boolean;
@@ -180,7 +179,6 @@ export const gitDefaults: GitSource = {
   tab: emptyTabView,
   worktrees: undefined,
   bookmarks: [],
-  hideDimmed: false,
   columnWidths: [],
   defaultColumnWidths: [],
   collapseMerges: false,

@@ -144,7 +144,7 @@ suite('Style', () => {
     looks(withClass(line, 'bubble-actions'), { flex: 'none' });
   });
 
-  test('dims an arrow of the blue bubble with nothing to do, and counts in figures of one width, so the bubble keeps its size as the counts change', () => {
+  test('counts on the arrows of the blue bubble in figures of one width, so the bubble keeps its size as the counts change', () => {
     const actions = rendered(
       <GitStore value={gitStore({ head: 'main' })}>
         <RefBubble
@@ -154,9 +154,6 @@ suite('Style', () => {
         />
       </GitStore>,
     );
-    looks(withClass(actions, 'bubble-action', 'idle'), {
-      opacity: 'var(--muted-opacity)',
-    });
     looks(withClass(actions, 'bubble-count'), {
       'font-variant-numeric': 'tabular-nums',
     });
@@ -197,7 +194,6 @@ suite('Style', () => {
   test('draws bubbles in the flow of their line, starting where the other lines start, each kept within the line, cutting off its long name with an ellipsis', () => {
     const commit = rendered(
       <CommitRowShown
-        hideDimmed
         refs={repository.refs.map((ref) =>
           ref.kind === 'branch'
             ? {

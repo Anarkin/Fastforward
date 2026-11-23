@@ -29,9 +29,7 @@ export const shown = (
   worktrees,
 });
 
-export const layout = (
-  hideDimmedButtons: boolean,
-): GitToWebviewOf<'layout'> => ({
+export const layout = (): GitToWebviewOf<'layout'> => ({
   type: 'layout',
   columnWidths: [],
   defaultColumnWidths: [],
@@ -42,7 +40,6 @@ export const layout = (
   showAllFiles: false,
   autoFetch: true,
   autoFetchMinutes: 1,
-  hideDimmedButtons,
 });
 
 export const labelled = (items: readonly ContextMenuItem[] | undefined) =>
