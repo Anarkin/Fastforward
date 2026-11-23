@@ -1,9 +1,12 @@
+import { brokenLines, type BrokenLine } from '../../../lib/page/textLines';
 import type { WholeFile } from './rows';
 
+export function wholeBrokenLines(whole: WholeFile): BrokenLine[] {
+  return whole.binary ? [] : brokenLines(whole.content);
+}
+
 export function wholeLines(whole: WholeFile): string[] {
-  return whole.binary || whole.content === ''
-    ? []
-    : whole.content.replace(/\n$/, '').split('\n');
+  return wholeBrokenLines(whole).map((line) => line.text);
 }
 
 export function lineKey(file: number, line: number): string {

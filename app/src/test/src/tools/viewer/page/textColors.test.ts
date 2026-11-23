@@ -63,6 +63,24 @@ suite('Colors of the rows of a file viewed', () => {
     ]);
   });
 
+  test('colors the line after a carriage return alone as a line of its own, giving the colorer the text broken where the viewer breaks its rows, as the editor colors it, and the text as it is while it has no such carriage return', () => {
+    const text = colored('// a\rlet x;\n', [
+      [{ start: 0, end: 5, kind: 'comment' }],
+      [{ start: 0, end: 3, kind: 'keyword' }],
+    ]);
+
+    assert.strictEqual(text.code, '// a\r\nlet x;');
+    assert.deepStrictEqual(rowSegments(text, row(0, 5, '// a\r')), [
+      { text: '// a\r', kind: 'comment' },
+    ]);
+    assert.deepStrictEqual(rowSegments(text, row(5, 12, 'let x;')), [
+      { text: 'let', kind: 'keyword' },
+      { text: ' x;' },
+    ]);
+    const plain = 'let x;\r\nlet y;\n';
+    assert.strictEqual(coloredText(plain, 'utf-8', false).code, plain);
+  });
+
   test('counts a byte a character in a code page of one byte a character', () => {
     const text = colored(
       '// é\r\nlet x;\r\n',

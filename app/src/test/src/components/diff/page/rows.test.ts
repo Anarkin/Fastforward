@@ -305,6 +305,24 @@ suite('Symbolic links', () => {
     }
   });
 
+  test('breaks a file shown whole at a carriage return alone too, as a patch is broken, marking each line no line feed ends, the last one without one too', () => {
+    const lines = diffRows([], new Map(), {
+      path: 'm.txt',
+      content: 'a\rb\r\nc\nd',
+      binary: false,
+    }).flatMap((row) =>
+      row.kind === 'wholeLine'
+        ? [[row.number, row.text, row.noLineFeed === true]]
+        : [],
+    );
+    assert.deepStrictEqual(lines, [
+      [1, 'a\r', true],
+      [2, 'b\r', false],
+      [3, 'c', false],
+      [4, 'd', true],
+    ]);
+  });
+
   test('notes a symbolic link shown whole by its target, with no lines and no preview, though its name is that of a document', () => {
     const whole = {
       path: 'AGENTS.md',

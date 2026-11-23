@@ -23,7 +23,7 @@ function made(
   index: number,
 ): PaneLine | null {
   const lined = (
-    { text, noNewline }: { readonly text: string; readonly noNewline?: true },
+    { text, noLineFeed }: { readonly text: string; readonly noLineFeed?: true },
     change: Change | undefined,
     numbers: readonly (number | undefined)[],
     lineOf = key,
@@ -32,7 +32,7 @@ function made(
       start: index,
       end: index + 1,
       text,
-      ...(noNewline !== true && { ending: strings.symbols.lineFeed }),
+      ...(noLineFeed !== true && { ending: strings.symbols.lineFeed }),
     },
     key: lineOf,
     change,

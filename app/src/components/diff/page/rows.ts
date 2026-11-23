@@ -1,7 +1,7 @@
 import { collapseThreshold } from '../shared/patchBudget';
 import type { DiffFile, DiffLine, LinkTargets } from './diff';
 import { type NumberedLine } from './changeBlocks';
-import { lineKey, wholeLines } from './lines';
+import { lineKey, wholeBrokenLines } from './lines';
 import { pairingBudget } from './pairing';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
@@ -56,7 +56,7 @@ export type DiffRow =
       readonly file: number;
       readonly number: number;
       readonly text: string;
-      readonly noNewline?: true;
+      readonly noLineFeed?: true;
     };
 
 export type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
@@ -201,17 +201,15 @@ export function diffRows(
     if (whole.binary && previewsWholeImage(whole)) {
       rows.push({ kind: 'image', file: 0 });
     }
-    const lines = wholeLines(whole);
-    const ended = whole.content.endsWith('\n');
-    lines.forEach((text, index) =>
+    for (const [index, { text, fed }] of wholeBrokenLines(whole).entries()) {
       rows.push({
         kind: 'wholeLine',
         file: 0,
         number: index + 1,
         text,
-        ...(index === lines.length - 1 && !ended && { noNewline: true }),
-      }),
-    );
+        ...(!fed && { noLineFeed: true }),
+      });
+    }
     return rows;
   }
   const collapsible = files.length > 1;

@@ -83,7 +83,7 @@ function sideSource(plan: SidePlan, text: string | undefined): NumberedSource {
   const { fileIndex, language, shown, wholeText } = plan;
   const keyOf = ({ owned, index }: (typeof shown)[number]) =>
     owned ? lineKey(fileIndex, index) : undefined;
-  const lines = wholeText ? text?.split(/\r?\n/) : undefined;
+  const lines = wholeText ? text?.split(/\r\n|\r|\n/) : undefined;
   if (
     lines === undefined ||
     shown.some(

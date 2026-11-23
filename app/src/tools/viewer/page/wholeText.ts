@@ -62,7 +62,7 @@ export function useColors(
     }
     const plain = coloredText(whole.text, encoding, whole.marked);
     let shown = plain;
-    return colorer().colorParts(language, whole.text, (part) => {
+    return colorer().colorParts(language, plain.code, (part) => {
       if (part !== undefined) {
         shown = withPart(shown, part);
         keep(tab, {

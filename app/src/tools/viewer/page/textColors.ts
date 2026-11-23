@@ -1,4 +1,5 @@
 import type { TextRow } from '../shared/protocol';
+import { brokenLines } from '../../../lib/page/textLines';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { CodeSegment } from './codeSegments';
 import { bytesOf } from './encodedBytes';
@@ -25,6 +26,7 @@ export function wholeText(text: string): WholeText {
 }
 
 export interface ColoredText {
+  readonly code: string;
   readonly lines: readonly string[];
   readonly lineStarts: readonly number[];
   readonly unitLines: readonly boolean[];
@@ -35,23 +37,33 @@ export interface ColoredText {
 const wholeBytes = (text: string, encoding: TextEncoding) =>
   bytesOf(text, 0, text.length, encoding);
 
+const loneCarriageReturn = /\r(?!\n)/;
+
 export function coloredText(
   text: string,
   encoding: TextEncoding,
   marked: boolean,
 ): ColoredText {
   const unit = wholeBytes('\n', encoding);
-  const lines = text.split('\n');
+  const broken = brokenLines(text);
+  const lines = broken.map((line) => line.text);
   const lineStarts: number[] = [];
   const unitLines: boolean[] = [];
   let at = marked ? wholeBytes(byteOrderMark, encoding) : 0;
-  for (const line of lines) {
+  for (const { text: line, fed } of broken) {
     const bytes = wholeBytes(line, encoding);
     lineStarts.push(at);
     unitLines.push(bytes === line.length * unit);
-    at += bytes + unit;
+    at += bytes + (fed ? unit : 0);
   }
-  return { lines, lineStarts, unitLines, unit, parts: [] };
+  return {
+    code: loneCarriageReturn.test(text) ? lines.join('\n') : text,
+    lines,
+    lineStarts,
+    unitLines,
+    unit,
+    parts: [],
+  };
 }
 
 export function withPart(colored: ColoredText, part: CodePart): ColoredText {

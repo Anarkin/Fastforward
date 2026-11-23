@@ -7,7 +7,7 @@ import {
   rowsFrom,
 } from '../../../../../tools/viewer/main/textRows';
 import { codingOf } from '../../../../../components/encodings/main/textCodings';
-import type { ReadBytes } from '../../../../../lib/main/fileBlocks';
+import { blockBytes, type ReadBytes } from '../../../../../lib/main/fileBlocks';
 import { wholeLineBytes } from '../../../../../tools/viewer/shared/protocol';
 
 function inMemory(text: string | Buffer): {
@@ -53,6 +53,67 @@ suite('Rows of text of a file', () => {
     assert.deepStrictEqual(texts(await rowsFrom(read, size, 5, 2)), [
       'two',
       '',
+    ]);
+  });
+
+  test('ends a line at a carriage return no line feed follows too, as the editor does, the carriage return kept in its row and no line feed signed after it, read forwards and backwards alike, in UTF-16 too, rather than running on into the next line', async () => {
+    const text = 'one\rtwo\r\nthree\n\rfour\r';
+    const rows = [
+      { start: 0, end: 4, text: 'one\r' },
+      { start: 4, end: 9, text: 'two\r', ending: '␊' },
+      { start: 9, end: 15, text: 'three', ending: '␊' },
+      { start: 15, end: 16, text: '\r' },
+      { start: 16, end: 21, text: 'four\r' },
+    ];
+    const { read, size } = inMemory(text);
+
+    assert.deepStrictEqual(await rowsFrom(read, size, 0, 10), rows);
+    assert.deepStrictEqual(await rowsBefore(read, size, size, 10), rows);
+    assert.deepStrictEqual(texts(await rowsFrom(read, size, 4, 1)), ['two\r']);
+    assert.deepStrictEqual(texts(await rowsBefore(read, size, 9, 1)), [
+      'two\r',
+    ]);
+    assert.deepStrictEqual(
+      await Promise.all([2, 4, 8, 15, 17].map((at) => rowStartAt(read, at))),
+      [0, 4, 4, 15, 16],
+    );
+
+    const wide = inMemory(Buffer.from(text, 'utf16le'));
+    const coding = codingOf('utf-16le');
+    const doubled = rows.map(({ start, end, ...row }) => ({
+      ...row,
+      start: start * 2,
+      end: end * 2,
+    }));
+    assert.deepStrictEqual(
+      await rowsFrom(wide.read, wide.size, 0, 10, coding),
+      doubled,
+    );
+    assert.deepStrictEqual(
+      await rowsBefore(wide.read, wide.size, wide.size, 10, coding),
+      doubled,
+    );
+  });
+
+  test('takes a carriage return and the line feed after it for one line end where a read of a block of the file falls between them', async () => {
+    const before = blockBytes - 1 - 'abc'.length;
+    const filler = `${'y'.repeat(99)}\n`;
+    const head = filler.repeat(Math.floor(before / filler.length) - 1);
+    const last = 'z'.repeat(before - head.length - 1);
+    const { read, size } = inMemory(`${head}${last}\nabc\r\nnext\n`);
+
+    const rows = await rowsFrom(read, size, 0, 10_000);
+
+    assert.strictEqual(`${head}${last}\nabc`.length, blockBytes - 1);
+    assert.deepStrictEqual(rows.slice(-3), [
+      {
+        start: before - last.length - 1,
+        end: before,
+        text: last,
+        ending: '␊',
+      },
+      { start: before, end: before + 5, text: 'abc\r', ending: '␊' },
+      { start: before + 5, end: size, text: 'next', ending: '␊' },
     ]);
   });
 

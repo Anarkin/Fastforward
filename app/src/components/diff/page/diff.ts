@@ -3,6 +3,7 @@ import {
   type TextEncoding,
 } from '../../encodings/shared/textEncodings';
 import { linkMode } from '../../../lib/shared/changes';
+import { brokenLines } from '../../../lib/page/textLines';
 
 type LineKind = 'context' | 'added' | 'removed';
 
@@ -11,7 +12,7 @@ export interface DiffLine {
   readonly oldNumber: number | undefined;
   readonly newNumber: number | undefined;
   readonly text: string;
-  readonly noNewline?: true;
+  readonly noLineFeed?: true;
 }
 
 interface DiffHunk {
@@ -73,6 +74,12 @@ interface ParsedFile {
 }
 
 const hunkHeader = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
+
+const lineKinds: Readonly<Record<string, LineKind>> = {
+  '+': 'added',
+  '-': 'removed',
+  ' ': 'context',
+};
 
 const indexLine = /^index ([0-9a-f]+)\.\.([0-9a-f]+)(?: (\d+))?/;
 
@@ -146,12 +153,19 @@ export function parseFilePatch(
   return whitespaceOnly ? { ...file, whitespaceOnly } : file;
 }
 
+function piecesOf(text: string): string[] {
+  const pieces = brokenLines(text).map((piece) => piece.text);
+  return pieces.length === 0 ? [''] : pieces;
+}
+
 export function parsePatch(patch: string): DiffFile[] {
   const files: ParsedFile[] = [];
   let file: ParsedFile | undefined;
   let hunk: DiffHunk | undefined;
   let oldNumber = 0;
   let newNumber = 0;
+  let oldShift = 0;
+  let newShift = 0;
 
   for (const line of patch.split('\n')) {
     if (line.startsWith('diff --git ')) {
@@ -159,6 +173,8 @@ export function parsePatch(patch: string): DiffFile[] {
       if (file?.header === line) {
         continue;
       }
+      oldShift = 0;
+      newShift = 0;
       file = {
         header: line,
         path: headerPath(line.slice('diff --git '.length)),
@@ -178,8 +194,8 @@ export function parsePatch(patch: string): DiffFile[] {
     }
     const header = hunkHeader.exec(line);
     if (header) {
-      oldNumber = Number(header[1]);
-      newNumber = Number(header[2]);
+      oldNumber = Number(header[1]) + oldShift;
+      newNumber = Number(header[2]) + newShift;
       hunk = { lines: [] };
       file.hunks.push(hunk);
       continue;
@@ -231,36 +247,31 @@ export function parsePatch(patch: string): DiffFile[] {
       continue;
     }
     const marker = line[0];
-    const text = line.slice(1);
-    if (marker === '+') {
-      hunk.lines.push({
-        kind: 'added',
-        oldNumber: undefined,
-        newNumber: newNumber++,
-        text,
-      });
-    } else if (marker === '-') {
-      hunk.lines.push({
-        kind: 'removed',
-        oldNumber: oldNumber++,
-        newNumber: undefined,
-        text,
-      });
-    } else if (marker === ' ') {
-      hunk.lines.push({
-        kind: 'context',
-        oldNumber: oldNumber++,
-        newNumber: newNumber++,
-        text,
-      });
+    const kind = lineKinds[marker ?? ''];
+    if (kind !== undefined) {
+      const pieces = piecesOf(line.slice(1));
+      const hasOld = kind !== 'added';
+      const hasNew = kind !== 'removed';
+      for (const [at, text] of pieces.entries()) {
+        hunk.lines.push({
+          kind,
+          oldNumber: hasOld ? oldNumber++ : undefined,
+          newNumber: hasNew ? newNumber++ : undefined,
+          text,
+          ...(at < pieces.length - 1 && { noLineFeed: true }),
+        });
+      }
+      oldShift += hasOld ? pieces.length - 1 : 0;
+      newShift += hasNew ? pieces.length - 1 : 0;
     } else if (marker === '\\') {
       const last = hunk.lines.at(-1);
       if (last !== undefined) {
-        hunk.lines[hunk.lines.length - 1] = { ...last, noNewline: true };
+        hunk.lines[hunk.lines.length - 1] = { ...last, noLineFeed: true };
       }
-      const kind = last?.kind;
-      file.lacksNewline.old ||= kind === 'removed' || kind === 'context';
-      file.lacksNewline.new ||= kind === 'added' || kind === 'context';
+      const lastKind = last?.kind;
+      file.lacksNewline.old ||=
+        lastKind === 'removed' || lastKind === 'context';
+      file.lacksNewline.new ||= lastKind === 'added' || lastKind === 'context';
     }
   }
   return files.map((parsed) => {

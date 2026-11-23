@@ -133,8 +133,8 @@ suite('App, every view alike', () => {
     );
     const endings = path.join(opened, 'endings.txt');
     const endingsChanged = path.join(opened, 'endings-changed.txt');
-    fs.writeFileSync(endings, 'one\r\ntwo\nthree');
-    fs.writeFileSync(endingsChanged, 'one\r\ntwo\nthree!');
+    fs.writeFileSync(endings, 'one\r\ntwo\nlone\rthree');
+    fs.writeFileSync(endingsChanged, 'one\r\ntwo\nlone\rthree!');
     const endingTabs = [
       { id: '15', tool: 'viewer', root: endings },
       { id: '16', tool: 'editor', root: endings },
@@ -378,14 +378,17 @@ suite('App, every view alike', () => {
     );
   };
 
-  test('signs the line break that ends each line while whitespace is shown, a carriage return and a line feed in columns of their own, and none after a last line without one, in the viewer, the editor and the diff alike, as the line feed went unsigned', async () => {
+  test('signs the line break that ends each line while whitespace is shown, a carriage return and a line feed in columns of their own, and none after a last line without one, and ends a line at a carriage return alone, in the viewer, the editor and the diff alike, as the line feed went unsigned and the viewer and the diff ran a line on past a carriage return alone', async () => {
     const seen = {
       viewer: await signsIn(14, '.viewer-rows .cell-rows'),
       editor: await signsIn(15, '.editor .editor-cells'),
       diff: await signsIn(16, '.compare-view .diff-cells'),
     };
     const signed = {
-      '␍': [[0, 3]],
+      '␍': [
+        [0, 3],
+        [2, 4],
+      ],
       '␊': [
         [0, 4],
         [1, 3],

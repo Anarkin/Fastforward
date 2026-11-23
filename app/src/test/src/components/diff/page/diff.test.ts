@@ -125,12 +125,55 @@ suite('Patch parser', () => {
     );
     assert.deepStrictEqual(
       file?.hunks.flatMap(({ lines }) =>
-        lines.map(({ text, noNewline }) => [text, noNewline === true]),
+        lines.map(({ text, noLineFeed }) => [text, noLineFeed === true]),
       ),
       [
         ['first', false],
         ['last', true],
         ['last', false],
+      ],
+    );
+  });
+
+  test('breaks a line of a patch at a carriage return alone, as the editor and the viewer break it, the carriage return kept in its line with no line feed after it, numbering the lines after it on its side, in the hunks after it too, and keeps the carriage return of the last line without a line feed in it', () => {
+    const [file] = parsePatch(
+      [
+        'diff --git a/m.txt b/m.txt',
+        'index 1111111..2222222 100644',
+        '--- a/m.txt',
+        '+++ b/m.txt',
+        '@@ -1,2 +1,2 @@',
+        ' one\rtwo',
+        '-old',
+        '+new\rmore',
+        '@@ -5 +5 @@',
+        '-five',
+        '+FIVE\r',
+        '\\ No newline at end of file',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      file?.hunks.map(({ lines }) =>
+        lines.map(({ kind, oldNumber, newNumber, text, noLineFeed }) => [
+          kind,
+          oldNumber,
+          newNumber,
+          text,
+          noLineFeed === true,
+        ]),
+      ),
+      [
+        [
+          ['context', 1, 1, 'one\r', true],
+          ['context', 2, 2, 'two', false],
+          ['removed', 3, undefined, 'old', false],
+          ['added', undefined, 3, 'new\r', true],
+          ['added', undefined, 4, 'more', false],
+        ],
+        [
+          ['removed', 6, undefined, 'five', false],
+          ['added', undefined, 7, 'FIVE\r', true],
+        ],
       ],
     );
   });

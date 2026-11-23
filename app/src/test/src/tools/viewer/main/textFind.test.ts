@@ -292,6 +292,23 @@ suite('Finding text in a file viewed, with options', () => {
     );
   });
 
+  test('ends a slice a regular expression is matched in at a carriage return no line feed follows too, as at a line feed, so a match that looks back into its line is found in a file of such lines larger than a slice reaches', async () => {
+    const line = 'abcdef\r';
+    const lines = 12_000;
+    const { read, size } = inMemory(Buffer.from(line.repeat(lines)));
+
+    const found = await findInFile(read, size, '(?<=abc)d', regex, 'utf-8', {
+      chunk: 1000,
+      limit: lines * 2,
+    });
+
+    assert.strictEqual(found?.matches.length, lines);
+    assert.ok(
+      found.matches.every(({ start }) => start % line.length === 3),
+      'every match on the d of its line',
+    );
+  });
+
   test('finds nothing for a regular expression that is not valid', async () => {
     const { read, size } = inMemory(Buffer.from('(a)'));
     assert.deepStrictEqual(

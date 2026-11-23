@@ -107,14 +107,20 @@ function lineEndAfter(
   end: number,
   coding: TextCoding,
 ): number | undefined {
-  for (
-    let at = bytes.indexOf(coding.newline, from);
-    at !== -1 && at + coding.newline.length <= end;
-    at = bytes.indexOf(coding.newline, at + 1)
-  ) {
-    if (at % coding.unit === 0) {
-      return at + coding.newline.length;
+  const { unit, newline, carriageReturn } = coding;
+  const unitAt = (at: number, wanted: Buffer) =>
+    bytes.subarray(at, at + unit).equals(wanted);
+  for (let at = from + ((unit - (from % unit)) % unit); at + unit <= end;) {
+    if (unitAt(at, newline)) {
+      return at + unit;
     }
+    if (unitAt(at, carriageReturn) && at + unit * 2 <= end) {
+      return unitAt(at + unit, newline) ? at + unit * 2 : at + unit;
+    }
+    const feed = bytes.indexOf(newline, at + 1);
+    const lone = bytes.indexOf(carriageReturn, at + 1);
+    const next = Math.min(feed === -1 ? end : feed, lone === -1 ? end : lone);
+    at = next + ((unit - (next % unit)) % unit);
   }
   return undefined;
 }
