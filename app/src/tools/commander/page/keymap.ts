@@ -13,6 +13,7 @@ export const commanderGroups = [
 
 export const commanderKeymap = {
   openFolder: bind('Moving', strings.actions.openFolder, { Enter: true }),
+  selectItem: bind('Moving', strings.actions.selectItem, { Click: true }),
   parentFolder: bind('Moving', strings.actions.parentFolder, {
     Backspace: true,
   }),

@@ -152,6 +152,7 @@ export function MarkBox({ onToggle }: { onToggle: () => void }) {
   return (
     <span
       className="commander-check"
+      onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => {
         event.stopPropagation();
         onToggle();

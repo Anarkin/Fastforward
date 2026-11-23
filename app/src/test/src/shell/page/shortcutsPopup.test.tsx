@@ -122,6 +122,7 @@ suite('Shortcuts popup', () => {
         'Moving around',
         [
           'Open the selected folder, or the selected file in its app',
+          'Select the item clicked',
           'Go up to the parent folder',
           'Back or forward through the folders of the side',
           'Open the bookmarks of the side, to go to one or to bookmark the folder of the side',

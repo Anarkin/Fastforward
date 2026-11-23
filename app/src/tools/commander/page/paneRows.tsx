@@ -113,6 +113,11 @@ function usePaneItem({
         actions.drag(side, names);
       }
     },
+    onPointerDown: (event: React.PointerEvent) => {
+      if (clicked(commanderKeymap.selectItem, event) !== undefined) {
+        onSelect(row.key);
+      }
+    },
     onClick: (event: React.MouseEvent) => {
       const marking = clicked(commanderKeymap.markClick, event);
       const { rows, marked: marks, selected: selectedKey } = shown();
@@ -203,6 +208,11 @@ export const PaneLine = memo(function PaneLine(props: PaneItemProps) {
     <div
       className={`${rowClass} commander-line${icon === 'shown' ? '' : folder ? ' generic-folder' : ' generic-file'}${checked ? '' : ' up'}${line === undefined ? '' : ' plain'}`}
       {...itemEvents}
+      onPointerDown={(event) => {
+        if (!(checked && overCheck(event))) {
+          itemEvents.onPointerDown(event);
+        }
+      }}
       onClick={(event) => {
         if (checked && overCheck(event)) {
           toggleMark();

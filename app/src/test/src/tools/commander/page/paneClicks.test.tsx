@@ -71,6 +71,26 @@ suite('Commander clicks on a side', () => {
       );
     });
   });
+  test('selects the item pressed on the press itself, in the update that makes its side the active one, so a side clicked never shows for a frame the item it had selected before, and leaves the selection to the click on a press that marks or on the box of the item', async () => {
+    await inPane(async ({ main, point, selected }) => {
+      point(rowNamed(main, 'docs'), 'pointerdown');
+      assert.strictEqual(selected(), 'docs');
+      point(rowNamed(main, 'app'), 'pointerdown', { shiftKey: true });
+      assert.strictEqual(selected(), 'docs');
+      point(rowNamed(main, 'app'), 'pointerdown', onBox);
+      assert.strictEqual(selected(), 'docs');
+    });
+    await inPane(async ({ main, point, selected }) => {
+      point(tileNamed(main, 'docs'), 'pointerdown');
+      assert.strictEqual(selected(), 'docs');
+      point(
+        tileNamed(main, 'app')?.querySelector('.commander-check') ?? null,
+        'pointerdown',
+      );
+      assert.strictEqual(selected(), 'docs');
+    }, 'thumbnails');
+  });
+
   test('marks a folder or a file on a click on its box and unmarks it on the next, a double click on it only toggling it, leaving the selection where it was and opening nothing, the box no element of the row but the place before its icon, so a row drawn has one box fewer to lay out; a click right after the box, or where the box of the parent folder would be, which has none, selects the row as any click on it', async () => {
     await inPane(async ({ main, click, posted, selected, marked }) => {
       const up = rowNamed(main, '..');

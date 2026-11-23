@@ -130,6 +130,7 @@ const keysAlone: readonly string[] = [
   'commanderKeymap.paste',
   'commanderKeymap.renameItem',
   'commanderKeymap.reread',
+  'commanderKeymap.selectItem',
   'commanderKeymap.showHidden',
   'commanderKeymap.side',
   'commanderKeymap.sort',

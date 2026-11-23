@@ -28,6 +28,7 @@ interface Place {
   readonly clientX?: number;
   readonly clientY?: number;
   readonly relatedTarget?: EventTarget | null;
+  readonly shiftKey?: boolean;
 }
 
 export const pane = (

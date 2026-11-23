@@ -296,6 +296,7 @@ export const strings = {
     leftToApp: 'Go to the app rather than the shell',
     side: 'Go to the other side',
     openFolder: 'Open the selected folder, or the selected file in its app',
+    selectItem: 'Select the item clicked',
     parentFolder: 'Go up to the parent folder',
     showHidden: 'Show or hide the hidden files',
     layout: 'Show the side as details or as thumbnails',
