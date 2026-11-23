@@ -5,7 +5,12 @@ import type {
   RowTints,
   ShownRows,
 } from '../../cells/page/cellPainting';
-import { CellView, viewKey, type CellLooks } from '../../cells/page/cellView';
+import {
+  CellView,
+  viewKey,
+  type CellLooks,
+  type KeptText,
+} from '../../cells/page/cellView';
 import { shownWithin } from '../../cells/page/columns';
 import { gpuDevice, gpuGeneration, watchGpu } from '../../cells/page/gpuDevice';
 import {
@@ -14,6 +19,7 @@ import {
   type TextLine,
 } from '../../cells/page/lines';
 import type { FindMark } from '../../cells/page/marks';
+import type { KeptPaneSelection } from './place';
 import { seenPlaces, seenRows, type SeenRow } from '../../cells/page/seen';
 import type { SyntaxRange } from '../../syntax/page/engine';
 import {
@@ -62,6 +68,8 @@ export interface CellsShown {
   readonly boxes: () => readonly PaneBox[];
   readonly sideways: () => number;
   readonly chosen: (copy: string | undefined) => void;
+  readonly kept: KeptPaneSelection | undefined;
+  readonly keep: (kept: KeptPaneSelection | undefined) => void;
   readonly sized: (index: number, height: number) => void;
   readonly stamp: readonly unknown[];
 }
@@ -294,6 +302,13 @@ export class DiffCells {
           this.columnsOf(pane),
           beyondAscii.test(lined.line.text) ? shown.widths : undefined,
         );
+  }
+
+  private keptIn(pane: number): KeptText | undefined {
+    const asked = this.shown?.kept;
+    return asked?.pane === pane
+      ? { selection: asked.selection, text: asked.text }
+      : undefined;
   }
 
   private heldOf(pane: number): readonly ScreenRow[] {
@@ -574,9 +589,14 @@ export class DiffCells {
       columns: 0,
       ahead: noRowsAhead,
       held: () => this.heldOf(pane),
+      kept: this.keptIn(pane),
       size: { width, height, clip: text },
       events: {
         chosen: shown.chosen,
+        kept: (selected) =>
+          shown.keep(
+            selected === undefined ? undefined : { ...selected, pane },
+          ),
         move: (by) => this.list.scrollBy(0, by * shown.lineHeight),
         began: () => {
           for (const [other, each] of this.views.entries()) {

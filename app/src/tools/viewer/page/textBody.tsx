@@ -18,6 +18,7 @@ import { cellWidthsOf } from '../../../lib/page/textWidths';
 import { plainCells } from '../../../lib/page/cellTable';
 import { useCellFont } from '../../../components/cells/page/cellFont';
 import { useViewer, useViewerActions } from './store';
+import { useKeptSelection } from './tabSelection';
 import type { ViewerTabView } from './tabParts';
 import { textEnds, textThumb } from './textScroll';
 import { CellRows } from './cellRows';
@@ -79,6 +80,11 @@ export function TextBody({
   );
   const refused = useSyncExternalStore(watchGpu, gpuRefused);
   const [copy, setCopy] = useState<string>();
+  const { kept: keptSelection, onKept } = useKeptSelection(
+    viewing.tab,
+    `text ${encoding}`,
+    viewing.version,
+  );
   const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
   const wrapAt =
     wordWrap && columns !== undefined && Number.isFinite(columns)
@@ -235,6 +241,8 @@ export function TextBody({
           held={loaded.rows}
           text={text?.text}
           onSelected={highlightOccurrences && !finding ? setCopy : noCopy}
+          kept={keptSelection}
+          onKept={onKept}
           move={move}
           first={firstCell}
           columns={Math.max(1, lastCell - firstCell)}

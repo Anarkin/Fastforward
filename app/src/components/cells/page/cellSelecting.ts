@@ -30,6 +30,7 @@ export interface Selecting {
   readonly changed: () => void;
   readonly began: () => void;
   readonly chosen: (copy: string | undefined) => void;
+  readonly kept?: (kept: KeptText | undefined) => void;
   readonly move: (rows: number) => void;
 }
 
@@ -90,6 +91,21 @@ export class CellSelecting {
     }
     this.on.changed();
     this.tell();
+    if (!this.dragging) {
+      this.on.kept?.(this.kept);
+    }
+  }
+
+  restore(kept: KeptText | undefined): void {
+    clearTimeout(this.resting);
+    this.selection = kept?.selection;
+    this.kept = kept;
+    this.on.changed();
+    const copy = this.copyOf();
+    if (copy !== this.told) {
+      this.told = copy;
+      this.on.chosen(copy);
+    }
   }
 
   private copied(): string | undefined {
@@ -99,15 +115,17 @@ export class CellSelecting {
       : this.textOf(selection);
   }
 
-  private tell(): void {
-    clearTimeout(this.resting);
+  private copyOf(): string | undefined {
     const { selection } = this;
     const oneRow =
       selection !== undefined &&
       ordered(selection).first.start === ordered(selection).last.start;
-    const copy = oneRow
-      ? soughtCopy((this.kept?.text ?? '').trim())
-      : undefined;
+    return oneRow ? soughtCopy((this.kept?.text ?? '').trim()) : undefined;
+  }
+
+  private tell(): void {
+    clearTimeout(this.resting);
+    const copy = this.copyOf();
     if (copy === this.told) {
       return;
     }
@@ -135,8 +153,8 @@ export class CellSelecting {
     }
     const extending = way === 'extend';
     this.on.began();
-    this.select(pressed(this.selection, under, press.detail, extending));
     this.dragging = press.detail === 1 || extending;
+    this.select(pressed(this.selection, under, press.detail, extending));
     const page = this.host.ownerDocument;
     page.addEventListener('mousemove', this.moved);
     page.addEventListener('mouseup', this.up);
@@ -170,11 +188,15 @@ export class CellSelecting {
   };
 
   private readonly up = () => {
+    const dragged = this.dragging;
     this.dragging = false;
     clearInterval(this.reaching);
     const page = this.host.ownerDocument;
     page.removeEventListener('mousemove', this.moved);
     page.removeEventListener('mouseup', this.up);
+    if (dragged) {
+      this.on.kept?.(this.kept);
+    }
   };
 
   private readonly copy = (copying: ClipboardEvent) => {

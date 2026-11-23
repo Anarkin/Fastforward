@@ -347,6 +347,31 @@ suite('App viewer drawn as cells', () => {
     );
   });
 
+  test('keeps the word selected and its copies marked once its tab is shown again after another, as the view drawn anew had dropped them while the editor kept its own', async () => {
+    await drawn(false, true);
+    const word = await cellPoint(page, 4, 24);
+    await page.mouse.dblclick(word.x, word.y);
+    await waitFor(
+      async () => (await seenMarked(page, 'occurrence')).length > 0,
+      'the occurrences marked in the cells',
+    );
+
+    await show('editor');
+    await show('viewer');
+    await waitFor(
+      async () => (await seenSelected(page)).length > 0,
+      'the word selected again',
+    );
+
+    assert.deepStrictEqual(
+      {
+        selected: await seenSelected(page),
+        marked: await seenMarked(page, 'occurrence'),
+      },
+      { selected: ['count'], marked: ['count', 'count', 'count'] },
+    );
+  });
+
   test('keeps the word selected and its copies marked while the file is scrolled to its end and back, and copies it from there, as the viewer holds only the rows around its screen and dropped the selection and the marks once the line selected was none of them', async () => {
     const shows = async (line: string | undefined) =>
       (await seenRows(page)).some(({ text }) => text === line);

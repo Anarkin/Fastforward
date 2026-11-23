@@ -402,6 +402,8 @@ export function DiffView({
     placeOf: (index) => placed[index],
     sideways: scrolledNow,
     chosen: (chosen) => setCopy(marking ? chosen : undefined),
+    kept: keptPlace?.selected,
+    keep: (selected) => onPlace({ selected }),
     sized: (index, height) => virtualizer.resizeItem(index, height),
     stamp: [
       rows,

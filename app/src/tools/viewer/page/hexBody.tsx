@@ -1,3 +1,4 @@
+import { useKeptSelection } from './tabSelection';
 import {
   occurrencesOf,
   type FindMark,
@@ -193,6 +194,11 @@ export function ByteBody({
     (state) => state.textView.highlightOccurrences,
   );
   const [copy, setCopy] = useState<string>();
+  const { kept, onKept } = useKeptSelection(
+    tab,
+    `${layout} ${rowBytes}`,
+    version,
+  );
   const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
   const marksOf = (offset: number, length: number) =>
     find === undefined
@@ -297,6 +303,8 @@ export function ByteBody({
           held={rows}
           text={undefined}
           onSelected={highlightOccurrences && !finding ? setCopy : noCopy}
+          kept={kept}
+          onKept={onKept}
           move={move}
           first={0}
           columns={Math.max(

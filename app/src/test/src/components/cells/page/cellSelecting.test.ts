@@ -45,6 +45,7 @@ function selectingIn(partial: boolean) {
   document.body.append(host);
   let held: readonly ScreenRow[] = all.slice(0, 3);
   const chosen: (string | undefined)[] = [];
+  const kept: unknown[] = [];
   const selecting = new CellSelecting(host, canvas, {
     shown: () => shown(held),
     held: () => held,
@@ -55,11 +56,13 @@ function selectingIn(partial: boolean) {
     changed: noop,
     began: noop,
     chosen: (copy) => chosen.push(copy),
+    kept: (selection) => kept.push(selection),
     move: noop,
   });
   return {
     selecting,
     chosen,
+    kept,
     press: (row: number, char: number, more: MouseEventInit = {}) =>
       host.dispatchEvent(
         new window.MouseEvent('mousedown', pointer(row, char, more)),
@@ -183,5 +186,46 @@ suite('Text selected in cells', () => {
       focus: at(5, 2),
     });
     assert.strictEqual(view.copied(), undefined);
+  });
+
+  test('tells the selection to keep once a press or a drag is done, its text with it, and nothing while it is dragged, and that there is none once it is gone, so a view shown again can bring it back', () => {
+    const view = selectingIn(true);
+
+    view.press(0, 6);
+    view.drag(1, 6);
+    assert.deepStrictEqual(view.kept, []);
+    view.release();
+    view.press(1, 8, { detail: 2 });
+    view.release();
+    view.hold([]);
+
+    assert.deepStrictEqual(view.kept, [
+      {
+        selection: { anchor: at(0, 6), focus: at(1, 6) },
+        text: 'word\nsecond',
+      },
+      { selection: { anchor: at(1, 7), focus: at(1, 11) }, text: 'word' },
+      undefined,
+    ]);
+  });
+
+  test('brings back a selection kept, its copies marked at once rather than after it rests, its text copied though its rows are held no longer, and none for a selection that is not there', () => {
+    const view = selectingIn(true);
+    view.hold(all.slice(4));
+
+    view.selecting.restore({
+      selection: { anchor: at(1, 7), focus: at(1, 11) },
+      text: 'word',
+    });
+
+    assert.deepStrictEqual(view.selecting.selection, {
+      anchor: at(1, 7),
+      focus: at(1, 11),
+    });
+    assert.deepStrictEqual(view.chosen, ['word']);
+    assert.strictEqual(view.copied(), 'word');
+    view.selecting.restore(undefined);
+    assert.strictEqual(view.selecting.selection, undefined);
+    assert.deepStrictEqual(view.chosen, ['word', undefined]);
   });
 });

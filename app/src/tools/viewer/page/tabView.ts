@@ -9,8 +9,14 @@ import {
 import { focusSchema } from '../../../lib/page/viewFocus';
 import { textEncodings } from '../../../components/encodings/shared/textEncodings';
 import { searchSchema } from '../../../lib/shared/searchOptions';
+import { mostKeptText } from './tabSelection';
 
 const offset = count();
+
+const place = record({
+  start: count({ min: 0, integer: true }),
+  char: count({ min: 0, integer: true }),
+});
 
 const choicesSchema = record({
   mode: optional(oneOf(['text', 'hex', 'preview'])),
@@ -38,6 +44,15 @@ export const viewerViewSchema = record({
     record({
       search: searchSchema,
       current: count({ min: 0, integer: true }),
+    }),
+  ),
+  selected: optional(
+    record({
+      body: text(),
+      version: optional(text()),
+      anchor: place,
+      focus: place,
+      text: text({ max: mostKeptText }),
     }),
   ),
 });

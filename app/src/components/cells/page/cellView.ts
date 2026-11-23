@@ -16,7 +16,14 @@ import { asciiJob, rowsJob, type RowAhead } from './glyphWarmth';
 import { IdleWork, pageIdling, type IdleJob } from './idleWork';
 import { poolOf, type Pool } from './surfacePool';
 import { paletteOf, textStyles, type DotBox, type TextLook } from './textCells';
-import type { TextSelection } from './textSelection';
+import {
+  selectedText,
+  type KeptText,
+  type TextSelection,
+} from './textSelection';
+import { heldRows } from './cellPointing';
+
+export type { KeptText } from './textSelection';
 
 const scrollingBudget = 2;
 
@@ -55,6 +62,7 @@ export interface CellViewEvents {
   readonly chosen: (copy: string | undefined) => void;
   readonly move: (rows: number) => void;
   readonly began?: () => void;
+  readonly kept?: (kept: KeptText | undefined) => void;
 }
 
 export interface CellPlace {
@@ -85,6 +93,7 @@ export interface CellViewShown {
   readonly ahead: readonly RowAhead[];
   readonly held: readonly ScreenRow[] | (() => readonly ScreenRow[]);
   readonly partial?: boolean;
+  readonly kept?: KeptText | undefined;
   readonly warming?: Warming | undefined;
   readonly events: CellViewEvents;
   readonly size?: CellSize | undefined;
@@ -153,6 +162,7 @@ export class CellView {
   private readonly selecting: CellSelecting;
   private held: CellViewShown['held'] = noRows;
   private partial = false;
+  private restored = false;
   private events: CellViewEvents | undefined;
   private shown: ShownRows | undefined;
   private warmed: Warming | undefined;
@@ -207,7 +217,7 @@ export class CellView {
       );
     this.selecting = new CellSelecting(host, canvas, {
       shown: () => this.shown,
-      held: () => (typeof this.held === 'function' ? this.held() : this.held),
+      held: () => this.heldRows(),
       partial: () => this.partial,
       cell: () => this.tiles.metrics,
       area: this.place.area,
@@ -215,6 +225,7 @@ export class CellView {
       changed: this.paint,
       began: () => this.events?.began?.(),
       chosen: (copy) => this.events?.chosen(copy),
+      kept: (kept) => this.events?.kept?.(kept),
       move: (by) => this.events?.move(by),
     });
     this.warm();
@@ -293,6 +304,10 @@ export class CellView {
     );
   }
 
+  private heldRows(): readonly ScreenRow[] {
+    return typeof this.held === 'function' ? this.held() : this.held;
+  }
+
   get selection(): TextSelection | undefined {
     return this.selecting.selection;
   }
@@ -307,6 +322,7 @@ export class CellView {
     ahead,
     held,
     partial = false,
+    kept,
     warming,
     events,
     size,
@@ -319,6 +335,15 @@ export class CellView {
     this.partial = partial;
     this.events = events;
     this.selecting.rowsChanged();
+    if (
+      !this.restored &&
+      kept !== undefined &&
+      (partial ||
+        selectedText(kept.selection, heldRows(this.heldRows())) === kept.text)
+    ) {
+      this.selecting.restore(kept);
+    }
+    this.restored = true;
     this.paint();
     this.idle.put(
       'rows',

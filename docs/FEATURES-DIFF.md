@@ -28,7 +28,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Inline and side by side | Show the two sides in one column or two | — | Core | ✅ Yes | Side by side by default |
-| Select and copy | Select code with the pointer and copy it | Mod+C | Core | ✅ Yes | On one side at a time, a double click taking a word and a third the line, as in a file viewed; the line numbers, the other side and the headers of files left out |
+| Select and copy | Select code with the pointer and copy it | Mod+C | Core | ✅ Yes | On one side at a time, a double click taking a word and a third the line, as in a file viewed; the line numbers, the other side and the headers of files left out; kept once its tab is shown again, with the copies of it marked at once, while its lines hold the same text |
 | Changed words | Mark the words that changed within lines | — | Common | ✅ Yes | Pairs changed lines by how alike they are, keeping their order |
 | Moved lines | Mark lines moved rather than removed and added | — | Advanced | ❌ No |  |
 | Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |

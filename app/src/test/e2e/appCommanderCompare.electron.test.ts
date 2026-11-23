@@ -263,7 +263,7 @@ suite('App commander', () => {
     }, 'the files to be gone from the list');
   });
 
-  test('marks every copy of the text selected in two files compared, as the editor marks them, once the selection has rested, and none while the search has a text', async () => {
+  test('marks every copy of the text selected in two files compared, as the editor marks them, once the selection has rested, keeps the selection and the marks once the tab is shown again after another, and marks none while the search has a text', async () => {
     fs.writeFileSync(
       path.join(opened, 'copies1.txt'),
       'alpha beta\nalpha gamma\n',
@@ -298,6 +298,24 @@ suite('App commander', () => {
           .join(''),
         'alpha',
         'the word stays selected once its copies are marked',
+      );
+      const marked = await occurrences();
+      await page.locator('.tabs .tab', { hasText: 'Commander' }).click();
+      await page
+        .locator('.tabs .tab.active', { hasText: 'Commander' })
+        .waitFor();
+      await page.locator('.tabs .tab', { hasText: 'copies1' }).click();
+      await waitFor(
+        async () =>
+          (await diffLinesSeen(page, compared))
+            .map(({ selected }) => selected)
+            .join('') === 'alpha',
+        'the word selected again once the tab is shown again',
+      );
+      assert.deepStrictEqual(
+        await occurrences(),
+        marked,
+        'its copies marked again at once, as they were dropped with the view drawn anew',
       );
       await page.keyboard.press('ControlOrMeta+F');
       await page.keyboard.type('beta');

@@ -99,6 +99,7 @@ export function createViewerStore(
               sideways: view.sideways,
               preview: view.preview,
               pdfFind: view.pdfFind,
+              selected: view.selected,
             }),
           }));
         },

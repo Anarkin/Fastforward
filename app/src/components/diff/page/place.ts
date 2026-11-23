@@ -14,6 +14,11 @@ import {
   type Schema,
 } from '../../../lib/shared/schema';
 import type { ScrollAnchor } from './scrollAnchor';
+import type { KeptText } from '../../cells/page/cellView';
+
+export interface KeptPaneSelection extends KeptText {
+  readonly pane: number;
+}
 
 export interface DiffPlace {
   readonly top: number;
@@ -22,6 +27,7 @@ export interface DiffPlace {
   readonly toggled: ReadonlyMap<string, boolean>;
   readonly current: number;
   readonly currentFor?: Search;
+  readonly selected?: KeptPaneSelection | undefined;
 }
 
 export const unplaced: DiffPlace = {

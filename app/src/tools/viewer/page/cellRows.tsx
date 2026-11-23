@@ -12,6 +12,7 @@ import { seenRows } from '../../../components/cells/page/seen';
 import {
   CellView,
   viewKey,
+  type KeptText,
   type Warming,
 } from '../../../components/cells/page/cellView';
 import type { RowAhead } from '../../../components/cells/page/glyphWarmth';
@@ -39,6 +40,8 @@ interface CellRowsProps {
   readonly held: readonly ScreenRow[];
   readonly text: string | undefined;
   readonly onSelected: (copy: string | undefined) => void;
+  readonly kept: KeptText | undefined;
+  readonly onKept: (kept: KeptText | undefined) => void;
   readonly move: (rows: number) => void;
   readonly first: number;
   readonly columns: number;
@@ -59,6 +62,8 @@ export function CellRows({
   held,
   text,
   onSelected,
+  kept,
+  onKept,
   move,
   first,
   columns,
@@ -150,7 +155,8 @@ export function CellRows({
       held,
       partial: true,
       warming,
-      events: { chosen: onSelected, move },
+      kept,
+      events: { chosen: onSelected, kept: onKept, move },
     });
   });
   useLayoutEffect(() => {

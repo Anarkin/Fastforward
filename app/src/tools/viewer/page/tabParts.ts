@@ -3,6 +3,7 @@ import { noSearch, type Search } from '../../../lib/shared/searchOptions';
 import type { ByteRange, TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { ColoredText, WholeText } from './textColors';
+import type { KeptViewerSelection } from './tabSelection';
 
 export interface ViewerFound extends Search {
   readonly encoding: TextEncoding;
@@ -69,6 +70,7 @@ export interface KeptViewer {
   readonly bytes: KeptBytes | undefined;
   readonly sideways: KeptSideways | undefined;
   readonly preview: KeptPreview | undefined;
+  readonly selected: KeptViewerSelection | undefined;
 }
 
 export type ViewerTabView = Omit<
@@ -112,4 +114,5 @@ export const noKeptViewer: KeptViewer = {
   bytes: undefined,
   sideways: undefined,
   preview: undefined,
+  selected: undefined,
 };
