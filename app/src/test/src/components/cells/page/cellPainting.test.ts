@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import type { ScreenRow } from '../../../../../components/cells/page/lines';
 import { suite, test } from 'vitest';
+import { strings } from '../../../../../lib/shared/strings';
 import { CellFrame } from '../../../../../components/cells/page/cellFrame';
 import {
   cellPainting,
@@ -167,6 +168,64 @@ suite('Rows painted as cells', () => {
       ['␊', 2, 1],
     ]);
     assert.deepStrictEqual(signs(false), []);
+  });
+
+  test('shows by Show whitespace only the space, the tab, the carriage return and the line breaks, every control, format character, separator, space, mark, character that shows nothing and noncharacter of Unicode and a sample of the rest drawn alike whether whitespace is shown or not, as a blank nothing in a usual text looks like and a character that shows nothing are signed always', () => {
+    const unusual =
+      /[\p{Cc}\p{Cf}\p{Z}\p{M}\p{Default_Ignorable_Code_Point}\p{Noncharacter_Code_Point}]/u;
+    const codes = Array.from({ length: 0x110000 }, (_, code) => code).filter(
+      (code) =>
+        (code < 0xd800 || code > 0xdfff) &&
+        code !== 0x0a &&
+        (code % 0x40 === 0 || unusual.test(String.fromCodePoint(code))),
+    );
+    const chunk = 0x100;
+    const lines: ScreenRow[] = [];
+    for (let from = 0; from < codes.length; from += chunk) {
+      const text = String.fromCodePoint(...codes.slice(from, from + chunk));
+      const start = lines.length * 0x1000;
+      lines.push(
+        rowOf(text, start, {
+          row: { start, end: start + text.length + 2, text, ending: '␍␊' },
+        }),
+      );
+    }
+    const counted = (showWhitespace: boolean) => {
+      const { painter, cells } = painting();
+      paintRows(cells, shown(lines, { showWhitespace }), Infinity);
+      const counts = new Map<string, number>();
+      const count = (key: string) => {
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      };
+      for (const { shown: glyph, column, y } of shownAt(cells.frame, painter)) {
+        count(`${glyph} ${String(column)} ${String(y)}`);
+      }
+      for (const { x, y, color } of rectsIn(cells.frame)) {
+        count(`rect ${String(x)} ${String(y)} ${String(color)}`);
+      }
+      return counts;
+    };
+    const hidden = counted(false);
+    const signed = counted(true);
+    const added = new Map<string, number>();
+    for (const [key, times] of signed) {
+      const more = times - (hidden.get(key) ?? 0);
+      if (more > 0) {
+        const kind = key.split(' ')[0] ?? '';
+        added.set(kind, (added.get(kind) ?? 0) + more);
+      }
+    }
+    const lost = [...hidden]
+      .filter(([key, times]) => times > (signed.get(key) ?? 0))
+      .map(([key]) => key.split(' ')[0]);
+
+    assert.deepStrictEqual(lost, ['\r']);
+    assert.deepStrictEqual(Object.fromEntries(added), {
+      [strings.symbols.tab]: 1,
+      [strings.symbols.carriageReturn]: 1 + lines.length,
+      [strings.symbols.lineFeed]: lines.length,
+      rect: 1,
+    });
   });
 
   test('draws a row it drew before from the cells it kept, wherever the row stands now and whichever column the canvas starts at, placing the glyphs only of the rows that are new', () => {
@@ -385,7 +444,7 @@ suite('Rows painted as cells', () => {
       [
         ['a', 0],
         ['b', 1],
-        ['↵', 4],
+        ['⏎', 4],
       ],
     );
     assert.deepStrictEqual(

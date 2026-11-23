@@ -10,6 +10,8 @@
 
 - The key is the one VS Code uses for the feature on Windows, as most editors follow it; where Fastforward uses another, the notes say so
 
+- What the editor shares with the viewer and the diff, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, [FEATURES](FEATURES.md#common-text) says
+
 ## Files
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
@@ -35,7 +37,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Byte for byte | Change no byte that was not edited | — | Advanced | ✅ Yes | The byte order mark, the line ending of each line and every byte the encoding cannot decode are kept as marks that move with the edits, and written back as they were read |
-| Encodings | Read and write the encodings of the viewer | — | Common | ✅ Yes | UTF-8, UTF-16 and the code pages of the viewer, found as the viewer finds them, from a byte order mark or, when not UTF-8, the code page of the system |
+| Encodings | Read and write the encodings of the viewer | — | Common | ✅ Yes | Read and written as [FEATURES](FEATURES.md#common-text) says |
 | Reopen in an encoding | Read the bytes again in another encoding | — | Common | ✅ Yes | From the encoding button above the text marked (read), which lists them as the viewer does, Auto naming the one it read the file in, the one chosen checked; asks first while it has changes, the question kept with its tab until answered |
 | Save in an encoding | Write the text in another encoding | — | Common | ✅ Yes | From the encoding button marked (write) beside it, which lists them alike, UTF-8 with a byte order mark too, Auto first, saving it as it is on disk, with or without its byte order mark, the one it saves in checked, the two buttons saying the encoding it has on disk and the one it saves in, the file taken as read in the one it was saved in; the (read) one disabled for a new file, Auto naming the encoding its .editorconfig or the settings give it; refused, naming them, while the text has characters the encoding has no byte for |
 | Bytes it cannot decode | Keep bytes that are not text of the encoding | — | Niche | 🟡 Partial | Kept and written back as they were; drawn as a replacement character rather than a box with their value |
@@ -98,13 +100,14 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Look of the app | Draw the text as the diff and the viewer draw it | — | Niche | ✅ Yes | The monospace font, the width of its characters on device pixels, the line height, the tab stops, emoji and Chinese, Japanese and Korean characters on the grid of the terminal, and wrapped lines broken where the viewer and the diff break them, at as many columns as the viewer in the same window, hanging as far in as their indentation; drawn as cells by the GPU with WebGPU, as the viewer and the diff draw theirs, by the one engine, so a character, a dot of a space, a sign of a tab and the mark of a break stand alike in all three, the editor saying so where a computer lets the app use no GPU |
-| Syntax highlighting | Color the code | — | Core | ✅ Yes | With the TextMate grammars the viewer and the diff use, colored again as typed only from the line edited to the first whose state is as it was, in the worker of the colors; the language chosen on its button, nothing over 10 MB |
-| Scrolling | Scroll by whole rows, a few a notch | — | Common | ✅ Yes | As the diff and the viewer: the wheel moves `scrolling.wheelRows` rows a notch, the top row always whole, at the end too, and with Shift as many columns sideways, onto whole columns; with `scrolling.smooth`, on by default, what is pressed glides there, the wheel and the keys of the lists, the diff and the viewer alike, and what is held moves it by pixels at once, a scrollbar dragged or a touchpad, settling on a whole row or column once let go unless `scrolling.smoothSnap` is off; without it everything lands on whole rows and columns at once; a wrapped text as tall from the start as it is once drawn, every line counted by the rows it wraps onto, and a text not wrapped as wide as its longest line, so the thumbs keep their size as the text scrolls |
-| Line numbers | Number the lines | — | Core | ✅ Yes | In the column of the diff, as wide, in its color and font, the text starting as far from the edge, a test comparing them |
-| Wrap | Wrap long lines | Alt+Z | Common | ✅ Yes | By the wrap button, shared with the viewer and the diff, which wrap alike: the text ends two columns, for a blank hanging at the end of a row and ↵ marking its break, and a gap before the scrollbar; the blanks hanging there dotted or signed while whitespace is hidden |
-| Show whitespace | Draw the spaces, tabs and line ends | — | Common | ✅ Yes | By the whitespace button, shared with the viewer and the diff and marking the same characters as they do, a test checking every one, the line break that ends a line signed after it, ␍ and ␊ for CRLF, ␊ for LF and ␍ for CR, none after the last line; each sign, and each picture of a control character, kept within the device pixels of its cell, so none shows beside a block cursor on it |
-| Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | Each control character but the tab and the line ends as its picture, a column wide in the muted color of the signs of whitespace, whether whitespace is shown or not, as it marks a character rather than being text, and in the ink of a find match over it, by the font the app makes for them, as the viewer and the diff draw them, in a file of any number of them, the text edited holding the character itself, so copying, finding and saving go by it; under a block cursor too |
+| Look of the app | Draw the text as the diff and the viewer draw it | — | Niche | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says, the editor drawing its text by the engine of the viewer and the diff |
+| Syntax highlighting | Color the code | — | Core | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says, colored again as typed only from the line edited to the first whose state is as it was |
+| Scrolling | Scroll by whole rows, a few a notch | — | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says, with Shift as many columns sideways |
+| Line numbers | Number the lines | — | Core | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says |
+| Wrap | Wrap long lines | Alt+Z | Common | ✅ Yes | By the wrap button, as [FEATURES](FEATURES.md#common-text) says |
+| Show whitespace | Draw the spaces, tabs and line ends | — | Common | ✅ Yes | By the whitespace button, as [FEATURES](FEATURES.md#common-text) says |
+| Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says |
+| Invisible characters | Draw the characters that show nothing, take no room or turn text around | — | Advanced | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says |
 | Cursor | Draw the cursor as a block, bar or underline, blinking or steady | — | Common | ✅ Yes | By the `cursor` settings, a blinking block by default, or a bar, an underline or an outline as thick as `cursor.width`, as the terminal draws it to the device pixel, in the `cursor` color of the theme, the focus color by default, the character under a block in its `cursor-text` color and its own font; the same without the focus, blinking too; the text boxes of the app draw it alike, in a window without the focus too, and nothing once they lose the focus; a selection fills the rows of device pixels the cursor fills, in the editor, the text boxes and the terminal alike |
 | Status line | Show the line, column and selection | — | Common | 🟡 Partial | In monospace, the column counted in cells, as drawn, the characters selected as they are seen, by every cursor, and the cursors once there are several; no line number |
 | Minimap | Show the whole file in small beside it | — | Common | ❌ No |  |
@@ -118,6 +121,6 @@
 | Settings | Set how new files and indentation are | — | Common | ✅ Yes | The editor section of the settings, `tools.editor`: the line ending, charset and indentation of new files, by extension too, and whether brackets close as typed |
 | EditorConfig | Follow the .editorconfig of a project | — | Common | ✅ Yes | `end_of_line` and `charset` for new files, `indent_style`, `indent_size` and `tab_width` for indenting, and `trim_trailing_whitespace` and `insert_final_newline` for the lines edited, never changing the lines not edited |
 | Command palette | Find any command by typing | Ctrl+Shift+P | Common | ❌ No |  |
-| Screen readers | Read the text to assistive technology | — | Common | ❌ No | The text is drawn as cells and is in no element of the page; a screen reader is to get a copy of its own once it is asked for, as in the viewer and the diff |
+| Screen readers | Read the text to assistive technology | — | Common | ❌ No | As [FEATURES](FEATURES.md#common-text) says |
 
 <!-- prettier-ignore-end -->

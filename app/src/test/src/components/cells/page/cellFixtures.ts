@@ -34,6 +34,7 @@ interface Painted {
   readonly ground: string;
   readonly shown: string;
   readonly x: number;
+  readonly shelf: number;
   readonly width: number;
   readonly shape: GlyphShape;
 }
@@ -50,11 +51,14 @@ export function fakePainter(): FakePainter {
     painted,
     uploaded,
     paint: (style, shown, x, width, shape) => {
+      const last = painted.at(-1);
+      const shelf = last === undefined ? 0 : last.shelf + (x <= last.x ? 1 : 0);
       painted.push({
         ink: style.ink,
         ground: style.ground,
         shown,
         x,
+        shelf,
         width,
         shape,
       });
@@ -186,9 +190,10 @@ export function shownAt(
   frame: CellFrame,
   painter: FakePainter,
 ): { readonly shown: string; readonly column: number; readonly y: number }[] {
-  return tilesIn(frame).map(({ x, y, u }) => {
+  return tilesIn(frame).map(({ x, y, u, v }) => {
     const painted = painter.painted.find(
-      (each) => each.x <= u && u < each.x + each.width,
+      (each) =>
+        each.x <= u && u < each.x + each.width && each.shelf * tileHeight === v,
     );
     const cut = u - (painted?.x ?? u);
     return {

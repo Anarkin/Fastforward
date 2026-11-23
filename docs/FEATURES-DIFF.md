@@ -10,6 +10,8 @@
 
 - The key is the one Fastforward uses, as diff tools share few; what git diffs, a commit, the working tree or two commits, FEATURES-GIT says
 
+- What the diff shares with the viewer and the editor, how a text is drawn, whitespace, invisible characters, wrapping, scrolling, selecting and the toggles of a find, [FEATURES](FEATURES.md#common-text) says
+
 ## Tabs
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
@@ -28,12 +30,12 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Inline and side by side | Show the two sides in one column or two | — | Core | ✅ Yes | Side by side by default |
-| Select and copy | Select code with the pointer and copy it | Mod+C | Core | ✅ Yes | On one side at a time, a double click taking a word and a third the line, as in a file viewed; the line numbers, the other side and the headers of files left out; kept once its tab is shown again, with the copies of it marked at once, while its lines hold the same text |
+| Select and copy | Select code with the pointer and copy it | Mod+C | Core | ✅ Yes | On one side at a time, as [FEATURES](FEATURES.md#common-text) says; the line numbers, the other side and the headers of files left out |
 | Changed words | Mark the words that changed within lines | — | Common | ✅ Yes | Pairs changed lines by how alike they are, keeping their order |
 | Moved lines | Mark lines moved rather than removed and added | — | Advanced | ❌ No |  |
-| Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |
+| Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says; L chooses another for the one file shown, or Plain Text for every file |
 | Context | Show more lines around the changes, or the whole file | — | Common | ✅ Yes | The whole file of the file selected, on one toggle kept for every file and on by default; no expanding a few lines at a time |
-| Line wrapping | Wrap long lines | W | Common | ✅ Yes | Off by default; W |
+| Line wrapping | Wrap long lines | W | Common | ✅ Yes | Off by default; W; as [FEATURES](FEATURES.md#common-text) says |
 | Minimap | Mark the changes on a strip beside the diff | — | Advanced | ✅ Yes | On the track of the scrollbar itself rather than a strip of its own, so each mark stands where the thumb comes to it: the changes of what is shown, a file whole or the hunks of every file of a commit, and what a find matches, marks closer than two pixels drawn as one |
 
 ## Whitespace and text
@@ -41,10 +43,11 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Ignore whitespace | Leave out changes of whitespace alone | — | Common | ✅ Yes | On by default; files with only whitespace changes are named on their header |
-| Show whitespace | Draw the spaces, tabs and line ends | . | Advanced | ✅ Yes | On by default; `.`; the line break that ends a line signed after it, ␍ and ␊ for CRLF, ␊ for LF and ␍ for CR, as the viewer and the editor sign them, none after a last line without one |
-| Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | Each control character but the tab and the line ends as its picture, a column wide in the muted color of the signs of whitespace, whether whitespace is shown or not, as it marks a character rather than being text, and in the ink of a find match over it, by the font the app makes for them, as the viewer and the editor draw them, kept within the device pixels of its cell, as the signs of whitespace are, so nothing of it shows beside a cursor or a selection on it, its changes marked as those of any character; copied as the character itself |
-| Line endings | Show changes of line endings, or ignore them | — | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it; a carriage return alone ends its line, as the editor and the viewer end it, though git ends a line at a line feed alone, the lines after it numbered so, in the hunks after it too |
-| Encodings | Show files that aren't UTF-8 | — | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; a tab comparing two files reads each as the viewer and the editor read it, in the encoding its byte order mark names, as UTF-16 told by its zeros, as UTF-8 or else in the code page of the system, comparing their text, the header naming the encoding of each not read as UTF-8, a file of UTF-16 no longer taken for binary; the diffs of git alike, of a commit, the index and the working tree, a file git takes for binary or shows with bytes UTF-8 lacks diffed again from copies of the text of each side in UTF-8, and named on its header, the whole file shown read alike; git turns messages into UTF-8 |
+| Show whitespace | Draw the spaces, tabs and line ends | . | Advanced | ✅ Yes | On by default; `.`; as [FEATURES](FEATURES.md#common-text) says |
+| Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says |
+| Invisible characters | Draw the characters that show nothing, take no room or turn text around | — | Advanced | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says |
+| Line endings | Show changes of line endings, or ignore them | — | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it; a carriage return alone ends its line, as [FEATURES](FEATURES.md#common-text) says, though git ends a line at a line feed alone, the lines after it numbered so, in the hunks after it too |
+| Encodings | Show files that aren't UTF-8 | — | Advanced | 🟡 Partial | A tab comparing two files reads each as [FEATURES](FEATURES.md#common-text) says, comparing their text, the header naming the encoding of each not read as UTF-8, a file of UTF-16 no longer taken for binary; the diffs of git alike, of a commit, the index and the working tree, a file git takes for binary or shows with bytes UTF-8 lacks diffed again from copies of the text of each side in UTF-8, and named on its header, the whole file shown read alike; git turns messages into UTF-8; no encoding chosen in the diff, as the viewer chooses one with E |
 | Ignore case | Leave out changes of case alone | — | Advanced | ❌ No |  |
 
 ## Moving around
@@ -52,9 +55,9 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Next change | Move from change to change | J, K | Common | ✅ Yes | J and K, from the files too |
-| Find in the diff | Search the diff's text | Mod+F | Common | ✅ Yes | Mod+F; Aa matches the case, W whole words and .* a regular expression within a line, as every search of the app |
-| Occurrences | Mark the other copies of the text selected | — | Common | ✅ Yes | Every copy of the text selected in the rows drawn, on both sides, in its case and inside longer words too, at once once the selection is done, by a double click or a drag let go, none while a drag goes on, a text on one line of 200 characters at most, the spaces at its ends left out but whitespace selected alone sought as it is, so a space selected marks the other spaces; in the yellow and the text color of a find match, as the editor marks them, the selection kept; none while the find has a text; `text.highlightOccurrences` in the settings |
-| Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | While lines are not wrapped; the wheel with Shift moves `scrolling.wheelRows` columns a notch onto whole columns, gliding with `scrolling.smooth`, as it moves rows, and the scrollbar dragged lands on whole columns too, the line numbers and the gap after them staying where they are, inline as side by side, the text cut where its first column starts, in the viewer and the editor too |
+| Find in the diff | Search the diff's text | Mod+F | Common | ✅ Yes | Mod+F, with the toggles [FEATURES](FEATURES.md#common-text) names |
+| Occurrences | Mark the other copies of the text selected | — | Common | ✅ Yes | On both sides, as [FEATURES](FEATURES.md#common-text) says |
+| Sideways | Scroll long lines across | ←, →, Shift+Wheel | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says, inline as side by side |
 
 ## Not text
 

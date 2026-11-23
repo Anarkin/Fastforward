@@ -117,6 +117,23 @@ suite('Rows of text of a file', () => {
     ]);
   });
 
+  test('starts the first row of a file of UTF-8 after its byte order mark, which the encoding button names, read forwards and backwards alike, as the text of the row held it as a character drawn as an invisible one', async () => {
+    const { read, size } = inMemory(
+      Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('ab\ncd')]),
+    );
+    const rows = [
+      { start: 3, end: 6, text: 'ab', ending: '␊' },
+      { start: 6, end: 8, text: 'cd' },
+    ];
+
+    assert.deepStrictEqual(await rowsFrom(read, size, 0, 10), rows);
+    assert.deepStrictEqual(await rowsBefore(read, size, size, 10), rows);
+    assert.deepStrictEqual(
+      await Promise.all([0, 1, 4, 7].map((at) => rowStartAt(read, at))),
+      [3, 3, 3, 6],
+    );
+  });
+
   test('breaks a line longer than it keeps whole into rows, never inside a character', async () => {
     const line = `${'a'.repeat(rowBytes - 1)}é${'b'.repeat(wholeLineBytes)}`;
     const { read, size } = inMemory(`${line}\nnext`);

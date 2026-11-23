@@ -3,11 +3,15 @@ import createDOMPurify from 'dompurify';
 import { JSDOM } from 'jsdom';
 import markdownIt from 'markdown-it';
 import { afterAll, suite, test } from 'vitest';
+import { strings } from '../../../../../lib/shared/strings';
 import { markdownRenderer } from '../../../../../tools/viewer/page/markdownRender';
 
 const { window } = new JSDOM('');
 const render = markdownRenderer(createDOMPurify(window), markdownIt);
 const noImages = () => undefined;
+
+const sign = (real: string) =>
+  `<span class="control-character" data-real="${real}">${strings.symbols.invisible}</span>`;
 
 suite('Markdown', () => {
   afterAll(() => window.close());
@@ -41,7 +45,7 @@ suite('Markdown', () => {
     assert.match(html, /<li>plain<\/li>/);
   });
 
-  test('leaves the control characters of a paragraph and of a code block in the text, for the font of the app to draw as the viewer draws a text, those of the paragraph in a span given the muted color of the signs, as the cells draw them, and swaps the form feed alone for its picture, leaving a picture the file itself holds as it is', () => {
+  test('writes each control character of a paragraph as the sign of the invisible in a span of its own given the muted color of the signs, keeping the character itself for a copy, as the cells draw it, and leaves those of a code block in its text for the cells, a picture the file itself holds left as it is', () => {
     const formFeed = String.fromCharCode(12);
     const html = render(
       [
@@ -55,11 +59,14 @@ suite('Markdown', () => {
     );
     assert.ok(
       html.includes(
-        '<p>bell <span class="control-character">\u0007</span> and ␛ fed<span class="control-character">␌</span>on</p>',
+        `<p>bell ${sign('\u0007')} and ␛ fed${sign(formFeed)}on</p>`,
       ),
       html,
     );
-    assert.ok(html.includes('<code>a\u001b[0m\u007f␌\n</code>'), html);
+    assert.ok(
+      html.includes(`<code>a\u001b[0m\u007f${formFeed}\n</code>`),
+      html,
+    );
   });
 
   test('aligns the columns of a table as its separator row says, as GitHub does, by the align it keeps rather than a style', () => {

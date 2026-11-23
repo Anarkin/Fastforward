@@ -1,4 +1,5 @@
-import { findClusterBreak, type Line } from '@codemirror/state';
+import { clusterBreak } from '../../../lib/page/graphemes';
+import { type Line } from '@codemirror/state';
 import type { EditorSurface } from './surface';
 import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
 import {
@@ -160,7 +161,7 @@ export function cellAt(
   const next =
     held === undefined || char >= held.to
       ? char
-      : findClusterBreak(line.text, char, true);
+      : clusterBreak(line.text, char, true);
   const wide =
     held === undefined || next <= char
       ? 1

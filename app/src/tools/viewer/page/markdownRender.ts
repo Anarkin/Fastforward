@@ -1,12 +1,8 @@
 import type { DOMPurify } from 'dompurify';
 import type MarkdownIt from 'markdown-it';
 import type { StateCore } from 'markdown-it';
-import {
-  controlRuns,
-  hasControls,
-  hasSwapped,
-  pictured,
-} from '../../../lib/page/controlPictures';
+import { controlCharacters } from '../../../lib/page/invisibles';
+import { strings } from '../../../lib/shared/strings';
 
 const tagsGitHubKeeps = [
   'h1',
@@ -153,18 +149,19 @@ function taskLists(state: StateCore): void {
 
 const controlClass = 'control-character';
 
-function mutedControls(text: ChildNode, shown: string): void {
+function signedControls(text: ChildNode, shown: string): void {
   const owner = text.ownerDocument;
   if (owner === null) {
     return;
   }
   const parts = owner.createDocumentFragment();
   let at = 0;
-  for (const found of shown.matchAll(controlRuns())) {
+  for (const found of shown.matchAll(controlCharacters())) {
     parts.append(shown.slice(at, found.index));
     const control = owner.createElement('span');
     control.className = controlClass;
-    control.textContent = pictured(found[0]);
+    control.dataset.real = found[0];
+    control.textContent = strings.symbols.invisible;
     parts.append(control);
     at = found.index + found[0].length;
   }
@@ -172,15 +169,13 @@ function mutedControls(text: ChildNode, shown: string): void {
   text.replaceWith(parts);
 }
 
-function picturedTexts(node: Node, inCode = false): void {
+function signedTexts(node: Node, inCode = false): void {
   for (const child of Array.from(node.childNodes)) {
     const shown = child.nodeValue ?? '';
     if (child.nodeType !== child.TEXT_NODE) {
-      picturedTexts(child, inCode || child.nodeName === 'PRE');
-    } else if (!inCode && hasControls(shown)) {
-      mutedControls(child, shown);
-    } else if (hasSwapped(shown)) {
-      child.nodeValue = pictured(shown);
+      signedTexts(child, inCode || child.nodeName === 'PRE');
+    } else if (!inCode && controlCharacters().test(shown)) {
+      signedControls(child, shown);
     }
   }
 }
@@ -279,7 +274,7 @@ export function markdownRenderer(
       alt.textContent = img.getAttribute('alt');
       img.replaceWith(alt);
     }
-    picturedTexts(fragment);
+    signedTexts(fragment);
     const html = document.createElement('div');
     html.append(fragment);
     return html.innerHTML;

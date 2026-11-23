@@ -269,8 +269,10 @@ export async function rowsFrom(
 ): Promise<TextRow[]> {
   const rows: TextRow[] = [];
   let bytes = 0;
-  let position = aligned(start, coding);
-  let startsLine = await startsLineAt(read, position, coding);
+  const first = await textStartOf(read, coding);
+  let position = Math.max(first, aligned(start, coding));
+  let startsLine =
+    position === first || (await startsLineAt(read, position, coding));
   let length = blockBytes;
   while (!enough(rows, count, bytes, budget) && position < size) {
     const block = await read(position, Math.min(length, size - position));
@@ -395,14 +397,34 @@ async function lineEndsBy(
   return false;
 }
 
+const utf8Mark = Buffer.from([0xef, 0xbb, 0xbf]);
+
+async function textStartOf(
+  read: ReadBytes,
+  coding: TextCoding,
+): Promise<number> {
+  return coding === utf8 && (await read(0, utf8Mark.length)).equals(utf8Mark)
+    ? utf8Mark.length
+    : 0;
+}
+
 export async function rowStartAt(
   read: ReadBytes,
   offset: number,
   coding: TextCoding = utf8,
 ): Promise<number> {
+  return rowStartFrom(read, offset, coding, await textStartOf(read, coding));
+}
+
+async function rowStartFrom(
+  read: ReadBytes,
+  offset: number,
+  coding: TextCoding,
+  first: number,
+): Promise<number> {
   const at = aligned(offset, coding);
-  if (at <= 0) {
-    return 0;
+  if (at <= first) {
+    return first;
   }
   const lineStart = await lineStartBefore(read, at, coding);
   if (
@@ -414,9 +436,9 @@ export async function rowStartAt(
       coding,
     ))
   ) {
-    return lineStart;
+    return Math.max(first, lineStart);
   }
-  return cutBefore(read, at, coding);
+  return Math.max(first, await cutBefore(read, at, coding));
 }
 
 export async function rowsBefore(
@@ -428,10 +450,11 @@ export async function rowsBefore(
   budget?: ReadBudget,
 ): Promise<TextRow[]> {
   const rows: TextRow[] = [];
+  const first = await textStartOf(read, coding);
   let at = aligned(Math.min(end, size), coding);
   const last = at;
-  while (!enough(rows, count, last - at, budget) && at > 0) {
-    const start = await rowStartAt(read, at - coding.unit, coding);
+  while (!enough(rows, count, last - at, budget) && at > first) {
+    const start = await rowStartFrom(read, at - coding.unit, coding, first);
     const bytes = await read(start, at - start);
     rows.unshift(
       endingAt(

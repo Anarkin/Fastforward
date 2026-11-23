@@ -1,6 +1,5 @@
 import type { Settings } from './settings';
 import type { ToolId } from '../shared/tools';
-import { controlFontFamily } from '../../lib/shared/controlFont';
 import { cursorVariables } from '../../lib/shared/cursorSettings';
 import {
   fileColorClass,
@@ -36,8 +35,6 @@ function fileColorRules(groups: readonly FileColor[]): string[] {
       ];
 }
 
-const withControls = (family: string) => `'${controlFontFamily}', ${family}`;
-
 export function themeCss({
   fonts,
   scrolling,
@@ -54,10 +51,10 @@ export function themeCss({
   return [
     ':root {',
     '  color-scheme: light;',
-    `  --font-family: ${withControls(fonts.family)};`,
+    `  --font-family: ${fonts.family};`,
     `  --font-size: ${fonts.size};`,
     `  --line-height: ${fonts.lineHeight};`,
-    `  --monospace-font-family: ${withControls(fonts.monospaceFamily)};`,
+    `  --monospace-font-family: ${fonts.monospaceFamily};`,
     `  --monospace-font-size: ${fonts.monospaceSize};`,
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
     `  --scrollbar-setting: ${scrolling.scrollbarSize};`,

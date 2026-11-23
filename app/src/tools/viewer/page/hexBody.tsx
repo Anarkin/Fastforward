@@ -251,7 +251,7 @@ export function ByteBody({
       layout === 'hex'
         ? (row: TextLine) => hexSegments(row.text, digits)
         : undefined;
-    if (!showWhitespace || bytes === undefined) {
+    if (bytes === undefined) {
       return plain;
     }
     const textAt = layout === 'hex' ? hexLine(hexRow(0, [], digits)).textAt : 0;
@@ -261,6 +261,7 @@ export function ByteBody({
         plain?.(row) ?? [{ text: row.text }],
         textAt,
         from < 0 ? [] : bytes.data.slice(from, from + rowBytes),
+        showWhitespace,
       );
     };
   }, [layout, digits, showWhitespace, bytes, rowBytes]);

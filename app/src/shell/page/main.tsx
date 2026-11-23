@@ -13,8 +13,7 @@ import { watchDevicePixels } from '../../lib/page/devicePixels';
 import { showGenericIcons } from './genericIcons';
 import { installTextCursors } from './textCursor';
 import { installTextHeights } from './textHeights';
-import { installControlFont } from './controlFont';
-import { copyReal } from '../../lib/page/picturedCopy';
+import { copyReal } from '../../lib/page/signedCopy';
 
 declare global {
   interface Window {
@@ -61,7 +60,6 @@ installScrollbars();
 watchScrollEnds(document);
 watchDevicePixels(() => undefined);
 showGenericIcons();
-installControlFont();
 installTextHeights();
 installTextCursors();
 document.addEventListener('copy', copyReal);

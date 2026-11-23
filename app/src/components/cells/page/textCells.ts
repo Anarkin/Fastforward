@@ -1,10 +1,6 @@
-import { blankSignOf, signedBlank } from './blankSigns';
-import {
-  hasControls,
-  pictureOf,
-  pictured,
-} from '../../../lib/page/controlPictures';
-import { graphemes, nonAscii } from '../../../lib/page/graphemes';
+import { blankSignOf } from '../../../lib/page/blankSigns';
+import { invisibleParts } from '../../../lib/page/invisibles';
+import { graphemes, nonAscii, type Units } from '../../../lib/page/graphemes';
 import { tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { strings } from '../../../lib/shared/strings';
@@ -223,18 +219,11 @@ function glyphOf(
 ): number {
   const { widths, tiles } = drawing;
   const boxed = nonAscii.test(cluster) ? widths.boxed?.(cluster) : undefined;
-  return tiles.glyph(
-    style,
-    cluster,
-    cluster.length === 1 && hasControls(cluster)
-      ? pictureOf(cluster.charCodeAt(0))
-      : pictured(cluster),
-    {
-      cells: cellsOf(drawing, cluster),
-      centered: boxed !== undefined,
-      scale: boxed === undefined ? 1 : (widths.scaled?.(cluster) ?? 1),
-    },
-  );
+  return tiles.glyph(style, cluster, cluster, {
+    cells: cellsOf(drawing, cluster),
+    centered: boxed !== undefined,
+    scale: boxed === undefined ? 1 : (widths.scaled?.(cluster) ?? 1),
+  });
 }
 
 function placed(
@@ -374,7 +363,7 @@ function drawText(
 ): number {
   const { tiles, blanks, limit } = drawing;
   let column = from;
-  let clusters: Intl.Segments | undefined;
+  let clusters: Units | undefined;
   for (let at = 0; at < text.length;) {
     const code = text.charCodeAt(at);
     if (code === space) {
@@ -421,29 +410,62 @@ function drawText(
           found === undefined ? cluster : found.segment.slice(at - found.index);
       }
       at += cluster.length;
-      if (blanks && signedBlank.test(cluster)) {
-        drawSign(
+      const blankSign = blankSignOf(cluster, blanks);
+      if (blankSign !== undefined) {
+        drawSign(drawing, blankSign, column, y, under, mark, selected);
+        column += cellsOf(drawing, cluster);
+      } else if (invisibleParts(cluster) !== undefined) {
+        column = drawInvisible(
           drawing,
-          blankSignOf(cluster),
+          cluster,
+          style,
           column,
           y,
           under,
           mark,
           selected,
         );
-        column += cellsOf(drawing, cluster);
       } else {
-        const control = cluster.length === 1 && hasControls(cluster);
-        const drawnStyle = control
-          ? controlStyle(drawing, under, mark, selected)
-          : style;
         const tile =
-          tiles.known(drawnStyle, cluster) ??
-          glyphOf(drawing, drawnStyle, cluster);
-        placed(drawing, drawnStyle, tile, column, y, control);
+          tiles.known(style, cluster) ?? glyphOf(drawing, style, cluster);
+        placed(drawing, style, tile, column, y);
         column +=
           tile === notDrawn ? cellsOf(drawing, cluster) : tiles.cells[tile];
       }
+    }
+  }
+  return column;
+}
+
+function drawInvisible(
+  drawing: TextDrawing,
+  cluster: string,
+  style: GlyphStyle,
+  from: number,
+  y: number,
+  under: string | undefined,
+  mark: Mark,
+  selected: boolean,
+): number {
+  const { tiles } = drawing;
+  const parts = invisibleParts(cluster);
+  let column = from;
+  for (const { text, hidden } of parts ?? []) {
+    if (hidden) {
+      drawSign(
+        drawing,
+        strings.symbols.invisible,
+        column,
+        y,
+        under,
+        mark,
+        selected,
+      );
+      column++;
+    } else {
+      const tile = tiles.known(style, text) ?? glyphOf(drawing, style, text);
+      placed(drawing, style, tile, column, y);
+      column += tile === notDrawn ? cellsOf(drawing, text) : tiles.cells[tile];
     }
   }
   return column;

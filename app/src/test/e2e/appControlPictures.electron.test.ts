@@ -8,12 +8,12 @@ import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { cellsOf } from './cellsSeen';
 import { untilSettled, waitForFocus } from './waits';
+import { strings } from '../../lib/shared/strings';
 
 const character = (code: number) => String.fromCharCode(code);
 const lineFeed = character(10);
 const formFeed = character(12);
 const escape = character(27);
-const controlFont = 'Fastforward Controls';
 
 const groups = [
   [1, 2, 3, 4, 5, 6, 7, 8],
@@ -232,7 +232,7 @@ suite('App control pictures', () => {
     await closeOrKill(app);
   });
 
-  test('shows the viewer, the editor and both sides of the diff every row of a file of control characters as the file has it, their cells drawing each character by its picture in a cell, the bar after them in one column', async () => {
+  test('shows the viewer, the editor and both sides of the diff every row of a file of control characters as the file has it, their cells drawing each character as the sign of the invisible in a cell, the bar after them in one column', async () => {
     const found: Record<string, unknown> = {};
     for (const view of cellViews) {
       await show(view);
@@ -259,7 +259,7 @@ suite('App control pictures', () => {
     );
   });
 
-  test('copies the control characters as they are out of the viewer, the editor and the diff, the form feed itself, not the picture drawn for it, keeps a picture of it the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
+  test('copies the control characters as they are out of the viewer, the editor and the diff, the form feed itself, not the sign drawn for it, keeps a picture of it the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
     const found: Record<string, unknown> = {};
     for (const view of cellViews) {
       found[view.name] = [
@@ -285,7 +285,7 @@ suite('App control pictures', () => {
     );
   });
 
-  test('draws a form feed and an escape in the editor each in the piece of the string that holds it and drawn once, as the viewer and the diff draw them', async () => {
+  test('draws a form feed and an escape in the editor each in the piece of the string that holds it, as the sign of the invisible, as the viewer and the diff draw them', async () => {
     await page.locator('.tabs .tab').nth(5).click();
     const cells = cellsOf(page, editor.rows);
     const held = `${formFeed}page${escape}`;
@@ -303,12 +303,9 @@ suite('App control pictures', () => {
             .filter(({ kind }) => kind === 'string')
             .map(({ text }) => legible(text)),
         ),
-        drawn: [
-          (await cells.glyphs(formFeed)).length,
-          (await cells.glyphs(escape)).length,
-        ],
+        drawn: (await cells.glyphs(strings.symbols.invisible)).length,
       },
-      { strings: [legible(held)], drawn: [1, 1] },
+      { strings: [legible(held)], drawn: 2 },
     );
   });
 
@@ -335,13 +332,15 @@ suite('App control pictures', () => {
     assert.deepStrictEqual(found, { viewer: expected, editor: expected });
   });
 
-  test('draws the control characters of a Markdown file previewed by the font too, in its text and in its code, the form feed as its picture', async () => {
+  test('draws each control character of a Markdown file previewed as the sign of the invisible, in its prose in the muted color of the signs, drawn by no font of the app, copying as the character itself, and in its code as the cells draw it', async () => {
     await page.locator('.tabs .tab').nth(4).click();
     const preview = page.locator('.markdown');
     await preview.locator('pre > code').waitFor();
     assert.strictEqual(
       legible(await preview.locator('p').first().textContent()),
-      legible(`A bell ${character(7)} in a sentence, fed␌on.`),
+      legible(
+        `A bell ${strings.symbols.invisible} in a sentence, fed${strings.symbols.invisible}on.`,
+      ),
     );
     const code = cellsOf(page, '.markdown pre > code .cell-rows');
     await waitFor(
@@ -350,11 +349,9 @@ suite('App control pictures', () => {
     );
     assert.strictEqual(
       legible((await code.rows()).map(({ text }) => text).join(lineFeed)),
-      legible(`${escape}[0m${character(127)}␌`),
+      legible(`${escape}[0m${character(127)}${formFeed}`),
     );
-    assert.deepStrictEqual(await fontsDrawing('.markdown p', 'A bell'), [
-      `${controlFont} 2`,
-    ]);
+    assert.deepStrictEqual(await fontsDrawing('.markdown p', 'A bell'), []);
     assert.deepStrictEqual(
       await preview
         .locator('p')
@@ -377,12 +374,35 @@ suite('App control pictures', () => {
         }),
       {
         controls: [
-          [7, true],
-          [0x240c, true],
+          [0xa4, true],
+          [0xa4, true],
         ],
         text: false,
       },
       'the control characters of its prose in the muted color of the signs of whitespace, as the cells draw them',
+    );
+    const paragraph = await preview.locator('p').first().boundingBox();
+    assert.ok(paragraph);
+    await page.mouse.click(
+      paragraph.x + 4,
+      paragraph.y + paragraph.height / 2,
+      { clickCount: 3 },
+    );
+    await page.evaluate(keepCopied);
+    await page.keyboard.press('ControlOrMeta+C');
+    await waitFor(
+      async () =>
+        (await page.evaluate((): unknown => Reflect.get(window, 'copied'))) !==
+        undefined,
+      'the paragraph copied',
+    );
+    assert.strictEqual(
+      legible(
+        String(
+          await page.evaluate((): unknown => Reflect.get(window, 'copied')),
+        ).trimEnd(),
+      ),
+      legible(`A bell ${character(7)} in a sentence, fed${formFeed}on.`),
     );
   });
 });

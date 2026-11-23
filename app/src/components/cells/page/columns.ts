@@ -1,3 +1,4 @@
+import { graphemes, type Units } from '../../../lib/page/graphemes';
 import { onceAText } from './onceAText';
 import { tabSize, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
@@ -13,15 +14,13 @@ const simple = /^[^\t\uD800-\uDBFF]*$/;
 
 const printable = /^[ -~]*$/;
 
-const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
-
 type Step = (
   at: number,
   column: number,
 ) => { readonly next: number; readonly column: number };
 
 function stepsOf(text: string, widths: TextWidths | undefined): Step {
-  let clusters: Intl.Segments | undefined;
+  let clusters: Units | undefined;
   return (at, column) => {
     const code = text.charCodeAt(at);
     if (code === tab) {

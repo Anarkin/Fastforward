@@ -5,7 +5,6 @@ import {
   type Box,
 } from './lineBreaks';
 import type { TextWidths } from './textWidths';
-import { pictured } from './controlPictures';
 import { tabSize, tabStop } from './tabStops';
 
 const blankKind = 1;
@@ -100,13 +99,22 @@ function startRowAt(starts: number[], text: string, at: number): void {
 
 const marksNoBreak = () => false;
 
+const breaksDrawnAsSigns = new RegExp(
+  `[${[0x0b, 0x0c, 0x85, 0x2028, 0x2029]
+    .map((code) => `\\u${code.toString(16).padStart(4, '0')}`)
+    .join('')}]`,
+  'g',
+);
+
+const signedBreak = '\u00A4';
+
 function breaksOf(
   text: string,
   marked: boolean,
   boxes: readonly Box[] = [],
 ): (at: number) => boolean {
   const markedAt = marked ? breaksAt : marksNoBreak;
-  const drawn = pictured(text);
+  const drawn = text.replace(breaksDrawnAsSigns, signedBreak);
   if (boxes.length === 0 && !nonAscii.test(drawn)) {
     return (at) => markedAt(text, at) || asciiBreakAt(text, at);
   }

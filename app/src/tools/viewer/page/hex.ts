@@ -5,7 +5,6 @@ import {
   type TextLine,
 } from '../../../components/cells/page/lines';
 import { strings } from '../../../lib/shared/strings';
-import { pictureOf } from '../../../lib/page/controlPictures';
 import {
   ordered,
   type SelectionShape,
@@ -19,12 +18,13 @@ const groupBytes = 8;
 const firstPrintable = 0x20;
 const lastPrintable = 0x7e;
 
+const isPrintable = (byte: number) =>
+  byte >= firstPrintable && byte <= lastPrintable;
+
 export function byteText(bytes: readonly number[]): string {
   return bytes
     .map((byte) =>
-      byte >= firstPrintable && byte <= lastPrintable
-        ? String.fromCharCode(byte)
-        : '.',
+      isPrintable(byte) ? String.fromCharCode(byte) : strings.symbols.invisible,
     )
     .join('');
 }
@@ -60,16 +60,15 @@ const blankBytes: ReadonlyMap<number, string> = new Map([
   [0x0a, strings.symbols.lineFeed],
 ]);
 
-const lastControl = 0x1f;
-const deleteByte = 0x7f;
-
-function signOfByte(byte: number | undefined): string | undefined {
-  return byte === undefined
-    ? undefined
-    : (blankBytes.get(byte) ??
-        (byte <= lastControl || byte === deleteByte
-          ? pictureOf(byte)
-          : undefined));
+function signOfByte(
+  byte: number | undefined,
+  whitespace: boolean,
+): string | undefined {
+  if (byte === undefined) {
+    return undefined;
+  }
+  const blank = whitespace ? blankBytes.get(byte) : undefined;
+  return blank ?? (isPrintable(byte) ? undefined : strings.symbols.invisible);
 }
 
 function joinedOnto(
@@ -98,13 +97,14 @@ export function withBlankBytes(
   segments: readonly ColoredSegment[],
   textAt: number,
   bytes: readonly number[],
+  whitespace: boolean,
 ): ColoredSegment[] {
   const length = segments.reduce((sum, { text }) => sum + text.length, 0);
   const marked = piecesWithin(segments, 0, textAt);
   let at = textAt;
   for (const piece of piecesWithin(segments, textAt, length)) {
     for (const character of piece.text) {
-      const sign = signOfByte(bytes[at - textAt]);
+      const sign = signOfByte(bytes[at - textAt], whitespace);
       joinedOnto(marked, sign ?? character, piece.kind, sign !== undefined);
       at += character.length;
     }

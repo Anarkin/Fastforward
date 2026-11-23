@@ -136,30 +136,6 @@ suite('Theme', () => {
     assert.match(css, new RegExp(`^  ${cursorVariables.blink}: off;$`, 'm'));
   });
 
-  test('puts the font the app makes for the control characters before the fonts of the settings, of the text and of the code alike, so a control character is drawn by it whatever fonts are chosen, as a font that maps one to an empty glyph, as many do the group separator, would hide it', () => {
-    const defaults = defaultSettings();
-    const css = themeCss({
-      ...defaults,
-      fonts: {
-        ...defaults.fonts,
-        family: "'Some Sans', sans-serif",
-        monospaceFamily: "'Some Mono', monospace",
-      },
-    });
-    assert.ok(
-      css.includes(
-        "  --font-family: 'Fastforward Controls', 'Some Sans', sans-serif;",
-      ),
-      css,
-    );
-    assert.ok(
-      css.includes(
-        "  --monospace-font-family: 'Fastforward Controls', 'Some Mono', monospace;",
-      ),
-      css,
-    );
-  });
-
   test("writes the settings out as the page's variables, the colors of each tool named after it, the dark colors for a dark OS", () => {
     const defaults = defaultSettings();
     const css = themeCss({
@@ -201,10 +177,10 @@ suite('Theme', () => {
       [
         ':root {',
         '  color-scheme: light;',
-        "  --font-family: 'Fastforward Controls', Sans;",
+        '  --font-family: Sans;',
         '  --font-size: 13px;',
         '  --line-height: 1.5;',
-        "  --monospace-font-family: 'Fastforward Controls', Mono;",
+        '  --monospace-font-family: Mono;',
         '  --monospace-font-size: 12px;',
         '  --monospace-line-height: 1.4;',
         '  --scrollbar-setting: 25px;',

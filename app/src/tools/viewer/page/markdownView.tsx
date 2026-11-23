@@ -1,3 +1,4 @@
+import { signedRegion } from '../../../lib/page/signedCopy';
 import {
   useEffect,
   useEffectEvent,
@@ -277,7 +278,7 @@ export function MarkdownPane({
   }, [html, imageUrlOf]);
   return (
     <div className="markdown-pane">
-      <div ref={content} className="markdown" />
+      <div ref={content} className="markdown" {...signedRegion} />
     </div>
   );
 }

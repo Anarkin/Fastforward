@@ -375,11 +375,43 @@ suite('Playground of files', () => {
         named,
       );
     }
-    assert.ok(textOf('trojan-source.ts').includes('‮'));
-    assert.ok(textOf('trojan-source.ts').includes('⁦'));
-    assert.ok(textOf('emoji.txt').includes('‍'));
+    const invisible =
+      /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}\p{Default_Ignorable_Code_Point}]/u;
+    const listed = new Set(catalog.map((line) => line.split(' ')[0]));
+    const unlisted = Array.from({ length: 0x110000 }, (_, code) => code)
+      .filter(
+        (code) =>
+          (code < 0xd800 || code > 0xdfff) &&
+          ![0x00, 0x0a, 0x0d].includes(code) &&
+          !/\p{Cn}/u.test(String.fromCodePoint(code)) &&
+          invisible.test(String.fromCodePoint(code)),
+      )
+      .map((code) => `U+${code.toString(16).toUpperCase().padStart(4, '0')}`)
+      .filter((named) => !listed.has(named));
+    assert.deepStrictEqual(unlisted, []);
+    const rulesEnd = catalog.indexOf('# Every character, by kind');
+    const rules = catalog.slice(0, rulesEnd);
+    assert.ok(
+      rules.includes('# How the app draws them, a sample of each rule'),
+    );
+    for (const code of [
+      0x07, 0x0c, 0x09, 0x20, 0xa0, 0x2003, 0x202e, 0x200b, 0x85, 0xfe0f,
+    ]) {
+      const named = `U+${code.toString(16).toUpperCase().padStart(4, '0')}`;
+      assert.ok(
+        rules.some((line) => line.startsWith(named)),
+        named,
+      );
+    }
+    assert.ok(
+      rules.filter((line) => line.startsWith('## ')).length >= 7,
+      rules.join('\n'),
+    );
+    assert.ok(textOf('trojan-source.ts').includes('\u202E'));
+    assert.ok(textOf('trojan-source.ts').includes('\u2066'));
+    assert.ok(textOf('emoji.txt').includes('\u200D'));
     assert.ok(textOf('emoji.txt').includes('\u{E0067}'));
-    assert.ok(textOf('prose.txt').includes('­'));
+    assert.ok(textOf('prose.txt').includes('\u00AD'));
     assert.ok(textOf('c1-utf8.txt').includes('\u0085'));
     const c1Bytes = contentOf(itemAt(made, 'invisibles/c1-windows-1252.txt'));
     assert.ok(c1Bytes.includes(0x85) && !c1Bytes.includes(0xc2));

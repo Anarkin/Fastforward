@@ -23,7 +23,6 @@ import { useShell } from '../../../shell/page/store';
 import { wrapColumns } from '../../../lib/page/wordWrap';
 import { boxColumns } from '../../../lib/page/wrapBox';
 import { type Ends, type Thumb } from './scrollThumbs';
-import { picturedRegion } from '../../../lib/page/picturedCopy';
 import { MatchTicks } from './scrollbar';
 import { ScrollProxy } from '../../../lib/page/scrollProxy';
 import { setWheeled } from '../../../lib/page/scrollbarLinks';
@@ -346,7 +345,6 @@ export function ScrollBody({
       ref={body}
       tabIndex={0}
       data-column-focus=""
-      {...picturedRegion}
       onWheel={(event) => turned(event.nativeEvent)}
       onKeyDown={(event) => {
         const sidestep = keyPressed(viewerKeymap.scrollSideways, event);

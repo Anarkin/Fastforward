@@ -1,3 +1,5 @@
+import { clusterBreak } from '../../../lib/page/graphemes';
+import { findClusterBreak } from '@codemirror/state';
 import { insertBracket } from '@codemirror/autocomplete';
 import {
   CharCategory,
@@ -5,7 +7,6 @@ import {
   Facet,
   codePointAt,
   codePointSize,
-  findClusterBreak,
   type EditorState,
   type SelectionRange,
   type Text,
@@ -138,7 +139,13 @@ export function characterDeleted(
     const char = head - line.from;
     return (forward ? char >= line.length : char <= 0)
       ? Math.max(0, Math.min(state.doc.length, head + (forward ? 1 : -1)))
-      : line.from + findClusterBreak(line.text, char, forward, forward);
+      : line.from +
+          (forward
+            ? clusterBreak(line.text, char, true)
+            : Math.max(
+                clusterBreak(line.text, char, false),
+                findClusterBreak(line.text, char, false, false),
+              ));
   });
 }
 
@@ -153,7 +160,7 @@ export function groupDeleted(
     let category: CharCategory | undefined;
     while (pos !== (forward ? line.to : line.from)) {
       const next =
-        findClusterBreak(line.text, pos - line.from, forward) + line.from;
+        clusterBreak(line.text, pos - line.from, forward) + line.from;
       const between = line.text.slice(
         Math.min(pos, next) - line.from,
         Math.max(pos, next) - line.from,
@@ -201,7 +208,7 @@ function stepped(
         forward ? 1 : -1,
       );
     } else {
-      const to = findClusterBreak(line.text, char, forward);
+      const to = clusterBreak(line.text, char, forward);
       over = line.text.slice(Math.min(char, to), Math.max(char, to));
       next = EditorSelection.cursor(line.from + to, forward ? -1 : 1);
     }

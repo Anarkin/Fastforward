@@ -175,11 +175,31 @@ suite('Widths of text in columns', () => {
       '\u{1f3f3}\u{fe0f}\u{200d}\u{1f308}',
       '\u{1f1ed}\u{1f1fa}',
       '1\u{fe0f}\u{20e3}',
-      '\u{200b}',
     ]) {
       assert.strictEqual(
         cellsOf(cluster, table),
         await terminalColumns(cluster),
+        cluster,
+      );
+    }
+  });
+  test('counts each invisible character a column of its own, where our terminal counts none, as the text views draw a sign on it: alone, after a letter it joins and after a character it asks to be an emoji though it has none, leaving an emoji whole', async () => {
+    const table = await terminalCells();
+    for (const [cluster, cells] of [
+      ['\u{200b}', 1],
+      ['\u{202e}', 1],
+      ['\u{ad}', 1],
+      ['\u{85}', 1],
+      ['a\u{200d}', 2],
+      ['|\u{fe0f}', 2],
+      ['a\u{e0067}\u{e0062}', 3],
+      ['\u{1f468}\u{200d}\u{1f469}', 2],
+      ['\u{2764}\u{fe0f}', 2],
+    ] as const) {
+      assert.strictEqual(cellsOf(cluster, table), cells, cluster);
+      assert.strictEqual(
+        cellsOf(cluster, plainCells),
+        (cluster.codePointAt(0) ?? 0) >= 0x2700 ? 1 : cells,
         cluster,
       );
     }

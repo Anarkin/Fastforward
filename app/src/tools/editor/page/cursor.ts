@@ -1,8 +1,5 @@
-import {
-  findClusterBreak,
-  type Extension,
-  type SelectionRange,
-} from '@codemirror/state';
+import { clusterBreak } from '../../../lib/page/graphemes';
+import { type Extension, type SelectionRange } from '@codemirror/state';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
 import {
   blinkAnimation,
@@ -12,7 +9,9 @@ import {
   type DrawnCursor,
 } from '../../../lib/page/cursor';
 import type { Box } from '../../../lib/page/pixelBoxes';
-import { pictured } from '../../../lib/page/controlPictures';
+import { invisibleParts } from '../../../lib/page/invisibles';
+import { strings } from '../../../lib/shared/strings';
+import { blankSignOf } from '../../../lib/page/blankSigns';
 import { cellAt, gridOf, type Grid } from './grid';
 import { layerOrigin } from './rows';
 import {
@@ -28,6 +27,20 @@ interface CursorCell {
   readonly font: string;
 }
 
+function shownUnder(text: string): string {
+  if (text === '\t') {
+    return '';
+  }
+  const parts = invisibleParts(text);
+  return parts === undefined
+    ? (blankSignOf(text, false) ?? text)
+    : parts
+        .map(({ text: part, hidden }) =>
+          hidden ? strings.symbols.invisible : part,
+        )
+        .join('');
+}
+
 function cursorCell(
   view: EditorSurface,
   grid: Grid,
@@ -40,10 +53,10 @@ function cursorCell(
   const text =
     char >= line.length
       ? ''
-      : line.text.slice(char, findClusterBreak(line.text, char, true));
+      : line.text.slice(char, clusterBreak(line.text, char, true));
   return {
     cell: cellAt(view, grid, head, range.assoc || 1),
-    text: text === '\t' ? '' : pictured(text),
+    text: shownUnder(text),
     font,
   };
 }

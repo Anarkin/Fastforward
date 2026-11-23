@@ -1,5 +1,5 @@
 import { tabStop } from './tabStops';
-import { graphemes } from './graphemes';
+import { graphemes, type Units } from './graphemes';
 import type { TextWidths } from './textWidths';
 
 export function columnsOf(
@@ -7,7 +7,7 @@ export function columnsOf(
   widths: TextWidths | undefined,
 ): (index: number) => number {
   const special = widths ? /[\t\n\r]|[^\0-\x7f]/g : /\t/g;
-  let clusters: Intl.Segments | undefined;
+  let clusters: Units | undefined;
   const clusterAt = (index: number) => {
     if (!widths || text[index] === '\t') {
       return undefined;

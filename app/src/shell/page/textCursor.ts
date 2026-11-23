@@ -1,4 +1,4 @@
-import { findClusterBreak } from '@codemirror/state';
+import { clusterBreak } from '../../lib/page/graphemes';
 import { watchDevicePixels } from '../../lib/page/devicePixels';
 import {
   blinkAnimation,
@@ -231,7 +231,7 @@ class TextCursor {
     head: number,
     look: ReturnType<typeof pageCursorLook>,
   ): { readonly drawn: DrawnCursor; readonly selection: readonly Box[] } {
-    const end = head < text.length ? findClusterBreak(text, head) : head;
+    const end = head < text.length ? clusterBreak(text, head) : head;
     this.prepare(style, text);
     const origin = this.measure.getBoundingClientRect().left;
     const at = (from: number, to: number) => {

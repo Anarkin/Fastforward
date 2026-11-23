@@ -15,14 +15,14 @@ import { maxBytesAsked } from '../../../../../tools/viewer/shared/protocol';
 const printable = (byte: number) => byte >= 0x20 && byte <= 0x7e;
 
 suite('Hex rows of a file viewed', () => {
-  test('shows the offset, the 16 bytes in two groups of 8, and the printable characters, a dot for the rest', () => {
+  test('shows the offset, the 16 bytes in two groups of 8, and the printable characters, the sign of the invisible for the rest', () => {
     const bytes = [...Buffer.from('Hello, hex view!')];
     bytes[1] = 0;
     bytes[15] = 0xff;
     assert.deepStrictEqual(hexRow(0x20, bytes, 8), {
       offset: '00000020',
       hex: '48 00 6C 6C 6F 2C 20 68  65 78 20 76 69 65 77 FF',
-      text: 'H.llo, hex view.',
+      text: `H${strings.symbols.invisible}llo, hex view${strings.symbols.invisible}`,
     });
   });
 
@@ -84,10 +84,11 @@ suite('Hex rows of a file viewed', () => {
     );
   });
 
-  test('draws a byte alike in the characters of a row of hex and in the bytes of a file, one character a byte: printable ASCII as it is and every other byte a dot, as the bytes drew the Latin letters of 0xA1 to 0xFF the hex drew as dots, and lit up the padding of binaries as ÿ', () => {
+  test('draws a byte alike in the characters of a row of hex and in the bytes of a file, one character a byte: printable ASCII as it is and every other byte the sign of the invisible, so a byte that is a dot is told from one that is not, as the bytes drew the Latin letters of 0xA1 to 0xFF the hex drew as dots, and lit up the padding of binaries as ÿ', () => {
+    const { invisible } = strings.symbols;
     const every = Array.from({ length: 256 }, (_, byte) => byte);
     const expected = every
-      .map((byte) => (printable(byte) ? String.fromCharCode(byte) : '.'))
+      .map((byte) => (printable(byte) ? String.fromCharCode(byte) : invisible))
       .join('');
 
     assert.strictEqual(byteText(every), expected);
@@ -100,21 +101,21 @@ suite('Hex rows of a file viewed', () => {
       expected,
     );
     assert.strictEqual(
-      byteText([0x41, 0x00, 0x0a, 0x7f, 0x85, 0xa0, 0xad, 0xe9, 0xff, 0x7e]),
-      'A........~',
+      byteText([0x41, 0x00, 0x0a, 0x7f, 0x85, 0xa0, 0x2e, 0xe9, 0xff, 0x7e]),
+      `A${invisible.repeat(5)}.${invisible.repeat(2)}~`,
     );
   });
 
-  test('marks the bytes of whitespace among the characters of a row, a space to be dotted and a tab, a carriage return and a line feed by their signs, one character a byte, so the row keeps its columns, and leaves the rest of the row as its pieces were', () => {
+  test('marks the bytes of whitespace among the characters of a row while whitespace is shown, a space to be dotted and a tab, a carriage return and a line feed by their signs, and every other byte that is no printable ASCII by the sign of the invisible whether whitespace is shown or not, one character a byte, so the row keeps its columns, and leaves the rest of the row as its pieces were', () => {
     const { symbols } = strings;
     const bytes = [0x61, 0x20, 0x09, 0x0d, 0x0a, 0x00, 0x62];
     const line = hexLine(hexRow(0, bytes, 8));
-    const marked = withBlankBytes(line.segments, line.textAt, bytes);
+    const marked = withBlankBytes(line.segments, line.textAt, bytes, true);
     assert.deepStrictEqual(marked, [
       { text: '00000000', kind: 'offset' },
       { text: line.text.slice(8, line.textAt + 1) },
       {
-        text: ` ${symbols.tab}${symbols.carriageReturn}${symbols.lineFeed}␀`,
+        text: ` ${symbols.tab}${symbols.carriageReturn}${symbols.lineFeed}${symbols.invisible}`,
         blank: true,
       },
       { text: 'b' },
@@ -124,23 +125,28 @@ suite('Hex rows of a file viewed', () => {
       line.text.length,
     );
     assert.deepStrictEqual(
-      withBlankBytes([{ text: 'a.a b' }], 0, [0x61, 0x80, 0x61, 0x20, 0x62]),
-      [{ text: 'a.a' }, { text: ' ', blank: true }, { text: 'b' }],
+      withBlankBytes(line.segments, line.textAt, bytes, false).slice(2),
+      [{ text: symbols.invisible.repeat(4), blank: true }, { text: 'b' }],
     );
-    assert.deepStrictEqual(withBlankBytes([{ text: 'ab' }], 0, [0x61, 0x62]), [
-      { text: 'ab' },
-    ]);
-  });
-
-  test('marks every other control byte among the characters too, by its picture, the delete as well, and leaves the bytes past ASCII as dots', () => {
-    const bytes = [0x00, 0x1b, 0x41, 0x7f, 0x80, 0xff];
-
-    assert.deepStrictEqual(withBlankBytes([{ text: '..A...' }], 0, bytes), [
-      { text: '␀␛', blank: true },
-      { text: 'A' },
-      { text: '␡', blank: true },
-      { text: '..' },
-    ]);
+    assert.deepStrictEqual(
+      withBlankBytes(
+        [{ text: 'a¤a b' }],
+        0,
+        [0x61, 0x80, 0x61, 0x20, 0x62],
+        true,
+      ),
+      [
+        { text: 'a' },
+        { text: symbols.invisible, blank: true },
+        { text: 'a' },
+        { text: ' ', blank: true },
+        { text: 'b' },
+      ],
+    );
+    assert.deepStrictEqual(
+      withBlankBytes([{ text: 'a.b' }], 0, [0x61, 0x2e, 0x62], false),
+      [{ text: 'a.b' }],
+    );
   });
 
   test('asks for no more bytes than the main process reads at once, around the rows shown, holding what it was given while the rows move a little, as rows too wide for five screens of them were asked for again without end, and the row above the screen was blank', () => {

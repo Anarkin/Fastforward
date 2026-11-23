@@ -5,10 +5,7 @@ import type { SeenRow } from '../../components/cells/page/seen';
 import { diffLineNumbered, page, sharedApp } from './appFixtures';
 import { gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
-import {
-  blankSignOf,
-  signedBlank,
-} from '../../components/cells/page/blankSigns';
+import { blankSignOf } from '../../lib/page/blankSigns';
 import { strings } from '../../lib/shared/strings';
 import { wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
 import { cellsOf } from './cellsSeen';
@@ -242,8 +239,11 @@ async function blanksOf({ host, rows, rowAt, places }: LineSeen): Promise<{
         if (dots.has(where)) {
           marked.push(`${row.from + at} spaces`);
         }
-      } else if (signedBlank.test(character)) {
-        const sign = blankSignOf(character);
+      } else {
+        const sign = blankSignOf(character, true);
+        if (sign === undefined) {
+          continue;
+        }
         if (!signs.has(sign)) {
           signs.set(sign, await placed(cells.glyphs(sign)));
         }

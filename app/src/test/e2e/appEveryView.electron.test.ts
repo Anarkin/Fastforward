@@ -10,6 +10,7 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { cellsOf } from './cellsSeen';
 import { diffTexts } from './diffSeen';
 import { untilSettled } from './waits';
+import { strings } from '../../lib/shared/strings';
 
 const escape = String.fromCharCode(0x1b);
 
@@ -245,9 +246,7 @@ suite('App, every view alike', () => {
   const inkAt = async (view: View) => {
     const drawn = await shown(view);
     await waitFor(
-      async () =>
-        (await drawn.glyphs(String.fromCharCode(0x241b))).length > 0 ||
-        (await drawn.glyphs(escape)).length > 0,
+      async () => (await drawn.glyphs(strings.symbols.invisible)).length > 0,
       'the escape drawn',
     );
     await page.mouse.move(2, 2);
@@ -295,7 +294,7 @@ suite('App, every view alike', () => {
     };
   };
 
-  test('draws the picture of a control character in the muted color of the signs of whitespace in every view, the viewer, the editor, the diff, a block of Markdown code, Hex and the bytes, fainter than the letter before it, rather than in the color of the text around it', async () => {
+  test('draws the sign of a control character in the muted color of the signs of whitespace in every view, the viewer, the editor, the diff, a block of Markdown code, Hex and the bytes, fainter than the letter before it, rather than in the color of the text around it', async () => {
     const seen: Record<string, string> = {};
     for (const [name, view] of Object.entries(views)) {
       const { escape: faint, letter } = await inkAt(view);

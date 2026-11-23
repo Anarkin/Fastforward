@@ -23,6 +23,9 @@ import {
   widths,
   type FakePainter,
 } from './cellFixtures';
+import { strings } from '../../../../../lib/shared/strings';
+import { blankSignOf } from '../../../../../lib/page/blankSigns';
+import { invisibleParts } from '../../../../../lib/page/invisibles';
 
 const dot = { size: 2, left: 2, top: 7, hairline: 1, gap: 2 };
 
@@ -76,6 +79,15 @@ function drawn(
   };
   const end = drawPieces(drawing, pieces, from, y, tint);
   return { frame: drawing.frame, painter, end };
+}
+
+function drawnAsItself(character: string): boolean {
+  return (
+    character === ' ' ||
+    character === '\t' ||
+    character === '\r' ||
+    character === '\n'
+  );
 }
 
 suite('Cells of a text', () => {
@@ -163,16 +175,19 @@ suite('Cells of a text', () => {
     assert.strictEqual(end, 2);
   });
 
-  test('draws a control character by its picture, the vertical tab and the form feed too, which a canvas would draw as spaces', () => {
-    const { painter } = drawn([{ text: '\u0001\u000b\u000c\u007f' }]);
+  test('draws a control character as the sign of the invisible, a cell each, the vertical tab, the form feed and the delete too, as two letters of its name told no one what it was', () => {
+    const { frame, painter, end } = drawn([
+      { text: '\u0001\u000b\u000c\u007f' },
+    ]);
 
     assert.deepStrictEqual(
-      painter.painted.map(({ shown }) => shown),
-      ['␁', '␋', '␌', '␡'],
+      shownAt(frame, painter).map(({ shown, column }) => [shown, column]),
+      [0, 1, 2, 3].map((column) => [strings.symbols.invisible, column]),
     );
+    assert.strictEqual(end, 4);
   });
 
-  test('draws the picture of a control character in the muted color of the signs of whitespace, whatever the kind of the piece holding it and whether whitespace is shown, as it marks a character rather than being text, and in the ink of a find match under it', () => {
+  test('draws the sign of a control character in the muted color of the signs of whitespace, whatever the kind of the piece holding it and whether whitespace is shown, as it marks a character rather than being text, and in the ink of a find match under it', () => {
     for (const blanks of [false, true]) {
       const { painter } = drawn(
         [
@@ -187,9 +202,9 @@ suite('Cells of a text', () => {
         [
           ['"', 'orange'],
           ['a', 'orange'],
-          ['␛', 'muted'],
+          [strings.symbols.invisible, 'muted'],
           ['b', 'orange'],
-          ['␀', 'black'],
+          [strings.symbols.invisible, 'black'],
         ],
       );
     }
@@ -217,21 +232,21 @@ suite('Cells of a text', () => {
     );
   });
 
-  test('signs a carriage return and a no-break space while whitespace is shown, the first taking no cell', () => {
+  test('signs a carriage return while whitespace is shown, taking no cell, and a no-break space as the invisible, as every blank but the space is', () => {
     const { frame, painter, end } = drawn([{ text: 'a b\r' }], {
       blanks: true,
     });
 
     assert.deepStrictEqual(shownAt(frame, painter), [
       { shown: 'a', column: 0, y: 0 },
-      { shown: '⍽', column: 1, y: 0 },
+      { shown: strings.symbols.invisible, column: 1, y: 0 },
       { shown: 'b', column: 2, y: 0 },
       { shown: '␍', column: 3, y: 0 },
     ]);
     assert.strictEqual(end, 3);
   });
 
-  test('keeps what a sign of whitespace and the picture of a control character draw within the device pixels of their cell, which a block cursor and a selection cover, cutting off the edges that fall beyond, as the picture of a line end peeked out beside a block cursor on it, while a letter keeps its edges', () => {
+  test('keeps what a sign of whitespace and the sign of a control character draw within the device pixels of their cell, which a block cursor and a selection cover, cutting off the edges that fall beyond, as the picture of a line end peeked out beside a block cursor on it, while a letter keeps its edges', () => {
     const { frame, painter } = drawn([{ text: 'a\u001b\t' }], {
       blanks: true,
     });
@@ -241,7 +256,7 @@ suite('Cells of a text', () => {
       shownAt(frame, painter).map(({ shown, column }) => [shown, column]),
       [
         ['a', 0],
-        ['␛', 1],
+        [strings.symbols.invisible, 1],
         ['→', 2],
       ],
     );
@@ -257,6 +272,108 @@ suite('Cells of a text', () => {
       tiles.map(({ u }, at) => u - (painter.painted[at]?.x ?? 0)),
       [0, padX, padX],
     );
+  });
+
+  test('draws every invisible character as a sign on a cell of its own, whether whitespace is shown or not, a direction control too, and one an ordinary letter joins after that letter, leaving an emoji whole', () => {
+    for (const blanks of [false, true]) {
+      const { frame, painter, end } = drawn(
+        [{ text: 'a\u200Bb\u202Ec\u200D' }],
+        { blanks },
+      );
+
+      assert.deepStrictEqual(
+        shownAt(frame, painter).map(({ shown, column }) => [shown, column]),
+        [
+          ['a', 0],
+          [strings.symbols.invisible, 1],
+          ['b', 2],
+          [strings.symbols.invisible, 3],
+          ['c', 4],
+          [strings.symbols.invisible, 5],
+        ],
+        String(blanks),
+      );
+      assert.strictEqual(end, 6);
+    }
+  });
+
+  test('signs the no-break spaces, every other space and the braille blank as the invisible whether whitespace is shown or not, as nothing in a usual text looks like them, and the object replacement character as the sign of the invisible, while the space, the tab and the carriage return are signed only while whitespace is shown', () => {
+    for (const blanks of [false, true]) {
+      const { frame, painter } = drawn(
+        [{ text: 'a\u00A0b\u2003c\u2800d\uFFFCe\tf' }],
+        { blanks },
+      );
+
+      assert.deepStrictEqual(
+        shownAt(frame, painter).map(({ shown, column }) => [shown, column]),
+        [
+          ['a', 0],
+          [strings.symbols.invisible, 1],
+          ['b', 2],
+          [strings.symbols.invisible, 3],
+          ['c', 4],
+          [strings.symbols.invisible, 5],
+          ['d', 6],
+          [strings.symbols.invisible, 7],
+          ['e', 8],
+          ...(blanks ? [[strings.symbols.tab, 9]] : []),
+          ['f', 12],
+        ],
+        String(blanks),
+      );
+    }
+  });
+
+  test('never draws a sign in place of a character that has a shape of its own, a letter, a mark, a digit, punctuation, a symbol, a character of private use or one Unicode has not assigned, every character of Unicode drawn as itself unless it shows nothing or blank, with whitespace shown or not', () => {
+    const showsNothing =
+      /^[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Zs}\p{Default_Ignorable_Code_Point}\p{Noncharacter_Code_Point}\uFFFC\u2800]$/u;
+    const signs = new Set([strings.symbols.invisible]);
+    const chunk = 0x400;
+    for (let first = 0; first < 0x110000; first += chunk) {
+      const characters = Array.from({ length: chunk }, (_, at) => first + at)
+        .filter((code) => (code < 0xd800 || code > 0xdfff) && code !== 0x0a)
+        .map((code) => String.fromCodePoint(code));
+      const signed = characters.filter(
+        (character) =>
+          blankSignOf(character, true) !== undefined ||
+          invisibleParts(character)?.some(({ hidden }) => hidden) === true,
+      );
+      assert.deepStrictEqual(
+        signed.filter((character) => !showsNothing.test(character)),
+        [],
+      );
+      const expected = characters.filter(
+        (character) =>
+          signs.has(character) ||
+          (showsNothing.test(character) && !drawnAsItself(character)),
+      ).length;
+      for (const blanks of [false, true]) {
+        const { frame, painter } = drawn([{ text: characters.join('') }], {
+          blanks,
+        });
+        assert.strictEqual(
+          shownAt(frame, painter).filter(({ shown }) => signs.has(shown))
+            .length,
+          expected,
+          `U+${first.toString(16)} ${String(blanks)}`,
+        );
+      }
+    }
+  });
+
+  test('draws an invisible character that joins the character after it, as the Arabic number sign, before that character, in the order of the text', () => {
+    const { frame, painter, end } = drawn([{ text: 'a\u0600|b' }]);
+
+    assert.deepStrictEqual(
+      shownAt(frame, painter).map(({ shown, column }) => [shown, column]),
+      [
+        ['a', 0],
+        [strings.symbols.invisible, 1],
+        ['|', 2],
+        ['b', 3],
+      ],
+    );
+    assert.strictEqual(end, 4);
   });
 
   test('keeps the color of text selected whatever mark is under it, a copy of the text selected or a match of a find, as the selected copy took the ink of a find match, near black on the blue of the selection of the dark theme', () => {
