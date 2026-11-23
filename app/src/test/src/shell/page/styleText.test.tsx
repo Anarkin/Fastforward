@@ -50,6 +50,45 @@ suite('Style', () => {
     );
   });
 
+  test('colors the box of a path cut short as its last part is colored, so the ellipsis that cuts it is in the color of the name it cuts, in the rows of a tree and the headers of a diff alike, leaving it a box of text that the ellipsis cuts, as a class the commander had already made it a flex box that cut nothing', () => {
+    for (const box of ['row tree-row file', 'file-header']) {
+      const styleOfEnd = (end: string, property: string) =>
+        cascaded(
+          withClass(
+            rendered(
+              <div className={box}>
+                <span className={`path ${end}`}>x</span>
+              </div>,
+            ),
+            ...end.split(' '),
+          ),
+          property,
+        );
+      const colorOfEnd = (end: string) => styleOfEnd(end, 'color');
+      assert.deepStrictEqual(
+        [
+          styleOfEnd('path-cut colored', 'display'),
+          styleOfEnd('path-cut colored', 'text-overflow'),
+        ],
+        [undefined, 'ellipsis'],
+        box,
+      );
+      assert.deepStrictEqual(
+        [
+          colorOfEnd('path-cut'),
+          colorOfEnd('path-cut colored'),
+          colorOfEnd('path-cut hidden'),
+        ],
+        [
+          'var(--color-foreground)',
+          'var(--file-color)',
+          'color-mix( in srgb, var(--file-color, var(--color-foreground)) var(--color-hidden-file), transparent )',
+        ],
+        box,
+      );
+    }
+  });
+
   test('draws a line in the color of the line over the status of a column at the end of the column of line numbers, in the diff, side by side too, and the viewer, on a strip of its own there that stays put over the text scrolled sideways, so the numbers stand apart from the text', () => {
     const status = rendered(<div className="column-status" />);
     const line = cascaded(status, 'box-shadow')?.split(' ').at(-1);

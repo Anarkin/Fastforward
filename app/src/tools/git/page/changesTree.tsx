@@ -2,7 +2,7 @@ import { namedFolder } from '../../../lib/shared/sentences';
 import type { ChangeArea } from '../shared/protocol';
 import { noFilter, type Filter } from '../../../lib/shared/filter';
 import { FileRow, FolderRow } from '../../../lib/page/tree';
-import { PathName } from '../../../lib/page/pathName';
+import { CutPathName } from '../../../lib/page/pathName';
 import { wholePath } from '../../../lib/page/pathLooks';
 import { areaKey, treeRowKey, type ChangesTreeRow } from './changesRows';
 
@@ -50,9 +50,12 @@ export function ChangesTreeItem({
       ].join(' ')}
       onToggle={(folder) => onToggle(folder, row.changed)}
     >
-      <span className="path">
-        <PathName path={row.name} root={inFolder} filter={filter} />
-      </span>
+      <CutPathName
+        className="path"
+        path={row.name}
+        {...(inFolder !== undefined && { root: inFolder })}
+        filter={filter}
+      />
     </FolderRow>
   ) : (
     <FileRow

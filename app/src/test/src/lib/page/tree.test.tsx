@@ -45,14 +45,14 @@ suite('File rows', () => {
       assert.match(
         changedRow(status),
         new RegExp(
-          `<svg class="icon change-icon ${kind}".*?</svg><span class="path"><span class="path-piece"><span class="path-part">a\\.ts</span></span></span>`,
+          `<svg class="icon change-icon ${kind}".*?</svg><span class="path path-cut"><span class="path-piece"><span class="path-part">a\\.ts</span></span></span>`,
         ),
         status,
       );
     }
     assert.match(
       changedRow('D'),
-      /<svg class="icon change-icon deleted".*?<\/svg><span class="path deleted"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
+      /<svg class="icon change-icon deleted".*?<\/svg><span class="path deleted path-cut"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
     );
   });
 
@@ -80,7 +80,7 @@ suite('File rows', () => {
     );
     assert.match(
       html,
-      /<svg class="icon change-icon added".*?<\/svg><span class="path"><span class="path-piece"><span class="path-part">AGENTS\.md<\/span><\/span><\/span><svg class="icon link-icon"/,
+      /<svg class="icon change-icon added".*?<\/svg><span class="path path-cut"><span class="path-piece"><span class="path-part">AGENTS\.md<\/span><\/span><\/span><svg class="icon link-icon"/,
     );
     tagWith(
       html,
@@ -122,7 +122,7 @@ suite('File rows', () => {
     tagWith(html, '', 'path', 'unchanged');
   });
 
-  test('colors a file as the commander lists it, by its kind and its looks in the folder of the worktree it is in', () => {
+  test('colors a file as the commander lists it, by its kind and its looks in the folder of the worktree it is in, and the ellipsis that cuts its name alike', () => {
     const html = renderToStaticMarkup(
       <PathLooksContext
         value={{
@@ -162,7 +162,7 @@ suite('File rows', () => {
     );
     assert.match(
       html,
-      /<span class="path"><span class="path-piece"><span class="path-part colored hidden" style="--file-color:light-dark\(blue, blue\)">a\.ts<\/span><\/span><\/span>/,
+      /<span class="path path-cut colored hidden" style="--file-color:light-dark\(blue, blue\)"><span class="path-piece"><span class="path-part colored hidden" style="--file-color:light-dark\(blue, blue\)">a\.ts<\/span><\/span><\/span>/,
     );
   });
 });

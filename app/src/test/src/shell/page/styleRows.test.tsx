@@ -132,7 +132,7 @@ suite('Style', () => {
       ),
       {
         'text-decoration': 'line-through',
-        color: undefined,
+        color: 'var(--color-foreground)',
       },
     );
   });

@@ -2,7 +2,7 @@ import { tip } from '../../../lib/page/tips';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
-import { PathName } from '../../../lib/page/pathName';
+import { CutPathName } from '../../../lib/page/pathName';
 import { SkeletonRows } from '../../../lib/page/skeleton';
 import { Twisty } from '../../../lib/page/tree';
 import { renamedPath } from '../../../lib/page/fileStatus';
@@ -37,9 +37,12 @@ export function FileHeader({
     <div className="file-header" onClick={onClick}>
       {collapsible && <Twisty open={open} />}
       {oldPath === undefined ? (
-        <span className="path">
-          <PathName path={path} file root={root} />
-        </span>
+        <CutPathName
+          className="path"
+          path={path}
+          file
+          {...(root !== undefined && { root })}
+        />
       ) : (
         <span
           className="path"

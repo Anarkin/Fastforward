@@ -3,7 +3,7 @@ import { tip } from './tips';
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
 import { changeTitle, changeClass, changeKind } from './fileStatus';
-import { PathName } from './pathName';
+import { CutPathName } from './pathName';
 import { noFilter, type Filter } from '../shared/filter';
 import { ChangeIcon, LinkIcon } from './icons';
 import { treeIndent, twistyWidth } from './treeLayout';
@@ -80,9 +80,13 @@ export function FileRow({
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
       {change && <ChangeIcon kind={changeKind(change)} />}
-      <span className={changeClass(change)}>
-        <PathName path={name} file root={root} filter={filter} />
-      </span>
+      <CutPathName
+        className={changeClass(change)}
+        path={name}
+        file
+        {...(root !== undefined && { root })}
+        filter={filter}
+      />
       {change?.link && <LinkIcon />}
     </div>
   );

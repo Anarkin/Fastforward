@@ -70,11 +70,11 @@ suite('Changes tree rows', () => {
     );
     assert.match(
       html,
-      /<span class="path"><span class="path-piece"><span class="path-part"><mark class="match">deal<\/mark>s<\/span><\/span><\/span>/,
+      /<span class="path path-cut"><span class="path-piece"><span class="path-part"><mark class="match">deal<\/mark>s<\/span><\/span><\/span>/,
     );
     assert.match(
       html,
-      /<span class="path"><span class="path-piece"><span class="path-part"><mark class="match">deal<\/mark>View\.ts<\/span><\/span><\/span>/,
+      /<span class="path path-cut"><span class="path-piece"><span class="path-part"><mark class="match">deal<\/mark>View\.ts<\/span><\/span><\/span>/,
     );
   });
 
@@ -119,11 +119,11 @@ suite('Changes tree rows', () => {
     );
     assert.match(
       html,
-      /<span class="path"><span class="path-piece"><span class="path-part">src<\/span>\/<\/span><span class="path-piece"><span class="path-part hidden">test<\/span><\/span><\/span>/,
+      /<span class="path path-cut hidden"><span class="path-piece"><span class="path-part">src<\/span>\/<\/span><span class="path-piece"><span class="path-part hidden">test<\/span><\/span><\/span>/,
     );
     assert.match(
       html,
-      /<span class="path"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
+      /<span class="path path-cut"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
     );
   });
 

@@ -10,7 +10,7 @@ import {
   type KnownLooks,
   type PathLooksSource,
 } from '../../../../lib/page/pathLooks';
-import { PathName } from '../../../../lib/page/pathName';
+import { CutPathName, PathName } from '../../../../lib/page/pathName';
 import { fileColorsOf } from '../../../../lib/page/fileColors';
 import { searchFilter } from '../../../../lib/shared/filter';
 import { plainSearch } from '../../../../lib/shared/searchOptions';
@@ -182,6 +182,18 @@ suite('The parts of a path, as the commander lists them', () => {
         </PathLooksContext>,
       ),
       '<span class="path-piece"><span class="path-part hidden">.config</span>/</span><span class="path-piece"><span class="path-part colored" style="--file-color:light-dark(blue, blue)">a.log</span></span>',
+    );
+  });
+
+  test('draws a path cut short in a box of the color of its last part, so the ellipsis that ends it is in the color of the name it cuts, the parts keeping their own', () => {
+    assert.strictEqual(
+      renderToStaticMarkup(
+        <PathLooksContext value={source(new Map())}>
+          <CutPathName className="path" path="src/a.log" file root="/repo" />
+          <CutPathName className="path" path="src" root="/repo" />
+        </PathLooksContext>,
+      ),
+      '<span class="path path-cut colored" style="--file-color:light-dark(blue, blue)"><span class="path-piece"><span class="path-part">src</span>/</span><span class="path-piece"><span class="path-part colored" style="--file-color:light-dark(blue, blue)">a.log</span></span></span><span class="path path-cut"><span class="path-piece"><span class="path-part">src</span></span></span>',
     );
   });
 

@@ -252,15 +252,18 @@ mark.match,
 }
 
 .path-piece,
-.path-part {
+.path-part,
+.path-cut {
   color: var(--color-foreground);
 }
 
-.path-part.colored {
+.path-part.colored,
+.path-cut.colored {
   color: var(--file-color);
 }
 
-.path-part.hidden {
+.path-part.hidden,
+.path-cut.hidden {
   color: color-mix(
     in srgb,
     var(--file-color, var(--color-foreground)) var(--color-hidden-file),
