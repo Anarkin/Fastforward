@@ -63,7 +63,7 @@ export function DiffTool({
     <DiffStore value={store}>
       {tab === undefined ? (
         <div className="repository compare-view">
-          <div className="columns single compare-columns">
+          <div className="columns bars-outside compare-columns">
             <section className="column" />
           </div>
         </div>

@@ -49,7 +49,7 @@ export function ViewerTool({
   return (
     <ViewerStore value={store}>
       <div className="repository">
-        <div className="columns single viewer-columns">
+        <div className="columns bars-outside viewer-columns">
           {tab === undefined ? (
             <section className="column viewer" />
           ) : (

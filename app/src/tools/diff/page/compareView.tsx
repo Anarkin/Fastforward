@@ -107,7 +107,7 @@ export function CompareView({ tab }: { tab: string }) {
   }, [shownTab, focusOf]);
   return (
     <div className="repository compare-view" ref={view}>
-      <div className="columns single compare-columns">
+      <div className="columns bars-outside compare-columns">
         <SlicedDiff
           store={store}
           textView={textView}

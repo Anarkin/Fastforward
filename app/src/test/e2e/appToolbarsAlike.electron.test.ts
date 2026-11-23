@@ -76,7 +76,7 @@ function barsShown(): Bar[] {
         left: first?.left ?? 0,
         right: last?.right ?? 0,
         searching: bar.contains(document.activeElement),
-        single: bar.closest('.columns.single') !== null,
+        single: bar.closest('.columns.bars-outside') !== null,
         fits:
           bar.scrollWidth <= bar.clientWidth &&
           ends.every(
@@ -171,8 +171,8 @@ for (const scale of ['1', '1.25', '1.5']) {
       removeFolder(folder);
     });
 
-    test('stands the buttons of every header that has room for them as far from its top as from its bottom, from either end and from one another, all of one height in headers of one height, the same in every tool, and those of a tab of one block, the viewer, the editor and the diff of two files, at the top and at either end of their header with that space under them alone, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
-      const [model] = await show('commander');
+    test('stands the buttons of every header that has room for them as far from its top as from its bottom, from either end and from one another, all of one height in headers of one height, the same in every tool, and those of a block whose bars stand outside its frame, the viewer, the editor, the diff of two files and each side of the commander, at the top and at either end of their header with that space under them alone, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
+      const [model] = await show('git');
       assert.ok(model);
       assert.ok(model.above > 0, JSON.stringify(model));
       assert.ok(model.gaps.length > 0, JSON.stringify(model));
@@ -193,11 +193,11 @@ for (const scale of ['1', '1.25', '1.5']) {
       }
       assert.deepStrictEqual(off, []);
       assert.ok(seen >= fitting, String(seen));
-      assert.strictEqual(single, 3);
+      assert.strictEqual(single, 5);
     });
 
     test('keeps the first and the last button of a header where they were as its search opens in their place, the field between them, the bar of the search spaced as its header is, wherever both have room, so no button moves under the pointer that opened it', async () => {
-      const [model] = await show('commander');
+      const [model] = await show('git');
       assert.ok(model);
       const moved: string[] = [];
       let opened = 0;

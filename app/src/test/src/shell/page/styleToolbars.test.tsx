@@ -184,8 +184,8 @@ suite('Style', () => {
     );
   });
 
-  test('stands the buttons of the header of a tab of one block at its top and at either end of it, no line around them and the space of a bar under them alone, the line of the block starting under its header, as the frame that tells two or three columns apart, and which of them has the keyboard, stood around the buttons of the only one', () => {
-    const single = blocks('columns single');
+  test('stands the buttons of the header of a block whose bars stand outside its frame at its top and at either end of it, no line around them and the space of a bar under them alone, the line of the block starting under its header, in every tab but those of git, as the frame stood around the buttons of the only block of a tab and of the two sides of the commander, which the row selected tells apart, while it tells the three columns of git apart and which of them has the keyboard', () => {
+    const single = blocks('columns bars-outside');
     assert.strictEqual(cascaded(single, '--bar-edge'), '0px');
     assert.strictEqual(cascaded(single, '--title-above'), '0px');
     assert.strictEqual(cascaded(single, '--title-below'), 'var(--bar-space)');

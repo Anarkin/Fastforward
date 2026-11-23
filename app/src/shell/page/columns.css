@@ -30,18 +30,18 @@
   pointer-events: none;
 }
 
-.columns.single > .column {
+.columns.bars-outside > .column {
   --bar-edge: 0px;
   --title-above: 0px;
   --title-below: var(--bar-space);
   --title-height: calc(var(--button-size) + var(--bar-space));
 }
 
-.columns.single > .column::after {
+.columns.bars-outside > .column::after {
   top: var(--title-height);
 }
 
-.columns.single > .column > .column-title {
+.columns.bars-outside > .column > .column-title {
   border-bottom: none;
 }
 
