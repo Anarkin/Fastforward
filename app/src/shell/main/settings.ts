@@ -18,6 +18,9 @@ export interface Settings {
   readonly tabs: {
     readonly recentFolders: number;
   };
+  readonly windows: {
+    readonly openingAnimation: boolean;
+  };
   readonly theme: Theme;
   readonly dateFormat: string;
   readonly scrolling: {

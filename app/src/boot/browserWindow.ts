@@ -24,7 +24,11 @@ export function createWindow(
   shown: boolean,
   dist: string,
   development: boolean,
-): { readonly window: BrowserWindow; readonly place: () => Place } {
+): {
+  readonly window: BrowserWindow;
+  readonly place: () => Place;
+  readonly showFirst: () => void;
+} {
   const workAreas = screen.getAllDisplays().map((display) => display.workArea);
   const size = firstWindowSize(screen.getPrimaryDisplay().workArea);
   const bounds = visibleBounds(saved.bounds, workAreas);
@@ -72,14 +76,17 @@ export function createWindow(
     width: Math.max(asked.width, least.width),
     height: Math.max(asked.height, least.height),
   });
-  window.once('ready-to-show', () => {
-    if (shown) {
+  let showing = shown;
+  const showFirst = () => {
+    if (showing) {
+      showing = false;
       if (maximized) {
         window.maximize();
       }
       window.show();
     }
-  });
+  };
+  window.once('ready-to-show', showFirst);
   const restores = restoresMaximized(window, maximized);
   window.on('maximize', restores);
   window.on('unmaximize', restores);
@@ -114,5 +121,6 @@ export function createWindow(
       bounds: reportsUserMoves ? kept.bounds() : window.getNormalBounds(),
       maximized: restores(),
     }),
+    showFirst,
   };
 }

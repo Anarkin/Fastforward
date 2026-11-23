@@ -141,12 +141,14 @@ export async function launchApp(
     env,
     scale,
     colorScheme = schemeAsked().colorScheme,
+    opening = false,
   }: {
     readonly scale?: number;
     readonly before?: readonly string[];
     readonly after?: readonly string[];
     readonly env?: Record<string, string>;
     readonly colorScheme?: 'light' | 'dark';
+    readonly opening?: boolean;
   } = {},
 ): Promise<ElectronApplication> {
   rememberProfile(profile);
@@ -154,6 +156,7 @@ export async function launchApp(
     args: [
       ...gpuWithoutOne,
       ...scaleAsked(scale),
+      ...(opening ? [] : ['--force-prefers-reduced-motion']),
       ...before,
       ...appArguments(profile, ...after),
     ],

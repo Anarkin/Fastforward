@@ -7,6 +7,7 @@ export interface Bridge {
   post(message: ToHost): void;
   dropFiles(files: readonly File[], tool: ToolId, message: unknown): void;
   setWindowButtonColor(color: string): void;
+  showWindow(): void;
   listen(handler: (message: ToWebview) => void): () => void;
   listenMaximized(handler: (maximized: boolean) => void): () => void;
 }

@@ -8,7 +8,7 @@ import type { Storage } from '../shell/main/storage';
 import type { Connection, Shell } from '../shell/main/shell';
 import type { DragEvent } from '../shell/main/dragEvents';
 import { spareWindowIds } from '../shell/main/windows';
-import { appPage, isAppUrl, startsAppPage } from './files';
+import { isAppUrl, startsAppPage, windowPage } from './files';
 import { cascaded } from './windowPlacement';
 import { showAgain } from './showAgain';
 import { tellMaximized } from './maximized';
@@ -30,6 +30,7 @@ import type { QuitGuard } from './quitGuard';
 interface OpenedWindow {
   readonly window: BrowserWindow;
   readonly place: () => Place;
+  readonly showFirst: () => void;
   loading: Promise<void>;
   connection: Promise<Connection | undefined>;
   closing: boolean;
@@ -117,6 +118,9 @@ export class AppWindows {
         );
       },
     );
+    ipcMain.on('showWindow', (event) => {
+      fromApp(event)?.showFirst();
+    });
     ipcMain.on('windowButtonColor', (event, color: unknown) => {
       const entry = fromApp(event);
       if (
@@ -209,7 +213,7 @@ export class AppWindows {
 
   private open(id: string, saved: SavedPlace, kept = false): OpenedWindow {
     const { log, quitGuard, views } = this.deps;
-    const { window, place } = createWindow(
+    const { window, place, showFirst } = createWindow(
       saved,
       this.deps.settings(),
       !kept,
@@ -219,6 +223,7 @@ export class AppWindows {
     const entry: OpenedWindow = {
       window,
       place,
+      showFirst,
       loading: Promise.resolve(),
       connection: Promise.resolve(undefined),
       closing: false,
@@ -305,7 +310,9 @@ export class AppWindows {
         this.spare?.entry.window.destroy();
       }
     });
-    entry.loading = window.loadURL(appPage);
+    entry.loading = window.loadURL(
+      windowPage(!kept && this.deps.settings().windows.openingAnimation),
+    );
     void entry.loading.catch((error: unknown) => {
       log.error(strings.log.pageNotLoaded);
       log.error(error);

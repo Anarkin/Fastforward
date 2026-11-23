@@ -1,0 +1,18 @@
+#opening {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+}
+
+.opening-sky,
+.opening-icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+:root[data-opening] .tabs .title-bar-icon {
+  visibility: hidden;
+}

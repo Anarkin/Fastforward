@@ -6,6 +6,7 @@ import {
   isAppPage,
   isAppUrl,
   startsAppPage,
+  windowPage,
 } from '../../../boot/files';
 
 const start = (url: string, isMainFrame = true, isSameDocument = false) =>
@@ -93,5 +94,15 @@ suite('App files', () => {
       assert.ok(!isAppPage(url), url);
     }
     assert.ok(!start('fastforward://app/commander-file?tab=1&file=a.svg'));
+  });
+
+  test('loads the page of a window opened to be seen at its opening, which the page plays once, and the page of a spare window kept hidden for a tab dragged out without it, as a window that follows the pointer has nothing to open with', () => {
+    assert.strictEqual(
+      windowPage(true),
+      'fastforward://app/index.html#opening',
+    );
+    assert.strictEqual(windowPage(false), 'fastforward://app/index.html');
+    assert.ok(isAppPage(windowPage(true)));
+    assert.ok(start(windowPage(true)));
   });
 });

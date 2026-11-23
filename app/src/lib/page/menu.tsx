@@ -59,6 +59,7 @@ export function MenuButton({
   onChosen,
   scrolling,
   disabled = false,
+  onContextMenu,
 }: {
   title: string;
   keys?: string | undefined;
@@ -73,6 +74,7 @@ export function MenuButton({
   onChosen?: () => void;
   scrolling: ScrollSettings;
   disabled?: boolean;
+  onContextMenu?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -104,6 +106,7 @@ export function MenuButton({
         aria-expanded={open}
         disabled={disabled}
         onClick={() => setOpen(!open)}
+        onContextMenu={onContextMenu}
       >
         {label === undefined ? (
           icon

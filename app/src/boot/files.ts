@@ -1,9 +1,14 @@
 import * as path from 'node:path';
+import { openingId } from '../shell/shared/opening';
 
 export const appScheme = 'fastforward';
 const appOrigin = `${appScheme}://app`;
 const appPagePath = '/index.html';
-export const appPage = `${appOrigin}${appPagePath}`;
+const appPage = `${appOrigin}${appPagePath}`;
+
+export function windowPage(opening: boolean): string {
+  return opening ? `${appPage}#${openingId}` : appPage;
+}
 
 export function appFile(root: string, url: string): string | undefined {
   const parsed = new URL(url);

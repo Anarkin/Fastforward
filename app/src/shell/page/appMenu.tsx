@@ -5,6 +5,8 @@ import { strings } from '../../lib/shared/strings';
 import { MenuButton } from '../../lib/page/menu';
 import { useBinding } from '../../lib/page/shortcuts';
 import { AppIcon } from './appIcon';
+import { browserOpening } from './openingBrowser';
+import { replayOpening } from './openingStart';
 import { useShell, useShellActions } from './store';
 import { updateLabel } from './updateLabel';
 
@@ -34,6 +36,10 @@ export function AppMenu() {
       title={strings.tabs.settings}
       keys={keysOf(shellKeymap.mainMenu)}
       icon={<AppIcon />}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        replayOpening(browserOpening());
+      }}
       marked={installs}
       items={[
         {

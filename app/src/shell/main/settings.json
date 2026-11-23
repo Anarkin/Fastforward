@@ -2,6 +2,9 @@
   "tabs": {
     "recentFolders": 15
   },
+  "windows": {
+    "openingAnimation": true
+  },
   "theme": "auto",
   "dateFormat": "YYYY-MM-DD HH:mm",
   "scrolling": {
