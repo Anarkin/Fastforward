@@ -322,9 +322,14 @@ export function drawSign(
   column: number,
   y: number,
   tint?: string,
+  mark?: Mark,
+  selected = false,
 ): void {
   const { tiles } = drawing;
-  const style = mutedStyle(drawing, tint);
+  const style =
+    mark === undefined && !selected
+      ? mutedStyle(drawing, tint)
+      : controlStyle(drawing, tint, mark, selected);
   placed(
     drawing,
     style,
@@ -391,7 +396,15 @@ function drawText(
       at++;
     } else if (code === tab) {
       if (blanks) {
-        drawSign(drawing, strings.symbols.tab, column, y, tint);
+        drawSign(
+          drawing,
+          strings.symbols.tab,
+          column,
+          y,
+          under,
+          mark,
+          selected,
+        );
       }
       column = tabStop(column);
       at++;
@@ -405,7 +418,15 @@ function drawText(
       }
       at += cluster.length;
       if (blanks && signedBlank.test(cluster)) {
-        drawSign(drawing, blankSignOf(cluster), column, y, tint);
+        drawSign(
+          drawing,
+          blankSignOf(cluster),
+          column,
+          y,
+          under,
+          mark,
+          selected,
+        );
         column += cellsOf(drawing, cluster);
       } else {
         const drawnStyle =
@@ -440,7 +461,7 @@ function drawBlanks(
       if (sign === ' ') {
         drawDot(drawing, column, y, under, mark, selected);
       } else {
-        drawSign(drawing, sign, column, y, tint);
+        drawSign(drawing, sign, column, y, under, mark, selected);
       }
     }
     column++;

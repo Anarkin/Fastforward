@@ -195,6 +195,28 @@ suite('Cells of a text', () => {
     }
   });
 
+  test('draws a sign of whitespace or of a control byte found in the ink of what was found, on its ground, and one selected in the muted ink on the ground of the selection, as each was drawn muted on the plain ground whatever lay under it', () => {
+    const { painter } = drawn(
+      [
+        { text: '\t', mark: 'match' },
+        { text: '␊', blank: true, mark: 'match' },
+        { text: '␊', blank: true, selected: true },
+        { text: '␊', blank: true },
+      ],
+      { blanks: true },
+    );
+
+    assert.deepStrictEqual(
+      painter.painted.map(({ shown, ink, ground }) => [shown, ink, ground]),
+      [
+        ['→', 'black', 'rgb(255 204 0)'],
+        ['␊', 'black', 'rgb(255 204 0)'],
+        ['␊', 'muted', 'rgb(38 79 120)'],
+        ['␊', 'muted', 'rgb(17 17 17)'],
+      ],
+    );
+  });
+
   test('signs a carriage return and a no-break space while whitespace is shown, the first taking no cell', () => {
     const { frame, painter, end } = drawn([{ text: 'a b\r' }], {
       blanks: true,
