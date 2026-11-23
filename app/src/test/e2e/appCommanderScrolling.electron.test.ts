@@ -244,7 +244,7 @@ suite('App commander', () => {
 
       const wide = hundredths(
         drawnBarWidth(
-          parseFloat(defaultSettings().sizes.scrollbar),
+          parseFloat(defaultSettings().scrolling.scrollbarSize),
           await page.evaluate(() => devicePixelRatio),
         ),
       );

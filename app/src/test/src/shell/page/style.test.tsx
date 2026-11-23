@@ -190,7 +190,7 @@ suite('Style', () => {
     const rules = stylesheet().replace(/\s+/g, ' ');
     assert.doesNotMatch(rules, /--color-scrollbar/);
     for (const rule of [
-      '::-webkit-scrollbar { width: var(--scrollbar-size); height: var(--scrollbar-size); background: var(--scrollbar-track-background); }',
+      '::-webkit-scrollbar { width: var(--scrollbar-across); height: var(--scrollbar-size); background: var(--scrollbar-track-background); }',
       "@property --scrollbar-round-start { syntax: '<length>'; inherits: false; initial-value: 0px; }",
       "@property --scrollbar-round-end { syntax: '<length>'; inherits: false; initial-value: 0px; }",
       '::-webkit-scrollbar, ::-webkit-scrollbar-button { --scrollbar-round-start: inherit; --scrollbar-round-end: inherit; }',
@@ -201,6 +201,7 @@ suite('Style', () => {
       '::-webkit-scrollbar-thumb { min-width: 24px; min-height: 24px; background: var(--scrollbar-background); }',
       '::-webkit-scrollbar-button { display: none; }',
       '::-webkit-scrollbar-button:start:decrement, ::-webkit-scrollbar-button:end:increment { display: block; width: var(--scrollbar-size); height: var(--scrollbar-size); background: var(--scrollbar-background) no-repeat var(--scrollbar-arrow-across) var(--scrollbar-arrow-along) / var(--scrollbar-arrow) calc(var(--scrollbar-arrow) / 2); }',
+      '::-webkit-scrollbar-button:vertical:start:decrement, ::-webkit-scrollbar-button:vertical:end:increment { width: var(--scrollbar-across); background-position-x: round( calc((var(--scrollbar-across) - var(--scrollbar-arrow)) / 2), var(--device-pixel, 1px) ); }',
       "::-webkit-scrollbar-button:start:decrement:disabled, ::-webkit-scrollbar-button:end:increment:disabled, :not( [data-scrolled-vertical] )::-webkit-scrollbar-button:vertical:start:decrement, [data-scrolled-vertical='end']::-webkit-scrollbar-button:vertical:end:increment, :not( [data-scrolled-horizontal] )::-webkit-scrollbar-button:horizontal:start:decrement, [data-scrolled-horizontal='end']::-webkit-scrollbar-button:horizontal:end:increment { --scrollbar-arrow-color: var(--muted-foreground); background-color: var(--scrollbar-track-background); }",
       "[data-scrollbar-hover='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-hover='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-hover-background); }",
       "[data-scrollbar-held='vertical-thumb']::-webkit-scrollbar-thumb:vertical, [data-scrollbar-held='horizontal-thumb']::-webkit-scrollbar-thumb:horizontal { background: var(--scrollbar-active-background); }",
@@ -235,7 +236,7 @@ suite('Style', () => {
       position: 'absolute',
       right: 'var(--line-right, 0px)',
       bottom: 'var(--line-below, 0px)',
-      width: 'var(--scrollbar-size)',
+      width: 'var(--scrollbar-across)',
       height: 'var(--scrollbar-size)',
       background: 'var(--scrollbar-track-background)',
       'border-bottom-right-radius': 'var(--corner-round, 0px)',
@@ -261,6 +262,27 @@ suite('Style', () => {
     ] as const) {
       looks(rendered(unwrapped), square, { pseudoElement });
       looks(rendered(wrapped), none, { pseudoElement });
+    }
+  });
+
+  test('makes the scrollbar beside the text of the viewer, the editor and the diff, whose track marks changes and matches, as wide as scrolling.scrollbarSizeWithMarkers, its marks and the stand-in scrollers there too, every other scrollbar as wide as scrolling.scrollbarSize, and its buttons as long as those of every other', () => {
+    for (const marked of [
+      <div key="viewer" className="viewer-body" />,
+      <div key="editor" className="editor-surface" />,
+      <div key="diff" className="diff-view" />,
+    ]) {
+      looks(rendered(marked), {
+        '--scrollbar-across': 'var(--scrollbar-marked-size)',
+        '--scrollbar-across-setting': 'var(--scrollbar-marked-setting)',
+      });
+    }
+    const rules = stylesheet().replace(/\s+/g, ' ');
+    for (const rule of [
+      'body { --scrollbar-across: var(--scrollbar-size); --scrollbar-across-setting: var(--scrollbar-setting); }',
+      '.scroll-proxy-frame.vertical { width: var(--scrollbar-across-setting); }',
+      '.scroll-proxy-frame.vertical > .scrollbar-marks { inset: var(--scrollbar-size) 0 var(--scrollbar-size) auto; width: var(--scrollbar-across); }',
+    ]) {
+      assert.ok(rules.includes(rule), rule);
     }
   });
 

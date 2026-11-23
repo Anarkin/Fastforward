@@ -59,7 +59,7 @@
 }
 
 .editor-surface > .scroll-proxy-frame {
-  right: calc(var(--line-right, 0px) + var(--scrollbar-size));
+  right: calc(var(--line-right, 0px) + var(--scrollbar-across));
   bottom: var(--line-below, 0px);
 }
 
@@ -71,7 +71,7 @@
   top: var(--scrollbar-size);
   right: var(--line-right, 0px);
   bottom: calc(var(--line-below, 0px) + 2 * var(--scrollbar-size));
-  width: var(--scrollbar-size);
+  width: var(--scrollbar-across);
 }
 
 .editor-surface.wrapped > .scrollbar-marks {
@@ -85,7 +85,7 @@
   position: absolute;
   right: var(--line-right, 0px);
   bottom: var(--line-below, 0px);
-  width: var(--scrollbar-size);
+  width: var(--scrollbar-across);
   height: var(--scrollbar-size);
   background: var(--scrollbar-track-background);
   border-bottom-right-radius: var(--corner-round, 0px);

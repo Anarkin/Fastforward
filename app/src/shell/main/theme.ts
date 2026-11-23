@@ -40,7 +40,7 @@ const withControls = (family: string) => `'${controlFontFamily}', ${family}`;
 
 export function themeCss({
   fonts,
-  sizes,
+  scrolling,
   cursor,
   colors,
   tools,
@@ -60,7 +60,8 @@ export function themeCss({
     `  --monospace-font-family: ${withControls(fonts.monospaceFamily)};`,
     `  --monospace-font-size: ${fonts.monospaceSize};`,
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
-    `  --scrollbar-setting: ${sizes.scrollbar};`,
+    `  --scrollbar-setting: ${scrolling.scrollbarSize};`,
+    `  --scrollbar-marked-setting: ${scrolling.scrollbarSizeWithMarkers};`,
     `  ${cursorVariables.style}: ${cursor.style};`,
     `  ${cursorVariables.width}: ${cursor.width};`,
     `  ${cursorVariables.blink}: ${cursor.blink ? 'on' : 'off'};`,

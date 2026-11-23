@@ -338,7 +338,7 @@ suite('Style', () => {
       top: 'var(--scrollbar-size)',
       right: 'var(--line-right, 0px)',
       bottom: 'calc(var(--diff-bar-below) + var(--scrollbar-size))',
-      width: 'var(--scrollbar-size)',
+      width: 'var(--scrollbar-across)',
       'pointer-events': 'none',
     });
   });

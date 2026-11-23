@@ -63,7 +63,7 @@ function uses(): Set<string> {
   const names = new Set<string>();
   for (const { text } of pageFiles()) {
     for (const match of text.matchAll(
-      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|line-height|monospace-line-height|scrollbar-setting))/g,
+      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|line-height|monospace-line-height|scrollbar-setting|scrollbar-marked-setting))/g,
     )) {
       names.add(match[1]);
     }
@@ -188,7 +188,11 @@ suite('Theme', () => {
         monospaceSize: '12px',
         monospaceLineHeight: 1.4,
       },
-      sizes: { scrollbar: '25px' },
+      scrolling: {
+        ...defaults.scrolling,
+        scrollbarSize: '25px',
+        scrollbarSizeWithMarkers: '36px',
+      },
       cursor: { style: 'bar', width: 3, blink: true },
       colors: { light: { foreground: '#000' }, dark: { foreground: '#fff' } },
     });
@@ -204,6 +208,7 @@ suite('Theme', () => {
         '  --monospace-font-size: 12px;',
         '  --monospace-line-height: 1.4;',
         '  --scrollbar-setting: 25px;',
+        '  --scrollbar-marked-setting: 36px;',
         '  --cursor-style: bar;',
         '  --cursor-width: 3;',
         '  --cursor-blink: on;',

@@ -24,6 +24,8 @@ export interface Settings {
     readonly wheelRows: number;
     readonly smooth: boolean;
     readonly smoothSnap: boolean;
+    readonly scrollbarSize: string;
+    readonly scrollbarSizeWithMarkers: string;
   };
   readonly tooltips: {
     readonly delayMilliseconds: number;
@@ -42,9 +44,6 @@ export interface Settings {
     readonly monospaceFamily: string;
     readonly monospaceSize: string;
     readonly monospaceLineHeight: number;
-  };
-  readonly sizes: {
-    readonly scrollbar: string;
   };
   readonly colors: ThemeColors;
 }

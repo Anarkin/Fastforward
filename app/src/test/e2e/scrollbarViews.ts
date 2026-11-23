@@ -1,3 +1,7 @@
+import type { Page } from 'playwright-core';
+import { waitFor } from '../helpers/fixtures';
+import { untilRowsShown } from './rowsShown';
+import { untilSettled } from './waits';
 import type { Box } from './scrollbarsShown';
 
 export const views = {
@@ -73,3 +77,53 @@ export const middle = (box: Box) => ({
 
 export const alike = <T>(names: readonly string[], value: T) =>
   Object.fromEntries(names.map((name) => [name, value]));
+
+export async function showView(page: Page, name: ViewName): Promise<void> {
+  await page.locator('.tabs .tab').nth(views[name].tab).click();
+  await untilRowsShown(page, views[name].rows, 6);
+  await page.locator(views[name].vertical).first().waitFor();
+  await page.mouse.move(2, 2);
+  await untilSettled(
+    () =>
+      page
+        .locator(views[name].vertical)
+        .first()
+        .evaluate((scroller) => {
+          const { top, bottom, left, right } = scroller.getBoundingClientRect();
+          return [
+            top,
+            bottom,
+            left,
+            right,
+            scroller.scrollHeight,
+            scroller.scrollTop,
+          ];
+        }),
+    `the ${name} to rest`,
+    { quiet: 200 },
+  );
+}
+
+export async function searchCommits(page: Page): Promise<void> {
+  await showView(page, 'commit list');
+  await page
+    .locator('.columns > .column')
+    .first()
+    .locator('.column-actions > .search-button')
+    .click();
+  await page.locator('.locations-popup .search-box-input').waitFor();
+  await page.keyboard.type('topic');
+  await waitFor(
+    () =>
+      page
+        .locator('.locations-groups')
+        .evaluate((scroller) => scroller.scrollHeight > scroller.clientHeight),
+    'the branches found to outgrow their list',
+  );
+}
+
+export async function stopSearching(page: Page): Promise<void> {
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.locator('.locations-popup').waitFor({ state: 'detached' });
+}

@@ -56,13 +56,13 @@ suite('Settings', () => {
   test('takes no null, list or object for a setting of another kind', () => {
     const { settings, problems } = mergeSettings(defaults, {
       fonts: null,
-      sizes: ['20px'],
+      scrolling: ['20px'],
       tools: { git: { solo: {}, autoFetchMinutes: [1] } },
     });
     assert.deepStrictEqual(settings, defaults);
     assert.deepStrictEqual(problems.map(plainOf), [
       '"fonts" should be an object',
-      '"sizes" should be an object',
+      '"scrolling" should be an object',
       '"tools.git.solo" should be a boolean',
       '"tools.git.autoFetchMinutes" should be a number',
     ]);
@@ -179,7 +179,7 @@ suite('Settings', () => {
         dark: { foreground: 'red; color: blue' },
       },
       fonts: { family: "'Segoe UI, sans-serif", size: '13px' },
-      sizes: { scrollbar: 'calc(10px + 2px)' },
+      scrolling: { scrollbarSize: 'calc(10px + 2px)' },
       tools: { git: { colors: { dark: { bubble: '#444 }' } } } },
     });
     assert.deepStrictEqual(problems, [
@@ -195,7 +195,7 @@ suite('Settings', () => {
     assert.strictEqual(settings.colors.light.background, 'rgb(0 0 0 / 50%)');
     assert.strictEqual(settings.fonts.family, defaults.fonts.family);
     assert.strictEqual(settings.fonts.size, '13px');
-    assert.strictEqual(settings.sizes.scrollbar, 'calc(10px + 2px)');
+    assert.strictEqual(settings.scrolling.scrollbarSize, 'calc(10px + 2px)');
     assert.strictEqual(
       settings.tools.git.colors.dark.bubble,
       defaults.tools.git.colors.dark.bubble,
@@ -206,13 +206,13 @@ suite('Settings', () => {
     const { settings, problems } = mergeSettings(defaults, {
       colors: { light: { foreground: '12px /* big' } },
       fonts: { family: '"\\"', monospaceFamily: '"Cascadia\nCode"' },
-      sizes: { scrollbar: '12px\\' },
+      scrolling: { scrollbarSizeWithMarkers: '12px\\' },
     });
     assert.deepStrictEqual(problems, [
       strings.settings.notCssValue('colors.light.foreground'),
       strings.settings.notCssValue('fonts.family'),
       strings.settings.notCssValue('fonts.monospaceFamily'),
-      strings.settings.notCssValue('sizes.scrollbar'),
+      strings.settings.notCssValue('scrolling.scrollbarSizeWithMarkers'),
     ]);
     assert.strictEqual(
       settings.colors.light.foreground,
@@ -223,7 +223,10 @@ suite('Settings', () => {
       settings.fonts.monospaceFamily,
       defaults.fonts.monospaceFamily,
     );
-    assert.strictEqual(settings.sizes.scrollbar, defaults.sizes.scrollbar);
+    assert.strictEqual(
+      settings.scrolling.scrollbarSizeWithMarkers,
+      defaults.scrolling.scrollbarSizeWithMarkers,
+    );
   });
 
   test('knows no setting by a name every object has', () => {

@@ -5,7 +5,7 @@
 
 .scroll-proxy-frame.vertical > .scrollbar-marks {
   inset: var(--scrollbar-size) 0 var(--scrollbar-size) auto;
-  width: var(--scrollbar-size);
+  width: var(--scrollbar-across);
 }
 
 .scrollbar-mark {

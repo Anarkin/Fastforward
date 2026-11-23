@@ -193,3 +193,27 @@ export function barsShown(
     }),
   );
 }
+
+export function stripsShown(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('body *')].flatMap((element) => {
+      const style = getComputedStyle(element);
+      const { width, height } = element.getBoundingClientRect();
+      if (width === 0 || height === 0) {
+        return [];
+      }
+      const of = element.classList.item(0) ?? element.tagName;
+      const down = ['auto', 'scroll'].includes(style.overflowY)
+        ? element.offsetWidth - element.clientWidth
+        : 0;
+      const across = ['auto', 'scroll'].includes(style.overflowX)
+        ? element.offsetHeight - element.clientHeight
+        : 0;
+      return [
+        ...(down >= 1 ? [`${of} beside ${Math.round(down)}`] : []),
+        ...(across >= 1 ? [`${of} below ${Math.round(across)}`] : []),
+        ...(of === 'scrollbar-marks' ? [`marks ${Math.round(width)}`] : []),
+      ];
+    }),
+  );
+}

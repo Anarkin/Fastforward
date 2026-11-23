@@ -24,7 +24,7 @@
 
 .diff-view > .scroll-proxy-frame {
   left: calc(2 * var(--diff-number-width));
-  right: calc(var(--line-right, 0px) + var(--scrollbar-size));
+  right: calc(var(--line-right, 0px) + var(--scrollbar-across));
   bottom: var(--line-below, 0px);
 }
 
@@ -34,15 +34,15 @@
 
 .diff-view.side-by-side > .scroll-proxy-frame {
   left: var(--diff-number-width);
-  right: calc(50% + (var(--line-right, 0px) + var(--scrollbar-size)) / 2);
+  right: calc(50% + (var(--line-right, 0px) + var(--scrollbar-across)) / 2);
 }
 
 .diff-view.side-by-side > .scroll-proxy-frame ~ .scroll-proxy-frame {
   left: calc(
-    50% - (var(--line-right, 0px) + var(--scrollbar-size)) / 2 +
+    50% - (var(--line-right, 0px) + var(--scrollbar-across)) / 2 +
       var(--diff-number-width)
   );
-  right: calc(var(--line-right, 0px) + var(--scrollbar-size));
+  right: calc(var(--line-right, 0px) + var(--scrollbar-across));
 }
 
 .diff-view > .scrollbar-marks {
@@ -50,7 +50,7 @@
   right: var(--line-right, 0px);
   bottom: calc(var(--diff-bar-below) + var(--scrollbar-size));
   z-index: 6;
-  width: var(--scrollbar-size);
+  width: var(--scrollbar-across);
 }
 
 .virtual-row.diff-row {

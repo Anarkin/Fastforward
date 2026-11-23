@@ -7,7 +7,9 @@
   "scrolling": {
     "wheelRows": 10,
     "smooth": true,
-    "smoothSnap": true
+    "smoothSnap": true,
+    "scrollbarSize": "18px",
+    "scrollbarSizeWithMarkers": "36px"
   },
   "tooltips": {
     "delayMilliseconds": 500
@@ -40,9 +42,6 @@
     "monospaceFamily": "'JetBrains Mono NL', 'JetBrains Mono', ui-monospace, Menlo, 'Cascadia Mono', Consolas, monospace",
     "monospaceSize": "12px",
     "monospaceLineHeight": 1.5
-  },
-  "sizes": {
-    "scrollbar": "18px"
   },
   "tools": {
     "terminal": {

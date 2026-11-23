@@ -14,8 +14,11 @@ const lines = (changed: boolean) =>
   ).join('\n');
 
 export const settingsWith = (smooth: boolean, wordWrap = false) => ({
-  scrolling: { smooth },
-  sizes: { scrollbar: `${barSize}px` },
+  scrolling: {
+    smooth,
+    scrollbarSize: `${barSize}px`,
+    scrollbarSizeWithMarkers: `${barSize}px`,
+  },
   text: { wordWrap },
 });
 

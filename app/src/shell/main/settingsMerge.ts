@@ -63,7 +63,8 @@ const choices: ReadonlyMap<string, readonly string[]> = new Map([
   ['cursor.style', cursorStyles],
 ]);
 
-const themed = /^(?:colors|fonts|sizes|tools\.[^.]+\.colors)\./;
+const themed =
+  /^(?:colors\.|fonts\.|scrolling\.scrollbarSize|tools\.[^.]+\.colors\.)/;
 
 const closers: Readonly<Record<string, string>> = { '(': ')', '[': ']' };
 
