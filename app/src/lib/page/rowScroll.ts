@@ -102,6 +102,7 @@ export function followRows(
   let placed: number | undefined;
   let held = false;
   let heldFrom = 0;
+  let heldAt: number | undefined;
   let rest: ReturnType<typeof setTimeout> | undefined;
   let seen = element.scrollTop;
   const max = () => Math.max(0, limit());
@@ -138,6 +139,7 @@ export function followRows(
     }
   };
   const scrollTo = (top: number, glides: boolean) => {
+    heldAt = undefined;
     const to = Math.max(0, Math.min(max(), top));
     if (!glides || !smooth()) {
       settle();
@@ -185,6 +187,7 @@ export function followRows(
     held = true;
     settle();
     place(Math.max(0, Math.min(max(), top)));
+    heldAt = element.scrollTop;
   };
   const letGo = () => {
     clearTimeout(rest);
@@ -247,6 +250,11 @@ export function followRows(
       settle();
     }
     const scrolled = element.scrollTop;
+    if (heldAt !== undefined && Math.abs(scrolled - heldAt) <= 1) {
+      seen = scrolled;
+      return;
+    }
+    heldAt = undefined;
     const snapped = snap(scrolled, Math.sign(scrolled - seen));
     if (Math.abs(snapped - scrolled) > onRow) {
       element.scrollTop = toEnd(snapped);

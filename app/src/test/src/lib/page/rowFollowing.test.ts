@@ -92,6 +92,10 @@ function followed(smooth: boolean, settles = true, furthest = 2000) {
     },
     rest: () => vi.advanceTimersByTime(holdRest),
     scrolled: () => element.dispatchEvent(new dom.window.Event('scroll')),
+    movedTo: (to: number) => {
+      element.scrollTop = to;
+      element.dispatchEvent(new dom.window.Event('scroll'));
+    },
     close: () => {
       following.stop();
       vi.useRealTimers();
@@ -239,6 +243,24 @@ suite('Following a list scrolled by hand', () => {
       assert.strictEqual(places.at(-1), 2000);
     } finally {
       close();
+    }
+  });
+
+  test('leaves a list where a touchpad left it, between rows, when it is told of that scroll only once the hold has rested, the settings saying not to settle, as a frame that took longer than the rest of a hold let the list take its own move for one from outside and snap it onto the next row, and still snaps a scroll that does come from outside', () => {
+    const list = followed(true, false);
+    try {
+      list.wheel(13, undefined);
+      list.wheel(13, undefined);
+      list.rest();
+      list.scrolled();
+      const left = list.top();
+      list.scrolled();
+      const again = list.top();
+      list.movedTo(47);
+
+      assert.deepStrictEqual([left, again, list.top()], [26, 26, 60]);
+    } finally {
+      list.close();
     }
   });
 
