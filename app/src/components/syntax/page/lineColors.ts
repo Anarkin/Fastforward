@@ -93,3 +93,22 @@ export function segmentColors(segments: readonly ColoredSegment[]): {
   }
   return { common, others };
 }
+
+export function segmentsOfLine(
+  text: string,
+  ranges: readonly ColoredRange[],
+): ColoredSegment[] {
+  const segments: ColoredSegment[] = [];
+  let at = 0;
+  for (const { start, end, kind } of ranges) {
+    if (start > at) {
+      segments.push({ text: text.slice(at, start) });
+    }
+    segments.push({ text: text.slice(start, end), kind });
+    at = end;
+  }
+  if (at < text.length) {
+    segments.push({ text: text.slice(at) });
+  }
+  return segments;
+}

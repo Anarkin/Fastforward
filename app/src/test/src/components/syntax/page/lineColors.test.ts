@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   lineColors,
   segmentColors,
+  segmentsOfLine,
 } from '../../../../../components/syntax/page/lineColors';
 
 const token = (text: string, piece: string, kind: string, from = 0) => {
@@ -97,5 +98,21 @@ suite('The colors of a line', () => {
       common: 'keyword',
       others: [{ start: 4, end: 7, kind: 'plain' }],
     });
+  });
+
+  test('cuts a line into the pieces of its colors, the text between two colored pieces a piece of no color, so the cells color a line of a diff or of a text edited as they color a file viewed', () => {
+    assert.deepStrictEqual(
+      segmentsOfLine('const a = 1;', [
+        { start: 0, end: 5, kind: 'keyword' },
+        { start: 10, end: 11, kind: 'number' },
+      ]),
+      [
+        { text: 'const', kind: 'keyword' },
+        { text: ' a = ' },
+        { text: '1', kind: 'number' },
+        { text: ';' },
+      ],
+    );
+    assert.deepStrictEqual(segmentsOfLine('plain', []), [{ text: 'plain' }]);
   });
 });

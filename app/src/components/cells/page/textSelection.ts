@@ -54,6 +54,25 @@ export function selectedIn(
   return to > from ? { from, to } : undefined;
 }
 
+const noRanges: readonly CharRange[] = [];
+
+export function selectedAmong(
+  selections: readonly (TextSelection | undefined)[],
+  row: Pick<TextLine, 'start'>,
+  shown: CharRange,
+): readonly CharRange[] {
+  let found: CharRange[] | undefined;
+  for (const selection of selections) {
+    const range = selectedIn(selection, row, shown);
+    if (range !== undefined) {
+      (found ??= []).push(range);
+    }
+  }
+  return found === undefined
+    ? noRanges
+    : found.toSorted((one, other) => one.from - other.from);
+}
+
 export function breakSelected(
   selection: TextSelection | undefined,
   row: Pick<TextLine, 'start' | 'end'>,

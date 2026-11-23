@@ -28,9 +28,8 @@ export interface SeenPlace {
 export interface SeenRow {
   readonly key: string;
   readonly text: string;
-  readonly line: string;
+  readonly line?: string | undefined;
   readonly from: number;
-  readonly places: readonly (readonly [at: number, column: number])[];
   readonly scrolled: number;
   readonly column: number;
   readonly left: number;
@@ -56,6 +55,9 @@ export interface SeenGlyph {
 declare global {
   interface HTMLElement {
     seenRows?: (() => readonly SeenRow[]) | undefined;
+    seenPlaces?:
+      | ((row: number) => readonly (readonly [at: number, column: number])[])
+      | undefined;
     seenGlyphs?: ((cluster: string) => readonly SeenGlyph[]) | undefined;
     seenDots?: (() => readonly SeenGlyph[]) | undefined;
   }
@@ -77,7 +79,6 @@ export function seenRows(
     tops,
     bands,
     tintsOf,
-    widths,
     gutter,
     left: textLeft = 0,
   }: ShownRows,
@@ -96,9 +97,8 @@ export function seenRows(
     return {
       key: rowKey(row),
       text: row.row.text.slice(from, to),
-      line: row.row.text,
+      ...(rows[index - 1]?.row !== row.row && { line: row.row.text }),
       from,
-      places: placesWithin(row.row.text, from, to, column, widths),
       scrolled: first * place.advance,
       column,
       left: place.left + (column - first) * place.advance,
@@ -142,6 +142,23 @@ export function seenRows(
       continues: row.to < row.row.text.length || row.row.cut === true,
     };
   });
+}
+
+export function seenPlaces(
+  { rows, parts, widths }: ShownRows,
+  index: number,
+): (readonly [at: number, column: number])[] {
+  const row = rows[index];
+  const part = parts[index];
+  return row === undefined
+    ? []
+    : placesWithin(
+        row.row.text,
+        part?.from ?? row.from,
+        part?.to ?? row.to,
+        part?.column ?? 0,
+        widths,
+      );
 }
 
 const rowOf = (

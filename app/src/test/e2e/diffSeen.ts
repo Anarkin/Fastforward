@@ -104,6 +104,20 @@ export const diffTexts = async (
     .filter(({ change }) => changed === undefined || change === changed)
     .map(({ text }) => text);
 
+export const diffPlaces = (
+  page: Page,
+  { side, at }: DiffRowSeen,
+  within = '',
+): Promise<readonly (readonly [at: number, column: number])[]> =>
+  page
+    .locator(`${within} ${diffSides}`)
+    .nth(side)
+    .evaluate(
+      (host, row) =>
+        host instanceof HTMLElement ? [...(host.seenPlaces?.(row) ?? [])] : [],
+      at,
+    );
+
 export const diffFinds = async (page: Page, within = ''): Promise<string[]> =>
   (await diffLinesSeen(page, within)).flatMap(({ marks }) =>
     marks.filter(({ name }) => name !== 'occurrence').map(({ text }) => text),

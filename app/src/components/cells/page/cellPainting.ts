@@ -23,7 +23,7 @@ import {
 import type { ColoredSegment } from '../../syntax/page/lineColors';
 import {
   breakSelected,
-  selectedIn,
+  selectedAmong,
   type CharRange,
   type TextSelection,
 } from './textSelection';
@@ -65,6 +65,7 @@ export interface RowsLook {
   readonly widths: TextWidths;
   readonly first: number;
   readonly selection?: TextSelection | undefined;
+  readonly selections?: readonly TextSelection[] | undefined;
   readonly tintsOf?: ((row: TextLine) => RowTints | undefined) | undefined;
   readonly left?: number | undefined;
 }
@@ -85,7 +86,7 @@ interface KeptRow {
   readonly segmentsOf: SegmentsOf | undefined;
   readonly marks: readonly FindMark[];
   readonly tints: RowTints | undefined;
-  readonly selected: CharRange | undefined;
+  readonly selected: readonly CharRange[];
   readonly breakSelected: boolean;
   readonly blanks: boolean;
   readonly limit: number;
@@ -129,11 +130,8 @@ const keptScreens = 8;
 
 function selectedPieces(
   pieces: readonly DrawnPiece[],
-  selected: CharRange | undefined,
+  selected: CharRange,
 ): readonly DrawnPiece[] {
-  if (selected === undefined) {
-    return pieces;
-  }
   const split: DrawnPiece[] = [];
   let at = 0;
   for (const piece of pieces) {
@@ -208,7 +206,7 @@ function piecesOf(
   row: ScreenRow,
   marks: readonly FindMark[],
   tints: RowTints | undefined,
-  selected: CharRange | undefined,
+  selected: readonly CharRange[],
   from: number,
   to: number,
 ): readonly DrawnPiece[] {
@@ -217,21 +215,25 @@ function piecesOf(
     from,
     to,
   );
-  const marked = selectedPieces(
+  const found: readonly DrawnPiece[] =
     marks.length === 0
       ? segments
-      : markPieces(segments, marksWithin(marks, from, to)),
-    selected && { from: selected.from - from, to: selected.to - from },
+      : markPieces(segments, marksWithin(marks, from, to));
+  const marked = selected.reduce(
+    (pieces, range) =>
+      selectedPieces(pieces, { from: range.from - from, to: range.to - from }),
+    found,
   );
   return tints === undefined ? marked : tintedPieces(marked, tints, from);
 }
 
-const sameRange = (one: CharRange | undefined, other: CharRange | undefined) =>
+const sameRanges = (one: readonly CharRange[], other: readonly CharRange[]) =>
   one === other ||
-  (one !== undefined &&
-    other !== undefined &&
-    one.from === other.from &&
-    one.to === other.to);
+  (one.length === other.length &&
+    one.every(
+      (range, at) =>
+        range.from === other[at]?.from && range.to === other[at]?.to,
+    ));
 
 const sameMarks = (one: readonly FindMark[], other: readonly FindMark[]) =>
   one === other || (one.length === 0 && other.length === 0);
@@ -299,25 +301,28 @@ const drawingOn = (
 export const rowKey = (row: ScreenRow): string =>
   `${row.row.start}:${row.from}`;
 
+const noSelections: readonly TextSelection[] = [];
+
 const selectedOf = (
-  { selection }: RowsLook,
+  { selection, selections = noSelections }: RowsLook,
   row: ScreenRow,
   part: RowPart | undefined,
-): CharRange | undefined =>
-  selectedIn(selection, row.row, {
+): readonly CharRange[] =>
+  selectedAmong([selection, ...selections], row.row, {
     from: part?.from ?? row.from,
     to: part?.to ?? row.to,
   });
 
 const breakSelectedOf = (
-  { selection }: RowsLook,
+  { selection, selections = noSelections }: RowsLook,
   row: ScreenRow,
   part: RowPart | undefined,
 ): boolean =>
   (part?.to ?? row.to) >= row.row.text.length &&
   (part?.to ?? row.to) > (part?.from ?? row.from) &&
   row.row.cut !== true &&
-  breakSelected(selection, row.row);
+  (breakSelected(selection, row.row) ||
+    selections.some((each) => breakSelected(each, row.row)));
 
 function keptOf(
   { kept, tiles }: CellPainting,
@@ -337,7 +342,7 @@ function keptOf(
     before.tints === look.tintsOf?.(row.row) &&
     before.left === (look.left ?? 0) &&
     sameMarks(before.marks, marks) &&
-    sameRange(before.selected, selectedOf(look, row, part)) &&
+    sameRanges(before.selected, selectedOf(look, row, part)) &&
     before.breakSelected === breakSelectedOf(look, row, part) &&
     before.blanks === showWhitespace &&
     before.limit === (wrapAt ?? Infinity) &&

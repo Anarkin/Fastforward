@@ -303,9 +303,11 @@ suite('App text views alike', () => {
       pane,
       advance: rows[0]?.advance ?? 0,
       marks: rows.flatMap((row) => {
-        const at = row.line.indexOf(word) - row.from;
+        const whole = row.line ?? row.text;
+        const at =
+          whole.indexOf(word) - (row.line === undefined ? 0 : row.from);
         const shown = at >= 0 && at < row.text.length;
-        return !row.line.includes(line) || (!shown && row.scrolled === 0)
+        return !whole.includes(line) || (!shown && row.scrolled === 0)
           ? []
           : [
               {

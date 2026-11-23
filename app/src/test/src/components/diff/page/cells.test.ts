@@ -1,10 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  rowAt,
-  segmentsOfLine,
-  windowAround,
-} from '../../../../../components/diff/page/cells';
+import { rowAt, windowAround } from '../../../../../components/diff/page/cells';
 
 const heights = [20, 40, 20, 100, 20, 20, 60, 20];
 
@@ -53,21 +49,5 @@ suite('Rows of a diff drawn as cells', () => {
       windowAround(2, (index) => tall[index], 50_000, 600, 300, 20),
       { first: 1, last: 1, top: 49_700, bottom: 50_900 },
     );
-  });
-
-  test('cuts a line into the pieces of its colors, the text between two colored pieces a piece of no color, so the cells color a line of a diff as they color a file viewed', () => {
-    assert.deepStrictEqual(
-      segmentsOfLine('const a = 1;', [
-        { start: 0, end: 5, kind: 'keyword' },
-        { start: 10, end: 11, kind: 'number' },
-      ]),
-      [
-        { text: 'const', kind: 'keyword' },
-        { text: ' a = ' },
-        { text: '1', kind: 'number' },
-        { text: ';' },
-      ],
-    );
-    assert.deepStrictEqual(segmentsOfLine('plain', []), [{ text: 'plain' }]);
   });
 });

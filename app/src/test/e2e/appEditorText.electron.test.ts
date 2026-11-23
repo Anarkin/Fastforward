@@ -7,7 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import { blankSignOf, signedBlank } from '../../lib/page/blankSigns';
 import { wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
 import { cellsOf } from './cellsSeen';
-import { diffSides, type DiffLineSeen } from './diffSeen';
+import { diffPlaces, diffSides, type DiffLineSeen } from './diffSeen';
 import { editorInPage, mountEditor, type PageEditor } from './editorProbe';
 import { wrapColumnsShown } from './wrappingFixtures';
 
@@ -79,17 +79,17 @@ function laidOutText(element: Element): LaidOut {
 
 const unwrappedWidth = 100_000;
 
-function laidOutCells({ text, rows }: DiffLineSeen): LaidOut {
-  const places = rows.flatMap((row) =>
-    row.places.map(
-      ([at, column]) =>
-        [
-          row.from + at,
-          row.left + (column - row.column) * row.advance,
-          row.top,
-        ] as const,
-    ),
-  );
+async function laidOutCells({ text, rows }: DiffLineSeen): Promise<LaidOut> {
+  const places: (readonly [number, number, number])[] = [];
+  for (const row of rows) {
+    for (const [at, column] of await diffPlaces(page, row)) {
+      places.push([
+        row.from + at,
+        row.left + (column - row.column) * row.advance,
+        row.top,
+      ]);
+    }
+  }
   const left = places[0]?.[1] ?? 0;
   const top = places[0]?.[2] ?? 0;
   return {
@@ -112,7 +112,7 @@ async function diffLine(
   const line = await diffLineNumbered(number);
   return {
     line,
-    laidOut: laidOutCells(line),
+    laidOut: await laidOutCells(line),
     width: wrapping ? (await wrapColumnsShown()).width : unwrappedWidth,
   };
 }
@@ -243,7 +243,7 @@ async function blanksOf({ rows }: DiffLineSeen): Promise<{
   const signs = new Map<string, Set<string>>();
   const marked: string[] = [];
   for (const row of rows) {
-    for (const [at, column] of row.places) {
+    for (const [at, column] of await diffPlaces(page, row)) {
       const character = row.text[at] ?? '';
       const where = `${row.at}:${column}`;
       if (character === ' ') {

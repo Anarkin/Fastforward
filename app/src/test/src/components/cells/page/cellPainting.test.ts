@@ -225,6 +225,38 @@ suite('Rows painted as cells', () => {
     );
   });
 
+  test('marks every stretch of a row that one of several selections takes, as a text edited with several cursors has them, and works the row out anew once one of them goes', () => {
+    const { frame, cells } = painting();
+    const rows = [rowOf('abcdefgh', 0)];
+    const selections = [
+      { anchor: { start: 0, char: 1 }, focus: { start: 0, char: 2 } },
+      { anchor: { start: 0, char: 6 }, focus: { start: 0, char: 4 } },
+    ];
+
+    paintRows(cells, shown(rows, { selections }), Infinity);
+
+    assert.deepStrictEqual(
+      rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
+      [
+        [7, 0, 7],
+        [28, 0, 14],
+      ],
+    );
+
+    const placedBefore = frame.placed;
+    paintRows(
+      cells,
+      shown(rows, { selections: selections.slice(0, 1) }),
+      Infinity,
+    );
+
+    assert.strictEqual(frame.placed - placedBefore, 8);
+    assert.deepStrictEqual(
+      rectsIn(cells.frame).map(({ x, y, width }) => [x, y, width]),
+      [[7, 0, 7]],
+    );
+  });
+
   test('draws a cell of the selection after the end of each line the selection runs on from into the text after it, as the browser marked its line break selected, and none after an empty line, a row its line goes on from or the line the selection ends in, working a row out anew once its line break is selected no longer', () => {
     const { frame, cells } = painting();
     const long = rowOf('abcd', 0);

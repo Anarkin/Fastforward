@@ -14,9 +14,12 @@ import {
   type TextLine,
 } from '../../cells/page/lines';
 import type { FindMark } from '../../cells/page/marks';
-import { seenRows, type SeenRow } from '../../cells/page/seen';
+import { seenPlaces, seenRows, type SeenRow } from '../../cells/page/seen';
 import type { SyntaxRange } from '../../syntax/page/engine';
-import type { ColoredSegment } from '../../syntax/page/lineColors';
+import {
+  segmentsOfLine,
+  type ColoredSegment,
+} from '../../syntax/page/lineColors';
 import type { DotLook } from '../../../lib/page/dotLook';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { clicked } from '../../../lib/shared/keymap';
@@ -128,25 +131,6 @@ export function windowAround(
         bottom: to,
       }
     : undefined;
-}
-
-export function segmentsOfLine(
-  text: string,
-  ranges: readonly SyntaxRange[],
-): ColoredSegment[] {
-  const segments: ColoredSegment[] = [];
-  let at = 0;
-  for (const { start, end, kind } of ranges) {
-    if (start > at) {
-      segments.push({ text: text.slice(at, start) });
-    }
-    segments.push({ text: text.slice(start, end), kind });
-    at = end;
-  }
-  if (at < text.length) {
-    segments.push({ text: text.slice(at) });
-  }
-  return segments;
 }
 
 function kept<Found>(
@@ -442,6 +426,10 @@ export class DiffCells {
         this.views[pane]?.dispose();
         this.viewed[pane] = host;
         host.seenRows = () => this.seen(pane);
+        host.seenPlaces = (row) => {
+          const painted = this.painted[pane];
+          return painted === undefined ? [] : seenPlaces(painted.cells, row);
+        };
         this.views[pane] = new CellView(
           device,
           generation,

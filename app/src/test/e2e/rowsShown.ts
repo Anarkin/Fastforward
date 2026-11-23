@@ -21,7 +21,7 @@ export const rowsShown = (page: Page, rows: string): Promise<RowShown[]> =>
       }
       if (seen !== undefined) {
         return seen.map(({ text, line, scrolled, left, top, height }) => ({
-          text: scrolled > 0 ? line : text,
+          text: scrolled > 0 ? (line ?? text) : text,
           left,
           top,
           bottom: top + height,
