@@ -2,9 +2,14 @@ import { placesWithin } from './columns';
 import type { FindMark } from './marks';
 import { marksWithin, piecesWithin } from './lines';
 import type { CellFrame } from './cellFrame';
-import { rowKey, type CellPainting, type ShownRows } from './cellPainting';
+import {
+  rowKey,
+  selectedOf,
+  type CellPainting,
+  type ShownRows,
+} from './cellPainting';
 import type { GlyphTiles } from './glyphTiles';
-import { selectedAmong, type CharRange } from './textSelection';
+import type { CharRange } from './textSelection';
 
 interface SeenMark {
   readonly from: number;
@@ -69,31 +74,27 @@ const plain = 'plain';
 const nameOf = ({ current, occurrence }: FindMark): SeenMark['name'] =>
   occurrence === true ? 'occurrence' : current ? 'current' : 'match';
 
-export function seenRows(
-  {
+export function seenRows(shown: ShownRows, place: SeenPlace): SeenRow[] {
+  const {
     rows,
     parts,
     segmentsOf,
     marksOf,
-    selection,
-    selections,
     first,
     tops,
     bands,
     tintsOf,
     gutter,
     left: textLeft = 0,
-  }: ShownRows,
-  place: SeenPlace,
-): SeenRow[] {
+  } = shown;
   return rows.map((row, index) => {
     const part = parts[index];
     const from = part?.from ?? row.from;
     const to = part?.to ?? row.to;
-    const all = selectedAmong([selection, ...(selections ?? [])], row.row, {
-      from,
-      to,
-    }).map((range) => ({ from: range.from - from, to: range.to - from }));
+    const all = selectedOf(shown, row, part).map((range) => ({
+      from: range.from - from,
+      to: range.to - from,
+    }));
     const column = part?.column ?? 0;
     const down = tops?.[index];
     const tints = tintsOf?.(row.row);
@@ -140,7 +141,9 @@ export function seenRows(
         name: nameOf(mark),
       })),
       selected: all[0],
-      ...(selections !== undefined && { selections: all }),
+      ...((shown.selections !== undefined || shown.shape !== undefined) && {
+        selections: all,
+      }),
       breakAt: row.breakAt,
       continues: row.to < row.row.text.length || row.row.cut === true,
     };

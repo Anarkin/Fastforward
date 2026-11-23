@@ -1,4 +1,5 @@
 import type { FindMark } from '../../../components/cells/page/marks';
+import type { SelectionShape } from '../../../components/cells/page/cellView';
 import type { ScreenRow } from '../../../components/cells/page/lines';
 import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { DotLook } from '../../../lib/page/dotLook';
@@ -33,6 +34,7 @@ interface CellRowsProps {
   readonly segmentsOf: SegmentsOf | undefined;
   readonly marksOf: (row: ScreenRow) => readonly FindMark[];
   readonly showWhitespace: boolean;
+  readonly shape?: SelectionShape | undefined;
   readonly widths: TextWidths | undefined;
   readonly font: CellFont;
   readonly dotLook: DotLook | undefined;
@@ -55,6 +57,7 @@ export function CellRows({
   segmentsOf,
   marksOf,
   showWhitespace,
+  shape,
   widths,
   font,
   dotLook,
@@ -102,6 +105,7 @@ export function CellRows({
           segmentsOf,
           marksOf,
           showWhitespace,
+          shape,
           widths,
           first,
           selection: view.current?.selection,
@@ -147,6 +151,7 @@ export function CellRows({
         segmentsOf,
         marksOf,
         showWhitespace,
+        shape,
         widths,
         first,
       },

@@ -5,6 +5,7 @@ import {
   bytesToAsk,
   hexLine,
   hexRow,
+  hexShape,
   offsetDigits,
 } from '../../../../../tools/viewer/page/hex';
 import { maxBytesAsked } from '../../../../../tools/viewer/shared/protocol';
@@ -160,4 +161,139 @@ suite('Hex rows of a file viewed', () => {
       length: 50 * 120,
     });
   });
+
+  test('selects whole bytes in Hex, pressed in either column and drawn in both, as Find marks them, the selection staying in the column it was pressed in', () => {
+    const shape = hexShape;
+    const first = rowOf(0x00, 'Hello, hex view!');
+    const second = rowOf(0x10, 'second row here.');
+    const { bytesAt, textAt } = hexLine(hexRow(0, [...Buffer.from('x')], 8));
+    const hexAt = (byte: number) => bytesAt + byte * 3 + (byte >= 8 ? 1 : 0);
+
+    assert.deepStrictEqual(
+      [
+        shape.placed(first, hexAt(3), undefined),
+        shape.placed(first, hexAt(3) + 1, undefined),
+        shape.placed(first, hexAt(3) + 2, undefined),
+        shape.placed(first, hexAt(9), undefined),
+        shape.placed(first, textAt + 5, undefined),
+        shape.placed(first, 2, undefined),
+        shape.placed(first, hexAt(3), { start: 0, char: textAt }),
+        shape.placed(first, textAt + 16, { start: 0, char: bytesAt }),
+      ],
+      [
+        hexAt(3),
+        hexAt(3),
+        hexAt(4),
+        hexAt(9),
+        textAt + 5,
+        hexAt(0),
+        textAt + 3,
+        hexAt(15) + 2,
+      ],
+    );
+    const across = {
+      anchor: { start: 0x00, char: hexAt(14) },
+      focus: { start: 0x10, char: hexAt(2) },
+    };
+    assert.deepStrictEqual(
+      [shape.drawn(across, first), shape.drawn(across, second)],
+      [
+        [
+          { from: hexAt(14), to: hexAt(15) + 2 },
+          { from: textAt + 14, to: textAt + 16 },
+        ],
+        [
+          { from: hexAt(0), to: hexAt(1) + 2 },
+          { from: textAt, to: textAt + 2 },
+        ],
+      ],
+    );
+    assert.deepStrictEqual(
+      shape.drawn(
+        {
+          anchor: { start: 0, char: textAt + 4 },
+          focus: { start: 0, char: textAt + 1 },
+        },
+        first,
+      ),
+      [
+        { from: hexAt(1), to: hexAt(3) + 2 },
+        { from: textAt + 1, to: textAt + 4 },
+      ],
+    );
+  });
+
+  test('copies the bytes selected as their hex digits when pressed in the hex column and as their characters in the other, one after another across rows, and seeks their hex digits whichever it was, as copies of the same bytes are marked in both columns', () => {
+    const shape = hexShape;
+    const rows = [
+      rowOf(0x00, 'Hello, hex view!'),
+      rowOf(0x10, 'second row here.'),
+    ];
+    const { bytesAt, textAt } = hexLine(hexRow(0, [...Buffer.from('x')], 8));
+    const hexAt = (byte: number) => bytesAt + byte * 3 + (byte >= 8 ? 1 : 0);
+    const inHex = {
+      anchor: { start: 0x00, char: hexAt(14) },
+      focus: { start: 0x10, char: hexAt(2) },
+    };
+    const inText = {
+      anchor: { start: 0x00, char: textAt + 14 },
+      focus: { start: 0x10, char: textAt + 2 },
+    };
+
+    assert.strictEqual(shape.text(inHex, rows), '77 21 73 65 ');
+    assert.strictEqual(
+      shape.clip(shape.text(inHex, rows), inHex, rows),
+      '77 21 73 65',
+    );
+    assert.strictEqual(shape.text(inText, rows), 'w!se');
+    assert.strictEqual(shape.clip('w!se', inText, rows), 'w!se');
+    assert.deepStrictEqual(
+      [shape.sought(inHex, rows), shape.sought(inText, rows)],
+      ['77217365', '77217365'],
+    );
+    assert.strictEqual(shape.sought(inHex, rows.slice(1)), undefined);
+    assert.strictEqual(
+      shape.sought({ anchor: inHex.anchor, focus: inHex.anchor }, rows),
+      undefined,
+    );
+  });
+
+  test('takes the byte a double click is on in the hex column and the word in the other, and the whole row on a third click, in the column clicked', () => {
+    const shape = hexShape;
+    const row = rowOf(0x20, 'Hello, hex view!');
+    const { bytesAt, textAt } = hexLine(hexRow(0, [...Buffer.from('x')], 8));
+    const hexAt = (byte: number) => bytesAt + byte * 3 + (byte >= 8 ? 1 : 0);
+
+    assert.deepStrictEqual(
+      [
+        shape.word(row, hexAt(8) + 1),
+        shape.word(row, textAt + 9),
+        shape.line(row, hexAt(4)),
+        shape.line(row, textAt),
+      ],
+      [
+        {
+          anchor: { start: 0x20, char: hexAt(8) },
+          focus: { start: 0x20, char: hexAt(9) },
+        },
+        {
+          anchor: { start: 0x20, char: textAt + 7 },
+          focus: { start: 0x20, char: textAt + 10 },
+        },
+        {
+          anchor: { start: 0x20, char: hexAt(0) },
+          focus: { start: 0x20, char: hexAt(15) + 2 },
+        },
+        {
+          anchor: { start: 0x20, char: textAt },
+          focus: { start: 0x20, char: textAt + 16 },
+        },
+      ],
+    );
+  });
 });
+
+function rowOf(offset: number, text: string) {
+  const line = hexLine(hexRow(offset, [...Buffer.from(text)], 8)).text;
+  return { start: offset, end: offset + 16, text: line };
+}

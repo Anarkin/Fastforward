@@ -25,6 +25,7 @@ import {
   breakSelected,
   selectedAmong,
   type CharRange,
+  type SelectionShape,
   type TextSelection,
 } from './textSelection';
 
@@ -66,6 +67,7 @@ export interface RowsLook {
   readonly first: number;
   readonly selection?: TextSelection | undefined;
   readonly selections?: readonly TextSelection[] | undefined;
+  readonly shape?: SelectionShape | undefined;
   readonly tintsOf?: ((row: TextLine) => RowTints | undefined) | undefined;
   readonly left?: number | undefined;
 }
@@ -306,21 +308,34 @@ export const rowKey = (row: ScreenRow): string =>
 
 const noSelections: readonly TextSelection[] = [];
 
-const selectedOf = (
-  { selection, selections = noSelections }: RowsLook,
+export const selectedOf = (
+  { selection, selections = noSelections, shape }: RowsLook,
   row: ScreenRow,
   part: RowPart | undefined,
-): readonly CharRange[] =>
-  selectedAmong([selection, ...selections], row.row, {
-    from: part?.from ?? row.from,
-    to: part?.to ?? row.to,
-  });
+): readonly CharRange[] => {
+  const from = part?.from ?? row.from;
+  const to = part?.to ?? row.to;
+  return shape === undefined
+    ? selectedAmong([selection, ...selections], row.row, { from, to })
+    : selection === undefined
+      ? noRanges
+      : shape
+          .drawn(selection, row.row)
+          .map((range) => ({
+            from: Math.max(from, range.from),
+            to: Math.min(to, range.to),
+          }))
+          .filter((range) => range.to > range.from);
+};
+
+const noRanges: readonly CharRange[] = [];
 
 const breakSelectedOf = (
-  { selection, selections = noSelections }: RowsLook,
+  { selection, selections = noSelections, shape }: RowsLook,
   row: ScreenRow,
   part: RowPart | undefined,
 ): boolean =>
+  shape === undefined &&
   (part?.to ?? row.to) >= row.row.text.length &&
   (part?.to ?? row.to) > (part?.from ?? row.from) &&
   row.row.cut !== true &&

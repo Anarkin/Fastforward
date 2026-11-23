@@ -152,14 +152,45 @@ function holds(
   );
 }
 
+export interface SelectionShape {
+  readonly placed: (
+    row: TextLine,
+    char: number,
+    like: TextPlace | undefined,
+  ) => number;
+  readonly word: (row: TextLine, char: number) => TextSelection;
+  readonly line: (row: TextLine, char: number) => TextSelection;
+  readonly drawn: (
+    selection: TextSelection,
+    row: TextLine,
+  ) => readonly CharRange[];
+  readonly text: (
+    selection: TextSelection,
+    rows: readonly TextLine[],
+  ) => string;
+  readonly clip: (
+    text: string,
+    selection: TextSelection,
+    rows: readonly TextLine[],
+  ) => string;
+  readonly sought: (
+    selection: TextSelection,
+    rows: readonly TextLine[],
+  ) => string | undefined;
+}
+
 export function keptText(
   kept: KeptText | undefined,
   selection: TextSelection,
   rows: readonly TextLine[],
+  textOf: (
+    selection: TextSelection,
+    rows: readonly TextLine[],
+  ) => string = selectedText,
 ): string | undefined {
   const { first, last } = ordered(selection);
   if (holds(rows, first, last)) {
-    return selectedText(selection, rows);
+    return textOf(selection, rows);
   }
   const { anchor, focus } = selection;
   if (kept === undefined || !same(kept.selection.anchor, anchor)) {
@@ -174,7 +205,7 @@ export function keptText(
   if (!holds(rows, from, to)) {
     return undefined;
   }
-  const between = selectedText({ anchor: from, focus: to }, rows);
+  const between = textOf({ anchor: from, focus: to }, rows);
   if (before(from, anchor)) {
     return onward ? kept.text.slice(between.length) : between + kept.text;
   }

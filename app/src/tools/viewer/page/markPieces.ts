@@ -138,9 +138,9 @@ const hexColumn = (byte: number) =>
 
 export function hexMarks(marks: readonly FindMark[]): FindMark[] {
   return marks.map((mark) => ({
+    ...mark,
     start: hexColumn(mark.start),
     end: hexColumn(mark.end - 1) + hexPair,
-    current: mark.current,
   }));
 }
 

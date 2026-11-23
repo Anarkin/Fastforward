@@ -23,7 +23,8 @@ import {
 } from './textSelection';
 import { heldRows } from './cellPointing';
 
-export type { KeptText } from './textSelection';
+export type { KeptText, SelectionShape, TextSelection } from './textSelection';
+export { ordered } from './textSelection';
 
 const scrollingBudget = 2;
 

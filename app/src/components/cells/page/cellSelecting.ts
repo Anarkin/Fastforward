@@ -3,6 +3,7 @@ import { soughtCopy } from '../../../lib/shared/textMatches';
 import type { ShownRows } from './cellPainting';
 import {
   heldRows,
+  placedUnder,
   placeUnder,
   pressed,
   reach,
@@ -70,7 +71,13 @@ export class CellSelecting {
   }
 
   private textOf(selection: TextSelection): string | undefined {
-    return keptText(this.kept, selection, heldRows(this.on.held()));
+    const shape = this.on.shown()?.shape;
+    return keptText(
+      this.kept,
+      selection,
+      heldRows(this.on.held()),
+      shape?.text,
+    );
   }
 
   private taken(selection: TextSelection): TextSelection {
@@ -110,13 +117,24 @@ export class CellSelecting {
 
   private copied(): string | undefined {
     const { selection } = this;
-    return selection === undefined || isEmpty(selection)
-      ? undefined
-      : this.textOf(selection);
+    const text =
+      selection === undefined || isEmpty(selection)
+        ? undefined
+        : this.textOf(selection);
+    const shape = this.on.shown()?.shape;
+    return text === undefined || selection === undefined || shape === undefined
+      ? text
+      : shape.clip(text, selection, heldRows(this.on.held()));
   }
 
   private copyOf(): string | undefined {
     const { selection } = this;
+    const shape = this.on.shown()?.shape;
+    if (shape !== undefined) {
+      return selection === undefined || isEmpty(selection)
+        ? undefined
+        : shape.sought(selection, heldRows(this.on.held()));
+    }
     const oneRow =
       selection !== undefined &&
       ordered(selection).first.start === ordered(selection).last.start;
@@ -154,7 +172,15 @@ export class CellSelecting {
     const extending = way === 'extend';
     this.on.began();
     this.dragging = press.detail === 1 || extending;
-    this.select(pressed(this.selection, under, press.detail, extending));
+    this.select(
+      pressed(
+        this.selection,
+        under,
+        press.detail,
+        extending,
+        this.on.shown()?.shape,
+      ),
+    );
     const page = this.host.ownerDocument;
     page.addEventListener('mousemove', this.moved);
     page.addEventListener('mouseup', this.up);
@@ -163,7 +189,14 @@ export class CellSelecting {
   private refocus(): void {
     const under = this.under();
     if (this.selection !== undefined && under !== undefined) {
-      this.select({ anchor: this.selection.anchor, focus: under.place });
+      this.select({
+        anchor: this.selection.anchor,
+        focus: placedUnder(
+          under,
+          this.selection.anchor,
+          this.on.shown()?.shape,
+        ),
+      });
     }
   }
 
@@ -233,7 +266,7 @@ export class CellSelecting {
       if (under !== undefined) {
         this.selection = this.taken({
           anchor: selection.anchor,
-          focus: under.place,
+          focus: placedUnder(under, selection.anchor, this.on.shown()?.shape),
         });
       }
     }

@@ -4,7 +4,14 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
-import { cellPoint, seenMarked, seenSelected } from './cellsSeen';
+import {
+  cellPoint,
+  copied,
+  dragOver,
+  keepCopied,
+  seenMarked,
+  seenRows,
+} from './cellsSeen';
 import { waitForFocus } from './waits';
 import {
   opened,
@@ -14,6 +21,17 @@ import {
   sharedCommanderApp,
 } from './commanderAppFixtures';
 import { firstViewerRow, rowTexts } from './viewerAppFixtures';
+
+const hexColumn = (byte: number) => 11 + byte * 3 + (byte >= 8 ? 1 : 0);
+
+const textColumn = (byte: number) => 62 + byte;
+
+const selectedRanges = async () =>
+  (await seenRows(page))
+    .filter(({ selections }) => (selections ?? []).length > 0)
+    .map(({ text, selections }) =>
+      (selections ?? []).map(({ from, to }) => text.slice(from, to)),
+    );
 
 const pressedMode = () =>
   page
@@ -97,15 +115,58 @@ suite('App commander', () => {
     const pair = await cellPoint(page, 0, 11);
     await page.mouse.dblclick(pair.x, pair.y);
     await waitFor(
-      async () => (await seenMarked(page, 'occurrence')).length > 1,
-      'the other copies of the pair selected marked in the hex view, as in a text',
+      async () => (await seenMarked(page, 'occurrence')).length > 2,
+      'the other copies of the byte selected marked in both columns',
+    );
+    await keepCopied(page);
+    await page.keyboard.press('ControlOrMeta+C');
+    await waitFor(
+      async () => (await copied(page)) !== undefined,
+      'the byte copied',
     );
     assert.deepStrictEqual(
+      {
+        selected: await selectedRanges(),
+        marked: [...new Set(await seenMarked(page, 'occurrence'))],
+        copied: await copied(page),
+      },
+      { selected: [['00', '.']], marked: ['00', '.'], copied: '00' },
+    );
+
+    const draggedCopy = async (
+      from: readonly [number, number],
+      to: readonly [number, number],
+    ) => {
+      await dragOver(page, from, to);
+      await keepCopied(page);
+      await page.keyboard.press('ControlOrMeta+C');
+      await waitFor(
+        async () => (await copied(page)) !== undefined,
+        'the bytes copied',
+      );
+      return { selected: await selectedRanges(), copied: await copied(page) };
+    };
+    assert.deepStrictEqual(
       [
-        await seenSelected(page),
-        [...new Set(await seenMarked(page, 'occurrence'))],
+        await draggedCopy([4, hexColumn(14)], [5, hexColumn(2)]),
+        await draggedCopy([4, textColumn(14)], [5, textColumn(2)]),
       ],
-      [['00'], ['00']],
+      [
+        {
+          selected: [
+            ['4E 4F', 'NO'],
+            ['50 51', 'PQ'],
+          ],
+          copied: '4E 4F 50 51',
+        },
+        {
+          selected: [
+            ['4E 4F', 'NO'],
+            ['50 51', 'PQ'],
+          ],
+          copied: 'NOPQ',
+        },
+      ],
     );
 
     await page.keyboard.press('End');

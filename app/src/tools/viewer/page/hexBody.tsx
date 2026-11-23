@@ -32,9 +32,12 @@ import {
   hexRow,
   hexRowBytes,
   hexSegments,
+  hexShape,
   offsetDigits,
   type LoadedBytes,
 } from './hex';
+import { bytesFound, hexBytes } from './byteCopies';
+import type { ByteRange } from '../shared/protocol';
 import type { Viewing } from './viewing';
 import { useViewer, useViewerActions } from './store';
 import type { KeptBytes } from './tabParts';
@@ -44,6 +47,8 @@ type Bytes = KeptBytes;
 export type ByteLayout = 'hex' | 'text';
 
 const minTextColumns = 16;
+
+const noRanges: readonly ByteRange[] = [];
 
 const noMarks: readonly FindMark[] = [];
 
@@ -200,6 +205,13 @@ export function ByteBody({
     version,
   );
   const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
+  const copiedBytes = useMemo(
+    () =>
+      layout === 'hex' && copy !== undefined && bytes !== undefined
+        ? bytesFound(bytes.start, bytes.data, hexBytes(copy))
+        : noRanges,
+    [layout, copy, bytes],
+  );
   const marksOf = (offset: number, length: number) =>
     find === undefined
       ? []
@@ -215,50 +227,70 @@ export function ByteBody({
   );
   const { font, onFont, table, widths, dotLook } = useCellFont();
   const marks = new Map<number, readonly FindMark[]>();
-  const rows: ScreenRow[] = Array.from(
-    { length: Math.max(0, Math.min(rowCount - top, screen + 2)) },
-    (_, index) => {
-      const offset = (top + index) * rowBytes;
-      const from = bytes === undefined ? -1 : offset - bytes.start;
-      const data =
-        bytes !== undefined &&
-        from >= 0 &&
-        from + Math.min(rowBytes, size - offset) <= bytes.data.length
-          ? bytes.data.slice(from, from + rowBytes)
-          : undefined;
-      const found = data === undefined ? [] : marksOf(offset, data.length);
-      const line =
-        layout === 'hex'
-          ? hexLine(hexRow(offset, data ?? [], digits), data !== undefined)
-          : undefined;
-      const text = line?.text ?? (data === undefined ? '' : byteText(data));
-      if (found.length > 0) {
-        marks.set(
-          offset,
-          line === undefined
-            ? found
-            : hexLineMarks(found, line.bytesAt, line.textAt),
-        );
-      }
-      const end = offset + rowBytes;
-      return {
+  const copies = new Map<number, readonly FindMark[]>();
+  const rowAt = (offset: number): ScreenRow => {
+    const from = bytes === undefined ? -1 : offset - bytes.start;
+    const data =
+      bytes !== undefined &&
+      from >= 0 &&
+      from + Math.min(rowBytes, size - offset) <= bytes.data.length
+        ? bytes.data.slice(from, from + rowBytes)
+        : undefined;
+    const found = data === undefined ? [] : marksOf(offset, data.length);
+    const copied =
+      data === undefined
+        ? []
+        : byteMarks(offset, data.length, copiedBytes, undefined).map(
+            (mark): FindMark => ({ ...mark, occurrence: true }),
+          );
+    const line =
+      layout === 'hex'
+        ? hexLine(hexRow(offset, data ?? [], digits), data !== undefined)
+        : undefined;
+    const text = line?.text ?? (data === undefined ? '' : byteText(data));
+    if (found.length > 0) {
+      marks.set(
+        offset,
+        line === undefined
+          ? found
+          : hexLineMarks(found, line.bytesAt, line.textAt),
+      );
+    }
+    if (copied.length > 0 && line !== undefined) {
+      copies.set(offset, hexLineMarks(copied, line.bytesAt, line.textAt));
+    }
+    const end = offset + rowBytes;
+    return {
+      start: offset,
+      end,
+      row: {
         start: offset,
         end,
-        row: {
-          start: offset,
-          end,
-          text,
-          ...(layout === 'text' && { cut: true as const }),
-        },
-        index: 0,
-        from: 0,
-        to: text.length,
-        indent: 0,
-        breakAt: undefined,
-        hanging: [],
-      };
-    },
+        text,
+        ...(layout === 'text' && { cut: true as const }),
+      },
+      index: 0,
+      from: 0,
+      to: text.length,
+      indent: 0,
+      breakAt: undefined,
+      hanging: [],
+    };
+  };
+  const rows: ScreenRow[] = Array.from(
+    { length: Math.max(0, Math.min(rowCount - top, screen + 2)) },
+    (_, index) => rowAt((top + index) * rowBytes),
   );
+  const held: ScreenRow[] =
+    bytes === undefined
+      ? rows
+      : Array.from(
+          { length: Math.ceil(bytes.data.length / rowBytes) },
+          (_, index) => {
+            const offset = bytes.start + index * rowBytes;
+            return rows.find((row) => row.start === offset) ?? rowAt(offset);
+          },
+        );
 
   return (
     <ScrollBody
@@ -293,14 +325,19 @@ export function ByteBody({
           colored={undefined}
           segmentsOf={segmentsOf}
           marksOf={(row) =>
-            finding ? (marks.get(row.start) ?? noMarks) : copiesIn(row.row.text)
+            finding
+              ? (marks.get(row.start) ?? noMarks)
+              : layout === 'hex'
+                ? (copies.get(row.start) ?? noMarks)
+                : copiesIn(row.row.text)
           }
+          shape={layout === 'hex' ? hexShape : undefined}
           showWhitespace={false}
           widths={widths}
           font={font}
           dotLook={dotLook}
           ahead={noRowsAhead}
-          held={rows}
+          held={held}
           text={undefined}
           onSelected={highlightOccurrences && !finding ? setCopy : noCopy}
           kept={kept}

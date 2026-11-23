@@ -6,6 +6,7 @@ import {
   lineAt,
   ordered,
   wordAt,
+  type SelectionShape,
   type TextPlace,
   type TextSelection,
 } from './textSelection';
@@ -69,17 +70,41 @@ export function pressed(
   under: Under,
   clicks: number,
   extending: boolean,
+  shape?: SelectionShape,
 ): TextSelection {
+  const placedLike = (like: TextPlace | undefined): TextPlace =>
+    shape === undefined
+      ? under.place
+      : {
+          start: under.place.start,
+          char: shape.placed(under.row, under.place.char, like),
+        };
   if (extending && before !== undefined) {
-    return { anchor: before.anchor, focus: under.place };
+    return { anchor: before.anchor, focus: placedLike(before.anchor) };
   }
   if (clicks === 2) {
-    return wordAt(under.row, under.place.char);
+    return (shape?.word ?? wordAt)(under.row, under.place.char);
   }
   if (clicks >= 3) {
-    return lineAt(under.row);
+    return shape === undefined
+      ? lineAt(under.row)
+      : shape.line(under.row, under.place.char);
   }
-  return { anchor: under.place, focus: under.place };
+  const place = placedLike(undefined);
+  return { anchor: place, focus: place };
+}
+
+export function placedUnder(
+  under: Under,
+  like: TextPlace,
+  shape: SelectionShape | undefined,
+): TextPlace {
+  return shape === undefined
+    ? under.place
+    : {
+        start: under.place.start,
+        char: shape.placed(under.row, under.place.char, like),
+      };
 }
 
 export function heldRows(held: readonly ScreenRow[]): TextLine[] {
