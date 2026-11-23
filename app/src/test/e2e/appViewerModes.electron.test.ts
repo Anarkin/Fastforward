@@ -137,14 +137,14 @@ suite('App commander', () => {
     await select('blanks');
     await page.keyboard.press('F3');
     await waitFor(
-      async () => (await firstViewerRow()) === '.a b.c.d.e',
+      async () => (await firstViewerRow()) === '¤a b¤c¤d¤e',
       'the bytes of a binary file',
     );
     await waitForFocus(page.locator('.viewer-body'), 'the viewer');
     const inBytes = await untilSettled(blanks, 'the bytes drawn');
     await page.keyboard.press('1');
     await waitFor(
-      async () => (await firstViewerRow()).endsWith('   .a b.c.d.e'),
+      async () => (await firstViewerRow()).endsWith('   ¤a b¤c¤d¤e'),
       'the bytes in hex',
     );
     const inHex = await untilSettled(blanks, 'the hex drawn');
@@ -175,7 +175,7 @@ suite('App commander', () => {
     await select('cycle');
     await page.keyboard.press('F3');
     await waitFor(
-      async () => (await firstViewerRow()).startsWith('...'),
+      async () => (await firstViewerRow()).startsWith('¤¤¤'),
       'the bytes of a binary file',
     );
     const first = await cellPoint(page, 0, 0);
@@ -218,7 +218,7 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         (await firstViewerRow()) ===
-        '00000000   00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F   ................',
+        '00000000   00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F   ¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤',
       'the first row in hex',
     );
     const pair = await cellPoint(page, 0, 11);
@@ -239,7 +239,7 @@ suite('App commander', () => {
         marked: [...new Set(await seenMarked(page, 'occurrence'))],
         copied: await copied(page),
       },
-      { selected: [['00', '.']], marked: ['00', '.'], copied: '00' },
+      { selected: [['00', '¤']], marked: ['00', '¤'], copied: '00' },
     );
 
     const draggedCopy = async (
@@ -313,9 +313,9 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         ((await firstViewerRow()) ?? '').startsWith(
-          `${'.'.repeat(32)} !"#$%&'()*+,-./0123456789`,
+          `${'¤'.repeat(32)} !"#$%&'()*+,-./0123456789`,
         ),
-      'the bytes as text, one to a character, a dot for each with no glyph',
+      'the bytes as text, one to a character, the sign of the invisible for each with no glyph',
     );
     await page.keyboard.press('1');
     await waitFor(async () => (await pressedMode()) === 'Hex', 'the hex view');

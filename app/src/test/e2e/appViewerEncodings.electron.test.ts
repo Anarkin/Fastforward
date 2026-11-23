@@ -62,7 +62,7 @@ suite('App commander', () => {
     );
     await encodingItems.filter({ hasText: /^Bytes$/ }).click();
     await waitFor(
-      async () => (await rowTexts()).join('').includes('2.9.9. ...'),
+      async () => (await rowTexts()).join('').includes('2¤9¤9¤ ¤¤¤'),
       'the end of the file as bytes',
     );
     assert.deepStrictEqual(
