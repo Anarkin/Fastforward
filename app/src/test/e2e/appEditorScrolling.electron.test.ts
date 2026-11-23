@@ -205,8 +205,8 @@ suite('App editor, long lines and places shown again', () => {
         await onceDrawn(page);
         return topRow();
       },
-      'the text to stop scrolling',
-      { quiet: 600 },
+      'the text to stop scrolling, its top row drawn',
+      { quiet: 600, accepted: (row) => row.text !== '' },
     );
   const scrolledToRow = async (rows: number) => {
     await scroller().evaluate((element, by) => {
