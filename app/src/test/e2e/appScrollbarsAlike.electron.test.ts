@@ -237,6 +237,40 @@ suite('App scrollbars alike', () => {
     );
   });
 
+  test('draws the track of the scrollbar of the previews of Markdown and of a PDF as the track of every other view, as the gray around the pages of a PDF showed through the track, which is see-through', async () => {
+    const trackOf = async (selector: string) => {
+      const { box } = await barOf(page, selector, 'vertical');
+      const parts = await barParts(page, box, 'vertical');
+      assert.ok(parts.thumb, `${selector} shows no thumb`);
+      await page.mouse.move(2, 2);
+      const [plain] = await paintedAt(app, page, [
+        {
+          x: box.left + box.width / 2,
+          y: parts.thumb.top + parts.thumb.height + 8,
+        },
+      ]);
+      return plain;
+    };
+    await show('commander');
+    const everywhere = await trackOf(views.commander.vertical);
+    const seen: Record<string, boolean> = {};
+    for (const [name, { tab, vertical }] of Object.entries(previews)) {
+      await page.locator('.tabs .tab').nth(tab).click();
+      await waitFor(
+        () =>
+          page
+            .locator(vertical)
+            .evaluate(
+              (scroller) => scroller.scrollHeight > scroller.clientHeight,
+            )
+            .catch(() => false),
+        `the preview of ${name} to outgrow its column`,
+      );
+      seen[name] = near(await trackOf(vertical), everywhere);
+    }
+    assert.deepStrictEqual(seen, { Markdown: true, PDF: true });
+  });
+
   test('moves every view a row on a press of a button of its scrollbar, on and on while it is held, up again on the other, and to where its track is pressed, the thumb centered there, gliding or not as the settings say', async () => {
     for (const smooth of [true, false]) {
       await writeSettings(page, profile, settingsWith(smooth));
