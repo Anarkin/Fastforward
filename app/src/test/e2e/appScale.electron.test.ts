@@ -171,7 +171,13 @@ suite('App at a scale of 125%', () => {
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
-      JSON.stringify(baseSettings),
+      JSON.stringify({
+        ...baseSettings,
+        scrolling: {
+          ...baseSettings.scrolling,
+          scrollbarSizeWithMarkers: '18px',
+        },
+      }),
     );
     app = await launchApp(profile, {
       scale,
