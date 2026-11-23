@@ -231,6 +231,34 @@ suite('Cells of a text', () => {
     assert.strictEqual(end, 3);
   });
 
+  test('keeps what a sign of whitespace and the picture of a control character draw within the device pixels of their cell, which a block cursor and a selection cover, cutting off the edges that fall beyond, as the picture of a line end peeked out beside a block cursor on it, while a letter keeps its edges', () => {
+    const { frame, painter } = drawn([{ text: 'a\u001b\t' }], {
+      blanks: true,
+    });
+    const tiles = tilesIn(frame);
+
+    assert.deepStrictEqual(
+      shownAt(frame, painter).map(({ shown, column }) => [shown, column]),
+      [
+        ['a', 0],
+        ['␛', 1],
+        ['→', 2],
+      ],
+    );
+    assert.deepStrictEqual(
+      tiles.map(({ x, width }) => [x, width]),
+      [
+        [-padX, metrics.advance + 2 * padX],
+        [metrics.advance, metrics.advance],
+        [2 * metrics.advance, metrics.advance],
+      ],
+    );
+    assert.deepStrictEqual(
+      tiles.map(({ u }, at) => u - (painter.painted[at]?.x ?? 0)),
+      [0, padX, padX],
+    );
+  });
+
   test('keeps the color of text selected whatever mark is under it, a copy of the text selected or a match of a find, as the selected copy took the ink of a find match, near black on the blue of the selection of the dark theme', () => {
     const { painter } = drawn([
       { text: 'if', kind: 'keyword', mark: 'occurrence', selected: true },

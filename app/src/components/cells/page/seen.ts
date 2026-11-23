@@ -188,13 +188,21 @@ export function seenGlyphs(
   const drawn = new Set(
     tiles.tilesOf(cluster).map((tile) => `${tiles.us[tile]}:${tiles.vs[tile]}`),
   );
-  return frame
-    .tilesPlaced()
-    .filter(({ u, v }) => drawn.has(`${u}:${v}`))
-    .map(({ x, y }) => ({
-      row: rowOf(tops, y + tiles.padY, rowHeight),
-      column: Math.round((x + tiles.padX - left) / advance + first),
-    }));
+  return frame.tilesPlaced().flatMap(({ x, y, u, v }) => {
+    const cut = drawn.has(`${u}:${v}`)
+      ? 0
+      : drawn.has(`${u - tiles.padX}:${v}`)
+        ? tiles.padX
+        : undefined;
+    return cut === undefined
+      ? []
+      : [
+          {
+            row: rowOf(tops, y + tiles.padY, rowHeight),
+            column: Math.round((x - cut + tiles.padX - left) / advance + first),
+          },
+        ];
+  });
 }
 
 export function seenDots(

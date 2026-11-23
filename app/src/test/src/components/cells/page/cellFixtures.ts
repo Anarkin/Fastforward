@@ -186,9 +186,15 @@ export function shownAt(
   frame: CellFrame,
   painter: FakePainter,
 ): { readonly shown: string; readonly column: number; readonly y: number }[] {
-  return tilesIn(frame).map(({ x, y, u }) => ({
-    shown: painter.painted.find((each) => each.x === u)?.shown ?? '',
-    column: (x + padX) / metrics.advance,
-    y: y + padY,
-  }));
+  return tilesIn(frame).map(({ x, y, u }) => {
+    const painted = painter.painted.find(
+      (each) => each.x <= u && u < each.x + each.width,
+    );
+    const cut = u - (painted?.x ?? u);
+    return {
+      shown: painted?.shown ?? '',
+      column: (x - cut + padX) / metrics.advance,
+      y: y + padY,
+    };
+  });
 }

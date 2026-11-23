@@ -243,17 +243,20 @@ function placed(
   tile: number,
   column: number,
   y: number,
+  withinCell = false,
 ): void {
   if (tile === notDrawn) {
     frame.missing++;
     return;
   }
+  const cell = left + Math.round((column - first) * tiles.metrics.advance);
+  const cut = withinCell ? tiles.padX : 0;
   frame.tile(
-    left + Math.round((column - first) * tiles.metrics.advance) - tiles.padX,
+    cell - tiles.padX + cut,
     y - tiles.padY,
-    tiles.us[tile],
+    tiles.us[tile] + cut,
     tiles.vs[tile],
-    tiles.widths[tile],
+    tiles.widths[tile] - 2 * cut,
     tiles.tileHeight,
     style.packed,
   );
@@ -337,6 +340,7 @@ export function drawSign(
       tiles.glyph(style, sign, sign, { cells: 1, centered: false, scale: 1 }),
     column,
     y,
+    true,
   );
 }
 
@@ -429,14 +433,14 @@ function drawText(
         );
         column += cellsOf(drawing, cluster);
       } else {
-        const drawnStyle =
-          cluster.length === 1 && hasControls(cluster)
-            ? controlStyle(drawing, under, mark, selected)
-            : style;
+        const control = cluster.length === 1 && hasControls(cluster);
+        const drawnStyle = control
+          ? controlStyle(drawing, under, mark, selected)
+          : style;
         const tile =
           tiles.known(drawnStyle, cluster) ??
           glyphOf(drawing, drawnStyle, cluster);
-        placed(drawing, drawnStyle, tile, column, y);
+        placed(drawing, drawnStyle, tile, column, y, control);
         column +=
           tile === notDrawn ? cellsOf(drawing, cluster) : tiles.cells[tile];
       }
