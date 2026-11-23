@@ -44,6 +44,17 @@ export const languageIds = new Map(
   ),
 );
 
+export function extensionsOf(language: string): string[] {
+  return [
+    ...[...languageIds]
+      .filter(([, id]) => id === language)
+      .map(([name]) => name),
+    ...Object.entries(extensionLanguages)
+      .filter(([, name]) => languageIds.get(name) === language)
+      .map(([extension]) => extension),
+  ].toSorted((one, other) => one.length - other.length);
+}
+
 export function languageOf(path: string): string | undefined {
   const name = path
     .slice(Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\')) + 1)

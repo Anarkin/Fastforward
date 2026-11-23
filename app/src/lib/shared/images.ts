@@ -10,6 +10,8 @@ const imageTypes: Readonly<Record<string, string>> = {
   svg: 'image/svg+xml',
 };
 
+export const imageExtensions: readonly string[] = Object.keys(imageTypes);
+
 export const vectorType = 'image/svg+xml';
 
 export function imageType(path: string): string | undefined {

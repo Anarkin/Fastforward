@@ -1,7 +1,10 @@
 export const pdfType = 'application/pdf';
 
+export const pdfExtensions: readonly string[] = ['pdf'];
+
 export function isPdf(path: string): boolean {
-  return /\.pdf$/i.test(path);
+  const lower = path.toLowerCase();
+  return pdfExtensions.some((extension) => lower.endsWith(`.${extension}`));
 }
 
 const pdfFits = ['auto', 'page-width', 'page-fit', 'page-actual'] as const;

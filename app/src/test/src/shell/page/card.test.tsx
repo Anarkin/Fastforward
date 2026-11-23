@@ -37,6 +37,44 @@ suite('The card a tooltip and a notice are drawn as', () => {
     );
   });
 
+  test('draws the note and the rows a tooltip tells under its words and their keys, the note first, a row its name and its values in monospace, and the keys right after the words rather than at the far end of the rows', () => {
+    const html = renderToStaticMarkup(
+      <Card
+        kind="tip"
+        said="Preview"
+        keys="3"
+        note="No preview for this kind of file"
+        rows={[
+          { name: 'Markdown', values: '.md .markdown' },
+          { name: 'PDF', values: '.pdf' },
+        ]}
+      />,
+    );
+
+    assert.match(
+      html,
+      /^<div class="card tip info detailed"><span class="card-message">Preview<\/span><span class="shortcut-keys">.*<\/span><span class="card-details"><span class="card-note">No preview for this kind of file<\/span><span class="card-row-name">Markdown<\/span><code class="card-row-values">\.md \.markdown<\/code><span class="card-row-name">PDF<\/span><code class="card-row-values">\.pdf<\/code><\/span><\/div>$/,
+    );
+    const card = rendered(
+      <Card
+        kind="tip"
+        said="Preview"
+        keys="3"
+        rows={[{ name: 'PDF', values: '.pdf' }]}
+      />,
+    );
+    looks(withClass(card, 'card'), { 'flex-wrap': 'wrap' });
+    looks(withClass(card, 'card-message'), { flex: 'none' });
+    looks(withClass(card, 'card-details'), {
+      'flex-basis': '100%',
+      display: 'grid',
+    });
+    looks(withClass(card, 'card-row-values'), {
+      'font-family': 'var(--monospace-font-family)',
+      'font-size': 'var(--monospace-font-size)',
+    });
+  });
+
   test('gives a notice its close button, named for a screen reader, and an error its icon before its words', () => {
     const html = renderToStaticMarkup(
       <Card kind="notice" said="failed" error onClose={noop} />,

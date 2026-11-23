@@ -40,6 +40,37 @@ suite('The tooltip of an element', () => {
     );
   });
 
+  test('tells a note under its words and rows of a name and its values under that, as the button of the preview of a file viewed lists the kinds of file it previews, and reads them back, each only where it is given', () => {
+    const rows = [
+      { name: 'Markdown', values: '.md .markdown' },
+      { name: 'PDF', values: '.pdf' },
+    ];
+    const told = tip('Preview', {
+      keys: '3',
+      note: 'No preview for this kind of file. Supported types:',
+      rows,
+    });
+
+    assert.deepStrictEqual(told, {
+      'data-tip': 'Preview',
+      'data-tip-keys': '3',
+      'data-tip-note': 'No preview for this kind of file. Supported types:',
+      'data-tip-rows': JSON.stringify(rows),
+    });
+    assert.deepStrictEqual(tipOf(element(told, 'button')), {
+      said: 'Preview',
+      at: 'below-center',
+      cut: false,
+      keys: '3',
+      note: 'No preview for this kind of file. Supported types:',
+      rows,
+    });
+    assert.deepStrictEqual(
+      tipOf(element({ ...tip('Preview'), 'data-tip-rows': '[{"name":1}]' })),
+      { said: 'Preview', at: 'below', cut: false, keys: undefined },
+    );
+  });
+
   test('is none for nothing to say, so an element with no tooltip has no attribute of one', () => {
     assert.deepStrictEqual(
       [tip(undefined), tip(''), tip(false), tip([])],

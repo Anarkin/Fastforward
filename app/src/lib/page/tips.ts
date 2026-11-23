@@ -12,10 +12,17 @@ const places = [
 
 export type TipAt = (typeof places)[number];
 
+export interface TipRow {
+  readonly name: string;
+  readonly values: string;
+}
+
 export interface TipOptions {
   readonly at?: TipAt;
   readonly cut?: boolean;
   readonly keys?: string | undefined;
+  readonly note?: string | undefined;
+  readonly rows?: readonly TipRow[] | undefined;
 }
 
 export interface TipProps {
@@ -24,6 +31,8 @@ export interface TipProps {
   readonly 'data-tip-at'?: TipAt;
   readonly 'data-tip-cut'?: '';
   readonly 'data-tip-keys'?: string;
+  readonly 'data-tip-note'?: string;
+  readonly 'data-tip-rows'?: string;
 }
 
 export interface Tip {
@@ -31,6 +40,8 @@ export interface Tip {
   readonly at: TipAt;
   readonly cut: boolean;
   readonly keys: string | undefined;
+  readonly note?: string;
+  readonly rows?: readonly TipRow[];
 }
 
 export const tipped = '[data-tip]';
@@ -46,7 +57,7 @@ const centered = 'button';
 
 export function tip(
   said: Sentence | false | undefined,
-  { at, cut = false, keys }: TipOptions = {},
+  { at, cut = false, keys, note, rows }: TipOptions = {},
 ): TipProps {
   if (said === undefined || said === false || wordsOf(said) === '') {
     return {};
@@ -57,6 +68,9 @@ export function tip(
     ...(at !== undefined && { 'data-tip-at': at }),
     ...(cut && { 'data-tip-cut': '' as const }),
     ...(keys !== undefined && { 'data-tip-keys': keys }),
+    ...(note !== undefined && note !== '' && { 'data-tip-note': note }),
+    ...(rows !== undefined &&
+      rows.length > 0 && { 'data-tip-rows': JSON.stringify(rows) }),
   };
 }
 
@@ -97,6 +111,25 @@ function saidOf(plain: string, told: string | null): Sentence {
   }
 }
 
+const isRow = (row: unknown): row is TipRow =>
+  isRecord(row) &&
+  typeof row.name === 'string' &&
+  typeof row.values === 'string';
+
+function rowsOf(told: string | null): readonly TipRow[] | undefined {
+  if (told === null) {
+    return undefined;
+  }
+  try {
+    const read: unknown = JSON.parse(told);
+    return Array.isArray(read) && read.length > 0 && read.every(isRow)
+      ? read
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const isPlace = (at: string | null): at is TipAt =>
   places.some((place) => place === at);
 
@@ -106,10 +139,14 @@ export function tipOf(element: Element): Tip | undefined {
     return undefined;
   }
   const at = element.getAttribute('data-tip-at');
+  const note = element.getAttribute('data-tip-note');
+  const rows = rowsOf(element.getAttribute('data-tip-rows'));
   return {
     said: saidOf(plain, element.getAttribute('data-tip-said')),
     at: isPlace(at) ? at : element.matches(centered) ? 'below-center' : 'below',
     cut: element.hasAttribute('data-tip-cut'),
     keys: element.getAttribute('data-tip-keys') ?? undefined,
+    ...(note !== null && note !== '' && { note }),
+    ...(rows !== undefined && { rows }),
   };
 }

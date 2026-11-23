@@ -90,7 +90,7 @@ const view = async (name: string, natural: number) => {
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('previews an image, an SVG and Markdown with its images, offering hex, text and the preview from the least to the most particular, switching to the source with 2, and offers no preview for other files', async () => {
+  test('previews an image, an SVG and Markdown with its images, offering hex, text and the preview from the least to the most particular, switching to the source with 2, and offers the preview of other files disabled, 3 doing nothing', async () => {
     const dot = Buffer.from(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
       'base64',
@@ -164,8 +164,10 @@ suite('App commander', () => {
     assert.strictEqual(
       await page
         .locator('.viewer .toolbar[role="group"] [data-tip="Preview"]')
-        .count(),
-      0,
+        .evaluate(
+          (button) => button instanceof HTMLButtonElement && button.disabled,
+        ),
+      true,
     );
     await page.keyboard.press('3');
     assert.strictEqual(await pressedMode(), 'Text');

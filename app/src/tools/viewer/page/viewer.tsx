@@ -23,7 +23,7 @@ import { MenuButton } from '../../../lib/page/menu';
 import { TextBody } from './textBody';
 import { ByteBody } from './hexBody';
 import { PreviewBody } from './previewBody';
-import { firstMode, previewOf } from './previews';
+import { firstMode, previewKinds, previewOf } from './previews';
 import {
   encodingMenu,
   shownEncoding,
@@ -113,9 +113,8 @@ export function Viewer() {
   const languageTrigger = useRef<HTMLButtonElement>(null);
   const versionTrigger = useRef<HTMLButtonElement>(null);
   const preview = previewOf(file);
-  const shownModes = modes.filter(
-    (each) => each.mode !== 'preview' || preview !== undefined,
-  );
+  const available = (each: ViewMode) =>
+    each !== 'preview' || preview !== undefined;
   const mode = chosen ?? firstMode(file);
   const shown = shownEncoding(encoding, viewing);
   const readsText = mode === 'text' && shown !== 'bytes';
@@ -125,7 +124,7 @@ export function Viewer() {
   const showsCode = mode === 'preview' && preview === 'markdown';
   const toggleRealSize = () => changeImageView({ realSize: !realSize });
   const choose = (wanted: ViewMode) => {
-    if (shownModes.some((each) => each.mode === wanted)) {
+    if (available(wanted)) {
       setChosen(wanted);
     }
   };
@@ -248,13 +247,20 @@ export function Viewer() {
         <header className="column-title">
           <Toolbar className="column-start viewer-actions">
             <Toolbar role="group" aria-label={strings.viewer.viewAs}>
-              {shownModes.map(({ mode: each, title, icon }) => (
+              {modes.map(({ mode: each, title, icon }) => (
                 <button
                   key={each}
                   className={`nav-button toggle ${mode === each ? 'active' : ''}`}
                   {...labelTip(title, {
                     keys: keysOf(viewerKeymap.viewAs, each),
+                    ...(each === 'preview' && {
+                      note: available(each)
+                        ? undefined
+                        : strings.viewer.noPreview,
+                      rows: previewKinds(),
+                    }),
                   })}
+                  disabled={!available(each)}
                   aria-pressed={mode === each}
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => choose(each)}

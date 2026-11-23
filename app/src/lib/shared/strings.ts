@@ -1051,6 +1051,10 @@ export const strings = {
     viewText: 'Text',
     viewHex: 'Hex',
     viewPreview: 'Preview',
+    noPreview: 'No preview for this kind of file. Supported types:',
+    markdownFiles: 'Markdown',
+    pdfFiles: 'PDF',
+    imageFiles: 'Images',
     realSize: 'Real Size',
     previewTooLarge: (megabytes: number) =>
       `Documents over ${megabytes} MB are not previewed.`,

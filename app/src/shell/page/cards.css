@@ -17,6 +17,33 @@
   white-space: pre-wrap;
 }
 
+.card.detailed {
+  flex-wrap: wrap;
+}
+
+.card.detailed .card-message {
+  flex: none;
+}
+
+.card-details {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: baseline;
+  column-gap: 16px;
+  row-gap: 2px;
+}
+
+.card-note {
+  grid-column: 1 / -1;
+}
+
+.card-row-values {
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+}
+
 .card.tip {
   position: fixed;
   left: 0;
