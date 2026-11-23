@@ -9,6 +9,8 @@ import {
 } from '../../../../../tools/viewer/page/hex';
 import { maxBytesAsked } from '../../../../../tools/viewer/shared/protocol';
 
+const printable = (byte: number) => byte >= 0x20 && byte <= 0x7e;
+
 suite('Hex rows of a file viewed', () => {
   test('shows the offset, the 16 bytes in two groups of 8, and the printable characters, a dot for the rest', () => {
     const bytes = [...Buffer.from('Hello, hex view!')];
@@ -79,10 +81,24 @@ suite('Hex rows of a file viewed', () => {
     );
   });
 
-  test('shows the bytes of a binary file as text one byte to a character, Latin-1 as it is, a dot for what has no glyph', () => {
+  test('draws a byte alike in the characters of a row of hex and in the bytes of a file, one character a byte: printable ASCII as it is and every other byte a dot, as the bytes drew the Latin letters of 0xA1 to 0xFF the hex drew as dots, and lit up the padding of binaries as ÿ', () => {
+    const every = Array.from({ length: 256 }, (_, byte) => byte);
+    const expected = every
+      .map((byte) => (printable(byte) ? String.fromCharCode(byte) : '.'))
+      .join('');
+
+    assert.strictEqual(byteText(every), expected);
+    assert.strictEqual(
+      Array.from(
+        { length: 16 },
+        (_, row) =>
+          hexRow(row * 16, every.slice(row * 16, row * 16 + 16), 8).text,
+      ).join(''),
+      expected,
+    );
     assert.strictEqual(
       byteText([0x41, 0x00, 0x0a, 0x7f, 0x85, 0xa0, 0xad, 0xe9, 0xff, 0x7e]),
-      'A......éÿ~',
+      'A........~',
     );
   });
 

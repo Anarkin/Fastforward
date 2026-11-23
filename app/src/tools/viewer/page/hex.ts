@@ -6,19 +6,14 @@ export const hexRowBytes = 16;
 const groupBytes = 8;
 const firstPrintable = 0x20;
 const lastPrintable = 0x7e;
-const firstLatin = 0xa1;
-const softHyphen = 0xad;
-
-function isLatinGlyph(byte: number): boolean {
-  return (
-    (byte >= firstPrintable && byte <= lastPrintable) ||
-    (byte >= firstLatin && byte !== softHyphen)
-  );
-}
 
 export function byteText(bytes: readonly number[]): string {
   return bytes
-    .map((byte) => (isLatinGlyph(byte) ? String.fromCharCode(byte) : '.'))
+    .map((byte) =>
+      byte >= firstPrintable && byte <= lastPrintable
+        ? String.fromCharCode(byte)
+        : '.',
+    )
     .join('');
 }
 
@@ -84,13 +79,7 @@ export function hexRow(
   return {
     offset: offset.toString(16).toUpperCase().padStart(digits, '0'),
     hex: `${pairs.slice(0, groupBytes).join(' ')}  ${pairs.slice(groupBytes).join(' ')}`,
-    text: bytes
-      .map((byte) =>
-        byte >= firstPrintable && byte <= lastPrintable
-          ? String.fromCharCode(byte)
-          : '.',
-      )
-      .join(''),
+    text: byteText(bytes),
   };
 }
 
