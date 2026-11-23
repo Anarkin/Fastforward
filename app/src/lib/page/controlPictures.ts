@@ -25,6 +25,9 @@ const everyPicture = new RegExp(pictureClass, 'g');
 
 export const swappedCharacters = (): RegExp => new RegExp(swappedClass, 'g');
 
+export const controlRuns = (): RegExp =>
+  new RegExp(`${classOf(controlCodes)}+`, 'g');
+
 export const pictureOf = (code: number): string =>
   String.fromCharCode(pictureOfControl(code));
 

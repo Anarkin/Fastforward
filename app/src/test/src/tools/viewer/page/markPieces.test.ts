@@ -26,6 +26,20 @@ suite('Matches marked in a file viewed', () => {
     assert.deepStrictEqual(occurrenceMarks('total', undefined), []);
   });
 
+  test('keeps a piece drawn as whitespace signs so when a mark cuts it, as the pictures of control bytes turned into text and the dots of spaces went missing in a row of hex holding a copy of the bytes selected', () => {
+    assert.deepStrictEqual(
+      markPieces(
+        [{ text: 'w' }, { text: ' ␛', blank: true }, { text: 'w' }],
+        [{ start: 0, end: 1, current: false, occurrence: true }],
+      ),
+      [
+        { text: 'w', kind: undefined, mark: 'occurrence' },
+        { text: ' ␛', kind: undefined, mark: undefined, blank: true },
+        { text: 'w', kind: undefined, mark: undefined },
+      ],
+    );
+  });
+
   test('gives a row the same occurrences while the same text stays selected, so a row drawn before is not drawn again as the view scrolls', () => {
     const copiesIn = occurrencesOf('a');
     const first = copiesIn('a b a');

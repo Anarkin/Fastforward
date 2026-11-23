@@ -1,7 +1,12 @@
 import type { DOMPurify } from 'dompurify';
 import type MarkdownIt from 'markdown-it';
 import type { StateCore } from 'markdown-it';
-import { hasSwapped, pictured } from '../../../lib/page/controlPictures';
+import {
+  controlRuns,
+  hasControls,
+  hasSwapped,
+  pictured,
+} from '../../../lib/page/controlPictures';
 
 const tagsGitHubKeeps = [
   'h1',
@@ -146,12 +151,36 @@ function taskLists(state: StateCore): void {
   }
 }
 
-function picturedTexts(node: Node): void {
-  for (const child of node.childNodes) {
+const controlClass = 'control-character';
+
+function mutedControls(text: ChildNode, shown: string): void {
+  const owner = text.ownerDocument;
+  if (owner === null) {
+    return;
+  }
+  const parts = owner.createDocumentFragment();
+  let at = 0;
+  for (const found of shown.matchAll(controlRuns())) {
+    parts.append(shown.slice(at, found.index));
+    const control = owner.createElement('span');
+    control.className = controlClass;
+    control.textContent = pictured(found[0]);
+    parts.append(control);
+    at = found.index + found[0].length;
+  }
+  parts.append(shown.slice(at));
+  text.replaceWith(parts);
+}
+
+function picturedTexts(node: Node, inCode = false): void {
+  for (const child of Array.from(node.childNodes)) {
+    const shown = child.nodeValue ?? '';
     if (child.nodeType !== child.TEXT_NODE) {
-      picturedTexts(child);
-    } else if (hasSwapped(child.nodeValue ?? '')) {
-      child.nodeValue = pictured(child.nodeValue ?? '');
+      picturedTexts(child, inCode || child.nodeName === 'PRE');
+    } else if (!inCode && hasControls(shown)) {
+      mutedControls(child, shown);
+    } else if (hasSwapped(shown)) {
+      child.nodeValue = pictured(shown);
     }
   }
 }

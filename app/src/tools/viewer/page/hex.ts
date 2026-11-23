@@ -5,6 +5,7 @@ import {
   type TextLine,
 } from '../../../components/cells/page/lines';
 import { strings } from '../../../lib/shared/strings';
+import { pictureOf } from '../../../lib/page/controlPictures';
 import {
   ordered,
   type SelectionShape,
@@ -59,6 +60,18 @@ const blankBytes: ReadonlyMap<number, string> = new Map([
   [0x0a, strings.symbols.lineFeed],
 ]);
 
+const lastControl = 0x1f;
+const deleteByte = 0x7f;
+
+function signOfByte(byte: number | undefined): string | undefined {
+  return byte === undefined
+    ? undefined
+    : (blankBytes.get(byte) ??
+        (byte <= lastControl || byte === deleteByte
+          ? pictureOf(byte)
+          : undefined));
+}
+
 function joinedOnto(
   segments: ColoredSegment[],
   text: string,
@@ -91,7 +104,7 @@ export function withBlankBytes(
   let at = textAt;
   for (const piece of piecesWithin(segments, textAt, length)) {
     for (const character of piece.text) {
-      const sign = blankBytes.get(bytes[at - textAt] ?? -1);
+      const sign = signOfByte(bytes[at - textAt]);
       joinedOnto(marked, sign ?? character, piece.kind, sign !== undefined);
       at += character.length;
     }

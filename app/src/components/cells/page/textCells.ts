@@ -187,6 +187,25 @@ function mutedStyle({ tiles, palette }: Styled, tint?: string): GlyphStyle {
   return style;
 }
 
+function controlStyle(
+  { tiles, palette }: Styled,
+  tint: string | undefined,
+  mark: Mark,
+  selected: boolean,
+): GlyphStyle {
+  const key = `${signs}/${tint ?? ''}/${mark ?? ''}/${selected ? 'selected' : ''}`;
+  let style = palette.styles.get(key);
+  if (style === undefined) {
+    const marked = mark === undefined ? undefined : palette.look[mark];
+    style = tiles.style(
+      marked?.ink ?? palette.look.muted,
+      groundOn(palette, tint, mark, selected),
+    );
+    palette.styles.set(key, style);
+  }
+  return style;
+}
+
 function cellsOf({ widths }: TextDrawing, cluster: string): number {
   return Math.round(widths.of(cluster) / widths.char);
 }
@@ -383,9 +402,14 @@ function drawText(
         drawSign(drawing, blankSignOf(cluster), column, y, tint);
         column += cellsOf(drawing, cluster);
       } else {
+        const drawnStyle =
+          cluster.length === 1 && hasControls(cluster)
+            ? controlStyle(drawing, under, mark, selected)
+            : style;
         const tile =
-          tiles.known(style, cluster) ?? glyphOf(drawing, style, cluster);
-        placed(drawing, style, tile, column, y);
+          tiles.known(drawnStyle, cluster) ??
+          glyphOf(drawing, drawnStyle, cluster);
+        placed(drawing, drawnStyle, tile, column, y);
         column +=
           tile === notDrawn ? cellsOf(drawing, cluster) : tiles.cells[tile];
       }

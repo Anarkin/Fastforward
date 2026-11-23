@@ -285,7 +285,7 @@ suite('App control pictures', () => {
     );
   });
 
-  test('draws a form feed and an escape in the editor in the color of the code around them, each in the piece of the string that holds it and drawn once, as the viewer and the diff draw them', async () => {
+  test('draws a form feed and an escape in the editor each in the piece of the string that holds it and drawn once, as the viewer and the diff draw them', async () => {
     await page.locator('.tabs .tab').nth(5).click();
     const cells = cellsOf(page, editor.rows);
     const held = `${formFeed}page${escape}`;
@@ -355,5 +355,34 @@ suite('App control pictures', () => {
     assert.deepStrictEqual(await fontsDrawing('.markdown p', 'A bell'), [
       `${controlFont} 2`,
     ]);
+    assert.deepStrictEqual(
+      await preview
+        .locator('p')
+        .first()
+        .evaluate((paragraph) => {
+          const probe = document.createElement('span');
+          probe.style.color = 'var(--muted-foreground)';
+          paragraph.append(probe);
+          const muted = getComputedStyle(probe).color;
+          probe.remove();
+          return {
+            controls: [...paragraph.querySelectorAll('.control-character')].map(
+              (shown) => [
+                shown.textContent?.codePointAt(0),
+                getComputedStyle(shown).color === muted,
+              ],
+            ),
+            text: getComputedStyle(paragraph).color === muted,
+          };
+        }),
+      {
+        controls: [
+          [7, true],
+          [0x240c, true],
+        ],
+        text: false,
+      },
+      'the control characters of its prose in the muted color of the signs of whitespace, as the cells draw them',
+    );
   });
 });

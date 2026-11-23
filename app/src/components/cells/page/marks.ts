@@ -62,7 +62,7 @@ export function markPieces(
   }
   const marked: MarkedPiece[] = [];
   let at = 0;
-  for (const { text, kind } of pieces) {
+  for (const { text, kind, blank } of pieces) {
     const end = at + text.length;
     const edges = [
       at,
@@ -86,6 +86,7 @@ export function markPieces(
               : mark.current
                 ? 'current'
                 : 'match',
+        ...(blank && { blank }),
       });
     }
     at = end;

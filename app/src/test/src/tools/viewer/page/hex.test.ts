@@ -114,21 +114,32 @@ suite('Hex rows of a file viewed', () => {
       { text: '00000000', kind: 'offset' },
       { text: line.text.slice(8, line.textAt + 1) },
       {
-        text: ` ${symbols.tab}${symbols.carriageReturn}${symbols.lineFeed}`,
+        text: ` ${symbols.tab}${symbols.carriageReturn}${symbols.lineFeed}␀`,
         blank: true,
       },
-      { text: '.b' },
+      { text: 'b' },
     ]);
     assert.strictEqual(
       marked.map(({ text }) => text).join('').length,
       line.text.length,
     );
     assert.deepStrictEqual(
-      withBlankBytes([{ text: '.a b' }], 0, [0, 0x61, 0x20, 0x62]),
-      [{ text: '.a' }, { text: ' ', blank: true }, { text: 'b' }],
+      withBlankBytes([{ text: 'a.a b' }], 0, [0x61, 0x80, 0x61, 0x20, 0x62]),
+      [{ text: 'a.a' }, { text: ' ', blank: true }, { text: 'b' }],
     );
     assert.deepStrictEqual(withBlankBytes([{ text: 'ab' }], 0, [0x61, 0x62]), [
       { text: 'ab' },
+    ]);
+  });
+
+  test('marks every other control byte among the characters too, by its picture, the delete as well, and leaves the bytes past ASCII as dots', () => {
+    const bytes = [0x00, 0x1b, 0x41, 0x7f, 0x80, 0xff];
+
+    assert.deepStrictEqual(withBlankBytes([{ text: '..A...' }], 0, bytes), [
+      { text: '␀␛', blank: true },
+      { text: 'A' },
+      { text: '␡', blank: true },
+      { text: '..' },
     ]);
   });
 

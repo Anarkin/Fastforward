@@ -42,7 +42,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Ignore whitespace | Leave out changes of whitespace alone | — | Common | ✅ Yes | On by default; files with only whitespace changes are named on their header |
 | Show whitespace | Draw the spaces, tabs and line ends | . | Advanced | ✅ Yes | On by default; `.` |
-| Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | Each control character but the tab and the line ends as its picture, a column wide, by the font the app makes for them, as the viewer and the editor draw them, its changes marked as those of any character; copied as the character itself |
+| Control characters | Draw the characters that have no shape of their own | — | Common | ✅ Yes | Each control character but the tab and the line ends as its picture, a column wide in the muted color of the signs of whitespace, whether whitespace is shown or not, as it marks a character rather than being text, and in the ink of a find match over it, by the font the app makes for them, as the viewer and the editor draw them, its changes marked as those of any character; copied as the character itself |
 | Line endings | Show changes of line endings, or ignore them | — | Advanced | ✅ Yes | Carriage returns are drawn with the whitespace, and ignored with it |
 | Encodings | Show files that aren't UTF-8 | — | Advanced | 🟡 Partial | A file opened in a viewer tab is read in the encoding a byte order mark names or, when not UTF-8, the code page of the system, or in one chosen with E; diffs read files as UTF-8; git turns messages into UTF-8 |
 | Ignore case | Leave out changes of case alone | — | Advanced | ❌ No |  |

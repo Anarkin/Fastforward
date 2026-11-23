@@ -191,3 +191,7 @@
 .markdown a[href] {
   color: var(--color-focus);
 }
+
+.markdown .control-character {
+  color: var(--muted-foreground);
+}

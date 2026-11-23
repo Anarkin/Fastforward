@@ -41,7 +41,7 @@ suite('Markdown', () => {
     assert.match(html, /<li>plain<\/li>/);
   });
 
-  test('leaves the control characters of a paragraph and of a code block in the text, for the font of the app to draw as the viewer draws a text, and swaps the form feed alone for its picture, leaving a picture the file itself holds as it is', () => {
+  test('leaves the control characters of a paragraph and of a code block in the text, for the font of the app to draw as the viewer draws a text, those of the paragraph in a span given the muted color of the signs, as the cells draw them, and swaps the form feed alone for its picture, leaving a picture the file itself holds as it is', () => {
     const formFeed = String.fromCharCode(12);
     const html = render(
       [
@@ -53,7 +53,12 @@ suite('Markdown', () => {
       ].join('\n'),
       noImages,
     );
-    assert.ok(html.includes('<p>bell \u0007 and ␛ fed␌on</p>'), html);
+    assert.ok(
+      html.includes(
+        '<p>bell <span class="control-character">\u0007</span> and ␛ fed<span class="control-character">␌</span>on</p>',
+      ),
+      html,
+    );
     assert.ok(html.includes('<code>a\u001b[0m\u007f␌\n</code>'), html);
   });
 
