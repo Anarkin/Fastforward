@@ -167,7 +167,7 @@ function styleOf(
     const { look } = palette;
     const colored =
       (kind === undefined ? undefined : look.kinds.get(kind)) ?? look.plain;
-    const marked = mark === undefined ? undefined : look[mark];
+    const marked = mark === undefined || selected ? undefined : look[mark];
     style = tiles.style(
       marked?.ink ?? colored,
       groundOn(palette, tint, mark, selected),
@@ -196,7 +196,8 @@ function controlStyle(
   const key = `${signs}/${tint ?? ''}/${mark ?? ''}/${selected ? 'selected' : ''}`;
   let style = palette.styles.get(key);
   if (style === undefined) {
-    const marked = mark === undefined ? undefined : palette.look[mark];
+    const marked =
+      mark === undefined || selected ? undefined : palette.look[mark];
     style = tiles.style(
       marked?.ink ?? palette.look.muted,
       groundOn(palette, tint, mark, selected),
