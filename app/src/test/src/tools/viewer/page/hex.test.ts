@@ -7,7 +7,9 @@ import {
   hexRow,
   hexShape,
   offsetDigits,
+  withBlankBytes,
 } from '../../../../../tools/viewer/page/hex';
+import { strings } from '../../../../../lib/shared/strings';
 import { maxBytesAsked } from '../../../../../tools/viewer/shared/protocol';
 
 const printable = (byte: number) => byte >= 0x20 && byte <= 0x7e;
@@ -101,6 +103,33 @@ suite('Hex rows of a file viewed', () => {
       byteText([0x41, 0x00, 0x0a, 0x7f, 0x85, 0xa0, 0xad, 0xe9, 0xff, 0x7e]),
       'A........~',
     );
+  });
+
+  test('marks the bytes of whitespace among the characters of a row, a space to be dotted and a tab, a carriage return and a line feed by their signs, one character a byte, so the row keeps its columns, and leaves the rest of the row as its pieces were', () => {
+    const { symbols } = strings;
+    const bytes = [0x61, 0x20, 0x09, 0x0d, 0x0a, 0x00, 0x62];
+    const line = hexLine(hexRow(0, bytes, 8));
+    const marked = withBlankBytes(line.segments, line.textAt, bytes);
+    assert.deepStrictEqual(marked, [
+      { text: '00000000', kind: 'offset' },
+      { text: line.text.slice(8, line.textAt + 1) },
+      {
+        text: ` ${symbols.tab}${symbols.carriageReturn}${symbols.lineFeed}`,
+        blank: true,
+      },
+      { text: '.b' },
+    ]);
+    assert.strictEqual(
+      marked.map(({ text }) => text).join('').length,
+      line.text.length,
+    );
+    assert.deepStrictEqual(
+      withBlankBytes([{ text: '.a b' }], 0, [0, 0x61, 0x20, 0x62]),
+      [{ text: '.a' }, { text: ' ', blank: true }, { text: 'b' }],
+    );
+    assert.deepStrictEqual(withBlankBytes([{ text: 'ab' }], 0, [0x61, 0x62]), [
+      { text: 'ab' },
+    ]);
   });
 
   test('asks for no more bytes than the main process reads at once, around the rows shown, holding what it was given while the rows move a little, as rows too wide for five screens of them were asked for again without end, and the row above the screen was blank', () => {

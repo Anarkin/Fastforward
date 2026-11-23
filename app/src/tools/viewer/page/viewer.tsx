@@ -301,7 +301,7 @@ export function Viewer() {
                   keys: keysOf(viewerKeymap.showWhitespace),
                 })}
                 aria-pressed={showWhitespace}
-                disabled={!readsText && !showsCode}
+                disabled={mode === 'preview' && !showsCode}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() =>
                   changeTextView({ showWhitespace: !showWhitespace })

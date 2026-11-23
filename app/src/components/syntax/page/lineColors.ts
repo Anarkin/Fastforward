@@ -7,6 +7,7 @@ export interface ColoredRange {
 export interface ColoredSegment {
   readonly text: string;
   readonly kind?: string | undefined;
+  readonly blank?: true;
 }
 
 const plain = 'plain';

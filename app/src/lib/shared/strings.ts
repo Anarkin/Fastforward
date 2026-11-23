@@ -150,6 +150,7 @@ export const strings = {
     breaks: '↵',
     tab: '→',
     carriageReturn: '␍',
+    lineFeed: '␊',
     nonBreakingSpace: '⍽',
     invisible: '¤',
     foldersLeftOut: '…',

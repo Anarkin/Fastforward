@@ -35,7 +35,7 @@ suite('Viewer keys', () => {
     });
   });
 
-  test('chooses the encoding only of a text, and the language, wrapping and whitespace only while text is read', () => {
+  test('chooses the encoding only of a text, and the language and wrapping only while text is read, and shows whitespace in hex too, as its characters mark whitespace', () => {
     assert.deepStrictEqual(viewerKey(keyPress('e'), text), {
       kind: 'encoding',
     });
@@ -47,9 +47,12 @@ suite('Viewer keys', () => {
     assert.deepStrictEqual(viewerKey(keyPress('.'), text), {
       kind: 'whitespace',
     });
-    for (const key of ['l', 'w', '.']) {
+    for (const key of ['l', 'w']) {
       assert.strictEqual(viewerKey(keyPress(key), hex), undefined, key);
     }
+    assert.deepStrictEqual(viewerKey(keyPress('.'), hex), {
+      kind: 'whitespace',
+    });
   });
 
   test('shows and hides whitespace on its key while a Markdown document is previewed too, as its code blocks dot their spaces as a text does, and leaves wrapping and the language to a text', () => {

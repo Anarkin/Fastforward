@@ -3,7 +3,7 @@ import {
   occurrencesOf,
   type FindMark,
 } from '../../../components/cells/page/marks';
-import type { ScreenRow } from '../../../components/cells/page/lines';
+import type { ScreenRow, TextLine } from '../../../components/cells/page/lines';
 import {
   useCallback,
   useEffect,
@@ -34,8 +34,10 @@ import {
   hexSegments,
   hexShape,
   offsetDigits,
+  withBlankBytes,
   type LoadedBytes,
 } from './hex';
+import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
 import { bytesFound, hexBytes } from './byteCopies';
 import type { ByteRange } from '../shared/protocol';
 import type { Viewing } from './viewing';
@@ -218,13 +220,25 @@ export function ByteBody({
       : byteMarks(offset, length, find.matches, find.current);
 
   const digits = offsetDigits(size);
-  const segmentsOf = useMemo(
-    () =>
+  const showWhitespace = useShell((state) => state.textView.showWhitespace);
+  const segmentsOf = useMemo((): SegmentsOf | undefined => {
+    const plain =
       layout === 'hex'
-        ? (row: { readonly text: string }) => hexSegments(row.text, digits)
-        : undefined,
-    [layout, digits],
-  );
+        ? (row: TextLine) => hexSegments(row.text, digits)
+        : undefined;
+    if (!showWhitespace || bytes === undefined) {
+      return plain;
+    }
+    const textAt = layout === 'hex' ? hexLine(hexRow(0, [], digits)).textAt : 0;
+    return (row) => {
+      const from = row.start - bytes.start;
+      return withBlankBytes(
+        plain?.(row) ?? [{ text: row.text }],
+        textAt,
+        from < 0 ? [] : bytes.data.slice(from, from + rowBytes),
+      );
+    };
+  }, [layout, digits, showWhitespace, bytes, rowBytes]);
   const { font, onFont, table, widths, dotLook } = useCellFont();
   const marks = new Map<number, readonly FindMark[]>();
   const copies = new Map<number, readonly FindMark[]>();

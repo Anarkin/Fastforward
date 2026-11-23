@@ -9,10 +9,12 @@ import {
   copied,
   dragOver,
   keepCopied,
+  seenDots,
+  seenGlyphs,
   seenMarked,
   seenRows,
 } from './cellsSeen';
-import { waitForFocus } from './waits';
+import { untilSettled, waitForFocus } from './waits';
 import {
   opened,
   page,
@@ -37,6 +39,28 @@ const pressedMode = () =>
   page
     .locator('.viewer .toolbar[role="group"] [aria-pressed="true"]')
     .getAttribute('data-tip');
+
+const blanks = async () => ({
+  dots: (await seenDots(page)).map(({ column }) => column),
+  ...Object.fromEntries(
+    await Promise.all(
+      [
+        strings.symbols.tab,
+        strings.symbols.carriageReturn,
+        strings.symbols.lineFeed,
+      ].map(async (sign) => [
+        sign,
+        (await seenGlyphs(page, sign)).map(({ column }) => column),
+      ]),
+    ),
+  ),
+});
+const signsAt = (at: (byte: number) => number) => ({
+  dots: [at(2)],
+  [strings.symbols.tab]: [at(4)],
+  [strings.symbols.carriageReturn]: [at(6)],
+  [strings.symbols.lineFeed]: [at(8)],
+});
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -91,6 +115,44 @@ suite('App commander', () => {
         'the file to be gone from the list',
       );
     }
+  });
+
+  test('marks the bytes of whitespace among the characters of Bytes and of Hex while whitespace is shown, a space by its dot and a tab, a carriage return and a line feed by their signs, as text marks them, and none in the hex digits or once whitespace is hidden', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'blanks.bin'),
+      Buffer.from('\u0000a b\tc\rd\ne', 'latin1'),
+    );
+    await select('blanks');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () => (await firstViewerRow()) === '.a b.c.d.e',
+      'the bytes of a binary file',
+    );
+    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+    const inBytes = await untilSettled(blanks, 'the bytes drawn');
+    await page.keyboard.press('1');
+    await waitFor(
+      async () => (await firstViewerRow()).endsWith('   .a b.c.d.e'),
+      'the bytes in hex',
+    );
+    const inHex = await untilSettled(blanks, 'the hex drawn');
+    await page.keyboard.press('.');
+    const hidden = await untilSettled(blanks, 'the hex drawn plain');
+    await page.keyboard.press('.');
+    await page.keyboard.press('Escape');
+    assert.deepStrictEqual(
+      { inBytes, inHex, hidden },
+      {
+        inBytes: signsAt((byte) => byte),
+        inHex: signsAt(textColumn),
+        hidden: {
+          dots: [],
+          [strings.symbols.tab]: [],
+          [strings.symbols.carriageReturn]: [],
+          [strings.symbols.lineFeed]: [],
+        },
+      },
+    );
   });
 
   test('shows a binary file in hex, 16 bytes a row, to its last row with End, and switches to text and back with 2 and 1 or the buttons', async () => {

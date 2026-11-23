@@ -53,7 +53,7 @@ export function viewerKey(
     return { kind: 'wrap' };
   }
   if (
-    (readsText || showsCode) &&
+    (mode !== 'preview' || showsCode) &&
     keyPressed(viewerKeymap.showWhitespace, event) !== undefined
   ) {
     return { kind: 'whitespace' };

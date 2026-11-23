@@ -142,6 +142,7 @@ export interface TextDrawing {
 export interface DrawnPiece {
   readonly text: string;
   readonly kind?: string | undefined;
+  readonly blank?: true;
   readonly mark?: Mark;
   readonly selected?: boolean;
   readonly tint?: string | undefined;
@@ -393,6 +394,30 @@ function drawText(
   return column;
 }
 
+function drawBlanks(
+  drawing: TextDrawing,
+  blankText: string,
+  from: number,
+  y: number,
+  tint: string | undefined,
+  under: string | undefined,
+  mark: Mark,
+  selected: boolean,
+): number {
+  let column = from;
+  for (const sign of blankText) {
+    if (column <= drawing.limit) {
+      if (sign === ' ') {
+        drawDot(drawing, column, y, under, mark, selected);
+      } else {
+        drawSign(drawing, sign, column, y, tint);
+      }
+    }
+    column++;
+  }
+  return column;
+}
+
 export function drawPieces(
   drawing: TextDrawing,
   pieces: readonly DrawnPiece[],
@@ -415,17 +440,30 @@ export function drawPieces(
         ? frame.rect(0, y, 0, 0, 0)
         : undefined;
     const style = styleOf(drawing, kind, mark, selected, tint);
-    column = drawText(
-      drawing,
-      text,
-      style,
-      column,
-      y,
-      mark === undefined && selected !== true ? tint : undefined,
-      tint,
-      mark,
-      selected === true,
-    );
+    const signTint = mark === undefined && selected !== true ? tint : undefined;
+    column =
+      piece.blank === true
+        ? drawBlanks(
+            drawing,
+            text,
+            column,
+            y,
+            signTint,
+            tint,
+            mark,
+            selected === true,
+          )
+        : drawText(
+            drawing,
+            text,
+            style,
+            column,
+            y,
+            signTint,
+            tint,
+            mark,
+            selected === true,
+          );
     const end = Math.min(column, limit + 1);
     if (under !== undefined && end > start) {
       frame.rectAt(

@@ -1,6 +1,10 @@
 import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import { maxBytesAsked } from '../shared/protocol';
-import type { TextLine } from '../../../components/cells/page/lines';
+import {
+  piecesWithin,
+  type TextLine,
+} from '../../../components/cells/page/lines';
+import { strings } from '../../../lib/shared/strings';
 import {
   ordered,
   type SelectionShape,
@@ -46,6 +50,53 @@ export function hexSegments(text: string, digits: number): ColoredSegment[] {
     { text: text.slice(0, digits), kind: offsetKind },
     ...(text.length > digits ? [{ text: text.slice(digits) }] : []),
   ];
+}
+
+const blankBytes: ReadonlyMap<number, string> = new Map([
+  [0x20, ' '],
+  [0x09, strings.symbols.tab],
+  [0x0d, strings.symbols.carriageReturn],
+  [0x0a, strings.symbols.lineFeed],
+]);
+
+function joinedOnto(
+  segments: ColoredSegment[],
+  text: string,
+  kind: string | undefined,
+  blank: boolean,
+): void {
+  const last = segments.at(-1);
+  if (
+    last !== undefined &&
+    last.kind === kind &&
+    (last.blank === true) === blank
+  ) {
+    segments[segments.length - 1] = { ...last, text: last.text + text };
+    return;
+  }
+  segments.push({
+    text,
+    ...(kind !== undefined && { kind }),
+    ...(blank && { blank: true }),
+  });
+}
+
+export function withBlankBytes(
+  segments: readonly ColoredSegment[],
+  textAt: number,
+  bytes: readonly number[],
+): ColoredSegment[] {
+  const length = segments.reduce((sum, { text }) => sum + text.length, 0);
+  const marked = piecesWithin(segments, 0, textAt);
+  let at = textAt;
+  for (const piece of piecesWithin(segments, textAt, length)) {
+    for (const character of piece.text) {
+      const sign = blankBytes.get(bytes[at - textAt] ?? -1);
+      joinedOnto(marked, sign ?? character, piece.kind, sign !== undefined);
+      at += character.length;
+    }
+  }
+  return marked;
 }
 
 export function hexLine(

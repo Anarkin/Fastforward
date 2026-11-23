@@ -124,7 +124,10 @@ suite('The buttons a file viewed is viewed as', () => {
       );
 
       await tool.press('1');
-      assert.deepStrictEqual(controls(tool), toolbar(new Set(always)));
+      assert.deepStrictEqual(
+        controls(tool),
+        toolbar(new Set([...always, strings.common.showWhitespace])),
+      );
 
       await viewed(tool, 'C:\\work\\cat.png');
       await tool.press('3');
