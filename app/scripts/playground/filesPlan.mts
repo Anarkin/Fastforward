@@ -1,5 +1,6 @@
 import type { Content } from './planContents.mts';
 import { planViewing } from './planViewing.mts';
+import { planInvisibles } from './planInvisibles.mts';
 import { planHuge } from './planHuge.mts';
 import { planHeavy } from './planHeavy.mts';
 import { planNames } from './planNames.mts';
@@ -154,6 +155,7 @@ export function plan({
   const options = { platform, large };
   planColors(builder);
   planViewing(builder);
+  planInvisibles(builder);
   planNames(builder, options);
   planArchives(builder, options);
   planThumbnails(builder, options);

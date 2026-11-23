@@ -351,6 +351,47 @@ suite('Playground of files', () => {
     );
   });
 
+  test('holds the characters that show nothing, take no room or turn text around, each on a line of a catalog by its code point, between bars and between letters, and files where they stand in code, prose, emoji and a pair to compare, with C1 decoded from UTF-8 and the same bytes in Windows-1252', () => {
+    const made = planFor('win32');
+    const textOf = (where: string) =>
+      contentOf(itemAt(made, `invisibles/${where}`)).toString('utf8');
+    const catalog = textOf('catalog.txt').split('\n');
+    const kept = [
+      0x01, 0x1b, 0x7f, 0x85, 0x9b, 0xa0, 0xad, 0x34f, 0x61c, 0x115f, 0x180e,
+      0x2000, 0x200b, 0x200c, 0x200d, 0x200e, 0x200f, 0x2028, 0x2029, 0x202a,
+      0x202e, 0x202f, 0x2060, 0x2061, 0x2064, 0x2066, 0x2069, 0x206a, 0x2800,
+      0x3000, 0x3164, 0xfe0f, 0xfeff, 0xfff9, 0xfffc, 0xe0001, 0xe0067, 0xe007f,
+    ];
+    for (const code of kept) {
+      const character = String.fromCodePoint(code);
+      const named = `U+${code.toString(16).toUpperCase().padStart(4, '0')}`;
+      assert.ok(
+        catalog.some(
+          (line) =>
+            line.startsWith(named) &&
+            line.includes(`|${character}|`) &&
+            line.includes(`a${character}b`),
+        ),
+        named,
+      );
+    }
+    assert.ok(textOf('trojan-source.ts').includes('‮'));
+    assert.ok(textOf('trojan-source.ts').includes('⁦'));
+    assert.ok(textOf('emoji.txt').includes('‍'));
+    assert.ok(textOf('emoji.txt').includes('\u{E0067}'));
+    assert.ok(textOf('prose.txt').includes('­'));
+    assert.ok(textOf('c1-utf8.txt').includes('\u0085'));
+    const c1Bytes = contentOf(itemAt(made, 'invisibles/c1-windows-1252.txt'));
+    assert.ok(c1Bytes.includes(0x85) && !c1Bytes.includes(0xc2));
+    assert.ok(
+      made.pairs.some(
+        ([one, other]) =>
+          one === 'invisibles/compare/old.txt' &&
+          other === 'invisibles/compare/new.txt',
+      ),
+    );
+  });
+
   test('crosses every limit of the viewer, knowing each as the app does: the size it colors, the length of a line it shows whole, the rows it breaks longer ones into, the size of Markdown it previews and of an image, and the matches it counts', () => {
     assert.deepStrictEqual(filesPlan.limits, {
       maxColoredBytes,
