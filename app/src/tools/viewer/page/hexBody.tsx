@@ -49,6 +49,11 @@ const minTextColumns = 16;
 
 const noRanges: readonly ByteRange[] = [];
 
+interface SelectedBytes {
+  readonly key: string;
+  readonly bytes: readonly number[];
+}
+
 const noMarks: readonly FindMark[] = [];
 
 const noRowsAhead: readonly RowAhead[] = [];
@@ -204,6 +209,22 @@ export function ByteBody({
     version,
   );
   const selection = kept?.selection;
+  const selectedKey =
+    selection === undefined ? undefined : JSON.stringify(selection);
+  const [taken, setTaken] = useState<SelectedBytes>();
+  useEffect(() => {
+    if (selection === undefined || selectedKey === undefined) {
+      setTaken(undefined);
+      return;
+    }
+    if (bytes === undefined || taken?.key === selectedKey) {
+      return;
+    }
+    const sought = selectedBytes(selection, bytes);
+    if (sought.length > 0) {
+      setTaken({ key: selectedKey, bytes: sought });
+    }
+  }, [selection, selectedKey, bytes, taken]);
   const copiedBytes = useMemo(() => {
     if (bytes === undefined || !highlightOccurrences || finding) {
       return noRanges;
@@ -213,11 +234,11 @@ export function ByteBody({
         ? copy === undefined
           ? []
           : hexBytes(copy)
-        : selection === undefined
-          ? []
-          : selectedBytes(selection, bytes);
+        : taken?.key === selectedKey
+          ? (taken?.bytes ?? [])
+          : [];
     return bytesFound(bytes.start, bytes.data, sought);
-  }, [layout, copy, selection, bytes, highlightOccurrences, finding]);
+  }, [layout, copy, taken, selectedKey, bytes, highlightOccurrences, finding]);
   const marksOf = (offset: number, length: number) =>
     find === undefined
       ? []

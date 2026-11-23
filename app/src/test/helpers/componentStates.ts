@@ -87,6 +87,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a trigger: counts the views of the text mounted, only to apply the find to each',
   'tools/viewer/page/hexBody.tsx copy':
     'a moment: the text selected whose copies are marked, told by the cells once the selection rests; the selection goes with a tab change, and the copies with it',
+  'tools/viewer/page/hexBody.tsx taken':
+    'a measure: the bytes a selection of the bytes of a file covers, taken from the bytes read as it is selected so its copies are sought far from it too, taken anew from the bytes read around the selection the tab keeps once shown again',
   'tools/viewer/page/hexBody.tsx columns':
     'a measure: the bytes that fit in a row, measured anew from the body once mounted',
   'tools/viewer/page/hexBody.tsx screen':

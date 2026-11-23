@@ -62,6 +62,18 @@ const signsAt = (at: (byte: number) => number) => ({
   [strings.symbols.lineFeed]: [at(8)],
 });
 
+const markedOffsets = (what: string) =>
+  untilSettled(
+    async () =>
+      (await seenRows(page)).flatMap(({ key, marks }) =>
+        marks
+          .filter(({ name }) => name === 'occurrence')
+          .map(({ from }) => Number(key.slice(0, key.indexOf(':'))) + from),
+      ),
+    what,
+    { accepted: (offsets) => offsets.length > 1 },
+  );
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -155,10 +167,10 @@ suite('App commander', () => {
     );
   });
 
-  test('marks the copies of the bytes selected among the bytes of a file by their value, as Hex marks them, rather than every byte drawn as the same dot', async () => {
+  test('marks the copies of the bytes selected among the bytes of a file by their value, as Hex marks them, rather than every byte drawn as the same dot, far from the selection too, as the bytes sought were taken from the bytes read around the screen, which held them no longer', async () => {
     fs.writeFileSync(
       path.join(opened, 'cycle.bin'),
-      Buffer.from(Array.from({ length: 4096 }, (_, index) => index % 256)),
+      Buffer.from(Array.from({ length: 4_000_000 }, (_, index) => index % 256)),
     );
     await select('cycle');
     await page.keyboard.press('F3');
@@ -168,22 +180,26 @@ suite('App commander', () => {
     );
     const first = await cellPoint(page, 0, 0);
     await page.mouse.dblclick(first.x, first.y);
-    const marked = await untilSettled(
-      async () =>
-        (await seenRows(page)).flatMap(({ key, marks }) =>
-          marks
-            .filter(({ name }) => name === 'occurrence')
-            .map(({ from }) => Number(key.slice(0, key.indexOf(':'))) + from),
-        ),
+    const marked = await markedOffsets(
       'the copies of the byte selected marked',
-      { accepted: (offsets) => offsets.length > 1 },
     );
+    await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+    await page.keyboard.press('End');
+    await waitFor(async () => {
+      const [shown] = await seenRows(page);
+      return (
+        shown !== undefined &&
+        Number(shown.key.slice(0, shown.key.indexOf(':'))) > 3_000_000
+      );
+    }, 'the end of the file shown');
+    const far = await markedOffsets('the copies marked far from the selection');
     await page.keyboard.press('Escape');
     assert.deepStrictEqual(
-      marked.filter((offset) => offset % 256 !== 0),
+      [...marked, ...far].filter((offset) => offset % 256 !== 0),
       [],
-      `marked at ${marked.join(', ')}`,
+      `marked at ${marked.join(', ')} and far at ${far.join(', ')}`,
     );
+    assert.ok(Math.min(...far) > 3_000_000, `far at ${far.join(', ')}`);
   });
 
   test('shows a binary file in hex, 16 bytes a row, to its last row with End, and switches to text and back with 2 and 1 or the buttons', async () => {
