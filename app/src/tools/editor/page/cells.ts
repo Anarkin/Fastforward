@@ -114,7 +114,7 @@ class EditorCells implements PluginValue {
   private marked:
     | { readonly stamp: readonly unknown[]; readonly lines: LinesMarked }
     | undefined;
-  private frame = 0;
+  private gone = false;
   private anew = true;
   private across = 0;
 
@@ -141,7 +141,7 @@ class EditorCells implements PluginValue {
   }
 
   destroy(): void {
-    cancelAnimationFrame(this.frame);
+    this.gone = true;
     this.view.scrollDOM.removeEventListener('scroll', this.scrolled);
     this.unwatched();
     this.cells?.dispose();
@@ -150,17 +150,23 @@ class EditorCells implements PluginValue {
 
   private readonly scrolled = () => this.later(false);
 
-  private later(anew: boolean): void {
-    this.anew ||= anew;
-    if (this.frame !== 0) {
-      return;
-    }
-    this.frame = requestAnimationFrame(() => {
-      this.frame = 0;
+  private readonly showing = {
+    key: this,
+    read: () => {
+      if (this.gone) {
+        return;
+      }
       const again = this.anew;
       this.anew = false;
       this.show(again);
-    });
+    },
+  };
+
+  private later(anew: boolean): void {
+    this.anew ||= anew;
+    if (!this.gone) {
+      this.view.requestMeasure(this.showing);
+    }
   }
 
   private left(): void {

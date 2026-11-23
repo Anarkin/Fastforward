@@ -89,14 +89,25 @@ function groundOn(
   return ground;
 }
 
-function dotFillOn(palette: TextPalette, tint: string | undefined): number {
-  let fill = palette.dotFills.get(tint);
+function dotFillOn(
+  palette: TextPalette,
+  tint: string | undefined,
+  mark?: Mark,
+  selected = false,
+): number {
+  const key =
+    mark === undefined && !selected
+      ? tint
+      : `${tint ?? ''}/${mark ?? ''}/${selected ? 'selected' : ''}`;
+  let fill = palette.dotFills.get(key);
   if (fill === undefined) {
     const { dot, dots } = palette.look;
     fill = packedOf(
-      dot === undefined ? dots : over(groundOn(palette, tint), dot),
+      dot === undefined
+        ? dots
+        : over(groundOn(palette, tint, mark, selected), dot),
     );
-    palette.dotFills.set(tint, fill);
+    palette.dotFills.set(key, fill);
   }
   return fill;
 }
@@ -303,13 +314,15 @@ export function drawDot(
   column: number,
   y: number,
   tint?: string,
+  mark?: Mark,
+  selected = false,
 ): void {
   frame.rect(
     left + Math.round((column - first) * tiles.metrics.advance) + dot.left,
     y + dot.top,
     dot.size,
     dot.size,
-    dotFillOn(palette, tint),
+    dotFillOn(palette, tint, mark, selected),
   );
 }
 
@@ -321,6 +334,8 @@ function drawText(
   y: number,
   tint: string | undefined,
   under: string | undefined,
+  mark?: Mark,
+  selected = false,
 ): number {
   const { tiles, blanks, limit } = drawing;
   let column = from;
@@ -329,7 +344,7 @@ function drawText(
     const code = text.charCodeAt(at);
     if (code === space) {
       if (blanks && column <= limit) {
-        drawDot(drawing, column, y, under);
+        drawDot(drawing, column, y, under, mark, selected);
       }
       column++;
       at++;
@@ -408,6 +423,8 @@ export function drawPieces(
       y,
       mark === undefined && selected !== true ? tint : undefined,
       tint,
+      mark,
+      selected === true,
     );
     const end = Math.min(column, limit + 1);
     if (under !== undefined && end > start) {

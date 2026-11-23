@@ -138,23 +138,6 @@ function recordTopRows(frameCount: number): void {
       }),
     );
   };
-  const scrollTop = Object.getOwnPropertyDescriptor(
-    Element.prototype,
-    'scrollTop',
-  );
-  Object.defineProperty(Element.prototype, 'scrollTop', {
-    configurable: true,
-    get(this: Element) {
-      const value: unknown = scrollTop?.get?.call(this);
-      return typeof value === 'number' ? value : 0;
-    },
-    set(this: Element, value: number) {
-      scrollTop?.set?.call(this, value);
-      if (this.matches('.editor .cm-scroller')) {
-        record(this);
-      }
-    },
-  });
   const channel = new MessageChannel();
   let left = frameCount;
   channel.port1.addEventListener('message', () => {
@@ -162,8 +145,6 @@ function recordTopRows(frameCount: number): void {
     left--;
     if (left > 0) {
       requestAnimationFrame(() => channel.port2.postMessage(0));
-    } else if (scrollTop !== undefined) {
-      Object.defineProperty(Element.prototype, 'scrollTop', scrollTop);
     }
   });
   channel.port1.start();

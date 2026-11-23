@@ -13,6 +13,12 @@ import {
   type TextLook,
 } from '../../../../../components/cells/page/textCells';
 import {
+  filled,
+  over,
+  packedOf,
+  type Rgba,
+} from '../../../../../components/cells/page/cellColors';
+import {
   coloredText,
   segmentsFrom,
   withPart,
@@ -106,6 +112,8 @@ function painting(
     ),
   };
 }
+
+const dotOn = (ground: Rgba) => packedOf(over(ground, [255, 255, 255, 0.5]));
 
 function ended(ending?: string) {
   const line = { start: 0, end: 5, text: 'abcd', ending };
@@ -367,13 +375,13 @@ suite('Rows painted as cells', () => {
       anchor: { start: 0, char: 1 },
       focus: { start: 0, char: padded.length },
     };
-    const filled = () =>
+    const grounds = () =>
       rectsIn(cells.frame)
         .filter(({ height }) => height === metrics.rowHeight)
         .map(({ x, width }) => [x, width]);
 
     paintRows(cells, shown([broken], { wrapAt: 3, selection }), Infinity);
-    assert.deepStrictEqual(filled(), [[7, 21]]);
+    assert.deepStrictEqual(grounds(), [[7, 21]]);
 
     paintRows(
       cells,
@@ -383,7 +391,7 @@ suite('Rows painted as cells', () => {
       }),
       Infinity,
     );
-    assert.deepStrictEqual(filled(), []);
+    assert.deepStrictEqual(grounds(), []);
 
     paintRows(
       cells,
@@ -392,7 +400,38 @@ suite('Rows painted as cells', () => {
       }),
       Infinity,
     );
-    assert.deepStrictEqual(filled(), [[7, 42]]);
+    assert.deepStrictEqual(grounds(), [[7, 42]]);
+  });
+
+  test('blends the dot of a space with the ground it stands on, the color of a selection or of a find where it is selected or found, as a dot on text selected kept the shade it has on the plain ground, a shade off the dot an element drew there', () => {
+    const seeThrough: TextLook = { ...look, dot: [255, 255, 255, 0.5] };
+    const { cells } = painting(() => 0, seeThrough);
+    const row = rowOf('a b c d', 0);
+    const dots = () =>
+      rectsIn(cells.frame)
+        .filter(
+          ({ width, height }) => width === dot.size && height === dot.size,
+        )
+        .map(({ color }) => color);
+
+    paintRows(
+      cells,
+      shown([row], {
+        showWhitespace: true,
+        selection: {
+          anchor: { start: 0, char: 2 },
+          focus: { start: 0, char: 4 },
+        },
+        marksOf: () => [{ start: 4, end: 6, current: false }],
+      }),
+      Infinity,
+    );
+
+    assert.deepStrictEqual(dots(), [
+      packedOf(look.dots),
+      dotOn(filled(look.ground, look.selected)),
+      dotOn(filled(look.ground, look.match.ground)),
+    ]);
   });
 
   test('signs the end of a line that ends in a carriage return after its last character while whitespace is shown, on the last row of the line alone, and works the row out anew once its ending changes, as a text edited keeps the ending of each line apart from its text', () => {
