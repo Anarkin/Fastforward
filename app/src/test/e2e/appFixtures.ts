@@ -177,7 +177,8 @@ export async function diffLineNumbered(number: number): Promise<DiffLineSeen> {
       const box = element.getBoundingClientRect();
       const before = element.scrollTop;
       if (top === undefined) {
-        element.scrollTop += element.clientHeight / 2;
+        const atEnd = before + element.clientHeight >= element.scrollHeight - 1;
+        element.scrollTop = atEnd ? 0 : before + element.clientHeight / 2;
         return false;
       }
       if (top >= box.top && top <= box.top + box.height / 2) {

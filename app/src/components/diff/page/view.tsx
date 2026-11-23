@@ -48,7 +48,7 @@ import { useKeptPlace } from './placeKeeping';
 import { scrollOnToggle, stuckHeader } from './stuckHeader';
 import { findRangesByLine } from './lineMarks';
 import { useDiffMarks } from './rowMarks';
-import { unmeasured, gapWidth, layoutVariables } from './textLayout';
+import { unmeasured, layoutVariables } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
 import { DiffRowShown, type DiffRowParts } from './rowShown';
 import { useSideways } from './sideways';
@@ -155,7 +155,6 @@ export function DiffView({
     charWidth,
     widths,
     dotLook,
-    padding,
     scale,
     lineHeight,
     measureText,
@@ -502,9 +501,6 @@ export function DiffView({
         '--diff-snap-inline': `${snap.inline}px`,
         '--diff-snap-left': `${snap.left}px`,
         '--diff-snap-right': `${snap.right}px`,
-        '--diff-word-padding-top': `${padding.top}px`,
-        '--diff-word-padding-bottom': `${padding.bottom}px`,
-        '--diff-gap-width': `${gapWidth(scale)}px`,
       }}
     >
       {!wordWrap && (

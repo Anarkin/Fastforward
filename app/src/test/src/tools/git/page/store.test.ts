@@ -601,7 +601,6 @@ suite('Measures of the diff kept for the next diff shown', () => {
     spacing: 0,
     scale: 1.25,
     lineHeight: 18,
-    padding: { top: 0.8, bottom: 0.8 },
   };
 
   test('keeps the text a diff measured for the diff shown next, as each diff shown measured its text anew and styled every row it drew again once it had, and keeps them as they were when measured alike, so nothing draws again', () => {
@@ -610,10 +609,7 @@ suite('Measures of the diff kept for the next diff shown', () => {
     const kept = store.getState().diffMeasures.text;
     assert.deepStrictEqual(kept, measures);
 
-    store.getState().measureDiffText({
-      ...measures,
-      padding: { ...measures.padding },
-    });
+    store.getState().measureDiffText({ ...measures });
     assert.strictEqual(store.getState().diffMeasures.text, kept);
 
     store.getState().measureDiffText({ ...measures, scale: 1.5 });

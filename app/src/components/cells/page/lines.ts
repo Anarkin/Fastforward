@@ -66,6 +66,17 @@ interface Wrapped {
 
 const wrapped = new WeakMap<TextLine, Wrapped>();
 
+const grids = new WeakMap<TextWidths, TextWidths>();
+
+function onTheGrid(widths: TextWidths): TextWidths {
+  let grid = grids.get(widths);
+  if (grid === undefined) {
+    grid = { char: widths.char, of: widths.of };
+    grids.set(widths, grid);
+  }
+  return grid;
+}
+
 export function wrappedRows(
   line: TextLine,
   columns: number | undefined,
@@ -94,7 +105,12 @@ export function wrappedRows(
   let rows: readonly ScreenRow[] = [whole];
   if (columns !== undefined) {
     const indent = wrapIndent(text, columns);
-    const starts = wrapStarts(text, columns, indent, widths);
+    const starts = wrapStarts(
+      text,
+      columns,
+      indent,
+      widths && onTheGrid(widths),
+    );
     if (starts.length > 1) {
       const breaks = rowBreaksAt(
         text,

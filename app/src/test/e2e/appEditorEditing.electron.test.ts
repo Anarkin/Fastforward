@@ -73,6 +73,7 @@ const shownWhole = () =>
     const rect = match?.getBoundingClientRect();
     const row = parseFloat(getComputedStyle(scroller).lineHeight);
     return {
+      at: scroller.scrollTop,
       match: match?.textContent ?? '',
       whole:
         rect !== undefined &&

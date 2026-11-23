@@ -391,8 +391,6 @@ suite('Style', () => {
       );
       looks(withClass(inline, word), {
         background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-line), transparent )`,
-        'padding-top': 'var(--diff-word-padding-top)',
-        'padding-bottom': 'var(--diff-word-padding-bottom)',
       });
       const split = shownRow(
         diffView(

@@ -4,7 +4,6 @@ import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import { fontOf, spacingOf } from '../../../lib/page/textWidths';
 import { uniformHeight, type WrapColumns } from './rowMeasures';
-import { wordPadding, type Edges } from './textLayout';
 import { sideSnaps } from './codeSnap';
 
 const wrapSample = '0'.repeat(1000);
@@ -82,30 +81,22 @@ export const TextProbe = memo(function TextProbe({
   onMeasure: (
     charWidth: number,
     font: string,
-    padding: Edges,
     scale: number,
     lineHeight: number,
     spacing: number,
   ) => void;
 }) {
   const sample = useRef<HTMLSpanElement>(null);
-  const text = useRef<HTMLSpanElement>(null);
   const observe = useCallback(
     (line: HTMLDivElement) => {
       const probe = sample.current;
-      const after = text.current;
-      if (!probe || !after) {
+      if (!probe) {
         return undefined;
       }
       const measure = () =>
         onMeasure(
           probe.getBoundingClientRect().width / wrapSample.length,
           fontOf(probe),
-          wordPadding(
-            line.getBoundingClientRect(),
-            after.getBoundingClientRect(),
-            devicePixelRatio,
-          ),
           devicePixelRatio,
           lineHeightOf(line, uniformHeight, devicePixelRatio),
           spacingOf(probe),
@@ -128,7 +119,6 @@ export const TextProbe = memo(function TextProbe({
           <span className="wrap-sample" ref={sample}>
             {wrapSample}
           </span>
-          <span ref={text}>{wrapSample}</span>
         </span>
       </div>
     </div>

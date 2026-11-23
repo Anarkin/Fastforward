@@ -46,9 +46,7 @@ suite('Renamed files', () => {
       await act(async () => {
         root.render(
           <TextProbe
-            onMeasure={(_width, _font, _padding, _scale, line) =>
-              measured.push(line)
-            }
+            onMeasure={(_width, _font, _scale, line) => measured.push(line)}
           />,
         );
       });

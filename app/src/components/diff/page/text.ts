@@ -7,9 +7,7 @@ import {
   type RefObject,
   useRef,
 } from 'react';
-import type { ColumnsIn } from '../../../lib/page/rowBreaks';
 import { textWidths, type TextWidths } from '../../../lib/page/textWidths';
-import { columnsOf } from '../../../lib/page/textColumns';
 import {
   plainCells,
   useCellTable,
@@ -17,7 +15,6 @@ import {
 } from '../../../lib/page/cellTable';
 import type { DiffMeasures, DiffMeasuring } from './measures';
 import { uniformHeight } from './rowMeasures';
-import { unpadded, type Edges } from './textLayout';
 import { codeSnapOf, codeStarts, sameSnap, type CodeSnap } from './codeSnap';
 
 export function useCodeSnap(
@@ -69,15 +66,12 @@ export function useDiffText(
   readonly table: CellTable | undefined;
   readonly charWidth: number;
   readonly widths: TextWidths;
-  readonly columnsIn: ColumnsIn | undefined;
   readonly dotLook: DotLook | undefined;
-  readonly padding: Edges;
   readonly scale: number;
   readonly lineHeight: number;
   readonly measureText: (
     width: number,
     measuredFont: string,
-    measured: Edges,
     measuredScale: number,
     measuredLineHeight: number,
     measuredSpacing: number,
@@ -98,19 +92,12 @@ export function useDiffText(
     () => fontDotLook(font, charWidth, 1 / (measuredText?.scale ?? 1)),
     [font, charWidth, measuredText?.scale],
   );
-  const columnsIn = useMemo<ColumnsIn | undefined>(
-    () =>
-      widths.char > 0 ? (row: string) => columnsOf(row, widths) : undefined,
-    [widths],
-  );
-  const padding = measuredText?.padding ?? unpadded;
   const scale = measuredText?.scale ?? 1;
   const lineHeight = measuredText?.lineHeight ?? uniformHeight;
   const measureText = useCallback(
     (
       width: number,
       measuredFont: string,
-      measured: Edges,
       measuredScale: number,
       measuredLineHeight: number,
       measuredSpacing: number,
@@ -121,7 +108,6 @@ export function useDiffText(
         spacing: measuredSpacing,
         scale: measuredScale,
         lineHeight: measuredLineHeight,
-        padding: measured,
       }),
     [measureDiffText],
   );
@@ -130,9 +116,7 @@ export function useDiffText(
     table,
     charWidth,
     widths,
-    columnsIn,
     dotLook,
-    padding,
     scale,
     lineHeight,
     measureText,

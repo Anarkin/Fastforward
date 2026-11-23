@@ -8,6 +8,8 @@ import { wrappedLines } from '../../../../../lib/page/wordWrap';
 
 const lineOf = (text: string): TextLine => ({ start: 7, end: 8, text });
 
+const isWide = (cluster: string) => /[中文。]/.test(cluster);
+
 suite('Rows a line wraps onto', () => {
   test('breaks a line into as many rows as the app counts for its height, each starting where the one before ends, the rows after the first hanging as far in as its indentation and each but the last marked where it breaks', () => {
     const line = lineOf(`  ${'word '.repeat(12)}end`);
@@ -50,6 +52,26 @@ suite('Rows a line wraps onto', () => {
     assert.notStrictEqual(
       wrappedRows(long, 20, undefined),
       wrappedRows(long, 30, undefined),
+    );
+  });
+
+  test('breaks a line of wide characters where its text may break, a full stop never starting a row, whatever the font of the page measures them as, as the cells draw each on the grid and no box an element drew it in stands in the text to break around', () => {
+    const grid = {
+      char: 10,
+      of: (cluster: string) => (isWide(cluster) ? 20 : 10),
+    };
+    const boxing = {
+      ...grid,
+      boxed: (cluster: string) => (isWide(cluster) ? 2 : undefined),
+    };
+
+    assert.deepStrictEqual(
+      wrappedRows(lineOf('中文中文。中文'), 8, boxing).map(({ from }) => from),
+      [0, 3],
+    );
+    assert.deepStrictEqual(
+      wrappedRows(lineOf('中文中文。中文'), 8, grid).map(({ from }) => from),
+      [0, 3],
     );
   });
 });

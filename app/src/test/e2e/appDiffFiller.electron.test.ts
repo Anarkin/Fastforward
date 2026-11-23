@@ -29,13 +29,15 @@ const ratios = [1, 1.25, 1.5, 1.75, 2];
 
 const percent = (ratio: number) => `${ratio * 100}%`;
 
+const levelOfRounding = 1;
+
 function changed(before: Buffer, after: Buffer): number {
   let count = 0;
   for (let at = 0; at < before.length; at += 4) {
     if (
-      before[at] !== after[at] ||
-      before[at + 1] !== after[at + 1] ||
-      before[at + 2] !== after[at + 2]
+      Math.abs(before[at] - after[at]) > levelOfRounding ||
+      Math.abs(before[at + 1] - after[at + 1]) > levelOfRounding ||
+      Math.abs(before[at + 2] - after[at + 2]) > levelOfRounding
     ) {
       count++;
     }
@@ -270,7 +272,7 @@ suite('App diff filler', () => {
     return last;
   }
 
-  test('leaves the stripes of the empty side of a change where they were once the diff scrolls a line, at 100%, 125%, 150%, 175% and 200%, a line a row of the diff tall though its sides grow narrow enough to wrap it, as stripes moved by a line and part of their spacing seemed to step back and forth', async () => {
+  test('leaves the stripes of the empty side of a change where they were once the diff scrolls a line, at 100%, 125%, 150%, 175% and 200%, a line a row of the diff tall though its sides grow narrow enough to wrap it, to the level of gray the browser rounds the edge of a stripe by from tile to tile of a tall hatching where it draws without a GPU, as stripes moved by a line and part of their spacing seemed to step back and forth', async () => {
     const moved: Record<string, number> = {};
     for (const ratio of ratios) {
       await zoomTo(ratio);
