@@ -17,8 +17,6 @@ import {
   type TextSelection,
 } from './textSelection';
 
-const restMs = 250;
-
 const reachMs = 50;
 
 export interface Selecting {
@@ -40,7 +38,6 @@ export class CellSelecting {
   private dragging = false;
   private pointer = { x: 0, y: 0 };
   private reaching: ReturnType<typeof setInterval> | undefined;
-  private resting: ReturnType<typeof setTimeout> | undefined;
   private told: string | undefined;
   private kept: KeptText | undefined;
 
@@ -104,7 +101,6 @@ export class CellSelecting {
   }
 
   restore(kept: KeptText | undefined): void {
-    clearTimeout(this.resting);
     this.selection = kept?.selection;
     this.kept = kept;
     this.on.changed();
@@ -142,21 +138,12 @@ export class CellSelecting {
   }
 
   private tell(): void {
-    clearTimeout(this.resting);
-    const copy = this.copyOf();
+    const copy = this.dragging ? undefined : this.copyOf();
     if (copy === this.told) {
       return;
     }
-    if (this.told !== undefined) {
-      this.told = undefined;
-      this.on.chosen(undefined);
-    }
-    if (copy !== undefined) {
-      this.resting = setTimeout(() => {
-        this.told = copy;
-        this.on.chosen(copy);
-      }, restMs);
-    }
+    this.told = copy;
+    this.on.chosen(copy);
   }
 
   private readonly down = (press: MouseEvent) => {
@@ -229,6 +216,7 @@ export class CellSelecting {
     page.removeEventListener('mouseup', this.up);
     if (dragged) {
       this.on.kept?.(this.kept);
+      this.tell();
     }
   };
 
@@ -274,7 +262,6 @@ export class CellSelecting {
 
   dispose(): void {
     this.up();
-    clearTimeout(this.resting);
     this.host.removeEventListener('mousedown', this.down);
     this.host.ownerDocument.removeEventListener('copy', this.copy);
   }

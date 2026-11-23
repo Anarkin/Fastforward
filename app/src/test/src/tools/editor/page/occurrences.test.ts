@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { EditorSelection, EditorState } from '@codemirror/state';
-import { suite, test } from 'vitest';
+import { afterEach, beforeEach, suite, test, vi } from 'vitest';
+import { JSDOM } from 'jsdom';
+import { plainCells } from '../../../../../lib/page/cellTable';
+import { EditorSurface } from '../../../../../tools/editor/page/surface';
 import { editorFind, setFind } from '../../../../../tools/editor/page/find';
 import {
   nextOccurrence,
@@ -9,6 +12,8 @@ import {
 import {
   editorOccurrences,
   occurrencesIn,
+  occurrencesShown,
+  pointerHeld,
 } from '../../../../../tools/editor/page/occurrences';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 
@@ -212,6 +217,56 @@ suite('The occurrences the editor marks', () => {
         [0, 'total'],
         [43, 'total'],
       ],
+    );
+  });
+});
+
+suite('When the editor marks the occurrences', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    Reflect.set(globalThis, 'devicePixelRatio', 1);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  test('marks none while the pointer is held, as a drag grows the selection, and the copies at once once it is let go, and those of a selection moved by a key a tenth of a second after, rather than a quarter of a second after any selection rested', () => {
+    const { window } = new JSDOM('<!doctype html><main></main>');
+    const main = window.document.querySelector('main');
+    assert.ok(main);
+    const view = new EditorSurface(
+      main,
+      stateOf('total = sum(total) subtotal total', EditorSelection.single(0)),
+      plainCells,
+    );
+    const shown = () => occurrencesShown(view).map(({ from }) => from);
+    view.dispatch({ effects: pointerHeld.of(true) });
+    view.dispatch({
+      selection: EditorSelection.single(0, 5),
+      userEvent: 'select.pointer',
+    });
+    vi.advanceTimersByTime(1000);
+    const held = shown();
+    view.dispatch({ effects: pointerHeld.of(false) });
+    const released = shown();
+    view.dispatch({
+      selection: EditorSelection.single(12, 17),
+      userEvent: 'select',
+    });
+    const keyed = shown();
+    vi.advanceTimersByTime(100);
+    const rested = shown();
+    view.destroy();
+
+    assert.deepStrictEqual(
+      { held, released, keyed, rested },
+      {
+        held: [],
+        released: [12, 22, 28],
+        keyed: [],
+        rested: [0, 22, 28],
+      },
     );
   });
 });

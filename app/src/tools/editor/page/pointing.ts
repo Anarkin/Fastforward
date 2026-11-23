@@ -13,6 +13,7 @@ import {
 import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
 import { clicked } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
+import { pointerHeld } from './occurrences';
 import { charAt, gridOf, rowsOf, type Grid } from './grid';
 
 const beyondAscii = /[^\0-\x7f]/;
@@ -120,12 +121,14 @@ function lineRange(state: EditorState, pos: number): SelectionRange {
 
 class Pointing implements SurfacePart {
   private grip: Grip | undefined;
+  private holding = false;
   private pointer = { x: 0, y: 0 };
   private reaching: ReturnType<typeof setInterval> | undefined;
 
   constructor(private readonly view: EditorSurface) {}
 
   destroy(): void {
+    this.holding = false;
     this.up();
   }
 
@@ -159,6 +162,8 @@ class Pointing implements SurfacePart {
     }
     press.preventDefault();
     this.view.focus();
+    this.holding = true;
+    this.view.dispatch({ effects: pointerHeld.of(true) });
     const { state } = this.view;
     const { selection } = state;
     if (clicked(editorKeymap.columnSelection, press) !== undefined) {
@@ -189,6 +194,8 @@ class Pointing implements SurfacePart {
       if (others.length < selection.ranges.length && others.length > 0) {
         this.grip = undefined;
         this.select(others);
+        this.holding = false;
+        this.view.dispatch({ effects: pointerHeld.of(false) });
         return true;
       }
       this.grip = { kind: 'range', anchor: under.pos, others };
@@ -276,6 +283,10 @@ class Pointing implements SurfacePart {
     const page = this.view.dom.ownerDocument;
     page.removeEventListener('mousemove', this.moved);
     page.removeEventListener('mouseup', this.up);
+    if (this.holding) {
+      this.holding = false;
+      this.view.dispatch({ effects: pointerHeld.of(false) });
+    }
   };
 }
 

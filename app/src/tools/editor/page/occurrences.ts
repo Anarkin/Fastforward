@@ -120,9 +120,11 @@ export function occurrencesIn(
   return sought === undefined ? [] : foundIn(state, sought, shown);
 }
 
-const occurrencesRestMs = 250;
+const keyRestMs = 100;
 
 const rested = StateEffect.define();
+
+export const pointerHeld = StateEffect.define<boolean>();
 
 const none: readonly Place[] = [];
 
@@ -132,6 +134,7 @@ class OccurrenceMarks implements SurfacePart {
   found: readonly Place[];
   private sought: Sought | undefined;
   private resting: ReturnType<typeof setTimeout> | undefined;
+  private held = false;
 
   constructor(private readonly view: EditorSurface) {
     this.sought = soughtIn(view.state);
@@ -144,7 +147,16 @@ class OccurrenceMarks implements SurfacePart {
     if (update.transactions.length === 0 && !moved) {
       return;
     }
-    const sought = soughtIn(update.state);
+    let released = false;
+    for (const transaction of update.transactions) {
+      for (const effect of transaction.effects) {
+        if (effect.is(pointerHeld)) {
+          this.held = effect.value;
+          released = !effect.value;
+        }
+      }
+    }
+    const sought = this.held ? undefined : soughtIn(update.state);
     if (sameSought(sought, this.sought)) {
       if (sought !== undefined && moved) {
         this.found = this.build(update.view);
@@ -152,9 +164,13 @@ class OccurrenceMarks implements SurfacePart {
       return;
     }
     clearTimeout(this.resting);
-    const settled = update.transactions.some((transaction) =>
-      transaction.effects.some((effect) => effect.is(rested)),
-    );
+    const settled =
+      released ||
+      update.transactions.some(
+        (transaction) =>
+          transaction.isUserEvent('select.pointer') ||
+          transaction.effects.some((effect) => effect.is(rested)),
+      );
     if (settled || sought === undefined) {
       this.sought = sought;
       this.found = this.build(update.view);
@@ -164,7 +180,7 @@ class OccurrenceMarks implements SurfacePart {
     this.found = none;
     this.resting = setTimeout(() => {
       this.view.dispatch({ effects: rested.of(null) });
-    }, occurrencesRestMs);
+    }, keyRestMs);
   }
 
   destroy(): void {

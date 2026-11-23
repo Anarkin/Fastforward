@@ -101,6 +101,26 @@ suite('Text selected in cells', () => {
     vi.useRealTimers();
   });
 
+  test('marks the copies of what is selected at once once the selection is done, by a double click or a drag let go, and none while a drag goes on, rather than a quarter of a second after the selection rested, mid drag too', () => {
+    const clicked = selectingIn(true);
+    clicked.press(1, 8, { detail: 2 });
+    clicked.release();
+
+    assert.deepStrictEqual(clicked.chosen, ['word']);
+
+    const dragged = selectingIn(true);
+    dragged.press(1, 7);
+    dragged.drag(1, 9);
+    vi.advanceTimersByTime(1000);
+
+    assert.deepStrictEqual(dragged.chosen, []);
+
+    dragged.drag(1, 11);
+    dragged.release();
+
+    assert.deepStrictEqual(dragged.chosen, ['word']);
+  });
+
   test('keeps what is selected, and its copies marked, once a view that holds only a part of its text holds its line no longer, and copies it as it was selected, as a file viewed dropped the selection and marked its copies no longer once scrolled a few pages on', () => {
     const view = selectingIn(true);
     const word = { anchor: at(1, 7), focus: at(1, 11) };
