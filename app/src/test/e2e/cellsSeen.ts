@@ -2,8 +2,7 @@ import type { Page } from 'playwright-core';
 import type { SeenGlyph, SeenRow } from '../../components/cells/page/seen';
 import { waitFor } from '../helpers/fixtures';
 
-export const viewerRows =
-  '.viewer-rows :is(.cell-rows[data-rows]:has(canvas), .viewer-row)';
+export const viewerRows = '.viewer-rows .cell-rows[data-rows]:has(canvas)';
 
 export const seenRows = (page: Page): Promise<readonly SeenRow[]> =>
   page.evaluate(() => {
@@ -13,41 +12,18 @@ export const seenRows = (page: Page): Promise<readonly SeenRow[]> =>
       : [];
   });
 
-export const viewerTexts = (page: Page): Promise<string[]> =>
-  page.evaluate(() => {
-    const host = document.querySelector('.viewer-rows .cell-rows');
-    return host instanceof HTMLElement &&
-      host.seenRows !== undefined &&
-      host.querySelector('canvas') !== null
-      ? host.seenRows().map(({ text }) => text)
-      : [...document.querySelectorAll('.viewer-rows .viewer-row')].map(
-          (row) => row.textContent ?? '',
-        );
-  });
+export const viewerTexts = async (page: Page): Promise<string[]> =>
+  (await seenRows(page)).map(({ text }) => text);
 
-export const viewerMarks = (page: Page): Promise<[string, boolean][]> =>
-  page.evaluate(() => {
-    const host = document.querySelector('.viewer-rows .cell-rows');
-    return host instanceof HTMLElement &&
-      host.seenRows !== undefined &&
-      host.querySelector('canvas') !== null
-      ? host
-          .seenRows()
-          .flatMap(({ text, marks }) =>
-            marks
-              .filter(({ name }) => name !== 'occurrence')
-              .map(({ from, to, name }): [string, boolean] => [
-                text.slice(from, to),
-                name === 'current',
-              ]),
-          )
-      : [...document.querySelectorAll('.viewer-rows .find-match')].map(
-          (mark): [string, boolean] => [
-            mark.textContent ?? '',
-            mark.classList.contains('current'),
-          ],
-        );
-  });
+export const viewerMarks = async (page: Page): Promise<[string, boolean][]> =>
+  (await seenRows(page)).flatMap(({ text, marks }) =>
+    marks
+      .filter(({ name }) => name !== 'occurrence')
+      .map(({ from, to, name }): [string, boolean] => [
+        text.slice(from, to),
+        name === 'current',
+      ]),
+  );
 
 export const seenMarked = async (
   page: Page,
