@@ -8,6 +8,7 @@ import { page, repository, sharedApp } from './appFixtures';
 import { cellsOf, copied, keepCopied } from './cellsSeen';
 import { gridLines } from './gridLines';
 import { waitFor, writeOver } from '../helpers/fixtures';
+import { untilSettled } from './waits';
 
 const viewFromMenu = async (file: string) => {
   await page
@@ -63,6 +64,18 @@ suite('App', () => {
     'diagram.md':
       '# Diagram\n\n```mermaid\ngraph LR\n  Fetch["Fetch<br/>every remote"] --> Merge\n```\n',
     'grid.md': ['# Grid', '', '```text', ...gridLines, '```', ''].join('\n'),
+    'found.md': [
+      '# Find beta',
+      '',
+      'Some **be**ta in prose, and a [link beta](#).',
+      '',
+      '```ts',
+      'const beta = 1;',
+      '```',
+      '',
+      'Last beta.',
+      '',
+    ].join('\n'),
     'table.md': [
       '| Folder | What it is for | Size |',
       '|:--|:-:|--:|',
@@ -167,6 +180,63 @@ suite('App', () => {
         { fromCode: 'party', prose: true, codeStillSelected: false },
       );
     } finally {
+      await closeViewer();
+    }
+  });
+
+  test('finds in a Markdown document previewed without leaving the preview, in its prose across bold and links and in its code drawn as cells, counting the matches, marking each and the current one, and stepping through them in the order of the document on Enter', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'found.md' }).click();
+    await viewFromMenu('found.md');
+    try {
+      await page.locator(codeCells).waitFor();
+      await page.locator('.viewer .viewer-body').first().focus();
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.locator('.viewer .search-box-input').waitFor();
+      await page.keyboard.type('beta');
+      const code = cellsOf(page, codeCells);
+      const shown = async () => ({
+        count: await page.locator('.viewer .search-count').textContent(),
+        prose: await page.evaluate(() => [
+          CSS.highlights.get('markdown-match')?.size ?? 0,
+          [...(CSS.highlights.get('markdown-match-current') ?? [])].map(
+            (range) => {
+              const live = document.createRange();
+              live.setStart(range.startContainer, range.startOffset);
+              live.setEnd(range.endContainer, range.endOffset);
+              return live.toString();
+            },
+          ),
+        ]),
+        code: (await code.rows()).flatMap(({ marks }) =>
+          marks.map(({ name }) => name),
+        ),
+        preview: await page.locator('.viewer .markdown').isVisible(),
+      });
+      const first = await untilSettled(shown, 'the matches of beta');
+      for (let step = 0; step < 3; step++) {
+        await page.keyboard.press('Enter');
+      }
+      const fourth = await untilSettled(shown, 'the fourth match current');
+      assert.deepStrictEqual(
+        { first, fourth },
+        {
+          first: {
+            count: '1 of 5',
+            prose: [4, ['beta']],
+            code: ['match'],
+            preview: true,
+          },
+          fourth: {
+            count: '4 of 5',
+            prose: [4, []],
+            code: ['current'],
+            preview: true,
+          },
+        },
+      );
+    } finally {
+      await page.keyboard.press('Escape');
       await closeViewer();
     }
   });

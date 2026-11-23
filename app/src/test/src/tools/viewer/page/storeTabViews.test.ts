@@ -199,6 +199,30 @@ suite('Viewer store keeping its tabs', () => {
     assert.deepStrictEqual(other.getState().keptViewer('2').pdfFind, pdfFind);
   });
 
+  test('brings the find of a Markdown preview back from what another page kept of it, its query, toggles and the match it was on', () => {
+    const left = keepingViews();
+    const { store } = left;
+    const { receive } = store.getState();
+    const markdown = `${folder}/a.md`;
+    receive({ type: 'show', tab: '2', file: markdown });
+    const markdownFind = {
+      search: { query: 'beta', options: wholeWord },
+      current: 2,
+    };
+    store.getState().keepViewer('2', { markdownFind });
+    receive({ type: 'hide' });
+
+    const back = keepingViews();
+    back.hand('2', left.keptOf('2') ?? '');
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '2', file: markdown });
+
+    assert.deepStrictEqual(
+      other.getState().keptViewer('2').markdownFind,
+      markdownFind,
+    );
+  });
+
   test('lets go of what it keeps of the tab it shows once released, as soon as it shows another, rather than keeping it as left', () => {
     const { store, release } = keepingViews();
     const { receive } = store.getState();

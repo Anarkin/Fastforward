@@ -1,3 +1,4 @@
+import type { MarkdownFindControls } from './markdownFinds';
 import {
   useCallback,
   useEffect,
@@ -33,9 +34,11 @@ const watchSize = (element: Element, changed: () => void) => {
 function MarkdownPreview({
   file,
   viewing,
+  find,
 }: {
   file: string;
   viewing: Viewing;
+  find: MarkdownFindControls;
 }) {
   const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
   const text = useWholeText(viewing, !tooLarge, 'utf-8')?.text;
@@ -56,7 +59,7 @@ function MarkdownPreview({
       </div>
     );
   }
-  return <MarkdownPane text={text} images={images} />;
+  return <MarkdownPane text={text} images={images} find={find} />;
 }
 
 export function PreviewBody({
@@ -65,12 +68,14 @@ export function PreviewBody({
   viewing,
   realSize,
   pdf,
+  markdown,
 }: {
   file: string;
   preview: Preview;
   viewing: Viewing;
   realSize: boolean;
   pdf: PdfControls;
+  markdown: MarkdownFindControls;
 }) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => body.current?.focus(), []);
@@ -197,7 +202,7 @@ export function PreviewBody({
           <ImagePane key={imageUrl} url={imageUrl} sizing={sizing} />
         </div>
       ) : (
-        <MarkdownPreview file={file} viewing={viewing} />
+        <MarkdownPreview file={file} viewing={viewing} find={markdown} />
       )}
     </div>
   );

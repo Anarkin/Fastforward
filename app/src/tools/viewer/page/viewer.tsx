@@ -8,6 +8,7 @@ import { useRestore } from '../../../lib/page/restore';
 import { SearchButton } from '../../../lib/page/search';
 import { useViewerFind } from './find';
 import { ViewerFindBar } from './findBar';
+import { useMarkdownFind } from './markdownFinds';
 import { usePdfPreview } from './pdfPreview';
 import { strings } from '../../../lib/shared/strings';
 import {
@@ -134,8 +135,10 @@ export function Viewer() {
     mode === 'hex' || shown === 'bytes' ? 'windows-1252' : shown,
   );
   const pdf = usePdfPreview(viewing?.tab);
+  const markdown = useMarkdownFind(viewing?.tab);
   const inPdf = mode === 'preview' && preview === 'pdf';
-  const searched = inPdf ? pdf.find : finder;
+  const inMarkdown = mode === 'preview' && preview === 'markdown';
+  const searched = inPdf ? pdf.find : inMarkdown ? markdown.find : finder;
   const finding = useViewer(
     (state) => tab !== undefined && state.tabViews.get(tab)?.finding === true,
   );
@@ -147,7 +150,7 @@ export function Viewer() {
   const [focusAsks, setFocusAsks] = useState(0);
   const findInput = useRef<HTMLInputElement>(null);
   const openFind = () => {
-    if (mode === 'preview' && preview !== 'pdf') {
+    if (mode === 'preview' && preview === 'image') {
       setChosen('text');
     }
     setFinding(true);
@@ -172,6 +175,7 @@ export function Viewer() {
     setFinding(false);
     finder.search('');
     pdf.find.search('');
+    markdown.find.search('');
   };
   useEffect(() => {
     if (focusAsks > 0) {
@@ -240,6 +244,7 @@ export function Viewer() {
         <ViewerFindBar
           searched={searched}
           inPdf={inPdf}
+          proportional={inPdf || inMarkdown}
           input={findInput}
           onClose={closeFind}
         />
@@ -358,6 +363,7 @@ export function Viewer() {
           viewing={viewing}
           realSize={realSize}
           pdf={pdf.controls}
+          markdown={markdown.controls}
         />
       ) : mode === 'hex' || shown === 'bytes' ? (
         <ByteBody

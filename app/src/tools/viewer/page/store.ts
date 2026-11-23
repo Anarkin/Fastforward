@@ -75,6 +75,7 @@ export function createViewerStore(
             sideways: view.sideways,
             preview: view.preview,
             pdfFind: view.pdfFind,
+            markdownFind: view.markdownFind,
             choices: choices.get(tab),
           };
         },
@@ -99,6 +100,7 @@ export function createViewerStore(
               sideways: view.sideways,
               preview: view.preview,
               pdfFind: view.pdfFind,
+              markdownFind: view.markdownFind,
               selected: view.selected,
             }),
           }));

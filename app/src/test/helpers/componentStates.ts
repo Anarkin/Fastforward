@@ -7,6 +7,10 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the matches of the find, counted from the editor state as the view is made and as it changes',
   'tools/editor/page/view.ts status':
     'a measure: the line, column and selection, read from the editor state as the view is made and as it changes',
+  'tools/viewer/page/markdownFinds.ts count':
+    'a measure: the matches of the find in a Markdown preview, counted anew from the document it shows as it is drawn, stepped to the match the store keeps',
+  'tools/viewer/page/markdownFinds.ts jump':
+    'a moment: a count of the steps and searches asked, which scrolls the current match into sight once, anew from zero once mounted',
   'tools/viewer/page/pdfPreview.ts match':
     'made once: the helper that steps back to the match a tab kept, handed that match from the store once mounted',
   'lib/page/laterRows.ts extended':

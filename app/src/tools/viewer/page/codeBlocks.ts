@@ -1,4 +1,5 @@
 import type { LineRanges } from '../../../components/syntax/page/engine';
+import type { FindMark } from '../../../components/cells/page/marks';
 import { CodeCells, type CodeLook } from './codeCells';
 import {
   gpuDevice,
@@ -8,6 +9,7 @@ import {
 
 export class CodeBlocks {
   private readonly cells = new Map<Element, CodeCells>();
+  private readonly texts = new Map<Element, string>();
   private readonly scroller: Element | null;
   private readonly resized: ResizeObserver;
   private readonly unwatched: () => void;
@@ -83,6 +85,7 @@ export class CodeBlocks {
   }
 
   add(code: HTMLElement, text: string): void {
+    this.texts.set(code, text);
     if (this.look === undefined || this.cells.has(code)) {
       return;
     }
@@ -96,6 +99,28 @@ export class CodeBlocks {
     this.later();
   }
 
+  textOf(code: Element): string | undefined {
+    return this.cells.has(code) ? this.texts.get(code) : undefined;
+  }
+
+  found(
+    finds: ReadonlyMap<Element, ReadonlyMap<number, readonly FindMark[]>>,
+    searching: boolean,
+  ): void {
+    for (const [code, cells] of this.cells) {
+      cells.found(searching ? (finds.get(code) ?? new Map()) : undefined);
+    }
+  }
+
+  boxOf(
+    code: Element,
+    line: number,
+    start: number,
+    end: number,
+  ): DOMRect | undefined {
+    return this.cells.get(code)?.boxOf(line, start, end);
+  }
+
   colored(code: Element, lines: LineRanges): void {
     this.cells.get(code)?.colored(lines);
   }
@@ -105,6 +130,7 @@ export class CodeBlocks {
       if (block.contains(code)) {
         cells.dispose();
         this.cells.delete(code);
+        this.texts.delete(code);
       }
     }
   }

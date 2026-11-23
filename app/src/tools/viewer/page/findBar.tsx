@@ -9,18 +9,20 @@ import { viewerKeymap } from './keymap';
 export function ViewerFindBar({
   searched,
   inPdf,
+  proportional,
   input,
   onClose,
 }: {
   searched: ViewerSearch;
   inPdf: boolean;
+  proportional: boolean;
   input: RefObject<HTMLInputElement | null>;
   onClose: () => void;
 }) {
   return (
     <header className="column-title searching">
       <SearchBar
-        font={inPdf ? 'proportional' : 'monospace'}
+        font={proportional ? 'proportional' : 'monospace'}
         query={searched.query}
         options={searched.options}
         found={searched.found}

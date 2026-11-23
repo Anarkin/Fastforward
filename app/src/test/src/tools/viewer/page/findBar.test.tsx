@@ -30,6 +30,7 @@ suite('The find of the viewer', () => {
       <ViewerFindBar
         searched={searched(asked)}
         inPdf={false}
+        proportional={false}
         input={{ current: null }}
         onClose={() => closed++}
       />,
@@ -69,6 +70,7 @@ suite('The find of the viewer', () => {
       <ViewerFindBar
         searched={searched([], 0)}
         inPdf
+        proportional
         input={{ current: null }}
         onClose={noop}
       />,

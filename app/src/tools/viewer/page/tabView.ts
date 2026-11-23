@@ -46,6 +46,12 @@ export const viewerViewSchema = record({
       current: count({ min: 0, integer: true }),
     }),
   ),
+  markdownFind: optional(
+    record({
+      search: searchSchema,
+      current: count({ min: 0, integer: true }),
+    }),
+  ),
   selected: optional(
     record({
       body: text(),

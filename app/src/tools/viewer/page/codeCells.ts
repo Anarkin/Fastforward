@@ -1,4 +1,7 @@
-import { occurrencesOf } from '../../../components/cells/page/marks';
+import {
+  occurrencesOf,
+  type FindMark,
+} from '../../../components/cells/page/marks';
 import type { ScreenRow } from '../../../components/cells/page/lines';
 import type { LineRanges } from '../../../components/syntax/page/engine';
 import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
@@ -88,6 +91,8 @@ export class CodeCells {
   private drawn: CellWindow | undefined;
   private segmentsOf: SegmentsOf | undefined;
   private copiesIn = occurrencesOf(undefined);
+  private finds: ReadonlyMap<number, readonly FindMark[]> | undefined;
+  private readonly lineAt: ReadonlyMap<number, number>;
 
   constructor(
     private readonly code: HTMLElement,
@@ -99,6 +104,7 @@ export class CodeCells {
     },
   ) {
     this.rows = codeRows(text);
+    this.lineAt = new Map(this.rows.map((row, line) => [row.start, line]));
     this.columns = Math.max(
       1,
       ...this.rows.map((row) => columnsOf(row.row.text, look.widths)),
@@ -144,7 +150,10 @@ export class CodeCells {
       ),
       wrapAt: undefined,
       segmentsOf: this.segmentsOf,
-      marksOf: (row) => this.copiesIn(row.row.text),
+      marksOf: (row) =>
+        this.finds === undefined
+          ? this.copiesIn(row.row.text)
+          : (this.finds.get(this.lineAt.get(row.start) ?? -1) ?? []),
       showWhitespace: look.showWhitespace,
       widths: look.widths,
       first: drawn.column,
@@ -286,6 +295,26 @@ export class CodeCells {
     } else {
       this.show();
     }
+  }
+
+  found(finds: ReadonlyMap<number, readonly FindMark[]> | undefined): void {
+    this.finds = finds;
+    this.show();
+  }
+
+  boxOf(line: number, start: number, end: number): DOMRect {
+    const box = this.block.getBoundingClientRect();
+    const advance = box.width / this.columns;
+    const height = box.height / this.rows.length;
+    const text = this.rows[line]?.row.text ?? '';
+    const from = columnsOf(text.slice(0, start), this.look.widths);
+    const to = columnsOf(text.slice(0, end), this.look.widths);
+    return new DOMRect(
+      box.left + from * advance,
+      box.top + line * height,
+      Math.max(1, to - from) * advance,
+      height,
+    );
   }
 
   clearSelection(): void {

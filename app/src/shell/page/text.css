@@ -279,3 +279,14 @@ mark.match,
   height: 100%;
   cursor: text;
 }
+
+::highlight(markdown-match) {
+  color: var(--color-search-match-foreground);
+  background-color: var(--color-search-match);
+}
+
+::highlight(markdown-match-current) {
+  text-decoration-line: underline overline;
+  text-decoration-color: var(--color-search-match-foreground);
+  text-decoration-thickness: var(--hairline);
+}

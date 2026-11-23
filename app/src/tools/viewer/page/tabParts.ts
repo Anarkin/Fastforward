@@ -60,6 +60,7 @@ interface KeptPdfFind {
 export interface KeptViewer {
   readonly finding: boolean;
   readonly pdfFind: KeptPdfFind | undefined;
+  readonly markdownFind: KeptPdfFind | undefined;
   readonly search: Search;
   readonly current: number;
   readonly found: ViewerFound | undefined;
@@ -104,6 +105,7 @@ export const cachesOf = (kept: Partial<KeptViewer>): Partial<KeptViewer> =>
 export const noKeptViewer: KeptViewer = {
   finding: false,
   pdfFind: undefined,
+  markdownFind: undefined,
   search: noSearch,
   current: 0,
   found: undefined,

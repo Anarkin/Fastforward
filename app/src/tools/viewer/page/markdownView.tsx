@@ -18,6 +18,14 @@ import { useShell } from '../../../shell/page/store';
 import { CodeBlocks } from './codeBlocks';
 import type { CodeLook } from './codeCells';
 import { showBlocks, showImages, type MarkdownImages } from './markdownBlocks';
+import {
+  markdownMatches,
+  revealMarkdownMatch,
+  showMarkdownMatches,
+  type MarkdownMatch,
+} from './markdownFind';
+import type { MarkdownFindControls } from './markdownFinds';
+import { plainSearch, type Search } from '../../../lib/shared/searchOptions';
 
 const codeLanguage = /(?:^|\s)language-(\S+)/;
 
@@ -121,12 +129,16 @@ function stopDrawing(blocks: Map<Element, () => void>): void {
   blocks.clear();
 }
 
+const noMatches: readonly MarkdownMatch[] = [];
+
 export function MarkdownPane({
   text,
   images,
+  find,
 }: {
   text: string | undefined;
   images: MarkdownImages | undefined;
+  find?: MarkdownFindControls | undefined;
 }) {
   const render = useRenderer();
   const table = useCellTable();
@@ -189,10 +201,69 @@ export function MarkdownPane({
     }
     showDocumentImages(element);
   }, [html, dark, table, showWhitespace, marking]);
+  const query = find?.query ?? '';
+  const options = find?.options ?? plainSearch;
+  const current = find?.current ?? 0;
+  const jump = find?.jump ?? 0;
+  const matches = useRef(noMatches);
+  const shownAt = useRef(current);
+  const marked = useEffectEvent((at: number) => {
+    shownAt.current = Math.min(at, matches.current.length - 1);
+    showMarkdownMatches(
+      matches.current,
+      shownAt.current,
+      code.current,
+      query !== '',
+    );
+  });
+  const found = useEffectEvent((count: number) => find?.onFound(count));
+  const searchAgain = useEffectEvent(
+    (shown: {
+      readonly html: string | undefined;
+      readonly redrawnBy: readonly unknown[];
+      readonly search: Search;
+    }) => {
+      const element = content.current;
+      if (!element || shown.html === undefined) {
+        return;
+      }
+      matches.current = markdownMatches(
+        element,
+        (each) => code.current?.textOf(each),
+        shown.search.query,
+        shown.search.options,
+      );
+      marked(current);
+      found(matches.current.length);
+    },
+  );
+  useLayoutEffect(
+    () =>
+      searchAgain({
+        html,
+        redrawnBy: [dark, table, showWhitespace, marking],
+        search: { query, options },
+      }),
+    [html, dark, table, showWhitespace, marking, query, options],
+  );
+  useLayoutEffect(() => marked(current), [current]);
+  const jumped = useRef(jump);
+  useEffect(() => {
+    if (jumped.current === jump) {
+      return;
+    }
+    jumped.current = jump;
+    revealMarkdownMatch(
+      matches.current[shownAt.current],
+      code.current,
+      content.current?.closest('.viewer-body') ?? null,
+    );
+  }, [jump]);
   useEffect(() => {
     const element = content.current;
     const blocks = drawn.current;
     return () => {
+      showMarkdownMatches(noMatches, 0, code.current, false);
       stopDrawing(blocks);
       code.current?.dispose();
       code.current = undefined;

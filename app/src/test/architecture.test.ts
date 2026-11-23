@@ -608,6 +608,7 @@ suite('Architecture', () => {
       'components/diff/page/find.ts',
       'tools/editor/page/find.ts',
       'tools/viewer/main/textFind.ts',
+      'tools/viewer/page/markdownFind.ts',
       'tools/viewer/page/markPieces.ts',
     ];
     const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
