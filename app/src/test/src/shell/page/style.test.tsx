@@ -20,7 +20,7 @@ import {
 } from '../../../helpers/styleMarkup';
 import { stylesheet } from '../../../helpers/pageSources';
 import {
-  activeEdge,
+  columnEdge,
   looks,
   bodyVariable,
   hovered,
@@ -87,8 +87,8 @@ suite('Style', () => {
     );
   });
 
-  test('rings a button or link the keyboard reached in the focus color, in whole pixels inside its edge like the active column, so nothing around it clips it, but not a menu item, which it tints instead, nor a popup taking the keyboard', () => {
-    const edge = activeEdge(
+  test('rings a button or link the keyboard reached in the focus color, in whole pixels inside its edge like the edge of a column, so nothing around it clips it, but not a menu item, which it tints instead, nor a popup taking the keyboard', () => {
+    const edge = columnEdge(
       <Columns className={columnsClass(true, 'a')} active="commits" />,
     );
     assert.match(edge, /^\d+px$/);

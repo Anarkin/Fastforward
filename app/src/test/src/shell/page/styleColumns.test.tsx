@@ -16,7 +16,7 @@ import {
 import { columnTitle, diffView } from '../../../helpers/styleMarkup';
 import {
   buttonsWidth,
-  activeEdge,
+  columnEdge,
   pixels,
   looks,
   deviceRounded,
@@ -218,10 +218,10 @@ suite('Style', () => {
     looks(fetch, { opacity: '1' });
   });
 
-  test('keeps the search fields clear of the active column edge, the title holding both fields at one height', () => {
+  test('keeps the search fields clear of the edge of a column, the title holding both fields at one height', () => {
     const column = rendered(renderedBy(Column, { children: null }));
     const edge = parseFloat(
-      activeEdge(
+      columnEdge(
         <Columns className={columnsClass(true, 'a')} active="commits" />,
       ),
     );
@@ -248,7 +248,7 @@ suite('Style', () => {
     });
   });
 
-  test('draws the active column edge over the search popup that covers the column, but under menus and notices', () => {
+  test('draws the edge of a column over the search popup that covers the column, but under menus and notices', () => {
     const edge = layer(
       withClass(
         rendered(
@@ -268,7 +268,7 @@ suite('Style', () => {
     }
   });
 
-  test('edges the active column in the focus color and the others in the border color, over their contents but letting the pointer through, as wide as the line it tells the scrollbars it draws, and outlines nothing in them', () => {
+  test('edges every column in the border color, whichever has the keyboard, over their contents but letting the pointer through, as wide as the line it tells the scrollbars it draws, and grays what is selected in the columns without the keyboard, so the blue selection alone tells the column that has it, and outlines nothing in them', () => {
     const names: readonly ColumnName[] = ['commits', 'files', 'diff'];
     for (const active of names) {
       const edges = allWithClass(
@@ -278,19 +278,21 @@ suite('Style', () => {
         'column',
       );
       for (const [index, name] of names.entries()) {
-        const shown = name === active;
         looks(
           edges[index],
           {
             content: "''",
             position: 'absolute',
             '--frame-line': 'var(--column-line)',
-            'box-shadow': shown
-              ? 'inset 0 0 0 var(--frame-line) var(--color-focus)'
-              : 'inset 0 0 0 var(--frame-line) var(--color-border)',
+            'box-shadow': 'inset 0 0 0 var(--frame-line) var(--color-border)',
             'pointer-events': 'none',
           },
           after,
+        );
+        assert.strictEqual(
+          cascaded(edges[index], '--selection-background'),
+          name === active ? undefined : 'var(--resting-selection-background)',
+          `${name} while ${active} has the keyboard`,
         );
       }
     }

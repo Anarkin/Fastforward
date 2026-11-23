@@ -7,6 +7,12 @@
   overflow: hidden;
 }
 
+.columns[data-active-column='commits'] > .column:not(:nth-child(1)),
+.columns[data-active-column='files'] > .column:not(:nth-child(2)),
+.columns[data-active-column='diff'] > .column:not(:nth-child(3)) {
+  --selection-background: var(--resting-selection-background);
+}
+
 .columns.nothing-selected > .column:not(:first-child),
 .columns.no-changes > .column:last-child {
   visibility: hidden;

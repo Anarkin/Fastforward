@@ -72,6 +72,7 @@ body {
     var(--color-focus) var(--color-focus-selected),
     var(--color-panel-background)
   );
+  --resting-selection-background: var(--button-background);
   --selection-tint: color-mix(
     in srgb,
     var(--color-focus) var(--color-focus-selected),

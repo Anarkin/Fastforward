@@ -9,18 +9,24 @@ import {
 import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
 
 suite('Columns', () => {
-  test('hides the commits on request, and the other columns while no commit is selected', () => {
-    assert.strictEqual(columnsClass(true, 'a'), 'columns');
-    assert.strictEqual(columnsClass(false, 'a'), 'columns commits-hidden');
+  test('stands the bars of its columns outside their frames, hides the commits on request, and the other columns while no commit is selected', () => {
+    assert.strictEqual(columnsClass(true, 'a'), 'columns bars-outside');
+    assert.strictEqual(
+      columnsClass(false, 'a'),
+      'columns bars-outside commits-hidden',
+    );
     assert.strictEqual(
       columnsClass(true, undefined),
-      'columns nothing-selected',
+      'columns bars-outside nothing-selected',
     );
     assert.strictEqual(
       columnsClass(false, undefined),
-      'columns commits-hidden nothing-selected',
+      'columns bars-outside commits-hidden nothing-selected',
     );
-    assert.strictEqual(columnsClass(true, 'a', false), 'columns no-changes');
+    assert.strictEqual(
+      columnsClass(true, 'a', false),
+      'columns bars-outside no-changes',
+    );
   });
 
   test('shows the diff unless the files list nothing, or while it has an error to show', () => {

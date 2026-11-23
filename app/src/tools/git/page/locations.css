@@ -19,7 +19,7 @@
   display: flex;
   align-items: center;
   box-sizing: border-box;
-  height: calc(var(--title-height) - var(--hairline));
+  height: calc(var(--title-height) - var(--title-line));
   padding: var(--title-above) var(--bar-edge) var(--title-below);
 }
 

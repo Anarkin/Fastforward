@@ -32,6 +32,7 @@
 
 .columns.bars-outside > .column {
   --bar-edge: 0px;
+  --title-line: 0px;
   --title-above: 0px;
   --title-below: var(--bar-space);
   --title-height: calc(var(--button-size) + var(--bar-space));
@@ -45,12 +46,6 @@
   border-bottom: none;
 }
 
-.columns[data-active-column='commits'] > .column:nth-child(1)::after,
-.columns[data-active-column='files'] > .column:nth-child(2)::after,
-.columns[data-active-column='diff'] > .column:nth-child(3)::after {
-  box-shadow: inset 0 0 0 var(--frame-line) var(--color-focus);
-}
-
 [data-column-focus] {
   outline: none;
 }
@@ -59,9 +54,10 @@
   --bar-edge: calc(var(--column-line, 0px) + var(--bar-space));
   --title-above: var(--column-line, 0px);
   --title-below: 0px;
+  --title-line: var(--hairline);
   --title-height: calc(
     var(--column-line, 0px) + 2 * var(--bar-space) + var(--button-size) +
-      var(--hairline)
+      var(--title-line)
   );
   --search-height: var(--button-size);
   --status-height: var(--row-line-height);

@@ -40,7 +40,7 @@ suite('Style', () => {
     looks(
       withClass(rendered(<LocationsPopupShown query="" />), 'locations-bar'),
       {
-        height: 'calc(var(--title-height) - var(--hairline))',
+        height: 'calc(var(--title-height) - var(--title-line))',
         'box-sizing': 'border-box',
         margin: undefined,
         'margin-top': undefined,

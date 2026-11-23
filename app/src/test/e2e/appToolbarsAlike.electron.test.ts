@@ -92,7 +92,7 @@ const fitting = 5;
 const apart = (one: number, other: number) => Math.abs(one - other) > 0.1;
 
 function unlike(bar: Bar, model: Bar): string[] {
-  const space = model.above;
+  const space = model.below;
   const [height] = model.heights;
   const around = bar.single ? 0 : space;
   const tall = bar.single ? (height ?? 0) + space : model.tall;
@@ -171,10 +171,10 @@ for (const scale of ['1', '1.25', '1.5']) {
       removeFolder(folder);
     });
 
-    test('stands the buttons of every header that has room for them as far from its top as from its bottom, from either end and from one another, all of one height in headers of one height, the same in every tool, and those of a block whose bars stand outside its frame, the viewer, the editor, the diff of two files and each side of the commander, at the top and at either end of their header with that space under them alone, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
+    test('stands the buttons of every header that has room for them at its top and at either end of it, with the space of a bar under them alone and between one another, all of one height, the same in every tool, its bars standing outside the frame of the block below, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
       const [model] = await show('git');
       assert.ok(model);
-      assert.ok(model.above > 0, JSON.stringify(model));
+      assert.ok(model.below > 0, JSON.stringify(model));
       assert.ok(model.gaps.length > 0, JSON.stringify(model));
       const off: string[] = [];
       let seen = 0;
@@ -193,7 +193,7 @@ for (const scale of ['1', '1.25', '1.5']) {
       }
       assert.deepStrictEqual(off, []);
       assert.ok(seen >= fitting, String(seen));
-      assert.strictEqual(single, 5);
+      assert.strictEqual(single, seen);
     });
 
     test('keeps the first and the last button of a header where they were as its search opens in their place, the field between them, the bar of the search spaced as its header is, wherever both have room, so no button moves under the pointer that opened it', async () => {

@@ -15,6 +15,7 @@ export function columnsClass(
 ): string {
   return [
     'columns',
+    'bars-outside',
     ...(commitsShown ? [] : ['commits-hidden']),
     ...(selected === undefined ? ['nothing-selected'] : []),
     ...(diffShown ? [] : ['no-changes']),

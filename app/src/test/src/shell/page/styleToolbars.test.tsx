@@ -142,8 +142,9 @@ suite('Style', () => {
     );
     assert.strictEqual(
       unwrapped(cascaded(column, '--title-height')),
-      'calc(var(--column-line, 0px) + 2 * var(--bar-space) + var(--button-size) + var(--hairline))',
+      'calc(var(--column-line, 0px) + 2 * var(--bar-space) + var(--button-size) + var(--title-line))',
     );
+    assert.strictEqual(cascaded(column, '--title-line'), 'var(--hairline)');
     const title = withClass(column, 'column-title');
     looks(title, {
       'box-sizing': 'border-box',
@@ -177,18 +178,19 @@ suite('Style', () => {
       withClass(rendered(<LocationsPopupShown query="" />), 'locations-bar'),
       {
         'box-sizing': 'border-box',
-        height: 'calc(var(--title-height) - var(--hairline))',
+        height: 'calc(var(--title-height) - var(--title-line))',
         'align-items': 'center',
         padding,
       },
     );
   });
 
-  test('stands the buttons of the header of a block whose bars stand outside its frame at its top and at either end of it, no line around them and the space of a bar under them alone, the line of the block starting under its header, in every tab but those of git, as the frame stood around the buttons of the only block of a tab and of the two sides of the commander, which the row selected tells apart, while it tells the three columns of git apart and which of them has the keyboard', () => {
+  test('stands the buttons of the header of a block whose bars stand outside its frame at its top and at either end of it, no line around them and the space of a bar under them alone, the line of the block starting under its header, a search opened in place of the header as tall as it is, with no line of the header to leave out, as the frame stood around the buttons of the only block of a tab, of the two sides of the commander, which the row selected tells apart, and of the three columns of git, which the blue of the selection tells apart', () => {
     const single = blocks('columns bars-outside');
     assert.strictEqual(cascaded(single, '--bar-edge'), '0px');
     assert.strictEqual(cascaded(single, '--title-above'), '0px');
     assert.strictEqual(cascaded(single, '--title-below'), 'var(--bar-space)');
+    assert.strictEqual(cascaded(single, '--title-line'), '0px');
     assert.strictEqual(
       unwrapped(cascaded(single, '--title-height')),
       'calc(var(--button-size) + var(--bar-space))',

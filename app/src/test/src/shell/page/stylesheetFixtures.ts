@@ -46,11 +46,11 @@ export function buttonsWidth(
   );
 }
 
-export function activeEdge(columns: React.ReactElement): string {
+export function columnEdge(columns: React.ReactElement): string {
   const edge = withClass(rendered(columns), 'column');
   assert.strictEqual(
     cascaded(edge, 'box-shadow', after),
-    'inset 0 0 0 var(--frame-line) var(--color-focus)',
+    'inset 0 0 0 var(--frame-line) var(--color-border)',
   );
   assert.strictEqual(
     cascaded(edge, '--frame-line', after),
