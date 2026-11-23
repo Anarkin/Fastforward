@@ -23,7 +23,25 @@ interface Areas {
 interface Capture {
   readonly filler: Buffer;
   readonly numbers: Buffer;
+  readonly stamp: Stamp;
 }
+
+type Stamp = readonly [outer: number, inner: number];
+
+const stampStep = 8;
+
+const stampSteps = 32;
+
+const stampSize = 8;
+
+const stampOf = (count: number): Stamp => [
+  (count % stampSteps) * stampStep,
+  (Math.floor(count / stampSteps) % stampSteps) * stampStep,
+];
+
+const stamped = (seen: Stamp, wanted: Stamp) =>
+  Math.abs(seen[0] - wanted[0]) < stampStep / 2 &&
+  Math.abs(seen[1] - wanted[1]) < stampStep / 2;
 
 const ratios = [1, 1.25, 1.5, 1.75, 2];
 
@@ -69,6 +87,7 @@ suite('App diff filler', () => {
   let folder: string;
   let app: ElectronApplication;
   let page: Page;
+  let stamps = 0;
 
   beforeAll(async () => {
     folder = tempFolder('app-diff-filler');
@@ -136,24 +155,36 @@ suite('App diff filler', () => {
     );
   }
 
-  async function scrollToLine(line: number): Promise<void> {
+  async function scrollToLine(line: number): Promise<Stamp> {
+    let stamp = stampOf(stamps);
     await waitFor(async () => {
-      const scrolled = await page.evaluate(async (wanted) => {
-        const list = document.querySelector('.diff-view .virtual-rows');
-        const height =
-          document
-            .querySelector<HTMLElement>('.diff-view .diff-cells')
-            ?.seenRows?.()[0]?.height ?? 0;
-        if (list) {
-          list.scrollTop = wanted * height;
-        }
-        await new Promise((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(resolve)),
-        );
-        return (list?.scrollTop ?? 0) / height;
-      }, line);
+      stamps += 1;
+      stamp = stampOf(stamps);
+      const scrolled = await page.evaluate(
+        async ([wanted, [outer, inner], size]) => {
+          const list = document.querySelector('.diff-view .virtual-rows');
+          const height =
+            document
+              .querySelector<HTMLElement>('.diff-view .diff-cells')
+              ?.seenRows?.()[0]?.height ?? 0;
+          const mark =
+            document.querySelector<HTMLElement>('.shown-stamp') ??
+            document.body.appendChild(document.createElement('div'));
+          mark.className = 'shown-stamp';
+          mark.style.cssText = `position: fixed; left: 0; top: 0; width: ${size}px; height: ${size}px; z-index: 2147483647; pointer-events: none; background: rgb(${outer}, ${inner}, ${outer})`;
+          if (list) {
+            list.scrollTop = wanted * height;
+          }
+          await new Promise((resolve) =>
+            requestAnimationFrame(() => requestAnimationFrame(resolve)),
+          );
+          return (list?.scrollTop ?? 0) / height;
+        },
+        [line, stamp, stampSize] as const,
+      );
       return Math.abs(scrolled - line) < 0.01;
     }, `the diff to stay scrolled to line ${line}`);
+    return stamp;
   }
 
   function areasOf(): Promise<Areas> {
@@ -233,11 +264,17 @@ suite('App diff filler', () => {
       }
       return pixels;
     };
-    return { filler: cropped(areas.filler), numbers: cropped(areas.numbers) };
+    const within = (Math.floor(stampSize / 2) * shot.width + 2) * 4;
+    return {
+      filler: cropped(areas.filler),
+      numbers: cropped(areas.numbers),
+      stamp: [all[within] ?? 0, all[within + 1] ?? 0],
+    };
   }
 
   async function capturedOnce(
     areas: Areas,
+    stamp: Stamp,
     drawn: (capture: Capture) => boolean,
     what: string,
   ): Promise<Capture> {
@@ -246,7 +283,7 @@ suite('App diff filler', () => {
       await waitFor(
         async () => {
           last = await captured(areas);
-          return drawn(last);
+          return stamped(last.stamp, stamp) && drawn(last);
         },
         what,
         5000,
@@ -264,7 +301,7 @@ suite('App diff filler', () => {
         [(left + right) / 2, (top + bottom) / 2] as const,
       );
       throw new Error(
-        `${String(error)}: ${JSON.stringify({ areas, ...found, ...commonestOf(last?.filler ?? Buffer.alloc(0)) })}`,
+        `${String(error)}: ${JSON.stringify({ areas, ...found, ...commonestOf(last?.filler ?? Buffer.alloc(0)), stamp, stampSeen: last?.stamp })}`,
         { cause: error },
       );
     }
@@ -272,21 +309,23 @@ suite('App diff filler', () => {
     return last;
   }
 
-  test('leaves the stripes of the empty side of a change where they were once the diff scrolls a line, at 100%, 125%, 150%, 175% and 200%, a line a row of the diff tall though its sides grow narrow enough to wrap it, to the level of gray the browser rounds the edge of a stripe by from tile to tile of a tall hatching where it draws without a GPU, as stripes moved by a line and part of their spacing seemed to step back and forth', async () => {
+  test('leaves the stripes of the empty side of a change where they were once the diff scrolls a line, at 100%, 125%, 150%, 175% and 200%, a line a row of the diff tall though its sides grow narrow enough to wrap it, to the level of gray the browser rounds the edge of a stripe by from tile to tile of a tall hatching where it draws without a GPU, as stripes moved by a line and part of their spacing seemed to step back and forth; each picture taken only once it shows the stamp its scroll drew in the same frame, as a picture taken right after a scroll may still be of the frame before it', async () => {
     const moved: Record<string, number> = {};
     for (const ratio of ratios) {
       await zoomTo(ratio);
-      await scrollToLine(12);
+      const twelfth = await scrollToLine(12);
       const areas = await areasOf();
       await assertInWindow(areas);
       const before = await capturedOnce(
         areas,
+        twelfth,
         ({ filler }) => striped(filler),
         `stripes at ${percent(ratio)}`,
       );
-      await scrollToLine(13);
+      const thirteenth = await scrollToLine(13);
       const after = await capturedOnce(
         areas,
+        thirteenth,
         ({ filler, numbers }) =>
           striped(filler) && !numbers.equals(before.numbers),
         `the line numbers to move at ${percent(ratio)}`,

@@ -610,7 +610,7 @@ suite('App editor', () => {
             };
           }),
         'the cursor to stop moving',
-        { quiet: 300 },
+        { quiet: 300, accepted: ({ row }) => Number.isInteger(row) },
       );
     const pressed = async (key: string) => {
       await editorPage.keyboard.press(key);
