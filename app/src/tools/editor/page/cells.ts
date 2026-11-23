@@ -115,6 +115,7 @@ class EditorCells implements PluginValue {
     | { readonly stamp: readonly unknown[]; readonly lines: LinesMarked }
     | undefined;
   private gone = false;
+  private shownTop = -1;
   private queued = false;
   private anew = true;
   private across = 0;
@@ -232,11 +233,18 @@ class EditorCells implements PluginValue {
     ) {
       return;
     }
+    const sideways =
+      this.shownTop === top &&
+      (this.across !== across ||
+        this.painted?.cells.first !== this.firstColumn(char));
     this.across = across;
-    const margin = Math.max(
-      0,
-      Math.min(height, (mostCanvas / ratio - height) / 2 - lineHeight),
-    );
+    this.shownTop = top;
+    const margin = sideways
+      ? lineHeight
+      : Math.max(
+          0,
+          Math.min(height, (mostCanvas / ratio - height) / 2 - lineHeight),
+        );
     const drawn = {
       top: Math.max(0, Math.floor((top - margin) / lineHeight) * lineHeight),
       bottom: Math.min(
