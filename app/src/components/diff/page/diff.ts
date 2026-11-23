@@ -11,6 +11,7 @@ export interface DiffLine {
   readonly oldNumber: number | undefined;
   readonly newNumber: number | undefined;
   readonly text: string;
+  readonly noNewline?: true;
 }
 
 interface DiffHunk {
@@ -253,7 +254,11 @@ export function parsePatch(patch: string): DiffFile[] {
         text,
       });
     } else if (marker === '\\') {
-      const kind = hunk.lines.at(-1)?.kind;
+      const last = hunk.lines.at(-1);
+      if (last !== undefined) {
+        hunk.lines[hunk.lines.length - 1] = { ...last, noNewline: true };
+      }
+      const kind = last?.kind;
       file.lacksNewline.old ||= kind === 'removed' || kind === 'context';
       file.lacksNewline.new ||= kind === 'added' || kind === 'context';
     }

@@ -142,6 +142,33 @@ suite('Rows painted as cells', () => {
     ]);
   });
 
+  test('signs the line break that ends a line while whitespace is shown, each sign of it in a column of its own after the text, a line feed after a carriage return the text ends in, which is signed where it stands without a column of its own, and nothing while whitespace is hidden', () => {
+    const lines = [
+      rowOf('ab', 0, { row: { start: 0, end: 3, text: 'ab', ending: '␍␊' } }),
+      rowOf('c\r', 4, { row: { start: 4, end: 7, text: 'c\r', ending: '␊' } }),
+      rowOf('d', 8, { row: { start: 8, end: 9, text: 'd' } }),
+    ];
+    const signs = (showWhitespace: boolean) => {
+      const { painter, cells } = painting();
+      paintRows(cells, shown(lines, { showWhitespace }), Infinity);
+      return shownAt(cells.frame, painter)
+        .filter(({ shown: glyph }) => '␍␊'.includes(glyph))
+        .map(({ shown: glyph, column, y }) => [
+          glyph,
+          column,
+          y / metrics.rowHeight,
+        ]);
+    };
+
+    assert.deepStrictEqual(signs(true), [
+      ['␍', 2, 0],
+      ['␊', 3, 0],
+      ['␍', 1, 1],
+      ['␊', 2, 1],
+    ]);
+    assert.deepStrictEqual(signs(false), []);
+  });
+
   test('draws a row it drew before from the cells it kept, wherever the row stands now and whichever column the canvas starts at, placing the glyphs only of the rows that are new', () => {
     const { painter, frame, cells } = painting();
     paintRows(cells, shown([first, second]), Infinity);

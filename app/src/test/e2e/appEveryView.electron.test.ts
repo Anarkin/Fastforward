@@ -131,6 +131,19 @@ suite('App, every view alike', () => {
         ];
       },
     );
+    const endings = path.join(opened, 'endings.txt');
+    const endingsChanged = path.join(opened, 'endings-changed.txt');
+    fs.writeFileSync(endings, 'one\r\ntwo\nthree');
+    fs.writeFileSync(endingsChanged, 'one\r\ntwo\nthree!');
+    const endingTabs = [
+      { id: '15', tool: 'viewer', root: endings },
+      { id: '16', tool: 'editor', root: endings },
+      {
+        id: '17',
+        tool: 'diff',
+        compare: { old: endings, new: endingsChanged },
+      },
+    ];
     const repository = await tempRepository(path.join(folder, 'repository'));
     const committed = async (content: string, message: string) => {
       for (const [name, { bytes }] of Object.entries(encoded)) {
@@ -160,6 +173,7 @@ suite('App, every view alike', () => {
           { id: '7', tool: 'viewer', root: binary },
           ...encodedTabs,
           { id: '14', tool: 'git', root: repository.root },
+          ...endingTabs,
         ],
         activeTab: '2',
       }),
@@ -339,6 +353,50 @@ suite('App, every view alike', () => {
     };
     return { viewer, editor, diff };
   };
+
+  const signsIn = async (tab: number, cells: string) => {
+    await page.locator('.tabs [role="tab"]').nth(tab).click();
+    const drawn = cellsOf(page, cells);
+    await waitFor(
+      async () => ((await drawn.rows())[0]?.text ?? '').startsWith('one'),
+      `the lines of tab ${tab}`,
+    );
+    return untilSettled(
+      async () =>
+        Object.fromEntries(
+          await Promise.all(
+            ['␍', '␊'].map(async (sign) => [
+              sign,
+              (await drawn.glyphs(sign)).map(({ row, column }) => [
+                row,
+                column,
+              ]),
+            ]),
+          ),
+        ),
+      `the signs of tab ${tab}`,
+    );
+  };
+
+  test('signs the line break that ends each line while whitespace is shown, a carriage return and a line feed in columns of their own, and none after a last line without one, in the viewer, the editor and the diff alike, as the line feed went unsigned', async () => {
+    const seen = {
+      viewer: await signsIn(14, '.viewer-rows .cell-rows'),
+      editor: await signsIn(15, '.editor .editor-cells'),
+      diff: await signsIn(16, '.compare-view .diff-cells'),
+    };
+    const signed = {
+      '␍': [[0, 3]],
+      '␊': [
+        [0, 4],
+        [1, 3],
+      ],
+    };
+    assert.deepStrictEqual(seen, {
+      viewer: signed,
+      editor: signed,
+      diff: signed,
+    });
+  });
 
   test('diffs the files of a commit in the encodings every other tool reads them in, in the git tab too, naming the encoding on the header of each, rather than taking a file of UTF-16 for binary and the bytes of a code page for UTF-8', async () => {
     const inGit = '.repository:not(.compare-view)';

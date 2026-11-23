@@ -39,15 +39,17 @@ const spans = (rows: readonly { start: number; end: number }[]) =>
   rows.map((row) => [row.start, row.end]);
 
 suite('Rows of text of a file', () => {
-  test('splits at line ends, keeping the carriage return of Windows line ends as the diff does, so whitespace shown marks it, and gives each row its bytes', async () => {
+  test('splits at line ends, keeping the carriage return of Windows line ends as the diff does, so whitespace shown marks it, signing the line feed of each line that has one, the last line of a file without one left unsigned, read forwards and backwards alike, and gives each row its bytes', async () => {
     const { read, size } = inMemory('one\r\ntwo\n\nthree');
-
-    assert.deepStrictEqual(await rowsFrom(read, size, 0, 10), [
-      { start: 0, end: 5, text: 'one\r' },
-      { start: 5, end: 9, text: 'two' },
-      { start: 9, end: 10, text: '' },
+    const rows = [
+      { start: 0, end: 5, text: 'one\r', ending: '␊' },
+      { start: 5, end: 9, text: 'two', ending: '␊' },
+      { start: 9, end: 10, text: '', ending: '␊' },
       { start: 10, end: 15, text: 'three' },
-    ]);
+    ];
+
+    assert.deepStrictEqual(await rowsFrom(read, size, 0, 10), rows);
+    assert.deepStrictEqual(await rowsBefore(read, size, size, 10), rows);
     assert.deepStrictEqual(texts(await rowsFrom(read, size, 5, 2)), [
       'two',
       '',

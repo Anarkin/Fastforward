@@ -8,6 +8,7 @@ import { CellFrame, type KeptCells } from './cellFrame';
 import type { GlyphTiles } from './glyphTiles';
 import { packedOf } from './cellColors';
 import {
+  cellsOf,
   drawDigits,
   drawDot,
   drawGap,
@@ -259,7 +260,13 @@ function drawRow(
     drawGap(drawing, end, y, tintsOver(tints.row, tints.word));
   }
   if (ends && drawing.blanks && row.row.ending !== undefined) {
-    drawSign(drawing, row.row.ending, end, y, tints?.row);
+    const after =
+      row.row.text.endsWith('\r') && cellsOf(drawing, '\r') === 0
+        ? end + 1
+        : end;
+    for (let at = 0; at < row.row.ending.length; at++) {
+      drawSign(drawing, row.row.ending[at], after + at, y, tints?.row);
+    }
   }
   if (withBreak) {
     const { advance, rowHeight } = drawing.tiles.metrics;

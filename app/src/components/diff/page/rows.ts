@@ -56,6 +56,7 @@ export type DiffRow =
       readonly file: number;
       readonly number: number;
       readonly text: string;
+      readonly noNewline?: true;
     };
 
 export type FileHeaderRow = Extract<DiffRow, { kind: 'file' }>;
@@ -200,8 +201,16 @@ export function diffRows(
     if (whole.binary && previewsWholeImage(whole)) {
       rows.push({ kind: 'image', file: 0 });
     }
-    wholeLines(whole).forEach((text, index) =>
-      rows.push({ kind: 'wholeLine', file: 0, number: index + 1, text }),
+    const lines = wholeLines(whole);
+    const ended = whole.content.endsWith('\n');
+    lines.forEach((text, index) =>
+      rows.push({
+        kind: 'wholeLine',
+        file: 0,
+        number: index + 1,
+        text,
+        ...(index === lines.length - 1 && !ended && { noNewline: true }),
+      }),
     );
     return rows;
   }

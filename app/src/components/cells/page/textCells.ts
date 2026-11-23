@@ -212,7 +212,7 @@ function controlStyle(
   return style;
 }
 
-function cellsOf({ widths }: TextDrawing, cluster: string): number {
+export function cellsOf({ widths }: TextDrawing, cluster: string): number {
   return Math.round(widths.of(cluster) / widths.char);
 }
 

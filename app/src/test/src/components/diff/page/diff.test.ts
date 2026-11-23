@@ -109,6 +109,32 @@ suite('Patch parser', () => {
     );
   });
 
+  test('marks the very line a line break does not follow, on its side, so whitespace shown signs the line feed of every other line', () => {
+    const [file] = parsePatch(
+      [
+        'diff --git a/n.txt b/n.txt',
+        'index 1111111..2222222 100644',
+        '--- a/n.txt',
+        '+++ b/n.txt',
+        '@@ -1,2 +1,2 @@',
+        ' first',
+        '-last',
+        '\\ No newline at end of file',
+        '+last',
+      ].join('\n'),
+    );
+    assert.deepStrictEqual(
+      file?.hunks.flatMap(({ lines }) =>
+        lines.map(({ text, noNewline }) => [text, noNewline === true]),
+      ),
+      [
+        ['first', false],
+        ['last', true],
+        ['last', false],
+      ],
+    );
+  });
+
   test('takes paths with " b/" in them from the diff exactly', () => {
     const paths = parsePatch(
       [

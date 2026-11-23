@@ -1,3 +1,4 @@
+import { strings } from '../../../lib/shared/strings';
 import type { TextLine } from '../../cells/page/lines';
 import { lineKey } from './lines';
 import type { Change, DiffRow } from './rows';
@@ -22,12 +23,17 @@ function made(
   index: number,
 ): PaneLine | null {
   const lined = (
-    text: string,
+    { text, noNewline }: { readonly text: string; readonly noNewline?: true },
     change: Change | undefined,
     numbers: readonly (number | undefined)[],
     lineOf = key,
   ): PaneLine => ({
-    line: { start: index, end: index + 1, text },
+    line: {
+      start: index,
+      end: index + 1,
+      text,
+      ...(noNewline !== true && { ending: strings.symbols.lineFeed }),
+    },
     key: lineOf,
     change,
     numbers,
@@ -36,20 +42,20 @@ function made(
     case 'line':
       return pane === 0
         ? lined(
-            row.line.text,
+            row.line,
             row.line.kind === 'context' ? undefined : row.line.kind,
             [row.line.oldNumber, row.line.newNumber],
           )
         : null;
     case 'wholeLine':
-      return pane === 0 ? lined(row.text, undefined, [row.number]) : null;
+      return pane === 0 ? lined(row, undefined, [row.number]) : null;
     case 'split': {
       const cell = pane === 0 ? row.left : row.right;
       const change = pane === 0 ? 'removed' : 'added';
       return cell === undefined
         ? null
         : lined(
-            cell.line.text,
+            cell.line,
             cell.line.kind === change ? change : undefined,
             [pane === 0 ? cell.line.oldNumber : cell.line.newNumber],
             lineKey(row.file, cell.index),

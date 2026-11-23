@@ -5,6 +5,15 @@ import { colorsShown } from './colors';
 import { marksShown } from './cellMarks';
 import { endingAfter, endingsField } from './endings';
 import { strings } from '../../../lib/shared/strings';
+import type { LineEnding } from '../shared/textMarks';
+
+const { carriageReturn, lineFeed } = strings.symbols;
+
+const endingSigns: Readonly<Record<LineEnding, string>> = {
+  lf: lineFeed,
+  crlf: `${carriageReturn}${lineFeed}`,
+  cr: carriageReturn,
+};
 
 export const blanksShown = Facet.define<boolean, boolean>({
   combine: (shown) => shown.some((each) => each),
@@ -20,11 +29,11 @@ export function appTextLook(table: CellTable): Extension {
       showWhitespace: view.state.facet(blanksShown),
       colorsOf: colors.rangesOf,
       endingOf: (line) =>
-        endings === undefined ||
-        line.number === doc.lines ||
-        endingAfter(endings, line.to) === 'lf'
+        line.number === doc.lines
           ? undefined
-          : strings.symbols.carriageReturn,
+          : endingSigns[
+              endings === undefined ? 'lf' : endingAfter(endings, line.to)
+            ],
       marks,
       selected: view.state.selection.ranges.filter(
         ({ from, to }) =>

@@ -4,6 +4,9 @@ import {
   utf8,
   type TextCoding,
 } from '../../../components/encodings/main/textCodings';
+import { strings } from '../../../lib/shared/strings';
+
+const lineFeedSign = strings.symbols.lineFeed;
 
 export const rowBytes = 4096;
 
@@ -78,9 +81,10 @@ function endingAt(
   size: number,
   coding: TextCoding,
 ): TextRow {
-  return row.end < size && !endsWith(bytes, bytes.length, coding.newline)
-    ? { ...row, cut: true }
-    : row;
+  if (endsWith(bytes, bytes.length, coding.newline)) {
+    return { ...row, ending: lineFeedSign };
+  }
+  return row.end < size ? { ...row, cut: true } : row;
 }
 
 function rowText(
@@ -204,6 +208,7 @@ export async function rowsFrom(
               start: position + offset,
               end: position + row.end,
               text: textOf(block, offset, row.textEnd, coding),
+              ...(row.end > row.textEnd && { ending: lineFeedSign }),
             },
       );
       startsLine = row.textEnd !== undefined;

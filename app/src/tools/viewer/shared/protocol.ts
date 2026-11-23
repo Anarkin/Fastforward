@@ -11,6 +11,7 @@ export interface TextRow {
   readonly end: number;
   readonly text: string;
   readonly cut?: true;
+  readonly ending?: string;
 }
 
 export interface ByteRange {
