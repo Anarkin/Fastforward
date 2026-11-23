@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   baseNameOf,
+  copyName,
   newFileProblem,
   newFolderProblem,
   renameProblem,
@@ -86,6 +87,19 @@ suite('Commander naming', () => {
       'back\\slash.txt',
     );
     assert.strictEqual(baseNameOf('a.txt', 'darwin'), 'a.txt');
+  });
+
+  test('suggests the name of a copy as the item has it while the target lists none of it, else the first free one Keep Both takes, a folder by its whole name, by case on Windows and macOS', () => {
+    const listed = [entry('a.txt'), entry('a (2).txt'), entry('docs.v1')];
+    assert.strictEqual(copyName('b.txt', false, listed, 'win32'), 'b.txt');
+    assert.strictEqual(copyName('a.txt', false, listed, 'win32'), 'a (3).txt');
+    assert.strictEqual(copyName('A.TXT', false, listed, 'win32'), 'A (3).TXT');
+    assert.strictEqual(copyName('A.TXT', false, listed, 'linux'), 'A.TXT');
+    assert.strictEqual(
+      copyName('docs.v1', true, listed, 'win32'),
+      'docs.v1 (2)',
+    );
+    assert.strictEqual(copyName('a.txt', false, undefined, 'win32'), 'a.txt');
   });
 
   test('selects the name of a file before its extension to rename it, and the whole name of a folder or of a file named by a dot', () => {

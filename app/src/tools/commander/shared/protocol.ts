@@ -159,6 +159,15 @@ export type CommanderToHost =
       readonly to: string;
     }
   | {
+      readonly type: 'copyAs';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+      readonly target: string;
+      readonly to: string;
+    }
+  | {
       readonly type: 'copyToClipboard';
       readonly tab: string;
       readonly side: Side;

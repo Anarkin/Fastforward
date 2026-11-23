@@ -642,6 +642,7 @@ suite('Commander tool in several windows', () => {
         name: 'a.txt',
         source: { size: 1, modified: 2 },
         target: { size: 3, modified: 4 },
+        keptAs: 'a (2).txt',
       },
     });
     assert.ok(page.of('transfer').at(-1)?.view?.clash !== undefined);

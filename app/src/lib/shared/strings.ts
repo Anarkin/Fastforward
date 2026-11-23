@@ -340,6 +340,8 @@ export const strings = {
     newFolder: 'Make a folder in the folder of the side',
     newFile: 'Edit a new file in the folder of the side, made once saved',
     renameItem: 'Rename the selected file or folder',
+    copyAs:
+      'Copy the selected file or folder under a new name into the folder of the other side',
     packItems:
       'Pack the marked items, or the selected one, into an archive in the folder of the other side',
     testArchives:
@@ -763,6 +765,8 @@ export const strings = {
     clashCopying: 'Copying',
     clashMoving: 'Moving',
     clashThere: 'There now',
+    clashItself: 'The item itself',
+    keepBothAs: 'Keep Both as',
     clashReadOnly: 'The file there is read-only; Overwrite replaces it anyway.',
     clashDetails: (bytes: number, date: string) =>
       `${fileSize(bytes)}, modified ${date}`,
@@ -811,6 +815,10 @@ export const strings = {
     makeFolderAsAdministrator:
       "Folders can't be made yet in a folder read as administrator.",
     renameTitle: 'Rename',
+    copyAsTitle: 'Copy As',
+    copyAsField: 'As',
+    copyAsInArchive:
+      "Items can't be copied under a new name yet inside an archive.",
     newName: 'New name',
     renameConfirm: 'Rename',
     goToTitle: 'Go To',

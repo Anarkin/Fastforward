@@ -78,6 +78,7 @@ const clash = {
   name: 'a.txt',
   source: { size: 1, modified: 2 },
   target: { size: 3, modified: 4 },
+  keptAs: 'a (2).txt',
 };
 
 const testing = (names: string[]): TransferAsk => ({
@@ -333,6 +334,20 @@ suite('Transfers', () => {
     ]);
     assert.strictEqual(last()?.clash, undefined);
     assert.strictEqual(last()?.id, 1);
+  });
+
+  test('takes no Overwrite to a question about an item copied onto itself, as the page offers none, sending on the other answers', () => {
+    const { coordinator, processes, tell } = transfers();
+    coordinator.start(ask(['a.txt']));
+    tell(0, { type: 'clash', clash: { ...clash, itself: true } });
+
+    coordinator.answer(1, 1, 'overwrite', false);
+    assert.deepStrictEqual(processes[0].commands.slice(1), []);
+
+    coordinator.answer(1, 1, 'keepBoth', false);
+    assert.deepStrictEqual(processes[0].commands.slice(1), [
+      { type: 'answer', reply: { answer: 'keepBoth', all: false } },
+    ]);
   });
 
   test('stops a transfer when told to, or when its dialog is closed while it asks, showing it stopping until its process ends, then without a word', () => {

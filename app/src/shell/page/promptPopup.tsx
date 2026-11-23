@@ -28,6 +28,7 @@ export function PromptPopup({
   message,
   lines = [],
   label,
+  fieldLabel,
   confirm,
   problemOf,
   noteOf,
@@ -43,6 +44,7 @@ export function PromptPopup({
   message?: string;
   lines?: readonly Line[];
   label: string;
+  fieldLabel?: string;
   confirm: string;
   problemOf: (value: string) => Sentence | undefined;
   noteOf?: (value: string) => string | undefined;
@@ -72,6 +74,19 @@ export function PromptPopup({
   const typed = secret ? value : value.trim();
   const problem = problemOf(typed);
   const note = noteOf?.(typed);
+  const input = (
+    <input
+      ref={field}
+      className="prompt-input"
+      type={secret ? 'password' : 'text'}
+      aria-label={label}
+      value={value}
+      spellCheck={false}
+      autoComplete="off"
+      onChange={(event) => onTyped(typedIn(event.target))}
+      onSelect={(event) => onTyped(typedIn(event.currentTarget))}
+    />
+  );
   return (
     <div
       className="backdrop"
@@ -109,18 +124,17 @@ export function PromptPopup({
               {message}
             </span>
           )}
-          {lines.length > 0 && <NameLines lines={lines} />}
-          <input
-            ref={field}
-            className="prompt-input"
-            type={secret ? 'password' : 'text'}
-            aria-label={label}
-            value={value}
-            spellCheck={false}
-            autoComplete="off"
-            onChange={(event) => onTyped(typedIn(event.target))}
-            onSelect={(event) => onTyped(typedIn(event.currentTarget))}
-          />
+          {fieldLabel === undefined ? (
+            <>
+              {lines.length > 0 && <NameLines lines={lines} />}
+              {input}
+            </>
+          ) : (
+            <NameLines lines={lines}>
+              <span className="name-label prompt-label">{fieldLabel}</span>
+              {input}
+            </NameLines>
+          )}
           {typed !== '' && problem !== undefined && (
             <div className="prompt-problem" role="alert">
               <Words>{problem}</Words>

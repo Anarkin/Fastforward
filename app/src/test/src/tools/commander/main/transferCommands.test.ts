@@ -43,7 +43,7 @@ suite('Commander tool', () => {
       { sources: [at('a.txt')], target: at('target'), move: true },
     ]);
   });
-  test('says the items are in the folder already rather than copying them onto themselves, that a folder cannot go into itself or a folder in it, and that nothing is copied or moved yet in a folder read as administrator', async () => {
+  test('copies items into the folder they are in, as anywhere else, each asked about as an item there already, and says the items are in the folder already rather than moving them onto themselves, that a folder cannot go into itself or a folder in it, and that nothing is copied or moved yet in a folder read as administrator', async () => {
     const helper: ElevatedFileSystem = {
       list: () => Promise.resolve([file('secret.txt')]),
       drives: () => Promise.resolve([]),
@@ -75,6 +75,14 @@ suite('Commander tool', () => {
       });
 
     await transfer(['a.txt'], root);
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'left',
+      names: ['a.txt'],
+      target: root,
+      move: false,
+    });
     await send({ type: 'open', tab: '1', side: 'left', name: 'dir' });
     await send({ type: 'open', tab: '1', side: 'left', name: 'inner' });
     await transfer(['a.txt', 'dir'], at('dir', 'inner'));
@@ -93,7 +101,9 @@ suite('Commander tool', () => {
       move: false,
     });
 
-    assert.deepStrictEqual(plansOf(transfers), []);
+    assert.deepStrictEqual(plansOf(transfers), [
+      { sources: [at('a.txt')], target: root, move: false },
+    ]);
     assert.deepStrictEqual(notices, [
       { level: 'error', message: strings.commander.alreadyIn(root) },
       { level: 'error', message: strings.commander.intoItself(at('dir')) },
@@ -153,6 +163,7 @@ suite('Commander tool', () => {
       name: 'a.txt',
       source: { size: 1, modified: 2 },
       target: { size: 3, modified: 4 },
+      keptAs: 'a (2).txt',
     };
     transfers[0].listener.event({ type: 'clash', clash });
     assert.deepStrictEqual(shown()?.clash, { ...clash, asked: 1 });
@@ -183,7 +194,62 @@ suite('Commander tool', () => {
       `left ${at('target')} ↑: `,
     ]);
   });
-  test('copies or moves the files dropped on a side into its folder, the folder they were dropped on or its parent, only while the side shows the folder named and every file is a whole path, refusing them in the folder they are in', async () => {
+  test('copies the item named under the name given into the folder of the other side, the folder it is in too, selecting the copy there once done, taking only one name of an item listed and the folder the other side shows', async () => {
+    const { tool, page, send, transfers, notices } = commander({
+      [root]: [file('a.txt'), folder('dir'), folder('target')],
+      [at('target')]: [file('b.txt')],
+    });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: '1', side: 'left', name: 'target' });
+    const copyAs = (name: string, to: string, target = at('target')) =>
+      send({
+        type: 'copyAs',
+        tab: '1',
+        side: 'right',
+        folder: root,
+        name,
+        target,
+        to,
+      });
+
+    await copyAs('a.txt', 'b copy.txt');
+    await copyAs('dir', 'dir 2');
+    await copyAs('a.txt', path.join('x', 'y.txt'));
+    await copyAs('a.txt', '');
+    await copyAs('gone.txt', 'c.txt');
+    await copyAs('..', 'c.txt');
+    await copyAs('a.txt', 'c.txt', root);
+    await send({ type: 'open', tab: '1', side: 'left', name: '..' });
+    await copyAs('a.txt', 'a (2).txt', root);
+
+    assert.deepStrictEqual(plansOf(transfers), [
+      {
+        sources: [at('a.txt')],
+        target: at('target'),
+        move: false,
+        as: 'b copy.txt',
+      },
+      { sources: [at('dir')], target: at('target'), move: false, as: 'dir 2' },
+      { sources: [at('a.txt')], target: root, move: false, as: 'a (2).txt' },
+    ]);
+    assert.deepStrictEqual(notices, []);
+
+    const listings = page.listings().length;
+    transfers[2]?.listener.event({ type: 'done', stopped: false });
+    await waitFor(
+      () => page.listings().length >= listings + 2,
+      'both sides to be listed again',
+    );
+    assert.ok(
+      page
+        .listings()
+        .slice(listings)
+        .every((listing) => listing.endsWith('[a (2).txt]')),
+      page.listings().slice(listings).join('\n'),
+    );
+  });
+
+  test('copies or moves the files dropped on a side into its folder, the folder they were dropped on or its parent, only while the side shows the folder named and every file is a whole path, copying them into the folder they are in as anywhere else and refusing to move them there', async () => {
     const { tool, page, send, transfers, notices } = commander({
       [root]: [file('a.txt'), folder('target')],
       [at('target')]: [folder('inner'), file('b.txt')],
@@ -216,17 +282,19 @@ suite('Commander tool', () => {
     await drop({ move: 'yes' });
     await tool.dropped(page, files, { type: 'other' });
     await drop({}, [at('target', 'b.txt')]);
+    await drop({ move: true }, [at('target', 'b.txt')]);
 
     assert.deepStrictEqual(plansOf(transfers), [
       { sources: files, target: at('target'), move: false },
       { sources: files, target: at('target', 'inner'), move: true },
       { sources: files, target: root, move: false },
+      { sources: [at('target', 'b.txt')], target: at('target'), move: false },
     ]);
     assert.deepStrictEqual(notices, [
       { level: 'error', message: strings.commander.alreadyIn(at('target')) },
     ]);
   });
-  test('pastes the files on the clipboard into the folder named as a copy of them, refusing them in the folder they are in or a folder into itself, and saying when the clipboard holds no files', async () => {
+  test('pastes the files on the clipboard into the folder named as a copy of them, into the folder they are in too, refusing a folder into itself, and saying when the clipboard holds no files', async () => {
     const { tool, page, send, clipboard, transfers, notices } = commander({
       [root]: [file('a.txt'), folder('dir')],
       [at('dir')]: [],
@@ -244,6 +312,7 @@ suite('Commander tool', () => {
     await paste();
 
     assert.deepStrictEqual(plansOf(transfers), [
+      { sources: [at('a.txt')], target: root, move: false },
       {
         sources: [at('a.txt'), path.join(root, 'elsewhere', 'b.txt')],
         target: at('dir'),
@@ -252,7 +321,6 @@ suite('Commander tool', () => {
     ]);
     assert.deepStrictEqual(notices, [
       { level: 'info', message: strings.commander.nothingToPaste },
-      { level: 'error', message: strings.commander.alreadyIn(root) },
       { level: 'error', message: strings.commander.intoItself(at('dir')) },
     ]);
   });

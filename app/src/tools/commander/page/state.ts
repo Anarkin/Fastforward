@@ -83,6 +83,10 @@ interface Renaming {
   readonly typed?: KeptTyped;
 }
 
+interface CopyingAs extends Renaming {
+  readonly target: string;
+}
+
 interface MakingFolder {
   readonly tab: string;
   readonly side: Side;
@@ -91,7 +95,12 @@ interface MakingFolder {
 }
 
 type TypedDialog =
-  'makingFolder' | 'makingFile' | 'renaming' | 'goingTo' | 'markingPattern';
+  | 'makingFolder'
+  | 'makingFile'
+  | 'renaming'
+  | 'copyingAs'
+  | 'goingTo'
+  | 'markingPattern';
 
 type GoingTo = MakingFolder;
 
@@ -128,6 +137,7 @@ export interface CommanderSource {
   readonly makingFolder: MakingFolder | undefined;
   readonly makingFile: MakingFolder | undefined;
   readonly renaming: Renaming | undefined;
+  readonly copyingAs: CopyingAs | undefined;
   readonly goingTo: GoingTo | undefined;
   readonly markingPattern: MarkingPattern | undefined;
   readonly lastPattern: string | undefined;
@@ -162,6 +172,7 @@ export type ParkedDialogs = Partial<
     | 'makingFolder'
     | 'makingFile'
     | 'renaming'
+    | 'copyingAs'
     | 'goingTo'
     | 'markingPattern'
     | 'packing'
@@ -239,6 +250,9 @@ export interface CommanderActions {
   readonly askRename: (side: Side, name: string) => void;
   readonly rename: (to: string) => void;
   readonly cancelRename: () => void;
+  readonly askCopyAs: (side: Side, name: string) => void;
+  readonly copyAs: (to: string) => void;
+  readonly cancelCopyAs: () => void;
   readonly askGoTo: (side: Side) => void;
   readonly askMarkPattern: (
     side: Side,
@@ -302,6 +316,7 @@ export const commanderDefaults: CommanderSource = {
   makingFolder: undefined,
   makingFile: undefined,
   renaming: undefined,
+  copyingAs: undefined,
   goingTo: undefined,
   markingPattern: undefined,
   lastPattern: undefined,

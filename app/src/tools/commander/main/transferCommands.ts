@@ -12,6 +12,7 @@ import { parentOf } from './folderPaths';
 import type { ArchiveAccess } from './archives';
 import type { ArchiveTransferCommands } from './archiveTransferCommands';
 import { refusedTargetOnDisk } from './transferTargets';
+import { nameProblem } from '../shared/names';
 
 export interface TransferCommandsAccess {
   readonly archives?: ArchiveAccess;
@@ -170,17 +171,64 @@ export class TransferCommands {
   }
 
   private async startTransfer(page: Page, ask: TransferAsk): Promise<void> {
-    const { sources, target } = ask.plan;
+    const { sources, target, move } = ask.plan;
     const refused = await refusedTargetOnDisk(
       sources,
       target,
       this.access.platform,
+      !move,
     );
     if (refused !== undefined) {
       this.host.refuse(page, refused);
       return;
     }
     this.transfers.start(ask);
+  }
+
+  async copyAs(
+    page: Page,
+    {
+      tab,
+      side,
+      folder,
+      name,
+      target,
+      to,
+    }: Extract<CommanderToHost, { type: 'copyAs' }>,
+  ): Promise<void> {
+    const shown = this.sides.namingPane(page, tab, side, folder);
+    const other =
+      shown && this.sides.panes.get(shown.tab)?.[otherSide(shown.side)];
+    if (
+      shown === undefined ||
+      other === undefined ||
+      other.folder !== target ||
+      typeof name !== 'string' ||
+      listedIn(shown.pane, name) === undefined ||
+      typeof to !== 'string' ||
+      to !== path.basename(to) ||
+      nameProblem(to, this.access.platform) !== undefined
+    ) {
+      return;
+    }
+    if (shown.pane.elevated === true || other.elevated === true) {
+      this.host.refuse(page, strings.commander.transferAsAdministrator);
+      return;
+    }
+    if (shown.pane.archive !== undefined || other.archive !== undefined) {
+      this.host.refuse(page, strings.commander.copyAsInArchive);
+      return;
+    }
+    await this.startTransfer(page, {
+      plan: {
+        sources: [path.join(shown.pane.folder, name)],
+        target,
+        move: false,
+        as: to,
+      },
+      folder: shown.pane.folder,
+      names: [name],
+    });
   }
 
   async paste(
@@ -266,9 +314,23 @@ export class TransferCommands {
         continue;
       }
       if (flat === undefined) {
+        const copied =
+          plan.as !== undefined && key(pane.folder) === key(plan.target)
+            ? plan.as
+            : undefined;
         void this.host
           .shell()
-          .track(this.host.list(page, tab, side, pane.folder, 'show'));
+          .track(
+            this.host.list(
+              page,
+              tab,
+              side,
+              pane.folder,
+              'show',
+              undefined,
+              copied,
+            ),
+          );
         continue;
       }
       if (plan.move && key(pane.folder) === key(folder)) {
@@ -278,7 +340,7 @@ export class TransferCommands {
       }
       if (key(pane.folder) === key(plan.target)) {
         for (const source of plan.sources) {
-          flat.tree.changed(path.basename(source));
+          flat.tree.changed(plan.as ?? path.basename(source));
         }
       }
     }

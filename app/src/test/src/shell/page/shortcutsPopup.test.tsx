@@ -171,6 +171,7 @@ suite('Shortcuts popup', () => {
         [
           'Copy the marked items, or the selected one, into the folder of the other side, or move them there with F6',
           'Rename the selected file or folder',
+          'Copy the selected file or folder under a new name into the folder of the other side',
           'Make a folder in the folder of the side',
           'Edit a new file in the folder of the side, made once saved',
           'Move the marked items, or the selected one, to the Recycle Bin, or with Shift delete them permanently',

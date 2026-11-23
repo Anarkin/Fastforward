@@ -103,7 +103,13 @@ export function Words({
   );
 }
 
-export function NameLines({ lines }: { readonly lines: readonly Line[] }) {
+export function NameLines({
+  lines,
+  children,
+}: {
+  readonly lines: readonly Line[];
+  readonly children?: React.ReactNode;
+}) {
   return (
     <div className="name-lines">
       {lines.map((line, index) => (
@@ -120,6 +126,7 @@ export function NameLines({ lines }: { readonly lines: readonly Line[] }) {
           </span>
         </Fragment>
       ))}
+      {children}
     </div>
   );
 }

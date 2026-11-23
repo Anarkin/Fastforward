@@ -28,15 +28,15 @@ suite('The target of a copy on disk', () => {
     fs.mkdirSync(other);
 
     assert.deepStrictEqual(
-      await refusedTargetOnDisk([folder], link, process.platform),
+      await refusedTargetOnDisk([folder], link, process.platform, true),
       strings.commander.intoItself(folder),
     );
     assert.strictEqual(
-      await refusedTargetOnDisk([folder], other, process.platform),
+      await refusedTargetOnDisk([folder], other, process.platform, true),
       undefined,
     );
     assert.deepStrictEqual(
-      await refusedTargetOnDisk([folder], inside, process.platform),
+      await refusedTargetOnDisk([folder], inside, process.platform, true),
       strings.commander.intoItself(folder),
     );
     assert.strictEqual(
@@ -44,6 +44,7 @@ suite('The target of a copy on disk', () => {
         [path.join(root, 'gone')],
         path.join(root, 'nowhere'),
         process.platform,
+        true,
       ),
       undefined,
     );

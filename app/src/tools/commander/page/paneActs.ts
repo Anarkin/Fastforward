@@ -27,6 +27,9 @@ export function actOnPane(
     case 'rename':
       actions.askRename(side, action.name);
       return;
+    case 'copyAs':
+      actions.askCopyAs(side, action.name);
+      return;
     case 'pack':
       actions.askPack(side, action.names);
       return;

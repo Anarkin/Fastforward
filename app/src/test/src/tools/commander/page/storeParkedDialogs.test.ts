@@ -122,6 +122,29 @@ suite('Commander store keeping the dialogs of its tabs', () => {
     });
   });
 
+  test('brings Copy As back with what was typed in it once the page is reloaded, while both sides show the folders it was asked in', () => {
+    const left = keepingViews();
+    const store = sidesOf('1', left.store);
+    store.getState().askCopyAs('left', 'a.txt');
+    store.getState().keepTyped('copyingAs', { value: 'a copy.txt' });
+    store.getState().keepTabs();
+
+    const back = keepingViews();
+    back.hand('1', left.keptOf('1') ?? '');
+    const other = back.store;
+    other.getState().receive({ type: 'show', tab: '1' });
+    other.getState().receive(withFiles(folder, 'a.txt', 'b.txt'));
+    other.getState().receive({ ...listing('C:/other'), side: 'right' });
+    assert.deepStrictEqual(other.getState().copyingAs, {
+      tab: '1',
+      side: 'left',
+      folder,
+      name: 'a.txt',
+      target: 'C:/other',
+      typed: { value: 'a copy.txt' },
+    });
+  });
+
   test('sends what was typed in a dialog of the tab shown as the page goes, with no other tab shown meanwhile, as a reload while it is open', () => {
     const left = keepingViews();
     const store = sidesOf('1', left.store);

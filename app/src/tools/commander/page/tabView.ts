@@ -60,6 +60,7 @@ const dialogsSchema = record({
   makingFile: optional(record(prompted)),
   goingTo: optional(record(prompted)),
   renaming: optional(record({ ...prompted, name: text() })),
+  copyingAs: optional(record({ ...prompted, name: text(), target: text() })),
   markingPattern: optional(
     record({ ...prompted, mark: flag(), initial: text() }),
   ),

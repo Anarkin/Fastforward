@@ -224,6 +224,18 @@ suite('Commander keys', () => {
     assert.deepStrictEqual(paneKey(rename, at('..')), {});
   });
 
+  test('asks for the name to copy the file or folder selected under on Shift+F5, of no other marked, and of nothing on the parent folder', () => {
+    const copyAs = pressed('F5', { shiftKey: true });
+    assert.deepStrictEqual(
+      paneKey(copyAs, at('a.txt', { marked: new Set(['b.txt']) })),
+      { act: { kind: 'copyAs', name: 'a.txt' } },
+    );
+    assert.deepStrictEqual(paneKey(copyAs, at('docs')), {
+      act: { kind: 'copyAs', name: 'docs' },
+    });
+    assert.deepStrictEqual(paneKey(copyAs, at('..')), {});
+  });
+
   test('asks how to pack the file selected, or the ones marked, on Alt+F5, and nothing on the parent folder', () => {
     const pack = pressed('F5', { altKey: true });
     assert.deepStrictEqual(paneKey(pack, at('a.txt')), {

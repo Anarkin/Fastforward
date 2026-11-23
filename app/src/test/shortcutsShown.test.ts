@@ -105,6 +105,7 @@ const onControls: readonly string[] = [
 
 const keysAlone: readonly string[] = [
   'commanderKeymap.contextMenu',
+  'commanderKeymap.copyAs',
   'commanderKeymap.copyNames',
   'commanderKeymap.copyToClipboard',
   'commanderKeymap.countSizes',

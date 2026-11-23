@@ -68,9 +68,22 @@ function ClashBody({
           label={move ? commander.clashMoving : commander.clashCopying}
           side={clash.source}
         />
-        <ClashSideRow label={commander.clashThere} side={clash.target} />
+        {clash.itself === true ? (
+          <>
+            <span>{commander.clashThere}</span>
+            <span>{commander.clashItself}</span>
+          </>
+        ) : (
+          <ClashSideRow label={commander.clashThere} side={clash.target} />
+        )}
+        <span>{commander.keepBothAs}</span>
+        <span className="transfer-clash-path">
+          <NamedPath path={clash.keptAs} file />
+        </span>
       </div>
-      {clash.target.readOnly === true && <span>{commander.clashReadOnly}</span>}
+      {clash.target.readOnly === true && clash.itself !== true && (
+        <span>{commander.clashReadOnly}</span>
+      )}
       <label className="transfer-all" htmlFor={id}>
         <input
           id={id}
@@ -86,6 +99,7 @@ function ClashBody({
         </button>
         <button
           className="confirm-button"
+          disabled={clash.itself === true}
           onClick={() => answerClash('overwrite', all)}
         >
           {commander.overwrite}

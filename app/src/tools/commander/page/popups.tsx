@@ -1,8 +1,10 @@
 import { joinedPath } from '../../../lib/page/pathLooks';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { PromptPopup } from '../../../shell/page/promptPopup';
+import { otherSide } from '../shared/sides';
 import {
   baseNameOf,
+  copyName,
   newFileProblem,
   newFolderProblem,
   renamedPart,
@@ -44,6 +46,19 @@ export function CommanderPopups() {
       ? undefined
       : state.view.panes[state.renaming.side]?.entries,
   );
+  const copyingAs = useCommander((state) => state.copyingAs);
+  const copiedInto = useCommander((state) =>
+    state.copyingAs === undefined
+      ? undefined
+      : state.view.panes[otherSide(state.copyingAs.side)]?.entries,
+  );
+  const copiedFolder = useCommander(({ copyingAs: asked, view }) =>
+    asked === undefined
+      ? false
+      : view.panes[asked.side]?.entries.some(
+          (entry) => entry.name === asked.name && entry.folder,
+        ) === true,
+  );
   const goingTo = useCommander((state) => state.goingTo);
   const markingPattern = useCommander((state) => state.markingPattern);
   const patternRows = useCommander((state) =>
@@ -68,6 +83,8 @@ export function CommanderPopups() {
     answerUpdate,
     rename,
     cancelRename,
+    copyAs,
+    cancelCopyAs,
     goTo,
     cancelGoTo,
     markPattern,
@@ -77,6 +94,15 @@ export function CommanderPopups() {
   } = useCommanderActions();
   const renamed =
     renaming === undefined ? undefined : baseNameOf(renaming.name, platform);
+  const suggested =
+    copyingAs === undefined
+      ? undefined
+      : copyName(
+          baseNameOf(copyingAs.name, platform),
+          copiedFolder,
+          copiedInto,
+          platform,
+        );
   return (
     <>
       <TransferPopup />
@@ -157,6 +183,29 @@ export function CommanderPopups() {
           onTyped={(typed) => keepTyped('renaming', typed)}
           onConfirm={rename}
           onCancel={cancelRename}
+        />
+      )}
+      {copyingAs !== undefined && suggested !== undefined && (
+        <PromptPopup
+          title={strings.commander.copyAsTitle}
+          lines={
+            transferQuestion(
+              [copyingAs.name],
+              copyingAs.folder,
+              false,
+              copyingAs.target,
+            ).lines
+          }
+          label={strings.commander.newName}
+          fieldLabel={strings.commander.copyAsField}
+          confirm={strings.commander.copyTitle}
+          initial={suggested}
+          selectedUpTo={renamedPart(suggested, copiedFolder)}
+          problemOf={(to) => newFolderProblem(to, copiedInto, platform)}
+          typed={copyingAs.typed}
+          onTyped={(typed) => keepTyped('copyingAs', typed)}
+          onConfirm={copyAs}
+          onCancel={cancelCopyAs}
         />
       )}
       {markingPattern !== undefined && (

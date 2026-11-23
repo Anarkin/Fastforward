@@ -16,6 +16,8 @@ export interface Clash {
   readonly name: string;
   readonly source: ClashSide;
   readonly target: ClashSide;
+  readonly keptAs: string;
+  readonly itself?: true;
 }
 
 export interface TransferProgress {

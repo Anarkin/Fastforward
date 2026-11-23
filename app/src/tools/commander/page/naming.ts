@@ -53,6 +53,29 @@ export function renameProblem(
     : undefined;
 }
 
+export function copyName(
+  name: string,
+  folder: boolean,
+  listed: readonly Entry[] | undefined,
+  platform: string | undefined,
+): string {
+  const taken = new Set(
+    (listed ?? []).map((entry) => folderKey(entry.name, platform)),
+  );
+  if (!taken.has(folderKey(name, platform))) {
+    return name;
+  }
+  const dot = folder ? -1 : name.lastIndexOf('.');
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const extension = dot > 0 ? name.slice(dot) : '';
+  for (let number = 2; ; number++) {
+    const candidate = `${stem} (${number})${extension}`;
+    if (!taken.has(folderKey(candidate, platform))) {
+      return candidate;
+    }
+  }
+}
+
 export function renamedPart(name: string, folder: boolean): number {
   const dot = name.lastIndexOf('.');
   return !folder && dot > 0 ? dot : name.length;

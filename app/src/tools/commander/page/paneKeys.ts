@@ -19,6 +19,7 @@ export type PaneAct =
   | { readonly kind: 'newFolder' }
   | { readonly kind: 'newFile' }
   | { readonly kind: 'rename'; readonly name: string }
+  | { readonly kind: 'copyAs'; readonly name: string }
   | { readonly kind: 'pack'; readonly names: readonly string[] }
   | { readonly kind: 'test'; readonly names: readonly string[] }
   | { readonly kind: 'enterArchive'; readonly name: string }
@@ -144,6 +145,11 @@ export function paneKey(
     return row?.entry === undefined
       ? done
       : { act: { kind: 'rename', name: row.key } };
+  }
+  if (keyPressed(commanderKeymap.copyAs, event) !== undefined) {
+    return row?.entry === undefined
+      ? done
+      : { act: { kind: 'copyAs', name: row.key } };
   }
   if (keyPressed(commanderKeymap.testArchives, event) !== undefined) {
     const names = chosenKeys(rows, selected, marked);

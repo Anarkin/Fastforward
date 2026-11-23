@@ -8,6 +8,7 @@ export const dialogSlots = [
   'makingFolder',
   'makingFile',
   'renaming',
+  'copyingAs',
   'goingTo',
   'markingPattern',
   'packing',
@@ -92,6 +93,14 @@ export function settledDialogs(
     renaming: settle(state.renaming, back.renaming, (parking, dialog) => {
       parking.renaming = dialog;
     }),
+    copyingAs: settle(
+      state.copyingAs,
+      back.copyingAs,
+      (parking, dialog) => {
+        parking.copyingAs = dialog;
+      },
+      true,
+    ),
     goingTo: settle(state.goingTo, back.goingTo, (parking, dialog) => {
       parking.goingTo = dialog;
     }),

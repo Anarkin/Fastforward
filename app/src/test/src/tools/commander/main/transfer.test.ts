@@ -145,6 +145,39 @@ suite('Transfer', () => {
     );
   });
 
+  test('copies the one item of a plan under the name it gives, a folder with its contents, beside itself too', async () => {
+    write(path.join(source, 'a.txt'), 'a');
+    write(path.join(source, 'docs', 'note.txt'), 'note');
+
+    const file = await run({
+      sources: [path.join(source, 'a.txt')],
+      target: source,
+      move: false,
+      as: 'a copy.txt',
+    });
+    const folderCopied = await run({
+      sources: [path.join(source, 'docs')],
+      target,
+      move: false,
+      as: 'notes',
+    });
+
+    assert.deepStrictEqual(
+      [file.end, folderCopied.end, file.clashes, folderCopied.clashes],
+      ['done', 'done', [], []],
+    );
+    assert.deepStrictEqual(tree(source), {
+      'a copy.txt': 'a',
+      'a.txt': 'a',
+      docs: '/',
+      'docs/note.txt': 'note',
+    });
+    assert.deepStrictEqual(tree(target), {
+      notes: '/',
+      'notes/note.txt': 'note',
+    });
+  });
+
   test('moves items on the same drive by renaming them, whole folders at once, leaving nothing in the source', async () => {
     write(path.join(source, 'a.txt'), 'a');
     write(path.join(source, 'docs', 'b.txt'), 'b');
@@ -332,10 +365,11 @@ suite('Transfer', () => {
     });
   });
 
-  test('refuses to copy or move an item onto itself, reached through a link to its folder or as a hard link of it, without asking, keeping its bytes', async () => {
+  test('refuses to move an item onto itself, reached through a link to its folder or as a hard link of it, without asking, and asks about one copied onto itself as the item itself, keeping both under the first free name, a folder by its whole name, and never overwriting it, keeping its bytes', async () => {
     write(path.join(source, 'big.bin'), 'b'.repeat(10_000));
-    write(path.join(source, 'docs', 'note.txt'), 'note');
+    write(path.join(source, 'docs.v1', 'note.txt'), 'note');
     write(path.join(source, 'twin.bin'), 't'.repeat(10_000));
+    write(path.join(source, 'big (2).bin'), 'taken');
     fs.linkSync(path.join(source, 'twin.bin'), path.join(target, 'twin.bin'));
     const linked = path.join(folder, 'linked');
     fs.symlinkSync(source, linked, 'junction');
@@ -343,11 +377,22 @@ suite('Transfer', () => {
 
     const copied = await run(
       {
-        sources: [path.join(source, 'big.bin'), path.join(source, 'docs')],
+        sources: [
+          path.join(source, 'big.bin'),
+          path.join(source, 'docs.v1'),
+          path.join(source, 'twin.bin'),
+        ],
         target: linked,
         move: false,
       },
-      pieces,
+      {
+        ...pieces,
+        answers: [
+          { answer: 'keepBoth', all: false },
+          { answer: 'keepBoth', all: false },
+          { answer: 'overwrite', all: false },
+        ],
+      },
     );
     const moved = await run(
       { sources: [path.join(source, 'big.bin')], target: linked, move: true },
@@ -359,22 +404,30 @@ suite('Transfer', () => {
     );
 
     assert.deepStrictEqual(
-      [...copied.clashes, ...moved.clashes, ...twin.clashes],
-      [],
+      copied.clashes.map(({ name, itself, keptAs }) => [name, itself, keptAs]),
+      [
+        ['big.bin', true, 'big (3).bin'],
+        ['docs.v1', true, 'docs.v1 (2)'],
+        ['twin.bin', true, 'twin (2).bin'],
+      ],
     );
+    assert.deepStrictEqual([...moved.clashes, ...twin.clashes], []);
     assert.deepStrictEqual(
       [...copied.failures, ...moved.failures, ...twin.failures],
       [
-        `big.bin: ${strings.commander.itselfThere}`,
-        `docs: ${strings.commander.itselfThere}`,
+        `twin.bin: ${strings.commander.itselfThere}`,
         `big.bin: ${strings.commander.itselfThere}`,
         `twin.bin: ${strings.commander.itselfThere}`,
       ],
     );
     assert.deepStrictEqual(tree(source), {
+      'big (2).bin': 'taken',
+      'big (3).bin': 'b'.repeat(10_000),
       'big.bin': 'b'.repeat(10_000),
-      docs: '/',
-      'docs/note.txt': 'note',
+      'docs.v1': '/',
+      'docs.v1 (2)': '/',
+      'docs.v1 (2)/note.txt': 'note',
+      'docs.v1/note.txt': 'note',
       'twin.bin': 't'.repeat(10_000),
     });
     assert.strictEqual(

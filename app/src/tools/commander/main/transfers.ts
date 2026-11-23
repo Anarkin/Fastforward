@@ -194,6 +194,7 @@ export class Transfers {
       running?.clash === undefined ||
       running.clash.asked !== asked ||
       !isClashAnswer(answer) ||
+      (answer === 'overwrite' && running.clash.itself === true) ||
       typeof all !== 'boolean'
     ) {
       return;

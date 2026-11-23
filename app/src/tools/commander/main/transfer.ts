@@ -15,6 +15,7 @@ export interface TransferPlan {
   readonly sources: readonly string[];
   readonly target: string;
   readonly move: boolean;
+  readonly as?: string;
 }
 
 export interface ClashReply {
@@ -105,10 +106,13 @@ function sideOf(stats: fs.Stats): ClashSide {
   };
 }
 
-async function freeName(file: string): Promise<string> {
-  const { dir, name, ext } = path.parse(file);
+async function freeName(file: string, folder: boolean): Promise<string> {
+  const { dir, base, name, ext } = path.parse(file);
   for (let number = 2; ; number++) {
-    const candidate = path.join(dir, `${name} (${number})${ext}`);
+    const candidate = path.join(
+      dir,
+      folder ? `${base} (${number})` : `${name} (${number})${ext}`,
+    );
     if ((await statsOf(candidate)) === undefined) {
       return candidate;
     }
@@ -171,7 +175,7 @@ class Transfer {
   }
 
   private targetOf(source: string): string {
-    return path.join(this.plan.target, path.basename(source));
+    return path.join(this.plan.target, this.plan.as ?? path.basename(source));
   }
 
   private nameOf(target: string): string {
@@ -274,6 +278,7 @@ class Transfer {
     name: string,
     source: fs.Stats,
     target: fs.Stats,
+    { itself, keptAs }: { readonly itself: boolean; readonly keptAs: string },
   ): Promise<ClashAnswer> {
     if (this.always !== undefined) {
       return this.always;
@@ -283,6 +288,8 @@ class Transfer {
       name,
       source: sideOf(source),
       target: sideOf(target),
+      keptAs,
+      ...(itself && { itself }),
     });
     this.stopIfAsked();
     if (reply.answer === 'stop') {
@@ -313,16 +320,16 @@ class Transfer {
     let overwrite = false;
     let unlocked: fs.Stats | undefined;
     if (there !== undefined) {
-      if (await sameItem(source, target)) {
-        this.events.failed(name, strings.commander.itselfThere);
-        this.passed(this.countOf(source, from));
+      const itself = await sameItem(source, target);
+      if (itself && this.plan.move) {
+        this.itselfThere(name, source, from);
         return;
       }
-      if (from.isDirectory() && there.isDirectory()) {
+      if (!itself && from.isDirectory() && there.isDirectory()) {
         await this.merge(source, target, renaming);
         return;
       }
-      if (from.isDirectory() || there.isDirectory()) {
+      if (!itself && (from.isDirectory() || there.isDirectory())) {
         this.events.failed(
           name,
           there.isDirectory()
@@ -332,13 +339,21 @@ class Transfer {
         this.passed(this.countOf(source, from));
         return;
       }
-      const answer = await this.answerTo(name, from, there);
+      const folder = from.isDirectory();
+      const answer = await this.answerTo(name, from, there, {
+        itself,
+        keptAs: this.nameOf(await freeName(target, folder)),
+      });
       if (answer === 'skip') {
         this.passed(this.countOf(source, from));
         return;
       }
+      if (itself && answer === 'overwrite') {
+        this.itselfThere(name, source, from);
+        return;
+      }
       if (answer === 'keepBoth') {
-        into = await freeName(target);
+        into = await freeName(target, folder);
       } else {
         overwrite = true;
         if ((there.mode & ownerWrites) === 0) {
@@ -356,6 +371,11 @@ class Transfer {
         await lockedAgain(target, unlocked);
       }
     }
+  }
+
+  private itselfThere(name: string, source: string, from: fs.Stats): void {
+    this.events.failed(name, strings.commander.itselfThere);
+    this.passed(this.countOf(source, from));
   }
 
   private async placed(

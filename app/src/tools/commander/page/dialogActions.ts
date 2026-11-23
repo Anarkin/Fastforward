@@ -26,6 +26,9 @@ export type DialogActions = Pick<
   | 'askRename'
   | 'rename'
   | 'cancelRename'
+  | 'askCopyAs'
+  | 'copyAs'
+  | 'cancelCopyAs'
   | 'askGoTo'
   | 'goTo'
   | 'cancelGoTo'
@@ -179,6 +182,22 @@ export function dialogActions({
       }
     },
     cancelRename: () => set({ renaming: undefined }),
+    askCopyAs: (side, name) =>
+      onPane(side, (tab, folder) => {
+        const other = get().view.panes[otherSide(side)];
+        if (other !== undefined) {
+          set({ copyingAs: { tab, side, folder, name, target: other.folder } });
+        }
+      }),
+    copyAs: (to) => {
+      const { copyingAs } = get();
+      if (copyingAs !== undefined) {
+        set({ copyingAs: undefined });
+        const { tab, side, folder, name, target } = copyingAs;
+        post({ type: 'copyAs', tab, side, folder, name, target, to });
+      }
+    },
+    cancelCopyAs: () => set({ copyingAs: undefined }),
     askGoTo: (side) =>
       onPane(side, (tab, folder) => set({ goingTo: { tab, side, folder } })),
     goTo: (to) => {
@@ -352,6 +371,10 @@ export function dialogActions({
             return state.renaming === undefined
               ? state
               : { renaming: { ...state.renaming, typed } };
+          case 'copyingAs':
+            return state.copyingAs === undefined
+              ? state
+              : { copyingAs: { ...state.copyingAs, typed } };
           case 'goingTo':
             return state.goingTo === undefined
               ? state

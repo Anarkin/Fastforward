@@ -217,6 +217,10 @@
   border-color: var(--color-focus);
 }
 
+.prompt-label {
+  align-self: center;
+}
+
 .prompt-input::placeholder {
   color: var(--muted-foreground);
 }

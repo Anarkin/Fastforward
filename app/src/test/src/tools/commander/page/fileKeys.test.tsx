@@ -65,12 +65,34 @@ const shownTransfer: TransferView = {
   stopping: false,
 };
 
+const clashOf = (itself: boolean): CommanderToWebview => ({
+  type: 'transfer',
+  view: {
+    id: 7,
+    move: false,
+    items: 1,
+    target: 'C:\\work',
+    stopping: false,
+    clash: {
+      name: 'a.txt',
+      source: { size: 1024, modified: 0 },
+      target: { size: 1024, modified: 0 },
+      keptAs: 'a (2).txt',
+      asked: 3,
+      ...(itself && { itself }),
+    },
+  },
+});
+
 async function inCommander(
   run: (commander: {
     readonly document: Document;
     readonly posted: CommanderToHost[];
     readonly send: (message: CommanderToWebview) => Promise<void>;
-    readonly press: (key: string) => Promise<void>;
+    readonly press: (
+      key: string,
+      modifiers?: { readonly shiftKey?: boolean },
+    ) => Promise<void>;
     readonly click: (element: Element | null | undefined) => Promise<void>;
     readonly type: (text: string) => Promise<void>;
     readonly dialogText: () => string;
@@ -144,13 +166,14 @@ async function inCommander(
       document,
       posted,
       send,
-      press: (key) =>
+      press: (key, modifiers = {}) =>
         act(async () => {
           (document.activeElement ?? document.body).dispatchEvent(
             new dom.window.KeyboardEvent('keydown', {
               key,
               bubbles: true,
               cancelable: true,
+              ...modifiers,
             }),
           );
         }),
@@ -254,6 +277,7 @@ suite('Commander file keys', () => {
               name: 'a.txt',
               source: { size: 2048, modified: 0 },
               target: { size: 1024, modified: 0 },
+              keptAs: 'a (2).txt',
               asked: 3,
             },
           },
@@ -277,6 +301,7 @@ suite('Commander file keys', () => {
               name: 'a.txt',
               source: { size: 2048, modified: 0 },
               target: { size: 1024, modified: 0, readOnly: true },
+              keptAs: 'a (2).txt',
               asked: 3,
             },
           },
@@ -301,6 +326,76 @@ suite('Commander file keys', () => {
         assert.strictEqual(document.querySelector('[role="dialog"]'), null);
       },
     ));
+
+  test('asks on Shift+F5 for the name to copy the selected file under into the folder of the other side, suggesting the first free name with the part before its extension selected, saying what is wrong with a name as it is typed, and copies it under the name given', () =>
+    inCommander(
+      async ({ document, posted, press, type, click, dialogLines, button }) => {
+        await press('F5', { shiftKey: true });
+        assert.deepStrictEqual(dialogLines(), [
+          'C:\\work\\a.txt',
+          'To D:\\photos',
+        ]);
+        const field = document.querySelector<HTMLInputElement>('.prompt-input');
+        assert.strictEqual(document.activeElement, field);
+        assert.deepStrictEqual(
+          [field?.value, field?.selectionStart, field?.selectionEnd],
+          ['a (2).txt', 0, 5],
+        );
+        assert.deepStrictEqual(
+          [
+            field?.parentElement?.className,
+            field?.previousElementSibling?.textContent,
+          ],
+          ['name-lines', strings.commander.copyAsField],
+        );
+        await type('b.txt');
+        assert.strictEqual(
+          document.querySelector('.prompt-problem')?.textContent,
+          strings.commander.nameThere,
+        );
+        assert.strictEqual(button(strings.commander.copyTitle)?.disabled, true);
+        await type('c.txt');
+        await click(button(strings.commander.copyTitle));
+
+        assert.deepStrictEqual(
+          posted.filter((message) => message.type === 'copyAs'),
+          [
+            {
+              type: 'copyAs',
+              tab: 'A',
+              side: 'right',
+              folder: 'C:\\work',
+              name: 'a.txt',
+              target: 'D:\\photos',
+              to: 'c.txt',
+            },
+          ],
+        );
+      },
+    ));
+
+  test('says under what name Keep Both keeps an item there already, and of an item copied onto itself, as into its own folder, that it is the item itself, offering no Overwrite', () =>
+    inCommander(async ({ document, send, button }) => {
+      const sides = () =>
+        [...(document.querySelector('.transfer-sides')?.children ?? [])].map(
+          (cell) => cell.textContent,
+        );
+      await send(clashOf(false));
+      assert.deepStrictEqual(sides().slice(-2), [
+        strings.commander.keepBothAs,
+        'a (2).txt',
+      ]);
+      assert.strictEqual(button(strings.commander.overwrite)?.disabled, false);
+
+      await send(clashOf(true));
+      assert.deepStrictEqual(sides().slice(4), [
+        strings.commander.clashThere,
+        strings.commander.clashItself,
+        strings.commander.keepBothAs,
+        'a (2).txt',
+      ]);
+      assert.strictEqual(button(strings.commander.overwrite)?.disabled, true);
+    }));
 
   test('asks on F7 for the name of a folder to make in the folder of the side, saying what is wrong with a name as it is typed and making none of it, and makes the one named without the spaces around it', () =>
     inCommander(

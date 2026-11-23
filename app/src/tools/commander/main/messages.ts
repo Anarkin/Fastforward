@@ -108,6 +108,8 @@ export class CommanderMessages {
         return this.fileCommands.newFile(page, message);
       case 'rename':
         return this.itemChanges.rename(page, message);
+      case 'copyAs':
+        return this.transferCommands.copyAs(page, message);
       case 'pack':
         return this.packCommands.pack(page, message);
       case 'testArchives':

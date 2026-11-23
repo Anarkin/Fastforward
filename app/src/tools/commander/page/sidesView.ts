@@ -144,6 +144,9 @@ function dialogsFrom(tab: string, kept: KeptDialogs | undefined): Dialogs {
   if (kept.renaming !== undefined) {
     dialogs.renaming = { ...kept.renaming, tab };
   }
+  if (kept.copyingAs !== undefined) {
+    dialogs.copyingAs = { ...kept.copyingAs, tab };
+  }
   if (kept.markingPattern !== undefined) {
     dialogs.markingPattern = { ...kept.markingPattern, tab };
   }

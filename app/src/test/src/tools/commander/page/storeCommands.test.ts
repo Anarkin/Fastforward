@@ -5,6 +5,7 @@ import { emptyView } from '../../../../../tools/commander/page/view';
 import { noop } from '../../../../helpers/fixtures';
 import { left, shown, listing } from './storeFixtures';
 import { noAccessShown } from '../../../../../tools/commander/page/received';
+import type { CommanderToHost } from '../../../../../tools/commander/shared/protocol';
 
 const askedAbout = (tab: string, folder: string) =>
   ({
@@ -153,6 +154,7 @@ suite('Commander store', () => {
         name: 'a.jpg',
         source: { size: 1, modified: 2 },
         target: { size: 3, modified: 4 },
+        keptAs: 'a (2).jpg',
         asked: 5,
       },
       stopping: false,
@@ -306,6 +308,47 @@ suite('Commander store', () => {
           folder: left.folder,
           name: 'a.txt',
           to: 'b.txt',
+        },
+      ],
+    );
+  });
+
+  test('asks for the name to copy a file or folder of a side under into the folder of the other side, copying it once named, and nothing once cancelled or the other side shows another folder', () => {
+    const posted: CommanderToHost[] = [];
+    const right = { ...left, folder: 'D:\\photos' };
+    const store = createCommanderStore((message) => posted.push(message), {
+      view: { ...emptyView, tab: '1', panes: { left, right } },
+    });
+    const actions = store.getState();
+    actions.askCopyAs('left', 'a.txt');
+    assert.deepStrictEqual(store.getState().copyingAs, {
+      tab: '1',
+      side: 'left',
+      folder: left.folder,
+      name: 'a.txt',
+      target: right.folder,
+    });
+    actions.cancelCopyAs();
+    assert.strictEqual(store.getState().copyingAs, undefined);
+    actions.askCopyAs('left', 'a.txt');
+    actions.copyAs('a copy.txt');
+    assert.strictEqual(store.getState().copyingAs, undefined);
+    actions.askCopyAs('left', 'a.txt');
+    store.getState().receive({ ...listing('D:\\other'), side: 'right' });
+    assert.strictEqual(store.getState().copyingAs, undefined);
+    actions.copyAs('late');
+
+    assert.deepStrictEqual(
+      posted.filter((message) => message.type === 'copyAs'),
+      [
+        {
+          type: 'copyAs',
+          tab: '1',
+          side: 'left',
+          folder: left.folder,
+          name: 'a.txt',
+          target: right.folder,
+          to: 'a copy.txt',
         },
       ],
     );

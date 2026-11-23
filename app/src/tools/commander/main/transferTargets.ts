@@ -8,9 +8,13 @@ export function refusedTarget(
   sources: readonly string[],
   target: string,
   platform: NodeJS.Platform,
+  copiedBesideThemselves = false,
 ): Sentence | undefined {
   const key = (each: string) => folderKey(path.resolve(each), platform);
-  if (sources.some((source) => key(path.dirname(source)) === key(target))) {
+  if (
+    !copiedBesideThemselves &&
+    sources.some((source) => key(path.dirname(source)) === key(target))
+  ) {
     return strings.commander.alreadyIn(target);
   }
   const intoItself = sources.find((source) => {
@@ -32,13 +36,15 @@ export async function refusedTargetOnDisk(
   sources: readonly string[],
   target: string,
   platform: NodeJS.Platform,
+  copiedBesideThemselves: boolean,
 ): Promise<Sentence | undefined> {
   return (
-    refusedTarget(sources, target, platform) ??
+    refusedTarget(sources, target, platform, copiedBesideThemselves) ??
     refusedTarget(
       await Promise.all(sources.map(real)),
       await real(target),
       platform,
+      copiedBesideThemselves,
     )
   );
 }
