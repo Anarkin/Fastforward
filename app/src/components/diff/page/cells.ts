@@ -109,17 +109,25 @@ export function windowAround(
   top: number,
   view: number,
   margin: number,
+  line: number,
 ): Windowed | undefined {
-  if (count === 0) {
+  const ends = placeOf(count - 1);
+  if (count === 0 || ends === undefined || !(line > 0)) {
     return undefined;
   }
-  const first = rowAt(count, placeOf, top - margin);
-  const last = rowAt(count, placeOf, top + view + margin);
-  const from = placeOf(first);
-  const to = placeOf(last);
-  return from === undefined || to === undefined
-    ? undefined
-    : { first, last, top: from.start, bottom: to.start + to.size };
+  const from = Math.max(0, Math.floor((top - margin) / line) * line);
+  const to = Math.min(
+    ends.start + ends.size,
+    Math.ceil((top + view + margin) / line) * line,
+  );
+  return to > from
+    ? {
+        first: rowAt(count, placeOf, from),
+        last: rowAt(count, placeOf, to - line / 2),
+        top: from,
+        bottom: to,
+      }
+    : undefined;
 }
 
 export function segmentsOfLine(
@@ -381,8 +389,18 @@ export class DiffCells {
     ) {
       return;
     }
-    const margin = Math.max(0, Math.min(view, (mostCanvas / ratio - view) / 2));
-    const drawn = windowAround(count, shown.placeOf, top, view, margin);
+    const margin = Math.max(
+      0,
+      Math.min(view, (mostCanvas / ratio - view) / 2 - shown.lineHeight),
+    );
+    const drawn = windowAround(
+      count,
+      shown.placeOf,
+      top,
+      view,
+      margin,
+      shown.lineHeight,
+    );
     if (drawn === undefined) {
       this.left();
       return;
@@ -477,10 +495,20 @@ export class DiffCells {
       if (lined === undefined || place === undefined) {
         continue;
       }
-      const top = Math.round((place.start - drawn.top) * ratio);
-      for (const [at, part] of this.partsOf(pane, index).entries()) {
+      const wrapped = this.partsOf(pane, index);
+      const line = shown.lineHeight;
+      const from = Math.max(0, Math.floor((drawn.top - place.start) / line));
+      const to = Math.min(
+        wrapped.length,
+        Math.ceil((drawn.bottom - place.start) / line),
+      );
+      for (let at = from; at < to; at++) {
+        const part = wrapped[at];
+        if (part === undefined) {
+          continue;
+        }
         rows.push(part);
-        tops.push(top + at * row);
+        tops.push(Math.round((place.start + at * line - drawn.top) * ratio));
         parts.push(
           columns === undefined
             ? shownWithin(
@@ -494,16 +522,21 @@ export class DiffCells {
             : { from: part.from, to: part.to, column: part.indent },
         );
       }
+      const starts = place.start >= drawn.top - line;
+      const top = Math.max(place.start, drawn.top - line);
+      const bottom = Math.min(place.start + place.size, drawn.bottom + line);
       bands.push({
-        top,
-        height: Math.round(place.size * ratio),
+        top: Math.round((top - drawn.top) * ratio),
+        height: Math.round((bottom - top) * ratio),
         tint: bandTint(
           lined.change,
           lined.key === undefined ? undefined : shown.words.get(lined.key),
         ),
-        numbers: lined.numbers.map((number) =>
-          number === undefined ? undefined : String(number),
-        ),
+        numbers: starts
+          ? lined.numbers.map((number) =>
+              number === undefined ? undefined : String(number),
+            )
+          : undefined,
       });
     }
     const numbers = Math.round((box.code - box.left) / numberWidth);
@@ -537,6 +570,17 @@ export class DiffCells {
       },
     };
     this.painted[pane] = { cells, text, advance, row };
+    const host = this.viewed[pane];
+    host?.toggleAttribute('data-rows', rows.length > 0);
+    host?.toggleAttribute(
+      'data-colored',
+      rows.some(
+        (each) =>
+          marked
+            .segmentsOf(each.row)
+            ?.some(({ kind }) => kind !== undefined) === true,
+      ),
+    );
     view.show({
       shown: cells,
       columns: 0,

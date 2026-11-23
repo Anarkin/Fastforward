@@ -4,8 +4,12 @@ import { suite, test } from 'vitest';
 import { diffLineNumbered, page, sharedApp } from './appFixtures';
 import { gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
-import { editorInPage, mountEditor, type PageEditor } from './editorProbe';
+import { blankSignOf, signedBlank } from '../../lib/page/blankSigns';
 import { wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
+import { cellsOf } from './cellsSeen';
+import { diffSides, type DiffLineSeen } from './diffSeen';
+import { editorInPage, mountEditor, type PageEditor } from './editorProbe';
+import { wrapColumnsShown } from './wrappingFixtures';
 
 const editorLines = [
   `    ${'indented line with some words to wrap around the edge '.repeat(6)}`,
@@ -73,22 +77,43 @@ function laidOutText(element: Element): LaidOut {
   };
 }
 
-async function diffLine(number: number): Promise<{
+const unwrappedWidth = 100_000;
+
+function laidOutCells({ text, rows }: DiffLineSeen): LaidOut {
+  const places = rows.flatMap((row) =>
+    row.places.map(
+      ([at, column]) =>
+        [
+          row.from + at,
+          row.left + (column - row.column) * row.advance,
+          row.top,
+        ] as const,
+    ),
+  );
+  const left = places[0]?.[1] ?? 0;
+  const top = places[0]?.[2] ?? 0;
+  return {
+    text,
+    lineHeight: rows[0]?.height ?? 0,
+    places: places.map(([at, x, y]) => [at, x - left, y - top]),
+  };
+}
+
+const advanceOf = ({ rows }: DiffLineSeen) => rows[0]?.advance ?? 0;
+
+async function diffLine(
+  number: number,
+  wrapping: boolean,
+): Promise<{
+  readonly line: DiffLineSeen;
   readonly laidOut: LaidOut;
   readonly width: number;
 }> {
-  const code = (await diffLineNumbered(number)).locator('.code');
+  const line = await diffLineNumbered(number);
   return {
-    laidOut: await code.evaluate(laidOutText),
-    width: await code.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return (
-        element.getBoundingClientRect().width -
-        parseFloat(style.paddingLeft) -
-        parseFloat(style.paddingRight) -
-        parseFloat(style.textIndent)
-      );
-    }),
+    line,
+    laidOut: laidOutCells(line),
+    width: wrapping ? (await wrapColumnsShown()).width : unwrappedWidth,
   };
 }
 
@@ -139,10 +164,17 @@ interface Misplaced {
 
 const near = (a: number, b: number) => Math.abs(a - b) < 0.01;
 
+const inColumn = (x: number, grid: number, advance: number) =>
+  Math.abs(x - grid) <= advance / 2 + 0.01;
+
+const onRow = (y: number, grid: number, height: number) =>
+  Math.round(y / height) === Math.round(grid / height);
+
 function misplaced(
   number: number,
   diff: LaidOut,
   editor: LaidOut,
+  advance: number,
 ): Misplaced | undefined {
   const text = diff.text.slice(0, 40);
   if (diff.text !== editor.text) {
@@ -155,23 +187,26 @@ function misplaced(
       lineHeights: [diff.lineHeight, editor.lineHeight],
     };
   }
+  const edited = new Map(
+    editor.places.map(([at, x, y]) => [at, [x, y] as const]),
+  );
   const index = diff.places.findIndex(
-    ([, x, y], at) =>
-      !near(x, editor.places[at]?.[1] ?? NaN) ||
-      !near(y, editor.places[at]?.[2] ?? NaN),
+    ([at, x, y]) =>
+      !inColumn(edited.get(at)?.[0] ?? NaN, x, advance) ||
+      !onRow(edited.get(at)?.[1] ?? NaN, y, diff.lineHeight),
   );
   if (index === -1) {
     return undefined;
   }
   const [at, x, y] = diff.places[index];
-  const place = editor.places.at(index);
+  const place = edited.get(at);
   return {
     line: number,
     text,
     at,
     character: diff.text.slice(at, at + 2),
     diff: [x, y],
-    editor: [place?.[1] ?? NaN, place?.[2] ?? NaN],
+    editor: [place?.[0] ?? NaN, place?.[1] ?? NaN],
   };
 }
 
@@ -179,9 +214,9 @@ async function misplacedLines(wrapping: boolean): Promise<Misplaced[]> {
   const editor = await editorInPage();
   const found: Misplaced[] = [];
   for (const number of editorLines.keys()) {
-    const { laidOut, width } = await diffLine(number + 1);
+    const { line, laidOut, width } = await diffLine(number + 1, wrapping);
     const shown = await editorLine(editor, laidOut.text, width, wrapping);
-    const wrong = misplaced(number + 1, laidOut, shown);
+    const wrong = misplaced(number + 1, laidOut, shown, advanceOf(line));
     if (wrong !== undefined) {
       found.push(wrong);
     }
@@ -189,96 +224,42 @@ async function misplacedLines(wrapping: boolean): Promise<Misplaced[]> {
   return found;
 }
 
-function blanksOf(element: Element): {
+const placed = async (
+  glyphs: Promise<readonly { row: number; column: number }[]>,
+) => new Set((await glyphs).map(({ row, column }) => `${row}:${column}`));
+
+async function blanksOf({ rows }: DiffLineSeen): Promise<{
   readonly marked: readonly string[];
   readonly seen: number;
-} {
-  const edge =
-    element.closest('.virtual-rows')?.getBoundingClientRect().right ?? Infinity;
-  let seen = 0;
-  const dots = [
-    ...(element.closest('.diff-line')?.querySelectorAll('.dot-rows') ?? []),
-  ]
-    .filter((layer) => layer.getClientRects().length > 0)
-    .flatMap((layer) => {
-      const box = layer.getBoundingClientRect();
-      const style = getComputedStyle(layer);
-      const size = parseFloat(style.backgroundSize.split(' ').at(-1) ?? '');
-      const places = style.backgroundPosition.split(', ');
-      const sizes = style.backgroundSize.split(', ');
-      return style.backgroundImage
-        .split('linear-gradient(')
-        .slice(1)
-        .flatMap((image, shown, images) => {
-          const [across = '', down = ''] = (places[shown] ?? '').split(' ');
-          const top = parseFloat(down);
-          const stops = [
-            ...image.matchAll(/((?:rgba?|color)\([^)]*\))\s+(-?[\d.]+)px/g),
-          ];
-          const ends = stops
-            .filter(([, color]) => color !== 'rgba(0, 0, 0, 0)')
-            .filter((_, stop) => stop % 2 === 1)
-            .map(([, , end = '']) => parseFloat(end));
-          const repeats =
-            shown > 0
-              ? (images[shown - 1] ?? '').endsWith('repeating-')
-              : style.backgroundImage.startsWith('repeating-');
-          const period = parseFloat(stops.at(-1)?.[2] ?? '');
-          const wide = parseFloat(sizes[shown] ?? sizes[0] ?? '');
-          const starts = repeats
-            ? Array.from(
-                { length: Math.round(wide / period) },
-                (_, cell) => parseFloat(across) + cell * period,
-              )
-            : [parseFloat(across)];
-          return starts.flatMap((start) =>
-            ends.map((end) => ({
-              x: box.left + start + end - size / 2,
-              y: box.top + top + size / 2,
-            })),
-          );
-        });
-    });
-  const range = document.createRange();
-  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+}> {
+  const cells = cellsOf(page, diffSides);
+  const dots = await placed(cells.dots());
+  const signs = new Map<string, Set<string>>();
   const marked: string[] = [];
-  let at = 0;
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const mark = node.parentElement?.closest('.blank, .spaces');
-    const length = node.textContent?.length ?? 0;
-    for (let index = 0; index < length; index++) {
-      range.setStart(node, index);
-      range.setEnd(node, index + 1);
-      const rect = range.getBoundingClientRect();
-      if (rect.right > edge) {
-        continue;
-      }
-      seen = at + index + 1;
-      if (mark !== null && mark !== undefined && element.contains(mark)) {
-        marked.push(
-          `${at + index} ${
-            mark.classList.contains('spaces')
-              ? 'spaces'
-              : `${mark.getAttribute('data-glyph') ?? ''} ${mark.className}`
-          }`,
-        );
-        continue;
-      }
-      if (
-        dots.some(
-          (dot) =>
-            dot.x >= rect.left &&
-            dot.x < rect.right &&
-            dot.y >= rect.top &&
-            dot.y < rect.bottom,
-        )
-      ) {
-        marked.push(`${at + index} spaces`);
+  for (const row of rows) {
+    for (const [at, column] of row.places) {
+      const character = row.text[at] ?? '';
+      const where = `${row.at}:${column}`;
+      if (character === ' ') {
+        if (dots.has(where)) {
+          marked.push(`${row.from + at} spaces`);
+        }
+      } else if (signedBlank.test(character)) {
+        const sign = blankSignOf(character);
+        if (!signs.has(sign)) {
+          signs.set(sign, await placed(cells.glyphs(sign)));
+        }
+        if (signs.get(sign)?.has(where) === true) {
+          marked.push(`${row.from + at} ${sign}`);
+        }
       }
     }
-    at += length;
   }
-  return { marked, seen };
+  const last = rows.at(-1);
+  return {
+    marked,
+    seen: last === undefined ? 0 : last.from + last.text.length,
+  };
 }
 
 function editorBlanksOf(element: Element): readonly string[] {
@@ -471,13 +452,13 @@ async function openLines(): Promise<Locator> {
 suite('App', () => {
   sharedApp({ 'lines.txt': `${editorLines.join('\n')}\n` });
 
-  test('draws every character of a line in the editor exactly where the diff draws it, on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns and an emoji joined from several one too, with the tabs and spaces as wide, each line as tall', async () => {
+  test('draws every character of a line in the editor in the column the diff draws it in, on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns and an emoji joined from several one too, with the tabs and spaces as wide, each line as tall', async () => {
     await openLines();
 
     assert.deepStrictEqual(await misplacedLines(false), []);
   });
 
-  test('wraps every line in the editor exactly where the diff wraps it, at the breaks the browser finds and the punctuation of VS Code, onto rows hanging as far in as its indentation, its runs of spaces hanging at the ends of rows, every character where the diff draws it', async () => {
+  test('wraps every line in the editor exactly where the diff wraps it, at the breaks the browser finds and the punctuation of VS Code, onto rows hanging as far in as its indentation, its runs of spaces hanging at the ends of rows, every character on the row and in the column the diff draws it in', async () => {
     await openLines();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await page.locator('.diff-view.wrap').waitFor();
@@ -485,16 +466,18 @@ suite('App', () => {
     assert.deepStrictEqual(await misplacedLines(true), []);
   });
 
-  test('marks the whitespace in the editor as the diff marks it while it is shown, as it is by default, every space in sight in the diff dotted and every tab and other blank signed in a box like the diff, every character still where the diff draws it', async () => {
+  test('marks the whitespace in the editor as the diff marks it while it is shown, as it is by default, every space in sight in the diff dotted and every tab and other blank signed in a box like the diff, every character still in the column the diff draws it in', async () => {
     await openLines();
-    await page.locator('.diff-view .dot-rows').first().waitFor();
+    await waitFor(
+      async () => (await cellsOf(page, diffSides).dots()).length > 0,
+      'the spaces of the diff dotted',
+    );
     const wrapping = (await page.locator('.diff-view.wrap').count()) > 0;
     const editor = await editorInPage();
     const wrong: string[] = [];
     for (const number of editorLines.keys()) {
-      const code = (await diffLineNumbered(number + 1)).locator('.code');
-      const { laidOut, width } = await diffLine(number + 1);
-      const { marked: inDiff, seen } = await code.evaluate(blanksOf);
+      const { line, laidOut, width } = await diffLine(number + 1, wrapping);
+      const { marked: inDiff, seen } = await blanksOf(line);
       const shown = await editorLine(
         editor,
         laidOut.text,
@@ -504,8 +487,10 @@ suite('App', () => {
       );
       const inEditor = (
         await page.locator('.editor-probe .cm-line').evaluate(editorBlanksOf)
-      ).filter((mark) => parseInt(mark, 10) < seen);
-      const moved = misplaced(number + 1, laidOut, shown);
+      )
+        .filter((mark) => parseInt(mark, 10) < seen)
+        .map((mark) => mark.split(' ').slice(0, 2).join(' '));
+      const moved = misplaced(number + 1, laidOut, shown, advanceOf(line));
       if (moved !== undefined) {
         wrong.push(JSON.stringify(moved));
       }
@@ -557,9 +542,33 @@ suite('App', () => {
 
   test('numbers the lines in the editor as the diff numbers them, in the same color and font, the number ending and the text starting as far from the left edge', async () => {
     await openLines();
-    const inDiff = await (
-      await diffLineNumbered(1)
-    ).evaluate(numberedIn, { column: null, number: '.number', text: '.code' });
+    const [first] = (await diffLineNumbered(1)).rows;
+    assert.ok(first, 'the first line of the diff has no row');
+    const column = (first.numbers ?? []).indexOf('1');
+    const numbered = await page
+      .locator('.diff-view .diff-ruler .number')
+      .nth(column)
+      .evaluate((number) => {
+        const style = getComputedStyle(number);
+        return {
+          left: number.getBoundingClientRect().left,
+          color: style.color,
+          font: `${style.fontFamily} ${style.fontSize} ${style.lineHeight} ${style.letterSpacing}`,
+        };
+      });
+    const inDiff = {
+      numberEnds:
+        Math.round(
+          ((first.numberEnds?.[column] ?? NaN) - numbered.left) * 100,
+        ) / 100,
+      textStarts:
+        Math.round(
+          (first.left - first.column * first.advance - numbered.left) * 100,
+        ) / 100,
+      numberDrop: 0,
+      color: numbered.color,
+      font: numbered.font,
+    };
     const editor = await editorInPage();
     await mountEditor(editor, editorLines[0] ?? '', 800, false, false, true);
     const inEditor = await page

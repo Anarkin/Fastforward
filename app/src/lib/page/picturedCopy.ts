@@ -114,7 +114,7 @@ function realIn(selection: Selection, range: Range, within: Element): string {
   return realOf(shown, withoutGenuine);
 }
 
-export function realText(selection: Selection): string {
+function realText(selection: Selection): string {
   if (selection.rangeCount === 0) {
     return selection.toString();
   }

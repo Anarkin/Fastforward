@@ -1,13 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  blankRuns,
-  keptSpaceColumns,
-  rowBreaksAt,
-  spaceColumnsAt,
-} from '../../../../lib/page/rowBreaks';
-import { columnsOf } from '../../../../lib/page/textColumns';
-import type { TextWidths } from '../../../../lib/page/textWidths';
+import { blankRuns, rowBreaksAt } from '../../../../lib/page/rowBreaks';
 
 function space(column: number) {
   return { column, tab: false };
@@ -43,23 +36,6 @@ suite('Row breaks', () => {
     assert.deepStrictEqual(rowBreaksAt('        one', [0, 8], 4), [
       { end: 5, blanks: [space(0), space(1), space(2), space(3), space(4)] },
     ]);
-  });
-
-  test('finds the column of every space on each row a line is broken into, past the indentation of the rows it wraps onto and by the width its characters are drawn, leaving out those hanging further than one past the edge of a full row, which are out of sight', () => {
-    assert.deepStrictEqual(spaceColumnsAt('a b  c d', [0, 5], 6), [
-      [1, 3, 4],
-      [1],
-    ]);
-    assert.deepStrictEqual(
-      spaceColumnsAt('a b  c d', [0, 5], 6, undefined, 2),
-      [[1, 3, 4], [3]],
-    );
-    assert.deepStrictEqual(spaceColumnsAt('ab    cd', [0, 6], 3), [[2, 3], []]);
-    assert.deepStrictEqual(spaceColumnsAt(' a ', [0], Infinity), [[0, 2]]);
-    assert.deepStrictEqual(spaceColumnsAt('\u4e2d a b', [0], Infinity, drawn), [
-      [2, 4],
-    ]);
-    assert.deepStrictEqual(spaceColumnsAt('abc', [0], Infinity), [[]]);
   });
 
   test('ends each row a line wraps onto past the indentation it starts at', () => {
@@ -113,30 +89,5 @@ suite('Row breaks', () => {
       { end: 4, blanks: [] },
     ]);
     assert.deepStrictEqual(rowBreaksAt('one', [0], 7), []);
-  });
-
-  test('keeps the columns of the spaces of a row for as long as its text, its columns and the widths stay, as a file dragged through shows the same rows again and again and the columns of each were counted anew at every step', () => {
-    let measured = 0;
-    const counting: TextWidths = {
-      char: 10,
-      of: (cluster) => {
-        measured += 1;
-        return cluster === '中' ? 20 : 10;
-      },
-    };
-    const text = '中 a  b';
-    const first = keptSpaceColumns(text, 40, counting);
-    const once = measured;
-    const again = keptSpaceColumns(text, 40, counting);
-
-    assert.deepStrictEqual(
-      first,
-      spaceColumnsAt(text, [0], 40, (part) => columnsOf(part, counting))[0],
-    );
-    assert.ok(once > 0, String(once));
-    assert.strictEqual(again, first);
-    assert.notStrictEqual(keptSpaceColumns(text, 3, counting), first);
-    assert.deepStrictEqual(keptSpaceColumns(text, 3, counting), [2]);
-    assert.deepStrictEqual(keptSpaceColumns('a b', 40, undefined), [1]);
   });
 });

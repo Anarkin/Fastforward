@@ -7,10 +7,12 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import type { FileChange } from '../../../lib/shared/changes';
 import type { LeftOut, TextRequest } from '../shared/protocol';
 import { Column } from '../../../lib/page/column';
+import { gpuRefused, watchGpu } from '../../cells/page/gpuDevice';
 import { parsePatch, type DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { unsearchedFiles } from './find';
@@ -115,14 +117,16 @@ export function Diff({
     () => linesCounted(diffFiles, files),
     [diffFiles, files],
   );
+  const refused = useSyncExternalStore(watchGpu, gpuRefused);
+  const said = error ?? (refused ? strings.common.noGpu : undefined);
   const errorRow = useMemo(
     () =>
-      error ? (
+      said ? (
         <div className="error-message">
-          <Words>{error}</Words>
+          <Words>{said}</Words>
         </div>
       ) : undefined,
-    [error],
+    [said],
   );
 
   const viewOf = useCallback(

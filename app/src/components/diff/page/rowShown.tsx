@@ -1,12 +1,8 @@
 import type { ReactNode } from 'react';
 import { WholeImage } from '../../../lib/page/images';
 import { Words } from '../../../lib/page/name';
-import type { TextWidths } from '../../../lib/page/textWidths';
-import type { ColumnsIn } from '../../../lib/page/rowBreaks';
 import { strings } from '../../../lib/shared/strings';
-import { wholeChangeClass } from './lineMarks';
-import type { DiffFile, DiffLine } from './diff';
-import { splitSideClass } from './rowClasses';
+import type { DiffFile } from './diff';
 import { DiffSkeleton, FileNote, HunkDivider } from './rowParts';
 import {
   largeDiffText,
@@ -14,15 +10,9 @@ import {
   type FileHeaderRow,
   type WholeFile,
 } from './rows';
-import { lineKey } from './lines';
 import { imagePanes } from './imagePanes';
 import { ImageDiff } from './imagePreview';
 import { wholeImageUrl, type ImageOrigin } from './images';
-import type { WrapColumns } from './rowMeasures';
-import { emptySide, sideSnaps } from './codeSnap';
-import type { WordRanges } from './wordDiff';
-import { WrapMarks } from './wrapMarks';
-import type { DotLook } from '../../../lib/page/dotLook';
 
 export interface DiffRowParts {
   readonly error: ReactNode;
@@ -30,47 +20,16 @@ export interface DiffRowParts {
   readonly whole: WholeFile | undefined;
   readonly origin: ImageOrigin | undefined;
   readonly split: boolean;
-  readonly words: WordRanges;
-  readonly keys: readonly (readonly string[])[];
-  readonly wrapping: WrapColumns | undefined;
-  readonly lineHeight: number;
-  readonly columnsIn: ColumnsIn | undefined;
-  readonly widths: TextWidths;
-  readonly dotLook: DotLook | undefined;
   readonly header: (row: FileHeaderRow) => ReactNode;
   readonly toggle: (path: string, open: boolean) => void;
-  readonly code: (
-    key: string | undefined,
-    text: string,
-    kind: DiffLine['kind'] | undefined,
-    wrapsAt: number | undefined,
-  ) => ReactNode;
 }
 
 export function DiffRowShown({
   row,
-  index,
   top,
-  parts: {
-    error,
-    files,
-    whole,
-    origin,
-    split,
-    words,
-    keys,
-    wrapping,
-    lineHeight,
-    columnsIn,
-    widths,
-    dotLook,
-    header,
-    toggle,
-    code,
-  },
+  parts: { error, files, whole, origin, split, header, toggle },
 }: {
   readonly row: DiffRow;
-  readonly index: number;
   readonly top: number;
   readonly parts: DiffRowParts;
 }): ReactNode {
@@ -156,85 +115,9 @@ export function DiffRowShown({
     case 'hunk':
       return <HunkDivider />;
     case 'line':
-      return (
-        <div
-          className={`diff-line text-line ${row.line.kind} ${wholeChangeClass(words, keys[index].at(0))}`}
-        >
-          <span className="number">{row.line.oldNumber}</span>
-          <span className="number">{row.line.newNumber}</span>
-          <span className="split-code">
-            {code(
-              keys[index].at(0),
-              row.line.text,
-              row.line.kind,
-              wrapping?.left,
-            )}
-          </span>
-          <WrapMarks
-            text={row.line.text}
-            columns={wrapping?.left}
-            numbers={2}
-            lineHeight={lineHeight}
-            columnsIn={columnsIn}
-            look={dotLook}
-            widths={widths}
-          />
-        </div>
-      );
     case 'split':
-      return (
-        <div className="split-line">
-          {[row.left, row.right].map((cell, side) => (
-            <div
-              key={side}
-              className={`diff-line text-line split-side ${splitSideClass(cell, side === 0 ? 'removed' : 'added')} ${cell ? wholeChangeClass(words, lineKey(row.file, cell.index)) : ''}`}
-              style={cell ? sideSnaps[side] : emptySide(side, top)}
-            >
-              <span className="number">
-                {side === 0 ? cell?.line.oldNumber : cell?.line.newNumber}
-              </span>
-              <span className="split-code">
-                {cell &&
-                  code(
-                    lineKey(row.file, cell.index),
-                    cell.line.text,
-                    cell.line.kind,
-                    side === 0 ? wrapping?.left : wrapping?.right,
-                  )}
-              </span>
-              {cell && (
-                <WrapMarks
-                  text={cell.line.text}
-                  columns={side === 0 ? wrapping?.left : wrapping?.right}
-                  numbers={1}
-                  lineHeight={lineHeight}
-                  columnsIn={columnsIn}
-                  look={dotLook}
-                  widths={widths}
-                />
-              )}
-            </div>
-          ))}
-        </div>
-      );
     case 'wholeLine':
-      return (
-        <div className="diff-line text-line">
-          <span className="number">{row.number}</span>
-          <span className="split-code">
-            {code(keys[index].at(0), row.text, undefined, wrapping?.left)}
-          </span>
-          <WrapMarks
-            text={row.text}
-            columns={wrapping?.left}
-            numbers={1}
-            lineHeight={lineHeight}
-            columnsIn={columnsIn}
-            look={dotLook}
-            widths={widths}
-          />
-        </div>
-      );
+      return null;
     default:
       return row satisfies never;
   }

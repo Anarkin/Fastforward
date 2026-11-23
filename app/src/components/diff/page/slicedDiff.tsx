@@ -21,7 +21,6 @@ export interface DiffTextView {
   readonly showWhitespace: boolean;
   readonly highlightSyntax: boolean;
   readonly highlightOccurrences: boolean;
-  readonly diffCells?: boolean;
   readonly scrolling: ScrollSettings;
   readonly changeTextView: (
     change: Partial<{
@@ -137,7 +136,6 @@ export function SlicedDiff({
     showWhitespace,
     highlightSyntax,
     highlightOccurrences,
-    diffCells,
     scrolling,
   } = textView;
   return (
@@ -157,7 +155,6 @@ export function SlicedDiff({
         showWhitespace,
         highlightSyntax,
         highlightOccurrences,
-        cells: diffCells === true,
         scrolling,
         root,
         language,

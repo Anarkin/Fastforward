@@ -1,3 +1,4 @@
+import { untilDiffLine } from './diffSeen';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -103,11 +104,7 @@ suite('App buttons', () => {
       'the window zoomed to 125%',
     );
     await page.locator('.commit', { hasText: 'second' }).click();
-    await page
-      .locator('.diff-line')
-      .filter({ visible: true })
-      .first()
-      .waitFor();
+    await untilDiffLine(page, () => true, 'a line of the diff');
     const git = await buttonsOf(page);
     await page
       .locator('.tabs .tab', { hasText: strings.tools.commander })

@@ -1,3 +1,4 @@
+import { placesWithin } from './columns';
 import type { FindMark } from './marks';
 import { marksWithin, piecesWithin } from './lines';
 import type { CellFrame } from './cellFrame';
@@ -27,6 +28,10 @@ export interface SeenPlace {
 export interface SeenRow {
   readonly key: string;
   readonly text: string;
+  readonly line: string;
+  readonly from: number;
+  readonly places: readonly (readonly [at: number, column: number])[];
+  readonly scrolled: number;
   readonly column: number;
   readonly left: number;
   readonly top: number;
@@ -40,6 +45,7 @@ export interface SeenRow {
   readonly tint?: string | undefined;
   readonly words?: readonly CharRange[] | undefined;
   readonly numbers?: readonly (string | undefined)[] | undefined;
+  readonly numberEnds?: readonly number[] | undefined;
 }
 
 export interface SeenGlyph {
@@ -71,6 +77,9 @@ export function seenRows(
     tops,
     bands,
     tintsOf,
+    widths,
+    gutter,
+    left: textLeft = 0,
   }: ShownRows,
   place: SeenPlace,
 ): SeenRow[] {
@@ -87,6 +96,10 @@ export function seenRows(
     return {
       key: rowKey(row),
       text: row.row.text.slice(from, to),
+      line: row.row.text,
+      from,
+      places: placesWithin(row.row.text, from, to, column, widths),
+      scrolled: first * place.advance,
       column,
       left: place.left + (column - first) * place.advance,
       top:
@@ -104,7 +117,12 @@ export function seenRows(
             to: Math.min(word.to, to) - from,
           })),
       }),
-      ...(band?.numbers !== undefined && { numbers: band.numbers }),
+      ...(band?.numbers !== undefined && {
+        numbers: band.numbers,
+        numberEnds: (gutter?.rights ?? []).map(
+          (right) => place.left + (right - textLeft) / (place.scale ?? 1),
+        ),
+      }),
       advance: place.advance,
       pieces: piecesWithin(
         segmentsOf?.(row.row) ?? [{ text: row.row.text }],
@@ -126,11 +144,22 @@ export function seenRows(
   });
 }
 
+const rowOf = (
+  tops: readonly number[] | undefined,
+  y: number,
+  rowHeight: number,
+): number => {
+  const found = tops?.indexOf(y) ?? -1;
+  return found === -1 ? Math.round(y / rowHeight) : found;
+};
+
 export function seenGlyphs(
   frame: CellFrame,
   tiles: GlyphTiles,
   cluster: string,
   first: number,
+  left = 0,
+  tops?: readonly number[],
 ): SeenGlyph[] {
   const { advance, rowHeight } = tiles.metrics;
   const drawn = new Set(
@@ -140,14 +169,16 @@ export function seenGlyphs(
     .tilesPlaced()
     .filter(({ u, v }) => drawn.has(`${u}:${v}`))
     .map(({ x, y }) => ({
-      row: Math.round((y + tiles.padY) / rowHeight),
-      column: Math.round((x + tiles.padX) / advance) + first,
+      row: rowOf(tops, y + tiles.padY, rowHeight),
+      column: Math.round((x + tiles.padX - left) / advance + first),
     }));
 }
 
 export function seenDots(
   { frame, tiles, dot, palette }: CellPainting,
   first: number,
+  left = 0,
+  tops?: readonly number[],
 ): SeenGlyph[] {
   const { advance, rowHeight } = tiles.metrics;
   const fills = new Set(palette.dotFills.values());
@@ -158,7 +189,7 @@ export function seenDots(
         width === dot.size && height === dot.size && fills.has(color),
     )
     .map(({ x, y }) => ({
-      row: Math.floor(y / rowHeight),
-      column: Math.round((x - dot.left) / advance) + first,
+      row: rowOf(tops, y - dot.top, rowHeight),
+      column: Math.round((x - dot.left - left) / advance + first),
     }));
 }

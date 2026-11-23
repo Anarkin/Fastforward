@@ -11,6 +11,7 @@ import { strings } from '../../../lib/shared/strings';
 import { filled, over, packedOf, type Rgba } from './cellColors';
 import type { CellFrame } from './cellFrame';
 import { notDrawn, type GlyphStyle, type GlyphTiles } from './glyphTiles';
+import { joins, standsAlone } from './joined';
 
 const space = 32;
 const tab = 9;
@@ -135,19 +136,6 @@ export interface DrawnPiece {
   readonly tint?: string | undefined;
   readonly gapBefore?: string | undefined;
 }
-
-const alone = (code: number) =>
-  code < space ||
-  (code >= 0x7f && code < 0x300) ||
-  (code >= 0x4e00 && code <= 0x9fff) ||
-  (code >= 0x3041 && code <= 0x3096) ||
-  (code >= 0x30a1 && code <= 0x30fa) ||
-  (code >= 0xac00 && code <= 0xd7a3) ||
-  (code >= 0xff01 && code <= 0xff5e);
-
-const joins = (next: number) => next >= 0x300 && !alone(next);
-
-const standsAlone = (code: number, next: number) => alone(code) && !joins(next);
 
 type Styled = Pick<TextDrawing, 'tiles' | 'palette'>;
 

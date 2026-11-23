@@ -20,8 +20,8 @@ export const rowsShown = (page: Page, rows: string): Promise<RowShown[]> =>
         return [];
       }
       if (seen !== undefined) {
-        return seen.map(({ text, left, top, height }) => ({
-          text,
+        return seen.map(({ text, line, scrolled, left, top, height }) => ({
+          text: scrolled > 0 ? line : text,
           left,
           top,
           bottom: top + height,

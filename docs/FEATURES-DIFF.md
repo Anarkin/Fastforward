@@ -28,6 +28,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Inline and side by side | Show the two sides in one column or two | — | Core | ✅ Yes | Side by side by default |
+| Select and copy | Select code with the pointer and copy it | Mod+C | Core | ✅ Yes | On one side at a time, a double click taking a word and a third the line, as in a file viewed; the line numbers, the other side and the headers of files left out |
 | Changed words | Mark the words that changed within lines | — | Common | ✅ Yes | Pairs changed lines by how alike they are, keeping their order |
 | Moved lines | Mark lines moved rather than removed and added | — | Advanced | ❌ No |  |
 | Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | `shiki`, with VS Code's TextMate grammars, in the language the file's name tells; L chooses another for the one file shown, or Plain Text for every file |
@@ -61,7 +62,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes | On its header when both sides are binary, on the line of its side when added or deleted, as what holds for the whole file is said once on its header, renamed or copied without changes, its mode changed or unchanged too, and what holds for one side on that side, where its code starts: an empty file, a symbolic link and its target, no newline at its end |
 | Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, inline too, the side an image lacks hatched, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
-| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for; only the rows a view either way of those in sight are drawn, however many rows each line wraps onto, and the spaces of a line are dotted on one layer, so long lines of prose scroll as code does |
+| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for; the code is drawn as cells by the GPU with WebGPU, as a file viewed is, a canvas for each side holding the rows in sight and half a screen or more around them, however many rows each line wraps onto, so long lines of prose scroll as code does; the diff saying so where a computer lets the app use no GPU |
 
 ## Changing
 

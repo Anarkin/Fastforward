@@ -51,16 +51,3 @@ export function foundRows(
   );
   return { top: first * lineHeight, bottom: (last + 1) * lineHeight };
 }
-
-export function foundEdges(element: Element): Edges | undefined {
-  const marks = Array.from(
-    element.querySelectorAll('mark.find-match.current'),
-    (mark) => mark.getBoundingClientRect(),
-  );
-  return marks.length === 0
-    ? undefined
-    : {
-        top: Math.min(...marks.map((mark) => mark.top)),
-        bottom: Math.max(...marks.map((mark) => mark.bottom)),
-      };
-}

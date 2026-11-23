@@ -5,7 +5,6 @@ const textViewSchema = record({
   showWhitespace: flag(),
   highlightSyntax: flag(),
   highlightOccurrences: flag(),
-  diffCells: flag(),
 });
 
 export type TextView = Infer<typeof textViewSchema>;

@@ -48,8 +48,18 @@ export function diffView(
   return shown;
 }
 
+export function shownRows(view: MarkupElement): MarkupElement[] {
+  return allWithClass(view, 'virtual-row', 'diff-row').filter(
+    (row) => !row.classes.includes('diff-ruler'),
+  );
+}
+
 export function shownRow(view: MarkupElement): MarkupElement {
-  return withClass(view, 'virtual-row', 'diff-row');
+  const [row] = shownRows(view);
+  if (row === undefined) {
+    throw new Error('The diff shows no row');
+  }
+  return row;
 }
 
 export function bubbles(sources: React.ReactElement): MarkupElement[] {

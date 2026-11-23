@@ -1,3 +1,4 @@
+import { diffRowsSeen, diffSides } from './diffSeen';
 import * as assert from 'node:assert';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
@@ -268,10 +269,84 @@ suite('App text views alike', () => {
     };
   };
 
+  const seenInDiff = async (feature: number): Promise<Seen> => {
+    const { pane, covered, numbers } = await page
+      .locator(views['diff inline'].pane)
+      .first()
+      .evaluate((list) => {
+        const box = list.getBoundingClientRect();
+        return {
+          pane: {
+            left: box.left,
+            top: box.top,
+            right: box.right,
+            bottom: box.bottom,
+          },
+          covered:
+            (list
+              .querySelector('.diff-stuck-header > *')
+              ?.getBoundingClientRect().bottom ?? box.top) - box.top,
+          numbers: [...list.querySelectorAll('.diff-ruler .number')].map(
+            (number) => number.getBoundingClientRect().left,
+          ),
+        };
+      });
+    const sides = await page
+      .locator(diffSides)
+      .evaluateAll((hosts) =>
+        hosts.map((host) => host.getBoundingClientRect().left),
+      );
+    const rows = await diffRowsSeen(page);
+    const word = `What feature ${feature} `.slice(0, 4);
+    const line = `feature ${feature} does`;
+    return {
+      pane,
+      advance: rows[0]?.advance ?? 0,
+      marks: rows.flatMap((row) => {
+        const at = row.line.indexOf(word) - row.from;
+        const shown = at >= 0 && at < row.text.length;
+        return !row.line.includes(line) || (!shown && row.scrolled === 0)
+          ? []
+          : [
+              {
+                left: row.left + at * row.advance,
+                top: row.top,
+                height: row.height,
+                lineLeft: sides[row.side] ?? pane.left,
+              },
+            ];
+      }),
+      numbers,
+      breaks: rows
+        .flatMap((row) => {
+          if (row.breakAt === undefined) {
+            return [];
+          }
+          const left = row.left + (row.breakAt - row.column) * row.advance;
+          return [
+            {
+              left,
+              top: row.top,
+              right: left + row.advance,
+              bottom: row.top + row.height,
+            },
+          ];
+        })
+        .filter(
+          (mark) =>
+            mark.top >= pane.top + covered && mark.bottom <= pane.bottom,
+        )
+        .toSorted((a, b) => a.top - b.top || a.left - b.left)
+        .slice(0, 3),
+    };
+  };
+
   const seen = (name: ViewName, feature = 0) =>
     name === 'viewer'
       ? seenInViewer(feature)
-      : page.locator(views[name].pane).first().evaluate(seenIn, feature);
+      : name === 'editor'
+        ? page.locator(views[name].pane).first().evaluate(seenIn, feature)
+        : seenInDiff(feature);
 
   const show = async (name: ViewName) => {
     const { tab, pane, split } = views[name];

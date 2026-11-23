@@ -24,7 +24,7 @@ export const views = {
   },
   diff: {
     tab: 3,
-    rows: '.diff-view .virtual-row',
+    rows: '.diff-view :is(.virtual-row:not(.diff-ruler, .diff-filler), .diff-cells)',
     vertical: '.diff-view > .virtual-rows',
     horizontal: '.diff-view .scroll-proxy.horizontal',
     marks: '.diff-view > .scrollbar-marks',

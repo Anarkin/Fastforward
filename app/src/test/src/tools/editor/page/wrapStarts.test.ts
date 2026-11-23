@@ -1,9 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { wrapStarts } from '../../../../lib/page/wordWrap';
-import { cellWidthsOf } from '../../../../lib/page/textWidths';
-import { plainCells } from '../../../../lib/page/cellTable';
-import { keptWrapStarts } from '../../../../lib/page/wrapStarts';
+import { wrapStarts } from '../../../../../lib/page/wordWrap';
+import { cellWidthsOf } from '../../../../../lib/page/textWidths';
+import { plainCells } from '../../../../../lib/page/cellTable';
+import { keptWrapStarts } from '../../../../../tools/editor/page/wrapStarts';
 
 const words = (count: number, word = 'word') =>
   Array.from({ length: count }, (_, index) => `${word}${index}`).join(' ');

@@ -16,7 +16,5 @@ const signed = blank.source.slice(2, -1);
 
 export const signedBlank = new RegExp(`[${signed}]`);
 
-export const signedBlanksAndText = new RegExp(`[${signed}]|[^${signed}]+`, 'g');
-
 export const blankSignOf = (character: string): string =>
   blankSigns[character] ?? strings.symbols.invisible;

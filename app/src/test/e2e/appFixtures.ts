@@ -1,12 +1,14 @@
+import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
-import type { ElectronApplication, Locator, Page } from 'playwright-core';
+import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, beforeEach } from 'vitest';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { tempRepository, type TempRepository } from '../helpers/repositories';
 import { baseSettings, closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { diffLinesSeen, untilDiffLine, type DiffLineSeen } from './diffSeen';
 import { appSaving, markedSettings, writeSettings } from './settingsWritten';
 
 export let folder: string;
@@ -163,25 +165,38 @@ async function resetSettings(): Promise<void> {
   resets = await writeSettings(page, profile, baseSettings);
 }
 
-export async function diffLineNumbered(number: number): Promise<Locator> {
+export async function diffLineNumbered(number: number): Promise<DiffLineSeen> {
   const list = page.locator('.diff-view .virtual-rows');
-  const line = page.locator('.diff-view .virtual-row .diff-line').filter({
-    has: page.locator('.number', { hasText: new RegExp(`^${number}$`) }),
-  });
+  let line: DiffLineSeen | undefined;
   await waitFor(async () => {
-    if ((await line.count()) > 0) {
-      return true;
-    }
-    await list.evaluate((element) => {
-      element.scrollTop += element.clientHeight / 2;
-    });
-    return false;
+    line = (await diffLinesSeen(page)).find(({ numbers }) =>
+      numbers.includes(String(number)),
+    );
+    const from = line?.top;
+    return list.evaluate((element, top) => {
+      const box = element.getBoundingClientRect();
+      const before = element.scrollTop;
+      if (top === undefined) {
+        element.scrollTop += element.clientHeight / 2;
+        return false;
+      }
+      if (top >= box.top && top <= box.top + box.height / 2) {
+        return true;
+      }
+      element.scrollTop += top - box.top - box.height / 4;
+      return element.scrollTop === before;
+    }, from);
   }, `line ${number} of the diff`);
-  return line.first();
+  assert.ok(line, `the diff shows no line ${number}`);
+  return line;
 }
 
 export async function openChangedFile(): Promise<void> {
   await page.locator('.commit', { hasText: 'second' }).click();
   await page.locator('.row.file', { hasText: 'changed.txt' }).click();
-  await page.locator('.diff-line.added', { hasText: '2' }).waitFor();
+  await untilDiffLine(
+    page,
+    ({ change, text }) => change === 'added' && text.includes('2'),
+    'the added line of the changed file',
+  );
 }

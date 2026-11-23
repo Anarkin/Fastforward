@@ -219,7 +219,6 @@ suite('Shell with several windows', () => {
       showWhitespace: true,
       highlightSyntax: false,
       highlightOccurrences: false,
-      diffCells: false,
     };
     await first.connection.receive({ type: 'setTextView', view });
     assert.deepStrictEqual(second.page.last('textView')?.view, view);

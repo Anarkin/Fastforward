@@ -62,7 +62,10 @@ async function answeringToQuit(
   }
 }
 
+const closedByTests = new WeakSet<ElectronApplication>();
+
 export async function closeOrKill(app: ElectronApplication): Promise<void> {
+  closedByTests.add(app);
   const closing = app.close();
   const ended = new AbortController();
   const answering = answeringToQuit(app, ended.signal);
@@ -157,6 +160,14 @@ export async function launchApp(
     cwd: appFolder,
     colorScheme,
     ...(env === undefined ? {} : { env }),
+  });
+  app.process().once('exit', (code, signal) => {
+    if (!closedByTests.has(app)) {
+      process.stderr.write(
+        `The app ended before its test closed it, with exit code ${String(code)} and signal ${String(signal)}
+`,
+      );
+    }
   });
   if (process.platform !== 'linux') {
     void app

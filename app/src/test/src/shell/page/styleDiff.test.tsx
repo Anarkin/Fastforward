@@ -5,7 +5,7 @@ import { ImageDiff } from '../../../../components/diff/page/imagePreview';
 import { Crash } from '../../../../shell/page/errorBoundary';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
 import { Columns } from '../../../helpers/styleFixtures';
-import { diffView, shownRow } from '../../../helpers/styleMarkup';
+import { diffView, shownRow, shownRows } from '../../../helpers/styleMarkup';
 import {
   css,
   noop,
@@ -67,7 +67,7 @@ suite('Style', () => {
   });
 
   test('makes every row of an inline diff as wide as the diff, as those of one side by side are, so short lines stay tinted and the strips between files and hunks reach across, the code alone moving sideways within its row', () => {
-    const rows = allWithClass(
+    const rows = shownRows(
       diffView(
         <DiffViewShown />,
         <FileHeaderRow />,
@@ -76,8 +76,6 @@ suite('Style', () => {
         </DiffRow>,
         <InlineLine kind="added" />,
       ),
-      'virtual-row',
-      'diff-row',
     );
     assert.strictEqual(rows.length, 3);
     for (const row of rows) {
@@ -383,42 +381,13 @@ suite('Style', () => {
     }
   });
 
-  test('draws the bar where words were inserted on the other line across the whole line, as wide as the app makes it, centered on its place and in the color of changed words', () => {
-    for (const [kind, color] of [
-      ['added', 'added'],
-      ['removed', 'deleted'],
-    ] as const) {
-      looks(
-        withClass(
-          diffView(
-            <DiffViewShown />,
-            <InlineLine kind={kind} words={[{ start: 1, end: 1 }]} />,
-          ),
-          'word-gap',
-        ),
-        {
-          position: 'absolute',
-          width: 'var(--diff-gap-width)',
-          height: 'var(--diff-line-height)',
-          'margin-left': 'calc(var(--diff-gap-width) / -2)',
-          'padding-top': '0',
-          'padding-bottom': '0',
-          background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-line), transparent )`,
-        },
-      );
-    }
-  });
-
   test('tints the line numbers of a changed line with its row, and its changed characters as strongly as the theme says, the full height of the line', () => {
     for (const [kind, color, word] of [
       ['added', 'added', 'word-added'],
       ['removed', 'deleted', 'word-removed'],
     ] as const) {
       const inline = shownRow(
-        diffView(
-          <DiffViewShown />,
-          <InlineLine kind={kind} words={[{ start: 0, end: 1 }]} />,
-        ),
+        diffView(<DiffViewShown />, <InlineLine kind={kind} word />),
       );
       looks(withClass(inline, word), {
         background: `color-mix( in srgb, var(--color-change-${color}) var(--color-change-${color}-line), transparent )`,
@@ -472,35 +441,6 @@ suite('Style', () => {
         ),
         tint,
       );
-    }
-  });
-
-  test('tints the whole row of a line changed through like changed words on a changed row, their tint over the row tint', () => {
-    for (const [kind, color] of [
-      ['added', 'added'],
-      ['removed', 'deleted'],
-    ] as const) {
-      const word = `color-mix(in srgb, var(--color-change-${color}) var(--color-change-${color}-line), transparent)`;
-      const tint = `linear-gradient(${word}, ${word}), color-mix(in srgb, var(--color-change-${color}) var(--color-change-${color}-row), transparent)`;
-      for (const row of [
-        withClass(
-          diffView(<DiffViewShown />, <InlineLine kind={kind} whole />),
-          'text-line',
-        ),
-        withClass(
-          diffView(
-            <DiffViewShown sideBySide />,
-            <SplitLine
-              left={kind === 'removed' ? `${kind} whole-change` : 'filler'}
-              right={kind === 'added' ? `${kind} whole-change` : 'filler'}
-            />,
-          ),
-          'split-side',
-          kind,
-        ),
-      ]) {
-        assert.strictEqual(compact(cascaded(row, 'background')), tint);
-      }
     }
   });
 
@@ -622,35 +562,9 @@ suite('Style', () => {
     looks(end, { position: 'sticky', right: padding.right });
   });
 
-  test('lets a selection started on one side of the side-by-side diff take the code of that side only, as copying it took both sides of each row', () => {
-    for (const [selecting, kept, left] of [
-      ['left', 0, 1],
-      ['right', 1, 0],
-    ] as const) {
-      const view = rendered(
-        <div className="diff-view side-by-side" data-selecting={selecting}>
-          {<SplitLine left="removed" right="added" />}
-        </div>,
-      );
-      const codes = allWithClass(view, 'split-code');
-      looks(codes[kept], { 'user-select': undefined });
-      looks(codes[left], { 'user-select': 'none' });
-    }
-  });
-
   test('highlights what a find in the diff matched in the search match colors, edging the current match, and ticks the scrollbar in them', () => {
     const [match, current] = allWithClass(
-      diffView(
-        <DiffViewShown />,
-        <InlineLine
-          kind="context"
-          finds={[
-            { start: 0, end: 1 },
-            { start: 2, end: 3 },
-          ]}
-          current={{ start: 2, end: 3 }}
-        />,
-      ),
+      diffView(<DiffViewShown />, <InlineLine kind="context" finds />),
       'find-match',
     );
     const colors = {

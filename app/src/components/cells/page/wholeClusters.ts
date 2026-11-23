@@ -1,4 +1,4 @@
-import { graphemes, nonAscii } from './graphemes';
+import { graphemes, nonAscii } from '../../../lib/page/graphemes';
 
 interface Range {
   readonly start: number;

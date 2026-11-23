@@ -16,16 +16,21 @@ import {
 import { gridLines } from './gridLines';
 import { waitFor, writeWhenFree } from '../helpers/fixtures';
 import {
+  diffLinesSeen,
+  diffListTop,
+  diffRowsSeen,
+  diffTexts,
+  untilDiffLine,
+  type DiffLineSeen,
+  type DiffRowSeen,
+} from './diffSeen';
+import {
   drawnCodeRow,
   near,
   wrappingInPage,
-  browserStarts,
-  wrappedRows,
-  laidOutCode,
   pressWrap,
   clickView,
-  marksFollowRows,
-  drawnBlocks,
+  wrapColumnsShown,
 } from './wrappingFixtures';
 import {
   hyphenatedLine,
@@ -46,6 +51,50 @@ import {
 const rowsFrom = (first: number, last: number) =>
   Array.from({ length: last - first + 1 }, (_, at) => first + at);
 
+const wraps = ({ rows }: DiffLineSeen) => rows.length > 1;
+
+const startsOf = (rows: readonly DiffRowSeen[]) => {
+  let at = 0;
+  return rows.map(({ text }) => {
+    const start = at;
+    at += text.length;
+    return start;
+  });
+};
+
+const marked = ({ breakAt, column, text }: DiffRowSeen) =>
+  breakAt === column + text.length;
+
+async function columnsShown(side = 0): Promise<number> {
+  const { width, char } = await wrapColumnsShown(side);
+  return wrapColumns(width, char);
+}
+
+async function sidesShown(): Promise<string[]> {
+  const byTop = new Map<number, string[]>();
+  for (const { top, side, text } of await diffLinesSeen(page)) {
+    const texts = byTop.get(Math.round(top)) ?? [];
+    texts[side] = text;
+    byTop.set(Math.round(top), texts);
+  }
+  return [...byTop.values()].map((texts) => texts.join(' | '));
+}
+
+const long = ({ text }: DiffLineSeen) => text === firstLongLine;
+
+const tall = ({ rows }: DiffLineSeen) => rows.length * (rows[0]?.height ?? 0);
+
+const linesAtTop = async () => {
+  const top = (await diffListTop(page)) + 0.5;
+  return (await diffLinesSeen(page)).filter(
+    ({ rows }) =>
+      (rows[0]?.top ?? Infinity) <= top &&
+      (rows.at(-1)?.top ?? 0) + (rows.at(-1)?.height ?? 0) > top,
+  );
+};
+
+const topLine = async () => (await linesAtTop())[0]?.text.split(' ')[0];
+
 suite('App', () => {
   sharedApp({
     'long.txt': `${longLines.join('\n')}\n`,
@@ -62,40 +111,43 @@ suite('App', () => {
 
   test('lists the history and shows a commit entire, with its change, inline, then side by side on its button, the default, and inline again on the other, and wraps long lines on its button or W, each row as tall as the lines the app expects its text to wrap to, keeping the line at the top in place as it wraps and changes layout, saving each choice', async () => {
     await openChangedFile();
-    assert.deepStrictEqual(
-      await page.locator('.diff-row .diff-line .code').allTextContents(),
-      ['one', 'two', '2', 'three'],
-    );
+    assert.deepStrictEqual(await diffTexts(page), ['one', 'two', '2', 'three']);
     await page
       .locator('.diff-view > .scrollbar-marks > .scrollbar-mark.added')
       .waitFor();
     await page.getByRole('button', { name: 'Side by Side' }).click();
-    const sides = page.locator('.split-line');
-    await sides.first().waitFor();
     await page.locator('.diff-view.side-by-side').waitFor();
-    assert.deepStrictEqual(
-      await sides.evaluateAll((rows) =>
-        rows.map((row) =>
-          [...row.querySelectorAll('.split-side')]
-            .map((side) => side.querySelector('.code')?.textContent ?? '')
-            .join(' | '),
-        ),
-      ),
-      ['one | one', 'two | 2', 'three | three'],
+    await waitFor(
+      async () => (await sidesShown()).length === 3,
+      'the two sides drawn',
     );
-    assert.strictEqual(await page.locator('.split-side.removed').count(), 1);
-    assert.strictEqual(await page.locator('.split-side.added').count(), 1);
+    assert.deepStrictEqual(await sidesShown(), [
+      'one | one',
+      'two | 2',
+      'three | three',
+    ]);
+    assert.deepStrictEqual(
+      (await diffLinesSeen(page)).flatMap(({ change, side }) =>
+        change === undefined ? [] : [[change, side]],
+      ),
+      [
+        ['removed', 0],
+        ['added', 1],
+      ],
+    );
     await waitFor(
       () => savedSetting('diff', 'diffLayout') === undefined,
       'the layout to be saved',
     );
     await page.getByRole('button', { name: 'Inline' }).click();
-    await sides.first().waitFor({ state: 'detached' });
-    assert.strictEqual(
-      await page.locator('.diff-view.side-by-side').count(),
-      0,
+    await page
+      .locator('.diff-view.side-by-side')
+      .waitFor({ state: 'detached' });
+    await untilDiffLine(
+      page,
+      ({ change, side }) => change === 'added' && side === 0,
+      'the added line inline',
     );
-    await page.locator('.diff-line.added').first().waitFor();
     await waitFor(
       () => savedSetting('diff', 'diffLayout') === 'inline',
       'the layout to be saved',
@@ -103,76 +155,33 @@ suite('App', () => {
 
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
-    const row = page.locator('.diff-row', {
-      has: page.locator('.code', { hasText: firstLongLine }),
-    });
-    await row.waitFor();
+    const unwrapped = tall(await untilDiffLine(page, long, 'the long line'));
     const lineHeight = await drawnCodeRow();
-    const unwrapped = (await row.boundingBox())?.height;
     assert.ok(near(unwrapped, lineHeight), `${unwrapped} is not ${lineHeight}`);
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await page.locator('.diff-view.wrap').waitFor();
-    await page.waitForFunction(
-      ([text, height]) =>
-        [...document.querySelectorAll('.diff-row')].some(
-          (wrapped) =>
-            wrapped.querySelector('.code')?.textContent === text &&
-            wrapped.getBoundingClientRect().height > height + 0.5,
-        ),
-      [firstLongLine, lineHeight] as const,
+    const wrapped = await untilDiffLine(
+      page,
+      (line) => long(line) && wraps(line),
+      'the long line wrapped',
     );
-    const laidOut = await row.evaluate((element) => {
-      const code = element.querySelector('.code');
-      if (!code) {
-        throw new Error('No code');
-      }
-      const style = getComputedStyle(code);
-      const sample = document.createElement('span');
-      sample.style.font = style.font;
-      sample.style.letterSpacing = style.letterSpacing;
-      sample.style.whiteSpace = 'pre';
-      sample.textContent = '0'.repeat(1000);
-      document.body.append(sample);
-      const char = sample.getBoundingClientRect().width / 1000;
-      sample.remove();
-      return {
-        height: element.getBoundingClientRect().height,
-        width:
-          code.getBoundingClientRect().width -
-          parseFloat(style.paddingLeft) -
-          parseFloat(style.paddingRight),
-        char,
-      };
-    });
     const wrappedHeight =
-      wrappedLines(firstLongLine, wrapColumns(laidOut.width, laidOut.char)) *
-      lineHeight;
+      wrappedLines(firstLongLine, await columnsShown()) * lineHeight;
     assert.ok(
-      near(laidOut.height, wrappedHeight),
-      `${laidOut.height} is not ${wrappedHeight}`,
+      near(tall(wrapped), wrappedHeight),
+      `${tall(wrapped)} is not ${wrappedHeight}`,
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
     const list = page.locator('.diff-view .virtual-rows');
     await list.evaluate((element) => {
       element.scrollTop = element.scrollHeight / 4;
     });
-    const topLine = () =>
-      list.evaluate((element) => {
-        const top = element.getBoundingClientRect().top + 0.5;
-        const atTop = [...element.querySelectorAll('.diff-row')].find(
-          (candidate) => {
-            const box = candidate.getBoundingClientRect();
-            return box.top <= top && box.bottom > top;
-          },
-        );
-        return atTop?.querySelector('.code')?.textContent?.split(' ')[0];
-      });
     await waitFor(
       async () => /^line[1-9]\d*$/.test((await topLine()) ?? ''),
       'a line at the top',
     );
     const reading = await topLine();
-    for (const [change, shown, state, wraps, layout] of [
+    for (const [change, shown, state, wrapsNow, layout] of [
       [pressWrap, '.diff-view.wrap', 'detached', false, 'inline'],
       [pressWrap, '.diff-view.wrap', 'attached', true, 'inline'],
       [
@@ -198,50 +207,46 @@ suite('App', () => {
         async () => (await topLine()) === reading,
         `${reading} to stay at the top once ${shown} is ${state}`,
       ).catch(async (error: unknown) => {
-        const rows = await list.evaluate((element) => {
-          const top = element.getBoundingClientRect().top;
-          return {
+        const top = await diffListTop(page);
+        const rows = {
+          ...(await list.evaluate((element) => ({
             scrollTop: element.scrollTop,
             room: element.scrollHeight - element.clientHeight,
             scale: devicePixelRatio,
-            rows: [...element.querySelectorAll('.diff-row')]
-              .map((drawn) => ({
-                line: drawn.querySelector('.code')?.textContent?.split(' ')[0],
-                top: drawn.getBoundingClientRect().top - top,
-                height: drawn.getBoundingClientRect().height,
-              }))
-              .filter(({ top: at }) => at > -60 && at < 60),
-          };
-        });
+          }))),
+          rows: (await diffRowsSeen(page))
+            .map((drawn) => ({
+              line: drawn.text.split(' ')[0],
+              top: drawn.top - top,
+              height: drawn.height,
+            }))
+            .filter(({ top: at }) => at > -60 && at < 60),
+        };
         throw new Error(
           `${String(error)} in ${layout}, ${await topLine()} at the top, ${JSON.stringify(rows)}`,
         );
       });
       await waitFor(
-        () => viewSaved(wraps, layout),
+        () => viewSaved(wrapsNow, layout),
         `the choice that ${shown} is ${state} to be saved`,
       );
     }
   });
 
-  test('marks where each wrapped row ends right after its text, where the browser broke it, after punctuation too, rather than where the app estimates', async () => {
+  test('marks where each wrapped row ends right after its text, after punctuation too', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'hyphenated.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    const line = page
-      .locator('.diff-line', { has: page.locator('.wrap-break') })
-      .first();
-    await line.waitFor();
-    await waitFor(
-      () => marksFollowRows(line).catch(() => false),
-      'the marks to follow the rows',
+    const { rows } = await untilDiffLine(
+      page,
+      wraps,
+      'a line wrapped onto rows',
     );
-    const rows = await wrappedRows(line);
-    assert.ok(rows.length > 1, `${rows.length} rows`);
     assert.deepStrictEqual(
-      rows,
-      rows.map(() => ({ last: '-', follows: true })),
+      rows.slice(0, -1).map((row) => [row.text.at(-1), marked(row)]),
+      rows.slice(0, -1).map(() => ['-', true]),
     );
+    assert.strictEqual(rows.at(-1)?.breakAt, undefined);
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
@@ -249,28 +254,30 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'wrapped.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    const line = page.locator('.diff-line', { hasText: 'part0.part1.' });
-    await line.locator('.wrap-break').first().waitFor();
-    const laidOut = () => laidOutCode(line);
-    await waitFor(async () => {
-      const { rows, marks } = await laidOut();
-      return rows.length > 2 && marks.length === rows.length - 1;
-    }, 'a mark at the end of every row but the last');
-    const { text, rows, marks, width, char } = await laidOut();
+    const { text, rows } = await untilDiffLine(
+      page,
+      (line) => line.text.includes('part0.part1.') && line.rows.length > 2,
+      'the indented line wrapped onto rows',
+    );
+    const lead = text.length - text.trimStart().length;
+    const starts = rows.map(
+      (row, index) => row.left + (index === 0 ? lead * row.advance : 0),
+    );
     assert.strictEqual(text, dottedLine);
-    assert.strictEqual(rows[0].first, ' ');
+    assert.ok(lead > 0, 'the line is not indented');
     assert.deepStrictEqual(
-      rows.map((row) => [row.last, Math.abs(row.start - rows[0].start) < 1]),
-      rows.map((_, index) => [index < rows.length - 1 ? '.' : ';', true]),
+      rows.map((row, index) => [
+        row.text.at(-1),
+        near(starts[index], starts[0] ?? 0),
+        marked(row),
+      ]),
+      rows.map((_, index) => [
+        index < rows.length - 1 ? '.' : ';',
+        true,
+        index < rows.length - 1,
+      ]),
     );
-    assert.deepStrictEqual(
-      marks.map((mark, index) => Math.abs(mark - rows[index].right) < 1),
-      marks.map(() => true),
-    );
-    assert.strictEqual(
-      rows.length,
-      wrappedLines(text, wrapColumns(width, char)),
-    );
+    assert.strictEqual(rows.length, wrappedLines(text, await columnsShown()));
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
@@ -343,35 +350,29 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'breaks.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    await page.locator('.diff-view .virtual-row .wrap-break').first().waitFor();
+    await untilDiffLine(page, wraps, 'a line wrapped onto rows');
     const wrapping = await wrappingInPage();
+    const columns = await columnsShown();
     const found = [];
     for (const [index, line] of breakLines.entries()) {
-      const laidOut = await browserStarts(await diffLineNumbered(index + 1));
-      const columns = wrapColumns(laidOut.width, laidOut.char);
+      const { rows } = await diffLineNumbered(index + 1);
       found.push({
         line: `${line.slice(0, 24)} ${columns}`,
-        measured: {
-          width: laidOut.width,
-          char: laidOut.char,
-          ...laidOut.measured,
-        },
-        browser: laidOut.starts,
+        drawn: startsOf(rows),
         app: await wrapping.evaluate(
-          async (app, { text, wrapAt, boxed }) => {
-            const widths = app.cellWidthsOf(await app.terminalCells());
-            return app.wrapStarts(text, wrapAt, app.wrapIndent(text, wrapAt), {
-              ...widths,
-              boxed: (cluster) =>
-                boxed.includes(cluster) ? widths.of(cluster) : undefined,
-            });
-          },
-          { text: line, wrapAt: columns, boxed: laidOut.boxed },
+          async (app, { text, wrapAt }) =>
+            app.wrapStarts(
+              text,
+              wrapAt,
+              app.wrapIndent(text, wrapAt),
+              app.cellWidthsOf(await app.terminalCells()),
+            ),
+          { text: line, wrapAt: columns },
         ),
       });
     }
     assert.deepStrictEqual(
-      found.filter(({ browser, app }) => !isDeepStrictEqual(browser, app)),
+      found.filter(({ drawn, app }) => !isDeepStrictEqual(drawn, app)),
       [],
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
@@ -381,61 +382,41 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'longest.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    const line = await diffLineNumbered(1);
-    const marks = line.locator('.wrap-break');
-    await marks.first().waitFor();
-    const laidOut = await browserStarts(line);
-    assert.ok(laidOut.starts.length > 200, String(laidOut.starts.length));
-    const offRows = async () => {
-      const rowTops = await line.evaluate((element, starts) => {
-        const walker = document.createTreeWalker(
-          element.querySelector('.code') ?? element,
-          NodeFilter.SHOW_TEXT,
-        );
-        const range = document.createRange();
-        const found: number[] = [];
-        let offset = 0;
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-          if (!(node instanceof Text)) {
-            continue;
-          }
-          for (const at of starts) {
-            if (at >= offset && at < offset + node.length) {
-              range.setStart(node, at - offset);
-              range.setEnd(node, at - offset + 1);
-              found.push(range.getBoundingClientRect().top);
-            }
-          }
-          offset += node.length;
-        }
-        return found.slice(0, -1);
-      }, laidOut.starts);
-      const markTops = await marks.evaluateAll((all) =>
-        all.map((mark) => mark.getBoundingClientRect().top),
-      );
-      return markTops.filter(
-        (top) => !rowTops.some((row) => Math.abs(row - top) < 4),
+    await untilDiffLine(page, wraps, 'the line wrapped onto rows');
+    const starts = wrapStarts(longestLine, await columnsShown());
+    assert.ok(starts.length > 200, String(starts.length));
+    const list = page.locator('.diff-view .virtual-rows');
+    const inSight = async () => {
+      const { top, bottom } = await list.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom };
+      });
+      return (await diffRowsSeen(page)).filter(
+        (row) => row.top + row.height > top && row.top < bottom,
       );
     };
-    assert.deepStrictEqual(await offRows(), []);
-    const list = page.locator('.diff-view .virtual-rows');
-    const half = await line.evaluate(
-      (element) => element.getBoundingClientRect().height / 2,
+    const unmarked = async () =>
+      (await inSight()).filter(
+        (row) => !marked(row) && !longestLine.endsWith(row.text),
+      ).length;
+    assert.ok((await inSight()).length > 5, 'few rows in sight');
+    assert.strictEqual(await unmarked(), 0);
+    const row = await drawnCodeRow();
+    await list.evaluate(
+      (element, by) => {
+        element.scrollTop += by;
+      },
+      (starts.length * row) / 2,
     );
-    await list.evaluate((element, by) => {
-      element.scrollTop += by;
-    }, half);
-    await waitFor(async () => {
-      const shown = await list.evaluate((element) => {
-        const { top, bottom } = element.getBoundingClientRect();
-        return { top, bottom };
-      });
-      const tops = await marks.evaluateAll((all) =>
-        all.map((mark) => mark.getBoundingClientRect().top),
-      );
-      return tops.some((top) => top > shown.top && top < shown.bottom);
-    }, 'marks in sight in the middle of the line');
-    assert.deepStrictEqual(await offRows(), []);
+    await waitFor(
+      async () =>
+        (await inSight()).some(({ text }) =>
+          longestLine.slice(longestLine.length / 3).includes(text),
+        ),
+      'rows in sight in the middle of the line',
+    );
+    assert.ok((await inSight()).length > 5, 'few rows in sight');
+    assert.strictEqual(await unmarked(), 0);
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
 
@@ -463,12 +444,25 @@ suite('App', () => {
       await page.locator('.row.file', { hasText: 'report.html' }).click();
       await page.locator('.diff-view.wrap.side-by-side').waitFor();
       const list = page.locator('.diff-view .virtual-rows');
-      await list.locator('.diff-row .split-line').first().waitFor();
-      const line = page.locator('.split-side.added').filter({
-        has: page.locator('.number', {
-          hasText: new RegExp(`^${reportDataLine}$`),
-        }),
-      });
+      await untilDiffLine(page, ({ side }) => side === 1, 'the second side');
+      const rowHeight = await drawnCodeRow();
+      const starts = wrapStarts(data, await columnsShown(1));
+      const height = starts.length * rowHeight;
+      let lineKey: string | undefined;
+      const lineRows = async () =>
+        (await diffRowsSeen(page)).filter(
+          ({ side, key, numbers }) =>
+            side === 1 &&
+            (lineKey === undefined
+              ? numbers?.includes(String(reportDataLine)) === true
+              : key.startsWith(`${lineKey}:`)),
+        );
+      const scrolled = () =>
+        list.evaluate((element) => ({
+          at: element.scrollTop,
+          view: element.clientHeight,
+          top: element.getBoundingClientRect().top,
+        }));
       const stalls: number[] = [];
       const scrollTo = async (top: number) => {
         stalls.push(
@@ -507,36 +501,40 @@ suite('App', () => {
             (element) => element.scrollTop + element.clientHeight / 2,
           ),
         );
-      const drawnInSight = async (where: string) => {
-        const { width, char } = await drawnBlocks(line);
-        const starts = wrapStarts(data, wrapColumns(width, char));
+      const drawnInSight = async (where: string, top: number) => {
         const drawnRows = async () => {
-          const { runs, marks, inSight } = await drawnBlocks(line);
-          const drawn = runs.flatMap(({ rows }) => rows.map(([, row]) => row));
-          const unseen = rowsFrom(inSight[0], inSight[1]).filter(
+          const { at, view, top: listTop } = await scrolled();
+          const rows = (await lineRows()).map((row) => ({
+            ...row,
+            at: Math.round((row.top - (listTop + top - at)) / rowHeight),
+          }));
+          const drawn = rows.map((row) => row.at);
+          const unseen = rowsFrom(
+            Math.floor((at - top) / rowHeight),
+            Math.ceil((at + view - top) / rowHeight) - 1,
+          ).filter(
             (row) => row >= 0 && row < starts.length && !drawn.includes(row),
           );
-          const unmarked = drawn.filter(
-            (row) => row < starts.length - 1 && !marks.includes(row),
+          const unmarked = rows.filter(
+            (row) => row.at < starts.length - 1 && row.breakAt === undefined,
           );
-          return { runs, left: unseen.length + unmarked.length };
+          return { rows, left: unseen.length + unmarked.length };
         };
         await waitFor(
           async () => (await drawnRows()).left === 0,
           `the rows in sight drawn and marked ${where}`,
         );
-        const { runs } = await drawnRows();
-        for (const { text, rows } of runs) {
-          const from = starts[rows[0][1]];
-          const to = starts.at((rows.at(-1)?.[1] ?? 0) + 1) ?? data.length;
-          assert.strictEqual(text, data.slice(from, to));
-          assert.deepStrictEqual(
-            rows,
-            rows.map(([, row]) => [starts[row] - from, row]),
-          );
-        }
+        const { rows } = await drawnRows();
+        assert.ok(rows.length > 0, `no rows of the line drawn ${where}`);
+        assert.deepStrictEqual(
+          rows.filter(
+            ({ text, at }) =>
+              text !== data.slice(starts[at], starts[at + 1] ?? data.length),
+          ),
+          [],
+        );
         assert.ok(
-          runs.reduce((sum, { text }) => sum + text.length, 0) <
+          rows.reduce((sum, { text }) => sum + text.length, 0) <
             data.length / 10,
           `more than a tenth of the line drawn ${where}`,
         );
@@ -544,38 +542,30 @@ suite('App', () => {
 
       await scrollTo(0);
       await waitFor(
-        async () => (await line.count()) === 0,
+        async () => (await lineRows()).length === 0,
         'the line of over a megabyte to leave',
       );
-      while ((await line.count()) === 0) {
-        const scrolled = await list.evaluate((element) => ({
+      while ((await lineRows()).length === 0) {
+        const reached = await list.evaluate((element) => ({
           top: element.scrollTop,
           height: element.scrollHeight,
           view: element.clientHeight,
         }));
         assert.ok(
-          scrolled.top + scrolled.view < scrolled.height - 1,
-          `The line of over a megabyte never came: ${JSON.stringify(scrolled)}`,
+          reached.top + reached.view < reached.height - 1,
+          `The line of over a megabyte never came: ${JSON.stringify(reached)}`,
         );
         await scrollByHalf();
       }
-      const { top, height, view } = await line.evaluate((element) => {
-        const rows = element.closest('.virtual-rows');
-        const row = element.closest('.diff-row');
-        if (!rows || !row) {
-          throw new Error('No row');
-        }
-        const box = row.getBoundingClientRect();
-        return {
-          top: rows.scrollTop + box.top - rows.getBoundingClientRect().top,
-          height: box.height,
-          view: rows.clientHeight,
-        };
-      });
+      const [first] = await lineRows();
+      assert.ok(first, 'the line of over a megabyte has no row');
+      lineKey = first.key.slice(0, first.key.indexOf(':'));
+      const { at, view, top: listTop } = await scrolled();
+      const top = at + first.top - listTop;
       assert.ok(height > 100 * view, `${height} is not over a hundred views`);
       await scrollTo(top + height / 2);
       await scrollTo(top + height - view / 2);
-      for (let step = 0; (await line.count()) > 0; step++) {
+      for (let step = 0; (await lineRows()).length > 0; step++) {
         assert.ok(step < 40, 'The line of over a megabyte never left');
         await scrollByHalf();
       }
@@ -586,11 +576,11 @@ suite('App', () => {
       );
 
       await scrollTo(top - view / 2);
-      await drawnInSight('as it comes into view');
+      await drawnInSight('as it comes into view', top);
       await scrollTo(top + height / 2);
-      await drawnInSight('in its middle');
+      await drawnInSight('in its middle', top);
       await scrollTo(top + height - view / 2);
-      await drawnInSight('at its end');
+      await drawnInSight('at its end', top);
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'report.html');
     }
@@ -601,24 +591,20 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'minified.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    const line = await diffLineNumbered(1);
-    await line.locator('.wrap-break').first().waitFor();
-    const laidOut = await browserStarts(line);
-    assert.ok(minifiedLine.startsWith(laidOut.text));
-    assert.ok(
-      laidOut.starts[1] > 4,
-      `the first row ends at ${laidOut.starts[1]}`,
+    const { rows } = await untilDiffLine(
+      page,
+      wraps,
+      'the line wrapped onto rows',
     );
+    const starts = startsOf(rows);
+    assert.ok(
+      minifiedLine.startsWith(rows.map(({ text }) => text).join('')),
+      'the rows are not the start of the line',
+    );
+    assert.ok((starts[1] ?? 0) > 4, `the first row ends at ${starts[1]}`);
     assert.deepStrictEqual(
-      laidOut.starts,
-      wrapStarts(minifiedLine, wrapColumns(laidOut.width, laidOut.char)).filter(
-        (start) => start < laidOut.text.length,
-      ),
-      JSON.stringify({
-        width: laidOut.width,
-        char: laidOut.char,
-        ...laidOut.measured,
-      }),
+      starts,
+      wrapStarts(minifiedLine, await columnsShown()).slice(0, starts.length),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });

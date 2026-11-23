@@ -9,10 +9,9 @@ import {
   useState,
 } from 'react';
 import type { TextRequest } from '../shared/protocol';
-import type { DiffFile, DiffLine } from './diff';
+import type { DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { type FindMatch, type FindRange } from './find';
-import { useSelectedCopy } from './selectedCopy';
 import { copiesIn } from '../../../lib/shared/textMatches';
 import { lineKey } from './lines';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
@@ -23,7 +22,6 @@ import { useTextsToLoad } from './textsToLoad';
 import { wordRanges, type LineWords } from './wordDiff';
 import { type ImageOrigin } from './images';
 import { useSkeleton } from '../../../lib/page/skeletonDelay';
-import { wrapIndent } from '../../../lib/page/wordWrap';
 import type { RowFollower } from '../../../lib/page/rowScroll';
 import type { DiffLook } from './look';
 import type { DiffMeasures, DiffMeasuring } from './measures';
@@ -48,12 +46,10 @@ import { unplaced, type DiffPlace } from './place';
 import type { PlaceChange } from './slice';
 import { useKeptPlace } from './placeKeeping';
 import { scrollOnToggle, stuckHeader } from './stuckHeader';
-import { type LineMarks, codeProps, findRangesByLine } from './lineMarks';
+import { findRangesByLine } from './lineMarks';
 import { useDiffMarks } from './rowMarks';
-import { Code } from './codeMarks';
 import { unmeasured, gapWidth, layoutVariables } from './textLayout';
 import { WrapProbe, TextProbe } from './textProbes';
-import { selectionSide } from './selectionSide';
 import { DiffRowShown, type DiffRowParts } from './rowShown';
 import { useSideways } from './sideways';
 import { SidewaysBars } from './sidewaysBars';
@@ -62,7 +58,6 @@ import { scrollbarHeldAttribute } from '../../../lib/page/scrollbars';
 import { leastMark, marksScale } from './changeMarks';
 import { snappedLeft } from '../../../lib/page/columnScroll';
 import { useLaterRows } from '../../../lib/page/laterRows';
-import { picturedRegion } from '../../../lib/page/picturedCopy';
 import { useFoundJumps, useRevealFound } from './jumps';
 import { useLargeFileLoads } from './largeFiles';
 import { diffRowClass, stripedFrom } from './rowClasses';
@@ -128,7 +123,6 @@ export function DiffView({
     showWhitespace,
     highlightSyntax,
     highlightOccurrences = false,
-    cells: asCells = false,
     scrolling,
     root,
     language: chosenLanguage,
@@ -138,9 +132,8 @@ export function DiffView({
   const list = useRef<HTMLDivElement>(null);
   const [copy, setCopy] = useState<string>();
   const marking = highlightOccurrences && !findsText;
-  useSelectedCopy(list, 'data-index', marking && !asCells, setCopy, copy);
   const copiesOf = useMemo(() => {
-    if (copy === undefined) {
+    if (copy === undefined || !marking) {
       return undefined;
     }
     const known = new Map<string, readonly FindRange[]>();
@@ -153,7 +146,7 @@ export function DiffView({
       known.set(text, found);
       return found;
     };
-  }, [copy]);
+  }, [copy, marking]);
   const split = showsSideBySide(sideBySide, whole);
   const columns = measures.wrapColumns;
   const { keepWrapColumns } = measuring;
@@ -161,7 +154,6 @@ export function DiffView({
     table,
     charWidth,
     widths,
-    columnsIn,
     dotLook,
     padding,
     scale,
@@ -169,7 +161,6 @@ export function DiffView({
     measureText,
     snap,
   } = useDiffText(measures, measuring);
-  const dots = showWhitespace ? dotLook : undefined;
   const keptSideways = keptPlace?.sideways ?? unplaced.sideways;
   const setSideways = useCallback(
     (scrolled: number) => onPlace({ sideways: scrolled }),
@@ -264,26 +255,17 @@ export function DiffView({
       wordWrap ? 0 : widestColumns(rows, widths.char > 0 ? widths : undefined),
     [rows, wordWrap, widths],
   );
-  const {
-    held,
-    shown,
-    dotColumns,
-    room,
-    placeCode,
-    scrolledNow,
-    scrollTo,
-    glideTo,
-    measureSideways,
-  } = useSideways(
-    list,
-    wordWrap,
-    keptSideways,
-    setSideways,
-    charWidth,
-    scale,
-    scrolling,
-    widest,
-  );
+  const { held, shown, room, scrolledNow, scrollTo, glideTo, measureSideways } =
+    useSideways(
+      list,
+      wordWrap,
+      keptSideways,
+      setSideways,
+      charWidth,
+      scale,
+      scrolling,
+      widest,
+    );
   const words = useMemo(
     () =>
       whole
@@ -368,34 +350,6 @@ export function DiffView({
     />
   );
 
-  const lineMarks: LineMarks = {
-    syntax,
-    words,
-    finds: rangesByLine,
-    foundKey,
-    found,
-    whitespace: showWhitespace,
-    widths,
-    copiesOf,
-  };
-  const code = (
-    key: string | undefined,
-    text: string,
-    kind: DiffLine['kind'] | undefined,
-    wrapsAt: number | undefined,
-  ) => (
-    <Code
-      {...codeProps(lineMarks, key, text, kind)}
-      indent={wrapsAt === undefined ? undefined : wrapIndent(text, wrapsAt)}
-      columns={wrapsAt}
-      lineHeight={lineHeight}
-      columnsIn={columnsIn}
-      dotLook={dots}
-      dotColumns={dotColumns}
-      placed={placeCode}
-    />
-  );
-
   const reveal = useCallback(
     (scrolled: number) => scrollTo(snappedLeft(scrolled, charWidth, Infinity)),
     [scrollTo, charWidth],
@@ -406,19 +360,11 @@ export function DiffView({
     whole,
     origin,
     split,
-    words,
-    keys,
-    wrapping,
-    lineHeight,
-    columnsIn,
-    widths,
-    dotLook: dots,
     header,
     toggle,
-    code,
   };
   const renderRow = (row: DiffRow, index: number, top: number) => (
-    <DiffRowShown row={row} index={index} top={top} parts={rowParts} />
+    <DiffRowShown row={row} top={top} parts={rowParts} />
   );
 
   const rowInputs = [
@@ -430,21 +376,6 @@ export function DiffView({
     split,
     viewOf,
     virtualizer,
-    keys,
-    syntax,
-    words,
-    rangesByLine,
-    copiesOf,
-    foundKey,
-    found,
-    showWhitespace,
-    dots,
-    dotColumns,
-    placeCode,
-    wrapping,
-    lineHeight,
-    columnsIn,
-    widths,
   ];
 
   const items = virtualizer.getVirtualItems();
@@ -454,7 +385,7 @@ export function DiffView({
   const font = measures.text?.font ?? '';
   const spacing = measures.text?.spacing ?? 0;
   const placed = virtualizer.measurementsCache;
-  const { spacer, host } = useDiffCells(asCells, list, shown, {
+  const { spacer, host } = useDiffCells(list, shown, {
     rows,
     keys,
     wrapping,
@@ -520,7 +451,7 @@ export function DiffView({
     reveal,
     virtualizer,
     lineHeight,
-    cells: asCells ? wrapping : undefined,
+    wrapping,
   });
   const marked = virtualizer.getTotalSize();
   const viewport = virtualizer.scrollRect?.height ?? 0;
@@ -566,17 +497,6 @@ export function DiffView({
   return (
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${whole && !split ? 'whole-file' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
-      {...picturedRegion}
-      onMouseDown={(event) => {
-        const side = selectionSide(
-          event.target instanceof Element ? event.target : null,
-        );
-        if (side === undefined) {
-          delete event.currentTarget.dataset.selecting;
-        } else {
-          event.currentTarget.dataset.selecting = side;
-        }
-      }}
       style={{
         ...layoutVariables,
         '--diff-snap-inline': `${snap.inline}px`,
@@ -626,13 +546,9 @@ export function DiffView({
           style={{ height: virtualizer.getTotalSize() + endPadding }}
         >
           <TextProbe onMeasure={measureText} />
-          {asCells && (
-            <>
-              <CellRuler split={split} numbers={whole ? 1 : 2} />
-              <CellHosts panes={split ? 2 : 1} host={host} />
-              <Fillers runs={fillerRuns(rows, items)} />
-            </>
-          )}
+          <CellRuler split={split} numbers={whole ? 1 : 2} />
+          <CellHosts panes={split ? 2 : 1} host={host} />
+          <Fillers runs={fillerRuns(rows, items)} />
           {wordWrap && (
             <WrapProbe
               key={split ? 'split' : whole ? 'whole' : 'inline'}
@@ -643,7 +559,7 @@ export function DiffView({
           )}
           {items.map((item) => {
             const row = rows[item.index];
-            if (asCells && isCode(row)) {
+            if (isCode(row)) {
               return null;
             }
             const height = rowHeight(row, wordWrap, lineHeight, columns);

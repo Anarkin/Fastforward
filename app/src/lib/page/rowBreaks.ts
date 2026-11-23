@@ -1,8 +1,5 @@
-import { onceAText } from './onceAText';
 import { tabStop } from './tabStops';
 import { isBlank } from './wordWrap';
-import { columnsOf } from './textColumns';
-import type { TextWidths } from './textWidths';
 
 interface Blank {
   readonly column: number;
@@ -51,42 +48,6 @@ function countedColumns(row: string): (index: number) => number {
     return column;
   };
 }
-
-export function spaceColumnsAt(
-  text: string,
-  starts: readonly number[],
-  columns: number,
-  columnsIn: ColumnsIn = countedColumns,
-  indent = 0,
-): number[][] {
-  return starts.map((from, index) => {
-    const row = text.slice(from, starts[index + 1]);
-    const start = index === 0 ? 0 : indent;
-    const columnIn = columnsIn(row);
-    const found: number[] = [];
-    for (let at = row.indexOf(' '); at !== -1; at = row.indexOf(' ', at + 1)) {
-      const column = start + columnIn(at);
-      if (column <= columns) {
-        found.push(column);
-      }
-    }
-    return found;
-  });
-}
-
-export const keptSpaceColumns = onceAText(
-  (
-    text: string,
-    columns: number,
-    widths: TextWidths | undefined,
-  ): readonly number[] =>
-    spaceColumnsAt(
-      text,
-      [0],
-      columns,
-      widths && ((part: string) => columnsOf(part, widths)),
-    )[0] ?? [],
-);
 
 export function rowBreaksAt(
   text: string,

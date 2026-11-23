@@ -39,7 +39,7 @@ const tools = [
   {
     name: 'diff',
     tab: 2,
-    rows: '.diff-view .virtual-row .code',
+    rows: '.diff-view .diff-cells[data-rows]:has(canvas)',
     pane: '.diff-view > .virtual-rows',
   },
 ] as const;

@@ -9,7 +9,7 @@ import {
 import type { TextWidths } from '../../../lib/page/textWidths';
 import type { DiffRow } from './rows';
 import { changeMargin, changeStarts, firstChangeTop } from './scrolling';
-import { foundEdges, foundMiddle, foundRows, foundScroll } from './found';
+import { foundMiddle, foundRows, foundScroll } from './found';
 import { wrappedRows } from '../../cells/page/lines';
 import { paneLine } from './paneLines';
 import { jumpStep, type FindMatch } from './find';
@@ -123,9 +123,9 @@ export function useRevealFound({
   reveal,
   virtualizer,
   lineHeight,
-  cells,
+  wrapping,
 }: {
-  readonly cells?: WrapColumns | undefined;
+  readonly wrapping: WrapColumns | undefined;
   readonly list: RefObject<HTMLDivElement | null>;
   readonly revealing: string | undefined;
   readonly setRevealing: (revealing: string | undefined) => void;
@@ -166,35 +166,24 @@ export function useRevealFound({
         return;
       }
       const box = element.getBoundingClientRect();
-      const row = element.querySelector(`.virtual-row[data-index="${index}"]`);
-      const top =
-        cells === undefined
-          ? row?.getBoundingClientRect().top
-          : box.top + start - element.scrollTop;
-      const edges =
-        cells === undefined
-          ? row && foundEdges(row)
-          : [0, 1].flatMap((pane) => {
-              const lined = paneLine(rows, keys, pane, index);
-              if (
-                lined === undefined ||
-                lined.key !== foundKey ||
-                top === undefined
-              ) {
-                return [];
-              }
-              const within = foundRows(
-                wrappedRows(
-                  lined.line,
-                  pane === 0 ? cells.left : cells.right,
-                  beyondAscii.test(lined.line.text) ? widths : undefined,
-                ),
-                found,
-                lineHeight,
-              );
-              return [{ top: top + within.top, bottom: top + within.bottom }];
-            })[0];
-      if (top !== undefined && edges) {
+      const top = box.top + start - element.scrollTop;
+      const edges = [0, 1].flatMap((pane) => {
+        const lined = paneLine(rows, keys, pane, index);
+        if (lined === undefined || lined.key !== foundKey) {
+          return [];
+        }
+        const within = foundRows(
+          wrappedRows(
+            lined.line,
+            pane === 0 ? wrapping?.left : wrapping?.right,
+            beyondAscii.test(lined.line.text) ? widths : undefined,
+          ),
+          found,
+          lineHeight,
+        );
+        return [{ top: top + within.top, bottom: top + within.bottom }];
+      })[0];
+      if (edges) {
         const middle = foundMiddle(
           edges,
           {
@@ -233,6 +222,6 @@ export function useRevealFound({
     reveal,
     virtualizer,
     lineHeight,
-    cells,
+    wrapping,
   ]);
 }

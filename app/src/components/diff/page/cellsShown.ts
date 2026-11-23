@@ -18,7 +18,6 @@ function paneBoxes(list: Element): PaneBox[] {
 }
 
 export function useDiffCells(
-  on: boolean,
   list: RefObject<HTMLDivElement | null>,
   sideways: SidewaysShown,
   shown: Omit<CellsShown, 'boxes'>,
@@ -51,9 +50,7 @@ export function useDiffCells(
   useLayoutEffect(() => {
     const element = list.current;
     const within = spacer.current;
-    if (!on || !element || !within) {
-      cells.current?.dispose();
-      cells.current = undefined;
+    if (!element || !within) {
       return;
     }
     cells.current ??= new DiffCells(element, within, hosts.current);

@@ -201,7 +201,7 @@ suite('Text of a viewed file', () => {
 
         assert.deepStrictEqual(
           [asked, error()],
-          [undefined, strings.viewer.noGpu],
+          [undefined, strings.common.noGpu],
         );
       } finally {
         Object.defineProperty(navigator, 'gpu', gpu);

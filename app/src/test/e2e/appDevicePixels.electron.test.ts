@@ -1,3 +1,4 @@
+import { untilDiffLine } from './diffSeen';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -158,7 +159,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
     seen[name] = await page.evaluate(thinLinesOffPixels);
   };
   await page.locator('.commit', { hasText: 'second' }).click();
-  await page.locator('.diff-line.added').first().waitFor();
+  await untilDiffLine(page, ({ change }) => change === 'added', 'a line added');
   await look('git');
   seen['tab row'] = await page.evaluate(() => {
     const end =
@@ -211,7 +212,12 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await page.locator('.viewer').waitFor({ state: 'detached' });
   await page.locator('.tab.closing').first().waitFor({ state: 'detached' });
   await page.locator('.tabs [role="tab"]').nth(2).click();
-  await page.locator('.compare-view .diff-line.added').first().waitFor();
+  await untilDiffLine(
+    page,
+    ({ change }) => change === 'added',
+    'a line added',
+    '.compare-view',
+  );
   await look('diff of two files');
   await page.locator('.tabs .tab-add').click();
   await page.locator('.menu').first().waitFor();

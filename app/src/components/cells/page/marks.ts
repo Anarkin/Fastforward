@@ -1,6 +1,6 @@
 import type { ColoredSegment } from '../../syntax/page/lineColors';
 import { copiesIn } from '../../../lib/shared/textMatches';
-import { wholeClusters } from '../../../lib/page/wholeClusters';
+import { wholeClusters } from './wholeClusters';
 
 export interface FindMark {
   readonly start: number;

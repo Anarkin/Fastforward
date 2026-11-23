@@ -8,7 +8,6 @@ import { layoutVariables } from '../../../../components/diff/page/textLayout';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {
   DiffViewShown,
-  IndentedLine,
   InlineLine,
   SplitLine,
 } from '../../../helpers/styleDiffFixtures';
@@ -62,60 +61,6 @@ suite('Style', () => {
         'white-space': 'pre-wrap',
       });
     }
-  });
-
-  test('indents the rows a long line wraps onto by its indentation, keeping the indentation on the row with the code it indents', () => {
-    looks(
-      withClass(
-        shownRow(diffView(<DiffViewShown wordWrap />, <IndentedLine />)),
-        'code',
-      ),
-      {
-        'padding-left':
-          'calc(var(--diff-code-padding) + var(--wrap-indent, 0px))',
-        'text-indent': 'calc(-1 * var(--wrap-indent, 0px))',
-      },
-    );
-    looks(
-      withClass(
-        shownRow(diffView(<DiffViewShown wordWrap />, <IndentedLine />)),
-        'lead',
-      ),
-      { 'white-space': 'pre' },
-    );
-    looks(
-      withClass(
-        shownRow(diffView(<DiffViewShown />, <IndentedLine />)),
-        'code',
-      ),
-      {
-        'padding-left': undefined,
-        'text-indent': undefined,
-      },
-    );
-  });
-
-  test('shows the sign of each tab and other blank of an indented wrapped line on that blank, drawn after its text and placed back over it, as the indentation hanging its rows moved the signs aside, squeezing them together, and a sign drawn before a tab carried a tab right after a space hanging at the end of a row onto the next row', () => {
-    const tab = rendered(
-      <span className="blank" data-glyph="→">
-        {'\t'}
-      </span>,
-      withClass(
-        shownRow(diffView(<DiffViewShown wordWrap />, <IndentedLine />)),
-        'lead',
-      ),
-    );
-    looks(
-      tab,
-      {
-        position: 'absolute',
-        left: '0',
-        'text-indent': '0',
-        content: 'attr(data-glyph)',
-      },
-      { pseudoElement: '::after' },
-    );
-    looks(tab, { content: undefined }, { pseudoElement: '::before' });
   });
 
   test('ends the lines scrolled sideways a padding before the edge, on both sides alike, and wraps the text of the diff, the viewer and the editor inside one right padding, two columns for a blank hanging at the end of a row and the sign of its break, then a gap, as the scrollbar has a strip of its own and covers nothing', () => {

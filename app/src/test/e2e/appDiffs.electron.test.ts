@@ -15,9 +15,54 @@ import { drawnCodeRow } from './wrappingFixtures';
 import { longLines } from './wrappingSamples';
 import { waitFor } from '../helpers/fixtures';
 import { assertFillsRows } from './markRows';
+import {
+  diffFinds,
+  diffLinesSeen,
+  diffListTop,
+  diffSides,
+  diffTexts,
+  untilDiffLine,
+  type DiffLineSeen,
+} from './diffSeen';
 
 const commented = (answer: number) =>
   `/* the answer\na\nb\nc\n*/\nexport const answer = ${answer};\n`;
+
+const colored =
+  (kind: string, text?: string) =>
+  ({ kinds }: DiffLineSeen) =>
+    kinds.some(
+      ([piece, named]) =>
+        named === kind && (text === undefined || piece.includes(text)),
+    );
+
+const noFinds = () =>
+  waitFor(
+    async () => (await diffFinds(page)).length === 0,
+    'no match marked in the diff',
+  );
+
+async function addedShown(lines: readonly string[]): Promise<void> {
+  let shown: string[] = [];
+  await waitFor(
+    async () => {
+      shown = await diffTexts(page, 'added');
+      return shown.join('\n') === lines.join('\n');
+    },
+    `the added lines ${lines.join(', ')}`,
+  ).catch(() => undefined);
+  assert.deepStrictEqual(shown, lines);
+}
+
+const changedFarDown = ({ change, text }: DiffLineSeen) =>
+  change === 'removed' && text.includes('line150 word0');
+
+const belowTop = async () => {
+  const line = (await diffLinesSeen(page)).find(changedFarDown);
+  return line === undefined
+    ? undefined
+    : Math.round(line.top - (await diffListTop(page)));
+};
 
 suite('App', () => {
   sharedApp({
@@ -29,11 +74,16 @@ suite('App', () => {
   test('colors code away from the page, offers every language for a file selected from a button in line with the others, opening rightwards from the button, as it starts the toolbar, marking what its filter found as tall as the item it is on, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
-    await page.locator('.syntax-keyword', { hasText: 'export' }).waitFor();
-    await page.locator('.syntax-number', { hasText: '42' }).waitFor();
+    await untilDiffLine(
+      page,
+      colored('keyword', 'export'),
+      'the keyword colored',
+    );
+    await untilDiffLine(page, colored('number', '42'), 'the number colored');
     const button = page.locator('.diff-options .language-button');
     const label = () => button.locator('.menu-button-label').textContent();
-    const keyword = page.locator('.diff-line .syntax-keyword').first();
+    const keywords = async () =>
+      (await diffLinesSeen(page)).filter(colored('keyword')).length;
     const choose = async (item: string, typed?: string) => {
       await button.locator('.menu-button-trigger').click();
       if (typed !== undefined) {
@@ -71,10 +121,10 @@ suite('App', () => {
     await button.locator('.menu').waitFor({ state: 'detached' });
 
     await choose('Plain Text');
-    await keyword.waitFor({ state: 'detached' });
+    await waitFor(async () => (await keywords()) === 0, 'the code drawn plain');
     assert.strictEqual(await label(), 'Plain Text');
     await choose('TypeScript', 'typescript');
-    await keyword.waitFor();
+    await waitFor(async () => (await keywords()) > 0, 'the code colored');
     assert.strictEqual(await label(), 'TypeScript');
 
     await page.locator('.row.group', { hasText: 'All Changes' }).click();
@@ -82,7 +132,7 @@ suite('App', () => {
       .locator('.row.group.selected', { hasText: 'All Changes' })
       .waitFor();
     assert.strictEqual(await label(), 'Plain Text');
-    await keyword.waitFor({ state: 'detached' });
+    await waitFor(async () => (await keywords()) === 0, 'the code drawn plain');
     await button.locator('.menu-button-trigger').click();
     assert.deepStrictEqual(
       await button.locator('.menu-item').allTextContents(),
@@ -90,7 +140,7 @@ suite('App', () => {
     );
     assert.strictEqual(await button.locator('.search-box-input').count(), 0);
     await button.locator('.menu-item', { hasText: /^Auto$/ }).click();
-    await keyword.waitFor();
+    await waitFor(async () => (await keywords()) > 0, 'the code colored');
     assert.strictEqual(await label(), 'Auto');
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
     await waitFor(async () => (await label()) === 'TypeScript', 'the language');
@@ -103,44 +153,53 @@ suite('App', () => {
       JSHandle<{ uncolored: string[]; stop: () => void }> | undefined;
     try {
       await page.locator('.row.file', { hasText: 'commented.ts' }).click();
-      await page
-        .locator('.diff-line .syntax-comment', { hasText: '*/' })
-        .first()
-        .waitFor();
-      watching = await page.evaluateHandle(() => {
+      await untilDiffLine(
+        page,
+        colored('comment', '*/'),
+        'the end of the comment colored',
+      );
+      watching = await page.evaluateHandle((sides) => {
         const expected = new Map([
-          ['b', 'syntax-comment'],
-          ['c', 'syntax-comment'],
-          ['*/', 'syntax-comment'],
-          ['export const answer = 42;', 'syntax-keyword'],
+          ['b', 'comment'],
+          ['c', 'comment'],
+          ['*/', 'comment'],
+          ['export const answer = 42;', 'keyword'],
         ]);
         const uncolored: string[] = [];
-        const observer = new MutationObserver(() => {
-          for (const code of document.querySelectorAll('.diff-line .code')) {
-            const text = code.textContent ?? '';
-            const kind = expected.get(text);
-            if (
-              kind !== undefined &&
-              !code.matches(`.${kind}`) &&
-              !code.querySelector(`.${kind}`)
-            ) {
-              uncolored.push(text);
+        let watched = true;
+        const look = () => {
+          for (const host of document.querySelectorAll(sides)) {
+            const rows =
+              host instanceof HTMLElement ? (host.seenRows?.() ?? []) : [];
+            for (const { text, pieces } of rows) {
+              const kind = expected.get(text);
+              if (
+                kind !== undefined &&
+                !pieces.some((piece) => piece.kind === kind)
+              ) {
+                uncolored.push(text);
+              }
             }
           }
-        });
-        observer.observe(document.body, {
-          subtree: true,
-          childList: true,
-          characterData: true,
-        });
-        return { uncolored, stop: () => observer.disconnect() };
-      });
+          if (watched) {
+            requestAnimationFrame(look);
+          }
+        };
+        look();
+        return {
+          uncolored,
+          stop: () => {
+            watched = false;
+          },
+        };
+      }, diffSides);
       for (const answer of [44, 45, 46]) {
         fs.writeFileSync(file, commented(answer));
-        await page
-          .locator('.diff-line .syntax-number', { hasText: String(answer) })
-          .first()
-          .waitFor();
+        await untilDiffLine(
+          page,
+          colored('number', String(answer)),
+          `the answer ${answer} colored`,
+        );
       }
       assert.deepStrictEqual(
         await watching.evaluate(({ uncolored }) => uncolored),
@@ -162,20 +221,12 @@ suite('App', () => {
     await field.fill('T');
     const count = page.locator('.search-count');
     await page.locator('.search-count', { hasText: '1 of 2' }).waitFor();
-    assert.deepStrictEqual(
-      await page.locator('.diff-line .find-match').allTextContents(),
-      ['t', 't'],
-    );
+    assert.deepStrictEqual(await diffFinds(page), ['t', 't']);
     assert.strictEqual(
-      await page
-        .locator('.diff-line', { has: page.locator('.find-match.current') })
-        .locator('.code')
-        .textContent(),
+      (await diffLinesSeen(page)).find(({ marks }) =>
+        marks.some(({ name }) => name === 'current'),
+      )?.text,
       'two',
-    );
-    await assertFillsRows(
-      page.locator('.diff-line .find-match.current'),
-      '.diff-line',
     );
     await field.press('Enter');
     await page.locator('.search-count', { hasText: '2 of 2' }).waitFor();
@@ -191,7 +242,7 @@ suite('App', () => {
     await added.first().waitFor();
     await field.press('Escape');
     await count.waitFor({ state: 'detached' });
-    await waitForCount(page.locator('.find-match'), 0, 'matches');
+    await noFinds();
   });
 
   test('opens the diff search from its button, giving it the header but for going back, the toggles inside its box and stepping between matches, matching case while its toggle is pressed, and closes it from the back button', async () => {
@@ -218,7 +269,10 @@ suite('App', () => {
       'Use Regular Expression',
     ]);
     await field.fill('T');
-    await page.locator('.diff-line .find-match').first().waitFor();
+    await waitFor(
+      async () => (await diffFinds(page)).length > 0,
+      'a match marked in the diff',
+    );
     const matchCase = diff.locator('.search-toggle[data-tip="Match Case"]');
     await matchCase.click();
     await diff.locator('.search-count', { hasText: 'No matches' }).waitFor();
@@ -228,7 +282,7 @@ suite('App', () => {
     await diff.locator('.search-count', { hasText: '1 of 2' }).waitFor();
     await diff.locator('.search-bar > .nav-button').first().click();
     await field.waitFor({ state: 'detached' });
-    await waitForCount(page.locator('.find-match'), 0, 'matches');
+    await noFinds();
     await diff.locator('.diff-options').waitFor();
   });
 
@@ -263,31 +317,14 @@ suite('App', () => {
       await page
         .locator('.row.group.selected', { hasText: 'All Changes' })
         .waitFor();
-      await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
-      assert.deepStrictEqual(
-        await page.locator('.diff-line.added .code').allTextContents(),
-        ['staged', 'unstaged'],
-      );
+      await addedShown(['staged', 'unstaged']);
       await page.locator('.row.group', { hasText: /^Staged/ }).click();
-      await page
-        .locator('.diff-line.added', { hasText: 'unstaged' })
-        .waitFor({ state: 'detached' });
-      await page
-        .locator('.diff-line.added .code', { hasText: /^staged$/ })
-        .waitFor();
-      assert.deepStrictEqual(
-        await page.locator('.diff-line.added .code').allTextContents(),
-        ['staged'],
-      );
+      await addedShown(['staged']);
       await page
         .locator('.row.file', { hasText: 'changed.txt' })
         .nth(1)
         .click();
-      await page.locator('.diff-line.added', { hasText: 'unstaged' }).waitFor();
-      assert.deepStrictEqual(
-        await page.locator('.diff-line.added .code').allTextContents(),
-        ['unstaged'],
-      );
+      await addedShown(['unstaged']);
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'changed.txt');
     }
@@ -300,24 +337,6 @@ suite('App', () => {
       file,
       `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
     );
-    const change = page.locator('.diff-line.removed', {
-      hasText: 'line150 word0',
-    });
-    const belowTop = () =>
-      change.evaluate((element) => {
-        const drawnAnewSinceFound = !element.isConnected;
-        if (drawnAnewSinceFound) {
-          return undefined;
-        }
-        const list = element.closest('.virtual-rows');
-        if (!list) {
-          throw new Error('No diff list');
-        }
-        return Math.round(
-          element.getBoundingClientRect().top -
-            list.getBoundingClientRect().top,
-        );
-      });
     try {
       await page.locator('.commit', { hasText: 'second' }).click();
       await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
@@ -325,7 +344,7 @@ suite('App', () => {
         .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
         .click();
       await page.locator('.row.file', { hasText: 'long.txt' }).click();
-      await change.waitFor();
+      await untilDiffLine(page, changedFarDown, 'the line changed far down');
       const row = await drawnCodeRow();
       await waitFor(
         async () => (await belowTop()) === Math.round(3 * row),
@@ -341,7 +360,7 @@ suite('App', () => {
       );
       await waitFor(
         async () =>
-          (await page.locator('.diff-line').count()) < 20 &&
+          (await diffLinesSeen(page)).length < 20 &&
           (await belowTop()) === Math.round(4 * row),
         'only the changes to be shown, too few to scroll',
       );

@@ -193,8 +193,16 @@ export class CellView {
         this.tiles,
         cluster,
         this.shown?.first ?? 0,
+        this.shown?.left,
+        this.shown?.tops,
       );
-    host.seenDots = () => seenDots(this.painting, this.shown?.first ?? 0);
+    host.seenDots = () =>
+      seenDots(
+        this.painting,
+        this.shown?.first ?? 0,
+        this.shown?.left,
+        this.shown?.tops,
+      );
     this.selecting = new CellSelecting(host, canvas, {
       shown: () => this.shown,
       held: () => (typeof this.held === 'function' ? this.held() : this.held),

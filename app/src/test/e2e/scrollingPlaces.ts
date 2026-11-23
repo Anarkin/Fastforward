@@ -26,10 +26,10 @@ export const views = {
   diff: {
     tab: 3,
     pane: '.diff-view .virtual-rows',
-    rows: '.virtual-row',
+    rows: ':is(.virtual-row:not(.diff-ruler, .diff-filler), .diff-cells)',
     vertical: '.diff-view > .virtual-rows',
     horizontal: '.diff-view .scroll-proxy.horizontal',
-    across: '.diff-row .split-code .code',
+    across: '.diff-view .diff-cells',
   },
   'commit list': {
     tab: 4,
@@ -107,10 +107,13 @@ export function placeDown(pane: Element, rows: string): Place {
 }
 
 export function placeAcross(moved: Element): Place {
+  const seen = moved instanceof HTMLElement ? moved.seenRows?.() : undefined;
   const left =
-    moved.scrollWidth > moved.clientWidth + 1
-      ? moved.scrollLeft
-      : -new DOMMatrix(getComputedStyle(moved).transform).m41;
+    seen !== undefined && moved.classList.contains('diff-cells')
+      ? (seen[0]?.scrolled ?? 0)
+      : moved.scrollWidth > moved.clientWidth + 1
+        ? moved.scrollLeft
+        : -new DOMMatrix(getComputedStyle(moved).transform).m41;
   const probe = document.createElement('span');
   probe.style.cssText =
     'position: absolute; visibility: hidden; font-family: var(--monospace-font-family); font-size: var(--monospace-font-size); width: round(1ch, var(--device-pixel, 1px))';

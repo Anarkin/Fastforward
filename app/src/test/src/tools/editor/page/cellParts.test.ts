@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
-import { cellParts } from '../../../../lib/page/cellParts';
+import { cellParts } from '../../../../../tools/editor/page/cellParts';
 
 suite('Widths of text in columns', () => {
   test('splits text into the runs left as they are and the characters put in boxes, with the size a glyph wider than its box is shrunk to', () => {

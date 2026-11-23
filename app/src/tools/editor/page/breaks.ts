@@ -1,7 +1,7 @@
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import type { EditorState, Extension, Line } from '@codemirror/state';
 import { layer, type EditorView, type LayerMarker } from '@codemirror/view';
-import { keptWrapStarts } from '../../../lib/page/wrapStarts';
+import { keptWrapStarts } from './wrapStarts';
 import { blankRuns, rowBreaksAt } from '../../../lib/page/rowBreaks';
 import { columnsOf } from '../../../lib/page/textColumns';
 import type { TextWidths } from '../../../lib/page/textWidths';

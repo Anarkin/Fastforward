@@ -1,9 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  charAtColumn,
   columnAt,
   columnsOf,
   keptColumnsOf,
+  placesWithin,
   shownWithin,
   widestColumns,
 } from '../../../../../components/cells/page/columns';
@@ -128,6 +130,39 @@ suite('Columns of the rows of a file viewed', () => {
       to: 3,
       column: 2,
     });
+  });
+
+  test('counts a plain letter and the marks that join it as the one character they are drawn as, an accent laid over its letter and a digit in its keycap, so what is found, selected or pointed at after them stands where the text is drawn, as a mark joined to a plain letter was counted a column of its own', () => {
+    const accent = String.fromCharCode(0x301);
+    const keycap = `1${String.fromCharCode(0xfe0f, 0x20e3)}`;
+    const cells = {
+      char: 10,
+      of: (cluster: string) => (cluster === keycap ? 20 : 10),
+    };
+    const accented = `Cafe${accent} au`;
+
+    assert.strictEqual(columnAt(accented, 6, 0, cells), 5);
+    assert.strictEqual(columnsOf(`${keycap} key`, cells), 6);
+    assert.deepStrictEqual(
+      placesWithin(accented, 0, accented.length, 0, cells),
+      [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [3, 3],
+        [5, 4],
+        [6, 5],
+        [7, 6],
+      ],
+    );
+    assert.strictEqual(
+      charAtColumn(accented, 0, accented.length, 0, 4.2, cells),
+      5,
+    );
+    assert.deepStrictEqual(
+      shownWithin(accented, 0, accented.length, 4, 7, cells),
+      { from: 5, to: 8, column: 4 },
+    );
   });
 
   test('keeps to the part of the row a row on screen shows', () => {

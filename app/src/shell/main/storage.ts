@@ -37,7 +37,6 @@ const textViewKeys = [
   'showWhitespace',
   'highlightSyntax',
   'highlightOccurrences',
-  'diffCells',
 ] as const;
 
 export class Storage {

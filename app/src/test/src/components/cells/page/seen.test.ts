@@ -87,6 +87,10 @@ suite('Rows the cells show, told when asked', () => {
         {
           key: '0:0',
           text: 'const ',
+          line: 'const one',
+          from: 0,
+          places: [0, 1, 2, 3, 4, 5].map((at) => [at, at]),
+          scrolled: 0,
           column: 0,
           ...placed(0),
           pieces: [
@@ -101,6 +105,10 @@ suite('Rows the cells show, told when asked', () => {
         {
           key: '0:6',
           text: 'one',
+          line: 'const one',
+          from: 6,
+          places: [0, 1, 2].map((at) => [at, at]),
+          scrolled: 0,
           column: 0,
           ...placed(1),
           pieces: [{ text: 'one', kind: 'plain' }],
@@ -112,6 +120,10 @@ suite('Rows the cells show, told when asked', () => {
         {
           key: '10:0',
           text: 'last',
+          line: 'last',
+          from: 0,
+          places: [0, 1, 2, 3].map((at) => [at, at]),
+          scrolled: 0,
           column: 0,
           ...placed(2),
           pieces: [{ text: 'last', kind: 'plain' }],

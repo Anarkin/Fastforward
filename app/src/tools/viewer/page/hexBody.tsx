@@ -274,7 +274,7 @@ export function ByteBody({
       onFont={onFont}
       move={move}
       jump={jump}
-      error={viewing.error ?? (refused ? strings.viewer.noGpu : undefined)}
+      error={viewing.error ?? (refused ? strings.common.noGpu : undefined)}
       keptLeft={keptLeft}
       settled={bytes !== undefined}
       onLeft={onLeft}

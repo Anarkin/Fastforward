@@ -1,12 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
-import type { LineWords } from '../../../../../components/diff/page/wordDiff';
-import {
-  codeProps,
-  findRangesByLine,
-  wholeChangeClass,
-} from '../../../../../components/diff/page/lineMarks';
+import { findRangesByLine } from '../../../../../components/diff/page/lineMarks';
 import { parsePatch } from '../../../../../components/diff/page/diff';
 import { findMatches } from '../../../../../components/diff/page/find';
 
@@ -30,94 +25,6 @@ const patch = [
 ].join('\n');
 
 suite('Drawing code', () => {
-  test('gives a line the same inputs to draw it from while its colors, changed words and matches stay, so it is not drawn again', () => {
-    const keyword = [{ start: 0, end: 3, kind: 'keyword' as const }];
-    const changed = [{ start: 4, end: 7 }];
-    const match = { file: 0, line: 1, start: 4, end: 5 };
-    const matched = [match];
-    const marks = () => ({
-      syntax: new Map([['0:1', keyword]]),
-      words: new Map([['0:1', changed]]),
-      finds: new Map([['0:1', matched]]),
-      foundKey: '0:1',
-      found: match,
-      whitespace: false,
-    });
-    const before = codeProps(marks(), '0:1', 'let sum', 'removed');
-    const after = codeProps(marks(), '0:1', 'let sum', 'removed');
-    assert.deepStrictEqual(
-      Object.entries(after).map(([name, value]) => [name, value]),
-      Object.entries(before),
-    );
-    assert.ok(
-      Object.values(after).every(
-        (value, index) => Object.values(before)[index] === value,
-      ),
-    );
-    assert.strictEqual(before.wordClass, 'word-removed');
-    assert.strictEqual(before.current, match);
-    const plain = codeProps(marks(), '0:2', 'x', 'added');
-    const again = codeProps(marks(), undefined, 'x', undefined);
-    assert.deepStrictEqual(plain.syntax, []);
-    assert.strictEqual(again.syntax, plain.syntax);
-    assert.strictEqual(again.words, plain.words);
-    assert.strictEqual(again.finds, plain.finds);
-    assert.strictEqual(plain.current, undefined);
-    assert.strictEqual(plain.wordClass, 'word-added');
-  });
-
-  test('gives a line the same copies of the text selected while that text stays selected, so it is not drawn again, and none without one', () => {
-    const copied = new Map<string, readonly { start: number; end: number }[]>();
-    const marks = {
-      syntax: new Map(),
-      words: new Map(),
-      finds: new Map(),
-      foundKey: undefined,
-      found: undefined,
-      whitespace: false,
-      copiesOf: (text: string) => {
-        const known = copied.get(text) ?? [{ start: 0, end: text.length }];
-        copied.set(text, known);
-        return known;
-      },
-    };
-    const before = codeProps(marks, '0:1', 'sum', 'added');
-    const after = codeProps(marks, '0:1', 'sum', 'added');
-    assert.deepStrictEqual(before.copies, [{ start: 0, end: 3 }]);
-    assert.strictEqual(after.copies, before.copies);
-    const none = codeProps(
-      { ...marks, copiesOf: undefined },
-      '0:1',
-      'sum',
-      'added',
-    );
-    assert.deepStrictEqual(none.copies, []);
-  });
-
-  test('tints the row of a line changed through instead of marking its words', () => {
-    const words = new Map<string, LineWords>([
-      ['0:1', 'whole'],
-      ['0:2', [{ start: 0, end: 1 }]],
-    ]);
-    const marks = {
-      syntax: new Map(),
-      words,
-      finds: new Map(),
-      foundKey: undefined,
-      found: undefined,
-      whitespace: false,
-    };
-    assert.deepStrictEqual(codeProps(marks, '0:1', 'x', 'added').words, []);
-    assert.deepStrictEqual(codeProps(marks, '0:2', 'x', 'added').words, [
-      { start: 0, end: 1 },
-    ]);
-    assert.strictEqual(wholeChangeClass(words, '0:1'), 'whole-change');
-    assert.strictEqual(wholeChangeClass(words, '0:2'), '');
-    assert.strictEqual(wholeChangeClass(words, undefined), '');
-  });
-});
-
-suite('Find in diff', () => {
   test('groups the matches by their line, in order, even a great many on one line', () => {
     const files = parsePatch(patch);
     const byLine = findRangesByLine(

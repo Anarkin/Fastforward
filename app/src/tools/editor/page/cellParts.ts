@@ -1,5 +1,5 @@
-import { graphemes, nonAscii, standsAlone } from './graphemes';
-import type { TextWidths } from './textWidths';
+import { graphemes, nonAscii, standsAlone } from '../../../lib/page/graphemes';
+import type { TextWidths } from '../../../lib/page/textWidths';
 
 const cellClasses = ['cell zero', 'cell', 'cell wide'];
 

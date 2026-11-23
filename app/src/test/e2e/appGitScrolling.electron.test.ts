@@ -9,6 +9,7 @@ import {
   repository as sharedRepository,
   sharedApp,
 } from './appFixtures';
+import { diffRowsSeen, untilDiffLine } from './diffSeen';
 import { scrollPlaces } from './scrollProbes';
 import { barOf, barParts } from './scrollbarsShown';
 import { longLines, firstLongLine } from './wrappingSamples';
@@ -22,6 +23,13 @@ const diffColumn = '.column-body:has(> .diff-view)';
 const fileRows = '.columns > .column:nth-child(2) .virtual-rows';
 
 const whole = (pixels: number) => Math.round(pixels) + 0;
+
+const firstLineShown = () =>
+  untilDiffLine(
+    sharedPage,
+    ({ text }) => text.includes('line0 '),
+    'the first line of the file',
+  );
 
 suite('App', () => {
   sharedApp({
@@ -43,16 +51,25 @@ suite('App', () => {
         .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
         .click();
       await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
-      await sharedPage.locator('.diff-line.added').first().waitFor();
+      await untilDiffLine(
+        sharedPage,
+        ({ change }) => change === 'added',
+        'the added line',
+      );
       const list = sharedPage.locator('.diff-view .virtual-rows');
       const place = () =>
         list.evaluate((element) => {
           const top = element.getBoundingClientRect().top;
-          const line =
-            element.querySelector('.diff-line')?.getBoundingClientRect()
-              .height ?? 1;
-          const first = [...element.querySelectorAll('.virtual-row')]
-            .map((row) => row.getBoundingClientRect())
+          const seen = [
+            ...element.querySelectorAll<HTMLElement>('.diff-cells'),
+          ].flatMap((cells) => cells.seenRows?.() ?? []);
+          const line = seen[0]?.height ?? 1;
+          const first = [
+            ...[...element.querySelectorAll('.virtual-row')].map((row) =>
+              row.getBoundingClientRect(),
+            ),
+            ...seen.map((row) => new DOMRect(row.left, row.top, 1, row.height)),
+          ]
             .filter((box) => box.height > 0 && box.bottom > top + 0.5)
             .toSorted((one, other) => one.top - other.top)[0];
           return {
@@ -82,8 +99,14 @@ suite('App', () => {
         const painted = new MessageChannel();
         painted.port1.addEventListener('message', () => {
           const top = element.getBoundingClientRect().top;
-          const first = [...element.querySelectorAll('.virtual-row')]
-            .map((row) => row.getBoundingClientRect())
+          const first = [
+            ...[...element.querySelectorAll('.virtual-row')].map((row) =>
+              row.getBoundingClientRect(),
+            ),
+            ...[...element.querySelectorAll<HTMLElement>('.diff-cells')]
+              .flatMap((cells) => cells.seenRows?.() ?? [])
+              .map((row) => new DOMRect(row.left, row.top, 1, row.height)),
+          ]
             .filter((box) => box.height > 0 && box.bottom > top + 0.5)
             .toSorted((one, other) => one.top - other.top)[0];
           offsets.push((first?.top ?? top) - top);
@@ -130,20 +153,14 @@ suite('App', () => {
   test('scrolls the diff on the wheel over its scrollbar as over its lines, rather than the column around it', async () => {
     await sharedPage.locator('.commit', { hasText: 'first' }).click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
-    await sharedPage
-      .locator('.diff-line', { hasText: 'line0 ' })
-      .first()
-      .waitFor();
+    await firstLineShown();
     await wheelsDiffOverItsBar(sharedPage);
   });
 
   test('keeps the scrollbar of a diff, with the marks on its track between its buttons, against the line its column draws on the right, and the scrollbar under its lines against the line at the bottom, or the status line under it, the two ending at the square between them', async () => {
     await sharedPage.locator('.commit', { hasText: 'first' }).click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
-    await sharedPage
-      .locator('.diff-line', { hasText: 'line0 ' })
-      .first()
-      .waitFor();
+    await firstLineShown();
     const down = (await barOf(sharedPage, diffRows, 'vertical')).box;
     const across = (await barOf(sharedPage, diffBarBelow, 'horizontal')).box;
     const { start, end } = await barParts(sharedPage, down, 'vertical');
@@ -191,10 +208,7 @@ suite('App', () => {
   test('never scrolls the column around the diff, which has its own scrollbar, even when the diff sticks out of it by a few pixels', async () => {
     await sharedPage.locator('.commit', { hasText: 'first' }).click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
-    await sharedPage
-      .locator('.diff-line', { hasText: 'line0 ' })
-      .first()
-      .waitFor();
+    await firstLineShown();
     const taller = await sharedPage.addStyleTag({
       content: '.diff-view { margin-bottom: 4px; }',
     });
@@ -216,10 +230,7 @@ suite('App', () => {
   test('draws the rows of where its scrollbar is dragged to in the frame it scrolls there, rather than once the scroll event of the frame after comes, which left every other frame without new rows', async () => {
     await sharedPage.locator('.commit', { hasText: 'first' }).click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
-    await sharedPage
-      .locator('.diff-line', { hasText: 'line0 ' })
-      .first()
-      .waitFor();
+    await firstLineShown();
     await sharedPage.locator(diffRows).evaluate((element) => {
       element.scrollTop = 0;
     });
@@ -233,18 +244,16 @@ suite('App', () => {
           return;
         }
         last = list.scrollTop;
-        const rows = [...list.querySelectorAll<HTMLElement>('.diff-row')];
-        const end = rows.find((row) => row.textContent?.includes('line199 '));
+        const rows = [
+          ...list.querySelectorAll<HTMLElement>('.diff-cells'),
+        ].flatMap((cells) => cells.seenRows?.() ?? []);
+        const end = rows.find((row) => row.text.includes('line199 '));
         const top = Math.min(
-          list.scrollTop + list.clientHeight - 2,
-          end ? parseFloat(end.style.top) + end.offsetHeight - 2 : Infinity,
+          list.getBoundingClientRect().top + list.clientHeight - 2,
+          end ? end.top + end.height - 2 : Infinity,
         );
         seen.push(
-          rows.some(
-            (row) =>
-              parseFloat(row.style.top) <= top &&
-              top < parseFloat(row.style.top) + row.offsetHeight,
-          ),
+          rows.some((row) => row.top <= top && top < row.top + row.height),
         );
       };
       window.addEventListener('scroll', check, { capture: true });
@@ -284,8 +293,8 @@ async function wheelsDiffOverItsBar(page: Page): Promise<void> {
   const scrolled = () =>
     list.evaluate((element) => {
       const line =
-        element.querySelector('.diff-line')?.getBoundingClientRect().height ??
-        1;
+        element.querySelector<HTMLElement>('.diff-cells')?.seenRows?.()[0]
+          ?.height ?? 1;
       return {
         lines: element.scrollTop / line,
         column: element.closest('.column-body')?.scrollTop ?? 0,
@@ -383,7 +392,11 @@ suite('App with lists longer than their columns', () => {
         element.scrollTop = element.scrollHeight;
       });
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
-    await page.locator('.diff-line', { hasText: firstLongLine }).waitFor();
+    await untilDiffLine(
+      page,
+      ({ text }) => text === firstLongLine,
+      'the first long line',
+    );
   });
 
   afterAll(async () => {
@@ -419,11 +432,7 @@ suite('App with lists longer than their columns', () => {
     const diff = page.locator('.diff-view .virtual-rows');
     const stuck = page.locator('.diff-stuck-header');
     await scrollsOnWheelOver(page, diff, stuck);
-    const across = () =>
-      diff
-        .locator('.split-code .code')
-        .first()
-        .evaluate((element) => getComputedStyle(element).transform);
+    const across = async () => (await diffRowsSeen(page))[0]?.scrolled;
     const rest = await across();
     await diff.hover();
     await page.keyboard.down('Shift');

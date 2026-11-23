@@ -2,9 +2,7 @@ import type { ShownOptions } from './componentFixtures';
 import { DiffToggles } from '../../components/diff/page/toggles';
 import { SearchBar } from '../../lib/page/searchBar';
 import { plainSearch } from '../../lib/shared/searchOptions';
-import type { FindRange } from '../../lib/shared/textMatches';
 import { ScrollbarMarks } from '../../lib/page/scrollbarMarks';
-import { Code, MarkedCode } from '../../components/diff/page/codeMarks';
 import { diffRowClass } from '../../components/diff/page/rowClasses';
 import { DiffView } from '../../components/diff/page/view';
 import { FileHeader } from '../../components/diff/page/rowParts';
@@ -81,57 +79,34 @@ export function FileHeaderRow() {
 
 export function InlineLine({
   kind,
-  words = [],
-  finds = [],
-  current,
-  whole = false,
+  word = false,
+  finds = false,
 }: {
   readonly kind: 'context' | 'added' | 'removed';
-  readonly words?: readonly FindRange[];
-  readonly finds?: readonly FindRange[];
-  readonly current?: FindRange;
-  readonly whole?: boolean;
+  readonly word?: boolean;
+  readonly finds?: boolean;
 }) {
   return (
     <DiffRow>
-      <div
-        className={`diff-line text-line ${kind} ${whole ? 'whole-change' : ''}`}
-      >
+      <div className={`diff-line text-line ${kind}`}>
         <span className="number">1</span>
         <span className="number">1</span>
         <span className="split-code">
           <span className="code">
-            <MarkedCode
-              text={'a b c'}
-              syntax={[]}
-              words={words}
-              wordClass={kind === 'removed' ? 'word-removed' : 'word-added'}
-              found={finds}
-              foundNow={current}
-            />
+            {word ? (
+              <span
+                className={kind === 'removed' ? 'word-removed' : 'word-added'}
+              >
+                a
+              </span>
+            ) : finds ? (
+              <mark className="find-match">a</mark>
+            ) : (
+              'a'
+            )}{' '}
+            {finds ? <mark className="find-match current">b</mark> : 'b'} c
           </span>
         </span>
-      </div>
-    </DiffRow>
-  );
-}
-
-export function IndentedLine() {
-  return (
-    <DiffRow>
-      <div className="diff-line text-line added">
-        <span className="number">1</span>
-        <span className="number">1</span>
-        <Code
-          text="  a"
-          syntax={[]}
-          words={[]}
-          wordClass="word-added"
-          finds={[]}
-          current={undefined}
-          whitespace
-          indent={2}
-        />
       </div>
     </DiffRow>
   );

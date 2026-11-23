@@ -103,11 +103,6 @@
   overflow: hidden;
 }
 
-.diff-view[data-selecting='left'] .split-side:last-child .split-code,
-.diff-view[data-selecting='right'] .split-side:first-child .split-code {
-  user-select: none;
-}
-
 .split-code .code {
   display: inline-block;
 }
@@ -201,66 +196,8 @@
   text-indent: calc(-1 * var(--wrap-indent, 0px));
 }
 
-.diff-view.wrap .code .lead {
-  white-space: pre;
-}
-
-.code-blocks {
-  display: block;
-  position: relative;
-}
-
-.code-block,
-.code-run {
-  position: absolute;
-  left: 0;
-  right: 0;
-}
-
-.code-block {
-  pointer-events: none;
-}
-
-.wrap-marks {
-  pointer-events: none;
-  user-select: none;
-  color: var(--muted-foreground);
-}
-
-.diff-view .dot-rows {
-  --dot-row: var(--diff-line-height);
-}
-
 .diff-view:not(.wrap) .diff-line .code {
   position: relative;
-}
-
-.diff-view.wrap .code > .dot-rows {
-  display: none;
-}
-
-.show-whitespace .wrap-blank,
-.show-whitespace .wrap-spaces {
-  display: none;
-}
-
-.wrap-spaces {
-  position: absolute;
-  height: var(--diff-line-height);
-}
-
-.wrap-block {
-  position: absolute;
-  left: 0;
-  right: 0;
-}
-
-.wrap-blank,
-.wrap-break {
-  position: absolute;
-  width: var(--diff-advance);
-  height: var(--diff-line-height);
-  text-align: center;
 }
 
 .diff-view:not(.wrap) .diff-line:not(.split-side) .code,
@@ -305,40 +242,10 @@
   );
 }
 
-.diff-line.added.whole-change {
-  background:
-    linear-gradient(
-      color-mix(
-        in srgb,
-        var(--color-change-added) var(--color-change-added-line),
-        transparent
-      ),
-      color-mix(
-        in srgb,
-        var(--color-change-added) var(--color-change-added-line),
-        transparent
-      )
-    ),
-    color-mix(
-      in srgb,
-      var(--color-change-added) var(--color-change-added-row),
-      transparent
-    );
-}
-
 .diff-line .word-added,
 .diff-line .word-removed {
   padding-top: var(--diff-word-padding-top);
   padding-bottom: var(--diff-word-padding-bottom);
-}
-
-.diff-line .word-gap {
-  position: absolute;
-  width: var(--diff-gap-width);
-  height: var(--diff-line-height);
-  margin-left: calc(var(--diff-gap-width) / -2);
-  padding-top: 0;
-  padding-bottom: 0;
 }
 
 .diff-line .word-removed {
@@ -347,27 +254,6 @@
     var(--color-change-deleted) var(--color-change-deleted-line),
     transparent
   );
-}
-
-.diff-line.removed.whole-change {
-  background:
-    linear-gradient(
-      color-mix(
-        in srgb,
-        var(--color-change-deleted) var(--color-change-deleted-line),
-        transparent
-      ),
-      color-mix(
-        in srgb,
-        var(--color-change-deleted) var(--color-change-deleted-line),
-        transparent
-      )
-    ),
-    color-mix(
-      in srgb,
-      var(--color-change-deleted) var(--color-change-deleted-row),
-      transparent
-    );
 }
 
 .diff-line.removed,

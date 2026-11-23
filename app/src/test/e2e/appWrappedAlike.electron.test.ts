@@ -8,6 +8,7 @@ import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { alikeWithin } from './alikeWithin';
 import { seenDots, seenGlyphs, seenRows } from './cellsSeen';
+import { diffLinesSeen, untilDiffLine } from './diffSeen';
 import { untilSettled, waitForFocus } from './waits';
 import {
   markedNames,
@@ -296,79 +297,65 @@ interface DiffWrap {
   readonly breaksMarked: number;
 }
 
-const diffWraps = (): Promise<readonly DiffWrap[]> =>
-  page.locator('.compare-view .diff-view').evaluate((view) => {
-    const rows = view.querySelector(':scope > .virtual-rows');
-    const bar =
-      rows === null
-        ? undefined
-        : rows.getBoundingClientRect().left +
-          rows.clientLeft +
-          rows.clientWidth;
-    const range = document.createRange();
-    return [
-      ...view.querySelectorAll<HTMLElement>('.virtual-row .diff-line .code'),
-    ]
-      .filter((code) => (code.textContent ?? '').length > 0)
-      .map((code) => {
+const compared = '.compare-view';
+
+async function diffWraps(): Promise<readonly DiffWrap[]> {
+  const probes = await page
+    .locator(`${compared} .diff-view .wrap-probe:has(.number) .code`)
+    .evaluateAll((codes) =>
+      codes.map((code) => {
         const style = getComputedStyle(code);
-        const box = code.getBoundingClientRect();
-        const contentRight = box.right - parseFloat(style.paddingRight);
-        const sample = document.createElement('span');
-        sample.style.font = style.font;
-        sample.style.letterSpacing = style.letterSpacing;
-        sample.style.whiteSpace = 'pre';
-        sample.textContent = '0'.repeat(1000);
-        document.body.append(sample);
-        const char = sample.getBoundingClientRect().width / 1000;
-        sample.remove();
-        const starts: number[] = [];
-        let lastTop = Number.NaN;
-        let offset = 0;
-        const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-          if (!(node instanceof Text)) {
-            continue;
-          }
-          for (let at = 0; at < node.length; at++) {
-            range.setStart(node, at);
-            range.setEnd(node, at + 1);
-            const rect = range.getBoundingClientRect();
-            if (
-              rect.height > 0 &&
-              !(Math.abs(rect.top - lastTop) < rect.height / 2)
-            ) {
-              starts.push(offset + at);
-              lastTop = rect.top;
-            }
-          }
-          offset += node.length;
-        }
-        const line = code.closest('.diff-line');
-        const marks = [...(line?.querySelectorAll('.wrap-break') ?? [])].filter(
-          (mark) =>
-            Math.abs(mark.getBoundingClientRect().left - box.left) <
-            box.width + 4 * char,
-        );
         return {
-          text: code.textContent ?? '',
-          starts,
           width:
-            box.width -
+            code.getBoundingClientRect().width -
             parseFloat(style.paddingLeft) -
-            parseFloat(style.paddingRight) -
-            parseFloat(style.textIndent),
-          char,
-          marksInside: marks.every(
-            (mark) =>
-              mark.getBoundingClientRect().right <=
-              contentRight + 2 * char + 0.5,
-          ),
-          clear: bar !== undefined && contentRight + 2 * char <= bar + 0.5,
-          breaksMarked: marks.length,
+            parseFloat(style.paddingRight),
+          char:
+            (code.querySelector('.wrap-sample')?.getBoundingClientRect()
+              .width ?? 0) / 1000,
         };
-      });
-  });
+      }),
+    );
+  const bar = await page
+    .locator(`${compared} .diff-view > .virtual-rows`)
+    .evaluate(
+      (rows) =>
+        rows.getBoundingClientRect().left + rows.clientLeft + rows.clientWidth,
+    );
+  return (await diffLinesSeen(page, compared))
+    .filter(
+      ({ text, rows }) =>
+        text.length > 0 && rows.map((row) => row.text).join('') === text,
+    )
+    .map(({ text, rows, side }) => {
+      const probe = probes[side] ?? probes[0];
+      const width = probe?.width ?? 0;
+      const char = probe?.char ?? 0;
+      const [first] = rows;
+      const contentRight =
+        (first === undefined ? 0 : first.left - first.column * first.advance) +
+        width;
+      const marks = rows.filter(({ breakAt }) => breakAt !== undefined);
+      let at = 0;
+      return {
+        text,
+        starts: rows.map((row) => {
+          const start = at;
+          at += row.text.length;
+          return start;
+        }),
+        width,
+        char,
+        marksInside: marks.every(
+          (row) =>
+            row.left + ((row.breakAt ?? 0) - row.column + 1) * row.advance <=
+            contentRight + 2 * char + 0.5,
+        ),
+        clear: contentRight + 2 * char <= bar + 0.5,
+        breaksMarked: marks.length,
+      };
+    });
+}
 
 const expectedWrap = ({ text, width, char }: DiffWrap) => {
   const columns = wrapColumns(width, char);
@@ -384,7 +371,7 @@ const wrappedAsExpected = (wraps: readonly DiffWrap[]) =>
     breaksMarked: wrap.breaksMarked,
   }));
 
-const brokenByTheBrowserAlone = (text: string) => text.includes('␌');
+const brokenByTheBrowserAlone = (text: string) => text.includes(formFeed);
 
 const expectedWraps = (wraps: readonly DiffWrap[]) =>
   wraps.map((wrap) => ({
@@ -481,20 +468,32 @@ suite('App', () => {
         'both files to be marked',
       );
       await page.keyboard.press('Shift+F3');
-      await page
-        .locator('.compare-view .diff-view.wrap .wrap-break')
-        .first()
-        .waitFor();
+      const wrapped = () =>
+        untilDiffLine(
+          page,
+          ({ rows }) => rows.length > 1,
+          'a line of the diff wrapped onto rows',
+          compared,
+        );
+      await page.locator('.compare-view .diff-view.wrap').waitFor();
+      await wrapped();
       for (const layout of ['Inline', 'Side by Side']) {
         await page.getByRole('button', { name: layout }).click();
         await page
           .locator(
             layout === 'Inline'
-              ? '.compare-view .diff-view.wrap:not(.side-by-side) .wrap-break'
-              : '.compare-view .diff-view.wrap.side-by-side .wrap-break',
+              ? '.compare-view .diff-view.wrap:not(.side-by-side)'
+              : '.compare-view .diff-view.wrap.side-by-side',
           )
-          .first()
           .waitFor();
+        await waitFor(
+          async () =>
+            new Set(
+              (await diffLinesSeen(page, compared)).map(({ side }) => side),
+            ).size === (layout === 'Inline' ? 1 : 2),
+          `the diff drawn ${layout}`,
+        );
+        await wrapped();
         const wraps = await diffWraps();
         assert.ok(wraps.length >= wrappedLines.length, layout);
         assert.deepStrictEqual(

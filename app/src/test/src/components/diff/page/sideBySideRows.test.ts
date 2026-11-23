@@ -16,7 +16,6 @@ import {
 } from '../../../../../components/diff/page/sideBySideRows';
 import { changeStarts } from '../../../../../components/diff/page/scrolling';
 import { markedRows } from '../../../../../components/diff/page/rowMeasures';
-import { splitSideClass } from '../../../../../components/diff/page/rowClasses';
 import { sideBySideWords } from '../../../../../components/diff/page/pairing';
 import { wordRanges } from '../../../../../components/diff/page/wordDiff';
 import { lineKey } from '../../../../../components/diff/page/lines';
@@ -135,24 +134,6 @@ suite('Side-by-side diff', () => {
       diffRows(files, new Map(), undefined, false, true).length,
       2 + lines,
     );
-  });
-
-  test('tints the old side of a change as removed and the new side as added, and an empty side as filler', () => {
-    const [file] = parsePatch(patch);
-    const rows = splitRows(file, 0).filter((row) => row.kind === 'split');
-    const classes = rows.map((row) =>
-      row.kind === 'split'
-        ? [
-            splitSideClass(row.left, 'removed'),
-            splitSideClass(row.right, 'added'),
-          ]
-        : [],
-    );
-    assert.deepStrictEqual(classes.slice(0, 3), [
-      ['', ''],
-      ['removed', 'added'],
-      ['removed', 'filler'],
-    ]);
   });
 
   test('marks changed rows on the scrollbar and finds where changes start, as inline', () => {

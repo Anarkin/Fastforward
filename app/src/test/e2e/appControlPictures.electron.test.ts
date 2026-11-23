@@ -6,7 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { cellPoint, cellsOf, viewerTexts } from './cellsSeen';
+import { cellsOf, viewerTexts } from './cellsSeen';
 import { untilSettled, waitForFocus } from './waits';
 
 const character = (code: number) => String.fromCharCode(code);
@@ -46,28 +46,34 @@ const viewer = {
   rows: '.viewer-rows .cell-rows',
 } as const;
 
-const views = [
-  {
-    name: 'editor',
-    tab: 2,
-    pane: '.editor .cm-content',
-    rows: '.editor .cm-line',
-  },
+const editor = {
+  name: 'editor',
+  tab: 2,
+  pane: '.editor .cm-content',
+  rows: '.editor .cm-line',
+} as const;
+
+const cellViews = [
+  viewer,
   {
     name: 'old side of the diff',
     tab: 3,
     pane: '.diff-view .virtual-rows',
-    rows: '.diff-view .split-line > .split-side:first-child .code',
+    rows: '.diff-view .diff-cells',
   },
   {
     name: 'new side of the diff',
     tab: 3,
     pane: '.diff-view .virtual-rows',
-    rows: '.diff-view .split-line > .split-side:last-child .code',
+    rows: '.diff-view .diff-cells ~ .diff-cells',
   },
 ] as const;
 
-type View = (typeof views)[number] | typeof viewer;
+type CellView = (typeof cellViews)[number];
+
+type View = CellView | typeof editor;
+
+const asCells = (view: Shown): boolean => view.name !== 'editor';
 
 interface Shown {
   readonly name: string;
@@ -122,18 +128,6 @@ function drawnRows(selector: string): DrawnRow[] {
   });
 }
 
-function selectRow([selector, at]: readonly [string, number]): boolean {
-  const row = document.querySelectorAll(selector)[at];
-  if (row === undefined) {
-    return false;
-  }
-  const range = document.createRange();
-  range.selectNodeContents(row);
-  getSelection()?.removeAllRanges();
-  getSelection()?.addRange(range);
-  return true;
-}
-
 function keepCopied(): void {
   Reflect.deleteProperty(window, 'copied');
   window.addEventListener(
@@ -173,8 +167,10 @@ suite('App control pictures', () => {
     await page.locator('.tabs .tab').nth(view.tab).click();
     await waitFor(
       async () =>
-        view.name === 'viewer'
-          ? (await viewerTexts(page)).includes(first)
+        asCells(view)
+          ? (await cellsOf(page, view.rows).rows()).some(
+              ({ line }) => line === first,
+            )
           : (await page.evaluate(drawnRows, view.rows)).some(
               (row) => row.text === first,
             ),
@@ -211,16 +207,10 @@ suite('App control pictures', () => {
       await waitForFocus(page.locator(view.pane), 'the editor');
       await page.keyboard.press('Home');
       await page.keyboard.press('Shift+End');
-    } else if (view.name === 'viewer') {
-      const inRow = await cellPoint(page, row, 1);
-      await page.mouse.click(inRow.x, inRow.y, { clickCount: 3 });
-      await waitForFocus(page.locator(view.pane).first(), 'the viewer');
     } else {
-      await page.locator(view.pane).first().focus();
-      assert.ok(
-        await page.evaluate(selectRow, [view.rows, row] as const),
-        `no row to select in the ${view.name}`,
-      );
+      const inRow = await cellsOf(page, view.rows).point(row, 1);
+      await page.mouse.click(inRow.x, inRow.y, { clickCount: 3 });
+      await waitForFocus(page.locator(view.pane).first(), `the ${view.name}`);
     }
     await page.evaluate(keepCopied);
     await page.keyboard.press('ControlOrMeta+C');
@@ -297,55 +287,59 @@ suite('App control pictures', () => {
     await closeOrKill(app);
   });
 
-  test('draws every control character in the editor and both sides of the diff where it stands in the text, by the font the app makes for them, each exactly a column wide, the form feed as its picture, which Chromium draws as nothing, so every character of a row stands on its column and the bar after them under the bar of the ruler, and shows the viewer every row as the file has it, its cells drawing each character by its picture in a cell', async () => {
+  test('draws every control character in the editor where it stands in the text, by the font the app makes for them, each exactly a column wide, the form feed as its picture, which Chromium draws as nothing, so every character of a row stands on its column and the bar after them under the bar of the ruler, and shows the viewer and both sides of the diff every row as the file has it, their cells drawing each character by its picture in a cell, the bar after them in one column', async () => {
     const found: Record<string, unknown> = {};
-    await show(viewer);
-    const viewed = await viewerTexts(page);
-    assert.deepStrictEqual(
-      [...written, keptWritten]
-        .filter((text) => viewed.includes(text))
-        .map(legible),
-      [...written, keptWritten].map(legible),
-    );
-    for (const view of views) {
+    for (const view of cellViews) {
       await show(view);
-      const rows = await untilSettled(
-        () => page.evaluate(drawnRows, view.rows),
-        `the rows of the ${view.name}`,
-      );
-      const bars = new Set(
-        rows
-          .filter((row) => row.bar !== undefined)
-          .map((row) => Math.round((row.bar ?? 0) * 100) / 100),
-      );
+      const cells = cellsOf(page, view.rows);
+      const lines = (
+        await untilSettled(() => cells.rows(), `the rows of the ${view.name}`)
+      ).map(({ line }) => line);
       found[view.name] = {
-        drawn: [...written.map(drawn), drawn(keptWritten)]
-          .filter((text) => rows.some((row) => row.text === text))
+        asWritten: [...written, keptWritten]
+          .filter((text) => lines.includes(text))
           .map(legible),
-        bars: bars.size,
-        offColumns: rows.reduce((sum, row) => sum + row.offColumns, 0),
-        fonts: await fontsDrawing(view.rows, 'x \u0001'),
+        bars: new Set((await cells.glyphs('|')).map(({ column }) => column))
+          .size,
       };
     }
-    assert.deepStrictEqual(
-      found,
-      Object.fromEntries(
-        views.map((view) => [
+    await show(editor);
+    const rows = await untilSettled(
+      () => page.evaluate(drawnRows, editor.rows),
+      'the rows of the editor',
+    );
+    const bars = new Set(
+      rows
+        .filter((row) => row.bar !== undefined)
+        .map((row) => Math.round((row.bar ?? 0) * 100) / 100),
+    );
+    found[editor.name] = {
+      drawn: [...written.map(drawn), drawn(keptWritten)]
+        .filter((text) => rows.some((row) => row.text === text))
+        .map(legible),
+      bars: bars.size,
+      offColumns: rows.reduce((sum, row) => sum + row.offColumns, 0),
+      fonts: await fontsDrawing(editor.rows, 'x \u0001'),
+    };
+    assert.deepStrictEqual(found, {
+      ...Object.fromEntries(
+        cellViews.map((view) => [
           view.name,
-          {
-            drawn: [...written.map(drawn), drawn(keptWritten)].map(legible),
-            bars: 1,
-            offColumns: 0,
-            fonts: [`${controlFont} 8`],
-          },
+          { asWritten: [...written, keptWritten].map(legible), bars: 1 },
         ]),
       ),
-    );
+      [editor.name]: {
+        drawn: [...written.map(drawn), drawn(keptWritten)].map(legible),
+        bars: 1,
+        offColumns: 0,
+        fonts: [`${controlFont} 8`],
+      },
+    });
   });
 
   test('copies the control characters as they are out of the viewer, the editor and the diff, the form feed itself, not the picture drawn for it, keeps a picture of it the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
     const found: Record<string, unknown> = {};
-    for (const view of [viewer, ...views]) {
+    for (const view of [...cellViews, editor]) {
       found[view.name] = [
         legible(await copiedFrom(view, 1)),
         legible(await copiedFrom(view, 2)),
@@ -356,7 +350,7 @@ suite('App control pictures', () => {
     assert.deepStrictEqual(
       found,
       Object.fromEntries(
-        [viewer, ...views].map((view) => [
+        [...cellViews, editor].map((view) => [
           view.name,
           [
             legible(written[0]),

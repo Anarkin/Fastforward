@@ -195,7 +195,7 @@ export function TextBody({
       onFont={onFont}
       move={move}
       jump={jump}
-      error={viewing.error ?? (refused ? strings.viewer.noGpu : undefined)}
+      error={viewing.error ?? (refused ? strings.common.noGpu : undefined)}
       width={width}
       wrapped={!whole}
       onSideways={onAcross}

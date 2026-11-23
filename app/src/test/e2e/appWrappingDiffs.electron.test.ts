@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { isDeepStrictEqual } from 'node:util';
 import { suite, test } from 'vitest';
 import { wrapColumns, wrappedLines } from '../../lib/page/wordWrap';
 import {
@@ -13,18 +12,25 @@ import {
   wrapsSaved,
 } from './appFixtures';
 import { baseSettings } from './appLaunch';
-import { barsOffGrid, gridLines } from './gridLines';
+import { cellsOf } from './cellsSeen';
+import {
+  diffFinds,
+  diffLinesSeen,
+  diffRowsSeen,
+  diffSides,
+  untilDiffLine,
+  type DiffLineSeen,
+} from './diffSeen';
+import { gridLines } from './gridLines';
 import { barOf, barParts } from './scrollbarsShown';
 import { waitForCount, waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 import {
   codeRow,
   near,
-  firsts,
   lineHeights,
-  laidOutCode,
   matchInView,
-  marksFollowRows,
+  wrapColumnsShown,
 } from './wrappingFixtures';
 import {
   hyphenatedLine,
@@ -39,28 +45,35 @@ import { writeSettings } from './settingsWritten';
 
 const spacedLine = `one two three four five ${'x'.repeat(3000)}`;
 
-function spaceCenters(code: Element): { x: number; y: number }[] {
-  const range = document.createRange();
-  const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
-  const centers: { x: number; y: number }[] = [];
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const text = node.textContent ?? '';
-    for (
-      let at = text.indexOf(' ');
-      at !== -1;
-      at = text.indexOf(' ', at + 1)
-    ) {
-      range.setStart(node, at);
-      range.setEnd(node, at + 1);
-      const { left, right, top, bottom } = range.getBoundingClientRect();
-      centers.push({
-        x: Math.floor(((left + right) / 2) * devicePixelRatio),
-        y: Math.floor(((top + bottom) / 2) * devicePixelRatio),
-      });
-    }
+const wraps = ({ rows }: DiffLineSeen) => rows.length > 1;
+
+async function barsOff(): Promise<number[]> {
+  const last: number[] = [];
+  for (const { row, column } of await cellsOf(page, diffSides).glyphs('|')) {
+    last[row] = Math.max(last[row] ?? 0, column);
   }
-  return centers;
+  const [ruler, ...rows] = Object.values(last);
+  return rows.map((column) => column - (ruler ?? Number.NaN));
 }
+
+const settled = () =>
+  untilDiffLine(
+    page,
+    ({ text, rows }) =>
+      text.includes('What it does') &&
+      rows.length > 1 &&
+      rows.filter(({ breakAt }) => breakAt !== undefined).length ===
+        rows.length - 1,
+    'a mark at the end of every row but the last',
+  );
+
+const firsts = ({ rows }: DiffLineSeen) =>
+  rows.map(({ text }) => text.slice(0, 1));
+
+const textStart = async () => {
+  const row = (await diffRowsSeen(page)).find(({ side }) => side === 1);
+  return row === undefined ? undefined : row.left - row.column * row.advance;
+};
 
 suite('App', () => {
   sharedApp({
@@ -80,7 +93,7 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'longest.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    await page.locator('.diff-view .virtual-row .wrap-break').first().waitFor();
+    await untilDiffLine(page, wraps, 'a line wrapped onto rows');
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+F');
     const field = page.locator('.search-box-input');
@@ -103,15 +116,6 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'padded.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    const line = page.locator('.diff-line', { hasText: 'What it does' });
-    await line.locator('.wrap-break').first().waitFor();
-    const settled = async () => {
-      await waitFor(async () => {
-        const { rows, marks } = await laidOutCode(line);
-        return rows.length > 1 && marks.length === rows.length - 1;
-      }, 'a mark at the end of every row but the last');
-      return laidOutCode(line);
-    };
     await page.locator('.diff-view.show-whitespace').waitFor();
     const shown = await settled();
     await page
@@ -121,15 +125,16 @@ suite('App', () => {
       .locator('.diff-view.show-whitespace')
       .waitFor({ state: 'detached' });
     const hidden = await settled();
+    const { width, char } = await wrapColumnsShown();
     assert.strictEqual(shown.text, paddedLine);
-    assert.deepStrictEqual(firsts(shown.rows), firsts(hidden.rows));
+    assert.deepStrictEqual(firsts(shown), firsts(hidden));
     assert.deepStrictEqual(
-      firsts(hidden.rows),
+      firsts(hidden),
       hidden.rows.map(() => '|'),
     );
     assert.strictEqual(
       shown.rows.length,
-      wrappedLines(paddedLine, wrapColumns(shown.width, shown.char)),
+      wrappedLines(paddedLine, wrapColumns(width, char)),
     );
     await waitFor(
       () => wrapsSaved() && !whitespaceShownSaved(),
@@ -143,16 +148,17 @@ suite('App', () => {
     await page.keyboard.press('c');
     await page.locator('.columns.commits-hidden').waitFor();
     try {
-      const code = page.locator('.diff-view .virtual-row .diff-line .code');
-      await page.locator('.diff-view [class^="syntax-"]').first().waitFor();
+      const onGrid = gridLines.slice(1).map(() => 0);
+      await untilDiffLine(
+        page,
+        ({ kinds }) => kinds.some(([, kind]) => kind !== 'plain'),
+        'the lines colored',
+      );
       await waitFor(
-        async () => (await code.count()) === gridLines.length,
+        async () => (await diffLinesSeen(page)).length === gridLines.length,
         'every line',
       );
-      assert.deepStrictEqual(
-        await code.evaluateAll(barsOffGrid),
-        gridLines.slice(1).map(() => 0),
-      );
+      assert.deepStrictEqual(await barsOff(), onGrid);
       await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
       await page.locator('.diff-view.wrap').waitFor();
       await waitFor(
@@ -164,10 +170,7 @@ suite('App', () => {
         tall,
         tall.map(() => tall[0]),
       );
-      assert.deepStrictEqual(
-        await code.evaluateAll(barsOffGrid),
-        gridLines.slice(1).map(() => 0),
-      );
+      assert.deepStrictEqual(await barsOff(), onGrid);
       const showWhitespace = page.getByRole('button', {
         name: 'Show Whitespace',
         exact: true,
@@ -176,26 +179,20 @@ suite('App', () => {
       await page
         .locator('.diff-view.show-whitespace')
         .waitFor({ state: 'detached' });
-      assert.deepStrictEqual(
-        await code.evaluateAll(barsOffGrid),
-        gridLines.slice(1).map(() => 0),
-      );
+      assert.deepStrictEqual(await barsOff(), onGrid);
       await showWhitespace.click();
       await page.locator('.diff-view.show-whitespace').waitFor();
-      assert.deepStrictEqual(
-        await code.evaluateAll(barsOffGrid),
-        gridLines.slice(1).map(() => 0),
-      );
+      assert.deepStrictEqual(await barsOff(), onGrid);
       await page.locator('.diff-view .virtual-rows').focus();
       await page.keyboard.press('ControlOrMeta+F');
       const field = page.locator('.search-box-input');
       await waitForFocus(field, 'the find field');
       await field.fill('Cafe');
-      await page.locator('.diff-line .find-match').first().waitFor();
-      assert.deepStrictEqual(
-        await code.evaluateAll(barsOffGrid),
-        gridLines.slice(1).map(() => 0),
+      await waitFor(
+        async () => (await diffFinds(page)).length > 0,
+        'the match marked',
       );
+      assert.deepStrictEqual(await barsOff(), onGrid);
       await field.press('Escape');
       await waitFor(
         () => wrapsSaved() && whitespaceShownSaved(),
@@ -209,70 +206,39 @@ suite('App', () => {
     }
   });
 
-  test('moves the marks of a wrapped line along once the browser breaks it elsewhere, as it does when it gets a few pixels narrower, though the app estimates as many characters to a row', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.row.file', { hasText: 'hyphenated.txt' }).click();
-    await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    const line = page
-      .locator('.diff-line', { has: page.locator('.wrap-break') })
-      .first();
-    await line.waitFor();
-    await waitFor(() => marksFollowRows(line), 'the marks to follow the rows');
-    const marks = () =>
-      line
-        .locator('.wrap-break')
-        .evaluateAll((all) =>
-          all.map((mark) => mark.getBoundingClientRect().left),
-        );
-    const before = await marks();
-    let after = before;
-    for (
-      let columns = 8;
-      columns <= 16 && isDeepStrictEqual(after, before);
-      columns++
-    ) {
-      await line.evaluate((element, narrower) => {
-        const code = element.querySelector<HTMLElement>('.code');
-        if (code) {
-          code.style.paddingRight = `calc(2 * var(--diff-code-padding) + ${narrower}ch)`;
-        }
-      }, columns);
-      await waitFor(
-        () => marksFollowRows(line),
-        'the marks to follow the rows broken elsewhere',
-      );
-      after = await marks();
-    }
-    assert.notDeepStrictEqual(after, before);
-    await waitFor(() => wrapsSaved(), 'the choice to be saved');
-  });
-
   test('makes each line of the diff as tall as the font size of code times the line height set, rounded to whole device pixels, placing the rows and the marks of wrapped ones that far apart, the file header a line tall too', async () => {
     await writeSettings(page, profile, {
       ...baseSettings,
       fonts: { monospaceLineHeight: 2.1 },
     });
     await openChangedFile();
-    const rows = await page
-      .locator('.diff-view .diff-row')
-      .evaluateAll((elements) =>
-        elements.flatMap((element) => {
-          const shown = element.querySelector('.file-header, .diff-line');
-          return shown
-            ? [
-                {
-                  kind: shown.classList.contains('file-header')
-                    ? 'file'
-                    : 'line',
-                  top: element.getBoundingClientRect().top,
-                  height: element.getBoundingClientRect().height,
-                  shown: shown.getBoundingClientRect().height,
-                },
-              ]
-            : [];
-        }),
-      );
     const tall = await codeRow(2.1);
+    await untilDiffLine(
+      page,
+      ({ rows: [row] }) => near(row?.height, tall),
+      'the lines as tall as set',
+    );
+    const header = await page
+      .locator('.diff-view .diff-row:has(> .file-header)')
+      .first()
+      .evaluate((element) => {
+        const shown = element.querySelector('.file-header');
+        return {
+          kind: 'file',
+          top: element.getBoundingClientRect().top,
+          height: element.getBoundingClientRect().height,
+          shown: shown?.getBoundingClientRect().height ?? 0,
+        };
+      });
+    const rows = [
+      header,
+      ...(await diffLinesSeen(page)).map(({ top, rows: [row] }) => ({
+        kind: 'line',
+        top,
+        height: row?.height ?? 0,
+        shown: row?.height ?? 0,
+      })),
+    ];
     assert.deepStrictEqual(
       rows.map(({ kind, height, shown }) => [
         kind,
@@ -295,29 +261,22 @@ suite('App', () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
-    const line = page
-      .locator('.diff-line', { has: page.locator('.wrap-break') })
-      .first();
-    await line.waitFor();
-    const laidOut = () =>
-      line.evaluate((element) => {
-        const top = element.getBoundingClientRect().top;
-        return {
-          height: element.getBoundingClientRect().height,
-          marks: Array.from(
-            element.querySelectorAll('.wrap-break'),
-            (mark) => mark.getBoundingClientRect().top - top,
-          ),
-        };
-      });
-    await waitFor(async () => {
-      const { height, marks } = await laidOut();
-      return height > tall && marks.length === Math.round(height / tall) - 1;
-    }, 'a mark at the end of every row but the last');
-    const { height, marks } = await laidOut();
+    const wrapped = await untilDiffLine(
+      page,
+      wraps,
+      'a line wrapped onto rows',
+    );
     assert.deepStrictEqual(
-      marks.map((mark, index) => near(mark, index * tall)),
-      Array.from({ length: Math.round(height / tall) - 1 }, () => true),
+      wrapped.rows.map(({ top, height, breakAt }, index) => [
+        near(top - wrapped.top, index * tall),
+        near(height, tall),
+        breakAt !== undefined,
+      ]),
+      wrapped.rows.map((_, index) => [
+        true,
+        true,
+        index < wrapped.rows.length - 1,
+      ]),
     );
     await waitFor(() => wrapsSaved(), 'the choice to be saved');
   });
@@ -338,9 +297,8 @@ suite('App', () => {
         room: end.left - thumb.left - thumb.width,
       };
     };
-    const code = page.locator('.split-row .split-code').nth(1).locator('.code');
-    const before = await code.boundingBox();
-    assert.ok(before, 'the code has no box');
+    const before = await textStart();
+    assert.ok(before !== undefined, 'the second side shows no code');
     const right = await thumbBelow(1);
     const left = await thumbBelow(0);
     assert.ok(
@@ -353,8 +311,8 @@ suite('App', () => {
     await page.mouse.move(left.thumb.left + 105, y, { steps: 5 });
     await page.mouse.up();
     await waitFor(async () => {
-      const after = await code.boundingBox();
-      return after !== null && after.x < before.x - 100;
+      const after = await textStart();
+      return after !== undefined && after < before - 100;
     }, 'the code to scroll sideways');
     const far = Math.min(90, left.room - 2);
     let moved = [left.along, right.along];
@@ -383,12 +341,33 @@ suite('App', () => {
   test('paints a dot in each space of a line of thousands of characters not wrapped, read from the pixels of the window, as a gradient as wide as such a line painted none of the few dots it held while its styles said they were there', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'spaced.txt' }).click();
-    const dots = page
-      .locator('.diff-view:not(.wrap) .code > .dot-rows')
-      .first();
-    await dots.waitFor();
-    const code = dots.locator('..');
-    const centers = await code.evaluate(spaceCenters);
+    const line = await untilDiffLine(
+      page,
+      ({ text }) => text.startsWith('one two'),
+      'the line of thousands of characters',
+    );
+    const [row] = line.rows;
+    assert.ok(row, 'the line has no row');
+    await waitFor(
+      async () => (await cellsOf(page, diffSides).dots()).length === 5,
+      'five spaces dotted',
+    );
+    const ratio = await page.evaluate(() => devicePixelRatio);
+    const centers = spacedLine
+      .slice(0, 30)
+      .split('')
+      .flatMap((character, at) =>
+        character === ' '
+          ? [
+              {
+                x: Math.floor(
+                  (row.left + (at - row.column + 0.5) * row.advance) * ratio,
+                ),
+                y: Math.floor((row.top + row.height / 2) * ratio),
+              },
+            ]
+          : [],
+      );
     assert.strictEqual(centers.length, 5);
     const painted = async () => {
       const shot = await app.evaluate(async ({ BrowserWindow, screen }) => {
@@ -408,10 +387,8 @@ suite('App', () => {
       const pixels = Buffer.from(shot.pixels, 'base64');
       const at = (x: number, y: number) =>
         pixels.subarray((y * shot.width + x) * 4, (y * shot.width + x) * 4 + 3);
-      const row = Math.round(((centers[1]?.x ?? 0) - (centers[0]?.x ?? 0)) / 8);
-      return centers.map(
-        ({ x, y }) => !at(x, y).equals(at(x, y - Math.max(4, row))),
-      );
+      const above = Math.max(4, Math.round((row.advance * ratio) / 2));
+      return centers.map(({ x, y }) => !at(x, y).equals(at(x, y - above)));
     };
     await waitFor(
       async () => (await painted()).every(Boolean),

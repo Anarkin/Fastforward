@@ -175,8 +175,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: typed in the modal clone dialog, which stays mounted through a tab change from outside, as ff',
   'tools/git/page/clonePopup.tsx url':
     'a moment: typed in the modal clone dialog, which stays mounted through a tab change from outside, as ff',
-  'components/diff/page/codeBlocks.tsx near':
-    'a measure: the blocks of a long line near the view, observed anew by an intersection observer once mounted',
   'lib/page/columnStatusLine.tsx said':
     'a moment: the status before a load began, held through the load and read anew from the column once mounted',
   'tools/git/page/commitList.tsx asking':
@@ -262,10 +260,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'made once: the git store, made once for the page; it keeps what each git tab shows through tab changes',
   'tools/git/page/worktreeBar.tsx cycle':
     'made once: the worktrees stepped to ahead of the one shown while the key repeats, made once for the bar',
-  'components/diff/page/wrapMarks.tsx laid':
-    'a measure: the rows a wrapped line is laid out on and their breaks, read from those remembered by rememberBreaks or measured anew',
-  'components/diff/page/wrapMarks.tsx near':
-    'a measure: whether a block of marks is near the view, observed anew by an intersection observer once mounted',
   'tools/terminal/page/tool.tsx store':
     'made once: the terminal store, made once for the page; each screen is kept by the main process',
 };

@@ -1,3 +1,4 @@
+import { untilDiffLine } from './diffSeen';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -35,6 +36,14 @@ const appTabs = (page: Page) => page.locator('nav.tabs [role="tab"]');
 const otherTool = 2;
 const otherRepository = 1;
 const compareTab = 3;
+
+const addedRowShown = (page: Page, within = '') =>
+  untilDiffLine(
+    page,
+    ({ change, text }) => change === 'added' && text.includes('row row'),
+    'the added row of the diff',
+    within,
+  );
 
 suite('App git tabs shown again', () => {
   let folder: string;
@@ -199,10 +208,7 @@ suite('App git tabs shown again', () => {
     );
 
   const findInDiff = async (diff: Locator, field: Locator) => {
-    await diff
-      .locator('.diff-line.added', { hasText: 'row row' })
-      .first()
-      .waitFor();
+    await addedRowShown(page);
     await diff.focus();
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the find of the diff');
@@ -241,10 +247,7 @@ suite('App git tabs shown again', () => {
       .locator('.virtual-row .row.file', { hasText: 'long.txt' })
       .click();
     const diff = page.locator('.diff-view .virtual-rows');
-    await diff
-      .locator('.diff-line.added', { hasText: 'row row' })
-      .first()
-      .waitFor();
+    await addedRowShown(page);
     await diff.focus();
     await page.keyboard.press('ControlOrMeta+F');
     const field = page
@@ -359,12 +362,7 @@ suite('App git tabs shown again', () => {
 
   test('brings a compare tab back scrolled as it was left with nothing found in it, once another tab was shown and once the settings are saved, as its files compared anew arriving after its view sent it back to its first change, as showing the whole file does', async () => {
     await showTab(page, compareTab);
-    await page
-      .locator('.compare-view .diff-view .diff-line.added', {
-        hasText: 'row row',
-      })
-      .first()
-      .waitFor();
+    await addedRowShown(page, '.compare-view');
     await settledLooks(page);
     await scrolledAround(page);
     const top = () =>

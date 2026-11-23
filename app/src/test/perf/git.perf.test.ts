@@ -60,7 +60,7 @@ suite('Frames of the git tool', () => {
       async () => {
         await file.click();
         await page
-          .locator('.diff-view .virtual-row .diff-line')
+          .locator('.diff-view .diff-cells[data-rows]:has(canvas)')
           .first()
           .waitFor();
       },

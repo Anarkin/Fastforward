@@ -82,14 +82,14 @@ const views = [
     name: 'diff',
     tab: 3,
     pane: '.compare-view .diff-view .virtual-rows',
-    rows: '.compare-view .diff-view .virtual-row .diff-line',
+    rows: '.compare-view .diff-view .diff-cells[data-rows]:has(canvas)',
     bar: '.compare-view .diff-view > .virtual-rows',
   },
   {
     name: 'git',
     tab: 4,
     pane: '.diff-view .virtual-rows',
-    rows: '.diff-view .virtual-row .diff-line',
+    rows: '.diff-view .diff-cells[data-rows]:has(canvas)',
     bar: '.diff-view > .virtual-rows',
   },
 ] as const;

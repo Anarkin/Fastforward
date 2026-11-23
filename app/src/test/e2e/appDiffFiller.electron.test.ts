@@ -138,10 +138,10 @@ suite('App diff filler', () => {
     await waitFor(async () => {
       const scrolled = await page.evaluate(async (wanted) => {
         const list = document.querySelector('.diff-view .virtual-rows');
-        const filler = document.querySelector('.split-side.filler');
-        const height = filler
-          ? parseFloat(getComputedStyle(filler).lineHeight)
-          : 0;
+        const height =
+          document
+            .querySelector<HTMLElement>('.diff-view .diff-cells')
+            ?.seenRows?.()[0]?.height ?? 0;
         if (list) {
           list.scrollTop = wanted * height;
         }
@@ -159,12 +159,16 @@ suite('App diff filler', () => {
       const view = document
         .querySelector('.diff-view .virtual-rows')
         ?.getBoundingClientRect();
-      const filler = document.querySelector('.split-side.filler');
-      const side = filler?.getBoundingClientRect();
-      const numbers = filler?.nextElementSibling
-        ?.querySelector('.number')
+      const side = document
+        .querySelector('.split-side.filler')
         ?.getBoundingClientRect();
-      const line = filler ? parseFloat(getComputedStyle(filler).lineHeight) : 0;
+      const numbers = document
+        .querySelector('.diff-ruler .split-side:last-child .number')
+        ?.getBoundingClientRect();
+      const line =
+        document
+          .querySelector<HTMLElement>('.diff-view .diff-cells')
+          ?.seenRows?.()[0]?.height ?? 0;
       const top = Math.ceil(((view?.top ?? 0) + 4 * line) * devicePixelRatio);
       const bottom = Math.floor(
         ((view?.bottom ?? 0) - line) * devicePixelRatio,

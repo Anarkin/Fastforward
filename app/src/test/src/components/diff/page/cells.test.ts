@@ -25,20 +25,34 @@ suite('Rows of a diff drawn as cells', () => {
     );
   });
 
-  test('draws the rows in sight and those a margin above and below them, from the top of the first to the bottom of the last, so a canvas holds whole rows and a scroll within the margin draws nothing anew', () => {
-    assert.deepStrictEqual(windowAround(places.length, placeOf, 70, 60, 30), {
-      first: 1,
-      last: 3,
-      top: 20,
-      bottom: 180,
-    });
-    assert.deepStrictEqual(windowAround(places.length, placeOf, 0, 60, 0), {
+  test('draws what is in sight and a margin above and below it, from a whole line to a whole line and no further than the rows reach, the rows it touches told with it, so a canvas holds whole lines and a scroll within the margin draws nothing anew', () => {
+    assert.deepStrictEqual(
+      windowAround(places.length, placeOf, 70, 60, 30, 20),
+      { first: 1, last: 3, top: 40, bottom: 160 },
+    );
+    assert.deepStrictEqual(windowAround(places.length, placeOf, 0, 60, 0, 20), {
       first: 0,
-      last: 2,
+      last: 1,
       top: 0,
-      bottom: 80,
+      bottom: 60,
     });
-    assert.strictEqual(windowAround(0, placeOf, 0, 60, 30), undefined);
+    assert.deepStrictEqual(
+      windowAround(places.length, placeOf, 250, 100, 40, 20),
+      { first: 5, last: 7, top: 200, bottom: 300 },
+    );
+    assert.strictEqual(windowAround(0, placeOf, 0, 60, 30, 20), undefined);
+  });
+
+  test('draws only the lines in sight of a row taller than a canvas may be, as a line of a megabyte wraps onto a hundred screens of rows', () => {
+    const tall = [
+      { start: 0, size: 20 },
+      { start: 20, size: 100_000 },
+    ];
+
+    assert.deepStrictEqual(
+      windowAround(2, (index) => tall[index], 50_000, 600, 300, 20),
+      { first: 1, last: 1, top: 49_700, bottom: 50_900 },
+    );
   });
 
   test('cuts a line into the pieces of its colors, the text between two colored pieces a piece of no color, so the cells color a line of a diff as they color a file viewed', () => {

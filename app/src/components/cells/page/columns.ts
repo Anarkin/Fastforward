@@ -1,6 +1,7 @@
 import { onceAText } from '../../../lib/page/onceAText';
 import { tabSize, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
+import { joins } from './joined';
 
 const tab = 9;
 
@@ -26,7 +27,10 @@ function stepsOf(text: string, widths: TextWidths | undefined): Step {
     if (code === tab) {
       return { next: at + 1, column: tabStop(column) };
     }
-    if (widths === undefined || isPrintableAscii(code)) {
+    if (
+      widths === undefined ||
+      (isPrintableAscii(code) && !joins(text.charCodeAt(at + 1)))
+    ) {
       return {
         next: at + (isHighSurrogate(code) && at + 1 < text.length ? 2 : 1),
         column: column + 1,
@@ -98,6 +102,25 @@ export function widestColumns(
     }
   }
   return widest;
+}
+
+export function placesWithin(
+  text: string,
+  from: number,
+  to: number,
+  startColumn: number,
+  widths?: TextWidths,
+): (readonly [at: number, column: number])[] {
+  const step = stepsOf(text, widths);
+  const places: (readonly [number, number])[] = [];
+  let column = startColumn;
+  for (let at = from; at < to;) {
+    places.push([at - from, column]);
+    const moved = step(at, column);
+    at = moved.next;
+    column = moved.column;
+  }
+  return places;
 }
 
 export function charAtColumn(

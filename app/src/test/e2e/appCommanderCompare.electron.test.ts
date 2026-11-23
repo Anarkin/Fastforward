@@ -4,6 +4,14 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import {
+  cellOf,
+  diffLinesSeen,
+  diffListTop,
+  diffMarked,
+  diffTexts,
+  untilDiffLine,
+} from './diffSeen';
 import { waitForFocus } from './waits';
 import {
   opened,
@@ -17,17 +25,13 @@ import {
 } from './commanderAppFixtures';
 import { grayPng } from './images';
 
-const occurrences = () =>
-  page.locator('.compare-view .occurrence-match').allTextContents();
+const compared = '.compare-view';
 
-const copiesDrawn = () =>
-  page.locator('.compare-view .diff-view .virtual-row .code').evaluateAll(
-    (codes) =>
-      codes
-        .map((drawn) => drawn.textContent ?? '')
-        .join(' ')
-        .split('alpha').length - 1,
-  );
+const occurrences = () => diffMarked(page, 'occurrence', compared);
+
+const copiesDrawn = async () =>
+  (await diffTexts(page, undefined, compared)).join(' ').split('alpha').length -
+  1;
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -57,7 +61,16 @@ suite('App commander', () => {
         if (comparing && repository && repository.offsetParent !== null) {
           watched.repositoryShown = true;
         }
-        if (document.querySelector('.compare-view .diff-line.added') === null) {
+        const added = [
+          ...document.querySelectorAll<HTMLElement>(
+            '.compare-view .diff-cells',
+          ),
+        ].some((cells) =>
+          (cells.seenRows?.() ?? []).some(
+            ({ tint }) => tint?.startsWith('added') === true,
+          ),
+        );
+        if (!added) {
           requestAnimationFrame(check);
         }
       };
@@ -69,9 +82,9 @@ suite('App commander', () => {
       .waitFor();
     await waitFor(
       async () =>
-        (
-          await page.locator('.compare-view .diff-line.added').allTextContents()
-        ).some((line) => line.includes('two')),
+        (await diffTexts(page, 'added', compared)).some((line) =>
+          line.includes('two'),
+        ),
       'the diff of the two files',
     );
     assert.strictEqual(
@@ -159,23 +172,21 @@ suite('App commander', () => {
       'both files to be marked',
     );
     await page.keyboard.press('Shift+F3');
-    const change = page.locator('.compare-view .split-side', {
-      hasText: 'line150',
-    });
-    await change.waitFor();
-    const row = await change.evaluate((line) =>
-      parseFloat(getComputedStyle(line).lineHeight),
+    const changed = await untilDiffLine(
+      page,
+      ({ text }) => text.includes('line150'),
+      'the line changed',
+      compared,
     );
-    const belowTop = () =>
-      change.evaluate((line) => {
-        const list = line.closest('.virtual-rows');
-        if (!list) {
-          throw new Error('No diff list');
-        }
-        return Math.round(
-          line.getBoundingClientRect().top - list.getBoundingClientRect().top,
-        );
-      });
+    const row = changed.rows[0]?.height ?? 0;
+    const belowTop = async () => {
+      const line = (await diffLinesSeen(page, compared)).find(({ text }) =>
+        text.includes('line150'),
+      );
+      return line === undefined
+        ? undefined
+        : Math.round(line.top - (await diffListTop(page, compared)));
+    };
     await waitFor(
       async () => (await belowTop()) === Math.round(3 * row),
       'the first change to be shown 3 rows below the top, as J shows it',
@@ -267,21 +278,11 @@ suite('App commander', () => {
       await select('copies2');
       await page.keyboard.press('Space');
       await page.keyboard.press('Shift+F3');
-      const code = page
-        .locator('.compare-view .diff-view .virtual-row .code')
-        .first();
-      await code.waitFor();
-      const first = await code.evaluate((element) => {
-        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-        const text = walker.nextNode();
-        const range = document.createRange();
-        if (text !== null) {
-          range.setStart(text, 1);
-          range.setEnd(text, 2);
-        }
-        const box = range.getBoundingClientRect();
-        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
-      });
+      const [code] = (
+        await untilDiffLine(page, () => true, 'a line compared', compared)
+      ).rows;
+      assert.ok(code, 'the first line compared has no row');
+      const first = cellOf(code, 1);
       await page.mouse.dblclick(first.x, first.y);
       await waitFor(async () => {
         const marked = await occurrences();
@@ -292,7 +293,9 @@ suite('App commander', () => {
         );
       }, 'every copy of the word selected marked');
       assert.strictEqual(
-        await page.evaluate(() => document.getSelection()?.toString().trim()),
+        (await diffLinesSeen(page, compared))
+          .map(({ selected }) => selected)
+          .join(''),
         'alpha',
         'the word stays selected once its copies are marked',
       );

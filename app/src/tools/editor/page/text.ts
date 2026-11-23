@@ -13,7 +13,7 @@ import {
   type PluginValue,
   type ViewUpdate,
 } from '@codemirror/view';
-import { cellClass, cellParts } from '../../../lib/page/cellParts';
+import { cellClass, cellParts } from './cellParts';
 import { elementWidths, type TextWidths } from '../../../lib/page/textWidths';
 import { type CellTable } from '../../../lib/page/cellTable';
 import {

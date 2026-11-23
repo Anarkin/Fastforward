@@ -1,56 +1,17 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
-import { dotLook } from '../../../../lib/page/dotLook';
 import { cascaded } from '../../../helpers/cascade';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { compact, looks, noop } from './stylesheetFixtures';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
 import { createElement } from 'react';
-import { Code } from '../../../../components/diff/page/codeMarks';
-import { BreakMarks } from '../../../../components/diff/page/wrapMarks';
 import {
   rendered,
   withClass,
   type MarkupElement,
 } from '../../../helpers/markup';
-import {
-  DiffViewShown,
-  IndentedLine,
-  DiffRow,
-} from '../../../helpers/styleDiffFixtures';
-
-function HangingSpacesLine() {
-  return (
-    <DiffRow>
-      <div className="diff-line text-line added">
-        <span className="number">1</span>
-        <span className="number">1</span>
-        <Code
-          text="a   b"
-          syntax={[]}
-          words={[]}
-          wordClass="word-added"
-          finds={[]}
-          current={undefined}
-          whitespace={false}
-        />
-        <span className="wrap-marks">
-          <BreakMarks
-            breaks={[
-              {
-                end: 4,
-                blanks: [1, 2, 3].map((column) => ({ column, tab: false })),
-              },
-            ]}
-            numbers={2}
-            lineHeight={18}
-          />
-        </span>
-      </div>
-    </DiffRow>
-  );
-}
+import { DiffViewShown, InlineLine } from '../../../helpers/styleDiffFixtures';
 
 function cell(row: MarkupElement, className: string): MarkupElement {
   return withClass(
@@ -70,12 +31,6 @@ const squareDots = {
   'background-position': '0 50%',
   'background-repeat': 'repeat-x',
 };
-
-const spaceDotSize =
-  'max(var(--device-pixel, 1px), round(0.16em, var(--device-pixel, 1px)))';
-
-const spaceDotStart =
-  'round(down, (var(--text-advance) - var(--space-dot)) / 2, var(--device-pixel, 1px))';
 
 const marked = (mark: React.ReactElement, className: string) =>
   withClass(
@@ -235,7 +190,9 @@ suite('Style', () => {
   test('draws a character in a box exactly as many columns of the text wide as it takes and a line tall, its glyph centered, as our terminal draws it on its grid, in the diff and the viewer alike, never making its line taller, as a shrunk emoji made a wrapped line of the diff two rows tall', () => {
     looks(
       cell(
-        shownRow(diffView(<DiffViewShown wordWrap />, <IndentedLine />)),
+        shownRow(
+          diffView(<DiffViewShown wordWrap />, <InlineLine kind="added" />),
+        ),
         'cell',
       ),
       {
@@ -249,14 +206,18 @@ suite('Style', () => {
     );
     looks(
       cell(
-        shownRow(diffView(<DiffViewShown wordWrap />, <IndentedLine />)),
+        shownRow(
+          diffView(<DiffViewShown wordWrap />, <InlineLine kind="added" />),
+        ),
         'cell wide',
       ),
       { width: 'calc(2 * var(--text-advance))' },
     );
     looks(
       cell(
-        shownRow(diffView(<DiffViewShown wordWrap />, <IndentedLine />)),
+        shownRow(
+          diffView(<DiffViewShown wordWrap />, <InlineLine kind="added" />),
+        ),
         'cell zero',
       ),
       { width: '0' },
@@ -264,123 +225,6 @@ suite('Style', () => {
     looks(withClass(diffView(<DiffViewShown />), 'diff-view'), {
       '--text-advance': 'var(--diff-advance)',
     });
-  });
-
-  test('draws the spaces shown in the diff as square dots on one layer over the line, each as tall as it is wide in whole device pixels and starting on a whole device pixel in the middle of its row, where the layer puts it across, with no element over each space or run, as an element a space of a line of prose slowed scrolling down', () => {
-    const layer = withClass(
-      shownRow(
-        diffView(
-          <DiffViewShown wordWrap />,
-          <DiffRow>
-            <div className="diff-line text-line added">
-              <span className="wrap-marks">
-                <BreakMarks
-                  breaks={[]}
-                  dots={[[0, 1]]}
-                  look={dotLook(14, 8, 1)}
-                  numbers={2}
-                  lineHeight={17}
-                />
-              </span>
-            </div>
-          </DiffRow>,
-        ),
-      ),
-      'dot-rows',
-    );
-    looks(layer, {
-      position: 'absolute',
-      top: '0',
-      right: '0',
-      bottom: '0',
-      'pointer-events': 'none',
-      color: 'var(--muted-foreground)',
-      'background-repeat': 'no-repeat',
-      'mask-image': undefined,
-    });
-    assert.deepStrictEqual(
-      ['--dot-row', '--dot-top'].map((name) => compact(cascaded(layer, name))),
-      [
-        'var(--diff-line-height)',
-        'round(down, (var(--dot-row) - var(--space-dot)) / 2, var(--device-pixel, 1px))',
-      ],
-    );
-    assert.strictEqual(compact(cascaded(layer, '--space-dot')), spaceDotSize);
-    assert.strictEqual(
-      compact(cascaded(layer, '--space-dot-start')),
-      spaceDotStart,
-    );
-  });
-
-  test('keeps the run of spaces of a line too long to dot on one layer dotted in its own background, each dot as on the layer', () => {
-    const run = withClass(
-      rendered(
-        <div className="diff-view show-whitespace">
-          <span className="spaces"> </span>
-        </div>,
-      ),
-      'spaces',
-    );
-    looks(run, {
-      position: undefined,
-      ...squareDots,
-    });
-    assert.strictEqual(compact(cascaded(run, 'background-image')), spaceDots);
-    assert.strictEqual(compact(cascaded(run, '--space-dot')), spaceDotSize);
-    assert.strictEqual(
-      compact(cascaded(run, '--space-dot-start')),
-      spaceDotStart,
-    );
-    looks(run, { content: undefined }, { pseudoElement: '::before' });
-  });
-
-  test('marks the spaces hanging at the end of a wrapped row of the diff with dots, on that row, leaving them to the spaces drawn in the diff while whitespace is shown', () => {
-    const dotted = squareDots;
-    looks(
-      withClass(
-        shownRow(
-          diffView(
-            <DiffViewShown wordWrap showWhitespace={false} />,
-            <HangingSpacesLine />,
-          ),
-        ),
-        'wrap-spaces',
-      ),
-      {
-        position: 'absolute',
-        height: 'var(--diff-line-height)',
-        display: undefined,
-        ...dotted,
-      },
-    );
-    looks(
-      withClass(
-        shownRow(
-          diffView(
-            <DiffViewShown wordWrap showWhitespace />,
-            <HangingSpacesLine />,
-          ),
-        ),
-        'wrap-spaces',
-      ),
-      { display: 'none' },
-    );
-    for (const marks of [
-      withClass(
-        shownRow(
-          diffView(
-            <DiffViewShown wordWrap showWhitespace={false} />,
-            <HangingSpacesLine />,
-          ),
-        ),
-        'wrap-spaces',
-      ),
-    ]) {
-      assert.strictEqual(
-        compact(cascaded(marks, 'background-image')),
-        spaceDots,
-      );
-    }
   });
 
   test('marks the breaks of the rows of a line wrapped in the editor as the diff and the viewer mark them, the sign muted and centered in a column of the text, the spaces hanging at the end of a row dotted the same, none of it taking the pointer or a selection', () => {

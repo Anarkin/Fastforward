@@ -1,6 +1,6 @@
-import { onceAText } from './onceAText';
-import { wrapStarts } from './wordWrap';
-import type { TextWidths } from './textWidths';
+import { onceAText } from '../../../lib/page/onceAText';
+import { wrapStarts } from '../../../lib/page/wordWrap';
+import type { TextWidths } from '../../../lib/page/textWidths';
 
 const beyondAscii = /[^\0-\x7f]/;
 
