@@ -249,7 +249,7 @@ suite('Style', () => {
     }
   });
 
-  test('marks the occurrences of the text selected in the viewer and the diff as the editor marks its own, in the yellow of a find match see-through at the share the theme gives such marks, padded as a find match there, the text keeping its color', () => {
+  test('marks the occurrences of the text selected in the viewer and the diff as the editor marks its own, in the yellow of a find match at the share the theme gives such marks, the whole of it by default, and in its text color, padded as a find match there', () => {
     const padded = [
       '--mark-text-height',
       '--mark-leading',
@@ -290,7 +290,7 @@ suite('Style', () => {
           ...Object.fromEntries(
             padded.map((property) => [property, cascaded(match, property)]),
           ),
-          color: 'inherit',
+          color: 'var(--color-search-match-foreground)',
           background:
             'color-mix( in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent )',
         },

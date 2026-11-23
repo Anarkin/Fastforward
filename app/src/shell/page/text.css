@@ -172,7 +172,7 @@ kbd.match,
 }
 
 mark.occurrence-match {
-  color: inherit;
+  color: var(--color-search-match-foreground);
 }
 
 mark.match,

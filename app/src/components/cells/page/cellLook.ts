@@ -77,7 +77,7 @@ export function lookWithin(
     kinds: new Map(colored.map(([kind, element]) => [kind, colorOf(element)])),
     match: { ink: colorOf(match), ground: layerOf(match) },
     current: { ink: colorOf(current), ground: layerOf(current) },
-    occurrence: { ink: undefined, ground: layerOf(occurrence) },
+    occurrence: { ink: colorOf(occurrence), ground: layerOf(occurrence) },
     selected: layerOf(selected),
     outline: over(ground, parsedColor(colorOf(current))),
   };
