@@ -76,7 +76,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 50%;
+  left: calc(50% - (var(--line-right, 0px) + var(--scrollbar-across)) / 2);
   z-index: 5;
   width: var(--hairline);
   background: var(--color-border);

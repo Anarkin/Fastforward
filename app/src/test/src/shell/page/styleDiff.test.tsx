@@ -577,7 +577,7 @@ suite('Style', () => {
     );
   });
 
-  test('divides the two sides with one hairline from top to bottom, across headers and hunk gaps, letting the pointer through', () => {
+  test('divides the two sides with one hairline from top to bottom, across headers and hunk gaps, letting the pointer through, where the sides meet, half of what the rows leave beside the scrollbar, so the line numbers of both sides are as wide, as halving the whole view put it half a scrollbar into the numbers of the right', () => {
     const view = diffView(
       <DiffViewShown sideBySide />,
       <SplitLine left="" right="" />,
@@ -589,7 +589,7 @@ suite('Style', () => {
         position: 'absolute',
         top: '0',
         bottom: '0',
-        left: '50%',
+        left: 'calc(50% - (var(--line-right, 0px) + var(--scrollbar-across)) / 2)',
         width: 'var(--hairline)',
         background: 'var(--color-border)',
         'pointer-events': 'none',
