@@ -52,6 +52,30 @@ suite('App scrollbars alike', () => {
     await closeOrKill(app);
   });
 
+  const showPreview = async (name: string, tab: number, vertical: string) => {
+    await page.locator('.tabs .tab').nth(tab).click();
+    await waitFor(
+      () =>
+        page
+          .locator(vertical)
+          .evaluate((scroller) => scroller.scrollHeight > scroller.clientHeight)
+          .catch(() => false),
+      `the preview of ${name} to outgrow its column`,
+    );
+  };
+
+  const trackOf = async (selector: string) => {
+    const { box } = await barOf(page, selector, 'vertical');
+    const parts = await barParts(page, box, 'vertical');
+    assert.ok(parts.thumb, `${selector} shows no thumb`);
+    const below = parts.thumb.top + parts.thumb.height + 8;
+    await page.mouse.move(2, 2);
+    const [plain] = await paintedAt(app, page, [
+      { x: box.left + box.width / 2, y: below },
+    ]);
+    return plain;
+  };
+
   const show = async (name: ViewName) => {
     await page.locator('.tabs .tab').nth(views[name].tab).click();
     await untilRowsShown(page, views[name].rows, 6);
@@ -238,37 +262,12 @@ suite('App scrollbars alike', () => {
   });
 
   test('draws the track of the scrollbar of the previews of Markdown and of a PDF as the track of every other view, as the gray around the pages of a PDF showed through the track, which is see-through', async () => {
-    const trackOf = async (selector: string) => {
-      const { box } = await barOf(page, selector, 'vertical');
-      const parts = await barParts(page, box, 'vertical');
-      assert.ok(parts.thumb, `${selector} shows no thumb`);
-      await page.mouse.move(2, 2);
-      const [plain] = await paintedAt(app, page, [
-        {
-          x: box.left + box.width / 2,
-          y: parts.thumb.top + parts.thumb.height + 8,
-        },
-      ]);
-      return plain;
-    };
     await show('commander');
     const everywhere = await trackOf(views.commander.vertical);
-    const seen: Record<string, boolean> = {};
     for (const [name, { tab, vertical }] of Object.entries(previews)) {
-      await page.locator('.tabs .tab').nth(tab).click();
-      await waitFor(
-        () =>
-          page
-            .locator(vertical)
-            .evaluate(
-              (scroller) => scroller.scrollHeight > scroller.clientHeight,
-            )
-            .catch(() => false),
-        `the preview of ${name} to outgrow its column`,
-      );
-      seen[name] = near(await trackOf(vertical), everywhere);
+      await showPreview(name, tab, vertical);
+      assert.ok(near(await trackOf(vertical), everywhere), name);
     }
-    assert.deepStrictEqual(seen, { Markdown: true, PDF: true });
   });
 
   test('moves every view a row on a press of a button of its scrollbar, on and on while it is held, up again on the other, and to where its track is pressed, the thumb centered there, gliding or not as the settings say', async () => {
@@ -602,17 +601,7 @@ suite('App scrollbars alike', () => {
       keptInside(views[name].vertical, views[name].horizontal),
     );
     for (const [name, { tab, vertical }] of Object.entries(previews)) {
-      await page.locator('.tabs .tab').nth(tab).click();
-      await waitFor(
-        () =>
-          page
-            .locator(vertical)
-            .evaluate(
-              (scroller) => scroller.scrollHeight > scroller.clientHeight,
-            )
-            .catch(() => false),
-        `the preview of ${name} to outgrow its column`,
-      );
+      await showPreview(name, tab, vertical);
       seen[name] = await keptInside(vertical);
     }
     await searchCommits();
@@ -677,17 +666,7 @@ suite('App scrollbars alike', () => {
       seen[name] = await barsShown(page);
     }
     for (const [name, { tab, vertical }] of Object.entries(previews)) {
-      await page.locator('.tabs .tab').nth(tab).click();
-      await waitFor(
-        () =>
-          page
-            .locator(vertical)
-            .evaluate(
-              (scroller) => scroller.scrollHeight > scroller.clientHeight,
-            )
-            .catch(() => false),
-        `the preview of ${name} to outgrow its column`,
-      );
+      await showPreview(name, tab, vertical);
       seen[name] = await barsShown(page);
     }
     await show('commander');
