@@ -1,9 +1,3 @@
-.empty-state {
-  anchor-name: --notices;
-  padding: 24px;
-  color: var(--muted-foreground);
-}
-
 .crash {
   display: flex;
   flex-direction: column;

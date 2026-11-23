@@ -148,9 +148,11 @@ suite('App with several windows', () => {
     const pages = await windowsShown(2);
     const opened = pages.find((page) => page !== first);
     assert.ok(opened);
-    await opened
-      .locator('.empty-state', { hasText: strings.app.noTab })
-      .waitFor();
+    await opened.locator('.tabs').waitFor();
+    await waitFor(
+      async () => (await opened.locator('.tabs .tab').count()) === 0,
+      'a window with no tab',
+    );
     const bounds = await visibleBounds(launched());
     assert.strictEqual(
       new Set(bounds.map((each) => `${each.x},${each.y}`)).size,

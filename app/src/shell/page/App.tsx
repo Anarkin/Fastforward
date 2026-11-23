@@ -29,10 +29,6 @@ import { useWindowTitle, windowTitle } from './windowTitle';
 import { ToolViews } from './tools';
 import { confirmation, type Confirming } from './confirming';
 
-export function EmptyStateView({ noTab }: { readonly noTab: boolean }) {
-  return noTab ? <div className="empty-state">{strings.app.noTab}</div> : null;
-}
-
 function ShellConfirm({
   confirming,
   onConfirm,
@@ -142,11 +138,6 @@ function PathMenu() {
   );
 }
 
-function EmptyState() {
-  const noTab = useShell((state) => state.tabs?.length === 0);
-  return <EmptyStateView noTab={noTab} />;
-}
-
 function NoticeKey() {
   const newest = useShell((state) => state.notices.at(-1)?.id);
   const { dismissNotice } = useShellActions();
@@ -205,7 +196,6 @@ export function App({ name, post, listen, dropFiles }: Props) {
               <Popups />
               <Notices />
               <Tooltip />
-              <EmptyState />
               <ToolViews />
               <NoticeKey />
             </div>

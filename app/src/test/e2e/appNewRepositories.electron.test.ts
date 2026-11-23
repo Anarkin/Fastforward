@@ -28,7 +28,7 @@ suite('App making new repositories', () => {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await page.locator('.empty-state').waitFor();
+    await page.locator('.tabs').waitFor();
   });
 
   afterAll(async () => {

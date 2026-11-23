@@ -111,7 +111,6 @@ export const strings = {
     open: 'Open',
     crashed: (error: string) => `Something went wrong: ${error}`,
     reload: 'Reload',
-    noTab: `No tab is open. Use + to open one, or click the ${brand} icon at the top left for the menu.`,
     explorerMenuEntry: `Open in ${brand}`,
   },
   common: {

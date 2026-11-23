@@ -5,26 +5,18 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
 import type { ToHost, ToWebview } from '../../../../shell/shared/protocol';
-import { App, EmptyStateView } from '../../../../shell/page/App';
+import { App } from '../../../../shell/page/App';
 import { noop } from '../../../helpers/fixtures';
 import { tagsWith } from '../../../helpers/markup';
 import { withStillMediaQueries } from '../../../helpers/mediaQueries';
 
 suite('Window', () => {
-  test('says no tab is open only once the host says which tabs are', () => {
+  test('shows a window with no tab as its row of tabs alone, the + and the icon of the app telling how to open one, with no words below', () => {
     const html = renderToStaticMarkup(
       <App name="Fastforward" post={noop} listen={() => noop} />,
     );
     assert.strictEqual(tagsWith(html, 'tabs').length, 1);
-    assert.doesNotMatch(html, /No tab is open/);
-    assert.strictEqual(
-      renderToStaticMarkup(<EmptyStateView noTab={false} />),
-      '',
-    );
-    assert.strictEqual(
-      renderToStaticMarkup(<EmptyStateView noTab />),
-      '<div class="empty-state">No tab is open. Use + to open one, or click the Fastforward icon at the top left for the menu.</div>',
-    );
+    assert.strictEqual(tagsWith(html, 'empty-state').length, 0);
   });
 
   test("tops the window with the tab row, starting with the app's icon, which opens the app's menu, and shows no title bar", () => {

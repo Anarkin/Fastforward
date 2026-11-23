@@ -58,7 +58,7 @@ suite('Style', () => {
     looks(close, { height: '20px' });
   });
 
-  test('puts the notices in the bottom right corner, below the column titles or the text saying no repository is open, so they hide nothing being worked on in the middle', () => {
+  test('puts the notices in the bottom right corner, below the column titles, or of the whole window when it has no tab, so they hide nothing being worked on in the middle', () => {
     looks(withClass(rendered(<NoticesShown />), 'notices'), {
       position: 'fixed',
       top: 'anchor(--notices bottom, 0px)',
@@ -74,12 +74,9 @@ suite('Style', () => {
     assert.ok(
       cascaded(withClass(rendered(<NoticesShown />), 'notice'), 'max-width'),
     );
-    for (const anchor of [
-      columnTitle(<CommitColumn autoFetchMinutes={0} />),
-      rendered(<div className="empty-state" />),
-    ]) {
-      looks(anchor, { 'anchor-name': '--notices' });
-    }
+    looks(columnTitle(<CommitColumn autoFetchMinutes={0} />), {
+      'anchor-name': '--notices',
+    });
   });
 
   test('pads the notices for the shadow of a popup, which their scrolling would clip, keeping them 16px from the bottom of the window', () => {
