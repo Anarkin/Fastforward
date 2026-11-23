@@ -84,6 +84,7 @@ export interface CellViewShown {
   readonly columns: number;
   readonly ahead: readonly RowAhead[];
   readonly held: readonly ScreenRow[] | (() => readonly ScreenRow[]);
+  readonly partial?: boolean;
   readonly warming?: Warming | undefined;
   readonly events: CellViewEvents;
   readonly size?: CellSize | undefined;
@@ -151,6 +152,7 @@ export class CellView {
   private readonly idle: IdleWork;
   private readonly selecting: CellSelecting;
   private held: CellViewShown['held'] = noRows;
+  private partial = false;
   private events: CellViewEvents | undefined;
   private shown: ShownRows | undefined;
   private warmed: Warming | undefined;
@@ -206,6 +208,7 @@ export class CellView {
     this.selecting = new CellSelecting(host, canvas, {
       shown: () => this.shown,
       held: () => (typeof this.held === 'function' ? this.held() : this.held),
+      partial: () => this.partial,
       cell: () => this.tiles.metrics,
       area: this.place.area,
       pressedAs: this.looks.pressedAs,
@@ -303,6 +306,7 @@ export class CellView {
     columns,
     ahead,
     held,
+    partial = false,
     warming,
     events,
     size,
@@ -312,6 +316,7 @@ export class CellView {
     this.columns = columns;
     this.size = size;
     this.held = held;
+    this.partial = partial;
     this.events = events;
     this.selecting.rowsChanged();
     this.paint();

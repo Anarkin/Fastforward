@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import {
   breakSelected,
   isEmpty,
+  keptText,
   lineAt,
   ordered,
   selectedIn,
@@ -116,6 +117,67 @@ suite('Text selected in a file viewed', () => {
     assert.strictEqual(
       selectedText({ anchor: from(6, 6), focus: from(13, 0) }, rows),
       '\n',
+    );
+  });
+
+  test('reads the text of a selection from the rows held while they hold all of it, and works it out from the text it had before once they hold only where it ended and where it ends now, added to it as it grows and cut from it as it shrinks, whichever way it was dragged, as a view that holds a part of its text can read no more of it', () => {
+    const forward = { anchor: from(0, 3), focus: from(6, 2) };
+    const backward = { anchor: from(17, 2), focus: from(13, 1) };
+
+    assert.strictEqual(keptText(undefined, forward, rows), 'st\nse');
+    assert.strictEqual(
+      keptText(
+        { selection: forward, text: 'st\nse' },
+        { anchor: from(0, 3), focus: from(17, 1) },
+        rows.slice(1),
+      ),
+      'st\nsecond\nthir',
+    );
+    assert.strictEqual(
+      keptText(
+        { selection: forward, text: 'st\nse' },
+        { anchor: from(0, 3), focus: from(6, 1) },
+        rows.slice(1),
+      ),
+      'st\ns',
+    );
+    assert.strictEqual(
+      keptText(
+        { selection: backward, text: 'hird' },
+        { anchor: from(17, 2), focus: from(6, 3) },
+        rows.slice(0, 3),
+      ),
+      'ond\nthird',
+    );
+    assert.strictEqual(
+      keptText(
+        { selection: backward, text: 'hird' },
+        { anchor: from(17, 2), focus: from(13, 2) },
+        rows.slice(0, 3),
+      ),
+      'ird',
+    );
+  });
+
+  test('keeps the text a selection had while it is the same and none of it is held, and knows none for one that began elsewhere or moved over rows held no longer', () => {
+    const kept = {
+      selection: { anchor: from(0, 3), focus: from(6, 2) },
+      text: 'st\nse',
+    };
+
+    assert.strictEqual(keptText(kept, kept.selection, []), 'st\nse');
+    assert.strictEqual(keptText(kept, kept.selection, rows.slice(2)), 'st\nse');
+    assert.strictEqual(
+      keptText(undefined, kept.selection, rows.slice(1)),
+      undefined,
+    );
+    assert.strictEqual(
+      keptText(kept, { anchor: from(0, 2), focus: from(13, 1) }, rows.slice(1)),
+      undefined,
+    );
+    assert.strictEqual(
+      keptText(kept, { anchor: from(0, 3), focus: from(17, 1) }, rows.slice(2)),
+      undefined,
     );
   });
 });

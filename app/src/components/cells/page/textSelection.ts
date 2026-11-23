@@ -128,3 +128,57 @@ export function selectedText(
   }
   return text;
 }
+
+export interface KeptText {
+  readonly selection: TextSelection;
+  readonly text: string;
+}
+
+const same = (one: TextPlace, other: TextPlace) =>
+  one.start === other.start && one.char === other.char;
+
+function holds(
+  rows: readonly TextLine[],
+  from: TextPlace,
+  to: TextPlace,
+): boolean {
+  const first = rows[0]?.start;
+  const last = rows.at(-1)?.start;
+  return (
+    first !== undefined &&
+    last !== undefined &&
+    from.start >= first &&
+    to.start <= last
+  );
+}
+
+export function keptText(
+  kept: KeptText | undefined,
+  selection: TextSelection,
+  rows: readonly TextLine[],
+): string | undefined {
+  const { first, last } = ordered(selection);
+  if (holds(rows, first, last)) {
+    return selectedText(selection, rows);
+  }
+  const { anchor, focus } = selection;
+  if (kept === undefined || !same(kept.selection.anchor, anchor)) {
+    return undefined;
+  }
+  const was = kept.selection.focus;
+  if (same(was, focus)) {
+    return kept.text;
+  }
+  const onward = before(was, focus);
+  const [from, to] = onward ? [was, focus] : [focus, was];
+  if (!holds(rows, from, to)) {
+    return undefined;
+  }
+  const between = selectedText({ anchor: from, focus: to }, rows);
+  if (before(from, anchor)) {
+    return onward ? kept.text.slice(between.length) : between + kept.text;
+  }
+  return onward
+    ? kept.text + between
+    : kept.text.slice(0, kept.text.length - between.length);
+}

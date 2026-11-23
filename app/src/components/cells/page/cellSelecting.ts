@@ -10,8 +10,9 @@ import {
 } from './cellPointing';
 import {
   isEmpty,
+  keptText,
   ordered,
-  selectedText,
+  type KeptText,
   type TextSelection,
 } from './textSelection';
 
@@ -22,6 +23,7 @@ const reachMs = 50;
 export interface Selecting {
   readonly shown: () => ShownRows | undefined;
   readonly held: () => readonly ScreenRow[];
+  readonly partial: () => boolean;
   readonly cell: () => { readonly advance: number; readonly rowHeight: number };
   readonly area: () => DOMRect | undefined;
   readonly pressedAs: (press: MouseEvent) => 'start' | 'extend' | undefined;
@@ -38,6 +40,7 @@ export class CellSelecting {
   private reaching: ReturnType<typeof setInterval> | undefined;
   private resting: ReturnType<typeof setTimeout> | undefined;
   private told: string | undefined;
+  private kept: KeptText | undefined;
 
   constructor(
     private readonly host: HTMLElement,
@@ -65,8 +68,26 @@ export class CellSelecting {
     );
   }
 
+  private textOf(selection: TextSelection): string | undefined {
+    return keptText(this.kept, selection, heldRows(this.on.held()));
+  }
+
+  private taken(selection: TextSelection): TextSelection {
+    const text = this.textOf(selection);
+    const taken =
+      text === undefined
+        ? { anchor: selection.focus, focus: selection.focus }
+        : selection;
+    this.kept = { selection: taken, text: text ?? '' };
+    return taken;
+  }
+
   private select(selection: TextSelection | undefined): void {
-    this.selection = selection;
+    this.selection =
+      selection === undefined ? undefined : this.taken(selection);
+    if (selection === undefined) {
+      this.kept = undefined;
+    }
     this.on.changed();
     this.tell();
   }
@@ -75,7 +96,7 @@ export class CellSelecting {
     const { selection } = this;
     return selection === undefined || isEmpty(selection)
       ? undefined
-      : selectedText(selection, heldRows(this.on.held()));
+      : this.textOf(selection);
   }
 
   private tell(): void {
@@ -84,7 +105,9 @@ export class CellSelecting {
     const oneRow =
       selection !== undefined &&
       ordered(selection).first.start === ordered(selection).last.start;
-    const copy = oneRow ? soughtCopy((this.copied() ?? '').trim()) : undefined;
+    const copy = oneRow
+      ? soughtCopy((this.kept?.text ?? '').trim())
+      : undefined;
     if (copy === this.told) {
       return;
     }
@@ -173,15 +196,23 @@ export class CellSelecting {
   }
 
   rowsChanged(): void {
-    if (this.selection === undefined) {
+    const { selection } = this;
+    if (selection === undefined) {
       return;
     }
-    if (!stillHeld(this.selection, this.on.held())) {
+    const held = this.on.held();
+    if (
+      held.length === 0 ||
+      (!this.on.partial() && !stillHeld(selection, held))
+    ) {
       this.select(undefined);
     } else if (this.dragging) {
       const under = this.under();
       if (under !== undefined) {
-        this.selection = { anchor: this.selection.anchor, focus: under.place };
+        this.selection = this.taken({
+          anchor: selection.anchor,
+          focus: under.place,
+        });
       }
     }
   }

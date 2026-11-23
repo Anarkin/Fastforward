@@ -148,6 +148,7 @@ export function CellRows({
       columns,
       ahead,
       held,
+      partial: true,
       warming,
       events: { chosen: onSelected, move },
     });

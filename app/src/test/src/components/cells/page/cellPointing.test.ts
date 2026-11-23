@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import type { ScreenRow } from '../../../../../components/cells/page/lines';
 import { suite, test } from 'vitest';
 import type { ShownRows } from '../../../../../components/cells/page/cellPainting';
 import {
@@ -9,38 +8,7 @@ import {
   reach,
   stillHeld,
 } from '../../../../../components/cells/page/cellPointing';
-import { widths } from './cellFixtures';
-
-function rowOf(text: string, start: number, more: Partial<ScreenRow> = {}) {
-  const row: ScreenRow = {
-    start,
-    end: start + text.length + 1,
-    row: { start, end: start + text.length + 1, text },
-    index: 0,
-    from: 0,
-    to: text.length,
-    indent: 0,
-    breakAt: undefined,
-    hanging: [],
-    ...more,
-  };
-  return row;
-}
-
-const shown = (
-  rows: readonly ScreenRow[],
-  more: Partial<ShownRows> = {},
-): ShownRows => ({
-  rows,
-  parts: rows.map(() => undefined),
-  wrapAt: undefined,
-  segmentsOf: undefined,
-  marksOf: () => [],
-  showWhitespace: false,
-  widths,
-  first: 0,
-  ...more,
-});
+import { rowOf, shown } from './cellFixtures';
 
 const advance = 7;
 

@@ -1,4 +1,6 @@
 import type { TextWidths } from '../../../../../lib/page/textWidths';
+import type { ShownRows } from '../../../../../components/cells/page/cellPainting';
+import type { ScreenRow } from '../../../../../components/cells/page/lines';
 import {
   rectBytes,
   tileBytes,
@@ -79,6 +81,40 @@ export const widths: TextWidths = {
   boxed: (cluster) => (wide.test(cluster) ? 2 : undefined),
   scaled: () => undefined,
 };
+
+export function rowOf(
+  text: string,
+  start: number,
+  more: Partial<ScreenRow> = {},
+): ScreenRow {
+  return {
+    start,
+    end: start + text.length + 1,
+    row: { start, end: start + text.length + 1, text },
+    index: 0,
+    from: 0,
+    to: text.length,
+    indent: 0,
+    breakAt: undefined,
+    hanging: [],
+    ...more,
+  };
+}
+
+export const shown = (
+  rows: readonly ScreenRow[],
+  more: Partial<ShownRows> = {},
+): ShownRows => ({
+  rows,
+  parts: rows.map(() => undefined),
+  wrapAt: undefined,
+  segmentsOf: undefined,
+  marksOf: () => [],
+  showWhitespace: false,
+  widths,
+  first: 0,
+  ...more,
+});
 
 export const look: TextLook = {
   ground: [17, 17, 17, 1],

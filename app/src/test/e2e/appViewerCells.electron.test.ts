@@ -37,6 +37,11 @@ const lines = [
   ),
 ];
 
+const longLines = Array.from(
+  { length: 1000 },
+  (_, line) => `const total = compute(total, value${line}); // line ${line}`,
+);
+
 const edgeLevels = 16;
 
 const mostUnlike = 0.01;
@@ -245,12 +250,15 @@ suite('App viewer drawn as cells', () => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(file, lines.join('\n'));
+    const long = path.join(folder, 'opened', 'long.ts');
+    fs.writeFileSync(long, longLines.join('\n'));
     fs.writeFileSync(
       path.join(profile, 'state.json'),
       JSON.stringify({
         tabs: [
           { id: '1', tool: 'viewer', root: file },
           { id: '2', tool: 'editor', root: file },
+          { id: '3', tool: 'viewer', root: long },
         ],
         activeTab: '1',
       }),
@@ -336,6 +344,46 @@ suite('App viewer drawn as cells', () => {
         selected: ['count'],
         marked: ['count', 'count', 'count'],
       },
+    );
+  });
+
+  test('keeps the word selected and its copies marked while the file is scrolled to its end and back, and copies it from there, as the viewer holds only the rows around its screen and dropped the selection and the marks once the line selected was none of them', async () => {
+    const shows = async (line: string | undefined) =>
+      (await seenRows(page)).some(({ text }) => text === line);
+    await drawn(false, true);
+    await page.locator('.tabs .tab').nth(2).click();
+    await waitFor(() => shows(longLines[0]), 'the long file drawn');
+    const word = await cellPoint(page, 2, 8);
+
+    await page.mouse.dblclick(word.x, word.y);
+    await waitFor(
+      async () => (await seenMarked(page, 'occurrence')).length > 0,
+      'the occurrences marked in the cells',
+    );
+    await waitForFocus(page.locator('.viewer-body').first(), 'the viewer');
+    await page.keyboard.press('End');
+    await waitFor(() => shows(longLines.at(-1)), 'the end of the file shown');
+    await untilSettled(
+      async () => (await seenMarked(page, 'occurrence')).length,
+      'the marks at the end of the file',
+    );
+    const far = {
+      selected: await seenSelected(page),
+      marked: [...new Set(await seenMarked(page, 'occurrence'))],
+    };
+    await keepCopied(page);
+    await page.keyboard.press('ControlOrMeta+C');
+    await waitFor(
+      async () => (await copied(page)) !== undefined,
+      'the selection copied',
+    );
+    const text = await copied(page);
+    await page.keyboard.press('Home');
+    await waitFor(() => shows(longLines[0]), 'the start of the file shown');
+
+    assert.deepStrictEqual(
+      { ...far, copied: text, back: await seenSelected(page) },
+      { selected: [], marked: ['total'], copied: 'total', back: ['total'] },
     );
   });
 
