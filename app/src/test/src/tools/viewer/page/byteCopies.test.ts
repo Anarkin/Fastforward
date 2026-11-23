@@ -3,7 +3,13 @@ import { suite, test } from 'vitest';
 import {
   bytesFound,
   hexBytes,
+  selectedBytes,
 } from '../../../../../tools/viewer/page/byteCopies';
+
+const selected = (from: number, to: number, width = 4) => ({
+  anchor: { start: from - (from % width), char: from % width },
+  focus: { start: to - (to % width), char: to % width },
+});
 
 suite('Copies of the bytes selected in Hex', () => {
   test('reads the bytes a selection seeks from their hex digits, and none from digits that are not whole pairs', () => {
@@ -24,5 +30,30 @@ suite('Copies of the bytes selected in Hex', () => {
     ]);
     assert.deepStrictEqual(bytesFound(0, data, [0x00]), [{ start: 3, end: 4 }]);
     assert.deepStrictEqual(bytesFound(0, data, []), []);
+  });
+
+  test('takes the bytes a selection of the bytes of a file covers from the bytes read, rows of any width, so their copies are sought by value rather than by the dots drawn for them, and none past what is read or of more than 200 bytes', () => {
+    const loaded = { start: 0x100, data: [0x00, 0xf0, 0x9f, 0x41, 0x00, 0xf0] };
+
+    assert.deepStrictEqual(
+      selectedBytes(selected(0x101, 0x103), loaded),
+      [0xf0, 0x9f],
+    );
+    assert.deepStrictEqual(
+      selectedBytes(selected(0x103, 0x101), loaded),
+      [0xf0, 0x9f],
+    );
+    assert.deepStrictEqual(
+      [
+        selectedBytes(selected(0x101, 0x101), loaded),
+        selectedBytes(selected(0xfe, 0x101), loaded),
+        selectedBytes(selected(0x105, 0x107), loaded),
+        selectedBytes(selected(0x100, 0x100 + 201), {
+          start: 0x100,
+          data: Array.from({ length: 300 }, () => 0),
+        }),
+      ],
+      [[], [], [], []],
+    );
   });
 });

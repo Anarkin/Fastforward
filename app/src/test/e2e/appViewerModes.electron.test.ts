@@ -155,6 +155,37 @@ suite('App commander', () => {
     );
   });
 
+  test('marks the copies of the bytes selected among the bytes of a file by their value, as Hex marks them, rather than every byte drawn as the same dot', async () => {
+    fs.writeFileSync(
+      path.join(opened, 'cycle.bin'),
+      Buffer.from(Array.from({ length: 4096 }, (_, index) => index % 256)),
+    );
+    await select('cycle');
+    await page.keyboard.press('F3');
+    await waitFor(
+      async () => (await firstViewerRow()).startsWith('...'),
+      'the bytes of a binary file',
+    );
+    const first = await cellPoint(page, 0, 0);
+    await page.mouse.dblclick(first.x, first.y);
+    const marked = await untilSettled(
+      async () =>
+        (await seenRows(page)).flatMap(({ key, marks }) =>
+          marks
+            .filter(({ name }) => name === 'occurrence')
+            .map(({ from }) => Number(key.slice(0, key.indexOf(':'))) + from),
+        ),
+      'the copies of the byte selected marked',
+      { accepted: (offsets) => offsets.length > 1 },
+    );
+    await page.keyboard.press('Escape');
+    assert.deepStrictEqual(
+      marked.filter((offset) => offset % 256 !== 0),
+      [],
+      `marked at ${marked.join(', ')}`,
+    );
+  });
+
   test('shows a binary file in hex, 16 bytes a row, to its last row with End, and switches to text and back with 2 and 1 or the buttons', async () => {
     fs.writeFileSync(
       path.join(opened, 'data.bin'),

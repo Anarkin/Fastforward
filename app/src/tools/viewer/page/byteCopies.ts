@@ -1,5 +1,11 @@
 import { maxMatches } from '../../../lib/shared/textMatches';
 import type { ByteRange } from '../shared/protocol';
+import {
+  ordered,
+  type TextSelection,
+} from '../../../components/cells/page/cellView';
+
+const mostSelected = 200;
 
 const pair = /^(?:[0-9a-f]{2})+$/i;
 
@@ -38,4 +44,16 @@ export function bytesFound(
     }
   }
   return found;
+}
+
+export function selectedBytes(
+  selection: TextSelection,
+  { start, data }: { readonly start: number; readonly data: readonly number[] },
+): number[] {
+  const { first, last } = ordered(selection);
+  const from = first.start + first.char - start;
+  const to = last.start + last.char - start;
+  return from < 0 || to > data.length || to - from > mostSelected
+    ? []
+    : data.slice(from, to);
 }

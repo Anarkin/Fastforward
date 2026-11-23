@@ -1,8 +1,5 @@
 import { useKeptSelection } from './tabSelection';
-import {
-  occurrencesOf,
-  type FindMark,
-} from '../../../components/cells/page/marks';
+import type { FindMark } from '../../../components/cells/page/marks';
 import type { ScreenRow, TextLine } from '../../../components/cells/page/lines';
 import {
   useCallback,
@@ -38,7 +35,7 @@ import {
   type LoadedBytes,
 } from './hex';
 import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
-import { bytesFound, hexBytes } from './byteCopies';
+import { bytesFound, hexBytes, selectedBytes } from './byteCopies';
 import type { ByteRange } from '../shared/protocol';
 import type { Viewing } from './viewing';
 import { useViewer, useViewerActions } from './store';
@@ -206,14 +203,21 @@ export function ByteBody({
     `${layout} ${rowBytes}`,
     version,
   );
-  const copiesIn = useMemo(() => occurrencesOf(copy), [copy]);
-  const copiedBytes = useMemo(
-    () =>
-      layout === 'hex' && copy !== undefined && bytes !== undefined
-        ? bytesFound(bytes.start, bytes.data, hexBytes(copy))
-        : noRanges,
-    [layout, copy, bytes],
-  );
+  const selection = kept?.selection;
+  const copiedBytes = useMemo(() => {
+    if (bytes === undefined || !highlightOccurrences || finding) {
+      return noRanges;
+    }
+    const sought =
+      layout === 'hex'
+        ? copy === undefined
+          ? []
+          : hexBytes(copy)
+        : selection === undefined
+          ? []
+          : selectedBytes(selection, bytes);
+    return bytesFound(bytes.start, bytes.data, sought);
+  }, [layout, copy, selection, bytes, highlightOccurrences, finding]);
   const marksOf = (offset: number, length: number) =>
     find === undefined
       ? []
@@ -270,8 +274,13 @@ export function ByteBody({
           : hexLineMarks(found, line.bytesAt, line.textAt),
       );
     }
-    if (copied.length > 0 && line !== undefined) {
-      copies.set(offset, hexLineMarks(copied, line.bytesAt, line.textAt));
+    if (copied.length > 0) {
+      copies.set(
+        offset,
+        line === undefined
+          ? copied
+          : hexLineMarks(copied, line.bytesAt, line.textAt),
+      );
     }
     const end = offset + rowBytes;
     return {
@@ -341,9 +350,7 @@ export function ByteBody({
           marksOf={(row) =>
             finding
               ? (marks.get(row.start) ?? noMarks)
-              : layout === 'hex'
-                ? (copies.get(row.start) ?? noMarks)
-                : copiesIn(row.row.text)
+              : (copies.get(row.start) ?? noMarks)
           }
           shape={layout === 'hex' ? hexShape : undefined}
           showWhitespace={false}
