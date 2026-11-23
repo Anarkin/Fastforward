@@ -128,6 +128,7 @@ export function DiffView({
     language: chosenLanguage,
     wholePaths,
     note,
+    readAs,
   } = look;
   const list = useRef<HTMLDivElement>(null);
   const [copy, setCopy] = useState<string>();
@@ -324,15 +325,16 @@ export function DiffView({
             : wholePaths.old
       }
       open={row.open}
-      notes={
-        whole
+      notes={[
+        ...(whole
           ? wholeNotes(whole)
           : files[row.file] === undefined
             ? note === undefined
               ? []
               : [note]
-            : fileNotes(files[row.file])
-      }
+            : fileNotes(files[row.file])),
+        ...(readAs === undefined ? [] : [readAs]),
+      ]}
       collapsible={row.collapsible}
       onView={viewOf?.(row.file)}
       viewKeys={viewKeys}

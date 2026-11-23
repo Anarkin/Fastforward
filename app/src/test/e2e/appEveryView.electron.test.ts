@@ -7,6 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { cellsOf } from './cellsSeen';
+import { diffTexts } from './diffSeen';
 import { untilSettled } from './waits';
 
 const escape = String.fromCharCode(0x1b);
@@ -22,6 +23,24 @@ const escapeAt = lines[0].length + 1 + lines[1].indexOf(escape);
 const hexCharacters = 62;
 
 const fainter = 0.75;
+
+const encodedLines = ['naïve café', 'second line'];
+
+const encodedChange = 'third ü';
+
+const encoded = {
+  wide: {
+    bytes: (text: string) =>
+      Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]),
+    tabs: 7,
+    label: 'UTF-16 LE',
+  },
+  latin: {
+    bytes: (text: string) => Buffer.from(text, 'latin1'),
+    tabs: 10,
+    label: '1252',
+  },
+} as const;
 
 interface View {
   readonly tab: number;
@@ -91,6 +110,26 @@ suite('App, every view alike', () => {
     fs.writeFileSync(changed, `${lines.join('\n')}\nomega\n`);
     fs.writeFileSync(markdown, ['```', ...lines, '```', ''].join('\n'));
     fs.writeFileSync(binary, `${lines.join('\n')}\u0000`);
+    const encodedTabs = Object.entries(encoded).flatMap(
+      ([name, { bytes, tabs }]) => {
+        const file = path.join(opened, `${name}.txt`);
+        const changedFile = path.join(opened, `${name}-changed.txt`);
+        fs.writeFileSync(file, bytes(`${encodedLines.join('\n')}\n`));
+        fs.writeFileSync(
+          changedFile,
+          bytes(`${[...encodedLines, encodedChange].join('\n')}\n`),
+        );
+        return [
+          { id: `${tabs + 1}`, tool: 'viewer', root: file },
+          { id: `${tabs + 2}`, tool: 'editor', root: file },
+          {
+            id: `${tabs + 3}`,
+            tool: 'diff',
+            compare: { old: file, new: changedFile },
+          },
+        ];
+      },
+    );
     fs.writeFileSync(
       path.join(profile, 'state.json'),
       JSON.stringify({
@@ -102,6 +141,7 @@ suite('App, every view alike', () => {
           { id: '5', tool: 'viewer', root: markdown },
           { id: '6', tool: 'viewer', root: text },
           { id: '7', tool: 'viewer', root: binary },
+          ...encodedTabs,
         ],
         activeTab: '2',
       }),
@@ -182,10 +222,8 @@ suite('App, every view alike', () => {
     const row = (await drawn.rows())[view.escape.row];
     assert.ok(row);
     const png = await page.screenshot();
-    const taken = await app.evaluate(({ nativeImage }, encoded) => {
-      const image = nativeImage.createFromBuffer(
-        Buffer.from(encoded, 'base64'),
-      );
+    const taken = await app.evaluate(({ nativeImage }, shot) => {
+      const image = nativeImage.createFromBuffer(Buffer.from(shot, 'base64'));
       return {
         width: image.getSize().width,
         pixels: image.toBitmap().toString('base64'),
@@ -237,6 +275,70 @@ suite('App, every view alike', () => {
     assert.deepStrictEqual(
       seen,
       Object.fromEntries(Object.keys(views).map((name) => [name, 'muted'])),
+    );
+  });
+
+  const firstRow = async (cells: string) => {
+    const drawn = cellsOf(page, cells);
+    await waitFor(
+      async () => ((await drawn.rows())[0]?.text ?? '') !== '',
+      `the rows of ${cells}`,
+    );
+    return (await drawn.rows())[0]?.text;
+  };
+
+  const readIn = async (tabs: number) => {
+    const tab = (at: number) =>
+      page
+        .locator('.tabs [role="tab"]')
+        .nth(tabs + at)
+        .click();
+    await tab(0);
+    const viewer = {
+      row: await firstRow('.viewer-rows .cell-rows'),
+      encoding: await page
+        .locator('.viewer .viewer-encoding .menu-button-label')
+        .textContent(),
+    };
+    await tab(1);
+    const editor = {
+      row: await firstRow('.editor .editor-cells'),
+      encoding: await page
+        .locator('.editor .viewer-encoding .menu-button-trigger')
+        .first()
+        .textContent(),
+    };
+    await tab(2);
+    await waitFor(
+      async () => (await diffTexts(page, 'added', '.compare-view')).length > 0,
+      'the lines added in the diff',
+    );
+    const diff = {
+      added: await diffTexts(page, 'added', '.compare-view'),
+      notes: await page
+        .locator('.compare-view .file-header-note')
+        .allTextContents(),
+    };
+    return { viewer, editor, diff };
+  };
+
+  test('reads a file of UTF-16 and a file of the code page of the system alike in every tool, the viewer and the editor naming the encoding they read it in, and the diff comparing its text and naming the encoding on its header, rather than taking a file of UTF-16 for binary and the bytes of a code page for UTF-8', async () => {
+    const seen: Record<string, unknown> = {};
+    for (const [name, { tabs }] of Object.entries(encoded)) {
+      seen[name] = await readIn(tabs);
+    }
+    assert.deepStrictEqual(
+      seen,
+      Object.fromEntries(
+        Object.entries(encoded).map(([name, { label }]) => [
+          name,
+          {
+            viewer: { row: encodedLines[0], encoding: label },
+            editor: { row: encodedLines[0], encoding: `${label} (read)` },
+            diff: { added: [encodedChange], notes: [`Read as ${label}`] },
+          },
+        ]),
+      ),
     );
   });
 

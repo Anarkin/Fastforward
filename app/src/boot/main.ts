@@ -329,7 +329,7 @@ async function start(asked: readonly string[]): Promise<void> {
     gitTool,
     editRefusal: (file) => editorTool.refusal(file),
   });
-  const diffTool = diffToolOf({ log, userSettings, git, gitTool });
+  const diffTool = diffToolOf({ log, userSettings, git, gitTool, viewedFiles });
   const viewerTool = viewerToolOf({
     pdfPlaces,
     commanderTool,

@@ -169,6 +169,7 @@ export function newView(
     userSettings: settings,
     git: locator,
     gitTool: view,
+    viewedFiles: host.viewedFiles,
   });
   diffTools.set(view, diff);
   shells.set(

@@ -28,6 +28,18 @@ const noLargeFiles: ReadonlyMap<string, DiffFile> = new Map();
 const noTexts: ReadonlyMap<string, LoadedText> = new Map();
 const ignored = () => undefined;
 
+function readAsOf(compare: Compared | undefined): string | undefined {
+  const encodings = compare?.encodings;
+  if (encodings === undefined) {
+    return undefined;
+  }
+  const { short } = strings.encodings;
+  return strings.diff.readAs(
+    short[encodings.old ?? 'utf-8'],
+    short[encodings.new ?? 'utf-8'],
+  );
+}
+
 function noteOf(compare: Compared | undefined): string | undefined {
   if (compare?.same === 'identical') {
     return strings.diff.identical;
@@ -106,6 +118,7 @@ export function CompareView({ tab }: { tab: string }) {
           selection={tab}
           path={compare?.name}
           note={noteOf(compare)}
+          readAs={readAsOf(compare)}
           heading={<CompareVersions />}
           loading={compare === undefined}
           files={noFiles}

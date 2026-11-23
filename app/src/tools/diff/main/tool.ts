@@ -15,6 +15,8 @@ import {
 import type { DiffToHost } from '../shared/protocol';
 import { comparedNames, type GitRun } from './compare';
 import type { CopyOf } from './readableSides';
+import { decodedSides } from './decodedSides';
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { withChosen } from './versionChoice';
 import type { ComparedSide } from '../shared/protocol';
 import type { FileHistoryListed } from '../../../components/versions/shared/versions';
@@ -34,6 +36,8 @@ export interface DiffAccess {
   readonly fileHistory: (
     file: string,
   ) => Promise<FileHistoryListed | undefined>;
+  readonly decodedCopies: string;
+  readonly codePage: () => Promise<TextEncoding>;
 }
 
 const versionLabel = (version: FileVersion | undefined): string => {
@@ -77,6 +81,7 @@ export class DiffTool implements Tool<'diff'> {
       () => this.shell,
       (file, rev) => access.versionCopy(file, rev),
       (file) => access.fileHistory(file),
+      (read) => decodedSides(read, access.decodedCopies, access.codePage),
     );
     this.images = new ComparedImages(
       access.log,

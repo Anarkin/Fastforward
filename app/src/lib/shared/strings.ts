@@ -625,6 +625,8 @@ export const strings = {
     diagramFailed: 'This diagram could not be drawn.',
     onlyWhitespace: 'Only whitespace changed',
     identical: 'Identical',
+    readAs: (old: string, changed: string) =>
+      old === changed ? `Read as ${old}` : `Read as ${old} → ${changed}`,
     noNewlineAtEnd: 'No newline at end of file',
     renamedWithoutChanges: 'Renamed without changes',
     copiedWithoutChanges: 'Copied without changes',

@@ -21,6 +21,7 @@ import { post } from './post';
 import { readableSides, VersionMissing, type CopyOf } from './readableSides';
 import type { SideListed } from './versionChoice';
 import type { ComparedSide } from '../shared/protocol';
+import type { DecodedSides } from './decodedSides';
 import type { FileHistoryListed } from '../../../components/versions/shared/versions';
 import * as fs from 'node:fs';
 
@@ -51,10 +52,15 @@ export class Comparisons {
     private readonly historyOf: (
       file: string,
     ) => Promise<FileHistoryListed | undefined>,
+    private readonly decoded: (read: Compared) => Promise<DecodedSides>,
   ) {}
 
   readable(compared: Compared): Promise<Compared> {
     return readableSides(compared, this.copyOf);
+  }
+
+  private async decodedOf(compared: Compared): Promise<DecodedSides> {
+    return this.decoded(await this.readable(compared));
   }
 
   of(tab: string): Comparing | undefined {
@@ -159,8 +165,8 @@ export class Comparisons {
       if (known !== undefined) {
         return known;
       }
-      const reading = this.readable(comparing.compared).then(
-        (read) => comparedText(read, side),
+      const reading = this.decodedOf(comparing.compared).then(
+        ({ read }) => comparedText(read, side),
         () => undefined,
       );
       sides.set(side, reading);
@@ -192,9 +198,12 @@ export class Comparisons {
     comparing.running = running;
     let patch = '';
     let same: 'identical' | 'whitespace' | undefined;
+    let encodings: DecodedSides['encodings'] = {};
     let error: Sentence | undefined;
     try {
-      const read = await this.readable(compared);
+      const decoded = await this.decodedOf(compared);
+      const { read } = decoded;
+      encodings = decoded.encodings;
       patch = await comparedFilesPatch(
         this.run,
         compared,
@@ -240,6 +249,7 @@ export class Comparisons {
         entire,
         version,
         ...(same !== undefined && { same }),
+        ...(Object.keys(encodings).length > 0 && { encodings }),
         ...(error !== undefined && { error }),
       },
     });

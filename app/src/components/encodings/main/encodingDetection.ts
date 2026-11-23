@@ -1,5 +1,5 @@
 import type { TextEncoding } from '../shared/textEncodings';
-import { continuation, high } from './textCodings';
+import { codingOf, continuation, high } from './textCodings';
 import { readingFile } from '../../../lib/main/fileBlocks';
 
 const binaryCheckBytes = 8000;
@@ -85,21 +85,59 @@ function lengthOfLead(byte: number): number {
   return byte >= 0xc0 ? 2 : 1;
 }
 
-export function isUtf8(bytes: Buffer): boolean {
-  let end = bytes.length;
+function endOfWholeCharacters(bytes: Buffer): number {
   for (let back = 1; back <= Math.min(3, bytes.length); back++) {
     const byte = bytes[bytes.length - back] ?? 0;
     if (!continuation(byte)) {
-      if (lengthOfLead(byte) > back) {
-        end = bytes.length - back;
-      }
-      break;
+      return lengthOfLead(byte) > back ? bytes.length - back : bytes.length;
     }
   }
+  return bytes.length;
+}
+
+export function isUtf8(bytes: Buffer, whole = false): boolean {
+  const end = whole ? bytes.length : endOfWholeCharacters(bytes);
   try {
     fatalUtf8.decode(bytes.subarray(0, end));
     return true;
   } catch {
     return false;
   }
+}
+
+export function encodingOf(
+  bytes: Buffer,
+  codePage: TextEncoding,
+): TextEncoding | undefined {
+  const marked = byteOrderMarkOf(bytes) ?? utf16Order(bytes);
+  if (marked !== undefined) {
+    return marked;
+  }
+  if (looksBinary(bytes)) {
+    return undefined;
+  }
+  return isUtf8(bytes, true) ? 'utf-8' : codePage;
+}
+
+export interface DecodedText {
+  readonly text: string;
+  readonly encoding: TextEncoding;
+  readonly bom: boolean;
+}
+
+export function decodedText(
+  bytes: Buffer,
+  codePage: TextEncoding,
+): DecodedText | undefined {
+  const encoding = encodingOf(bytes, codePage);
+  if (encoding === undefined) {
+    return undefined;
+  }
+  const mark = byteOrderMarks.find(([marked]) => marked === encoding)?.[1];
+  const bom = mark !== undefined && byteOrderMarkOf(bytes) === encoding;
+  return {
+    text: codingOf(encoding).decode(bytes.subarray(bom ? mark.length : 0)),
+    encoding,
+    bom,
+  };
 }

@@ -2,7 +2,9 @@ import type { Log } from '../shell/main/log';
 import type { UserSettings } from '../shell/main/userSettings';
 import { needsGit, type GitLocator } from '../tools/git/main/gitLocator';
 import { runGit } from '../tools/git/main/run';
+import { join } from 'node:path';
 import { DiffTool } from '../tools/diff/main/tool';
+import { systemCodePage } from '../components/encodings/main/codePages';
 import type { GitTool } from '../tools/git/main/tool';
 
 export interface DiffHostDeps {
@@ -10,6 +12,7 @@ export interface DiffHostDeps {
   readonly userSettings: UserSettings;
   readonly git: GitLocator;
   readonly gitTool: Pick<GitTool, 'versionCopy' | 'fileHistory'>;
+  readonly viewedFiles: string;
 }
 
 export function diffToolOf({
@@ -17,6 +20,7 @@ export function diffToolOf({
   userSettings,
   git,
   gitTool,
+  viewedFiles,
 }: DiffHostDeps): DiffTool {
   return new DiffTool({
     log,
@@ -28,5 +32,7 @@ export function diffToolOf({
     },
     versionCopy: (file, rev) => gitTool.versionCopy(file, rev),
     fileHistory: (file) => gitTool.fileHistory(file),
+    decodedCopies: join(viewedFiles, 'decoded'),
+    codePage: () => systemCodePage(process.platform),
   });
 }

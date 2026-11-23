@@ -1,3 +1,4 @@
+import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type {
   DiffSettingMessage,
@@ -21,6 +22,10 @@ export interface CompareView {
   readonly entire: boolean;
   readonly version: number;
   readonly same?: 'identical' | 'whitespace';
+  readonly encodings?: {
+    readonly old?: TextEncoding;
+    readonly new?: TextEncoding;
+  };
   readonly error?: Sentence;
 }
 
