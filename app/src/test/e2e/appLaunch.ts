@@ -1,3 +1,4 @@
+import { noOpeningSwitch } from '../../shell/shared/opening';
 import { spawnSync, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
 import { _electron, type ElectronApplication } from 'playwright-core';
@@ -156,7 +157,7 @@ export async function launchApp(
     args: [
       ...gpuWithoutOne,
       ...scaleAsked(scale),
-      ...(opening ? [] : ['--force-prefers-reduced-motion']),
+      ...(opening ? [] : [`--${noOpeningSwitch}`]),
       ...before,
       ...appArguments(profile, ...after),
     ],

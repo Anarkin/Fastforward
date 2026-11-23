@@ -10,6 +10,7 @@ import type { DragEvent } from '../shell/main/dragEvents';
 import { spareWindowIds } from '../shell/main/windows';
 import { isAppUrl, startsAppPage, windowPage } from './files';
 import { cascaded } from './windowPlacement';
+import { noOpeningSwitch } from '../shell/shared/opening';
 import { showAgain } from './showAgain';
 import { tellMaximized } from './maximized';
 import { WindowDrag } from './windowDrag';
@@ -311,7 +312,11 @@ export class AppWindows {
       }
     });
     entry.loading = window.loadURL(
-      windowPage(!kept && this.deps.settings().windows.openingAnimation),
+      windowPage(
+        !kept &&
+          this.deps.settings().windows.openingAnimation &&
+          !app.commandLine.hasSwitch(noOpeningSwitch),
+      ),
     );
     void entry.loading.catch((error: unknown) => {
       log.error(strings.log.pageNotLoaded);
