@@ -11,7 +11,7 @@ import {
   TabBarIn,
   TabBarShown,
 } from '../../../helpers/styleFixtures';
-import { diffView, popupOf } from '../../../helpers/styleMarkup';
+import { popupOf } from '../../../helpers/styleMarkup';
 import {
   noop,
   looks,
@@ -21,18 +21,12 @@ import {
   deviceRounded,
   hovered,
 } from './stylesheetFixtures';
-import { FileHeader } from '../../../../components/diff/page/rowParts';
 import { emptyTabView } from '../../../../tools/git/page/shownTab';
 import { SoloButton } from '../../../../tools/git/page/soloButton';
 import { createGitStore, GitStore } from '../../../../tools/git/page/store';
 import { renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
-import {
-  DiffOptionsShown,
-  DiffRow,
-  DiffViewShown,
-  FileHeaderRow,
-} from '../../../helpers/styleDiffFixtures';
+import { DiffOptionsShown } from '../../../helpers/styleDiffFixtures';
 import { NavButtonsShown } from '../../../helpers/styleHistoryFixtures';
 
 function SoloButtonShown({
@@ -131,7 +125,7 @@ suite('Style', () => {
     looks(disabled, { 'box-shadow': undefined }, hovered);
   });
 
-  test("fills every button of a bar in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, and in the panel's on a file's header, tinting the button of an open menu, the + one too, over its fill and ringing a button's dot in it", () => {
+  test("fills every button of a bar in the border color, but in the color of the tab bar or a popup's title it sits on, showing no circle there, tinting the button of an open menu, the + one too, over its fill and ringing a button's dot in it", () => {
     assert.strictEqual(
       bodyVariable('button-background'),
       'var(--color-border)',
@@ -146,13 +140,6 @@ suite('Style', () => {
         '--button-background': 'var(--color-background)',
       });
     }
-    looks(
-      withClass(diffView(<DiffViewShown />, <FileHeaderRow />), 'file-header'),
-      {
-        background: 'var(--color-border)',
-        '--button-background': 'var(--color-panel-background)',
-      },
-    );
     const diff = rendered(<DiffOptionsShown />);
     for (const button of [
       ...allWithClass(rendered(<NavButtonsShown />), 'nav-button'),
@@ -161,22 +148,6 @@ suite('Style', () => {
       ),
       withClass(rendered(<MenuButtonShown />), 'nav-button'),
       withClass(popupOf(<ShortcutsPopupShown />), 'nav-button'),
-      withClass(
-        diffView(
-          <DiffViewShown />,
-          <DiffRow>
-            <FileHeader
-              path="v.svg"
-              open
-              notes={[]}
-              collapsible
-              onClick={noop}
-              onView={noop}
-            />
-          </DiffRow>,
-        ),
-        'file-header-button',
-      ),
     ]) {
       assert.ok(!button.classes.includes('active'));
       looks(button, { background: 'var(--button-background)' });

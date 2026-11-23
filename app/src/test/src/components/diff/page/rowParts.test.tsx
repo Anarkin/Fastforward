@@ -154,24 +154,19 @@ suite('Hunk divider', () => {
   });
 });
 
-const viewHeader = (onView?: () => void) =>
-  renderToStaticMarkup(
-    <FileHeader
-      path="v.svg"
-      open
-      notes={[]}
-      collapsible
-      onClick={() => {}}
-      onView={onView}
-    />,
-  );
-
 suite('Files to view', () => {
-  test('offers to view a file in a tab of its own only where the diff can tell where to read it from', () => {
-    assert.doesNotMatch(viewHeader(), /<button/);
-    assert.match(
-      viewHeader(() => {}),
-      /<button class="nav-button file-header-button" aria-label="View the File in a Tab of Its Own" data-tip="View the File in a Tab of Its Own">/,
+  test('leaves viewing a file in a tab of its own to the menu of its path and F3, the header of a file holding no button of its own', () => {
+    assert.doesNotMatch(
+      renderToStaticMarkup(
+        <FileHeader
+          path="v.svg"
+          open
+          notes={[strings.diff.binary]}
+          collapsible
+          onClick={() => {}}
+        />,
+      ),
+      /<button/,
     );
   });
 });

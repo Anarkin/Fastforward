@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShell } from '../../../shell/page/store';
 import { useBinding } from '../../../lib/page/shortcuts';
@@ -108,7 +107,6 @@ const RepositoryDiff = memo(function RepositoryDiff() {
       texts={texts}
       onLoadTexts={loadTexts}
       onViewFile={viewFile}
-      viewKeys={keysOf(gitKeymap.viewFile)}
       viewAsked={viewAsked}
       files={files}
       patch={patch}

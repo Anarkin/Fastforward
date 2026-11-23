@@ -5,7 +5,6 @@
   height: var(--diff-file-height);
   gap: 8px;
   padding: 0 8px;
-  --button-background: var(--color-panel-background);
   background: var(--color-border);
   border-bottom: 1px solid var(--color-border);
   user-select: none;
@@ -44,13 +43,6 @@
 .virtual-row.diff-row.error-row {
   width: 100%;
   min-width: 0;
-}
-
-.file-header .file-header-button {
-  width: 22px;
-  height: calc(var(--diff-file-height) - 2px);
-  margin: 0;
-  border-radius: var(--radius);
 }
 
 .file-header .file-header-note {

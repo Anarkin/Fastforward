@@ -1,7 +1,6 @@
 import { diffKeymap } from './keymap';
 import { keysOf } from '../../../lib/shared/keymap';
 import {
-  useCallback,
   useEffect,
   useEffectEvent,
   useMemo,
@@ -62,7 +61,6 @@ export interface DiffProps {
   readonly filter: Search | undefined;
   readonly heading?: React.ReactNode;
   readonly onViewFile?: (source: ViewedSource) => void;
-  readonly viewKeys?: string | undefined;
   readonly viewAsked?: number;
   readonly look: DiffLook;
   readonly measures: DiffMeasures;
@@ -93,7 +91,6 @@ export function Diff({
   filter,
   heading,
   onViewFile,
-  viewKeys,
   viewAsked = 0,
   look,
   measures,
@@ -129,23 +126,16 @@ export function Diff({
     [said],
   );
 
-  const viewOf = useCallback(
-    (index: number) => {
-      const view = onViewFile;
-      const file = diffFiles.at(index);
-      const source =
-        origin === undefined || view === undefined
-          ? undefined
-          : fileContent === undefined
-            ? file && viewedSource(origin, file)
-            : wholeViewedSource(origin, fileContent);
-      return source && view && (() => view(source));
-    },
-    [onViewFile, diffFiles, origin, fileContent],
-  );
   const viewShown = useEffectEvent(() => {
-    if (path !== undefined) {
-      viewOf(0)?.();
+    const file = diffFiles.at(0);
+    const source =
+      path === undefined || origin === undefined
+        ? undefined
+        : fileContent === undefined
+          ? file && viewedSource(origin, file)
+          : wholeViewedSource(origin, fileContent);
+    if (source !== undefined) {
+      onViewFile?.(source);
     }
   });
   const viewSeen = useRef(viewAsked);
@@ -207,8 +197,6 @@ export function Diff({
       }
     >
       <DiffView
-        viewOf={viewOf}
-        viewKeys={viewKeys}
         key={shownAt}
         keptPlace={tab.place}
         placeNow={tab.placeNow}

@@ -1,9 +1,8 @@
-import { labelTip, tip } from '../../../lib/page/tips';
+import { tip } from '../../../lib/page/tips';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import { PathName } from '../../../lib/page/pathName';
-import { PreviewIcon } from '../../../lib/page/icons';
 import { SkeletonRows } from '../../../lib/page/skeleton';
 import { Twisty } from '../../../lib/page/tree';
 import { renamedPath } from '../../../lib/page/fileStatus';
@@ -25,8 +24,6 @@ export function FileHeader({
   notes,
   collapsible,
   onClick,
-  onView,
-  viewKeys,
 }: {
   path: string;
   root?: string | undefined;
@@ -35,8 +32,6 @@ export function FileHeader({
   notes: readonly Sentence[];
   collapsible: boolean;
   onClick: () => void;
-  onView?: () => void;
-  viewKeys?: string | undefined;
 }) {
   return (
     <div className="file-header" onClick={onClick}>
@@ -59,18 +54,6 @@ export function FileHeader({
             <Words>{note}</Words>
           </span>
         ))}
-        {onView && (
-          <button
-            className="nav-button file-header-button"
-            {...labelTip(strings.diff.viewFile, { keys: viewKeys })}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView();
-            }}
-          >
-            <PreviewIcon />
-          </button>
-        )}
       </span>
     </div>
   );

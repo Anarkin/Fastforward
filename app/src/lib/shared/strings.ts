@@ -639,7 +639,6 @@ export const strings = {
     imageTooLarge: (megabytes: number) =>
       `Images over ${megabytes} MB are not previewed`,
     imageFailed: "Couldn't show this image",
-    viewFile: 'View the File in a Tab of Its Own',
     largeFile: 'Large file',
     notLoaded: 'Not loaded',
     largeDiff: (lines: number) =>

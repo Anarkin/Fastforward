@@ -9,9 +9,22 @@ import { cellsOf, copied, keepCopied } from './cellsSeen';
 import { gridLines } from './gridLines';
 import { waitFor, writeOver } from '../helpers/fixtures';
 
+const viewFromMenu = async (file: string) => {
+  await page
+    .locator('.diff-view .file-header', { hasText: file })
+    .locator('.path-part')
+    .last()
+    .click({ button: 'right' });
+  await page
+    .locator('.context-menu.path-menu .menu-item', {
+      hasText: strings.commander.openWithViewer,
+    })
+    .click();
+};
+
 const viewDiagram = async (
   from: 'first' | 'uncommitted',
-  by: 'button' | 'F3' = 'button',
+  by: 'menu' | 'F3' = 'menu',
 ) => {
   const commit =
     from === 'first'
@@ -30,10 +43,7 @@ const viewDiagram = async (
       .waitFor();
     await page.keyboard.press('F3');
   } else {
-    await page
-      .locator('.diff-view .file-header', { hasText: 'diagram.md' })
-      .getByRole('button', { name: strings.diff.viewFile })
-      .click();
+    await viewFromMenu('diagram.md');
   }
   await page.locator('.viewer').waitFor();
 };
@@ -65,10 +75,7 @@ suite('App', () => {
   test('keeps the words of a table of a Markdown document viewed whole, a column of code as wide as its longest word rather than broken between its letters, and aligns its columns as its separator row says', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'table.md' }).click();
-    await page
-      .locator('.diff-view .file-header', { hasText: 'table.md' })
-      .getByRole('button', { name: strings.diff.viewFile })
-      .click();
+    await viewFromMenu('table.md');
     try {
       const table = page.locator('.viewer .markdown table');
       await table.waitFor();
@@ -91,10 +98,7 @@ suite('App', () => {
   test('draws the code blocks of a Markdown document viewed as cells on the grid of our terminal, as the viewer draws text, so code padded for a terminal lines up in the preview too, its tabs stopping on that grid and its spaces dotted while whitespace is shown, on its key here too; a word of the code is selected on a double click and copied, as in a file viewed, and the prose around it selected with the pointer, which drops what was selected in the code', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'grid.md' }).click();
-    await page
-      .locator('.diff-view .file-header', { hasText: 'grid.md' })
-      .getByRole('button', { name: strings.diff.viewFile })
-      .click();
+    await viewFromMenu('grid.md');
     try {
       await page.locator('.viewer .markdown pre code').waitFor();
       const code = cellsOf(page, codeCells);
@@ -167,7 +171,7 @@ suite('App', () => {
     }
   });
 
-  test('views a file of a diff in a tab of its own from the button on its header, its Markdown rendered with a Mermaid diagram drawn as an image of its SVG, its code hidden', async () => {
+  test('views a file of a diff in a tab of its own from the menu of the path on its header, its Markdown rendered with a Mermaid diagram drawn as an image of its SVG, its code hidden', async () => {
     await viewDiagram('first');
     try {
       const image = page.locator('.viewer .markdown-diagram img');

@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { ImageDiff } from '../../../../components/diff/page/imagePreview';
 import { Crash } from '../../../../shell/page/errorBoundary';
+import { strings } from '../../../../lib/shared/strings';
 import { cascaded, matchingRules } from '../../../helpers/cascade';
 import { Columns } from '../../../helpers/styleFixtures';
 import { diffView, shownRow, shownRows } from '../../../helpers/styleMarkup';
@@ -527,7 +528,7 @@ suite('Style', () => {
     ]);
   });
 
-  test('keeps the button of a file header within the header, as far from its end as its name is from its start, and in view however wide the lines make the header', () => {
+  test('keeps the notes of a file header within the header, as far from its end as its name is from its start, and in view however wide the lines make the header', () => {
     const header = withClass(
       diffView(
         <DiffViewShown />,
@@ -535,10 +536,9 @@ suite('Style', () => {
           <FileHeader
             path="v.svg"
             open
-            notes={[]}
+            notes={[strings.diff.binary]}
             collapsible
             onClick={noop}
-            onView={noop}
           />
         </DiffRow>,
       ),
@@ -547,15 +547,9 @@ suite('Style', () => {
     const padding = paddingOf(header);
     assert.strictEqual(padding.right, padding.left);
     looks(header, { height: 'var(--diff-file-height)' });
-    assert.strictEqual(
-      cascaded(withClass(header, 'file-header-button'), 'height'),
-      'calc(var(--diff-file-height) - 2px)',
-    );
     const end = withClass(header, 'file-header-end');
     assert.ok(
-      end.children.some((child) =>
-        child.classes.includes('file-header-button'),
-      ),
+      end.children.some((child) => child.classes.includes('file-header-note')),
     );
     looks(end, { position: 'sticky', right: padding.right });
   });

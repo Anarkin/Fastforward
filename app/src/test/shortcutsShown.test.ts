@@ -81,7 +81,6 @@ const onControls: readonly string[] = [
   'editorKeymap.match',
   'gitKeymap.head',
   'gitKeymap.navigate',
-  'gitKeymap.viewFile',
   'keymap.close',
   'keymap.removeItem',
   'keymap.result',
@@ -187,6 +186,7 @@ const keysAlone: readonly string[] = [
   'gitKeymap.pin',
   'gitKeymap.toFiles',
   'gitKeymap.upstream',
+  'gitKeymap.viewFile',
   'gitKeymap.worktree',
   'keymap.dialogButton',
   'keymap.dialogFocus',
@@ -306,9 +306,7 @@ suite('Shortcuts shown', () => {
   test('shows keys in a tooltip or a menu from a binding alone, by keysOf, never written out, so what a control says of its keys is what the list of shortcuts says and what the keys do', () => {
     assert.deepStrictEqual(
       pageFiles.filter((file) =>
-        /\b(?:keys|stepKeys|viewKeys)(?:=\{?|:)\s*\[?\s*['"`]/.test(
-          textOf(file),
-        ),
+        /\b(?:keys|stepKeys)(?:=\{?|:)\s*\[?\s*['"`]/.test(textOf(file)),
       ),
       [],
     );

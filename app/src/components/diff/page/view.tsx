@@ -85,8 +85,6 @@ export function DiffView({
   jump,
   firstChange,
   origin,
-  viewOf,
-  viewKeys,
   look,
   measures,
   measuring,
@@ -111,8 +109,6 @@ export function DiffView({
   current: number;
   jump: number;
   firstChange: number | undefined;
-  viewOf?: (file: number) => (() => void) | undefined;
-  viewKeys?: string | undefined;
   look: DiffLook;
   measures: DiffMeasures;
   measuring: DiffMeasuring;
@@ -336,8 +332,6 @@ export function DiffView({
         ...(readAs === undefined ? [] : [readAs]),
       ]}
       collapsible={row.collapsible}
-      onView={viewOf?.(row.file)}
-      viewKeys={viewKeys}
       onClick={() => {
         if (!row.collapsible) {
           return;
@@ -368,16 +362,7 @@ export function DiffView({
     <DiffRowShown row={row} top={top} parts={rowParts} />
   );
 
-  const rowInputs = [
-    error,
-    rows,
-    files,
-    whole,
-    origin,
-    split,
-    viewOf,
-    virtualizer,
-  ];
+  const rowInputs = [error, rows, files, whole, origin, split, virtualizer];
 
   const items = virtualizer.getVirtualItems();
   useLayoutEffect(() => {
