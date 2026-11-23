@@ -9,12 +9,28 @@ const none = '0'.repeat(40);
 const wide = (text: string) =>
   Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
 
-const sides = (blobs: Readonly<Record<string, Buffer>>) => {
+const sides = (
+  blobs: Readonly<Record<string, Buffer>>,
+  files: Readonly<Record<string, Buffer>> = {},
+) => {
   const compared: (readonly [string, string])[] = [];
+  const asked: (readonly string[])[] = [];
   return {
     compared,
+    asked,
     sides: {
-      bytesOf: (id: string) => Promise.resolve(blobs[id]),
+      blobsOf: (ids: readonly string[]) => {
+        asked.push(ids);
+        return Promise.resolve(
+          new Map(
+            ids.flatMap((id) => {
+              const blob = blobs[id];
+              return blob === undefined ? [] : [[id, blob] as const];
+            }),
+          ),
+        );
+      },
+      fileOf: (path: string) => Promise.resolve(files[path]),
       hunksOf: (old: string, changed: string) => {
         compared.push([old, changed]);
         return Promise.resolve(
@@ -51,7 +67,11 @@ suite('Patches of git read in the encodings of their files', () => {
       '+caf�',
       '',
     ].join('\n');
-    const { compared, sides: read } = sides({
+    const {
+      compared,
+      asked,
+      sides: read,
+    } = sides({
       [oldId]: wide('one\n'),
       [newId]: wide('two\n'),
       ['c'.repeat(40)]: Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00]),
@@ -95,6 +115,37 @@ suite('Patches of git read in the encodings of their files', () => {
       ['one\n', 'two\n'],
       ['', 'café\n'],
     ]);
+    assert.deepStrictEqual(
+      asked,
+      [[oldId, newId, 'c'.repeat(40), 'd'.repeat(40)]],
+      'every blob read in one go',
+    );
+  });
+
+  test('reads the new side of a file of the working tree from disk, as git has no blob of it', async () => {
+    const patch = [
+      'diff --git a/w.txt b/w.txt',
+      `index ${oldId}..${'e'.repeat(40)} 100644`,
+      'Binary files a/w.txt and b/w.txt differ',
+      '',
+    ].join('\n');
+    const { sides: read } = sides(
+      { [oldId]: wide('one\n') },
+      { 'w.txt': wide('two\n') },
+    );
+    assert.ok(
+      (await decodedPatch(patch, read)).endsWith(
+        [
+          'encoding utf-16le utf-16le',
+          '--- a/w.txt',
+          '+++ b/w.txt',
+          '@@ -1 +1 @@',
+          '-one',
+          '+two',
+          '',
+        ].join('\n'),
+      ),
+    );
   });
 
   test('leaves a patch with nothing git took for binary and no character it could not read as it is, reading no file', async () => {

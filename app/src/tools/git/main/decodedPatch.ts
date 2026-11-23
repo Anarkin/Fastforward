@@ -5,11 +5,10 @@ import {
 } from '../../../components/encodings/main/encodingDetection';
 
 export interface PatchSides {
-  readonly bytesOf: (
-    id: string,
-    path: string,
-    side: 'old' | 'new',
-  ) => Promise<Buffer | undefined>;
+  readonly blobsOf: (
+    ids: readonly string[],
+  ) => Promise<ReadonlyMap<string, Buffer>>;
+  readonly fileOf: (path: string) => Promise<Buffer | undefined>;
   readonly hunksOf: (old: string, changed: string) => Promise<string>;
   readonly codePage: TextEncoding;
 }
@@ -105,12 +104,17 @@ function hunksIn(diffed: string): string {
   return at === -1 ? '' : diffed.slice(at + 1);
 }
 
+interface Candidate {
+  readonly section: string;
+  readonly lines: readonly string[];
+  readonly sides: Sides | undefined;
+}
+
 async function decodedSection(
-  section: string,
+  { section, lines, sides }: Candidate,
+  blobs: ReadonlyMap<string, Buffer>,
   read: PatchSides,
 ): Promise<string> {
-  const lines = section.split('\n');
-  const sides = sidesOf(lines);
   if (sides === undefined) {
     return section;
   }
@@ -121,7 +125,9 @@ async function decodedSection(
     if (side === undefined) {
       return null;
     }
-    const bytes = await read.bytesOf(side.id, side.path, which);
+    const bytes =
+      blobs.get(side.id) ??
+      (which === 'new' ? await read.fileOf(side.path) : undefined);
     return bytes === undefined ? undefined : decodedText(bytes, read.codePage);
   };
   const [old, changed] = await Promise.all([
@@ -159,13 +165,22 @@ export async function decodedPatch(
   if (!mayNeedDecoding(patch)) {
     return patch;
   }
-  const sections = sectionsOf(patch);
-  const decoded = await Promise.all(
-    sections.map((section) =>
-      section.includes('\nBinary files ') || section.includes(unread)
-        ? decodedSection(section, read)
-        : Promise.resolve(section),
+  const candidates = sectionsOf(patch).map((section): Candidate => {
+    if (!section.includes('\nBinary files ') && !section.includes(unread)) {
+      return { section, lines: [], sides: undefined };
+    }
+    const lines = section.split('\n');
+    return { section, lines, sides: sidesOf(lines) };
+  });
+  const blobs = await read.blobsOf([
+    ...new Set(
+      candidates.flatMap(({ sides }) =>
+        [sides?.old?.id, sides?.new?.id].filter((id) => id !== undefined),
+      ),
     ),
+  ]);
+  const decoded = await Promise.all(
+    candidates.map((candidate) => decodedSection(candidate, blobs, read)),
   );
   return decoded.join('');
 }

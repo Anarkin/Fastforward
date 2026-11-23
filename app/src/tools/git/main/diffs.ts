@@ -73,13 +73,18 @@ export class Diffs {
     const { gitPath, root } = context;
     const onDisk = workingTreeSide(hash) && context.tab.area !== 'staged';
     return decodedPatch(patch, {
-      bytesOf: async (id, path, side) => {
-        const [read] = await readObjects(gitPath, root, [id], maxFileSize);
-        const blob = blobOf(read);
-        if (blob?.kind === 'object') {
-          return blob.content;
+      blobsOf: async (ids) => {
+        const found = new Map<string, Buffer>();
+        for (const read of await readObjects(gitPath, root, ids, maxFileSize)) {
+          const blob = blobOf(read);
+          if (blob?.kind === 'object') {
+            found.set(blob.id, blob.content);
+          }
         }
-        if (!onDisk || side !== 'new') {
+        return found;
+      },
+      fileOf: async (path) => {
+        if (!onDisk) {
           return undefined;
         }
         const file = repositoryFile(root, path);
