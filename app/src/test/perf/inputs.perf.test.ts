@@ -139,7 +139,12 @@ for (const wordWrap of [false, true]) {
               .first()
               .waitFor();
           } else {
-            await page.locator('.editor .cm-line').first().waitFor();
+            await page
+              .locator(
+                '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
+              )
+              .first()
+              .waitFor();
           }
           await sleep(1500);
           const result = await measure(perf(), `${named}, wheel`, () =>

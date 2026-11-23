@@ -59,64 +59,57 @@ interface TopRow {
 
 function topRowOf(scroller: Element): TopRow {
   const top = scroller.getBoundingClientRect().top;
-  const line = Array.from(scroller.querySelectorAll('.cm-line')).find(
-    (each) => each.getBoundingClientRect().bottom > top + 1,
-  );
-  const range = document.createRange();
-  if (line !== undefined) {
-    range.selectNodeContents(line);
-  }
-  const row = Array.from(range.getClientRects()).find(
-    (rect) => rect.height > 0 && rect.bottom > top + 1,
-  );
-  const at =
-    row === undefined
-      ? null
-      : document.caretRangeFromPoint(row.left + 1, row.top + row.height / 2);
-  const shown = document.createRange();
-  if (at !== null && line !== undefined) {
-    shown.setStart(at.startContainer, at.startOffset);
-    shown.setEnd(line, line.childNodes.length);
-  }
+  const host = scroller.querySelector('.editor-cells');
+  const rows = host instanceof HTMLElement ? (host.seenRows?.() ?? []) : [];
+  const row = rows.find((each) => each.top + each.height > top + 1);
   return {
-    text: shown.toString().slice(0, 20),
+    text: row === undefined ? '' : row.text.slice(0, 20),
     offset: row === undefined ? NaN : Math.round((row.top - top) * 100) / 100,
   };
 }
 
 interface TopRows {
-  readonly first: string;
-  readonly second: string;
+  readonly line: number;
+  readonly from: number;
+  readonly to: number;
 }
 
-function topRowsOf(scroller: Element): TopRows {
+function topRowsOf(scroller: Element): TopRows | undefined {
   const top = scroller.getBoundingClientRect().top;
-  const line = Array.from(scroller.querySelectorAll('.cm-line')).find(
-    (each) => each.getBoundingClientRect().bottom > top + 1,
-  );
-  const range = document.createRange();
-  if (line !== undefined) {
-    range.selectNodeContents(line);
+  const host = scroller.querySelector('.editor-cells');
+  const rows = host instanceof HTMLElement ? (host.seenRows?.() ?? []) : [];
+  const at = rows.findIndex((each) => each.top + each.height > top + 1);
+  const first = rows[at];
+  const second = rows[at + 1];
+  if (first === undefined || second === undefined) {
+    return undefined;
   }
-  const row = Array.from(range.getClientRects()).find(
-    (rect) => rect.height > 0 && rect.bottom > top + 1,
+  const line = Number(first.key.slice(0, first.key.indexOf(':')));
+  return line === Number(second.key.slice(0, second.key.indexOf(':')))
+    ? { line, from: first.from, to: second.from }
+    : undefined;
+}
+
+function undrawnIn(scroller: Element): number[] {
+  const box = scroller.getBoundingClientRect();
+  const host = scroller.querySelector('.editor-cells');
+  const rows = (
+    host instanceof HTMLElement ? (host.seenRows?.() ?? []) : []
+  ).filter(
+    (row) => row.top + row.height > box.top && row.top < box.top + box.height,
   );
-  const from = (rowsDown: number) => {
-    const at =
-      row === undefined
-        ? null
-        : document.caretRangeFromPoint(
-            row.left + 1,
-            row.top + row.height * (rowsDown + 0.5),
-          );
-    const shown = document.createRange();
-    if (at !== null && line !== undefined) {
-      shown.setStart(at.startContainer, at.startOffset);
-      shown.setEnd(line, line.childNodes.length);
+  const [first] = rows;
+  const undrawn: number[] = [];
+  if (first === undefined || first.top > box.top + 0.5) {
+    undrawn.push(0);
+  }
+  for (const [index, row] of rows.entries()) {
+    const next = rows[index + 1];
+    if (next !== undefined && Math.abs(next.top - row.top - row.height) > 0.5) {
+      undrawn.push(Math.round(row.top + row.height - box.top));
     }
-    return shown.toString().slice(0, 400);
-  };
-  return { first: from(0), second: from(1) };
+  }
+  return undrawn;
 }
 
 function recordTopRows(frameCount: number): void {
@@ -132,30 +125,16 @@ function recordTopRows(frameCount: number): void {
       return;
     }
     const top = scroller.getBoundingClientRect().top;
-    const line = Array.from(scroller.querySelectorAll('.cm-line')).find(
-      (each) => each.getBoundingClientRect().bottom > top + 1,
-    );
-    const range = document.createRange();
-    if (line !== undefined) {
-      range.selectNodeContents(line);
-    }
-    const row = Array.from(range.getClientRects()).find(
-      (rect) => rect.height > 0 && rect.bottom > top + 1,
-    );
-    const at =
-      row === undefined
-        ? null
-        : document.caretRangeFromPoint(row.left + 1, row.top + row.height / 2);
-    const shown = document.createRange();
-    if (at !== null && line !== undefined) {
-      shown.setStart(at.startContainer, at.startOffset);
-      shown.setEnd(line, line.childNodes.length);
+    const host = scroller.querySelector('.editor-cells');
+    const rows = host instanceof HTMLElement ? (host.seenRows?.() ?? []) : [];
+    const row = rows.find((each) => each.top + each.height > top + 1);
+    if (row === undefined) {
+      return;
     }
     frames.push(
       JSON.stringify({
-        text: shown.toString().slice(0, 20),
-        offset:
-          row === undefined ? NaN : Math.round((row.top - top) * 100) / 100,
+        text: row.text.slice(0, 20),
+        offset: Math.round((row.top - top) * 100) / 100,
       }),
     );
   };
@@ -204,14 +183,12 @@ suite('App editor, long lines and places shown again', () => {
   const tabs = () => page.locator('.tabs [role="tab"]');
   const topRow = () => scroller().evaluate(topRowOf);
   const topRowOfLongLine = async () => {
-    const { first, second } = await scroller().evaluate(topRowsOf);
-    const from = longLine.indexOf(first);
-    const to = longLine.indexOf(second);
+    const top = await scroller().evaluate(topRowsOf);
     assert.ok(
-      first !== '' && from !== -1 && to > from,
-      `the top row and the one below it inside the long line: ${JSON.stringify({ from, to, first: first.slice(0, 40), second: second.slice(0, 40) })}`,
+      top?.line === longFile.indexOf(longLine) + 1,
+      `the top row and the one below it inside the long line: ${JSON.stringify(top)}`,
     );
-    return { from, to };
+    return top;
   };
   const recordedRows = () =>
     page.evaluate(() => {
@@ -262,15 +239,7 @@ suite('App editor, long lines and places shown again', () => {
     }, rows);
     return settledTopRow();
   };
-  const gapsShown = () =>
-    scroller().evaluate((element) => {
-      const box = element.getBoundingClientRect();
-      return Array.from(element.querySelectorAll('.cm-line > div'))
-        .filter((gap) => gap instanceof HTMLElement && gap.style.height !== '')
-        .map((gap) => gap.getBoundingClientRect())
-        .filter((rect) => rect.bottom > box.top && rect.top < box.bottom)
-        .map((rect) => Math.round(rect.top - box.top));
-    });
+  const gapsShown = () => scroller().evaluate(undrawnIn);
   const shownAgain = async () => {
     const editorTab = await tabs().evaluateAll((all) =>
       all.findIndex((tab) => tab.classList.contains('active')),

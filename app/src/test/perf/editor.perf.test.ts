@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import type { Page } from 'playwright-core';
 import { afterAll, suite, test } from 'vitest';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { launchedForPerf, measure } from './perfFixtures';
@@ -20,6 +21,18 @@ fs.writeFileSync(
 afterAll(() => removeFolder(folder));
 
 const pane = '.editor .cm-scroller';
+
+const findMarked = (page: Page, marked: boolean) =>
+  page.waitForFunction((wanted) => {
+    const host = document.querySelector('.editor .editor-cells');
+    return (
+      (document.querySelector('.editor .find-match') !== null ||
+        (host instanceof HTMLElement &&
+          (host.seenRows?.() ?? []).some(({ marks }) =>
+            marks.some(({ name }) => name !== 'occurrence'),
+          ))) === wanted
+    );
+  }, marked);
 const findInput = '.editor .column-title.searching input';
 
 for (const wordWrap of [false, true]) {
@@ -33,7 +46,13 @@ for (const wordWrap of [false, true]) {
         },
         settings: { scrolling: { smooth: true }, text: { wordWrap } },
       },
-      (page) => page.locator('.editor .cm-line').first().waitFor(),
+      (page) =>
+        page
+          .locator(
+            '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
+          )
+          .first()
+          .waitFor(),
     );
 
     const intoTotal = async () => {
@@ -84,9 +103,7 @@ for (const wordWrap of [false, true]) {
       await page.locator(findInput).first().waitFor();
       await page.keyboard.press('ControlOrMeta+A');
       await page.keyboard.press('Backspace');
-      await page.locator('.editor .find-match').first().waitFor({
-        state: 'detached',
-      });
+      await findMarked(page, false);
     };
 
     test('find typed', async () => {
@@ -106,7 +123,7 @@ for (const wordWrap of [false, true]) {
       await findCleared();
       const { page } = perf();
       await page.keyboard.type('total');
-      await page.locator('.editor .find-match').first().waitFor();
+      await findMarked(page, true);
       await sleep(500);
       const result = await measure(
         perf(),

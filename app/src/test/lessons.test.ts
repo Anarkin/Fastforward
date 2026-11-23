@@ -232,7 +232,7 @@ suite('Lessons from past mistakes', () => {
       ['tools', 'lib', 'components', 'shell', 'boot'].flatMap((folder) =>
         filesWith(folder, /\bcreateRange\(/),
       ),
-      ['lib/page/scratchRange.ts'],
+      ['shell/page/scratchRange.ts'],
     );
   });
 

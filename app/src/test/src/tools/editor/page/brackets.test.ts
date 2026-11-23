@@ -2,15 +2,10 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { matchedPair } from '../../../../../tools/editor/page/brackets';
 
-const marked = (match: Parameters<typeof matchedPair>[0]) =>
-  matchedPair(match).map((range) => ({
-    from: range.from,
-    to: range.to,
-    class: String(range.value.spec.class),
-  }));
+const marked = (match: Parameters<typeof matchedPair>[0]) => matchedPair(match);
 
 suite('The brackets the editor marks', () => {
-  test('marks both brackets of a pair that match, the one beside the cursor and the other, in the class the yellow of a find match is drawn for', () => {
+  test('marks both brackets of a pair that match, the one beside the cursor and the other', () => {
     assert.deepStrictEqual(
       marked({
         start: { from: 9, to: 10 },
@@ -18,8 +13,8 @@ suite('The brackets the editor marks', () => {
         matched: true,
       }),
       [
-        { from: 9, to: 10, class: 'cm-matchingBracket' },
-        { from: 4, to: 5, class: 'cm-matchingBracket' },
+        { from: 9, to: 10 },
+        { from: 4, to: 5 },
       ],
     );
   });

@@ -20,43 +20,6 @@
   grid-column: 1 / -1;
 }
 
-.blank {
-  position: relative;
-}
-
-.blank::after {
-  position: absolute;
-  left: 0;
-  width: var(--text-advance);
-  text-align: center;
-  text-indent: 0;
-  pointer-events: none;
-  user-select: none;
-  content: attr(data-glyph);
-  color: var(--muted-foreground);
-}
-
-.cell {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  width: var(--text-advance);
-  height: 1lh;
-  vertical-align: top;
-}
-
-.cell.wide {
-  width: calc(2 * var(--text-advance));
-}
-
-[data-copying] .cell {
-  display: inline-block;
-}
-
-.cell.zero {
-  width: 0;
-}
-
 .cm-editor.editor-text {
   --text-advance: round(1ch, var(--device-pixel, 1px));
 }
@@ -122,27 +85,23 @@
 }
 
 .cm-editor.editor-text .cm-content {
+  margin-left: calc(var(--line-number-width) + var(--line-number-gap));
   padding: 0;
+  color: transparent;
+}
+
+.cm-editor.editor-text .cm-line {
+  height: calc(var(--rows, 1) * 1lh);
+  padding: 0;
+  overflow: hidden;
+}
+
+.cm-editor.editor-text .cm-content:not(.cm-lineWrapping) .cm-line.gridded {
+  width: calc(var(--columns) * var(--text-advance));
 }
 
 .cm-editor.editor-selection .cm-content:not(.cm-lineWrapping) {
   padding-right: var(--text-advance);
-}
-
-.cm-editor.editor-text .cm-scroller > .cm-gutters {
-  padding-right: var(--line-number-gap);
-  color: var(--muted-foreground);
-  background: var(--color-panel-background);
-  border: none;
-}
-
-.cm-editor.editor-text .cm-lineNumbers {
-  box-shadow: inset calc(-1 * var(--hairline)) 0 var(--color-border);
-}
-
-.cm-editor.editor-text .cm-lineNumbers .cm-gutterElement {
-  min-width: var(--line-number-width);
-  padding: 0 var(--line-number-gap);
 }
 
 .viewer-rows.wrapped,
@@ -157,25 +116,9 @@
   overflow-wrap: anywhere;
 }
 
-.cm-editor.editor-text .cm-line {
-  padding: 0 0 0 var(--wrap-indent, 0px);
-  text-indent: calc(-1 * var(--wrap-indent, 0px));
-}
-
-.cm-editor.editor-text .cm-lineWrapping .lead {
-  white-space: pre;
-}
-
 .cm-editor.editor-selection .cm-scroller .cm-line ::selection,
 .cm-editor.editor-selection .cm-scroller .cm-line::selection {
   background-color: transparent;
-}
-
-.cm-editor.editor-text.editor-selection
-  .cm-scroller
-  .cm-selectionLayer
-  .cm-selectionBackground {
-  background: var(--selection-background);
 }
 
 .cm-editor.editor-selection .cm-scroller .cm-content,
@@ -207,83 +150,6 @@ input {
   }
 }
 
-.spaces,
-.wrap-spaces,
-.dot-rows {
-  --space-dot: max(
-    var(--device-pixel, 1px),
-    round(0.16em, var(--device-pixel, 1px))
-  );
-  --space-dot-start: round(
-    down,
-    (var(--text-advance) - var(--space-dot)) / 2,
-    var(--device-pixel, 1px)
-  );
-}
-
-.spaces,
-.wrap-spaces {
-  background-image: linear-gradient(
-    to right,
-    transparent var(--space-dot-start),
-    var(--muted-foreground) var(--space-dot-start)
-      calc(var(--space-dot-start) + var(--space-dot)),
-    transparent 0
-  );
-  background-size: var(--text-advance) var(--space-dot);
-  background-position: 0 50%;
-  background-repeat: repeat-x;
-}
-
-.dot-rows {
-  --dot-top: round(
-    down,
-    (var(--dot-row) - var(--space-dot)) / 2,
-    var(--device-pixel, 1px)
-  );
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  user-select: none;
-  color: var(--muted-foreground);
-  background-repeat: no-repeat;
-}
-
-.cm-editor.editor-text .space-dot-layer {
-  pointer-events: none;
-}
-
-.cm-editor.editor-text .break-mark-layer {
-  pointer-events: none;
-  user-select: none;
-  color: var(--muted-foreground);
-}
-
-.cm-editor.editor-text .wrap-break,
-.cm-editor.editor-text .wrap-blank {
-  width: var(--text-advance);
-  height: 1lh;
-  text-align: center;
-}
-
-.cm-editor.editor-text .wrap-spaces {
-  height: 1lh;
-}
-
-.cm-editor.editor-text .space-dots {
-  left: 0;
-  top: 0;
-}
-
-.cm-editor.editor-text .space-dots svg {
-  position: absolute;
-  overflow: visible;
-  shape-rendering: crispEdges;
-  fill: var(--muted-foreground);
-}
-
 ::selection {
   background-color: var(--selection-background);
 }
@@ -295,8 +161,7 @@ kbd.match,
   background: var(--color-search-match);
 }
 
-.cm-editor.editor-text.cm-focused .cm-matchingBracket,
-.cm-editor.editor-text.cm-focused .occurrence-match,
+.cm-editor.editor-text .occurrence-match,
 .viewer-rows .occurrence-match,
 .diff-view .occurrence-match {
   background: color-mix(
@@ -312,7 +177,6 @@ mark.occurrence-match {
 
 mark.match,
 .find-match,
-.cm-editor.editor-text .cm-matchingBracket,
 .occurrence-match {
   --mark-text-height: var(--text-height, 1lh);
   --mark-leading: max(0px, 1lh - var(--mark-text-height));
@@ -335,15 +199,8 @@ mark.match,
 .commander-row mark.match,
 .tree-row .path mark.match,
 .name mark.match,
-.cm-editor.editor-text .cm-matchingBracket,
 .occurrence-match {
   --mark-text-height: var(--monospace-text-height, 1lh);
-}
-
-.cm-editor.editor-text .find-match,
-.cm-editor.editor-text .cm-matchingBracket,
-.cm-editor.editor-text .occurrence-match {
-  --mark-above: calc(var(--mark-leading) / 2);
 }
 
 .menu-item mark.match {

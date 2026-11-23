@@ -165,6 +165,7 @@ const keysAlone: readonly string[] = [
   'editorKeymap.rowEnd',
   'editorKeymap.rowStart',
   'editorKeymap.save',
+  'editorKeymap.selectText',
   'editorKeymap.singleCursor',
   'editorKeymap.stopFinding',
   'editorKeymap.tabLeaves',

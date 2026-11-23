@@ -1,4 +1,4 @@
-import { onceAText } from '../../../lib/page/onceAText';
+import { onceAText } from './onceAText';
 import { tabSize, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { joins } from './joined';

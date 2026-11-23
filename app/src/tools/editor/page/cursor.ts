@@ -1,4 +1,3 @@
-import { lineHeightOf } from '../../../lib/page/lineHeight';
 import {
   findClusterBreak,
   type Extension,
@@ -14,7 +13,9 @@ import {
   type DrawnCursor,
 } from '../../../lib/page/cursor';
 import type { Box } from '../../../lib/page/pixelBoxes';
-import { characterAt, layerOrigin, rowEdge, type Character } from './rows';
+import { pictured } from '../../../lib/page/controlPictures';
+import { cellAt, gridOf, type Grid } from './grid';
+import { layerOrigin } from './rows';
 
 class CursorMarker implements LayerMarker {
   constructor(
@@ -52,83 +53,52 @@ class CursorMarker implements LayerMarker {
 interface CursorCell {
   readonly cell: Box;
   readonly text: string;
-  readonly font: string | undefined;
-  readonly glyphBox: Box | undefined;
+  readonly font: string;
 }
 
-function rightOfCharacterBefore(
+function cursorCell(
   view: EditorView,
-  pos: number,
-  middle: number,
-  rowHeight: number,
-): number | undefined {
-  const line = view.state.doc.lineAt(pos);
-  if (pos <= line.from) {
-    return undefined;
-  }
-  const from = line.from + findClusterBreak(line.text, pos - line.from, false);
-  return characterAt(view, from, middle, rowHeight, false)?.right;
-}
-
-function cellAt(view: EditorView, range: SelectionRange): CursorCell | null {
+  grid: Grid,
+  font: string,
+  range: SelectionRange,
+): CursorCell {
   const { head } = range;
-  const at = view.coordsAtPos(head, range.assoc || 1);
-  if (at === null) {
-    return null;
-  }
-  const rowHeight = lineHeightOf(
-    view.contentDOM,
-    view.defaultLineHeight,
-    devicePixelRatio,
-  );
-  const middle = (at.top + at.bottom) / 2;
-  const advance = view.defaultCharacterWidth;
-  const under = characterAt(view, head, middle, rowHeight);
-  const top = (under?.middle ?? middle) - rowHeight / 2;
-  const of = (left: number, width: number, shown: Character | null) => ({
-    cell: { left, top, width, height: rowHeight },
-    text: shown?.text ?? '',
-    font: shown?.font,
-    glyphBox: shown?.glyph,
-  });
-  const left =
-    under?.left ??
-    rightOfCharacterBefore(view, head, middle, rowHeight) ??
-    at.left;
-  const width = under === null ? advance : under.right - under.left;
-  const edge = rowEdge(view);
-  if (edge === undefined || left + width <= edge + 0.5) {
-    return of(left, width, under);
-  }
-  const last = view.posAtCoords({ x: edge - advance / 2, y: middle }, false);
-  const inside = characterAt(view, last, middle, rowHeight);
-  return inside !== null && inside.right <= edge + 0.5
-    ? of(inside.left, inside.right - inside.left, inside)
-    : of(edge - advance, advance, null);
+  const line = view.state.doc.lineAt(head);
+  const char = head - line.from;
+  const text =
+    char >= line.length
+      ? ''
+      : line.text.slice(char, findClusterBreak(line.text, char, true));
+  return {
+    cell: cellAt(view, grid, head, range.assoc || 1),
+    text: text === '\t' ? '' : pictured(text),
+    font,
+  };
 }
 
 function cursorMarkers(view: EditorView, look: CursorLook): LayerMarker[] {
+  const grid = gridOf(view);
+  if (grid === undefined) {
+    return [];
+  }
   const origin = layerOrigin(view);
+  const font = getComputedStyle(view.contentDOM).font;
   const { selection } = view.state;
-  return selection.ranges.flatMap((range) => {
-    const found = cellAt(view, range);
-    return found === null
-      ? []
-      : [
-          new CursorMarker(
-            range === selection.main
-              ? 'cm-cursor cm-cursor-primary'
-              : 'cm-cursor cm-cursor-secondary',
-            drawnCursor({
-              ...found,
-              shape: look.style,
-              thickness: look.width,
-              ratio: devicePixelRatio,
-              origin,
-            }),
-          ),
-        ];
-  });
+  return selection.ranges.map(
+    (range) =>
+      new CursorMarker(
+        range === selection.main
+          ? 'cm-cursor cm-cursor-primary'
+          : 'cm-cursor cm-cursor-secondary',
+        drawnCursor({
+          ...cursorCell(view, grid, font, range),
+          shape: look.style,
+          thickness: look.width,
+          ratio: devicePixelRatio,
+          origin,
+        }),
+      ),
+  );
 }
 
 function blinking(look: CursorLook, again: boolean): string {

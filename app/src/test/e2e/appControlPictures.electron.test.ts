@@ -6,7 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { cellsOf, viewerTexts } from './cellsSeen';
+import { cellsOf } from './cellsSeen';
 import { untilSettled, waitForFocus } from './waits';
 
 const character = (code: number) => String.fromCharCode(code);
@@ -26,7 +26,6 @@ const ruler = padded('....:....1....:....2');
 const written = groups.map((codes) =>
   padded(`x ${codes.map(character).join('')}`),
 );
-const drawn = (text: string) => text.replaceAll(formFeed, '␌');
 const keptWritten = padded(`kept ␌${formFeed}␛${escape}`);
 const boxedRow = `boxed 😀 and 中${' '.repeat(5)}|`;
 const fileOf = (last: string) =>
@@ -50,11 +49,12 @@ const editor = {
   name: 'editor',
   tab: 2,
   pane: '.editor .cm-content',
-  rows: '.editor .cm-line',
+  rows: '.editor .editor-cells',
 } as const;
 
 const cellViews = [
   viewer,
+  editor,
   {
     name: 'old side of the diff',
     tab: 3,
@@ -71,61 +71,10 @@ const cellViews = [
 
 type CellView = (typeof cellViews)[number];
 
-type View = CellView | typeof editor;
-
-const asCells = (view: Shown): boolean => view.name !== 'editor';
-
 interface Shown {
   readonly name: string;
   readonly tab: number;
   readonly rows: string;
-}
-
-interface DrawnRow {
-  readonly text: string;
-  readonly bar: number | undefined;
-  readonly offColumns: number;
-}
-
-function drawnRows(selector: string): DrawnRow[] {
-  const range = document.createRange();
-  return [...document.querySelectorAll(selector)].map((row) => {
-    let text = '';
-    let bar: number | undefined;
-    const lefts: number[] = [];
-    const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (node.parentElement?.closest('[aria-hidden="true"]')) {
-        continue;
-      }
-      const part = node.textContent ?? '';
-      for (let at = 0; at < part.length; at++) {
-        range.setStart(node, at);
-        range.setEnd(node, at + 1);
-        const { left } = range.getBoundingClientRect();
-        lefts.push(left);
-        if (part[at] === '|') {
-          bar = left;
-        }
-      }
-      text += part;
-    }
-    const column = lefts.length > 1 ? (lefts.at(1) ?? 0) - (lefts[0] ?? 0) : 0;
-    const plain = text
-      .split('')
-      .every(
-        (each) => each.charCodeAt(0) < 0x80 || each === '␌' || each === '␛',
-      );
-    return {
-      text,
-      bar,
-      offColumns: plain
-        ? lefts.filter(
-            (left, at) => Math.abs(left - (lefts[0] ?? 0) - at * column) > 0.02,
-          ).length
-        : 0,
-    };
-  });
 }
 
 function keepCopied(): void {
@@ -167,13 +116,9 @@ suite('App control pictures', () => {
     await page.locator('.tabs .tab').nth(view.tab).click();
     await waitFor(
       async () =>
-        asCells(view)
-          ? (await cellsOf(page, view.rows).rows()).some(
-              ({ line }) => line === first,
-            )
-          : (await page.evaluate(drawnRows, view.rows)).some(
-              (row) => row.text === first,
-            ),
+        (await cellsOf(page, view.rows).rows()).some(
+          ({ line }) => line === first,
+        ),
       `the first row in the ${view.name}`,
     );
   };
@@ -200,15 +145,15 @@ suite('App control pictures', () => {
     }
   };
 
-  const copiedFrom = async (view: View, row: number) => {
+  const copiedFrom = async (view: CellView, row: number) => {
     await show(view);
+    const inRow = await cellsOf(page, view.rows).point(row, 1);
     if (view.name === 'editor') {
-      await page.locator(view.rows).nth(row).click();
+      await page.mouse.click(inRow.x, inRow.y);
       await waitForFocus(page.locator(view.pane), 'the editor');
       await page.keyboard.press('Home');
       await page.keyboard.press('Shift+End');
     } else {
-      const inRow = await cellsOf(page, view.rows).point(row, 1);
       await page.mouse.click(inRow.x, inRow.y, { clickCount: 3 });
       await waitForFocus(page.locator(view.pane).first(), `the ${view.name}`);
     }
@@ -287,7 +232,7 @@ suite('App control pictures', () => {
     await closeOrKill(app);
   });
 
-  test('draws every control character in the editor where it stands in the text, by the font the app makes for them, each exactly a column wide, the form feed as its picture, which Chromium draws as nothing, so every character of a row stands on its column and the bar after them under the bar of the ruler, and shows the viewer and both sides of the diff every row as the file has it, their cells drawing each character by its picture in a cell, the bar after them in one column', async () => {
+  test('shows the viewer, the editor and both sides of the diff every row of a file of control characters as the file has it, their cells drawing each character by its picture in a cell, the bar after them in one column', async () => {
     const found: Record<string, unknown> = {};
     for (const view of cellViews) {
       await show(view);
@@ -303,43 +248,20 @@ suite('App control pictures', () => {
           .size,
       };
     }
-    await show(editor);
-    const rows = await untilSettled(
-      () => page.evaluate(drawnRows, editor.rows),
-      'the rows of the editor',
-    );
-    const bars = new Set(
-      rows
-        .filter((row) => row.bar !== undefined)
-        .map((row) => Math.round((row.bar ?? 0) * 100) / 100),
-    );
-    found[editor.name] = {
-      drawn: [...written.map(drawn), drawn(keptWritten)]
-        .filter((text) => rows.some((row) => row.text === text))
-        .map(legible),
-      bars: bars.size,
-      offColumns: rows.reduce((sum, row) => sum + row.offColumns, 0),
-      fonts: await fontsDrawing(editor.rows, 'x \u0001'),
-    };
-    assert.deepStrictEqual(found, {
-      ...Object.fromEntries(
+    assert.deepStrictEqual(
+      found,
+      Object.fromEntries(
         cellViews.map((view) => [
           view.name,
           { asWritten: [...written, keptWritten].map(legible), bars: 1 },
         ]),
       ),
-      [editor.name]: {
-        drawn: [...written.map(drawn), drawn(keptWritten)].map(legible),
-        bars: 1,
-        offColumns: 0,
-        fonts: [`${controlFont} 8`],
-      },
-    });
+    );
   });
 
   test('copies the control characters as they are out of the viewer, the editor and the diff, the form feed itself, not the picture drawn for it, keeps a picture of it the file itself holds, and copies a row as it is written whatever of it is drawn in a box, as a character shrunk into its box came out with a line break on either side', async () => {
     const found: Record<string, unknown> = {};
-    for (const view of [...cellViews, editor]) {
+    for (const view of cellViews) {
       found[view.name] = [
         legible(await copiedFrom(view, 1)),
         legible(await copiedFrom(view, 2)),
@@ -350,7 +272,7 @@ suite('App control pictures', () => {
     assert.deepStrictEqual(
       found,
       Object.fromEntries(
-        [...cellViews, editor].map((view) => [
+        cellViews.map((view) => [
           view.name,
           [
             legible(written[0]),
@@ -363,69 +285,54 @@ suite('App control pictures', () => {
     );
   });
 
-  test('draws the picture of a form feed in the editor in the color of the code around it, inside the span that colors it, as the viewer and the diff do, and the other control characters as text of that span, with no element of their own', async () => {
+  test('draws a form feed and an escape in the editor in the color of the code around them, each in the piece of the string that holds it and drawn once, as the viewer and the diff draw them', async () => {
     await page.locator('.tabs .tab').nth(5).click();
-    const colored = page.locator('.editor .cm-line .syntax-string').first();
-    await colored.waitFor();
-    const pictures = page.locator('.editor .cm-line .control-picture');
-    await pictures.first().waitFor();
-    assert.deepStrictEqual(
-      await pictures.evaluateAll((shown) =>
-        shown.map((each) => [
-          each.textContent,
-          each.parentElement?.className,
-          getComputedStyle(each).color ===
-            getComputedStyle(each.parentElement ?? each).color,
-        ]),
-      ),
-      [['␌', 'syntax-string', true]],
+    const cells = cellsOf(page, editor.rows);
+    const held = `${formFeed}page${escape}`;
+    await waitFor(
+      async () =>
+        (await cells.rows()).some(({ pieces }) =>
+          pieces.some(({ kind }) => kind === 'string'),
+        ),
+      'the code of the editor colored',
     );
-    assert.strictEqual(
-      legible(await colored.textContent()),
-      legible(`␌page${escape}`),
+    assert.deepStrictEqual(
+      {
+        strings: (await cells.rows()).flatMap(({ pieces }) =>
+          pieces
+            .filter(({ kind }) => kind === 'string')
+            .map(({ text }) => legible(text)),
+        ),
+        drawn: [
+          (await cells.glyphs(formFeed)).length,
+          (await cells.glyphs(escape)).length,
+        ],
+      },
+      { strings: [legible(held)], drawn: [1, 1] },
     );
   });
 
-  test('draws a file dense in control characters in the editor, every one by the font where it stands in the text, with no element of its own, each line as wide as one of as many dots, as an element for the picture of each took longer to paint than the characters to lay out, so the editor left such a file in boxes, off the columns, and shows the viewer its rows as written', async () => {
+  test('shows a file dense in control characters in the editor and the viewer as it is written, every row of it, the bar after the characters of each in one column', async () => {
     const found: Record<string, unknown> = {};
-    const tabs = [{ name: 'editor', tab: 6, rows: '.editor .cm-line' }];
-    await show({ ...viewer, tab: 7 }, denseLines[0]);
-    const viewed = await untilSettled(
-      () => viewerTexts(page),
-      'the rows of the viewer',
-    );
-    found.viewer = {
-      rows: viewed.length >= 20,
-      asWritten: viewed.every((text, at) => text === denseLines[at]),
-    };
-    for (const view of tabs) {
+    for (const view of [
+      { ...viewer, tab: 7 },
+      { ...editor, tab: 6 },
+    ]) {
       await show(view, denseLines[0]);
+      const cells = cellsOf(page, view.rows);
       const rows = await untilSettled(
-        () => page.evaluate(drawnRows, view.rows),
+        () => cells.rows(),
         `the rows of the ${view.name}`,
       );
       found[view.name] = {
         rows: rows.length >= 20,
-        asWritten: rows.every((row, at) => row.text === denseLines[at]),
-        bars: new Set(rows.map((row) => Math.round((row.bar ?? 0) * 100) / 100))
+        asWritten: rows.every(({ text }, at) => text === denseLines[at]),
+        bars: new Set((await cells.glyphs('|')).map(({ column }) => column))
           .size,
-        offColumns: rows.reduce((sum, row) => sum + row.offColumns, 0),
-        elements: await page.locator(view.rows).nth(1).locator('*').count(),
-        fonts: await fontsDrawing(view.rows, 'x\u0001'),
       };
     }
-    const expected = {
-      rows: true,
-      asWritten: true,
-      bars: 1,
-      offColumns: 0,
-      elements: 0,
-      fonts: [`${controlFont} 60`],
-    };
-    assert.deepStrictEqual(found, {
-      editor: expected,
-      viewer: { rows: true, asWritten: true },
-    });
+    const expected = { rows: true, asWritten: true, bars: 1 };
+    assert.deepStrictEqual(found, { viewer: expected, editor: expected });
   });
 
   test('draws the control characters of a Markdown file previewed by the font too, in its text and in its code, the form feed as its picture', async () => {

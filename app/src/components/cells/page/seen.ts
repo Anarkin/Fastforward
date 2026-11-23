@@ -4,7 +4,7 @@ import { marksWithin, piecesWithin } from './lines';
 import type { CellFrame } from './cellFrame';
 import { rowKey, type CellPainting, type ShownRows } from './cellPainting';
 import type { GlyphTiles } from './glyphTiles';
-import { selectedIn, type CharRange } from './textSelection';
+import { selectedAmong, type CharRange } from './textSelection';
 
 interface SeenMark {
   readonly from: number;
@@ -39,6 +39,7 @@ export interface SeenRow {
   readonly pieces: readonly SeenPiece[];
   readonly marks: readonly SeenMark[];
   readonly selected: CharRange | undefined;
+  readonly selections?: readonly CharRange[] | undefined;
   readonly breakAt: number | undefined;
   readonly continues: boolean;
   readonly tint?: string | undefined;
@@ -75,6 +76,7 @@ export function seenRows(
     segmentsOf,
     marksOf,
     selection,
+    selections,
     first,
     tops,
     bands,
@@ -88,7 +90,10 @@ export function seenRows(
     const part = parts[index];
     const from = part?.from ?? row.from;
     const to = part?.to ?? row.to;
-    const selected = selectedIn(selection, row.row, { from, to });
+    const all = selectedAmong([selection, ...(selections ?? [])], row.row, {
+      from,
+      to,
+    }).map((range) => ({ from: range.from - from, to: range.to - from }));
     const column = part?.column ?? 0;
     const down = tops?.[index];
     const tints = tintsOf?.(row.row);
@@ -134,10 +139,8 @@ export function seenRows(
         to: mark.end,
         name: nameOf(mark),
       })),
-      selected: selected && {
-        from: selected.from - from,
-        to: selected.to - from,
-      },
+      selected: all[0],
+      ...(selections !== undefined && { selections: all }),
       breakAt: row.breakAt,
       continues: row.to < row.row.text.length || row.row.cut === true,
     };

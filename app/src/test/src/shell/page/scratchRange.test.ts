@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
-import { scratchRange } from '../../../../lib/page/scratchRange';
+import { scratchRange } from '../../../../shell/page/scratchRange';
 
 suite('The range a page measures with', () => {
   test('hands out one range for every measure of a page, and one of its own to another page, so no measure leaves a range behind for the page to keep in step with its changes', () => {

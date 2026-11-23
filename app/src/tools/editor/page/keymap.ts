@@ -135,6 +135,10 @@ export const editorKeymap = {
   wheelSideways: bind('Moving', strings.actions.wheelSideways, {
     'Shift+Wheel': true,
   }),
+  selectText: bind('Cursors', strings.actions.selectText, {
+    Click: 'start',
+    'Shift+Click': 'extend',
+  } as const),
   addCursor: bind('Cursors', strings.actions.addCursor, {
     'Alt+Click': true,
   }),

@@ -5,24 +5,24 @@ import {
   cursorDocStart,
   cursorGroupLeft,
   cursorGroupRight,
-  cursorLineBoundaryLeft,
-  cursorLineDown,
-  cursorLineUp,
   selectCharLeft,
   selectCharRight,
   selectDocEnd,
   selectDocStart,
   selectGroupLeft,
   selectGroupRight,
-  selectLineBoundaryLeft,
-  selectLineDown,
-  selectLineUp,
 } from '@codemirror/commands';
-import { EditorSelection, type Extension } from '@codemirror/state';
+import {
+  EditorSelection,
+  type Extension,
+  type SelectionRange,
+} from '@codemirror/state';
 import { EditorView, type Command } from '@codemirror/view';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import type { RowFollower } from '../../../lib/page/rowScroll';
 import { editorKeymap } from './keymap';
+import { cellAt, gridOf, type Grid } from './grid';
+import { extended, movedRows, rowStart } from './gridMoves';
 
 type CursorMove = 'up' | 'down' | 'selectUp' | 'selectDown';
 
@@ -30,12 +30,46 @@ type SidewaysMove = 'left' | 'right' | 'selectLeft' | 'selectRight';
 
 type Follower = (view: EditorView) => RowFollower | undefined;
 
-const byRow: Readonly<Record<CursorMove, Command>> = {
-  up: cursorLineUp,
-  down: cursorLineDown,
-  selectUp: selectLineUp,
-  selectDown: selectLineDown,
-};
+function moved(
+  view: EditorView,
+  selects: boolean,
+  move: (range: SelectionRange, grid: Grid) => SelectionRange,
+): boolean {
+  const grid = gridOf(view);
+  if (grid === undefined) {
+    return true;
+  }
+  const { selection } = view.state;
+  const next = EditorSelection.create(
+    selection.ranges.map((range) => {
+      const reached = move(range, grid);
+      return selects ? extended(range, reached) : reached;
+    }),
+    selection.mainIndex,
+  );
+  if (!next.eq(selection, true)) {
+    view.dispatch({
+      selection: next,
+      scrollIntoView: true,
+      userEvent: 'select',
+    });
+  }
+  return true;
+}
+
+const forwards = (move: CursorMove) => move === 'down' || move === 'selectDown';
+
+const selecting = (move: CursorMove) =>
+  move === 'selectUp' || move === 'selectDown';
+
+const byRow =
+  (move: CursorMove): Command =>
+  (view) =>
+    moved(view, selecting(move), (range, grid) =>
+      !selecting(move) && !range.empty
+        ? EditorSelection.cursor(forwards(move) ? range.to : range.from)
+        : movedRows(view.state.doc, grid, range, forwards(move) ? 1 : -1),
+    );
 
 const byCharacter: Readonly<Record<SidewaysMove, Command>> = {
   left: cursorCharLeft,
@@ -51,10 +85,12 @@ const byWord: Readonly<Record<SidewaysMove, Command>> = {
   selectRight: selectGroupRight,
 };
 
-const toRowStart: Readonly<Record<'move' | 'select', Command>> = {
-  move: cursorLineBoundaryLeft,
-  select: selectLineBoundaryLeft,
-};
+const toRowStart =
+  (how: 'move' | 'select'): Command =>
+  (view) =>
+    moved(view, how === 'select', (range, grid) =>
+      rowStart(view.state.doc, grid, range),
+    );
 
 const toFileEnd: Readonly<Record<CursorMove, Command>> = {
   up: cursorDocStart,
@@ -67,38 +103,35 @@ export function pageRows(viewHeight: number, row: number): number {
   return row > 0 ? Math.max(1, Math.floor(viewHeight / row) - 1) : 1;
 }
 
-function shownAt(view: EditorView, top: number): boolean {
+function shownAt(view: EditorView, grid: Grid, top: number): boolean {
   const scroller = view.scrollDOM;
-  const cursor = view.coordsAtPos(view.state.selection.main.head);
-  if (cursor === null) {
-    return false;
-  }
+  const { main } = view.state.selection;
+  const cursor = cellAt(view, grid, main.head, main.assoc || 1);
   const box = scroller.getBoundingClientRect();
   const above = cursor.top - box.top + scroller.scrollTop - top;
-  return (
-    above > -1 && above + cursor.bottom - cursor.top < scroller.clientHeight + 1
-  );
+  return above > -1 && above + cursor.height < scroller.clientHeight + 1;
 }
 
 function byPage(move: CursorMove, follower: Follower): Command {
-  const forward = move === 'down' || move === 'selectDown';
-  const selects = move === 'selectUp' || move === 'selectDown';
+  const forward = forwards(move);
+  const selects = selecting(move);
   return (view) => {
+    const grid = gridOf(view);
+    if (grid === undefined) {
+      return true;
+    }
     const { selection } = view.state;
-    const row = view.defaultLineHeight;
-    const page = pageRows(view.scrollDOM.clientHeight, row) * row;
+    const rows = pageRows(view.scrollDOM.clientHeight, grid.rowHeight);
+    const page = rows * grid.rowHeight;
     const next = EditorSelection.create(
       selection.ranges.map((range) => {
-        const moved = view.moveVertically(range, forward, page - row / 2);
-        return selects
-          ? EditorSelection.range(
-              range.anchor,
-              moved.head,
-              moved.goalColumn,
-              moved.bidiLevel ?? undefined,
-              moved.assoc,
-            )
-          : moved;
+        const reached = movedRows(
+          view.state.doc,
+          grid,
+          range,
+          forward ? rows : -rows,
+        );
+        return selects ? extended(range, reached) : reached;
       }),
       selection.mainIndex,
     );
@@ -106,7 +139,8 @@ function byPage(move: CursorMove, follower: Follower): Command {
       return true;
     }
     const following = follower(view);
-    const kept = following !== undefined && shownAt(view, following.aim());
+    const kept =
+      following !== undefined && shownAt(view, grid, following.aim());
     view.dispatch({
       selection: next,
       scrollIntoView: !kept,
@@ -131,11 +165,11 @@ export function cursorKeys(follower: Follower): Extension {
     }
     const start = keyPressed(editorKeymap.rowStart, event);
     if (start !== undefined) {
-      return toRowStart[start];
+      return toRowStart(start);
     }
     const row = keyPressed(editorKeymap.cursorRow, event);
     if (row !== undefined) {
-      return byRow[row];
+      return byRow(row);
     }
     const page = keyPressed(editorKeymap.cursorPage, event);
     if (page !== undefined) {

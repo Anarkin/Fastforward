@@ -33,7 +33,7 @@ import {
 
 const gutterOf = (name: ViewName) =>
   name === 'editor'
-    ? '.editor .cm-gutters'
+    ? '.editor .cm-content'
     : name === 'diff'
       ? '.diff-view .virtual-row .split-code'
       : '.viewer-gutter';
@@ -519,7 +519,7 @@ suite('App scrollbars alike', () => {
         .evaluate((element, code) => {
           const { left, right } = element.getBoundingClientRect();
           return code ? left : right;
-        }, name === 'diff');
+        }, name !== 'viewer');
       return across.left >= gutter - 1 && across.left <= gutter + 12;
     });
     assert.deepStrictEqual(seen, alike(textViews, true));

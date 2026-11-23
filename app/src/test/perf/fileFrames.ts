@@ -75,7 +75,7 @@ const views = [
     name: 'editor',
     tab: 2,
     pane: '.editor .cm-scroller',
-    rows: '.editor .cm-line',
+    rows: '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
     bar: '.editor .cm-scroller',
   },
   {

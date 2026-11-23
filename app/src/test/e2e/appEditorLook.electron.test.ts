@@ -4,7 +4,14 @@ import * as path from 'node:path';
 import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { viewerRows } from './cellsSeen';
+import { cellsOf, viewerRows } from './cellsSeen';
+import {
+  editorCells,
+  editorLinesSeen,
+  editorRowsSeen,
+  editorSelected,
+} from './editorSeen';
+import { untilSettled } from './waits';
 import { strings } from '../../lib/shared/strings';
 import {
   opened,
@@ -98,79 +105,35 @@ function baselinesOf(line: Element) {
   };
 }
 
-function firstLeftOf(element: Element): number {
-  const first = document
-    .createTreeWalker(element, NodeFilter.SHOW_TEXT)
-    .nextNode();
-  const range = document.createRange();
-  if (first !== null) {
-    range.setStart(first, 0);
-    range.setEnd(first, 1);
-  }
-  return range.getBoundingClientRect().left;
-}
+const cells = () => cellsOf(page, editorCells);
 
-const drawn = () =>
-  page
-    .locator('.editor .cm-selectionBackground')
-    .first()
-    .evaluate((element) => {
-      const probe = document.createElement('div');
-      probe.style.background = 'var(--selection-background)';
-      document.body.append(probe);
-      const wanted = getComputedStyle(probe).backgroundColor;
-      probe.remove();
-      return [getComputedStyle(element).backgroundColor, wanted];
-    });
-
-const coloredIn = (line: number, kind: string) =>
-  content()
-    .locator('.cm-line')
-    .nth(line)
-    .evaluate((shown, wanted) => {
-      const own = shown.matches(`.${wanted}`);
-      const texts = document.createTreeWalker(shown, NodeFilter.SHOW_TEXT);
-      const ownText: string[] = [];
-      for (let node = texts.nextNode(); node; node = texts.nextNode()) {
-        if (node.parentElement?.closest('[class*="syntax-"]') === shown) {
-          ownText.push(node.textContent ?? '');
-        }
-      }
-      return {
-        own,
-        text: own
-          ? ownText.join('')
-          : Array.from(
-              shown.querySelectorAll(`.${wanted}`),
-              (each) => each.textContent ?? '',
-            ).join(''),
-        others: Array.from(
-          shown.querySelectorAll('[class^="syntax-"]'),
-          (each) => `${each.className}:${each.textContent ?? ''}`,
-        ),
-      };
-    }, `syntax-${kind}`);
+const kindsOf = async (line: number) =>
+  (await editorLinesSeen(page)).find(({ number }) => number === line)?.kinds ??
+  {};
 
 suite('App editor', () => {
   sharedEditorApp();
 
-  test('colors the code edited by its language as the viewer does, coloring again as it is typed, a line in the color most of its tokens have with an element only around its other tokens and the plain text between tokens, as an element around every token made the editor twice as slow to scroll a source file', async () => {
+  test('colors the code edited by its language as the viewer does, coloring again as it is typed', async () => {
     await backToCommander();
     await edit('code.ts');
-    await content().locator('.cm-line.syntax-keyword').first().waitFor();
-    assert.deepStrictEqual(await coloredIn(0, 'keyword'), {
-      own: true,
-      text: 'const= ;',
-      others: ['syntax-plain: a ', 'syntax-number:1'],
+    await waitFor(
+      async () => (await kindsOf(1)).keyword !== undefined,
+      'the first line colored',
+    );
+    assert.deepStrictEqual(await kindsOf(1), {
+      keyword: 'const=;',
+      plain: ' a  ',
+      number: '1',
     });
     await toStart();
     await page.keyboard.type('// ');
     await waitFor(
-      async () => (await coloredIn(0, 'comment')).text === '// const a = 1;',
+      async () => (await kindsOf(1)).comment === '// const a = 1;',
       'the line colored as a comment',
     );
     await waitFor(
-      async () => (await coloredIn(1, 'keyword')).text !== '',
+      async () => ((await kindsOf(2)).keyword ?? '') !== '',
       'the next line still colored',
     );
   });
@@ -184,43 +147,43 @@ suite('App editor', () => {
       'the text',
     );
     const toggle = page.locator('.editor button[data-tip="Show Whitespace"]');
-    await page.locator('.editor .space-dots path').waitFor();
-    assert.strictEqual(
-      await content().locator('.blank[data-glyph="→"]').count(),
-      1,
-    );
-    const signed = await content()
-      .locator('.cm-line')
-      .evaluateAll((lines) =>
-        lines.map((line) => line.querySelector('.ending-sign') !== null),
-      );
-    assert.deepStrictEqual(signed, [true, false, true, false]);
+    const dotted = async () => (await cells().dots()).length;
+    const signedRows = async () =>
+      (await cells().glyphs(strings.symbols.carriageReturn))
+        .map(({ row }) => row)
+        .toSorted((one, other) => one - other);
+    await waitFor(async () => (await dotted()) === 3, 'the spaces dotted');
+    assert.strictEqual((await cells().glyphs(strings.symbols.tab)).length, 1);
+    assert.deepStrictEqual(await signedRows(), [0, 2]);
     await toggle.click();
     try {
-      await page
-        .locator('.editor .space-dots path')
-        .waitFor({ state: 'detached' });
-      assert.strictEqual(await content().locator('.ending-sign').count(), 0);
+      await waitFor(async () => (await dotted()) === 0, 'no space dotted');
+      assert.deepStrictEqual(await signedRows(), []);
+      assert.strictEqual((await cells().glyphs(strings.symbols.tab)).length, 0);
     } finally {
       await toggle.click();
     }
-    await page.locator('.editor .space-dots path').waitFor();
+    await waitFor(
+      async () => (await dotted()) === 3,
+      'the spaces dotted again',
+    );
   });
 
-  test('selects text in the color the app selects its rows in, focused or not', async () => {
+  test('shows the text selected as selected, focused or not', async () => {
     fs.writeFileSync(path.join(opened, 'selected.txt'), 'one\ntwo\n');
     await backToCommander();
     await edit('selected.txt');
     await content().click();
     await page.keyboard.press('ControlOrMeta+A');
-    const [focused, wanted] = await drawn();
-    assert.strictEqual(focused, wanted);
+    await waitFor(
+      async () => (await editorSelected(page)).join() === 'one,two',
+      'both lines selected',
+    );
     await page.locator('.editor .editor-path').click();
     await page
       .locator('.editor .cm-editor.cm-focused')
       .waitFor({ state: 'detached' });
-    const [unfocused] = await drawn();
-    assert.strictEqual(unfocused, wanted);
+    assert.deepStrictEqual(await editorSelected(page), ['one', 'two']);
   });
 
   test('marks a file changed with a star right after its name, in its path and on its tab, in the font of each and on the line of the name', async () => {
@@ -260,10 +223,13 @@ suite('App editor', () => {
       async () => (await editedText()) === 'first line\nsecond\n',
       'the text in the editor',
     );
-    const inEditor = await content()
-      .locator('.cm-line')
-      .first()
-      .evaluate(firstLeftOf);
+    const [first] = await untilSettled(
+      () => editorRowsSeen(page),
+      'the rows of the editor',
+      { accepted: (rows) => rows.length > 0 },
+    );
+    const inEditor =
+      first === undefined ? NaN : first.left - first.column * first.advance;
     assert.ok(
       Math.abs(inViewer - inEditor) < 0.5,
       `${inViewer} in the viewer, ${inEditor} in the editor`,
@@ -285,21 +251,19 @@ suite('App editor', () => {
     );
     await toStart();
     const scroller = page.locator('.editor .cm-scroller');
-    const dotted = () =>
-      scroller.evaluate((element) => {
-        const starts = [
-          ...(
-            element.querySelector('.space-dots path')?.getAttribute('d') ?? ''
-          ).matchAll(/M(-?[\d.]+) /g),
-        ].map(([, x]) => Number(x));
-        return {
-          runs: starts.length,
-          from: Math.min(...starts),
-          to: Math.max(...starts),
+    const dotted = async () => {
+      const columns = (await cells().dots()).map(({ column }) => column);
+      const advance = (await editorRowsSeen(page))[0]?.advance ?? 0;
+      return {
+        runs: columns.length,
+        from: Math.min(...columns) * advance,
+        to: Math.max(...columns) * advance,
+        ...(await scroller.evaluate((element) => ({
           left: element.scrollLeft,
           wide: element.clientWidth,
-        };
-      });
+        }))),
+      };
+    };
     await waitFor(async () => (await dotted()).runs > 0, 'the dots');
     const atStart = await dotted();
     await scroller.evaluate((element) => {

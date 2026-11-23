@@ -10,6 +10,7 @@ export interface TextLine {
   readonly end: number;
   readonly text: string;
   readonly cut?: true;
+  readonly ending?: string | undefined;
 }
 
 export interface ScreenRow {

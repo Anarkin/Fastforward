@@ -6,8 +6,13 @@ import {
   type ViewUpdate,
 } from '@codemirror/view';
 import { wrappedLines } from '../../../lib/page/wordWrap';
-import type { WrapMeasure } from './breaks';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import { wrapColumnsOf } from './rows';
+
+export interface WrapMeasure {
+  readonly columns: number;
+  readonly widths: TextWidths | undefined;
+}
 
 const beyondAscii = /[^\0-\x7f]/;
 

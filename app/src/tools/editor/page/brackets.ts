@@ -1,18 +1,37 @@
-import { bracketMatching, type MatchResult } from '@codemirror/language';
-import type { Extension, Range } from '@codemirror/state';
-import { Decoration } from '@codemirror/view';
+import { matchBrackets, type MatchResult } from '@codemirror/language';
+import type { EditorState } from '@codemirror/state';
 
-const matching = Decoration.mark({ class: 'cm-matchingBracket' });
+export interface BracketPlace {
+  readonly from: number;
+  readonly to: number;
+}
 
-export function matchedPair(match: MatchResult): Range<Decoration>[] {
-  return match.matched && match.end !== undefined
+export function matchedPair(match: MatchResult | null | false): BracketPlace[] {
+  return match && match.matched && match.end !== undefined
     ? [
-        matching.range(match.start.from, match.start.to),
-        matching.range(match.end.from, match.end.to),
+        { from: match.start.from, to: match.start.to },
+        { from: match.end.from, to: match.end.to },
       ]
     : [];
 }
 
-export const bracketPairs: Extension = bracketMatching({
-  renderMatch: matchedPair,
-});
+const besideCursor = (state: EditorState, head: number) =>
+  matchBrackets(state, head, -1) ||
+  (head > 0 && matchBrackets(state, head - 1, 1)) ||
+  matchBrackets(state, head, 1) ||
+  (head < state.doc.length && matchBrackets(state, head + 1, -1));
+
+const pairs = new WeakMap<EditorState, readonly BracketPlace[]>();
+
+export function bracketPairs(state: EditorState): readonly BracketPlace[] {
+  let found = pairs.get(state);
+  if (found === undefined) {
+    found = state.selection.ranges
+      .flatMap((range) =>
+        range.empty ? matchedPair(besideCursor(state, range.head)) : [],
+      )
+      .toSorted((one, other) => one.from - other.from);
+    pairs.set(state, found);
+  }
+  return found;
+}

@@ -6,18 +6,11 @@ import {
   Text,
   type Extension,
 } from '@codemirror/state';
-import {
-  EditorView,
-  keymap,
-  lineNumbers,
-  type ViewUpdate,
-} from '@codemirror/view';
+import { EditorView, keymap, type ViewUpdate } from '@codemirror/view';
 import type { Sentence } from '../../../lib/shared/sentences';
-import { bracketPairs } from './brackets';
 import { syntaxColors } from './colors';
 import { appSelection } from './selection';
 import { appTextLook, blanksShown } from './text';
-import { controlPictures } from './pictures';
 import { drawnNearWhileHeld } from './nearViewport';
 import { rowScrolling } from './scroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
@@ -40,7 +33,6 @@ import {
 import { maxColoredBytes } from '../../../components/syntax/shared/colorLimit';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { endingsField, endingsFrom, endingsUndone } from './endings';
-import { endingSigns } from './endingSigns';
 import { type Encoded } from './encodings';
 import { type EditorPlace } from './place';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
@@ -112,13 +104,10 @@ export function extensionsOf({
   onUpdate,
 }: EditorParts): Extension {
   return [
-    controlPictures,
     drawnNearWhileHeld,
     coloring.of(colors),
     appTextLook(table),
     appSelection(editorKeymap.rowEnd, cursor),
-    lineNumbers(),
-    bracketPairs,
     history(),
     endingsUndone,
     editorFind,
@@ -127,7 +116,6 @@ export function extensionsOf({
     wrapping.of(wordWrap ? EditorView.lineWrapping : []),
     blanking.of(blanksShown.of(showWhitespace)),
     closing.of(closesBrackets ? bracketsClosed : []),
-    endingSigns,
     EditorState.readOnly.of(readOnly),
     EditorView.contentAttributes.of({
       spellcheck: 'false',

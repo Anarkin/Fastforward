@@ -7,7 +7,7 @@ import { wrapColumns, wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { alikeWithin } from './alikeWithin';
-import { seenDots, seenGlyphs, seenRows } from './cellsSeen';
+import { cellsOf } from './cellsSeen';
 import { diffLinesSeen, untilDiffLine } from './diffSeen';
 import { untilSettled, waitForFocus } from './waits';
 import {
@@ -67,18 +67,39 @@ const hundredths = (value: number) => Math.round(value * 100) / 100;
 
 const layoutUnit = 1 / 32;
 
-const viewerOrigin = async () => {
-  const body = await page.locator('.viewer-body').boundingBox();
-  if (body === null) {
-    throw new Error('No viewer');
-  }
-  return body;
+interface Viewed {
+  readonly name: string;
+  readonly body: string;
+  readonly box: string;
+  readonly cells: string;
+}
+
+const viewer: Viewed = {
+  name: 'viewer',
+  body: '.viewer-body',
+  box: '.viewer-rows',
+  cells: '.viewer-rows .cell-rows',
 };
 
-const viewerLayout = async (): Promise<Layout> => {
-  const origin = await viewerOrigin();
-  const edge = await page.locator('.viewer-body').evaluate((body) => {
-    const box = body.querySelector('.viewer-rows');
+const editor: Viewed = {
+  name: 'editor',
+  body: '.editor-body',
+  box: '.cm-content',
+  cells: '.editor .editor-cells',
+};
+
+const originOf = async ({ name, body }: Viewed) => {
+  const box = await page.locator(body).boundingBox();
+  if (box === null) {
+    throw new Error(`No ${name}`);
+  }
+  return box;
+};
+
+const layoutOf = async (view: Viewed): Promise<Layout> => {
+  const origin = await originOf(view);
+  const edge = await page.locator(view.body).evaluate((body, within) => {
+    const box = body.querySelector(within);
     if (box === null) {
       throw new Error('No rows');
     }
@@ -87,27 +108,12 @@ const viewerLayout = async (): Promise<Layout> => {
       parseFloat(getComputedStyle(box).paddingRight) -
       body.getBoundingClientRect().left
     );
-  });
-  const textInset = await page
-    .locator('.viewer-probe')
-    .first()
-    .evaluate((probe) => {
-      const first = document
-        .createTreeWalker(probe, NodeFilter.SHOW_TEXT)
-        .nextNode();
-      const range = document.createRange();
-      if (first !== null) {
-        range.setStart(first, 0);
-        range.setEnd(first, 1);
-      }
-      return (
-        range.getBoundingClientRect().top - probe.getBoundingClientRect().top
-      );
-    });
-  const seen = await seenRows(page);
-  const starts: number[] = [];
-  const rows = seen.flatMap(({ key, text, left, top }) => {
-    const [start = 0, from = 0] = key.split(':').map(Number);
+  }, view.box);
+  const cells = cellsOf(page, view.cells);
+  const seen = await cells.rows();
+  const starts: string[] = [];
+  const rows = seen.flatMap(({ key, text, from, left, top }) => {
+    const start = key.slice(0, key.indexOf(':'));
     if (!starts.includes(start)) {
       starts.push(start);
     }
@@ -118,11 +124,11 @@ const viewerLayout = async (): Promise<Layout> => {
             line: starts.indexOf(start),
             from,
             x: left - origin.x,
-            y: top + textInset - origin.y,
+            y: top - origin.y,
           },
         ];
   });
-  const breaks = (await seenGlyphs(page, strings.symbols.breaks)).flatMap(
+  const breaks = (await cells.glyphs(strings.symbols.breaks)).flatMap(
     ({ row, column }) => {
       const at = seen[row];
       return at === undefined
@@ -137,57 +143,6 @@ const viewerLayout = async (): Promise<Layout> => {
   );
   return { edge, rows, breaks };
 };
-
-const editorLayout = (): Promise<Layout> =>
-  page.locator('.editor-body').evaluate((body) => {
-    const origin = body.getBoundingClientRect();
-    const content = body.querySelector('.cm-content');
-    if (content === null) {
-      throw new Error('No content');
-    }
-    const style = getComputedStyle(content);
-    const range = document.createRange();
-    const rows = [...content.querySelectorAll('.cm-line')].flatMap(
-      (line, index) => {
-        const found: Row[] = [];
-        const walker = document.createTreeWalker(line, NodeFilter.SHOW_TEXT);
-        let offset = 0;
-        let lastTop = Number.NaN;
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-          if (!(node instanceof Text)) {
-            continue;
-          }
-          for (let at = 0; at < node.length; at++) {
-            range.setStart(node, at);
-            range.setEnd(node, at + 1);
-            const rect = range.getBoundingClientRect();
-            if (!(Math.abs(rect.top - lastTop) < rect.height / 2)) {
-              found.push({
-                line: index,
-                from: offset + at,
-                x: rect.left - origin.left,
-                y: rect.top - origin.top,
-              });
-              lastTop = rect.top;
-            }
-          }
-          offset += node.length;
-        }
-        return found;
-      },
-    );
-    return {
-      edge:
-        content.getBoundingClientRect().right -
-        parseFloat(style.paddingRight) -
-        origin.left,
-      rows,
-      breaks: [...body.querySelectorAll('.wrap-break')].map((mark) => {
-        const rect = mark.getBoundingClientRect();
-        return { x: rect.left - origin.left, y: rect.top - origin.top };
-      }),
-    };
-  });
 
 const rounded = ({ edge, rows, breaks }: Layout): Layout => ({
   edge: hundredths(edge),
@@ -208,29 +163,6 @@ interface Hanging {
   readonly width: number;
 }
 
-const hangingMarks = async (body: string, marks: string): Promise<Hanging[]> =>
-  (
-    await page.locator(body).evaluate((shown, selector) => {
-      const origin = shown.getBoundingClientRect();
-      return [...shown.querySelectorAll(selector)].map((mark) => {
-        const rect = mark.getBoundingClientRect();
-        return {
-          kind: mark.className.includes('spaces') ? 'spaces' : 'blank',
-          x: rect.left - origin.left,
-          y: rect.top - origin.top,
-          width: rect.width,
-        };
-      });
-    }, marks)
-  )
-    .map((mark) => ({
-      ...mark,
-      x: hundredths(mark.x),
-      y: hundredths(mark.y),
-      width: hundredths(mark.width),
-    }))
-    .toSorted((a, b) => a.y - b.y || a.x - b.x);
-
 const whitespaceButton = (pressed?: boolean) =>
   page.locator('.viewer').getByRole('button', {
     name: 'Show Whitespace',
@@ -239,9 +171,10 @@ const whitespaceButton = (pressed?: boolean) =>
 
 const showWhitespace = () => whitespaceButton().click();
 
-const viewerHanging = async (): Promise<Hanging[]> => {
-  const origin = await viewerOrigin();
-  const seen = await seenRows(page);
+const hangingOf = async (view: Viewed): Promise<Hanging[]> => {
+  const origin = await originOf(view);
+  const cells = cellsOf(page, view.cells);
+  const seen = await cells.rows();
   const placed = (
     row: number,
     column: number,
@@ -263,7 +196,7 @@ const viewerHanging = async (): Promise<Hanging[]> => {
         ];
   };
   const runs: { row: number; column: number; columns: number }[] = [];
-  for (const { row, column } of (await seenDots(page)).toSorted(
+  for (const { row, column } of (await cells.dots()).toSorted(
     (one, other) => one.row - other.row || one.column - other.column,
   )) {
     const last = runs.at(-1);
@@ -281,8 +214,8 @@ const viewerHanging = async (): Promise<Hanging[]> => {
     ...runs.flatMap(({ row, column, columns }) =>
       placed(row, column, columns, 'spaces'),
     ),
-    ...(await seenGlyphs(page, strings.symbols.tab)).flatMap(
-      ({ row, column }) => placed(row, column, 1, 'blank'),
+    ...(await cells.glyphs(strings.symbols.tab)).flatMap(({ row, column }) =>
+      placed(row, column, 1, 'blank'),
     ),
   ].toSorted((a, b) => a.y - b.y || a.x - b.x);
 };
@@ -416,14 +349,14 @@ suite('App', () => {
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
       await wrapLongLines();
       const viewed = await untilSettled(
-        async () => rounded(await viewerLayout()),
+        async () => rounded(await layoutOf(viewer)),
         'the viewer to settle, its breaks marked',
         { accepted: ({ breaks }) => breaks.length > 0 },
       );
       await showWhitespace();
       await whitespaceButton(false).waitFor();
       const viewedHanging = await untilSettled(
-        viewerHanging,
+        () => hangingOf(viewer),
         'the blanks hanging in the viewer',
         { accepted: (hanging) => hanging.length > 0 },
       );
@@ -432,31 +365,27 @@ suite('App', () => {
 
       await page.keyboard.press('F4');
       await page.locator('.editor .cm-content').waitFor();
-      let edited = rounded(await editorLayout());
-      await waitFor(async () => {
-        const now = rounded(await editorLayout());
-        const settled = JSON.stringify(now) === JSON.stringify(edited);
-        edited = now;
-        return settled && now.breaks.length > 0;
-      }, 'the editor to settle, its breaks marked');
+      const edited = await untilSettled(
+        async () => rounded(await layoutOf(editor)),
+        'the editor to settle, its breaks marked',
+        { accepted: ({ breaks }) => breaks.length > 0 },
+      );
       assert.ok(
         viewed.rows.length > wrappedLines.length + 8,
         String(viewed.rows.length),
       );
       alikeWithin(edited, viewed, layoutUnit);
       await showWhitespace();
-      await page.locator('.editor .wrap-spaces').first().waitFor();
-      assert.ok(viewedHanging.length > 0);
-      alikeWithin(
-        await hangingMarks('.editor-body', '.wrap-spaces, .wrap-blank'),
-        viewedHanging,
-        layoutUnit,
+      await whitespaceButton(false).waitFor();
+      const editedHanging = await untilSettled(
+        () => hangingOf(editor),
+        'the blanks hanging in the editor',
+        { accepted: (hanging) => hanging.length > 0 },
       );
+      assert.ok(viewedHanging.length > 0);
+      alikeWithin(editedHanging, viewedHanging, layoutUnit);
       await showWhitespace();
-      await page
-        .locator('.editor .wrap-spaces')
-        .first()
-        .waitFor({ state: 'detached' });
+      await whitespaceButton(true).waitFor();
       await closeTabShown(page.locator('.editor'));
       await closeTabShown(page.locator('.viewer'));
 

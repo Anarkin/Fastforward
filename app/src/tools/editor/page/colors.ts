@@ -1,13 +1,6 @@
+import { StateEffect, type Extension, type Text } from '@codemirror/state';
 import {
-  StateEffect,
-  type Extension,
-  type Range,
-  type Text,
-} from '@codemirror/state';
-import {
-  Decoration,
   ViewPlugin,
-  type DecorationSet,
   type EditorView,
   type PluginValue,
   type ViewUpdate,
@@ -19,67 +12,8 @@ import type {
 import { partLines } from '../../../components/syntax/page/parts';
 import { replacedIn } from '../../../lib/page/replacedIn';
 import type { SyntaxRange } from '../../../components/syntax/page/engine';
-import { hasSwapped } from '../../../lib/page/controlPictures';
-import {
-  lineColors,
-  type ColoredRange,
-} from '../../../components/syntax/page/lineColors';
 
 const recolored = StateEffect.define();
-
-const kindMarks = new Map<string, Decoration>();
-
-function markOf(
-  kind: string,
-  inclusiveStart = false,
-  inclusiveEnd = false,
-): Decoration {
-  const key = `${kind} ${inclusiveStart} ${inclusiveEnd}`;
-  let mark = kindMarks.get(key);
-  if (mark === undefined) {
-    mark = Decoration.mark({
-      class: `syntax-${kind}`,
-      inclusiveStart,
-      inclusiveEnd,
-    });
-    kindMarks.set(key, mark);
-  }
-  return mark;
-}
-
-const kindLines = new Map<string, Decoration>();
-
-function lineOf(kind: string): Decoration {
-  let line = kindLines.get(kind);
-  if (line === undefined) {
-    line = Decoration.line({ class: `syntax-${kind}` });
-    kindLines.set(kind, line);
-  }
-  return line;
-}
-
-interface LineColors {
-  readonly common: string | undefined;
-  readonly others: readonly ColoredRange[];
-}
-
-const coloredLines = new WeakMap<
-  readonly SyntaxRange[],
-  { readonly text: string; readonly colors: LineColors }
->();
-
-export function colorsOfLine(
-  text: string,
-  tokens: readonly SyntaxRange[],
-): LineColors {
-  const kept = coloredLines.get(tokens);
-  if (kept?.text === text) {
-    return kept.colors;
-  }
-  const colors = lineColors(text, tokens);
-  coloredLines.set(tokens, { text, colors });
-  return colors;
-}
 
 function linesOf(doc: Text, first: number, last: number): string[] {
   const lines: string[] = [];
@@ -146,8 +80,6 @@ function shownLines(view: EditorView): { first: number; last: number } {
 
 const uncolored: EditedColors = { edit: () => {}, stop: () => {} };
 
-const uncoloredLine: LineColors = { common: undefined, others: [] };
-
 type ColoredLines = (readonly SyntaxRange[] | undefined)[];
 
 const coloredTexts = new WeakMap<
@@ -173,10 +105,12 @@ export function keepColoredLines(
   coloredTexts.set(doc, { language, lines });
 }
 
+const shownColors = new WeakMap<EditorView, Colors>();
+
 class Colors implements PluginValue {
   private lines: ColoredLines;
   private readonly session: EditedColors;
-  decorations: DecorationSet;
+  colored = 0;
 
   constructor(
     private readonly view: EditorView,
@@ -189,11 +123,15 @@ class Colors implements PluginValue {
       coloredLinesOf(doc, language) ??
       Array.from({ length: doc.lines }, () => undefined);
     this.session =
-      doc.length > limit ? uncolored : this.colored(view, colorer, language);
-    this.decorations = this.build(view);
+      doc.length > limit ? uncolored : this.coloring(view, colorer, language);
+    shownColors.set(view, this);
   }
 
-  private colored(
+  rangesOf(line: number): readonly SyntaxRange[] | undefined {
+    return this.lines[line - 1];
+  }
+
+  private coloring(
     view: EditorView,
     colorer: Colorer,
     language: string,
@@ -210,6 +148,7 @@ class Colors implements PluginValue {
         lines.forEach((ranges, index) => {
           this.lines[part.from + index] = ranges;
         });
+        this.colored += 1;
         if (
           linesMeet({ from: part.from, count: lines.length }, shownLines(view))
         ) {
@@ -232,89 +171,32 @@ class Colors implements PluginValue {
       );
       this.session.edit(edit.from, edit.removed, edit.lines);
     }
-    if (
-      update.docChanged ||
-      update.viewportChanged ||
-      update.transactions.some((transaction) =>
-        transaction.effects.some((effect) => effect.is(recolored)),
-      )
-    ) {
-      this.decorations = this.build(update.view);
-    }
   }
 
   destroy(): void {
     this.session.stop();
     keepColoredLines(this.view.state.doc, this.language, this.lines);
-  }
-
-  private build(view: EditorView): DecorationSet {
-    const { doc } = view.state;
-    const marks: Range<Decoration>[] = [];
-    let classed = 0;
-    for (const { from, to } of view.visibleRanges) {
-      for (let at = from; at <= to;) {
-        const line = doc.lineAt(at);
-        at = line.to + 1;
-        const windowFrom = Math.max(from, line.from) - line.from;
-        const windowTo = Math.min(to, line.to) - line.from;
-        const pictured = hasSwapped(line.text);
-        const tokens = this.lines[line.number - 1];
-        const { common, others } =
-          tokens === undefined || tokens.length === 0
-            ? uncoloredLine
-            : colorsOfLine(line.text, tokens);
-        if (common !== undefined && classed !== line.number) {
-          classed = line.number;
-          marks.push(lineOf(common).range(line.from));
-        }
-        for (const { start, end, kind } of tokensIn(
-          others,
-          windowFrom,
-          windowTo,
-        )) {
-          const markFrom = Math.max(start, windowFrom);
-          const markTo = Math.min(end, windowTo, line.length);
-          if (markFrom < markTo) {
-            marks.push(
-              markOf(
-                kind,
-                pictured && hasSwapped(line.text.charAt(markFrom)),
-                pictured && hasSwapped(line.text.charAt(markTo - 1)),
-              ).range(line.from + markFrom, line.from + markTo),
-            );
-          }
-        }
-      }
+    if (shownColors.get(this.view) === this) {
+      shownColors.delete(this.view);
     }
-    return Decoration.set(marks, true);
   }
 }
 
-export function tokensIn<Token extends { start: number; end: number }>(
-  tokens: readonly Token[],
-  from: number,
-  to: number,
-): Token[] {
-  let low = 0;
-  let high = tokens.length;
-  while (low < high) {
-    const middle = (low + high) >>> 1;
-    if ((tokens[middle]?.end ?? 0) <= from) {
-      low = middle + 1;
-    } else {
-      high = middle;
-    }
-  }
-  const found: Token[] = [];
-  for (let index = low; index < tokens.length; index++) {
-    const token = tokens[index];
-    if (token === undefined || token.start >= to) {
-      break;
-    }
-    found.push(token);
-  }
-  return found;
+export interface ColorsShown {
+  readonly rangesOf: (line: number) => readonly SyntaxRange[] | undefined;
+  readonly stamp: unknown;
+}
+
+const uncoloredView: ColorsShown = { rangesOf: () => undefined, stamp: 0 };
+
+export function colorsShown(view: EditorView): ColorsShown {
+  const colors = shownColors.get(view);
+  return colors === undefined
+    ? uncoloredView
+    : {
+        rangesOf: (line) => colors.rangesOf(line),
+        stamp: `${colors.colored}`,
+      };
 }
 
 export function syntaxColors(
@@ -324,8 +206,5 @@ export function syntaxColors(
 ): Extension {
   return language === undefined
     ? []
-    : ViewPlugin.define(
-        (view) => new Colors(view, colorer(), language, limit),
-        { decorations: (colors) => colors.decorations },
-      );
+    : ViewPlugin.define((view) => new Colors(view, colorer(), language, limit));
 }

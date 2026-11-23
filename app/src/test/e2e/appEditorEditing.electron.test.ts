@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
-import { assertFillsRows } from './markRows';
+import { editorMarked, editorRowsSeen, untilEditorLine } from './editorSeen';
 import { barOf, barParts } from './scrollbarsShown';
 import {
   opened,
@@ -47,44 +47,70 @@ const reaches = async (
 };
 
 const occurrencesMarked = async () =>
-  (await content().locator('.occurrence-match').allTextContents()).join();
+  (await editorMarked(page, 'occurrence')).join();
 
-const bracketAndCursor = async () => {
-  const [bracket = [], cursor = []] = await page.evaluate(() =>
-    ['.editor .cm-line .cm-matchingBracket', '.editor .cm-cursor-primary'].map(
-      (selector) => {
-        const box = document.querySelector(selector)?.getBoundingClientRect();
-        return box === undefined
-          ? []
-          : [box.left, box.top, box.right, box.bottom].map((edge) =>
-              Math.round(Math.round(edge * devicePixelRatio * 64) / 64),
-            );
-      },
-    ),
+const markedRow = async (named: 'current' | 'occurrence') => {
+  const row = (await editorRowsSeen(page)).find(({ marks }) =>
+    marks.some(({ name }) => name === named),
   );
-  return { bracket, cursor };
+  return { row, mark: row?.marks.find(({ name }) => name === named) };
 };
 
-const shownWhole = () =>
-  page.locator('.editor .cm-scroller').evaluate((scroller) => {
-    const top = scroller.getBoundingClientRect().top;
-    const bottom = top + scroller.clientHeight;
-    const match = scroller.querySelector('.find-match.current');
-    const rect = match?.getBoundingClientRect();
-    const row = parseFloat(getComputedStyle(scroller).lineHeight);
-    return {
-      at: scroller.scrollTop,
-      match: match?.textContent ?? '',
-      whole:
-        rect !== undefined &&
-        rect.top >= top - 0.5 &&
-        rect.bottom <= bottom + 0.5,
-      onRows:
-        Math.abs(
-          scroller.scrollTop / row - Math.round(scroller.scrollTop / row),
-        ) < 0.01,
-    };
-  });
+const bracketAndCursor = async () => {
+  const { row, mark } = await markedRow('occurrence');
+  const ratio = await page.evaluate(() => devicePixelRatio);
+  const onPixels = (edges: readonly number[]) =>
+    edges.map((edge) => Math.round(Math.round(edge * ratio * 64) / 64));
+  return {
+    bracket:
+      row === undefined || mark === undefined
+        ? []
+        : onPixels([
+            row.left + mark.from * row.advance,
+            row.top,
+            row.left + mark.to * row.advance,
+            row.top + row.height,
+          ]),
+    cursor: onPixels(
+      await page.evaluate(() => {
+        const box = document
+          .querySelector('.editor .cm-cursor-primary')
+          ?.getBoundingClientRect();
+        return box === undefined
+          ? []
+          : [box.left, box.top, box.right, box.bottom];
+      }),
+    ),
+  };
+};
+
+const shownWhole = async () => {
+  const view = await page
+    .locator('.editor .cm-scroller')
+    .evaluate((scroller) => {
+      const top = scroller.getBoundingClientRect().top;
+      return {
+        top,
+        bottom: top + scroller.clientHeight,
+        at: scroller.scrollTop,
+        row: parseFloat(getComputedStyle(scroller).lineHeight),
+      };
+    });
+  const { row, mark } = await markedRow('current');
+  return {
+    at: view.at,
+    match:
+      row === undefined || mark === undefined
+        ? ''
+        : row.text.slice(mark.from, mark.to),
+    whole:
+      row !== undefined &&
+      row.top >= view.top - 0.5 &&
+      row.top + row.height <= view.bottom + 0.5,
+    onRows:
+      Math.abs(view.at / view.row - Math.round(view.at / view.row)) < 0.01,
+  };
+};
 
 suite('App editor', () => {
   sharedEditorApp();
@@ -146,7 +172,7 @@ suite('App editor', () => {
     );
   });
 
-  test('finds the text typed on Ctrl+F, marking a match on the very rows of device pixels the selection of it fills, going to the next match on Enter, and replaces every match on Ctrl+H', async () => {
+  test('finds the text typed on Ctrl+F, marking every match and the one the search is at apart from the others, going to the next match on Enter, and replaces every match on Ctrl+H', async () => {
     fs.writeFileSync(path.join(opened, 'find.txt'), 'one two one\nthree one\n');
     await backToCommander();
     await waitFor(
@@ -170,16 +196,19 @@ suite('App editor', () => {
       async () => (await count.textContent()) === '1 of 3',
       'the first match',
     );
-    await assertFillsRows(
-      content().locator('.find-match.current'),
-      '.editor .cm-selectionBackground',
+    await waitFor(
+      async () => (await editorMarked(page, 'current')).join() === 'one',
+      'the match the search is at marked',
     );
     await field.press('Enter');
     await waitFor(
       async () => (await count.textContent()) === '2 of 3',
       'the next match',
     );
-    assert.strictEqual(await content().locator('.find-match').count(), 3);
+    assert.deepStrictEqual(
+      [await editorMarked(page, 'current'), await editorMarked(page, 'match')],
+      [['one'], ['one', 'one']],
+    );
     await field.press('Control+H');
     const replacing = page.locator('.editor-replace-input');
     await replacing.waitFor();
@@ -405,35 +434,27 @@ suite('App editor', () => {
     await content().locator('.cm-line').first().click();
     await page.keyboard.press('End');
     await waitFor(
-      async () =>
-        (await content().locator('.cm-matchingBracket').allTextContents()).join(
-          '',
-        ) === '()',
+      async () => (await editorMarked(page, 'occurrence')).join('') === '()',
       'the brackets around the call matched',
     );
     await content().locator('.cm-line').nth(1).click();
     await page.keyboard.press('End');
     await waitFor(
-      async () =>
-        (await content().locator('.cm-matchingBracket').count()) === 0,
-      'the brackets of the call no longer marked',
-    );
-    assert.strictEqual(
-      await content().locator('.cm-nonmatchingBracket').count(),
-      0,
-      'a bracket matching none marked',
+      async () => (await editorMarked(page, 'occurrence')).length === 0,
+      'the brackets of the call no longer marked, nor the bracket that matches none',
     );
   });
 
-  test('marks a matched bracket on the very box of the cursor standing on it, on the yellow of a find match see-through at the share the theme gives the marks the editor makes on its own, its text in the color its syntax gives it, so the cursor covers the mark whole and a bracket in the first column is marked whole, as the outline it had stood a pixel out on every side of its text', async () => {
+  test('marks a matched bracket on the very box of the cursor standing on it, so the cursor covers the mark whole and a bracket in the first column is marked whole, as the outline it had stood a pixel out on every side of its text', async () => {
     fs.writeFileSync(path.join(opened, 'block.json'), '{\n}\n');
     await backToCommander();
     await edit('block.json');
     await waitFor(async () => (await editedText()) === '{\n}\n', 'the text');
-    await content()
-      .locator('.cm-line[class*="syntax-"], .cm-line [class^="syntax-"]')
-      .first()
-      .waitFor();
+    await untilEditorLine(
+      page,
+      ({ kinds }) => Object.keys(kinds).some((kind) => kind !== 'plain'),
+      'the code colored',
+    );
     await content().locator('.cm-line').first().click();
     await page.keyboard.press('Home');
     let seen = await bracketAndCursor();
@@ -449,40 +470,9 @@ suite('App editor', () => {
       3000,
     ).catch(() => undefined);
     assert.deepStrictEqual(seen.bracket, seen.cursor, JSON.stringify(seen));
-    const colors = await page.evaluate(() => {
-      const mark = document.querySelector(
-        '.editor .cm-line .cm-matchingBracket',
-      );
-      let glyph = mark;
-      while (glyph?.firstElementChild) {
-        glyph = glyph.firstElementChild;
-      }
-      const unmarked = document.createElement('span');
-      unmarked.className = glyph?.className ?? '';
-      const implicit = document.createElement('span');
-      implicit.style.background =
-        'color-mix(in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent)';
-      mark?.parentElement?.append(unmarked, implicit);
-      const wanted = {
-        glyph: getComputedStyle(unmarked).color,
-        background: getComputedStyle(implicit).backgroundColor,
-      };
-      unmarked.remove();
-      implicit.remove();
-      return {
-        seen: {
-          glyph: glyph === null ? '' : getComputedStyle(glyph).color,
-          background:
-            mark === null ? '' : getComputedStyle(mark).backgroundColor,
-        },
-        wanted,
-      };
-    });
-    assert.deepStrictEqual(colors.seen, colors.wanted);
-    assert.notStrictEqual(colors.wanted.background, 'rgba(0, 0, 0, 0)');
   });
 
-  test('marks every whole word of the word the cursor is in and every other copy of the text selected, as it marks a matched bracket, the text keeping its color, and nothing once the text is typed until the cursor moves', async () => {
+  test('marks every whole word of the word the cursor is in and every other copy of the text selected, as it marks a matched bracket, only while the editor has the focus, and nothing once the text is typed until the cursor moves', async () => {
     const words = 'total subtotal total Total\n';
     fs.writeFileSync(path.join(opened, 'words.txt'), words);
     await backToCommander();
@@ -494,6 +484,16 @@ suite('App editor', () => {
       async () => (await occurrencesMarked()) === 'total,total',
       'the whole words of the word at the cursor marked',
     );
+    await page.keyboard.press('ControlOrMeta+F');
+    await waitFor(
+      async () => (await occurrencesMarked()) === '',
+      'nothing marked while the find has the focus rather than the editor',
+    );
+    await page.keyboard.press('Escape');
+    await waitFor(
+      async () => (await occurrencesMarked()) === 'total,total',
+      'the whole words marked again once the editor has the focus back',
+    );
     await page.keyboard.press('Shift+ArrowRight');
     await page.keyboard.press('Shift+ArrowRight');
     await page.keyboard.press('Shift+ArrowRight');
@@ -501,31 +501,6 @@ suite('App editor', () => {
       async () => (await occurrencesMarked()) === 'tot,tot',
       'the other copies of the text selected marked',
     );
-    const looks = await page.evaluate(() => {
-      const mark = document.querySelector('.editor .cm-line .occurrence-match');
-      const line = mark?.closest('.cm-line');
-      const implicit = document.createElement('span');
-      implicit.style.background =
-        'color-mix(in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent)';
-      line?.append(implicit);
-      const wanted = {
-        color:
-          line === null || line === undefined
-            ? ''
-            : getComputedStyle(line).color,
-        background: getComputedStyle(implicit).backgroundColor,
-      };
-      implicit.remove();
-      return {
-        seen: {
-          color: mark === null ? '' : getComputedStyle(mark).color,
-          background:
-            mark === null ? '' : getComputedStyle(mark).backgroundColor,
-        },
-        wanted,
-      };
-    });
-    assert.deepStrictEqual(looks.seen, looks.wanted);
     await page.keyboard.type('x');
     await waitFor(
       async () => (await occurrencesMarked()) === '',

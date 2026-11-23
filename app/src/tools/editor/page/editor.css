@@ -55,7 +55,10 @@
   color: var(--foreground);
 }
 
-.cm-editor .cm-widgetBuffer:has(+ .control-picture),
-.cm-editor .control-picture + .cm-widgetBuffer {
+.cm-editor .editor-cells {
   position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
 }

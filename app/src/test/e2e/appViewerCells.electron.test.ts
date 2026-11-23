@@ -9,6 +9,7 @@ import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import {
   cellPoint,
+  cellsOf,
   copied,
   dragOver,
   keepCopied,
@@ -42,11 +43,11 @@ const mostUnlike = 0.01;
 
 const leastInk = 2000;
 
+const halfUp = 0.01;
+
 const comparedRows = 14;
 
 const comparedWidth = 560;
-
-const afterWide = 7;
 
 interface Seen {
   readonly brightness: Float32Array;
@@ -115,44 +116,35 @@ function unlikeShare(one: Seen, other: Seen): number {
   return unlike / Math.max(1, one.inked);
 }
 
-function firstCharOf(line: Element): From {
-  const first = document
-    .createTreeWalker(line, NodeFilter.SHOW_TEXT)
-    .nextNode();
-  const range = document.createRange();
-  if (first !== null) {
-    range.setStart(first, 0);
-    range.setEnd(first, 1);
-  }
-  const box = line.getBoundingClientRect();
-  return {
-    left: range.getBoundingClientRect().left,
-    top: box.top,
-    row: box.height,
-  };
-}
-
 suite('App viewer drawn as cells', () => {
   let app: ElectronApplication;
   let page: Page;
   let profile: string;
+
+  const editorRows = () => cellsOf(page, '.editor .editor-cells').rows();
 
   const show = async (tool: 'viewer' | 'editor') => {
     await page
       .locator('.tabs .tab')
       .nth(tool === 'viewer' ? 0 : 1)
       .click();
-    await page
-      .locator(
-        tool === 'viewer'
-          ? '.viewer-rows .cell-rows[data-rows][data-colored]:has(canvas)'
-          : '.editor .cm-line [class*="syntax-"]',
-      )
-      .first()
-      .waitFor({ state: 'attached', timeout: 30_000 });
+    if (tool === 'viewer') {
+      await page
+        .locator('.viewer-rows .cell-rows[data-rows][data-colored]:has(canvas)')
+        .first()
+        .waitFor({ state: 'attached', timeout: 30_000 });
+      return;
+    }
+    await waitFor(
+      async () =>
+        (await editorRows()).some(({ pieces }) =>
+          pieces.some(({ kind }) => kind !== 'plain'),
+        ),
+      'the code of the editor colored',
+    );
   };
 
-  let firstCompared = 1;
+  const firstCompared = 1;
 
   const viewedFrom = async (): Promise<From> => {
     const row = (await seenRows(page))[firstCompared];
@@ -164,8 +156,15 @@ suite('App viewer drawn as cells', () => {
     };
   };
 
-  const editedFrom = (): Promise<From> =>
-    page.locator('.editor .cm-line').nth(firstCompared).evaluate(firstCharOf);
+  const editedFrom = async (): Promise<From> => {
+    const row = (await editorRows())[firstCompared];
+    assert.ok(row, 'the editor draws no row to compare from');
+    return {
+      left: row.left - row.column * row.advance,
+      top: row.top,
+      row: row.height,
+    };
+  };
 
   const shot = async (from: From): Promise<Seen> => {
     const png = await page.screenshot();
@@ -183,8 +182,8 @@ suite('App viewer drawn as cells', () => {
       Buffer.from(taken.pixels, 'base64'),
       taken.width,
       {
-        left: Math.round(from.left * ratio),
-        top: Math.round(from.top * ratio),
+        left: Math.round(from.left * ratio + halfUp),
+        top: Math.round(from.top * ratio + halfUp),
         width: Math.round(comparedWidth * ratio),
         height: Math.round(comparedRows * from.row * ratio),
       },
@@ -223,8 +222,7 @@ suite('App viewer drawn as cells', () => {
     await show('viewer');
   };
 
-  const bothTools = async (wordWrap: boolean, from = 1) => {
-    firstCompared = from;
+  const bothTools = async (wordWrap: boolean) => {
     await drawn(wordWrap);
     const cells = await settled(viewedFrom, 'the viewer drawn as cells');
     await show('editor');
@@ -276,8 +274,8 @@ suite('App viewer drawn as cells', () => {
     assert.deepStrictEqual(seen, alike, `${unlike} of the ink unlike`);
   });
 
-  test('draws wrapped lines as the editor draws them, each break marked, from the line after the wide characters, whose quotes the editor draws out of place once its lines wrap', async () => {
-    const { unlike, ...seen } = await bothTools(true, afterWide);
+  test('draws wrapped lines as the editor draws them, each break marked, the wide characters and the quotes around them too', async () => {
+    const { unlike, ...seen } = await bothTools(true);
 
     assert.deepStrictEqual(seen, alike, `${unlike} of the ink unlike`);
   });
@@ -342,7 +340,6 @@ suite('App viewer drawn as cells', () => {
   });
 
   test('draws its cells again with the device the GPU gives it once the one it had is lost, as nothing else draws the text', async () => {
-    firstCompared = 1;
     await drawn(false);
     const before = await settled(viewedFrom, 'the viewer drawn as cells');
     const lost = await page.evaluate(() => {
@@ -379,7 +376,6 @@ suite('App viewer drawn as cells', () => {
     const dark = await page.evaluate(
       () => matchMedia('(prefers-color-scheme: dark)').matches,
     );
-    firstCompared = 1;
     await drawn(false);
     const before = await settled(viewedFrom, 'the viewer drawn as cells');
     try {

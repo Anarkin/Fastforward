@@ -7,7 +7,7 @@ export interface DotLook {
 
 const onPixel = 1e-6;
 
-export const roundedTo = (value: number, step: number) =>
+const roundedTo = (value: number, step: number) =>
   Math.round(value / step + onPixel) * step;
 
 const floorTo = (value: number, step: number) =>
@@ -19,7 +19,12 @@ export function dotLook(
   pixel: number,
 ): DotLook {
   const dot = Math.max(pixel, roundedTo(0.16 * fontSize, pixel));
-  return { advance, dot, start: floorTo((advance - dot) / 2, pixel), pixel };
+  return {
+    advance,
+    dot,
+    start: floorTo((roundedTo(advance, pixel) - dot) / 2, pixel),
+    pixel,
+  };
 }
 
 const sized = /(\d+(?:\.\d+)?)px/;

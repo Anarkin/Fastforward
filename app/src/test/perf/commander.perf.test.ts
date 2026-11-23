@@ -153,7 +153,12 @@ suite('Frames of the commander, the viewer and the editor', () => {
 
   test('scrolling it in the editor', async () => {
     await page().keyboard.press('F4');
-    await page().locator('.editor .cm-line').first().waitFor();
+    await page()
+      .locator(
+        '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
+      )
+      .first()
+      .waitFor();
     const result = await measure(perf(), 'editor: padded table, wheel', () =>
       wheelNotches(page(), page().locator('.editor .cm-scroller'), 40),
     );
@@ -177,7 +182,12 @@ suite('Frames of the commander, the viewer and the editor', () => {
   test('scrolling a file of 20,000 lines in the editor with a mouse wheel', async () => {
     await select(stem(codeFile));
     await page().keyboard.press('F4');
-    await page().locator('.editor .cm-line').first().waitFor();
+    await page()
+      .locator(
+        '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
+      )
+      .first()
+      .waitFor();
     const result = await measure(perf(), 'editor: 20,000 lines, wheel', () =>
       wheelNotches(page(), page().locator('.editor .cm-scroller'), 40),
     );

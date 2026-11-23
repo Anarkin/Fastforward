@@ -1,4 +1,4 @@
-import { blankSignOf, signedBlank } from '../../../lib/page/blankSigns';
+import { blankSignOf, signedBlank } from './blankSigns';
 import {
   hasControls,
   pictureOf,
@@ -385,7 +385,7 @@ export function drawPieces(
   y: number,
   rowTint?: string,
 ): number {
-  const { tiles, frame, first, left: textLeft } = drawing;
+  const { tiles, frame, first, left: textLeft, limit } = drawing;
   const { advance, rowHeight } = tiles.metrics;
   let column = from;
   for (const [index, piece] of pieces.entries()) {
@@ -409,21 +409,22 @@ export function drawPieces(
       mark === undefined && selected !== true ? tint : undefined,
       tint,
     );
-    if (under !== undefined && column > start) {
+    const end = Math.min(column, limit + 1);
+    if (under !== undefined && end > start) {
       frame.rectAt(
         under,
         textLeft + Math.round((start - first) * advance),
         y,
-        (column - start) * advance,
+        (end - start) * advance,
         rowHeight,
         style.packed,
       );
     }
-    if (mark === 'current' && column > start) {
+    if (mark === 'current' && end > start) {
       const { hairline } = drawing.dot;
       const { outline } = drawing.palette;
       const left = textLeft + Math.round((start - first) * advance);
-      const width = (column - start) * advance;
+      const width = (end - start) * advance;
       frame.rect(left, y, width, hairline, outline);
       frame.rect(left, y + rowHeight - hairline, width, hairline, outline);
       if (pieces[index - 1]?.mark !== 'current') {

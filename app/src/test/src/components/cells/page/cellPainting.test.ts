@@ -107,6 +107,14 @@ function painting(
   };
 }
 
+function ended(ending?: string) {
+  const line = { start: 0, end: 5, text: 'abcd', ending };
+  return [
+    rowOf('abcd', 0, { row: line, to: 2, breakAt: 2 }),
+    rowOf('abcd', 0, { row: line, from: 2, index: 1 }),
+  ];
+}
+
 const first = rowOf('ab', 0);
 const second = rowOf('cd', 3);
 const third = rowOf('ef', 6);
@@ -349,6 +357,59 @@ suite('Rows painted as cells', () => {
       rectsIn(cells.frame).map(({ x }) => x),
       [14 + 2, 21 + 2],
     );
+  });
+
+  test('fills a selection and a find through the blanks hanging past the wrap column no further than the column kept for them, where their dot stands, as a run of spaces at the end of a wrapped row ran either on to the edge of the view, and fills an unwrapped row as far as its text goes', () => {
+    const { cells } = painting();
+    const padded = 'ab      ';
+    const broken = rowOf(padded, 0, { breakAt: 4 });
+    const selection = {
+      anchor: { start: 0, char: 1 },
+      focus: { start: 0, char: padded.length },
+    };
+    const filled = () =>
+      rectsIn(cells.frame)
+        .filter(({ height }) => height === metrics.rowHeight)
+        .map(({ x, width }) => [x, width]);
+
+    paintRows(cells, shown([broken], { wrapAt: 3, selection }), Infinity);
+    assert.deepStrictEqual(filled(), [[7, 21]]);
+
+    paintRows(
+      cells,
+      shown([broken], {
+        wrapAt: 3,
+        marksOf: () => [{ start: 5, end: 8, current: false }],
+      }),
+      Infinity,
+    );
+    assert.deepStrictEqual(filled(), []);
+
+    paintRows(
+      cells,
+      shown([rowOf(padded, 0)], {
+        selection: { ...selection, focus: { start: 0, char: 7 } },
+      }),
+      Infinity,
+    );
+    assert.deepStrictEqual(filled(), [[7, 42]]);
+  });
+
+  test('signs the end of a line that ends in a carriage return after its last character while whitespace is shown, on the last row of the line alone, and works the row out anew once its ending changes, as a text edited keeps the ending of each line apart from its text', () => {
+    const { painter, cells } = painting();
+    const signs = () =>
+      shownAt(cells.frame, painter)
+        .filter(({ shown: glyph }) => glyph === '␍')
+        .map(({ column, y }) => [column, y / metrics.rowHeight]);
+
+    paintRows(cells, shown(ended('␍'), { showWhitespace: true }), Infinity);
+    assert.deepStrictEqual(signs(), [[2, 1]]);
+
+    paintRows(cells, shown(ended(), { showWhitespace: true }), Infinity);
+    assert.deepStrictEqual(signs(), []);
+
+    paintRows(cells, shown(ended('␍')), Infinity);
+    assert.deepStrictEqual(signs(), []);
   });
 
   test('forgets the rows drawn longest ago once it keeps more than eight screens of them, down to four', () => {

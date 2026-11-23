@@ -1,6 +1,4 @@
 import {
-  addCursorAbove,
-  addCursorBelow,
   indentLess,
   indentMore,
   insertNewlineAndIndent,
@@ -17,15 +15,12 @@ import {
   EditorState,
   type Extension,
 } from '@codemirror/state';
-import {
-  EditorView,
-  rectangularSelection,
-  type Command,
-} from '@codemirror/view';
-import { clicked } from '../../../lib/shared/keymap';
+import { EditorView, type Command } from '@codemirror/view';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { editorKeymap } from './keymap';
 import { nextOccurrence, occurrenceStepping } from './nextOccurrence';
+import { gridOf } from './grid';
+import { cursorsOnLines } from './gridMoves';
 
 const indentOrInsert: Command = (view) => {
   const { state } = view;
@@ -48,6 +43,19 @@ const indentOrInsert: Command = (view) => {
   );
   return true;
 };
+
+const cursorOnLine =
+  (by: number): Command =>
+  (view) => {
+    const grid = gridOf(view);
+    const selection =
+      grid && cursorsOnLines(view.state.doc, grid, view.state.selection, by);
+    if (selection === undefined) {
+      return false;
+    }
+    view.dispatch({ selection, scrollIntoView: true, userEvent: 'select' });
+    return true;
+  };
 
 const selectNextOccurrence: Command = (view) => {
   const next = nextOccurrence(view.state);
@@ -91,7 +99,7 @@ export function editorKeys(actions: EditorKeyActions): Extension {
     }
     const rows = keyPressed(editorKeymap.cursorRows, event);
     if (rows !== undefined) {
-      return rows < 0 ? addCursorAbove : addCursorBelow;
+      return cursorOnLine(rows);
     }
     if (keyPressed(editorKeymap.undo, event) !== undefined) {
       return undo;
@@ -151,13 +159,6 @@ export function editorKeys(actions: EditorKeyActions): Extension {
   return [
     EditorState.allowMultipleSelections.of(true),
     occurrenceStepping,
-    EditorView.clickAddsSelectionRange.of(
-      (event) => clicked(editorKeymap.addCursor, event) !== undefined,
-    ),
-    rectangularSelection({
-      eventFilter: (event) =>
-        clicked(editorKeymap.columnSelection, event) !== undefined,
-    }),
     EditorView.domEventHandlers({
       keydown(event, view) {
         const command = commandOf(event);

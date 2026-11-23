@@ -82,10 +82,6 @@ function elementOf(node: Node): Element | null {
   return node instanceof Element ? node : node.parentElement;
 }
 
-const scaledInCell = '.cell > span';
-
-const flattening = 'data-copying';
-
 function realIn(selection: Selection, range: Range, within: Element): string {
   const shown = selection.toString();
   if (!hasPictures(shown)) {
@@ -123,18 +119,7 @@ function realText(selection: Selection): string {
   if (within === null || within === undefined) {
     return selection.toString();
   }
-  const boxed = [...within.querySelectorAll(scaledInCell)].some((each) =>
-    range.intersectsNode(each),
-  );
-  if (!boxed) {
-    return realIn(selection, range, within);
-  }
-  within.setAttribute(flattening, '');
-  try {
-    return realIn(selection, range, within);
-  } finally {
-    within.removeAttribute(flattening);
-  }
+  return realIn(selection, range, within);
 }
 
 export function copyReal(event: ClipboardEvent): void {

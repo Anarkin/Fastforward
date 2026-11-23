@@ -4,7 +4,7 @@ import {
   type PluginValue,
   type ViewUpdate,
 } from '@codemirror/view';
-import type { Extension } from '@codemirror/state';
+import { Prec, type Extension } from '@codemirror/state';
 import {
   followRows,
   rowPadding,
@@ -18,7 +18,6 @@ import {
 import { wheeled } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
 import { cursorKeys } from './cursorKeys';
-import { scratchRange } from '../../../lib/page/scratchRange';
 import {
   proxyElements,
   scrollProxy,
@@ -26,95 +25,22 @@ import {
   type Shown,
 } from '../../../lib/page/scrollProxies';
 
-export interface Leading {
-  readonly above: number;
-  readonly below: number;
-}
-
-export function leadingOf(
-  rowTop: number,
-  rowHeight: number,
-  text: { readonly top: number; readonly bottom: number },
-): Leading {
-  return {
-    above: Math.max(0, text.top - rowTop),
-    below: Math.max(0, rowTop + rowHeight - text.bottom),
-  };
-}
-
-export function wholeRows(height: number, row: number): number {
-  return row > 0 ? Math.max(row, Math.round(height / row) * row) : height;
-}
-
-function roundGaps(view: EditorView): void {
-  const row = view.defaultLineHeight;
-  for (const gap of view.contentDOM.querySelectorAll('.cm-line > div')) {
-    if (
-      gap instanceof HTMLElement &&
-      gap.style.width === '' &&
-      gap.style.height.endsWith('px')
-    ) {
-      const height = parseFloat(gap.style.height);
-      const whole = wholeRows(height, row);
-      if (whole !== height) {
-        gap.style.height = `${whole}px`;
-      }
-    }
-  }
-}
-
-interface RowSizes {
-  readonly padding: number;
-  readonly leading: Leading | undefined;
-}
-
-function measuredLeading(view: EditorView): Leading | undefined {
-  const walker = document.createTreeWalker(
-    view.contentDOM,
-    NodeFilter.SHOW_TEXT,
-  );
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    const line = node.parentElement?.closest('.cm-line');
-    if (node.parentElement?.closest('.cell') === null && line) {
-      const range = scratchRange();
-      range.selectNodeContents(node);
-      const [rect] = range.getClientRects();
-      if (rect !== undefined && rect.height > 0) {
-        return leadingOf(
-          line.getBoundingClientRect().top,
-          view.defaultLineHeight,
-          rect,
-        );
-      }
-    }
-  }
-  return undefined;
-}
-
 class RowScrolling implements PluginValue {
   readonly following: RowFollower;
   private readonly across: ColumnFollower;
   private padded: number | undefined;
-  leading: Leading = { above: 0, below: 0 };
   private readonly sizes = {
-    read: (view: EditorView): RowSizes => ({
-      padding: rowPadding(
+    read: (view: EditorView): number =>
+      rowPadding(
         view.scrollDOM.getBoundingClientRect().height,
         view.defaultLineHeight,
       ),
-      leading: measuredLeading(view),
-    }),
-    write: ({ padding, leading }: RowSizes, view: EditorView) => {
-      this.leading = leading ?? this.leading;
+    write: (padding: number, view: EditorView) => {
       if (padding !== this.padded) {
         this.padded = padding;
         view.contentDOM.style.paddingBottom = `${padding}px`;
       }
     },
-  };
-  private readonly gaps = {
-    read: () => undefined,
-    write: (_: undefined, view: EditorView) => roundGaps(view),
   };
 
   private readonly bar: ScrollProxy;
@@ -123,8 +49,7 @@ class RowScrolling implements PluginValue {
     read: (view: EditorView) => {
       const scroller = view.scrollDOM;
       const gutter =
-        scroller.querySelector('.cm-gutters')?.getBoundingClientRect().width ??
-        0;
+        parseFloat(getComputedStyle(view.contentDOM).marginLeft) || 0;
       const room = scroller.scrollWidth - scroller.clientWidth;
       return {
         gutter,
@@ -195,7 +120,6 @@ class RowScrolling implements PluginValue {
     });
     this.resized.observe(scroller);
     view.requestMeasure(this.sizes);
-    view.requestMeasure(this.gaps);
     view.requestMeasure(this.acrossShown);
   }
 
@@ -204,10 +128,6 @@ class RowScrolling implements PluginValue {
       update.view.requestMeasure(this.sizes);
       update.view.requestMeasure(this.acrossShown);
     }
-  }
-
-  docViewUpdate(view: EditorView): void {
-    roundGaps(view);
   }
 
   destroy(): void {
@@ -224,20 +144,15 @@ export function rowScrolling(scrolling: () => ScrollSettings): Extension {
   const rows = ViewPlugin.define((view) => new RowScrolling(view, scrolling));
   return [
     rows,
-    EditorView.scrollMargins.of((view) => {
-      const { above, below } = view.plugin(rows)?.leading ?? {
-        above: 0,
-        below: 0,
-      };
-      return { top: above, bottom: below };
-    }),
     EditorView.cursorScrollMargin.of({ x: 5, y: 0 }),
-    EditorView.scrollHandler.of((view, _, { y }) => {
-      if (y === 'nearest') {
-        view.plugin(rows)?.following.reveals();
-      }
-      return false;
-    }),
+    Prec.high(
+      EditorView.scrollHandler.of((view, _, { y }) => {
+        if (y === 'nearest') {
+          view.plugin(rows)?.following.reveals();
+        }
+        return false;
+      }),
+    ),
     cursorKeys((view) => view.plugin(rows)?.following),
   ];
 }

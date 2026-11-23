@@ -658,7 +658,7 @@ suite('Architecture', () => {
     );
     assert.deepStrictEqual(
       code.filter((file) => /\bfind-match\b/.test(read(file))),
-      ['components/cells/page/cellLook.ts', 'tools/editor/page/find.ts'],
+      ['components/cells/page/cellLook.ts'],
     );
     assert.deepStrictEqual(
       sourceFiles.filter(

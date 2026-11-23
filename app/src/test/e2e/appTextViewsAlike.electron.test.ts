@@ -1,6 +1,5 @@
 import { diffRowsSeen, diffSides } from './diffSeen';
 import * as assert from 'node:assert';
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
@@ -9,10 +8,10 @@ import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
-import { seenGlyphs, seenRows, viewerTexts } from './cellsSeen';
+import { cellsOf, seenGlyphs, seenRows, viewerTexts } from './cellsSeen';
 import { windowOfPage } from './cursorWindow';
 import { barOf, barParts } from './scrollbarsShown';
-import { untilSettled, waitForFocus } from './waits';
+import { untilSettled } from './waits';
 
 const scale = 1.25;
 const perNotch = 10;
@@ -98,75 +97,7 @@ interface Seen {
   readonly breaks: readonly Box[];
 }
 
-function seenIn(pane: Element, feature: number): Seen {
-  const paneBox = pane.getBoundingClientRect();
-  const covered =
-    (pane.querySelector('.diff-stuck-header > *')?.getBoundingClientRect()
-      .bottom ?? paneBox.top) - paneBox.top;
-  const word = `What feature ${feature} `.slice(0, 4);
-  const line = `feature ${feature} does`;
-  const marks: Seen['marks'][number][] = [];
-  const numbers: number[] = [];
-  let advance = 0;
-  const walker = document.createTreeWalker(pane, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    const at = (node.textContent ?? '').indexOf(word);
-    const row = node.parentElement?.closest(
-      '.viewer-row, .cm-line, .diff-line',
-    );
-    if (at === -1 || !row || !(row.textContent ?? '').includes(line)) {
-      continue;
-    }
-    const range = document.createRange();
-    range.setStart(node, at);
-    range.setEnd(node, at + word.length);
-    const rect = range.getBoundingClientRect();
-    advance = rect.width / word.length;
-    const within = row.matches('.diff-line') ? row : pane;
-    marks.push({
-      left: rect.left,
-      top: rect.top,
-      height: rect.height,
-      lineLeft: within.getBoundingClientRect().left,
-    });
-    numbers.push(
-      ...[...row.querySelectorAll('.number')].map(
-        (number) => number.getBoundingClientRect().left,
-      ),
-    );
-  }
-  const gutter = pane.querySelector('.cm-gutters');
-  if (gutter) {
-    numbers.push(gutter.getBoundingClientRect().left);
-  }
-  return {
-    pane: {
-      left: paneBox.left,
-      top: paneBox.top,
-      right: paneBox.right,
-      bottom: paneBox.bottom,
-    },
-    advance,
-    marks,
-    numbers,
-    breaks: [...pane.querySelectorAll('.wrap-break, .viewer-break')]
-      .filter((mark) => getComputedStyle(mark).visibility !== 'hidden')
-      .map((mark) => {
-        const { left, top, right, bottom } = mark.getBoundingClientRect();
-        return { left, top, right, bottom };
-      })
-      .filter(
-        (mark) =>
-          mark.right > mark.left &&
-          mark.top >= paneBox.top + covered &&
-          mark.bottom <= paneBox.bottom,
-      )
-      .toSorted((a, b) => a.top - b.top || a.left - b.left)
-      .slice(0, 3),
-  };
-}
-
-const hundredths = (value: number) => Math.round(value * 100) / 100;
+const hundredths = (value: number) => Math.round(value * 100) / 100 + 0;
 
 interface Shot {
   readonly width: number;
@@ -343,11 +274,66 @@ suite('App text views alike', () => {
     };
   };
 
+  const seenInEditor = async (feature: number): Promise<Seen> => {
+    const box = await page.locator(views.editor.pane).first().boundingBox();
+    assert.ok(box, 'the editor has no box');
+    const pane = {
+      left: box.x,
+      top: box.y,
+      right: box.x + box.width,
+      bottom: box.y + box.height,
+    };
+    const rows = await cellsOf(page, '.editor .editor-cells').rows();
+    const word = `What feature ${feature} `.slice(0, 4);
+    const line = `feature ${feature} does`;
+    return {
+      pane,
+      advance: rows[0]?.advance ?? 0,
+      marks: rows.flatMap((row) => {
+        const whole = row.line ?? row.text;
+        const at =
+          whole.indexOf(word) - (row.line === undefined ? 0 : row.from);
+        const shown = at >= 0 && at < row.text.length;
+        return !whole.includes(line) || (!shown && row.scrolled === 0)
+          ? []
+          : [
+              {
+                left: row.left + at * row.advance,
+                top: row.top,
+                height: row.height,
+                lineLeft: pane.left,
+              },
+            ];
+      }),
+      numbers:
+        rows.find(({ numberEnds }) => numberEnds !== undefined)?.numberEnds ??
+        [],
+      breaks: rows
+        .flatMap((row) => {
+          if (row.breakAt === undefined) {
+            return [];
+          }
+          const left = row.left + (row.breakAt - row.column) * row.advance;
+          return [
+            {
+              left,
+              top: row.top,
+              right: left + row.advance,
+              bottom: row.top + row.height,
+            },
+          ];
+        })
+        .filter((mark) => mark.top >= pane.top && mark.bottom <= pane.bottom)
+        .toSorted((a, b) => a.top - b.top || a.left - b.left)
+        .slice(0, 3),
+    };
+  };
+
   const seen = (name: ViewName, feature = 0) =>
     name === 'viewer'
       ? seenInViewer(feature)
       : name === 'editor'
-        ? page.locator(views[name].pane).first().evaluate(seenIn, feature)
+        ? seenInEditor(feature)
         : seenInDiff(feature);
 
   const show = async (name: ViewName) => {
@@ -618,50 +604,6 @@ suite('App text views alike', () => {
         'diff side by side': [0, 0],
       },
     );
-  });
-
-  test('draws the dots of the spaces in the editor alike with text selected and without, as the browser keeps its own caret, hidden under the cursor of the editor, in a layer of its own while nothing is selected and paints the dots over it apart from the text, which blurred them by half a device pixel where the editor starts between two', async () => {
-    await show('editor');
-    const pane = await page.locator(views.editor.pane).first().boundingBox();
-    assert.ok(pane, 'the editor has no box');
-    await page.mouse.click(pane.x + pane.width / 2, pane.y + pane.height / 2);
-    await waitForFocus(page.locator('.editor .cm-content'), 'the editor');
-    await page.keyboard.press('ControlOrMeta+Home');
-    for (let row = 0; row < 3; row++) {
-      await page.keyboard.press('ArrowDown');
-    }
-    await page.keyboard.press('Home');
-    const line = await page.locator('.editor .cm-line').nth(3).boundingBox();
-    assert.ok(line, 'the editor shows no fourth line');
-    const away = {
-      left: pane.x,
-      right: pane.x + pane.width,
-      top: line.y + 4 * line.height,
-      bottom: pane.y + pane.height,
-    };
-    const settledDots = async (what: string) => {
-      await page.mouse.move(2, 2);
-      let last = Buffer.alloc(0);
-      await untilSettled(async () => {
-        last = pixelsOf(await shot(), away);
-        return createHash('sha1').update(last).digest('hex');
-      }, what);
-      return last;
-    };
-    const plain = await settledDots('the dots with nothing selected');
-    await page.keyboard.press('Shift+ArrowRight');
-    await page.keyboard.press('Shift+ArrowRight');
-    await page.keyboard.press('Shift+ArrowRight');
-    const selected = await settledDots('the dots with text selected');
-    await page.keyboard.press('ArrowLeft');
-    let differing = 0;
-    for (let at = 0; at < plain.length; at += 4) {
-      if (!plain.subarray(at, at + 3).equals(selected.subarray(at, at + 3))) {
-        differing++;
-      }
-    }
-    assert.ok(inked(plain) > 0, 'no dots below the line of the cursor');
-    assert.strictEqual(differing, 0, 'pixels that changed with the selection');
   });
 
   test('dots the blank hanging at the end of a wrapped row, right before the mark of its break, in every view, however much of a column is left over beside the rows as the window gets narrower', async () => {

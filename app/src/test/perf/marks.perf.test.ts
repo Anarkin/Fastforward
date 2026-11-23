@@ -33,7 +33,7 @@ const tools = [
   {
     name: 'editor',
     tab: 1,
-    rows: '.editor .cm-line',
+    rows: '.editor .editor-cells[data-rows]:has(canvas), .editor .cm-editor:not(:has(.editor-cells)) .cm-line',
     pane: '.editor .cm-scroller',
   },
   {
@@ -110,7 +110,7 @@ suite('Frames of the copies of a colon marked', () => {
       const { page } = perf();
       await page.locator('.tabs .tab').nth(tool.tab).click();
       const drawn = page.locator(tool.rows);
-      await (tool.name === 'viewer' ? drawn.first() : drawn.nth(10)).waitFor();
+      await drawn.first().waitFor();
       if (tool.name === 'viewer') {
         await page.locator(tool.pane).first().focus();
         await page.keyboard.press('2');

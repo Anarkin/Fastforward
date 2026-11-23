@@ -268,7 +268,7 @@ export async function mountEditorAndField(
       const box = document.createElement('div');
       box.className = 'cursor-probe editor-probe';
       box.style.cssText =
-        'position: fixed; left: 40px; top: 160px; width: 300px; z-index: 10; background: var(--color-panel-background)';
+        'position: fixed; left: 40px; top: 160px; width: 300px; z-index: 10; background: var(--color-panel-background); --line-number-width: 0px; --line-number-gap: 0px';
       document.body.append(box);
       const view = new inPage.EditorView({
         doc: shown.text,
@@ -319,30 +319,49 @@ export async function focusField(head: number): Promise<void> {
   }, head);
 }
 
+const twoCells =
+  /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\uff00-\uff60]|\p{Extended_Pictographic}/u;
+
 export async function editorCell(text: string, head: number): Promise<Box> {
-  const rect = await page
-    .locator('.editor-probe .cm-line')
-    .evaluate((line, upTo) => {
-      const node = document
-        .createTreeWalker(line, NodeFilter.SHOW_TEXT)
-        .nextNode();
-      if (node === null) {
-        throw new Error('No text in the line of the editor');
-      }
-      const range = document.createRange();
-      range.setStart(node, 0);
-      range.setEnd(node, 1);
-      const advance = range.getBoundingClientRect().width;
-      range.setEnd(node, upTo);
-      const row = line.getBoundingClientRect();
-      return {
-        left: range.getBoundingClientRect().right,
-        top: row.top,
-        width: advance,
-        height: row.height,
-      };
-    }, head);
   assert.ok(text.length >= head);
+  let rect:
+    | {
+        readonly left: number;
+        readonly top: number;
+        readonly width: number;
+        readonly height: number;
+      }
+    | undefined;
+  await waitFor(async () => {
+    const seen = await page
+      .locator('.editor-probe .editor-cells')
+      .evaluate((host) =>
+        host instanceof HTMLElement && host.querySelector('canvas') !== null
+          ? {
+              row: host.seenRows?.()[0],
+              places: [...(host.seenPlaces?.(0) ?? [])],
+            }
+          : undefined,
+      );
+    const row = seen?.row;
+    const last = seen?.places.at(-1);
+    if (row === undefined || last === undefined || row.line !== text) {
+      return false;
+    }
+    const column =
+      seen?.places.find(([at]) => at === head)?.[1] ??
+      last[1] + (twoCells.test(text.slice(last[0])) ? 2 : 1);
+    rect = {
+      left: row.left + (column - row.column) * row.advance,
+      top: row.top,
+      width: row.advance,
+      height: row.height,
+    };
+    return true;
+  }, 'the cells of the editor to show its text');
+  if (rect === undefined) {
+    throw new Error('No text in the cells of the editor');
+  }
   return pixelBox(rect, await ratioOfPage());
 }
 

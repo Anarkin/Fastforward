@@ -1,4 +1,4 @@
-import { strings } from '../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 const blankSigns: Readonly<Record<string, string>> = {
   '\t': strings.symbols.tab,
@@ -7,10 +7,7 @@ const blankSigns: Readonly<Record<string, string>> = {
   ' ': strings.symbols.nonBreakingSpace,
 };
 
-export const blank = /[ \t\r   -​  ⁠　﻿]/;
-
-export const spacesBlanksAndText =
-  / +|[ \t\r   -​  ⁠　﻿]|[^ \t\r   -​  ⁠　﻿]+/g;
+const blank = /[ \t\r   -​  ⁠　﻿]/;
 
 const signed = blank.source.slice(2, -1);
 

@@ -40,6 +40,17 @@ export const endingsField = StateField.define<Endings>({
   },
 });
 
+export function endingAfter(
+  { ending, strays }: Endings,
+  lineEnd: number,
+): LineEnding {
+  let ended = ending;
+  strays.between(lineEnd, lineEnd + 1, (_from, _to, mark) => {
+    ended = mark.ending;
+  });
+  return ended;
+}
+
 export function endingsFrom(
   doc: Text,
   shown: {

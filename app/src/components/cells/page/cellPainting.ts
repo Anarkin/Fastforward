@@ -256,6 +256,9 @@ function drawRow(
   ) {
     drawGap(drawing, end, y, tintsOver(tints.row, tints.word));
   }
+  if (ends && drawing.blanks && row.row.ending !== undefined) {
+    drawSign(drawing, row.row.ending, end, y, tints?.row);
+  }
   if (withBreak) {
     const { advance, rowHeight } = drawing.tiles.metrics;
     drawing.frame.rect(
@@ -335,6 +338,7 @@ function keptOf(
   const before = kept.get(rowKey(row));
   return before !== undefined &&
     before.row.text === row.row.text &&
+    before.row.ending === row.row.ending &&
     before.from === (part?.from ?? row.from) &&
     before.to === (part?.to ?? row.to) &&
     before.column === (part?.column ?? 0) &&

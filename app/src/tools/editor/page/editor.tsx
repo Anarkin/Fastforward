@@ -1,5 +1,5 @@
 import { tip } from '../../../lib/page/tips';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { useFocusKeeper } from '../../../lib/page/viewFocus';
 import { strings } from '../../../lib/shared/strings';
 import { useShell, useShellActions } from '../../../shell/page/store';
@@ -21,6 +21,7 @@ import { useEditorFinding } from './finding';
 import { EditorFindBar } from './findBar';
 import { EditorToolbar } from './toolbar';
 import { EditorAsks } from './asks';
+import { gpuRefused, watchGpu } from '../../../components/cells/page/gpuDevice';
 
 export function Editor() {
   useEffect(startColorer, []);
@@ -67,6 +68,9 @@ export function Editor() {
     }
   });
 
+  const refused = useSyncExternalStore(watchGpu, gpuRefused);
+  const said = edited?.error ?? (refused ? strings.common.noGpu : undefined);
+
   const mark = edited?.readOnly
     ? strings.editor.readOnlyMark
     : edited?.changed
@@ -105,7 +109,7 @@ export function Editor() {
           </span>
         )}
       </div>
-      {edited?.error === undefined ? (
+      {said === undefined ? (
         <>
           <div className="column-body editor-body" ref={host} />
           {status !== undefined && (
@@ -115,7 +119,7 @@ export function Editor() {
       ) : (
         <div className="column-body editor-body">
           <div className="viewer-error">
-            <Words>{edited.error}</Words>
+            <Words>{said}</Words>
           </div>
         </div>
       )}

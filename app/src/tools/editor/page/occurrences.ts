@@ -5,9 +5,7 @@ import {
   type Extension,
 } from '@codemirror/state';
 import {
-  Decoration,
   ViewPlugin,
-  type DecorationSet,
   type EditorView,
   type PluginValue,
   type ViewUpdate,
@@ -125,20 +123,23 @@ export function occurrencesIn(
   return sought === undefined ? [] : foundIn(state, sought, shown);
 }
 
-const occurrenceMark = Decoration.mark({ class: 'occurrence-match' });
-
 const occurrencesRestMs = 250;
 
 const rested = StateEffect.define();
 
+const none: readonly Place[] = [];
+
+const marking = new WeakMap<EditorView, OccurrenceMarks>();
+
 class OccurrenceMarks implements PluginValue {
-  decorations: DecorationSet;
+  found: readonly Place[];
   private sought: Sought | undefined;
   private resting: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly view: EditorView) {
     this.sought = soughtIn(view.state);
-    this.decorations = this.build(view);
+    this.found = this.build(view);
+    marking.set(view, this);
   }
 
   update(update: ViewUpdate): void {
@@ -149,7 +150,7 @@ class OccurrenceMarks implements PluginValue {
     const sought = soughtIn(update.state);
     if (sameSought(sought, this.sought)) {
       if (sought !== undefined && moved) {
-        this.decorations = this.build(update.view);
+        this.found = this.build(update.view);
       }
       return;
     }
@@ -159,11 +160,11 @@ class OccurrenceMarks implements PluginValue {
     );
     if (settled || sought === undefined) {
       this.sought = sought;
-      this.decorations = this.build(update.view);
+      this.found = this.build(update.view);
       return;
     }
     this.sought = undefined;
-    this.decorations = Decoration.none;
+    this.found = none;
     this.resting = setTimeout(() => {
       this.view.dispatch({ effects: rested.of(null) });
     }, occurrencesRestMs);
@@ -171,23 +172,23 @@ class OccurrenceMarks implements PluginValue {
 
   destroy(): void {
     clearTimeout(this.resting);
+    if (marking.get(this.view) === this) {
+      marking.delete(this.view);
+    }
   }
 
-  private build(view: EditorView): DecorationSet {
+  private build(view: EditorView): readonly Place[] {
     const { sought } = this;
     return sought === undefined
-      ? Decoration.none
-      : Decoration.set(
-          foundIn(view.state, sought, view.visibleRanges).map(({ from, to }) =>
-            occurrenceMark.range(from, to),
-          ),
-        );
+      ? none
+      : foundIn(view.state, sought, view.visibleRanges);
   }
 }
 
+export const occurrencesShown = (view: EditorView): readonly Place[] =>
+  marking.get(view)?.found ?? none;
+
 export const editorOccurrences: Extension = [
   pausedField,
-  ViewPlugin.fromClass(OccurrenceMarks, {
-    decorations: (marks) => marks.decorations,
-  }),
+  ViewPlugin.fromClass(OccurrenceMarks),
 ];

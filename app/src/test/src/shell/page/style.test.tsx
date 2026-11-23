@@ -432,22 +432,20 @@ suite('Style', () => {
         },
       );
     }
-    for (const implicit of ['cm-matchingBracket', 'occurrence-match']) {
-      looks(
-        withClass(
-          inside(
-            'cm-editor editor-text cm-focused',
-            <span className={implicit}>(</span>,
-          ),
-          implicit,
+    looks(
+      withClass(
+        inside(
+          'cm-editor editor-text',
+          <mark className="occurrence-match">(</mark>,
         ),
-        {
-          background:
-            'color-mix( in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent )',
-          'border-radius': undefined,
-        },
-      );
-    }
+        'occurrence-match',
+      ),
+      {
+        background:
+          'color-mix( in srgb, var(--color-search-match) var(--color-search-match-implicit), transparent )',
+        'border-radius': undefined,
+      },
+    );
   });
 
   test('selects text in the color of a selected row everywhere, in the text boxes, the viewer, the diff, Markdown and any other text as the editor does, and see-through in that color over the page of a PDF, which shows through', () => {
@@ -471,9 +469,6 @@ suite('Style', () => {
       <div className="cm-editor editor-text editor-selection">
         <div className="cm-scroller">
           <div className="cm-line">x</div>
-          <div className="cm-selectionLayer">
-            <div className="cm-selectionBackground" />
-          </div>
         </div>
       </div>,
     );
@@ -482,9 +477,6 @@ suite('Style', () => {
       { 'background-color': 'transparent' },
       selected,
     );
-    looks(withClass(editor, 'cm-selectionBackground'), {
-      background: 'var(--selection-background)',
-    });
     looks(
       withClass(
         inside('pdf-pane', <div className="textLayer">{text}</div>),

@@ -2,47 +2,11 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { tabSize } from '../../../../lib/page/tabStops';
 import { cascaded } from '../../../helpers/cascade';
-import { diffView, shownRow } from '../../../helpers/styleMarkup';
+import { diffView } from '../../../helpers/styleMarkup';
 import { compact, looks, noop } from './stylesheetFixtures';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
-import { createElement } from 'react';
-import {
-  rendered,
-  withClass,
-  type MarkupElement,
-} from '../../../helpers/markup';
-import { DiffViewShown, InlineLine } from '../../../helpers/styleDiffFixtures';
-
-function cell(row: MarkupElement, className: string): MarkupElement {
-  return withClass(
-    rendered(
-      createElement('span', { className }, '😀'),
-      withClass(row, 'code'),
-    ),
-    'cell',
-  );
-}
-
-const spaceDots =
-  'linear-gradient(to right, transparent var(--space-dot-start), var(--muted-foreground) var(--space-dot-start) calc(var(--space-dot-start) + var(--space-dot)), transparent 0)';
-
-const squareDots = {
-  'background-size': 'var(--text-advance) var(--space-dot)',
-  'background-position': '0 50%',
-  'background-repeat': 'repeat-x',
-};
-
-const marked = (mark: React.ReactElement, className: string) =>
-  withClass(
-    rendered(
-      <div className="cm-editor editor-text">
-        <div className="cm-scroller">
-          <div className="cm-layer break-mark-layer">{mark}</div>
-        </div>
-      </div>,
-    ),
-    className,
-  );
+import { rendered, withClass } from '../../../helpers/markup';
+import { DiffViewShown } from '../../../helpers/styleDiffFixtures';
 
 const colorOf = (box: string, part: string) =>
   cascaded(
@@ -86,7 +50,7 @@ suite('Style', () => {
     );
   });
 
-  test('draws a line in the color of the line over the status of a column at the end of the column of line numbers, in the editor, the diff, side by side too, and the viewer, on a strip of its own there that stays put over the text scrolled sideways, so the numbers stand apart from the text', () => {
+  test('draws a line in the color of the line over the status of a column at the end of the column of line numbers, in the diff, side by side too, and the viewer, on a strip of its own there that stays put over the text scrolled sideways, so the numbers stand apart from the text', () => {
     const status = rendered(<div className="column-status" />);
     const line = cascaded(status, 'box-shadow')?.split(' ').at(-1);
     assert.strictEqual(line, 'var(--color-border)');
@@ -112,18 +76,6 @@ suite('Style', () => {
     );
     looks(withClass(split, 'split-code'), { 'box-shadow': edge });
     looks(withClass(split, 'code'), { 'box-shadow': undefined });
-    const editor = rendered(
-      <div className="cm-editor editor-text">
-        <div className="cm-scroller">
-          <div className="cm-gutters">
-            <div className="cm-gutter cm-lineNumbers" />
-          </div>
-        </div>
-      </div>,
-    );
-    looks(withClass(editor, 'cm-lineNumbers'), {
-      'box-shadow': `inset calc(-1 * var(--hairline)) 0 ${line}`,
-    });
     const viewer = rendered(<div className="viewer-gutter numbered" />);
     looks(viewer, {
       position: 'absolute',
@@ -187,64 +139,9 @@ suite('Style', () => {
     );
   });
 
-  test('draws a character in a box exactly as many columns of the text wide as it takes and a line tall, its glyph centered, as our terminal draws it on its grid, in the diff and the viewer alike, never making its line taller, as a shrunk emoji made a wrapped line of the diff two rows tall', () => {
-    looks(
-      cell(
-        shownRow(
-          diffView(<DiffViewShown wordWrap />, <InlineLine kind="added" />),
-        ),
-        'cell',
-      ),
-      {
-        display: 'inline-flex',
-        'justify-content': 'center',
-        'align-items': 'center',
-        width: 'var(--text-advance)',
-        height: '1lh',
-        'vertical-align': 'top',
-      },
-    );
-    looks(
-      cell(
-        shownRow(
-          diffView(<DiffViewShown wordWrap />, <InlineLine kind="added" />),
-        ),
-        'cell wide',
-      ),
-      { width: 'calc(2 * var(--text-advance))' },
-    );
-    looks(
-      cell(
-        shownRow(
-          diffView(<DiffViewShown wordWrap />, <InlineLine kind="added" />),
-        ),
-        'cell zero',
-      ),
-      { width: '0' },
-    );
+  test('counts a column of the text of a diff as the advance the diff measures for its characters, so what stands on columns of the text stands on those of the diff', () => {
     looks(withClass(diffView(<DiffViewShown />), 'diff-view'), {
       '--text-advance': 'var(--diff-advance)',
     });
-  });
-
-  test('marks the breaks of the rows of a line wrapped in the editor as the diff and the viewer mark them, the sign muted and centered in a column of the text, the spaces hanging at the end of a row dotted the same, none of it taking the pointer or a selection', () => {
-    looks(marked(<div className="wrap-break" />, 'break-mark-layer'), {
-      'pointer-events': 'none',
-      'user-select': 'none',
-      color: 'var(--muted-foreground)',
-    });
-    for (const sign of ['wrap-break', 'wrap-blank']) {
-      looks(marked(<div className={sign} />, sign), {
-        width: 'var(--text-advance)',
-        height: '1lh',
-        'text-align': 'center',
-      });
-    }
-    const spaces = marked(<div className="wrap-spaces" />, 'wrap-spaces');
-    looks(spaces, { height: '1lh', ...squareDots });
-    assert.strictEqual(
-      compact(cascaded(spaces, 'background-image')),
-      spaceDots,
-    );
   });
 });

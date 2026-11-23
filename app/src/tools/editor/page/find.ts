@@ -4,17 +4,9 @@ import {
   StateField,
   type EditorState,
   type Extension,
-  type Range,
   type Text,
 } from '@codemirror/state';
-import {
-  Decoration,
-  ViewPlugin,
-  type DecorationSet,
-  type EditorView,
-  type PluginValue,
-  type ViewUpdate,
-} from '@codemirror/view';
+import type { EditorView } from '@codemirror/view';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import {
   matchesIn,
@@ -142,53 +134,32 @@ function currentOf(state: EditorState): number {
   );
 }
 
-const matchMark = Decoration.mark({ class: 'find-match' });
-const currentMark = Decoration.mark({ class: 'find-match current' });
-
-class FindMarks implements PluginValue {
-  decorations: DecorationSet;
-
-  constructor(view: EditorView) {
-    this.decorations = this.build(view);
-  }
-
-  update(update: ViewUpdate): void {
-    if (
-      update.docChanged ||
-      update.selectionSet ||
-      update.viewportChanged ||
-      findingOf(update.state) !== findingOf(update.startState)
-    ) {
-      this.decorations = this.build(update.view);
-    }
-  }
-
-  private build(view: EditorView): DecorationSet {
-    const { found } = findingOf(view.state);
-    const current = currentOf(view.state);
-    const marks: Range<Decoration>[] = [];
-    for (const { from, to } of view.visibleRanges) {
-      for (const [index, match] of found.entries()) {
-        if (match.to >= from && match.from <= to) {
-          marks.push(
-            (index === current ? currentMark : matchMark).range(
-              match.from,
-              match.to,
-            ),
-          );
-        }
-      }
-    }
-    return Decoration.set(marks, true);
-  }
+export interface FoundMark extends Found {
+  readonly current: boolean;
 }
 
-export const editorFind: Extension = [
-  findField,
-  ViewPlugin.fromClass(FindMarks, {
-    decorations: (marks) => marks.decorations,
-  }),
-];
+const marksOfFound = new WeakMap<
+  readonly Found[],
+  { readonly current: number; readonly marks: readonly FoundMark[] }
+>();
+
+export function findMarks(state: EditorState): readonly FoundMark[] {
+  const { found } = findingOf(state);
+  const current = currentOf(state);
+  const kept = marksOfFound.get(found);
+  if (kept?.current === current) {
+    return kept.marks;
+  }
+  const marks = found.map(({ from, to }, index) => ({
+    from,
+    to,
+    current: index === current,
+  }));
+  marksOfFound.set(found, { current, marks });
+  return marks;
+}
+
+export const editorFind: Extension = findField;
 
 export function find(view: EditorView, query: FindQuery | undefined): void {
   view.dispatch({ effects: setFind.of(query) });

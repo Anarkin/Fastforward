@@ -8,7 +8,7 @@ import type * as editorTextModule from '../../tools/editor/page/text';
 import type * as cellTableModule from '../../lib/page/cellTable';
 import { page } from './appFixtures';
 
-export type PageEditor = Pick<typeof viewModule, 'EditorView' | 'lineNumbers'> &
+export type PageEditor = Pick<typeof viewModule, 'EditorView'> &
   Pick<typeof editorTextModule, 'appTextLook' | 'blanksShown'> &
   Pick<typeof editorSelectionModule, 'appSelection'> &
   Pick<typeof editorKeymapModule, 'editorKeymap'> &
@@ -18,7 +18,7 @@ export async function editorInPage(): Promise<JSHandle<PageEditor>> {
   const built = await esbuild.build({
     stdin: {
       contents: [
-        "export { EditorView, lineNumbers } from '@codemirror/view';",
+        "export { EditorView } from '@codemirror/view';",
         "export { appTextLook, blanksShown } from '../../tools/editor/page/text';",
         "export { appSelection } from '../../tools/editor/page/selection';",
         "export { editorKeymap } from '../../tools/editor/page/keymap';",
@@ -43,7 +43,6 @@ export async function mountEditor(
   textWidth: number,
   wrapping: boolean,
   blanks = false,
-  numbers = false,
 ): Promise<void> {
   await editor.evaluate(
     async (app, shown) => {
@@ -69,7 +68,6 @@ export async function mountEditor(
           }),
           shown.wrapping ? app.EditorView.lineWrapping : [],
           app.blanksShown.of(shown.blanks),
-          shown.numbers ? app.lineNumbers() : [],
         ],
       });
       box.append(view.dom);
@@ -82,6 +80,6 @@ export async function mountEditor(
         parseFloat(style.paddingRight);
       box.style.width = `${shown.textWidth + around}px`;
     },
-    { text, textWidth, wrapping, blanks, numbers },
+    { text, textWidth, wrapping, blanks },
   );
 }

@@ -7,33 +7,8 @@ import {
 import { EditorView } from '@codemirror/view';
 import type { Binding } from '../../../lib/shared/keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
-
-const hangingBlank = /[ \t　]/;
-
-function rowEnd(view: EditorView, start: SelectionRange): SelectionRange {
-  const end = view.moveToLineBoundary(start, true);
-  if (!view.lineWrapping) {
-    return end;
-  }
-  const line = view.state.doc.lineAt(end.head);
-  let after = end.head;
-  while (after < line.to && hangingBlank.test(line.text[after - line.from])) {
-    after++;
-  }
-  if (after === end.head) {
-    return end;
-  }
-  if (after === line.to) {
-    return EditorSelection.cursor(after, -1);
-  }
-  const here = view.coordsAtPos(end.head, -1);
-  const next = view.coordsAtPos(after, 1);
-  return here !== null &&
-    next !== null &&
-    next.top > (here.top + here.bottom) / 2
-    ? EditorSelection.cursor(after, -1)
-    : end;
-}
+import { gridOf } from './grid';
+import { extended, rowEnd } from './gridMoves';
 
 function moved(
   view: EditorView,
@@ -57,18 +32,14 @@ function moved(
 export type RowEnd = 'move' | 'select';
 
 function toRowEnd(view: EditorView, how: RowEnd): boolean {
-  return moved(view, (range) => {
-    const end = rowEnd(view, range);
-    return how === 'move'
-      ? end
-      : EditorSelection.range(
-          range.anchor,
-          end.head,
-          end.goalColumn,
-          end.bidiLevel ?? undefined,
-          end.assoc,
-        );
-  });
+  const grid = gridOf(view);
+  return (
+    grid === undefined ||
+    moved(view, (range) => {
+      const end = rowEnd(view.state.doc, grid, range);
+      return how === 'move' ? end : extended(range, end);
+    })
+  );
 }
 
 export function rowEndKeys(binding: Binding<RowEnd>): Extension {
