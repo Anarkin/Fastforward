@@ -2,6 +2,7 @@ import { ViewerTool } from '../../../../../tools/viewer/page/tool';
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import { tipOf } from '../../../../../lib/page/tips';
+import { strings } from '../../../../../lib/shared/strings';
 import {
   inViewerTool,
   viewedTextOf,
@@ -31,6 +32,27 @@ const modeButtons = ({ document }: ShownViewer) => [
     '.viewer .toolbar[role="group"] button',
   ),
 ];
+
+const controls = ({ document }: ShownViewer) =>
+  [
+    ...document.querySelectorAll<HTMLButtonElement>(
+      '.viewer .column-title button',
+    ),
+  ].map((button) => [tipOf(button)?.said, button.disabled]);
+
+const toolbar = (enabled: ReadonlySet<string>) =>
+  [
+    strings.viewer.viewHex,
+    strings.viewer.viewText,
+    strings.viewer.viewPreview,
+    strings.versions.version,
+    strings.encodings.encoding,
+    strings.common.language,
+    strings.common.showWhitespace,
+    strings.common.wrap,
+    strings.viewer.realSize,
+    strings.textFile.findInFile,
+  ].map((said) => [said, !enabled.has(said)]);
 
 const kinds = [
   { name: 'Markdown', values: '.md .markdown' },
@@ -80,5 +102,35 @@ suite('The buttons a file viewed is viewed as', () => {
         keys: '3',
         rows: kinds,
       });
+    }));
+
+  test('keeps every control of its toolbar in its place in every mode, disabling those that do not apply rather than leaving them out, as the toolbar shifted from mode to mode', () =>
+    inViewerTool(ViewerTool, async (tool) => {
+      const { viewHex, viewText, viewPreview } = strings.viewer;
+      const always = [viewHex, viewText, strings.textFile.findInFile];
+      await viewed(tool, 'C:\\work\\notes.txt');
+
+      assert.deepStrictEqual(
+        controls(tool),
+        toolbar(
+          new Set([
+            ...always,
+            strings.encodings.encoding,
+            strings.common.language,
+            strings.common.showWhitespace,
+            strings.common.wrap,
+          ]),
+        ),
+      );
+
+      await tool.press('1');
+      assert.deepStrictEqual(controls(tool), toolbar(new Set(always)));
+
+      await viewed(tool, 'C:\\work\\cat.png');
+      await tool.press('3');
+      assert.deepStrictEqual(
+        controls(tool),
+        toolbar(new Set([...always, viewPreview, strings.viewer.realSize])),
+      );
     }));
 });

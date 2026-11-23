@@ -192,11 +192,11 @@ suite('App', () => {
     );
     try {
       await viewerShows(page, 'two');
-      await trigger.waitFor();
-      assert.deepStrictEqual(
-        [await trigger.textContent(), await tabFolder.textContent()],
-        [short, short],
+      await waitFor(
+        async () => (await trigger.textContent()) === short,
+        'the button to name the version shown once the versions are listed',
       );
+      assert.strictEqual(await tabFolder.textContent(), short);
       await page.locator('.viewer .column-body').first().focus();
       await page.keyboard.press('v');
       const items = await page

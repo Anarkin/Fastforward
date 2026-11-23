@@ -58,6 +58,7 @@ export function MenuButton({
   filter,
   onChosen,
   scrolling,
+  disabled = false,
 }: {
   title: string;
   keys?: string | undefined;
@@ -71,6 +72,7 @@ export function MenuButton({
   filter?: string;
   onChosen?: () => void;
   scrolling: ScrollSettings;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
@@ -100,6 +102,7 @@ export function MenuButton({
           : tip(title, { keys }))}
         aria-haspopup="menu"
         aria-expanded={open}
+        disabled={disabled}
         onClick={() => setOpen(!open)}
       >
         {label === undefined ? (
@@ -113,6 +116,7 @@ export function MenuButton({
         {marked && <span className="menu-mark" />}
       </button>
       {open &&
+        !disabled &&
         (filter === undefined ? (
           <Dropdown
             container={container}

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
+import { strings } from '../../lib/shared/strings';
 import {
   opened,
   page,
@@ -18,6 +19,16 @@ import {
 
 const trigger = (label: RegExp) =>
   page.locator('.editor .menu-button-trigger', { hasText: label });
+
+const encodingButtons = () =>
+  page
+    .locator('.editor .viewer-encoding .menu-button-trigger')
+    .evaluateAll((buttons) =>
+      buttons.map((button) => [
+        button.textContent,
+        button instanceof HTMLButtonElement && button.disabled,
+      ]),
+    );
 
 suite('App editor', () => {
   sharedEditorApp();
@@ -89,6 +100,52 @@ suite('App editor', () => {
       [0x63, 0x61, 0x66, 0xc3, 0xa9, 0x0a],
     );
     await readButton.filter({ hasText: /^UTF-8 \(read\)$/ }).waitFor();
+  });
+
+  test('shows the encodings and the line ending of a file opened read-only, the encoding to read in to be chosen, as reading the file again writes nothing, and the encoding to write in and the line ending disabled rather than left out, as the toolbar told nothing of the file, and the encoding to read in of a new file disabled', async () => {
+    await backToCommander();
+    await page.keyboard.press('Alt+F');
+    await page.getByText(strings.tabs.openDefaultSettings).click();
+    await page
+      .locator('.editor .editor-mark', { hasText: strings.editor.readOnlyMark })
+      .waitFor();
+    await waitFor(
+      async () => (await encodingButtons()).length === 3,
+      'the encodings and the line ending',
+    );
+    const [read, write, ending] = await encodingButtons();
+    assert.deepStrictEqual(
+      [read, write],
+      [
+        ['UTF-8 (read)', false],
+        ['UTF-8 (write)', true],
+      ],
+    );
+    assert.ok(
+      ending !== undefined &&
+        /^(LF|CRLF)$/.test(String(ending[0])) &&
+        ending[1] === true,
+      JSON.stringify(ending),
+    );
+    await page.keyboard.press('Escape');
+
+    await backToCommander();
+    await right().locator('.commander-row').first().click();
+    await page.keyboard.press('Shift+F4');
+    const prompt = page.locator('.prompt-input');
+    await prompt.waitFor();
+    await prompt.fill('unsaved.txt');
+    await prompt.press('Enter');
+    await content().waitFor();
+    await waitFor(
+      async () => (await encodingButtons()).length >= 2,
+      'the encodings of the new file',
+    );
+    assert.deepStrictEqual((await encodingButtons()).slice(0, 2), [
+      ['UTF-8 (read)', true],
+      ['UTF-8 (write)', false],
+    ]);
+    await page.keyboard.press('Escape');
   });
 
   test('ends the lines of a new file as the .editorconfig beside it says', async () => {

@@ -91,6 +91,21 @@ suite('App commander', () => {
       await page.locator('.compare-view .file-header .path').textContent(),
       `${opened}${path.sep}{after.txt → before.txt}`,
     );
+    assert.deepStrictEqual(
+      await page
+        .locator('.compare-view .compare-version .menu-button-trigger')
+        .evaluateAll((buttons) =>
+          buttons.map((button) => [
+            button.textContent,
+            button instanceof HTMLButtonElement && button.disabled,
+          ]),
+        ),
+      [
+        [strings.versions.version, true],
+        [strings.versions.version, true],
+      ],
+      'the versions of both sides, which git keeps none of, disabled rather than left out',
+    );
     await waitForFocus(
       page.locator('.compare-view [data-column-focus]').first(),
       'the diff, to take the keys at once',

@@ -153,6 +153,20 @@ suite('App commander', () => {
       async () => (await imageWidth('.viewer .markdown img')) === 1,
       'the image of the document',
     );
+    assert.deepStrictEqual(
+      await page
+        .locator('.viewer .column-title button:disabled')
+        .evaluateAll((buttons) =>
+          buttons.map((button) => button.getAttribute('data-tip')),
+        ),
+      [
+        strings.versions.version,
+        strings.encodings.encoding,
+        strings.common.language,
+        strings.common.wrap,
+        strings.viewer.realSize,
+      ],
+    );
     await close();
 
     await select('plain');

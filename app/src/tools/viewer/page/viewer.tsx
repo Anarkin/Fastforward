@@ -266,81 +266,76 @@ export function Viewer() {
                 </button>
               ))}
             </Toolbar>
-            {mode === 'text' && (
-              <div className="viewer-encoding">
-                <MenuButton
-                  scrolling={scrolling}
-                  title={strings.encodings.encoding}
-                  keys={keysOf(viewerKeymap.encoding)}
-                  trigger={encodingTrigger}
-                  onChosen={focusBody}
-                  label={strings.encodings.short[shown]}
-                  filter={strings.common.findEncoding}
-                  items={encodingMenu(encoding, shown, setEncoding)}
-                />
-              </div>
-            )}
-            {readsText && (
-              <LanguageButton
-                choice={languageChoice}
-                detected={detectedLanguage}
-                single
-                keys={keysOf(viewerKeymap.language)}
-                choose={chooseLanguage}
-                trigger={languageTrigger}
-                onChosen={focusBody}
-                scrolling={scrolling}
-              />
-            )}
             <ViewedVersionButton
               trigger={versionTrigger}
               onChosen={focusBody}
             />
-            {showsImage && (
-              <Toolbar className="viewer-toggles">
-                <button
-                  className={`nav-button toggle ${realSize ? 'active' : ''}`}
-                  {...labelTip(strings.viewer.realSize, {
-                    keys: keysOf(viewerKeymap.realSize),
-                  })}
-                  aria-pressed={realSize}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={toggleRealSize}
-                >
-                  <RealSizeIcon />
-                </button>
-              </Toolbar>
-            )}
-            {(readsText || showsCode) && (
-              <Toolbar className="viewer-toggles">
-                <button
-                  className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-                  {...labelTip(strings.common.showWhitespace, {
-                    keys: keysOf(viewerKeymap.showWhitespace),
-                  })}
-                  aria-pressed={showWhitespace}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() =>
-                    changeTextView({ showWhitespace: !showWhitespace })
-                  }
-                >
-                  <ShowWhitespaceIcon />
-                </button>
-                {readsText && (
-                  <button
-                    className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-                    {...labelTip(strings.common.wrap, {
-                      keys: keysOf(viewerKeymap.wrap),
-                    })}
-                    aria-pressed={wordWrap}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => changeTextView({ wordWrap: !wordWrap })}
-                  >
-                    <WordWrapIcon />
-                  </button>
-                )}
-              </Toolbar>
-            )}
+            <div className="viewer-encoding">
+              <MenuButton
+                scrolling={scrolling}
+                title={strings.encodings.encoding}
+                keys={keysOf(viewerKeymap.encoding)}
+                trigger={encodingTrigger}
+                onChosen={focusBody}
+                label={strings.encodings.short[shown]}
+                filter={strings.common.findEncoding}
+                items={encodingMenu(encoding, shown, setEncoding)}
+                disabled={mode !== 'text'}
+              />
+            </div>
+            <LanguageButton
+              choice={languageChoice}
+              detected={detectedLanguage}
+              single
+              keys={keysOf(viewerKeymap.language)}
+              choose={chooseLanguage}
+              trigger={languageTrigger}
+              onChosen={focusBody}
+              scrolling={scrolling}
+              disabled={!readsText}
+            />
+            <Toolbar className="viewer-toggles">
+              <button
+                className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
+                {...labelTip(strings.common.showWhitespace, {
+                  keys: keysOf(viewerKeymap.showWhitespace),
+                })}
+                aria-pressed={showWhitespace}
+                disabled={!readsText && !showsCode}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() =>
+                  changeTextView({ showWhitespace: !showWhitespace })
+                }
+              >
+                <ShowWhitespaceIcon />
+              </button>
+              <button
+                className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
+                {...labelTip(strings.common.wrap, {
+                  keys: keysOf(viewerKeymap.wrap),
+                })}
+                aria-pressed={wordWrap}
+                disabled={!readsText}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => changeTextView({ wordWrap: !wordWrap })}
+              >
+                <WordWrapIcon />
+              </button>
+            </Toolbar>
+            <Toolbar className="viewer-toggles">
+              <button
+                className={`nav-button toggle ${realSize ? 'active' : ''}`}
+                {...labelTip(strings.viewer.realSize, {
+                  keys: keysOf(viewerKeymap.realSize),
+                })}
+                aria-pressed={realSize}
+                disabled={!showsImage}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={toggleRealSize}
+              >
+                <RealSizeIcon />
+              </button>
+            </Toolbar>
           </Toolbar>
           <Toolbar className="column-actions">
             <SearchButton

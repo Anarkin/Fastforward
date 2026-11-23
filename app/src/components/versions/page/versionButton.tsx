@@ -15,7 +15,7 @@ export function VersionButton({
   keys,
   onChosen,
 }: {
-  readonly listed: ListedVersions;
+  readonly listed: ListedVersions | undefined;
   readonly version: string | undefined;
   readonly choose: (rev: string | undefined) => void;
   readonly dateFormat: string;
@@ -27,7 +27,7 @@ export function VersionButton({
   return (
     <div
       className={
-        showsCommit(version, listed)
+        listed !== undefined && showsCommit(version, listed)
           ? 'version-button version-hash'
           : 'version-button'
       }
@@ -37,10 +37,19 @@ export function VersionButton({
         title={strings.versions.version}
         keys={keys}
         trigger={trigger}
-        label={versionLabel(version, listed)}
+        label={
+          listed === undefined
+            ? strings.versions.version
+            : versionLabel(version, listed)
+        }
         onChosen={onChosen}
         filter={strings.versions.find}
-        items={versionMenu(listed, version, dateFormat, choose)}
+        items={
+          listed === undefined
+            ? []
+            : versionMenu(listed, version, dateFormat, choose)
+        }
+        disabled={listed === undefined}
       />
     </div>
   );

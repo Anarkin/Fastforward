@@ -16,6 +16,7 @@ export function LanguageButton({
   trigger,
   onChosen,
   scrolling,
+  disabled = false,
 }: {
   choice: LanguageChoice;
   detected: string | undefined;
@@ -25,6 +26,7 @@ export function LanguageButton({
   trigger?: React.Ref<HTMLButtonElement>;
   onChosen?: () => void;
   scrolling: ScrollSettings;
+  disabled?: boolean;
 }) {
   const { language, findLanguage } = strings.common;
   return (
@@ -38,6 +40,7 @@ export function LanguageButton({
         items={languageMenu(choice, detected, single, choose)}
         onChosen={onChosen}
         scrolling={scrolling}
+        disabled={disabled}
       />
     </div>
   );

@@ -93,31 +93,30 @@ export function EditorToolbar({
     <>
       <header className="column-title">
         <Toolbar className="column-start viewer-actions">
-          {tab !== undefined && encoding !== undefined && !readOnly && (
+          {tab !== undefined && encoding !== undefined && (
             <>
-              {!made && (
-                <div className="viewer-encoding editor-encoding">
-                  <MenuButton
-                    scrolling={scrolling}
-                    title={strings.editor.readEncodingTitle}
-                    label={strings.editor.readLabel(
-                      strings.encodings.short[
-                        edited?.onDisk?.encoding ?? encoding
-                      ],
-                    )}
-                    filter={strings.common.findEncoding}
-                    items={readMenu(
-                      {
-                        choice: chosenEncoding,
-                        shown: edited?.onDisk?.encoding ?? encoding,
-                      },
-                      reopen,
-                      encodingSourcesShown,
-                    )}
-                    onChosen={() => view.current?.focus()}
-                  />
-                </div>
-              )}
+              <div className="viewer-encoding editor-encoding">
+                <MenuButton
+                  scrolling={scrolling}
+                  title={strings.editor.readEncodingTitle}
+                  label={strings.editor.readLabel(
+                    strings.encodings.short[
+                      edited?.onDisk?.encoding ?? encoding
+                    ],
+                  )}
+                  filter={strings.common.findEncoding}
+                  items={readMenu(
+                    {
+                      choice: chosenEncoding,
+                      shown: edited?.onDisk?.encoding ?? encoding,
+                    },
+                    reopen,
+                    encodingSourcesShown,
+                  )}
+                  onChosen={() => view.current?.focus()}
+                  disabled={made}
+                />
+              </div>
               <div className="viewer-encoding editor-encoding">
                 <MenuButton
                   scrolling={scrolling}
@@ -130,14 +129,16 @@ export function EditorToolbar({
                     made ? encodingSourcesShown : [],
                   )}
                   onChosen={() => view.current?.focus()}
+                  disabled={readOnly}
                 />
               </div>
             </>
           )}
-          {endingsShown !== undefined && !readOnly && (
+          {endingsShown !== undefined && (
             <div className="viewer-encoding">
               <MenuButton
                 scrolling={scrolling}
+                disabled={readOnly}
                 title={endingsTitle(endingsShown)}
                 label={endingsLabel(endingsShown)}
                 items={[

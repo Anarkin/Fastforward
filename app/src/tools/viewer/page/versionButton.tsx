@@ -18,9 +18,6 @@ export function ViewedVersionButton({
   const { chooseVersion } = useViewerActions();
   const scrolling = useShell((state) => state.scrolling);
   const dateFormat = useShell((state) => state.dateFormat);
-  if (listed === undefined) {
-    return null;
-  }
   return (
     <VersionMenuButton
       listed={listed}

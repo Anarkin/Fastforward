@@ -14,28 +14,19 @@ function SideVersion({ side }: { readonly side: ComparedSide }) {
   const dateFormat = useShell((state) => state.dateFormat);
   return (
     <div className={`compare-version ${side}`}>
-      {listed && (
-        <VersionButton
-          listed={listed}
-          version={version}
-          choose={(rev) => chooseVersion(side, rev)}
-          dateFormat={dateFormat}
-          scrolling={scrolling}
-        />
-      )}
+      <VersionButton
+        listed={listed}
+        version={version}
+        choose={(rev) => chooseVersion(side, rev)}
+        dateFormat={dateFormat}
+        scrolling={scrolling}
+      />
     </div>
   );
 }
 
 export function CompareVersions() {
-  const listed = useDiff(
-    (state) =>
-      state.versions.old !== undefined || state.versions.new !== undefined,
-  );
   const sideBySide = useDiff((state) => state.diffLayout === 'sideBySide');
-  if (!listed) {
-    return null;
-  }
   return (
     <div
       className={
