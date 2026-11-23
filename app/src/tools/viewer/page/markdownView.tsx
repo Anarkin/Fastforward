@@ -1,6 +1,10 @@
+import { clicked } from '../../../lib/shared/keymap';
+import { keymap } from '../../../lib/page/keymap';
+import { viewerKeymap } from './keymap';
 import { signedRegion } from '../../../lib/page/signedCopy';
 import {
   useEffect,
+  useContext,
   useEffectEvent,
   useLayoutEffect,
   useMemo,
@@ -27,6 +31,9 @@ import {
 } from './markdownFind';
 import type { MarkdownFindControls } from './markdownFinds';
 import { plainSearch, type Search } from '../../../lib/shared/searchOptions';
+import { documentLink, type DocumentLink } from './documentLinks';
+import { anchorAttribute, linkAttribute } from './markdownRender';
+import { PathMenuContext } from '../../../lib/page/pathMenu';
 
 const codeLanguage = /(?:^|\s)language-(\S+)/;
 
@@ -132,14 +139,58 @@ function stopDrawing(blocks: Map<Element, () => void>): void {
 
 const noMatches: readonly MarkdownMatch[] = [];
 
+export interface MarkdownLinks {
+  readonly document: string;
+  readonly follow: (link: DocumentLink) => void;
+  readonly anchor?: string | undefined;
+  readonly anchored?: () => void;
+}
+
+const slashed = (path: string) => path.replaceAll('\\', '/');
+
+function headingOf(element: Element, anchor: string): Element | undefined {
+  const headings = [...element.querySelectorAll(`[${anchorAttribute}]`)];
+  const named = (name: string) =>
+    headings.find((heading) => heading.getAttribute(anchorAttribute) === name);
+  return named(anchor) ?? named(anchor.toLowerCase());
+}
+
+function scrolledTo(element: Element, anchor: string): boolean {
+  const heading = headingOf(element, anchor);
+  const scroller = element.closest('.viewer-body');
+  if (heading === undefined || scroller === null) {
+    return false;
+  }
+  scroller.scrollTop +=
+    heading.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+  return true;
+}
+
+function linkAt(
+  element: Element | null,
+  event: React.MouseEvent,
+  document: string,
+): DocumentLink | undefined {
+  const path = event.nativeEvent.composedPath();
+  const link = [
+    ...(element?.querySelectorAll(`a[${linkAttribute}]`) ?? []),
+  ].find((each) => path.includes(each));
+  const href = link?.getAttribute(linkAttribute);
+  return href === null || href === undefined
+    ? undefined
+    : documentLink(document, href);
+}
+
 export function MarkdownPane({
   text,
   images,
   find,
+  links,
 }: {
   text: string | undefined;
   images: MarkdownImages | undefined;
   find?: MarkdownFindControls | undefined;
+  links?: MarkdownLinks | undefined;
 }) {
   const render = useRenderer();
   const table = useCellTable();
@@ -276,9 +327,67 @@ export function MarkdownPane({
       showImages(content.current, imageUrlOf);
     }
   }, [html, imageUrlOf]);
+  const anchor = links?.anchor;
+  const anchored = useEffectEvent(() => links?.anchored?.());
+  useEffect(() => {
+    const element = content.current;
+    if (element && html !== undefined && anchor !== undefined) {
+      scrolledTo(element, anchor);
+      anchored();
+    }
+  }, [html, anchor]);
+  const openPathMenu = useContext(PathMenuContext);
+  const followed = (event: React.MouseEvent) => {
+    const link =
+      links === undefined
+        ? undefined
+        : linkAt(content.current, event, links.document);
+    if (
+      links === undefined ||
+      link === undefined ||
+      clicked(viewerKeymap.followLink, event) === undefined
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const element = content.current;
+    if (slashed(link.path) === slashed(links.document)) {
+      if (element) {
+        scrolledTo(element, link.anchor);
+      }
+      return;
+    }
+    links.follow(link);
+  };
+  const askedMenu = (event: React.MouseEvent) => {
+    const link =
+      links === undefined
+        ? undefined
+        : linkAt(content.current, event, links.document);
+    if (
+      link === undefined ||
+      slashed(link.path) === slashed(links?.document ?? '')
+    ) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    openPathMenu({
+      path: link.path,
+      file: true,
+      at: { x: event.clientX, y: event.clientY },
+      extended: clicked(keymap.systemMenu, event) !== undefined,
+    });
+  };
   return (
     <div className="markdown-pane">
-      <div ref={content} className="markdown" {...signedRegion} />
+      <div
+        ref={content}
+        className="markdown"
+        {...signedRegion}
+        onClick={followed}
+        onContextMenu={askedMenu}
+      />
     </div>
   );
 }

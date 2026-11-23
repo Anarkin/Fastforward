@@ -25,6 +25,7 @@ export interface ViewerSource {
   readonly tabViews: ReadonlyMap<string, ViewerTabView>;
   readonly places: ReadonlyMap<string, number>;
   readonly caches: ReadonlyMap<string, Partial<KeptViewer>>;
+  readonly anchors: ReadonlyMap<string, string>;
 }
 
 export interface ViewerActions {
@@ -70,6 +71,8 @@ export interface ViewerActions {
   readonly keepViewer: (tab: string, change: Partial<KeptViewer>) => void;
   readonly keepTabs: () => void;
   readonly releaseTab: (tab: string) => string | undefined;
+  readonly aimAt: (document: string, anchor: string) => void;
+  readonly anchored: (document: string) => void;
 }
 
 export type ViewerState = ViewerSource & ViewerActions;
@@ -85,6 +88,7 @@ export const viewerDefaults: ViewerSource = {
   tabViews: new Map(),
   places: new Map(),
   caches: new Map(),
+  anchors: new Map(),
 };
 
 const noChoices: ViewerChoices = {};

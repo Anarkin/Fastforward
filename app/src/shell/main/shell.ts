@@ -450,7 +450,8 @@ export class Shell {
         return;
       case 'pathCommand':
         await runPathCommand(page, message, host, this.tools, {
-          view: (at, file) => this.tabs.open(at, 'viewer', [file], false),
+          view: (at, file, reuse = false) =>
+            this.tabs.open(at, 'viewer', [file], reuse),
           edit: (at, file) => this.tabs.open(at, 'editor', [file], true),
           notice: (at, notice) => this.pages.notice(at, notice),
         });

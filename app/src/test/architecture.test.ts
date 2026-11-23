@@ -366,7 +366,7 @@ suite('Architecture', () => {
     );
   });
 
-  test('makes a context only to hand out the store of the shell or of a tool, so the library makes none, as it holds no state, but the two through which the shell hands its library the looks of paths, read from its store, so every path is drawn alike, and the menu of a part of a path, so every part opens the same menu', () => {
+  test('makes a context only to hand out the store of the shell or of a tool, so the library makes none, as it holds no state, but the two through which the shell hands its library the looks of paths, read from its store, so every path is drawn alike, and the menu of a part of a path and the following of one, so every part opens the same menu and every link the tool its path asks for', () => {
     assert.deepStrictEqual(
       sourceFiles
         .filter((file) => read(file).includes('createContext'))

@@ -188,8 +188,13 @@
   font-style: italic;
 }
 
-.markdown a[href] {
+.markdown a[href],
+.markdown a[data-link] {
   color: var(--color-focus);
+}
+
+.markdown a[data-link] {
+  text-decoration: underline;
 }
 
 .markdown .control-character {

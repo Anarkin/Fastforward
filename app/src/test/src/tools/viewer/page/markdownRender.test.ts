@@ -69,6 +69,61 @@ suite('Markdown', () => {
     );
   });
 
+  test('gives each heading the anchor GitHub gives it, its words in lower case joined by dashes, its punctuation left out and a number after one met before, as a data attribute rather than an id, which a page could clobber the names of the document with', () => {
+    const html = render(
+      [
+        '# Common: App',
+        '## Common: App',
+        '### Café & Co.',
+        '#### `code` and *more*',
+      ].join('\n'),
+      noImages,
+    );
+    const shown = new JSDOM(html).window.document;
+    assert.deepStrictEqual(
+      [...shown.querySelectorAll('h1, h2, h3, h4')].map((heading) => [
+        heading.getAttribute('data-anchor'),
+        heading.hasAttribute('id'),
+      ]),
+      [
+        ['common-app', false],
+        ['common-app-1', false],
+        ['café--co', false],
+        ['code-and-more', false],
+      ],
+    );
+  });
+
+  test('keeps a link to a heading, a file or a folder for the page to follow, without its href, so nothing navigates the page, and the href of a link to the web or a mail alone, leaving any other link inert', () => {
+    const html = render(
+      [
+        '[here](#common-app)',
+        '[file](FEATURES-EDITOR.md#display)',
+        '[folder](../app/)',
+        '[web](https://example.com)',
+        '[script](javascript:alert(1))',
+        '[local](file:///C:/a.md)',
+      ].join(' '),
+      noImages,
+    );
+    const shown = new JSDOM(html).window.document;
+    assert.deepStrictEqual(
+      [...shown.querySelectorAll('a')].map((link) => [
+        link.textContent,
+        link.getAttribute('href'),
+        link.getAttribute('data-link'),
+      ]),
+      [
+        ['here', null, '#common-app'],
+        ['file', null, 'FEATURES-EDITOR.md#display'],
+        ['folder', null, '../app/'],
+        ['web', 'https://example.com', null],
+      ],
+    );
+    assert.ok(html.includes('[script](javascript:alert(1))'), html);
+    assert.ok(html.includes('[local](file:///C:/a.md)'), html);
+  });
+
   test('aligns the columns of a table as its separator row says, as GitHub does, by the align it keeps rather than a style', () => {
     const html = render(
       ['| a | b | c | d |', '|:--|:-:|--:|---|', '| 1 | 2 | 3 | 4 |'].join(
@@ -147,7 +202,7 @@ suite('Markdown', () => {
     assert.match(html, /<img data-path="resolved\/a\.png">/);
   });
 
-  test('keeps only the images it is given a path for, by that path, leaving loading them to the page, and links only https and mail links, the ones the app opens', () => {
+  test('keeps only the images it is given a path for, by that path, leaving loading them to the page, and the href of https and mail links alone, the ones the browser opens', () => {
     const asked: string[] = [];
     const html = render(
       [
@@ -170,7 +225,7 @@ suite('Markdown', () => {
     assert.doesNotMatch(html, /src=/);
     assert.match(
       html,
-      /<a target="_blank" rel="noopener noreferrer">relative<\/a>/,
+      /<a data-link="docs\/a\.md" target="_blank" rel="noopener noreferrer">relative<\/a>/,
     );
     assert.match(html, /<a href="https:\/\/example\.com"[^>]*>web<\/a>/);
     assert.match(html, /<a href="mailto:a@b\.c"[^>]*>mail<\/a>/);

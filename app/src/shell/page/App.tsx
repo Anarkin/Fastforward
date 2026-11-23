@@ -1,3 +1,4 @@
+import { FollowPathContext } from '../../lib/page/pathMenu';
 import { PathMenuContext, pathMenuClass } from '../../lib/page/pathMenu';
 import { useEffect, useState } from 'react';
 import { PathLooksContext } from '../../lib/page/pathLooks';
@@ -164,8 +165,15 @@ function NoticeKey() {
 export function App({ name, post, listen, dropFiles }: Props) {
   const [store] = useState(() => createShellStore(post, {}, dropFiles));
   const [looks] = useState(() => shellPathLooks(store));
-  const { togglePopup, closeTab, ready, openIn, newWindow, openPathMenu } =
-    store.getState();
+  const {
+    togglePopup,
+    closeTab,
+    ready,
+    openIn,
+    newWindow,
+    openPathMenu,
+    followPath,
+  } = store.getState();
 
   useEffect(() => {
     const stop = listen(store.getState().receive);
@@ -188,18 +196,20 @@ export function App({ name, post, listen, dropFiles }: Props) {
     <ShellStore value={store}>
       <PathLooksContext value={looks}>
         <PathMenuContext value={openPathMenu}>
-          <div className="app">
-            <WindowTitle name={name} />
-            <TabBar menu={<AppMenu />} />
-            <ShellMenu />
-            <PathMenu />
-            <Popups />
-            <Notices />
-            <Tooltip />
-            <EmptyState />
-            <ToolViews />
-            <NoticeKey />
-          </div>
+          <FollowPathContext value={followPath}>
+            <div className="app">
+              <WindowTitle name={name} />
+              <TabBar menu={<AppMenu />} />
+              <ShellMenu />
+              <PathMenu />
+              <Popups />
+              <Notices />
+              <Tooltip />
+              <EmptyState />
+              <ToolViews />
+              <NoticeKey />
+            </div>
+          </FollowPathContext>
         </PathMenuContext>
       </PathLooksContext>
     </ShellStore>

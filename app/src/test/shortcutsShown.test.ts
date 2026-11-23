@@ -211,6 +211,7 @@ const keysAlone: readonly string[] = [
   'viewerKeymap.closeViewer',
   'viewerKeymap.compareVersions',
   'viewerKeymap.edit',
+  'viewerKeymap.followLink',
   'viewerKeymap.scroll',
   'viewerKeymap.scrollSideways',
   'viewerKeymap.selectText',

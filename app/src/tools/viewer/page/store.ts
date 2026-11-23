@@ -291,10 +291,21 @@ export function createViewerStore(
       },
       keepTabs: () => tabs.flush(),
       releaseTab: (tab) => tabs.release(tab, get().tab),
+      aimAt: (document, anchor) =>
+        set((state) => ({
+          anchors: new Map(state.anchors).set(documentKey(document), anchor),
+        })),
+      anchored: (document) =>
+        set((state) => ({
+          anchors: without(state.anchors, documentKey(document)),
+        })),
     };
     return { ...viewerDefaults, ...initial, ...actions };
   });
 }
+
+export const documentKey = (document: string): string =>
+  document.replaceAll('\\', '/');
 
 export const ViewerStore = createContext<StoreApi<ViewerState> | undefined>(
   undefined,

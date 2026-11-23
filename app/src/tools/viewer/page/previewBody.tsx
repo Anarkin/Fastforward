@@ -1,6 +1,7 @@
 import type { MarkdownFindControls } from './markdownFinds';
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -22,7 +23,9 @@ import { previewUrl, type Preview } from './previews';
 import { imageScrolled } from './imageScroll';
 import type { PdfControls } from './pdfPreview';
 import type { Viewing } from './viewing';
-import { useViewerActions } from './store';
+import { documentKey, useViewer, useViewerActions } from './store';
+import { FollowPathContext } from '../../../lib/page/pathMenu';
+import type { MarkdownLinks } from './markdownView';
 import { blockAtTop, holdBlockAtTop } from './previewPlace';
 
 const watchSize = (element: Element, changed: () => void) => {
@@ -50,6 +53,20 @@ function MarkdownPreview({
       url: (path: string) => viewedFileUrl(tab, path, version),
     };
   }, [file, tab, version]);
+  const follow = useContext(FollowPathContext);
+  const anchor = useViewer((state) => state.anchors.get(documentKey(file)));
+  const { aimAt, anchored } = useViewerActions();
+  const links: MarkdownLinks = {
+    document: file,
+    anchor,
+    anchored: () => anchored(file),
+    follow: (link) => {
+      if (link.anchor !== '') {
+        aimAt(link.path, link.anchor);
+      }
+      follow(link.path);
+    },
+  };
   if (tooLarge) {
     return (
       <div className="markdown-pane">
@@ -59,7 +76,7 @@ function MarkdownPreview({
       </div>
     );
   }
-  return <MarkdownPane text={text} images={images} find={find} />;
+  return <MarkdownPane text={text} images={images} find={find} links={links} />;
 }
 
 export function PreviewBody({

@@ -8,7 +8,13 @@ import type { NoticeTimes } from './notices';
 import type { ToolId, ToolToHost, ToolToWebview } from './tools';
 
 export type PathCommand =
-  FolderCommand | 'view' | 'edit' | 'compare' | 'enterArchive' | 'systemMenu';
+  | FolderCommand
+  | 'view'
+  | 'edit'
+  | 'compare'
+  | 'enterArchive'
+  | 'systemMenu'
+  | 'follow';
 
 export const maxViewChars = 1024 * 1024;
 

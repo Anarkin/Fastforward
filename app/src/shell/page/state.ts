@@ -75,6 +75,7 @@ export interface ShellActions {
   readonly showMenu: (menu: OpenMenu) => void;
   readonly closeMenu: () => void;
   readonly openPathMenu: (ask: PathMenuAsk) => void;
+  readonly followPath: (path: string) => void;
   readonly closePathMenu: () => void;
   readonly closeTab: (id: string) => void;
   readonly confirm: () => void;

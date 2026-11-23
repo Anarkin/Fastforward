@@ -1,3 +1,5 @@
+import { normalize } from 'node:path';
+import { strings } from '../../lib/shared/strings';
 import { isFolderCommand } from '../../lib/shared/folderCommands';
 import { runFolderCommand } from '../../lib/main/folderCommands';
 import { maxLookedPathLength } from '../../lib/shared/partLooks';
@@ -7,7 +9,7 @@ import type { ToHost } from '../shared/protocol';
 import type { Notice, Page, Tools } from './toolContract';
 
 export interface PathOpening {
-  view(page: Page, file: string): Promise<void>;
+  view(page: Page, file: string, reuse?: boolean): Promise<void>;
   edit(page: Page, file: string): Promise<void>;
   notice(page: Page, notice: Notice): void;
 }
@@ -39,6 +41,27 @@ export async function answerPathFacts(
   }
 }
 
+async function followLink(
+  page: Page,
+  path: string,
+  facts: PathFacts,
+  tools: Pick<Tools, 'commander'>,
+  opening: PathOpening,
+): Promise<void> {
+  if (facts.kind === 'folder') {
+    return tools.commander.open(page, [path]);
+  }
+  if (facts.kind === 'file') {
+    return opening.view(page, path, true);
+  }
+  if (facts.kind === 'missing') {
+    opening.notice(page, {
+      level: 'error',
+      message: strings.viewer.linkLeadsNowhere(path),
+    });
+  }
+}
+
 export async function runPathCommand(
   page: Page,
   { path, command, x, y, extended }: Extract<ToHost, { type: 'pathCommand' }>,
@@ -48,6 +71,10 @@ export async function runPathCommand(
 ): Promise<void> {
   if (!isPath(path)) {
     return;
+  }
+  if (command === 'follow') {
+    const at = normalize(path);
+    return followLink(page, at, await host.pathFacts(at), tools, opening);
   }
   const facts = await host.pathFacts(path);
   if (isFolderCommand(command)) {

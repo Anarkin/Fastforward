@@ -4,7 +4,11 @@ import { act } from 'react';
 import { suite, test } from 'vitest';
 import { ShellStore, createShellStore } from '../../../../../shell/page/store';
 import { documentImagePath } from '../../../../../tools/viewer/page/documentImages';
-import { MarkdownPane } from '../../../../../tools/viewer/page/markdownView';
+import {
+  MarkdownPane,
+  type MarkdownLinks,
+} from '../../../../../tools/viewer/page/markdownView';
+import type { DocumentLink } from '../../../../../tools/viewer/page/documentLinks';
 import { waitFor } from '../../../../helpers/fixtures';
 
 const images = {
@@ -15,7 +19,7 @@ const images = {
 async function previewing(
   check: (page: {
     readonly preview: Element;
-    readonly show: (text: string) => Promise<void>;
+    readonly show: (text: string, links?: MarkdownLinks) => Promise<void>;
     readonly turnDark: () => Promise<void>;
   }) => Promise<void>,
 ): Promise<void> {
@@ -56,11 +60,11 @@ async function previewing(
     const shell = createShellStore(() => undefined);
     await check({
       preview: main,
-      show: async (text) => {
+      show: async (text, links) => {
         await act(async () => {
           root.render(
             <ShellStore value={shell}>
-              <MarkdownPane text={text} images={images} />
+              <MarkdownPane text={text} images={images} links={links} />
             </ShellStore>,
           );
         });
@@ -133,6 +137,43 @@ suite('Markdown preview', () => {
       } finally {
         shared.removeAllHooks();
       }
+    });
+  });
+  test('follows a link to a file or a folder by the path it names from the document and the heading after its #, and stays in the document for a link to one of its own headings, the page navigating nowhere', async () => {
+    await previewing(async ({ preview, show }) => {
+      const followed: DocumentLink[] = [];
+      await show(
+        [
+          '# Top',
+          '',
+          '[top](#top) [same](guide.md#top) [other](../FEATURES.md#common-app) [folder](../app/)',
+        ].join('\n'),
+        {
+          document: 'C:/Code/docs/guide.md',
+          follow: (link) => followed.push(link),
+        },
+      );
+      const view = preview.ownerDocument.defaultView;
+      assert.ok(view);
+      for (const link of preview.querySelectorAll('a')) {
+        const event = new view.MouseEvent('click', {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        });
+        await act(async () => {
+          link.dispatchEvent(event);
+        });
+        assert.strictEqual(event.defaultPrevented, true, link.textContent);
+      }
+      assert.deepStrictEqual(followed, [
+        { path: 'C:/Code/FEATURES.md', anchor: 'common-app' },
+        { path: 'C:/Code/app', anchor: '' },
+      ]);
+      assert.strictEqual(
+        preview.querySelector('h1')?.getAttribute('data-anchor'),
+        'top',
+      );
     });
   });
 });

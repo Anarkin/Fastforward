@@ -197,6 +197,34 @@ function tableAlignments(state: StateCore): void {
   }
 }
 
+export const linkAttribute = 'data-link';
+
+export const anchorAttribute = 'data-anchor';
+
+const linkScheme = /^[a-z][a-z\d+.-]*:/i;
+
+const leftOutOfAnchors = /[^\p{L}\p{M}\p{N}\p{Pc} -]/gu;
+
+const anchorOf = (heading: string): string =>
+  heading
+    .trim()
+    .toLowerCase()
+    .replace(leftOutOfAnchors, '')
+    .replaceAll(' ', '-');
+
+function anchoredHeadings(fragment: DocumentFragment): void {
+  const taken = new Map<string, number>();
+  for (const heading of fragment.querySelectorAll('h1, h2, h3, h4, h5, h6')) {
+    const anchor = anchorOf(heading.textContent);
+    const times = taken.get(anchor) ?? 0;
+    taken.set(anchor, times + 1);
+    heading.setAttribute(
+      anchorAttribute,
+      times === 0 ? anchor : `${anchor}-${String(times)}`,
+    );
+  }
+}
+
 export const imagePath = 'data-path';
 
 type ImageResolver = (src: string) => string | undefined;
@@ -232,6 +260,9 @@ export function markdownRenderer(
       const href = node.getAttribute('href');
       if (href !== null && !/^(?:https|mailto):/i.test(href)) {
         node.removeAttribute('href');
+        if (!linkScheme.test(href) && !href.startsWith('//')) {
+          node.setAttribute(linkAttribute, href);
+        }
       }
       node.setAttribute('target', '_blank');
       node.setAttribute('rel', 'noopener noreferrer');
@@ -260,6 +291,7 @@ export function markdownRenderer(
       resolve = noImages;
     }
     const document = fragment.ownerDocument;
+    anchoredHeadings(fragment);
     for (const input of fragment.querySelectorAll('input')) {
       if (input.getAttribute('type') === 'checkbox') {
         input.setAttribute('disabled', '');

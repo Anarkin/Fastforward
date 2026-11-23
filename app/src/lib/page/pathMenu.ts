@@ -17,3 +17,7 @@ export const pathMenuClass = 'path-menu';
 export const PathMenuContext = createContext<(asked: PathMenuAsk) => void>(
   () => {},
 );
+
+export const FollowPathContext = createContext<(path: string) => void>(
+  () => {},
+);

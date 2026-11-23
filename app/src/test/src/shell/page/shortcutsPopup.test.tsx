@@ -221,6 +221,7 @@ suite('Shortcuts popup', () => {
           'Choose the version of the file to show, as git keeps them',
           'Compare the version shown with the one before it',
           'Edit the file being viewed in this tab',
+          'Follow a link of a Markdown preview',
           'Close the file being viewed',
         ],
       ],

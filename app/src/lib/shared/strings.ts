@@ -374,6 +374,7 @@ export const strings = {
     chooseVersion: 'Choose the version of the file to show, as git keeps them',
     compareVersions: 'Compare the version shown with the one before it',
     closeViewer: 'Close the file being viewed',
+    followLink: 'Follow a link of a Markdown preview',
     closeCompare: 'Close the files being compared',
     viewAs: 'View the file as hex, text or a preview',
     scrollFile: 'Scroll by a row, a page, or to the start or end',
@@ -1060,6 +1061,8 @@ export const strings = {
     deletedHere: 'The file was deleted in this commit',
   },
   viewer: {
+    linkLeadsNowhere: (path: string) =>
+      sentence`${namedItem(path)} isn't there, so the link leads nowhere.`,
     viewAs: 'View as',
     viewText: 'Text',
     viewHex: 'Hex',

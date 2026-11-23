@@ -90,6 +90,8 @@ export function createShellStore(
         }
       },
       closePathMenu: () => set({ pathMenu: undefined }),
+      followPath: (path) =>
+        post({ type: 'pathCommand', path, command: 'follow' }),
       closeTab: (id) => {
         const tab = get().tabs?.find((each) => each.id === id);
         if (tab?.unsaved === true) {

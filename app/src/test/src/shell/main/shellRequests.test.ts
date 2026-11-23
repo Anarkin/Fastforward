@@ -346,6 +346,56 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('follows a link of a document to a file in a viewer tab of its own and to a folder in a commander tab, saying when nothing is there, and follows nothing inside an archive or a forged path', async () => {
+    const host = new FakeHost();
+    const file: PathFacts = {
+      kind: 'file',
+      inRepository: false,
+      gitMissing: false,
+    };
+    host.facts.set('C:\\Code', { ...file, kind: 'folder' });
+    host.facts.set('C:\\a.zip\\b.md', { ...file, kind: 'inArchive' });
+    host.facts.set('C:\\Code\\notes.md', file);
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const follow = (at: unknown) =>
+          view.connection.receive(
+            forged(
+              JSON.stringify({
+                type: 'pathCommand',
+                path: at,
+                command: 'follow',
+              }),
+            ),
+          );
+        await follow('C:\\a.zip\\b.md');
+        await follow(42);
+        assert.deepStrictEqual(view.page.tabs?.tabs ?? [], []);
+
+        await follow('C:\\Code\\notes.md');
+        await follow('C:\\Code');
+        await follow('C:\\Code\\gone.md');
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
+          [
+            ['viewer', 'C:\\Code\\notes.md'],
+            ['commander', 'C:\\Code'],
+          ],
+        );
+        assert.deepStrictEqual(view.page.last('notice'), {
+          type: 'notice',
+          level: 'error',
+          message: strings.viewer.linkLeadsNowhere('C:\\Code\\gone.md'),
+        });
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('answers which parts of the paths a page asks about are hidden, files or programs, and nothing to a forged ask', async () => {
     const host = new FakeHost();
     await withView(
