@@ -76,7 +76,7 @@ export async function decodedSides(
       ['new', changed],
     ] as const
   )
-    .filter(([, side]) => side.bom === true)
+    .filter(([, side]) => side.encoding === 'utf-8' && side.bom === true)
     .map(([name]) => name);
   return {
     read: { ...read, old: old.file, new: changed.file },
