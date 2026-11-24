@@ -173,6 +173,34 @@ export async function launchApp(
       );
     }
   });
+  const display = Number(process.env.FASTFORWARD_TEST_DISPLAY ?? '');
+  if (Number.isInteger(display) && display > 0) {
+    void app
+      .evaluate(({ app: started, BrowserWindow, screen }, number) => {
+        const target = screen.getAllDisplays()[number - 1];
+        if (target === undefined) {
+          return;
+        }
+        const moved = (window: Electron.BrowserWindow) => {
+          const bounds = window.getBounds();
+          const from = screen.getDisplayMatching(bounds).workArea;
+          if (from.x === target.workArea.x && from.y === target.workArea.y) {
+            return;
+          }
+          window.setPosition(
+            target.workArea.x + Math.max(0, bounds.x - from.x),
+            target.workArea.y + Math.max(0, bounds.y - from.y),
+          );
+        };
+        for (const window of BrowserWindow.getAllWindows()) {
+          moved(window);
+        }
+        started.on('browser-window-created', (_event, window) => {
+          moved(window);
+        });
+      }, display)
+      .catch(() => undefined);
+  }
   if (process.platform !== 'linux') {
     void app
       .evaluate(({ app: started, BrowserWindow }) => {
