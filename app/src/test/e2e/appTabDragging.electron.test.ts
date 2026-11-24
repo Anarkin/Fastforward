@@ -294,7 +294,7 @@ suite('App with tabs dragged between windows', () => {
     }
   });
 
-  test('tears a tab off into a window of its own when it is dropped over no row of tabs, as big as the window it left to the device pixel where the system leaves the size of a window to the app, as its size taken in pixels of the page made it a pixel larger on a screen scaled by a fraction; macOS fits a window to the screen by itself', async () => {
+  test('tears a tab off into a window of its own when it is dropped over no row of tabs, in front of every window with the keyboard, as big as the window it left to the device pixel where the system leaves the size of a window to the app, as its size taken in pixels of the page made it a pixel larger on a screen scaled by a fraction; macOS fits a window to the screen by itself', async () => {
     await sparesReady();
     const source = await byTabs(2);
     const before = await visiblePages(launched());
@@ -309,6 +309,14 @@ suite('App with tabs dragged between windows', () => {
     );
     const torn = pages.find((page) => !before.includes(page));
     assert.ok(torn, 'no window of the tab torn off');
+    const tornWindow = await launched().browserWindow(torn);
+    await waitFor(
+      () =>
+        tornWindow.evaluate(
+          (shown) => shown.isFocused() && !shown.isAlwaysOnTop(),
+        ),
+      'the window torn off in front, with the keyboard',
+    );
     if (process.platform !== 'darwin') {
       assert.strictEqual(
         await devicePixelSize(torn),
