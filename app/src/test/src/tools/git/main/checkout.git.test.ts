@@ -161,6 +161,27 @@ suite.concurrent('Operations checking out', () => {
     );
   });
 
+  test('makes no branch from a remote branch whose name differs only by case from a local branch where the repository ignores case, saying so, as the new branch took the place of the local one', async () => {
+    const repository = await copied();
+    await repository.git('config', 'core.ignorecase', 'true');
+    await repository.git('branch', 'Feature', a);
+    await repository.git('update-ref', 'refs/remotes/origin/feature', 'main');
+    await repository.git('pack-refs', '--all');
+    const { checkedOut, notices } = await checkOut(repository, {
+      kind: 'remote',
+      name: 'origin/feature',
+    });
+    assert.strictEqual(checkedOut, false);
+    assert.deepStrictEqual(notices, [
+      [
+        'info',
+        'Made no branch "feature" of "origin/feature", as the branch "Feature" differs from it only by case, which this repository can\'t tell apart',
+      ],
+    ]);
+    assert.strictEqual(await head(repository), 'main');
+    assert.deepStrictEqual(await repository.resolve('Feature'), [a]);
+  });
+
   test('checks out a remote branch of a remote with a slash in its name as a branch of the same name', async () => {
     const repository = await copied();
     await repository.git('remote', 'add', 'team/fork', '.');

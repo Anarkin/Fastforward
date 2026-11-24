@@ -13,6 +13,8 @@ import {
   type RepositoryAt,
 } from './operations';
 import { detachedHead } from './refs';
+import { runGit } from './run';
+import type { RefInfo } from '../shared/protocol';
 
 export async function checkout(
   log: Log,
@@ -32,6 +34,15 @@ export async function checkout(
         log.info(strings.log.checkedOut.branch(local));
         await catchUp(log, notify, at, local, target.name);
       } else {
+        const alike = await branchAlikeBut(gitPath, root, refs, local);
+        if (alike !== undefined) {
+          say(
+            log,
+            notify,
+            strings.messages.branchAlikeButCase(local, target.name, alike),
+          );
+          return false;
+        }
         await checkoutNewBranch(
           gitPath,
           root,
@@ -70,6 +81,28 @@ export async function checkout(
     );
     return false;
   }
+}
+
+async function branchAlikeBut(
+  gitPath: string,
+  root: string,
+  refs: readonly RefInfo[],
+  local: string,
+): Promise<string | undefined> {
+  const alike = refs.find(
+    (ref) =>
+      ref.kind === 'branch' && ref.name.toLowerCase() === local.toLowerCase(),
+  )?.name;
+  if (alike === undefined) {
+    return undefined;
+  }
+  const ignoresCase = await runGit(
+    gitPath,
+    root,
+    ['config', '--type=bool', '--get', 'core.ignorecase'],
+    { okExitCodes: [0, 1] },
+  );
+  return ignoresCase.trim() === 'true' ? alike : undefined;
 }
 
 const namedLeftBehind = 5;
