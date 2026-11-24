@@ -1,4 +1,6 @@
 import * as assert from 'node:assert';
+import { execFileSync } from 'node:child_process';
+import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { runsElevated } from '../../../boot/elevated';
 
@@ -22,9 +24,20 @@ suite('Elevation of the app', () => {
   });
 
   test.skipIf(process.platform !== 'win32')(
-    'reads the token of the process on Windows, the tests running without elevation',
+    'reads the token of the process on Windows, elevated where Windows gives the process a high integrity, as on the machines of CI, and not elevated otherwise',
     async () => {
-      assert.strictEqual(await runsElevated('win32'), undefined);
+      const whoami = path.join(
+        process.env.SystemRoot ?? 'C:\\Windows',
+        'System32',
+        'whoami.exe',
+      );
+      const highIntegrity = execFileSync(whoami, ['/groups'], {
+        encoding: 'utf8',
+      }).includes('S-1-16-12288');
+      assert.strictEqual(
+        await runsElevated('win32'),
+        highIntegrity ? 'administrator' : undefined,
+      );
     },
   );
 });
