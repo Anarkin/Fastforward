@@ -46,16 +46,73 @@ async function temporariesOf(file: string): Promise<string[]> {
     .map((each) => path.join(folder, each));
 }
 
+async function restored(
+  file: string,
+  before: ReadonlySet<string>,
+): Promise<void> {
+  const made = (await temporariesOf(file)).filter((left) => !before.has(left));
+  const written = `${file}.tmp`;
+  const gone = !(await fs.promises.lstat(file).then(
+    () => true,
+    () => false,
+  ));
+  if (gone && made.includes(written)) {
+    await fs.promises.rename(written, file);
+  }
+  for (const left of made) {
+    if (left === written && gone) {
+      continue;
+    }
+    const isFile = await fs.promises.lstat(left).then(
+      (stats) => stats.isFile(),
+      () => false,
+    );
+    if (isFile) {
+      await fs.promises.rm(left, { force: true });
+    }
+  }
+}
+
 export class ArchiveChanges {
   private readonly changing = new Map<string, Promise<unknown>>();
+  private placing: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly access: ArchiveChangesAccess,
     private readonly host: ArchiveChangesHost,
   ) {}
 
-  private keyOf(file: string): string {
-    return folderKey(path.resolve(file), this.access.platform);
+  private async keyOf(file: string): Promise<string> {
+    const real = await fs.promises
+      .realpath(file)
+      .catch(() =>
+        fs.promises
+          .realpath(path.dirname(file))
+          .then((folder) => path.join(folder, path.basename(file))),
+      )
+      .catch(() => path.resolve(file));
+    return folderKey(real, this.access.platform);
+  }
+
+  queued<T>(file: string, run: () => Promise<T>): Promise<T> {
+    const placed = this.placing.then(async () => {
+      const key = await this.keyOf(file);
+      const before = this.changing.get(key) ?? Promise.resolve();
+      const mine = before.then(run);
+      const ended = mine.catch(() => undefined);
+      this.changing.set(key, ended);
+      void ended.then(() => {
+        if (this.changing.get(key) === ended) {
+          this.changing.delete(key);
+        }
+      });
+      return { mine };
+    });
+    this.placing = placed.then(
+      () => undefined,
+      () => undefined,
+    );
+    return placed.then(({ mine }) => mine);
   }
 
   remove(
@@ -174,17 +231,7 @@ export class ArchiveChanges {
       password: { readonly password?: string },
     ) => Promise<Packing>,
   ): Promise<Packing> {
-    const key = this.keyOf(archive.file);
-    const before = this.changing.get(key) ?? Promise.resolve();
-    const turn = before.then(() => this.updated(archive, run));
-    const ended = turn.catch(() => undefined);
-    this.changing.set(key, ended);
-    void ended.then(() => {
-      if (this.changing.get(key) === ended) {
-        this.changing.delete(key);
-      }
-    });
-    return turn;
+    return this.queued(archive.file, () => this.updated(archive, run));
   }
 
   private async updated(
@@ -214,13 +261,13 @@ export class ArchiveChanges {
     }
     const before = new Set(await temporariesOf(archive.file));
     try {
-      return await run(reader, this.host.passwordOf(archive.file));
-    } catch (error) {
-      for (const left of await temporariesOf(archive.file)) {
-        if (!before.has(left)) {
-          await removed(left);
-        }
+      const changed = await run(reader, this.host.passwordOf(archive.file));
+      if (changed.kind === 'refused') {
+        await restored(archive.file, before);
       }
+      return changed;
+    } catch (error) {
+      await restored(archive.file, before);
       throw error;
     }
   }

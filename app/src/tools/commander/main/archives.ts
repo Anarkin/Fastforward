@@ -416,9 +416,12 @@ export class Archives implements ArchiveAccess {
   }
 
   async pack(plan: PackPlan, options?: PackOptions): Promise<Packing> {
-    return this.reader === undefined
+    const { reader } = this;
+    return reader === undefined
       ? { kind: 'refused', reason: strings.commander.noSevenZip }
-      : packInto(this.reader, plan, options);
+      : this.changes.queued(plan.archive, () =>
+          packInto(reader, plan, options),
+        );
   }
 
   remove(

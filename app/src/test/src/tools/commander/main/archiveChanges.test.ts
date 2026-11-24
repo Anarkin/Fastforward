@@ -320,4 +320,86 @@ suite('Archives', () => {
       'rename a.zip x.txt y.txt',
     ]);
   });
+
+  test('changes an archive one change at a time also through another path to it, as a junction, and packs over it only once the change before ended, as two changes of one archive at once lost the files of one', async () => {
+    const real = path.join(folder, 'real');
+    fs.mkdirSync(real);
+    const zip = path.join(real, 'a.zip');
+    fs.writeFileSync(zip, 'a');
+    const linked = path.join(folder, 'linked');
+    fs.symlinkSync(real, linked, 'junction');
+    const started: string[] = [];
+    const ends = new Map<string, () => void>();
+    const change = (what: string) =>
+      new Promise<Packing>((resolve) => {
+        started.push(what);
+        ends.set(what, () => resolve({ kind: 'packed' }));
+      });
+    const reader: ArchiveReader = {
+      ...readerOf({}).reader,
+      list: () => Promise.resolve({ kind: 'listed', items: [item('x.txt')] }),
+      remove: (file) => change(`remove ${file}`),
+      pack: async (_plan, into) => {
+        const packed = await change('pack');
+        await fs.promises.writeFile(into, 'packed');
+        return packed;
+      },
+    };
+    const archives = new Archives(reader, process.platform, workFolder);
+    const direct = await archives.open(zip);
+    const through = await archives.open(path.join(linked, 'a.zip'));
+    assert.ok(direct.kind === 'opened' && through.kind === 'opened');
+
+    const first = archives.remove(direct.archive, ['x.txt']);
+    const second = archives.remove(through.archive, ['x.txt']);
+    const packed = archives.pack({
+      folder,
+      items: ['x.txt'],
+      archive: zip,
+      format: 'zip',
+      level: 'normal',
+    });
+    await waitFor(() => started.length >= 1, 'the first change');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.deepStrictEqual(started, [`remove ${zip}`]);
+    ends.get(`remove ${zip}`)?.();
+    await first;
+    await waitFor(() => started.length >= 2, 'the second change');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    assert.strictEqual(started.length, 2);
+    ends.get(started[1] ?? '')?.();
+    await second;
+    await waitFor(() => started.length >= 3, 'the pack');
+    ends.get('pack')?.();
+    await packed;
+    assert.deepStrictEqual(started.slice(1), [
+      `remove ${path.join(linked, 'a.zip')}`,
+      'pack',
+    ]);
+  });
+
+  test('puts back the archive 7-Zip wrote anew once a change is stopped after it deleted the old one, rather than deleting the only copy left', async () => {
+    const zip = path.join(folder, 'a.zip');
+    fs.writeFileSync(zip, 'old');
+    const reader: ArchiveReader = {
+      ...readerOf({}).reader,
+      list: () => Promise.resolve({ kind: 'listed', items: [item('x.txt')] }),
+      remove: async (file) => {
+        await fs.promises.writeFile(`${file}.tmp`, 'new');
+        await fs.promises.rm(file);
+        throw new Error('The operation was aborted');
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+
+    await assert.rejects(archives.remove(opened.archive, ['x.txt']));
+
+    assert.strictEqual(fs.readFileSync(zip, 'utf8'), 'new');
+    assert.deepStrictEqual(
+      fs.readdirSync(folder).filter((name) => name.startsWith('a.zip')),
+      ['a.zip'],
+    );
+  });
 });
