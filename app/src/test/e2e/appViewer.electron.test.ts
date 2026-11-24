@@ -138,7 +138,7 @@ suite('App commander', () => {
 
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
-    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     assert.strictEqual(
       await page
         .locator('.tabs [role="tab"]', { hasText: 'notes.txt' })
@@ -174,7 +174,7 @@ suite('App commander', () => {
 
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
-    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
   });
 
   test('keeps the scrollbar of a Markdown preview beside the line its column draws on the right, so it shows as wide as that of a file viewed as text, and runs it all the way down to the line its column draws below', async () => {

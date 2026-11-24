@@ -12,6 +12,27 @@ import { root, at, folder, file, hiddenIn } from './entryFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('Commander tool', () => {
+  test('names its tab after the folders of its two sides, left and right, a folder both show once and the root of a drive by its whole path, as every other tool names its tab after what it shows, a side it has not moved yet named after the folder it starts at, the root of the system on the left and the folder the tab was opened with on the right, as a restart left one side unnamed, naming it anew as a side goes into another folder', async () => {
+    const users = path.join(root, 'Users');
+    const { tool, page, send, tabsPosted } = commander({
+      [root]: [folder('Users')],
+      [users]: [file('notes.txt')],
+    });
+    const named = () => tool.names([tab]).get(tab.id)?.name;
+
+    assert.strictEqual(named(), root);
+    assert.strictEqual(
+      tool.names([{ ...tab, root: users }]).get(tab.id)?.name,
+      `${root} · Users`,
+    );
+    await tool.show(page, tab);
+    assert.strictEqual(named(), root);
+    const before = tabsPosted.length;
+    await send({ type: 'open', tab: tab.id, side: 'left', name: 'Users' });
+    assert.strictEqual(named(), `Users · ${root}`);
+    assert.ok(tabsPosted.length > before, String(tabsPosted.length));
+  });
+
   test('lists the root on both sides of a tab opened without a folder, and the drives', async () => {
     const { tool, page } = commander(
       { [root]: [folder('Users'), file('notes.txt')] },

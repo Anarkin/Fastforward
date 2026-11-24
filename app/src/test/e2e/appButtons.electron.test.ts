@@ -4,7 +4,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
-import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
@@ -106,9 +105,7 @@ suite('App buttons', () => {
     await page.locator('.commit', { hasText: 'second' }).click();
     await untilDiffLine(page, () => true, 'a line of the diff');
     const git = await buttonsOf(page);
-    await page
-      .locator('.tabs .tab', { hasText: strings.tools.commander })
-      .click();
+    await page.locator('.tabs .tab:has(.tool-commander)').click();
     const right = page.locator('.commander-pane').nth(1);
     await right.locator('.commander-row', { hasText: /^a\s*txt/ }).click();
     const commander = await buttonsOf(page);

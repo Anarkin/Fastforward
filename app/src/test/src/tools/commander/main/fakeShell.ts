@@ -21,6 +21,7 @@ export function fakeShell<P extends Page>(page: P) {
   const compared: Compared[] = [];
   const versionsSet: [string, string, FileVersion | undefined][] = [];
   const tabs: Tab[] = [];
+  const tabsPosted: Page[] = [];
   const windows = new Map<Page, Tab[]>();
   const shell: ShellAccess = {
     page: () => focused,
@@ -58,7 +59,9 @@ export function fakeShell<P extends Page>(page: P) {
     setCompare: () => {},
     visited: () => {},
     recentFolders: () => 10,
-    postTabs: () => {},
+    postTabs: (posted) => {
+      tabsPosted.push(posted);
+    },
     notice: (_page, notice) => notices.push(notice),
     track: (tracked) => {
       tracking.push(tracked);
@@ -84,6 +87,7 @@ export function fakeShell<P extends Page>(page: P) {
     compared,
     versionsSet,
     tabs,
+    tabsPosted,
     windows,
     openedIn,
     settled,

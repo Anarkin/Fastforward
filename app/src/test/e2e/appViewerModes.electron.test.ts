@@ -98,9 +98,7 @@ suite('App commander', () => {
         'the text',
       );
 
-      await page
-        .locator('.tabs [role="tab"]', { hasText: 'Commander' })
-        .click();
+      await page.locator('.tabs [role="tab"]:has(.tool-commander)').click();
       await page.locator('.viewer').waitFor({ state: 'detached' });
       await viewerTab.click();
       await page.locator('.viewer').waitFor();

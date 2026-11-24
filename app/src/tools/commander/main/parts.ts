@@ -1,6 +1,7 @@
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import { SavedSides } from './savedSides';
+import { TabNames } from './tabName';
 import type { LocalFileSystem } from './fileSystem';
 import { SettingsCommands } from './settingsCommands';
 import { Icons } from './icons';
@@ -42,6 +43,7 @@ export interface CommanderParts {
   readonly icons: Icons;
   readonly transfers: Transfers;
   readonly savedSides: SavedSides;
+  readonly tabNames: TabNames;
   readonly listings: Listings;
   readonly elevation: Elevation;
   readonly settings: SettingsCommands;
@@ -80,6 +82,7 @@ export function buildParts(
   const serving = new Serving(sides, icons, () => shell().tabs());
   const thumbnailServing = new ThumbnailServing(access, sides);
   const savedSides = new SavedSides(access.store);
+  const tabNames = new TabNames(sides, savedSides, shell, access.root);
   const transfers = new Transfers(access.connectTransfer, {
     show: (view) => {
       const kept = transferPage;
@@ -146,6 +149,7 @@ export function buildParts(
       duplicates,
       copies,
       savedSides,
+      tabNames,
       repositories: new SideRepositories(access, sides),
     },
     {
@@ -198,6 +202,7 @@ export function buildParts(
     icons,
     transfers,
     savedSides,
+    tabNames,
     listings,
     elevation,
     settings,

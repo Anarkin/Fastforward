@@ -1,3 +1,4 @@
+import type { TabNames } from './tabName';
 import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
@@ -49,6 +50,7 @@ export class CommanderTool implements Tool<'commander'> {
   private readonly icons: Icons;
   private readonly transfers: Transfers;
   private readonly savedSides: SavedSides;
+  private readonly tabNames: TabNames;
   private readonly listings: Listings;
   private readonly elevation: Elevation;
   private readonly settings: SettingsCommands;
@@ -74,6 +76,7 @@ export class CommanderTool implements Tool<'commander'> {
     this.icons = parts.icons;
     this.transfers = parts.transfers;
     this.savedSides = parts.savedSides;
+    this.tabNames = parts.tabNames;
     this.listings = parts.listings;
     this.elevation = parts.elevation;
     this.settings = parts.settings;
@@ -131,6 +134,7 @@ export class CommanderTool implements Tool<'commander'> {
       return;
     }
     this.sides.panes.set(tab.id, panes);
+    this.tabNames.changed(tab.id);
     await Promise.all([
       ...sides.map((side) =>
         this.listings.list(page, tab.id, side, panes[side].folder, 'show'),
@@ -183,6 +187,7 @@ export class CommanderTool implements Tool<'commander'> {
       }
     }
     this.sides.panes.delete(tab.id);
+    this.tabNames.forget(tab.id);
     this.copies.letGoOfCopies();
     this.saveQuietly(this.savedSides.keep((kept) => kept !== tab.id));
     for (const [shownIn, showing] of this.sides.shown) {
@@ -208,7 +213,7 @@ export class CommanderTool implements Tool<'commander'> {
     return new Map(
       tabs.map((tab): [string, TabName] => [
         tab.id,
-        { name: strings.tools.commander },
+        { name: this.tabNames.of(tab) },
       ]),
     );
   }

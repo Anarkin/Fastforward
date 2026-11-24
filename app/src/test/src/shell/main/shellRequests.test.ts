@@ -12,6 +12,7 @@ import {
   shellOf,
   terminalHostOf,
   withView,
+  commanderRootName,
 } from '../../../helpers/harness';
 import { FakeHost } from '../../../helpers/fakeHost';
 
@@ -163,7 +164,7 @@ suite('Shell with no tab open', () => {
         assert.deepStrictEqual(
           view.page.tabs?.tabs.map((tab) => [tab.name, tab.root]),
           [
-            ['Commander', undefined],
+            [commanderRootName, undefined],
             ['aaa', folder],
           ],
         );

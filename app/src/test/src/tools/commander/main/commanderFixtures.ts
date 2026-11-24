@@ -340,6 +340,7 @@ export function commander(
     edited,
     compared,
     tabs,
+    tabsPosted,
     windows,
     openedIn,
     settled,
@@ -402,6 +403,7 @@ export function commander(
   };
   return {
     tool,
+    tabsPosted,
     page,
     pages,
     focus,

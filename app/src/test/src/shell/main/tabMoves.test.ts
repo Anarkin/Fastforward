@@ -2,9 +2,12 @@ import * as assert from 'node:assert';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, suite, test } from 'vitest';
-import { strings } from '../../../../lib/shared/strings';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
-import { attach, closeViews } from '../../../helpers/harness';
+import {
+  attach,
+  closeViews,
+  commanderRootName,
+} from '../../../helpers/harness';
 import { windowsKey } from '../../../../shell/main/storage';
 import { shownIn, twoWindows } from './shellFixtures';
 import { FakeHost } from '../../../helpers/fakeHost';
@@ -327,7 +330,7 @@ suite('Moving tabs between windows', () => {
     assert.deepStrictEqual(second.page.last('tabVisit'), {
       type: 'tabVisit',
       visit: {
-        tab: { id: '1', tool: 'commander', name: strings.tools.commander },
+        tab: { id: '1', tool: 'commander', name: commanderRootName },
         x: 100,
         grabX: 20,
       },

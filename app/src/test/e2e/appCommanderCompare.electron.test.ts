@@ -158,7 +158,7 @@ suite('App commander', () => {
     await page.keyboard.press('Escape');
     await language.locator('.menu').waitFor({ state: 'detached' });
     await page.keyboard.press('Escape');
-    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     for (const name of ['before.txt', 'after.txt']) {
       fs.rmSync(path.join(opened, name));
     }
@@ -208,7 +208,7 @@ suite('App commander', () => {
     );
 
     await page.keyboard.press('Escape');
-    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     for (const name of ['jump-old.txt', 'jump-new.txt']) {
       fs.rmSync(path.join(opened, name));
     }
@@ -244,7 +244,7 @@ suite('App commander', () => {
       'both images, side by side',
     );
     await page.keyboard.press('Escape');
-    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     for (const name of ['shot1.png', 'shot2.png']) {
       fs.rmSync(path.join(opened, name));
     }
@@ -268,7 +268,7 @@ suite('App commander', () => {
       .waitFor();
     await header.locator('.path', { hasText: 'twin2.txt' }).waitFor();
     await page.keyboard.press('Escape');
-    await page.locator('.tabs .tab.active', { hasText: 'Commander' }).waitFor();
+    await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     for (const name of ['twin1.txt', 'twin2.txt']) {
       fs.rmSync(path.join(opened, name));
     }
@@ -315,10 +315,8 @@ suite('App commander', () => {
         'the word stays selected once its copies are marked',
       );
       const marked = await occurrences();
-      await page.locator('.tabs .tab', { hasText: 'Commander' }).click();
-      await page
-        .locator('.tabs .tab.active', { hasText: 'Commander' })
-        .waitFor();
+      await page.locator('.tabs .tab:has(.tool-commander)').click();
+      await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
       await page.locator('.tabs .tab', { hasText: 'copies1' }).click();
       await waitFor(
         async () =>
@@ -340,9 +338,7 @@ suite('App commander', () => {
       );
       await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
-      await page
-        .locator('.tabs .tab.active', { hasText: 'Commander' })
-        .waitFor();
+      await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     } finally {
       for (const name of ['copies1.txt', 'copies2.txt']) {
         fs.rmSync(path.join(opened, name));

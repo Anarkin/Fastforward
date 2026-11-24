@@ -227,6 +227,7 @@ export const strings = {
     removeRecent: (name: string) => `Remove ${name} from this list`,
     label: (name: string, folder?: string) =>
       folder === undefined ? name : `${name} (${folder})`,
+    sides: (left: string, right: string) => `${left} · ${right}`,
     settings: 'Settings',
     about: 'About',
     openDefaultSettings: 'Open Default Settings',

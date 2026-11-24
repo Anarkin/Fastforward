@@ -178,9 +178,7 @@ suite('App commander', () => {
     const backToCommander = async () => {
       await page.keyboard.press('ControlOrMeta+W');
       await gitTab.waitFor({ state: 'detached' });
-      await page
-        .locator('.tabs .tab.active', { hasText: 'Commander' })
-        .waitFor();
+      await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     };
     await markOf('repo').click();
     await gitTab.locator('.tool-git').waitFor();

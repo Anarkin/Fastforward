@@ -247,8 +247,10 @@ export function newView(
   return view;
 }
 
+export const commanderRootName = 'fastforward-commander-root';
+
 function commanderRoot(): string {
-  const root = path.join(os.tmpdir(), 'fastforward-commander-root');
+  const root = path.join(os.tmpdir(), commanderRootName);
   fs.mkdirSync(root, { recursive: true });
   return root;
 }

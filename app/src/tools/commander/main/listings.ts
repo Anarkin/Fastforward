@@ -1,3 +1,4 @@
+import type { TabNames } from './tabName';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { strings } from '../../../lib/shared/strings';
@@ -64,6 +65,7 @@ export interface ListingParts {
   readonly duplicates: SideDuplicates;
   readonly copies: ArchiveCopies;
   readonly savedSides: SavedSides;
+  readonly tabNames: TabNames;
   readonly repositories: SideRepositories;
 }
 
@@ -270,6 +272,7 @@ export class Listings {
     pane.folder = folder;
     if (left) {
       this.parts.copies.letGoOfCopies();
+      this.parts.tabNames.changed(tab);
     }
     pane.hidden = hidden;
     pane.entries = listing.entries;
