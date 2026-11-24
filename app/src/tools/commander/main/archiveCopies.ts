@@ -85,16 +85,19 @@ export class ArchiveCopies {
     if (copy === undefined) {
       return;
     }
-    const stillViewed = this.host
+    const inside = (file: string | undefined) =>
+      file !== undefined &&
+      (file === copy || file.startsWith(`${copy}${path.sep}`));
+    const stillHeld = this.host
       .shell()
       .tabs()
       .some(
         (open) =>
-          open.tool === 'viewer' &&
-          open.root !== undefined &&
-          (open.root === copy || open.root.startsWith(`${copy}${path.sep}`)),
+          inside(open.root) ||
+          inside(open.compare?.old) ||
+          inside(open.compare?.new),
       );
-    if (!stillViewed) {
+    if (!stillHeld) {
       this.host.saveQuietly(
         fs.promises.rm(copy, { recursive: true, force: true, maxRetries: 3 }),
       );

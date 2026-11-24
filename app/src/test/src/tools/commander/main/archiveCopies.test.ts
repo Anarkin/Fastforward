@@ -45,6 +45,31 @@ suite('Commander tool in archives', () => {
       assert.ok(fs.existsSync(outside));
     });
 
+    test('keeps the copy a viewer tab showed once the tab is closed while an editor tab edits it or a diff tab compares it, as closing the viewer deleted the file being edited', async () => {
+      const { tool, tabs, settled } = await inArchive();
+      const copyIn = (named: string) => {
+        const copy = path.join(copiesFolder, 'viewed', named, 'a.txt');
+        fs.mkdirSync(path.dirname(copy), { recursive: true });
+        fs.writeFileSync(copy, 'a');
+        return copy;
+      };
+      const edited = copyIn('edited');
+      const compared = copyIn('compared');
+      tabs.push({ id: '8', tool: 'editor', root: edited });
+      tabs.push({
+        id: '9',
+        tool: 'diff',
+        compare: { old: path.join(copiesFolder, 'outside.txt'), new: compared },
+      });
+
+      tool.viewClosed(edited);
+      tool.viewClosed(compared);
+      await settled();
+
+      assert.ok(fs.existsSync(edited));
+      assert.ok(fs.existsSync(compared));
+    });
+
     test('views a file of an archive from a copy kept with the copies of viewed files, named as the file is', async () => {
       const { send, viewed } = await inArchive();
       await send({ type: 'view', tab: '1', side: 'right', name: 'top.txt' });
