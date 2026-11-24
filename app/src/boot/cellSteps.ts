@@ -83,7 +83,9 @@ const loaded: Partial<
       windowsCellSteps(),
     ),
   darwin: () =>
-    import('./macCellSteps.js').then(({ macCellSteps }) => macCellSteps()),
+    process.env.FASTFORWARD_MAC_CELL_STEPS === '1'
+      ? import('./macCellSteps.js').then(({ macCellSteps }) => macCellSteps())
+      : Promise.resolve(undefined),
   linux: () =>
     import('./x11CellSteps.js').then(({ x11CellSteps }) => x11CellSteps()),
 };
