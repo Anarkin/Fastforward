@@ -67,7 +67,7 @@ suite('Transfer, leaving alone what it cannot copy', () => {
     const open = fs.promises.open.bind(fs.promises);
     vi.spyOn(fs.promises, 'open').mockImplementation(
       async (file, flags, mode) => {
-        if (file === made && flags === 'wx') {
+        if (String(file).endsWith('.part') && flags === 'wx') {
           fs.writeFileSync(made, 'theirs');
         }
         return open(file, flags, mode);
@@ -82,5 +82,50 @@ suite('Transfer, leaving alone what it cannot copy', () => {
 
     assert.strictEqual(copied.failures.length, 1);
     assert.strictEqual(fs.readFileSync(made, 'utf8'), 'theirs');
+    assert.deepStrictEqual(fs.readdirSync(target), ['big.bin']);
+  });
+
+  test('keeps the original of a move across drives that changed while it was copied, beside its copy, saying why, rather than deleting what was written to it meanwhile', async () => {
+    const big = path.join(source, 'growing.log');
+    fs.writeFileSync(big, Buffer.alloc(10_000, 1));
+    const failures: string[] = [];
+    let written = false;
+
+    await runTransfer(
+      { sources: [big], target, move: true },
+      {
+        progress: ({ bytes }) => {
+          if (bytes > 0 && !written) {
+            written = true;
+            fs.appendFileSync(big, 'written meanwhile');
+          }
+        },
+        clash: () => Promise.resolve({ answer: 'stop', all: false }),
+        failed: (name, reason) => failures.push(`${name}: ${reason}`),
+      },
+      {
+        stopped: () => false,
+        piecesFrom: 4000,
+        pieceBytes: 1000,
+        cloning: false,
+        progressEvery: 0,
+        rename: (from, to) =>
+          Promise.reject(
+            Object.assign(new Error(`EXDEV: ${from} -> ${to}`), {
+              code: 'EXDEV',
+            }),
+          ),
+      },
+    );
+
+    assert.ok(written);
+    assert.deepStrictEqual(failures, [
+      `growing.log: ${strings.commander.changedWhileMoved}`,
+    ]);
+    assert.ok(
+      fs.readFileSync(big, 'utf8').endsWith('written meanwhile'),
+      'the original kept',
+    );
+    assert.ok(fs.existsSync(path.join(target, 'growing.log')));
   });
 });

@@ -64,6 +64,21 @@ async function statsOf(file: string): Promise<Stats | undefined> {
   }
 }
 
+async function renamedUnlessThere(from: string, to: string): Promise<void> {
+  if ((await statsOf(to)) !== undefined) {
+    throw Object.assign(new Error(`EEXIST: file already exists, ${to}`), {
+      code: 'EEXIST',
+    });
+  }
+  await fs.promises.rename(from, to);
+}
+
+const unchanged = (was: Stats, now: Stats): boolean =>
+  was.ino === now.ino &&
+  was.dev === now.dev &&
+  was.size === now.size &&
+  was.mtimeMs === now.mtimeMs;
+
 async function identityOf(file: string): Promise<string | undefined> {
   try {
     return fileIdOf(await fs.promises.lstat(file, { bigint: true }));
@@ -95,7 +110,10 @@ async function keptMark(source: string, target: string): Promise<void> {
 }
 
 function partOf(target: string): string {
-  return `${target}.${randomBytes(4).toString('hex')}.part`;
+  return path.join(
+    path.dirname(target),
+    `.${randomBytes(4).toString('hex')}.part`,
+  );
 }
 
 const ownerWrites = 0o200;
@@ -506,7 +524,7 @@ class Transfer {
   ): Promise<void> {
     this.current = source;
     const bytesBefore = this.bytes;
-    const into = overwrite ? partOf(target) : target;
+    const into = partOf(target);
     try {
       if (stats.size >= (this.options.piecesFrom ?? 16 * 1024 * 1024)) {
         await this.copyLarge(source, into, stats);
@@ -518,13 +536,11 @@ class Transfer {
         );
       }
       await fs.promises.utimes(into, stats.atime, stats.mtime).catch(ignored);
-      if (into !== target) {
-        await fs.promises.rename(into, target);
-      }
+      await (overwrite
+        ? fs.promises.rename(into, target)
+        : renamedUnlessThere(into, target));
     } catch (error) {
-      if (into !== target) {
-        await fs.promises.rm(into, { force: true }).catch(ignored);
-      }
+      await fs.promises.rm(into, { force: true }).catch(ignored);
       if (error instanceof Stopped) {
         throw error;
       }
@@ -536,6 +552,14 @@ class Transfer {
     this.bytes = bytesBefore;
     this.passed({ files: 1, bytes: stats.size });
     if (this.plan.move) {
+      const now = await statsOf(source);
+      if (now === undefined) {
+        return;
+      }
+      if (!unchanged(stats, now)) {
+        this.events.failed(name, strings.commander.changedWhileMoved);
+        return;
+      }
       await fs.promises
         .unlink(source)
         .catch((error: unknown) => this.failed(name, error));

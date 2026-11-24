@@ -756,6 +756,8 @@ export const strings = {
       platform === 'win32' ? 'the Recycle Bin' : 'the Trash',
     moveToBin: (bin: string) => `Move to ${bin}`,
     binOff: 'The Recycle Bin of this drive is turned off.',
+    binTrims: (item: string) =>
+      sentence`${namedItem(item)} can't be moved to the Recycle Bin, as a name in its path ends in a dot or a space, which the Recycle Bin trims, taking another item. Shift+Delete deletes it permanently.`,
     itemLines: (item: string): Line[] => [namedItem(item)],
     oneItem: (item: string) => namedItem(item),
     items: (count: number) => `${count} items`,
@@ -1070,6 +1072,8 @@ export const strings = {
     folderThere: 'A folder of that name is there.',
     fileThere: 'A file of that name is there.',
     itselfThere: 'The item there is this one, reached by another path.',
+    changedWhileMoved:
+      'It changed while it was copied, so it is kept where it was, beside its copy.',
     notCopied:
       'It is a pipe, a socket or a device rather than a file, which has no content to copy.',
     layout: 'Layout',
