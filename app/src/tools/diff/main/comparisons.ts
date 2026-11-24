@@ -14,6 +14,7 @@ import {
   comparedNames,
   comparedText,
   filesAlike,
+  type FilesAlike,
   type GitRun,
 } from './compare';
 import { watchFiles } from './compareWatch';
@@ -197,11 +198,13 @@ export class Comparisons {
     const running = new AbortController();
     comparing.running = running;
     let patch = '';
-    let same: 'identical' | 'whitespace' | undefined;
+    let same: FilesAlike | undefined;
     let encodings: DecodedSides['encodings'] = {};
+    let withBom: DecodedSides['withBom'];
     let error: Sentence | undefined;
     try {
-      const decoded = await this.decodedOf(compared);
+      const readable = await this.readable(compared);
+      const decoded = await this.decoded(readable);
       const { read } = decoded;
       encodings = decoded.encodings;
       patch = await comparedFilesPatch(
@@ -212,7 +215,10 @@ export class Comparisons {
         read,
       );
       if (patch === '') {
-        same = await filesAlike(read);
+        same = await filesAlike(readable, read);
+      }
+      if (decoded.withBom !== undefined) {
+        withBom = decoded.withBom;
       }
     } catch (failure) {
       if (running.signal.aborted) {
@@ -250,6 +256,7 @@ export class Comparisons {
         version,
         ...(same !== undefined && { same }),
         ...(Object.keys(encodings).length > 0 && { encodings }),
+        ...(withBom !== undefined && { withBom }),
         ...(error !== undefined && { error }),
       },
     });

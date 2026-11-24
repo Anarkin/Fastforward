@@ -340,6 +340,23 @@ suite('Diff tool comparing two files', () => {
     await opened.connection.receive({ type: 'selectTab', tab: '1' });
   });
 
+  test('tells two files of the same text but for a byte order mark alike only in their encoding, naming the side that has it, rather than identical', async () => {
+    const compare = {
+      old: path.join(files, 'plain.txt'),
+      new: path.join(files, 'marked.txt'),
+    };
+    fs.writeFileSync(compare.old, 'same text\n');
+    fs.writeFileSync(compare.new, '﻿same text\n');
+    await opened.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      { id: '13', tool: 'diff', compare },
+    ]);
+    await opened.connection.receive({ type: 'selectTab', tab: '13' });
+    assert.strictEqual(lastCompare()?.same, 'encoding');
+    assert.deepStrictEqual(lastCompare()?.withBom, ['new']);
+    await opened.connection.receive({ type: 'selectTab', tab: '1' });
+  });
+
   test('serves the images of the compare tab shown by the ids of their patch, but none by another name, from the disk or once a repository tab shows', async () => {
     const compare = {
       old: path.join(files, 'before.png'),

@@ -217,6 +217,20 @@ suite('Comparing two files outside any repository', () => {
     );
   });
 
+  test('tells files whose text is alike only as read, in another encoding or with a byte order mark, from files alike byte for byte', async () => {
+    fs.writeFileSync(at('left', 'plain.txt'), 'a b\n');
+    fs.writeFileSync(at('right side', 'marked.txt'), '﻿a b\n');
+    fs.writeFileSync(at('right side', 'read.txt'), 'a b\n');
+
+    assert.strictEqual(
+      await filesAlike(
+        { old: at('left', 'plain.txt'), new: at('right side', 'marked.txt') },
+        { old: at('left', 'plain.txt'), new: at('right side', 'read.txt') },
+      ),
+      'encoding',
+    );
+  });
+
   test('shows the whole file and leaves changes of whitespace out when asked', async () => {
     const lines = Array.from({ length: 20 }, (_, index) => `line ${index}`);
     fs.writeFileSync(at('left', 'long.txt'), lines.join('\n'));

@@ -21,11 +21,12 @@ export interface CompareView {
   readonly patch: string;
   readonly entire: boolean;
   readonly version: number;
-  readonly same?: 'identical' | 'whitespace';
+  readonly same?: 'identical' | 'encoding' | 'whitespace';
   readonly encodings?: {
     readonly old?: TextEncoding;
     readonly new?: TextEncoding;
   };
+  readonly withBom?: readonly ComparedSide[];
   readonly error?: Sentence;
 }
 

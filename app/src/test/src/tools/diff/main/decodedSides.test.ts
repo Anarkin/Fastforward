@@ -65,10 +65,30 @@ suite('Sides of a diff read in their encodings', () => {
     assert.deepStrictEqual(again, {
       read: { old: decoded.read.old, new: plain },
       encodings: { old: 'utf-16le' },
+      withBom: ['old'],
     });
     assert.deepStrictEqual(left, {
       read: { old: plain, new: binary },
       encodings: {},
     });
+  });
+
+  test('names the sides read with a byte order mark, which their copies leave out', async () => {
+    const folder = tempFolder('decoded-sides-bom');
+    const copies = path.join(folder, 'copies');
+    const plain = path.join(folder, 'plain.txt');
+    const marked = path.join(folder, 'marked.txt');
+    fs.writeFileSync(plain, 'café\n');
+    fs.writeFileSync(marked, '﻿café\n');
+
+    const decoded = await decodedSides(
+      { old: plain, new: marked },
+      copies,
+      codePage,
+    );
+
+    assert.deepStrictEqual(decoded.encodings, { new: 'utf-8' });
+    assert.deepStrictEqual(decoded.withBom, ['new']);
+    assert.strictEqual(fs.readFileSync(decoded.read.new, 'utf8'), 'café\n');
   });
 });

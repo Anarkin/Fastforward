@@ -15,7 +15,7 @@ import type { DiffFile } from '../../../components/diff/page/diff';
 import type { LoadedText } from '../../../components/diff/page/sideTexts';
 import { SlicedDiff } from '../../../components/diff/page/slicedDiff';
 import { useTextViewSettings } from '../../../shell/page/textViewSettings';
-import type { CompareView as Compared } from '../shared/protocol';
+import type { ComparedSide, CompareView as Compared } from '../shared/protocol';
 import { comparedImageRoute } from '../shared/images';
 import { useDiff, useDiffActions, useDiffStore } from './store';
 import { languageKeyOf } from './tabView';
@@ -34,19 +34,26 @@ function readAsOf(compare: Compared | undefined): string | undefined {
     return undefined;
   }
   const { short } = strings.encodings;
-  return strings.diff.readAs(
-    short[encodings.old ?? 'utf-8'],
-    short[encodings.new ?? 'utf-8'],
-  );
+  const named = (side: ComparedSide) => {
+    const name = short[encodings[side] ?? 'utf-8'];
+    return compare?.withBom?.includes(side) === true
+      ? strings.editor.shortWithBom(name)
+      : name;
+  };
+  return strings.diff.readAs(named('old'), named('new'));
 }
 
 function noteOf(compare: Compared | undefined): string | undefined {
-  if (compare?.same === 'identical') {
-    return strings.diff.identical;
+  switch (compare?.same) {
+    case 'identical':
+      return strings.diff.identical;
+    case 'encoding':
+      return strings.diff.onlyEncoding;
+    case 'whitespace':
+      return strings.diff.onlyWhitespace;
+    default:
+      return undefined;
   }
-  return compare?.same === 'whitespace'
-    ? strings.diff.onlyWhitespace
-    : undefined;
 }
 
 export function CompareView({ tab }: { tab: string }) {

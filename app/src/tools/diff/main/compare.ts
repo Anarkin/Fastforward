@@ -124,15 +124,25 @@ export async function comparedImage(
   return { kind: 'missing' };
 }
 
-export async function filesAlike(
-  read: Compared,
-): Promise<'identical' | 'whitespace'> {
-  const [old, changed] = await regularFiles(read);
+async function bytesAlike(files: Compared): Promise<boolean> {
+  const [old, changed] = await regularFiles(files);
   const [oldBytes, newBytes] = await Promise.all([
     readFile(old),
     readFile(changed),
   ]);
-  return oldBytes.equals(newBytes) ? 'identical' : 'whitespace';
+  return oldBytes.equals(newBytes);
+}
+
+export type FilesAlike = 'identical' | 'encoding' | 'whitespace';
+
+export async function filesAlike(
+  compared: Compared,
+  read: Compared = compared,
+): Promise<FilesAlike> {
+  if (await bytesAlike(compared)) {
+    return 'identical';
+  }
+  return (await bytesAlike(read)) ? 'encoding' : 'whitespace';
 }
 
 function headerLine(line: string, old: string, changed: string): string {

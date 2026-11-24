@@ -1,9 +1,10 @@
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import type { Compared } from '../../../shell/main/savedTabs';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { decodedText } from '../../../components/encodings/main/encodingDetection';
+import type { ComparedSide } from '../shared/protocol';
 import { compareMaxBytes } from './compare';
 
 export interface DecodedSides {
@@ -12,11 +13,26 @@ export interface DecodedSides {
     readonly old?: TextEncoding;
     readonly new?: TextEncoding;
   };
+  readonly withBom?: readonly ComparedSide[];
 }
 
 interface DecodedSide {
   readonly file: string;
   readonly encoding?: TextEncoding;
+  readonly bom?: boolean;
+}
+
+async function writtenWhole(file: string, text: string): Promise<void> {
+  const writing = `${file}.${randomUUID()}`;
+  await writeFile(writing, text, 'utf8');
+  try {
+    await rename(writing, file);
+  } catch (failure) {
+    await rm(writing, { force: true });
+    if ((await stat(file).catch(() => undefined))?.isFile() !== true) {
+      throw failure;
+    }
+  }
 }
 
 async function decodedSide(
@@ -40,9 +56,9 @@ async function decodedSide(
   );
   if ((await stat(copy).catch(() => undefined))?.isFile() !== true) {
     await mkdir(join(copy, '..'), { recursive: true });
-    await writeFile(copy, decoded.text, 'utf8');
+    await writtenWhole(copy, decoded.text);
   }
-  return { file: copy, encoding: decoded.encoding };
+  return { file: copy, encoding: decoded.encoding, bom: decoded.bom };
 }
 
 export async function decodedSides(
@@ -54,11 +70,20 @@ export async function decodedSides(
     decodedSide(read.old, copies, codePage),
     decodedSide(read.new, copies, codePage),
   ]);
+  const withBom = (
+    [
+      ['old', old],
+      ['new', changed],
+    ] as const
+  )
+    .filter(([, side]) => side.bom === true)
+    .map(([name]) => name);
   return {
     read: { ...read, old: old.file, new: changed.file },
     encodings: {
       ...(old.encoding !== undefined && { old: old.encoding }),
       ...(changed.encoding !== undefined && { new: changed.encoding }),
     },
+    ...(withBom.length > 0 && { withBom }),
   };
 }
