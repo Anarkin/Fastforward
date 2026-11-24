@@ -87,6 +87,27 @@ suite('State file', () => {
     );
   });
 
+  test('reads a file held by another program at start once it lets it go within a moment, telling it read it, as a backup or an antivirus holding it lost the tabs and the copies they viewed', () => {
+    fs.writeFileSync(file, JSON.stringify({ tabs: ['/a'] }));
+    let tries = 0;
+    const store = new JsonFileStore(file, (read) => {
+      tries += 1;
+      return tries < 4
+        ? Object.assign(new Error('EBUSY: resource busy or locked'), {
+            code: 'EBUSY',
+          })
+        : fs.readFileSync(read, 'utf8');
+    });
+    assert.deepStrictEqual(store.get('tabs'), ['/a']);
+    assert.deepStrictEqual(store.problems, []);
+    assert.strictEqual(store.readable, true);
+  });
+
+  test('tells it could not read a file it was not let read', () => {
+    fs.mkdirSync(file);
+    assert.strictEqual(new JsonFileStore(file).readable, false);
+  });
+
   test('saves again once a file that could not be read at first can be, keeping what it held under the changes made since', async () => {
     fs.mkdirSync(file);
     const store = new JsonFileStore(file);

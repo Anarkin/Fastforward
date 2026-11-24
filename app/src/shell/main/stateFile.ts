@@ -58,11 +58,18 @@ export class JsonFileStore implements Store {
   private writing: Promise<void> = Promise.resolve();
   private waiting = false;
 
-  constructor(private readonly file: string) {
-    const { values, problem } = readJson(file);
+  constructor(
+    private readonly file: string,
+    private readonly read: Reader = readText,
+  ) {
+    const { values, problem } = readJson(file, read, heldAtStart);
     this.values = values ?? {};
     this.unreadable = values === undefined;
     this.problems = problem === undefined ? [] : [problem];
+  }
+
+  get readable(): boolean {
+    return !this.unreadable;
   }
 
   get(key: string): unknown {
@@ -106,7 +113,7 @@ export class JsonFileStore implements Store {
       this.changedUnread.delete(id);
       this.changedUnread.set(id, change);
     }
-    const { values } = readJson(this.file);
+    const { values } = readJson(this.file, this.read);
     this.unreadable = values === undefined;
     this.values = [...this.changedUnread.values()].reduce(
       withChange,
@@ -118,11 +125,43 @@ export class JsonFileStore implements Store {
   }
 }
 
-function readJson(file: string): {
+type Reader = (file: string) => string | Error | undefined;
+
+const heldAtStart = { tries: 20, every: 100 };
+
+const heldCodes = new Set(['EBUSY', 'EPERM', 'EACCES']);
+
+function held(text: ReturnType<Reader>): boolean {
+  return (
+    text instanceof Error &&
+    'code' in text &&
+    typeof text.code === 'string' &&
+    heldCodes.has(text.code)
+  );
+}
+
+function readWhileHeld(
+  file: string,
+  read: Reader,
+  { tries, every }: { readonly tries: number; readonly every: number },
+): ReturnType<Reader> {
+  let text = read(file);
+  for (let tried = 1; tried < tries && held(text); tried += 1) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, every);
+    text = read(file);
+  }
+  return text;
+}
+
+function readJson(
+  file: string,
+  read: Reader,
+  holding = { tries: 1, every: 0 },
+): {
   values: Record<string, unknown> | undefined;
   problem?: Sentence;
 } {
-  const text = readText(file);
+  const text = readWhileHeld(file, read, holding);
   if (text === undefined) {
     return { values: {} };
   }

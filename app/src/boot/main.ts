@@ -270,11 +270,13 @@ async function start(asked: readonly string[]): Promise<void> {
       ? [tab.root]
       : [],
   );
-  for (const copies of new Set([
-    viewedFiles,
-    path.join(profile, 'viewed-files'),
-  ])) {
-    await removeUnviewedCopies(copies, viewedRoots);
+  if (state.readable) {
+    for (const copies of new Set([
+      viewedFiles,
+      path.join(profile, 'viewed-files'),
+    ])) {
+      await removeUnviewedCopies(copies, viewedRoots);
+    }
   }
   for (const kept of await archiveWork.clearEnded()) {
     void views.promise.then(({ shell: view }) =>
