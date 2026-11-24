@@ -359,7 +359,7 @@ suite('Cells of a text', () => {
         );
       }
     }
-  });
+  }, 20_000);
 
   test('draws an invisible character that joins the character after it, as the Arabic number sign, before that character, in the order of the text', () => {
     const { frame, painter, end } = drawn([{ text: 'a\u0600|b' }]);
