@@ -39,18 +39,53 @@ async function removed(files: readonly string[]): Promise<void> {
   );
 }
 
+async function renamedAll(
+  moves: readonly (readonly [string, string])[],
+): Promise<void> {
+  const done: (readonly [string, string])[] = [];
+  try {
+    for (const [from, to] of moves) {
+      await fs.promises.rename(from, to);
+      done.push([from, to]);
+    }
+  } catch (error) {
+    for (const [from, to] of done.toReversed()) {
+      await fs.promises.rename(to, from).catch(() => undefined);
+    }
+    throw error;
+  }
+}
+
 async function placed(temporary: string, plan: PackPlan): Promise<void> {
   if (plan.volumeBytes === undefined) {
     await fs.promises.rename(temporary, plan.archive);
     return;
   }
   const made = await partsOf(temporary);
-  for (const part of made) {
-    await fs.promises.rename(
-      part,
-      `${plan.archive}${part.slice(temporary.length)}`,
-    );
+  const there = new Set(await partsOf(plan.archive));
+  const old: string[] = [];
+  for (let number = 1; there.has(partName(plan.archive, number)); number++) {
+    old.push(partName(plan.archive, number));
   }
+  const aside = old.map(
+    (part) =>
+      [part, `${temporary}.was${part.slice(plan.archive.length)}`] as const,
+  );
+  await renamedAll(aside);
+  try {
+    await renamedAll(
+      made.map(
+        (part) =>
+          [part, `${plan.archive}${part.slice(temporary.length)}`] as const,
+      ),
+    );
+  } catch (error) {
+    await renamedAll(aside.map(([part, was]) => [was, part] as const)).catch(
+      () => undefined,
+    );
+    throw error;
+  }
+  await removed(aside.map(([, was]) => was));
   const left = new Set(await partsOf(plan.archive));
   const beyond: string[] = [];
   for (

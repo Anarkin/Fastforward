@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { afterEach, beforeEach, suite, test } from 'vitest';
+import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import type {
   ArchiveReader,
   Packing,
@@ -83,6 +83,40 @@ suite('packInto', () => {
     assert.deepStrictEqual(listed(), [
       'photos.zip.001 new.001',
       'photos.zip.002 new.002',
+    ]);
+  });
+
+  test('keeps the set of volumes there whole when a volume of the new set cannot be put in place, as a part held by another program, rather than a set of both mixed and neither whole', async () => {
+    for (const part of ['.001', '.002', '.003']) {
+      fs.writeFileSync(at(`photos.zip${part}`), `old${part}`);
+    }
+    const rename = fs.promises.rename.bind(fs.promises);
+    vi.spyOn(fs.promises, 'rename').mockImplementation(async (from, to) => {
+      if (
+        String(to) === at('photos.zip.002') &&
+        String(from).endsWith('.packing.002')
+      ) {
+        throw Object.assign(new Error('EBUSY: resource busy or locked'), {
+          code: 'EBUSY',
+        });
+      }
+      return rename(from, to);
+    });
+    try {
+      await assert.rejects(
+        packInto(
+          writing(['.001', '.002'], () => Promise.resolve({ kind: 'packed' })),
+          plan(1000),
+        ),
+      );
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    assert.deepStrictEqual(listed(), [
+      'photos.zip.001 old.001',
+      'photos.zip.002 old.002',
+      'photos.zip.003 old.003',
     ]);
   });
 
