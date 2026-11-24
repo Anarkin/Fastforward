@@ -71,6 +71,7 @@ export interface CellViewEvents {
 export interface CellPlace {
   readonly origin: () => { readonly left: number; readonly top: number };
   readonly area: () => DOMRect | undefined;
+  readonly tipFrom?: HTMLElement;
 }
 
 export interface CellLooks {
@@ -162,6 +163,7 @@ export class CellView {
   private painting: CellPainting;
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
   private readonly signTips: SignTips;
+  private readonly tipFrom: HTMLElement;
   private readonly idle: IdleWork;
   private readonly selecting: CellSelecting;
   private held: CellViewShown['held'] = noRows;
@@ -200,8 +202,9 @@ export class CellView {
     this.scheme.addEventListener('change', this.relook);
     canvas.addEventListener('transitionend', this.relook);
     this.signTips = new SignTips(host.ownerDocument);
-    host.setAttribute(tipSource, '');
-    host.tipUnder = this.tipUnder;
+    this.tipFrom = place.tipFrom ?? host;
+    this.tipFrom.setAttribute(tipSource, '');
+    this.tipFrom.tipUnder = this.tipUnder;
     this.idle = new IdleWork(
       pageIdling(),
       (slice) => this.tiles.within(slice),
@@ -451,9 +454,9 @@ export class CellView {
 
   dispose(): void {
     this.signTips.clear();
-    if (this.host.tipUnder === this.tipUnder) {
-      this.host.tipUnder = undefined;
-      this.host.removeAttribute(tipSource);
+    if (this.tipFrom.tipUnder === this.tipUnder) {
+      this.tipFrom.tipUnder = undefined;
+      this.tipFrom.removeAttribute(tipSource);
     }
     this.host.seenGlyphs = undefined;
     this.host.seenDots = undefined;

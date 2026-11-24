@@ -302,6 +302,7 @@ class EditorCells implements SurfacePart {
             return { left: at.left, top: at.top + scroller.scrollTop };
           },
           area: () => scroller.getBoundingClientRect(),
+          tipFrom: scroller,
         },
       );
     }

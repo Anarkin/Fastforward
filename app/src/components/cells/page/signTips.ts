@@ -21,33 +21,35 @@ export function signedText(text: string): string {
     .join('');
 }
 
+const keyApart = '|';
+
 export class SignTips {
   private anchor: HTMLElement | undefined;
   private key: string | undefined;
 
   constructor(private readonly page: Document) {}
 
-  at(key: string, text: string, box: ClientBox): HTMLElement | undefined {
-    if (this.anchor !== undefined && this.key === key) {
-      return this.anchor;
+  at(place: string, text: string, box: ClientBox): HTMLElement | undefined {
+    const key = `${place}${keyApart}${text}`;
+    if (this.anchor === undefined || this.key !== key) {
+      this.clear();
+      const signed = signedText(text);
+      if (signed === '') {
+        return undefined;
+      }
+      this.anchor = this.page.createElement('span');
+      this.anchor.className = 'sign-tip';
+      this.anchor.setAttribute('data-tip', characterTipText(signed));
+      this.anchor.setAttribute(characterTip, '');
+      this.page.body.append(this.anchor);
+      this.key = key;
     }
-    this.clear();
-    const signed = signedText(text);
-    if (signed === '') {
-      return undefined;
-    }
-    const anchor = this.page.createElement('span');
-    anchor.className = 'sign-tip';
-    anchor.setAttribute('data-tip', characterTipText(signed));
-    anchor.setAttribute(characterTip, '');
-    anchor.style.left = `${box.left}px`;
-    anchor.style.top = `${box.top}px`;
-    anchor.style.width = `${box.width}px`;
-    anchor.style.height = `${box.height}px`;
-    this.page.body.append(anchor);
-    this.anchor = anchor;
-    this.key = key;
-    return anchor;
+    const { style } = this.anchor;
+    style.left = `${box.left}px`;
+    style.top = `${box.top}px`;
+    style.width = `${box.width}px`;
+    style.height = `${box.height}px`;
+    return this.anchor;
   }
 
   clear(): void {

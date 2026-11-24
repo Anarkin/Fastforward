@@ -10,6 +10,14 @@ import { onceDrawn } from './waits';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { waitFor } from '../helpers/fixtures';
 import { seenRows } from './cellsSeen';
+
+const editorRows = (page: Page): Promise<readonly SeenRow[]> =>
+  page.evaluate(() => {
+    const host = document.querySelector('.editor-cells');
+    return host instanceof HTMLElement && host.querySelector('canvas') !== null
+      ? (host.seenRows?.() ?? [])
+      : [];
+  });
 import type { SeenRow } from '../../components/cells/page/seen';
 
 const atOnce = { tooltips: { delayMilliseconds: 0 } };
@@ -46,6 +54,7 @@ suite('App tooltips', () => {
         tabs: [
           { id: '1', tool: 'commander', root: opened },
           { id: '2', tool: 'viewer', root: viewed },
+          { id: '3', tool: 'editor', root: viewed },
         ],
         activeTab: '1',
       }),
@@ -171,31 +180,37 @@ suite('App tooltips', () => {
     await tooltip().waitFor();
   });
 
-  test('names a character drawn as a sign in a text by its code point and its name in a tooltip over its cell, as soon as the pointer is on it where the settings say so, while the buttons still wait as long as they say', async () => {
+  test('names a character drawn as a sign in a text by its code point and its name in a tooltip over its cell, in the viewer and the editor alike, as soon as the pointer is on it where the settings say so, while the buttons still wait as long as they say', async () => {
     await away();
     await writeSettings(page, profile, charactersAtOnce);
-    await page.locator('.tabs .tab').nth(1).click();
-    let row: SeenRow | undefined;
-    await waitFor(async () => {
-      [row] = await seenRows(page);
-      return row?.text === 'te​xt';
-    }, 'the text viewed');
-    assert.ok(row);
-    await page.mouse.move(
-      row.left + (2 - row.column + 0.5) * row.advance,
-      row.top + row.height / 2,
-    );
-    await tooltip().waitFor();
-    assert.strictEqual(
-      await tooltip().locator('.card-message').textContent(),
-      'U+200B ZERO WIDTH SPACE',
-    );
-    await page.mouse.move(
-      row.left + (0 - row.column + 0.5) * row.advance,
-      row.top + row.height / 2,
-    );
-    await tooltip().waitFor({ state: 'detached' });
-    await away();
+    for (const [tab, rows] of [
+      [1, seenRows],
+      [2, editorRows],
+    ] as const) {
+      await page.locator('.tabs .tab').nth(tab).click();
+      let row: SeenRow | undefined;
+      await waitFor(async () => {
+        [row] = await rows(page);
+        return row?.text === 'te​xt';
+      }, `the text of tab ${tab}`);
+      assert.ok(row);
+      await page.mouse.move(
+        row.left + (2 - row.column + 0.5) * row.advance,
+        row.top + row.height / 2,
+      );
+      await tooltip().waitFor();
+      assert.strictEqual(
+        await tooltip().locator('.card-message').textContent(),
+        'U+200B ZERO WIDTH SPACE',
+        `tab ${tab}`,
+      );
+      await page.mouse.move(
+        row.left + (0 - row.column + 0.5) * row.advance,
+        row.top + row.height / 2,
+      );
+      await tooltip().waitFor({ state: 'detached' });
+      await away();
+    }
     await page.locator('.tabs .tab').nth(0).click();
     await writeSettings(page, profile, atOnce);
     await page.locator('.commander-pane').first().waitFor();

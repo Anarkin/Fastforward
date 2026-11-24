@@ -8,6 +8,10 @@ import {
 
 const box = { left: 10, top: 20, width: 7, height: 16 };
 
+const zeroWidth = String.fromCharCode(0x200b);
+
+const joiner = String.fromCharCode(0x2060);
+
 suite('Tooltips of the signs of the cells', () => {
   test('take the characters a cell draws as a sign, an invisible one or a space but the space, and nothing of a letter, the space or a sign of whitespace', () => {
     assert.strictEqual(signedText('\u200b'), '\u200b');
@@ -18,7 +22,7 @@ suite('Tooltips of the signs of the cells', () => {
     assert.strictEqual(signedText('\t'), '');
   });
 
-  test('stand an anchor over the cells of a sign, naming each of its characters by its code point and name, with a delay of its own, one anchor for one sign, taken away once the pointer is over none', () => {
+  test('stand an anchor over the cells of a sign, naming each of its characters by its code point and name, with a delay of its own, one anchor for one sign where it stands now, another for another character come to the same place, taken away once the pointer is over none', () => {
     const { document } = new JSDOM('<!doctype html><body>').window;
     const tips = new SignTips(document);
     const first = tips.at('0:2', '\u200b', box);
@@ -37,7 +41,12 @@ suite('Tooltips of the signs of the cells', () => {
       ],
       ['10px', '20px', '7px', '16px'],
     );
-    assert.strictEqual(tips.at('0:2', '\u200b', box), first);
+    const moved = { ...box, top: 40 };
+    assert.strictEqual(tips.at('0:2', zeroWidth, moved), first);
+    assert.strictEqual(first.style.top, '40px');
+    const other = tips.at('0:2', joiner, box);
+    assert.ok(other && other !== first);
+    assert.strictEqual(other.getAttribute('data-tip'), 'U+2060 WORD JOINER');
     const second = tips.at('0:5', '\u00a0', box);
     assert.ok(second && second !== first);
     assert.strictEqual(first.isConnected, false);
