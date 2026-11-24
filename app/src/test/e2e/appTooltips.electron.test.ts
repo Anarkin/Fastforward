@@ -28,8 +28,6 @@ const charactersAtOnce = {
   tooltips: { delayMilliseconds: 10_000, characterDelayMilliseconds: 0 },
 };
 
-const mod = process.platform === 'darwin' ? strings.keys.Command : 'Ctrl';
-
 suite('App tooltips', () => {
   let folder: string;
   let profile: string;
@@ -87,15 +85,17 @@ suite('App tooltips', () => {
   });
 
   test('shows the tooltip of a button the pointer rests on as a card of the app, its words and the keys that do the same as a key cap after them, centered below the button, inside the window and on whole device pixels, the browser showing none of its own', async () => {
+    const wrap = `.viewer button[data-tip="${strings.common.wrap}"]`;
+    await page.locator('.tabs [role="tab"]').nth(1).click();
     await away();
-    await add().hover();
+    await page.locator(wrap).hover();
     await tooltip().waitFor();
     assert.deepStrictEqual(
       [
         await tooltip().locator('.card-message').textContent(),
         await tooltip().locator('.shortcut-combo kbd').allTextContents(),
       ],
-      [strings.tabs.newTab, [mod, 'T', mod, 'Shift', 'T']],
+      [strings.common.wrap, ['W']],
     );
     const placed = await page.evaluate((selector) => {
       const card = document.querySelector('.card.tip');
@@ -123,7 +123,9 @@ suite('App tooltips', () => {
         untouchable: getComputedStyle(card).pointerEvents,
         titled: document.querySelectorAll('[title]').length,
       };
-    }, '.tab-add');
+    }, wrap);
+    await away();
+    await page.locator('.tabs [role="tab"]').first().click();
     assert.deepStrictEqual(placed, {
       centered: true,
       below: true,

@@ -8,7 +8,7 @@ import type { SeenRow } from '../../components/cells/page/seen';
 import { viewerTexts } from './cellsSeen';
 import { editorLinesSeen, editorRowPoint, editorRowsSeen } from './editorSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
-import { fileName, nearItsStart, rowsShown } from './commanderRows';
+import { fileName, rowsShown } from './commanderRows';
 
 let folder: string;
 export let opened: string;
@@ -31,10 +31,15 @@ const selectedIndex = () =>
     );
 export const select = async (name: string) => {
   await waitFor(async () => (await rowIndexOf(name)) !== -1, `${name} listed`);
-  await right()
-    .locator('.commander-row')
-    .nth(await rowIndexOf(name))
-    .click({ position: nearItsStart });
+  await right().locator('.virtual-rows').focus();
+  const target = await rowIndexOf(name);
+  for (let step = 0; step < 100; step++) {
+    const at = await selectedIndex();
+    if (at === target) {
+      break;
+    }
+    await page.keyboard.press(at < target ? 'ArrowDown' : 'ArrowUp');
+  }
   await waitFor(
     async () => (await rowIndexOf(name)) === (await selectedIndex()),
     `${name} to be selected`,
