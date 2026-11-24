@@ -14,6 +14,8 @@ export default defineConfig({
   test: {
     setupFiles: ['src/test/setup.ts'],
     allowOnly: false,
+    unstubGlobals: true,
+    unstubEnvs: true,
     sequence: { sequencer: ShardsByDuration },
     maxWorkers: Math.min(8, Math.max(1, availableParallelism() - 1)),
     coverage: {
@@ -26,6 +28,8 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
+          setupFiles: ['src/test/unitSetup.ts'],
+          isolate: false,
           include: ['src/test/**/*.test.{ts,tsx}'],
           exclude: [git, electron, shells, sevenZip, perf, packaging],
           testTimeout: process.env.CI === undefined ? 5000 : 20_000,

@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import {
   screenMargin,
   TerminalView,
@@ -300,15 +300,13 @@ suite('Terminal view', () => {
         },
       });
       const asked: string[] = [];
-      Object.assign(globalThis, {
-        confirm: () => {
-          asked.push('confirm');
-          return true;
-        },
-        open: () => {
-          asked.push('open');
-          return null;
-        },
+      vi.stubGlobal('confirm', () => {
+        asked.push('confirm');
+        return true;
+      });
+      vi.stubGlobal('open', () => {
+        asked.push('open');
+        return null;
       });
       const view = new TerminalView(xterm, screen, {
         tab: '1',

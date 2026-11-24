@@ -458,6 +458,7 @@ suite('Architecture', () => {
               'lessons.test.ts',
               'shortcutsShown.test.ts',
               'setup.ts',
+              'unitSetup.ts',
             ].includes(file)
           : grouped.includes(top)
             ? folder !== top

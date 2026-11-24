@@ -42,15 +42,14 @@ function recorded() {
 
 async function killedBy(stop: () => Promise<void>): Promise<unknown[][]> {
   const killed: unknown[][] = [];
-  const kill = process.kill.bind(process);
-  process.kill = (...args: Parameters<typeof process.kill>) => {
+  const kill = vi.spyOn(process, 'kill').mockImplementation((...args) => {
     killed.push(args);
     return true;
-  };
+  });
   try {
     await stop();
   } finally {
-    process.kill = kill;
+    kill.mockRestore();
   }
   return killed;
 }
@@ -182,10 +181,9 @@ suite('Stopping a process and what it started', () => {
     const killed = await killedBy(() =>
       stopTree(runningChild(), 'linux', held, start),
     );
-    const kill = process.kill.bind(process);
-    process.kill = () => {
+    const kill = vi.spyOn(process, 'kill').mockImplementation(() => {
       throw new Error('no such process group');
-    };
+    });
     try {
       await stopTree(
         {
@@ -200,7 +198,7 @@ suite('Stopping a process and what it started', () => {
         start,
       );
     } finally {
-      process.kill = kill;
+      kill.mockRestore();
     }
 
     assert.deepStrictEqual(killed, [[-4321, 'SIGTERM']]);

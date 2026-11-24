@@ -229,6 +229,7 @@ suite('When the editor marks the occurrences', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    Reflect.deleteProperty(globalThis, 'devicePixelRatio');
   });
 
   test('marks none while the pointer is held, as a drag grows the selection, and the copies at once once it is let go, and those of a selection moved by a key a tenth of a second after, rather than a quarter of a second after any selection rested', () => {

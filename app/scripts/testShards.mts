@@ -75,7 +75,43 @@ export function readDurations(file = durationsFile): Durations {
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
 }
 
+export function shuffledBy<T>(items: readonly T[], seed: number): T[] {
+  const shuffled = [...items];
+  let state = seed >>> 0;
+  const next = () => {
+    state = (state + 0x6d_2b_79_f5) >>> 0;
+    let mixed = Math.imul(state ^ (state >>> 15), state | 1);
+    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4_294_967_296;
+  };
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const other = Math.floor(next() * (index + 1));
+    [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
+  }
+  return shuffled;
+}
+
 export class ShardsByDuration extends BaseSequencer {
+  override async sort(
+    specifications: TestSpecification[],
+  ): Promise<TestSpecification[]> {
+    const sorted = await super.sort(specifications);
+    const sharing = (specification: TestSpecification) =>
+      specification.project.config.isolate === false;
+    const shared = sorted.filter(sharing);
+    const { seed } = this.ctx.config.sequence;
+    if (shared.length === 0 || seed === undefined) {
+      return sorted;
+    }
+    console.log(
+      `The test files that share their workers run in the order of seed ${seed}; run them in it again with --sequence.seed=${seed}`,
+    );
+    return [
+      ...shuffledBy(shared, seed),
+      ...sorted.filter((specification) => !sharing(specification)),
+    ];
+  }
+
   override async shard(
     specifications: TestSpecification[],
   ): Promise<TestSpecification[]> {

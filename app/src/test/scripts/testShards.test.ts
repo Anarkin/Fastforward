@@ -20,6 +20,7 @@ interface TestShards {
     count: number,
   ) => string[][];
   readonly projectsRunAFileAtATime: readonly string[];
+  readonly shuffledBy: <T>(items: readonly T[], seed: number) => T[];
   readonly ShardsByDuration: new (context: {
     readonly config: {
       readonly root: string;
@@ -72,6 +73,16 @@ const loadOf = (shard: readonly string[], weights: Map<string, number>) =>
   shard.reduce((sum, file) => sum + (weights.get(file) ?? 0), 0);
 
 suite('Shards balanced by how long their files take', () => {
+  test('shuffles the files of a run by its seed, the same seed giving the same order, so a test that passes only after some files fails soon and its order can be run again', async () => {
+    const { shuffledBy } = await loadTestShards();
+    const files = Array.from({ length: 20 }, (_, index) => `file${index}`);
+    const shuffled = shuffledBy(files, 42);
+    assert.deepStrictEqual(shuffledBy(files, 42), shuffled);
+    assert.deepStrictEqual(shuffled.toSorted(), files.toSorted());
+    assert.notDeepStrictEqual(shuffled, files);
+    assert.notDeepStrictEqual(shuffledBy(files, 43), shuffled);
+  });
+
   test('takes for run a file at a time the very projects the tests are set up to run so, told by their names, which every machine reads alike, where the workers a machine has for a project follow its processors', async () => {
     const { projectsRunAFileAtATime } = await loadTestShards();
     const configured = await loadTestsConfigured();

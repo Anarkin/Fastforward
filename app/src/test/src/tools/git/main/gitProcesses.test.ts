@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createInterface } from 'node:readline';
-import { suite, test } from 'vitest';
+import { suite, test, vi } from 'vitest';
 import { gitProcessOptions } from '../../../../../tools/git/main/gitCommand';
 import { stopGit } from '../../../../../tools/git/main/gitProcesses';
 import { waitFor } from '../../../../helpers/fixtures';
@@ -16,11 +16,10 @@ suite('Running git', () => {
     assert.strictEqual(gitProcessOptions('win32').detached, false);
     assert.strictEqual(gitProcessOptions('linux').detached, true);
     const killed: unknown[][] = [];
-    const kill = process.kill.bind(process);
-    process.kill = (...args: Parameters<typeof process.kill>) => {
+    const kill = vi.spyOn(process, 'kill').mockImplementation((...args) => {
       killed.push(args);
       return true;
-    };
+    });
     try {
       await stopGit(
         {
@@ -34,7 +33,7 @@ suite('Running git', () => {
         'linux',
       );
     } finally {
-      process.kill = kill;
+      kill.mockRestore();
     }
     assert.deepStrictEqual(killed, [[-4321, 'SIGTERM']]);
   });
