@@ -385,7 +385,7 @@ suite('Git tool cloning repositories', () => {
       });
       assert.strictEqual(lastView(view)?.kind, 'running');
       await waitFor(
-        () => hanging.listening && fs.existsSync(path.join(parent, 'app')),
+        () => hanging.listening && fs.readdirSync(parent).length > 0,
         'git to make the folder it clones into',
       );
       await view.connection.receive({ type: 'stopClone' });
@@ -398,6 +398,29 @@ suite('Git tool cloning repositories', () => {
       });
       assert.deepStrictEqual(fs.readdirSync(parent), []);
       assert.ok(info.includes(`Stopped cloning ${hangingUrl}`));
+    });
+  });
+
+  test('removes only the folder git cloned into once a clone is stopped, keeping what was put where the clone was to go meanwhile, as removing the folder asked for deleted it', async () => {
+    const parent = into('stopped-meanwhile');
+    await withView(log, [], async (view) => {
+      await view.connection.receive({ type: 'openClone' });
+      await view.connection.receive({
+        type: 'clone',
+        url: hangingUrl,
+        folder: parent,
+        name: 'app',
+      });
+      await waitFor(
+        () => fs.readdirSync(parent).length > 0,
+        'git to make the folder it clones into',
+      );
+      fs.mkdirSync(path.join(parent, 'app'), { recursive: true });
+      fs.writeFileSync(path.join(parent, 'app', 'kept.txt'), 'kept');
+      await view.connection.receive({ type: 'stopClone' });
+      await view.view.idle();
+      assert.deepStrictEqual(fs.readdirSync(parent), ['app']);
+      assert.ok(fs.existsSync(path.join(parent, 'app', 'kept.txt')));
     });
   });
 

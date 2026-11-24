@@ -1,4 +1,5 @@
 import { fsPromises as fs } from '../../../lib/main/files';
+import { randomBytes } from 'node:crypto';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { CloneProgress } from '../shared/clone';
@@ -62,19 +63,41 @@ export async function cloneTargetProblem(
   }
 }
 
-export async function removeClone(
-  target: string,
-  keepFolder: boolean,
-): Promise<void> {
-  const removing = { recursive: true, force: true, maxRetries: 10 };
-  if (!keepFolder) {
-    await fs.rm(target, removing);
-    return;
-  }
-  const entries = await fs.readdir(target).catch(() => []);
-  await Promise.all(
-    entries.map((entry) => fs.rm(path.join(target, entry), removing)),
+export function cloningFolder(target: string): string {
+  return path.join(
+    path.dirname(target),
+    `.${path.basename(target)}.cloning-${randomBytes(4).toString('hex')}`,
   );
+}
+
+export async function removeClone(cloned: string): Promise<void> {
+  await fs.rm(cloned, { recursive: true, force: true, maxRetries: 10 });
+}
+
+const placeAttempts = 10;
+
+const placeRetryDelay = 100;
+
+export async function placeClone(
+  cloned: string,
+  target: string,
+): Promise<boolean> {
+  await fs.rmdir(target).catch(() => undefined);
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await fs.rename(cloned, target);
+      return true;
+    } catch {
+      const taken = await fs.lstat(target).then(
+        () => true,
+        () => false,
+      );
+      if (taken || attempt === placeAttempts) {
+        return false;
+      }
+      await new Promise((resolve) => setTimeout(resolve, placeRetryDelay));
+    }
+  }
 }
 
 export async function cloneRepository(

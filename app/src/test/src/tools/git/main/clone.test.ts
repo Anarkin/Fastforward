@@ -1,9 +1,14 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
+  cloningFolder,
+  placeClone,
   progressOf,
   progressReader,
 } from '../../../../../tools/git/main/clone';
+import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 import type { CloneProgress } from '../../../../../tools/git/shared/clone';
 
 suite('Clone progress', () => {
@@ -62,5 +67,45 @@ suite('Clone progress', () => {
       { phase: 'Receiving objects', percent: 20 },
       { phase: 'Updating files', percent: 100 },
     ]);
+  });
+});
+
+suite('Putting a clone in place', () => {
+  test('puts the folder cloned into where the clone was to go, in place of an empty folder too', async () => {
+    const folder = tempFolder('placing-clone');
+    try {
+      for (const [name, emptyThere] of [
+        ['missing', false],
+        ['empty', true],
+      ] as const) {
+        const target = path.join(folder, name);
+        if (emptyThere) {
+          fs.mkdirSync(target);
+        }
+        const cloned = cloningFolder(target);
+        fs.mkdirSync(path.join(cloned, '.git'), { recursive: true });
+        assert.strictEqual(await placeClone(cloned, target), true);
+        assert.deepStrictEqual(fs.readdirSync(target), ['.git']);
+        assert.strictEqual(fs.existsSync(cloned), false);
+      }
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test('leaves the clone where it was made once something took its place meanwhile, as putting it there would delete what was put there', async () => {
+    const folder = tempFolder('placing-clone-taken');
+    try {
+      const target = path.join(folder, 'app');
+      fs.mkdirSync(target);
+      fs.writeFileSync(path.join(target, 'kept.txt'), 'kept');
+      const cloned = cloningFolder(target);
+      fs.mkdirSync(path.join(cloned, '.git'), { recursive: true });
+      assert.strictEqual(await placeClone(cloned, target), false);
+      assert.deepStrictEqual(fs.readdirSync(target), ['kept.txt']);
+      assert.deepStrictEqual(fs.readdirSync(cloned), ['.git']);
+    } finally {
+      removeFolder(folder);
+    }
   });
 });

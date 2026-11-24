@@ -692,6 +692,8 @@ export const strings = {
       sentence`${namedFolder(folder)} is not a folder`,
     taken: (target: string) =>
       sentence`${namedFolder(target)} already exists and isn't an empty folder`,
+    keptAside: (target: string, cloned: string) =>
+      sentence`${namedFolder(target)} was taken while cloning, so the clone is kept in ${namedFolder(cloned)}`,
   },
   terminal: {
     newTab: 'New',

@@ -12,10 +12,16 @@ import type { GitToHost, GitToWebviewOf } from '../shared/protocol';
 import type { ToWebviewOf } from '../../../shell/shared/protocol';
 import type { Log } from '../../../shell/main/log';
 import { strings } from '../../../lib/shared/strings';
-import { cloneRepository, cloneTargetProblem, removeClone } from './clone';
+import { plainOf, type Sentence } from '../../../lib/shared/sentences';
+import {
+  cloneRepository,
+  cloneTargetProblem,
+  cloningFolder,
+  placeClone,
+  removeClone,
+} from './clone';
 import { withoutCredentials } from './credentials';
 import { gitErrorText } from '../../../lib/main/errorText';
-import { isFolder } from './folders';
 
 export type CloneMessage = Extract<
   GitToHost,
@@ -155,7 +161,6 @@ export class Clones {
       return;
     }
     const target = path.join(ask.folder, ask.name);
-    const existed = await isFolder(target);
     const running: Running = {
       ask,
       target,
@@ -167,20 +172,27 @@ export class Clones {
     this.host.saveFolder(ask.folder);
     this.log.info(strings.log.cloning(withoutCredentials(ask.url), target));
     this.show();
-    this.host.track(this.run(running, existed));
+    this.host.track(this.run(running));
   }
 
-  private async run(running: Running, existed: boolean): Promise<void> {
+  private async run(running: Running): Promise<void> {
     const { ask, target, stop } = running;
     const url = withoutCredentials(ask.url);
+    const cloning = cloningFolder(target);
     try {
-      await cloneRepository(this.gitPath(), ask.folder, ask.url, ask.name, {
-        stop: AbortSignal.any([stop.signal, this.quitting]),
-        onProgress: (progress) => this.progressed(running, progress),
-      });
+      await cloneRepository(
+        this.gitPath(),
+        ask.folder,
+        ask.url,
+        path.basename(cloning),
+        {
+          stop: AbortSignal.any([stop.signal, this.quitting]),
+          onProgress: (progress) => this.progressed(running, progress),
+        },
+      );
     } catch (error) {
-      await removeClone(target, existed).catch((removing: unknown) => {
-        this.log.error(strings.log.removingCloneFailed(target));
+      await removeClone(cloning).catch((removing: unknown) => {
+        this.log.error(strings.log.removingCloneFailed(cloning));
         this.log.error(removing);
       });
       this.running = undefined;
@@ -195,19 +207,17 @@ export class Clones {
       const text = gitErrorText(error);
       this.log.error(strings.log.cloneFailed(url));
       this.log.error(error instanceof Error ? error : text);
-      this.form = { kind: 'form', ...ask, message: text };
-      if (this.shown) {
-        this.show();
-      } else {
-        this.host.post({
-          type: 'notice',
-          level: 'error',
-          message: strings.messages.couldNotClone(url, text),
-        });
-      }
+      this.failed(ask, url, text);
       return;
     }
     this.running = undefined;
+    if (!(await placeClone(cloning, target))) {
+      const kept = strings.clone.keptAside(target, cloning);
+      this.log.error(strings.log.cloneFailed(url));
+      this.log.error(plainOf(kept));
+      this.failed(ask, url, kept);
+      return;
+    }
     this.log.info(strings.log.cloned(url, target));
     if (this.shown) {
       this.shown = false;
@@ -220,6 +230,19 @@ export class Clones {
       });
     }
     await this.host.open(target);
+  }
+
+  private failed(ask: CloneAsk, url: string, message: Sentence): void {
+    this.form = { kind: 'form', ...ask, message };
+    if (this.shown) {
+      this.show();
+    } else {
+      this.host.post({
+        type: 'notice',
+        level: 'error',
+        message: strings.messages.couldNotClone(url, message),
+      });
+    }
   }
 
   private progressed(running: Running, progress: CloneProgress): void {
