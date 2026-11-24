@@ -5,11 +5,7 @@ import { afterAll, suite, test } from 'vitest';
 import { plainOf } from '../../../../lib/shared/sentences';
 import { strings } from '../../../../lib/shared/strings';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
-import {
-  attach,
-  closeViews,
-  commanderRootName,
-} from '../../../helpers/harness';
+import { attach, closeViews, commanderTabName } from '../../../helpers/harness';
 import { Pages } from '../../../../shell/main/pages';
 import type { ShellAccess } from '../../../../shell/main/toolContract';
 import type { GitTool } from '../../../../tools/git/main/tool';
@@ -173,17 +169,17 @@ suite('Shell with several windows', () => {
   test('tells each window the others, named after the tab each shows, again only once they change', async () => {
     const { first, second } = await twoWindows(log, noGit);
     assert.deepStrictEqual(windowsListed(first.page).at(-1), [
-      { id: '2', name: commanderRootName },
+      { id: '2', name: commanderTabName },
     ]);
     assert.deepStrictEqual(windowsListed(second.page).at(-1), [
-      { id: '1', name: commanderRootName },
+      { id: '1', name: commanderTabName },
     ]);
     const told = windowsListed(first.page).length;
     await first.connection.receive({ type: 'selectTab', tab: '5' });
     assert.strictEqual(windowsListed(first.page).length, told);
     await second.connection.receive({ type: 'newWindow' });
     assert.deepStrictEqual(windowsListed(first.page).at(-1), [
-      { id: '2', name: commanderRootName },
+      { id: '2', name: commanderTabName },
       { id: '3', name: strings.tabs.noTabWindow },
     ]);
   });

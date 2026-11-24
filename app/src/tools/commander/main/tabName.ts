@@ -18,9 +18,7 @@ export function sidesName(
       ? strings.tools.commander
       : folderName(either, paths);
   }
-  return paths.relative(left, right) === ''
-    ? folderName(left, paths)
-    : strings.tabs.sides(folderName(left, paths), folderName(right, paths));
+  return strings.tabs.sides(folderName(left, paths), folderName(right, paths));
 }
 
 export class TabNames {

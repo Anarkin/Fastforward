@@ -15,12 +15,13 @@ suite('Commander tab name', () => {
     );
   });
 
-  test('names a folder both sides show once, the case of a Windows path aside', () => {
+  test('names a folder both sides show twice, as each side is named for what it shows', () => {
     assert.strictEqual(
-      sidesName('C:\\Users\\Me', 'c:\\users\\me\\', path.win32),
-      'Me',
+      sidesName('C:\\Users\\Me', 'C:\\Users\\Me', path.win32),
+      'Me · Me',
     );
-    assert.strictEqual(sidesName('/', '/', path.posix), '/');
+    assert.strictEqual(sidesName('C:\\', 'C:\\', path.win32), 'C:\\ · C:\\');
+    assert.strictEqual(sidesName('/', '/', path.posix), '/ · /');
   });
 
   test('names two folders of one name apart, as two sides each showing a src', () => {

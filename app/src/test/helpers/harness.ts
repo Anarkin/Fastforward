@@ -1,3 +1,4 @@
+import { strings } from '../../lib/shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -248,6 +249,11 @@ export function newView(
 }
 
 export const commanderRootName = 'fastforward-commander-root';
+
+export const commanderTabName = strings.tabs.sides(
+  commanderRootName,
+  commanderRootName,
+);
 
 function commanderRoot(): string {
   const root = path.join(os.tmpdir(), commanderRootName);
