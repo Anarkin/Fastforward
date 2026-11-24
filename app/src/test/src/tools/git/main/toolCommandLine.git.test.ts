@@ -13,6 +13,7 @@ import {
 import { recordingLog, failOnErrorsLogged } from '../../../../helpers/stub';
 import {
   closeViews,
+  commanderRootName,
   openView,
   reopen,
   withView,
@@ -145,7 +146,11 @@ suite('Git tool of folders asked for from the command line', () => {
         tabs?.tabs.map(({ tool, name, root }) => ({ tool, name, root })),
         [
           { tool: 'git', name: 'main', root: repository.root },
-          { tool: 'commander', name: strings.tools.commander, root: plain },
+          {
+            tool: 'commander',
+            name: strings.tabs.sides(commanderRootName, path.basename(plain)),
+            root: plain,
+          },
         ],
       );
       assert.strictEqual(tabs?.active, tabs?.tabs.at(-1)?.id);
@@ -222,7 +227,10 @@ suite('Git tool of folders asked for from the command line', () => {
       await view.shell.openFolders([other, `${other}${path.sep}`]);
       assert.deepStrictEqual(view.page.last('chooseTool')?.folders, [other]);
       await view.connection.receive({ type: 'openWith', tool: 'commander' });
-      assert.deepStrictEqual(tabNames(view), ['main', strings.tools.commander]);
+      assert.deepStrictEqual(tabNames(view), [
+        'main',
+        strings.tabs.sides(commanderRootName, path.basename(other)),
+      ]);
     });
   });
 
