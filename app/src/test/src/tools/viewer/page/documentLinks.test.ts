@@ -50,4 +50,20 @@ suite('Links in documents', () => {
       assert.strictEqual(from(elsewhere), undefined, elsewhere);
     }
   });
+
+  test('climbs no higher than the share of a document on a network share, as a link climbing past it named another server, and no higher than the drive or the root', () => {
+    const shared = '//server/share/docs/a.md';
+    assert.deepStrictEqual(documentLink(shared, '../b.md'), {
+      path: '//server/share/b.md',
+      anchor: '',
+    });
+    for (const [start, href] of [
+      [shared, '../../evil/s/x.md'],
+      [shared, '../../../evil/s/x.md'],
+      ['C:/docs/a.md', '../../b.md'],
+      ['/docs/a.md', '../../b.md'],
+    ]) {
+      assert.strictEqual(documentLink(start, href), undefined, href);
+    }
+  });
 });

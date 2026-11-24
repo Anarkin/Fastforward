@@ -1,5 +1,7 @@
 const scheme = /^[a-z][a-z\d+.-]*:/i;
 
+const shareRoot = 4;
+
 export interface DocumentLink {
   readonly path: string;
   readonly anchor: string;
@@ -31,9 +33,10 @@ export function documentLink(
     return { path: document, anchor };
   }
   const parts = document.replaceAll('\\', '/').split('/').slice(0, -1);
+  const root = parts[0] === '' && parts[1] === '' ? shareRoot : 1;
   for (const part of target.split('/')) {
     if (part === '..') {
-      if (parts.length <= 1) {
+      if (parts.length <= root) {
         return undefined;
       }
       parts.pop();
