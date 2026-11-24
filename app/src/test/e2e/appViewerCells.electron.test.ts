@@ -320,6 +320,13 @@ suite('App viewer drawn as cells', () => {
       async () => (await seenMarked(page, 'occurrence')).length > 0,
       'the occurrences marked in the cells',
     );
+    await waitFor(
+      async () =>
+        (await seenRows(page))[4]?.pieces.some(
+          ({ kind }) => kind === 'keyword',
+        ) ?? false,
+      'the code colored',
+    );
     const held = await page
       .locator('.cell-rows')
       .first()
