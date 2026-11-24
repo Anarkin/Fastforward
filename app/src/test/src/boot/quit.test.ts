@@ -16,6 +16,7 @@ suite('Quitting', () => {
         quits += 1;
       },
       releaseSingleInstanceLock: () => {},
+      relaunch: () => {},
     };
     const saved = Promise.withResolvers<void>();
     flushBeforeQuit(
@@ -49,6 +50,7 @@ suite('Quitting', () => {
       },
       quit: () => steps.push('quit'),
       releaseSingleInstanceLock: () => steps.push('released'),
+      relaunch: () => {},
     };
     const waited = Promise.withResolvers<void>();
     flushBeforeQuit(
@@ -76,6 +78,7 @@ suite('Quitting', () => {
       },
       quit: () => steps.push('quit'),
       releaseSingleInstanceLock: () => steps.push('released'),
+      relaunch: () => {},
     };
     const saved = Promise.withResolvers<void>();
     const stopped = Promise.withResolvers<void>();
@@ -105,6 +108,7 @@ suite('Quitting', () => {
       },
       quit: () => steps.push('quit'),
       releaseSingleInstanceLock: () => {},
+      relaunch: () => {},
     };
     flushBeforeQuit(
       app,
@@ -120,6 +124,36 @@ suite('Quitting', () => {
     await settle();
     quitting?.({ preventDefault: () => {} });
     assert.deepStrictEqual(steps, ['tools quit', 'saved', 'quit']);
+  });
+
+  test('starts the app again once it has quit for a start asked for while it quits, with what that start asked for, once however often it is asked, as such a start handed itself to the app quitting and opened nothing; and leaves a start asked for before quitting to the app running', async () => {
+    let quitting: ((event: { preventDefault(): void }) => void) | undefined;
+    const relaunched: (readonly string[])[] = [];
+    const app = {
+      on: (_event: 'will-quit', listener: typeof quitting) => {
+        quitting = listener;
+      },
+      quit: () => {},
+      releaseSingleInstanceLock: () => {},
+      relaunch: ({ args }: { readonly args: string[] }) => {
+        relaunched.push(args);
+      },
+    };
+    const waited = Promise.withResolvers<void>();
+    const quit = flushBeforeQuit(
+      app,
+      () => {},
+      () => Promise.resolve(),
+      () => Promise.resolve(),
+      () => waited.promise,
+    );
+    assert.strictEqual(quit.startedAgainAfter(['--', 'first']), false);
+    quitting?.({ preventDefault: () => {} });
+    assert.strictEqual(quit.startedAgainAfter(['--', 'asked']), true);
+    assert.strictEqual(quit.startedAgainAfter(['--', 'again']), true);
+    waited.resolve();
+    await settle();
+    assert.deepStrictEqual(relaunched, [['--', 'asked']]);
   });
 
   test('says why it could not start and exits, as a process left without a window would keep the app from starting again', async () => {

@@ -6,6 +6,7 @@ import {
   foldersHandedOff,
   foldersOf,
   handOff,
+  startedAgainWith,
 } from '../../../boot/commandLine';
 
 suite('Command line', () => {
@@ -82,5 +83,46 @@ suite('Command line', () => {
     for (const data of [undefined, null, 'folders', {}, { folders: 'a' }]) {
       assert.deepStrictEqual(foldersHandedOff(data), [], JSON.stringify(data));
     }
+  });
+
+  test('starts again with its own switches and the folders another start asked for, rather than the ones it was started with, so a start that came while it quit opens what was asked once it is gone', () => {
+    const electron = path.resolve('electron.exe');
+    const source = path.resolve('app');
+    const asked = [path.resolve('asked'), path.resolve('-dashed')];
+    const packaged = startedAgainWith(
+      [app, '--user-data-dir=profile', path.resolve('first')],
+      false,
+      asked,
+    );
+    assert.deepStrictEqual(packaged, [
+      '--user-data-dir=profile',
+      '--',
+      ...asked,
+    ]);
+    assert.deepStrictEqual(
+      foldersOf([app, ...packaged], false, started),
+      asked,
+    );
+    const fromSource = startedAgainWith(
+      [
+        electron,
+        source,
+        '--user-data-dir=profile',
+        '--',
+        path.resolve('first'),
+      ],
+      true,
+      asked,
+    );
+    assert.deepStrictEqual(fromSource, [
+      source,
+      '--user-data-dir=profile',
+      '--',
+      ...asked,
+    ]);
+    assert.deepStrictEqual(
+      foldersOf([electron, ...fromSource], true, started),
+      asked,
+    );
   });
 });

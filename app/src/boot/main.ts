@@ -11,7 +11,12 @@ import {
   shell,
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
-import { foldersHandedOff, foldersOf, handOff } from './commandLine';
+import {
+  foldersHandedOff,
+  foldersOf,
+  handOff,
+  startedAgainWith,
+} from './commandLine';
 import { prettyName, systemOf } from './system';
 import { writesEnded } from '../tools/git/main/gitProcesses';
 import { keepGitRunningWhile, stopRunningGit } from '../tools/git/main/run';
@@ -184,9 +189,27 @@ async function start(asked: readonly string[]): Promise<void> {
   });
   windows.listen();
   const loading = windows.openLaidOut();
+  const quitting = flushBeforeQuit(
+    app,
+    () => asking?.quit(),
+    () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
+    () => Promise.all([stopRunningGit(Infinity), archiveWork.clear()]),
+    () => asking?.quitWaits() ?? Promise.resolve(),
+  );
   app.on(
     'second-instance',
     (_event, _argv, _workingDirectory, additionalData) => {
+      if (
+        quitting.startedAgainAfter(
+          startedAgainWith(
+            process.argv,
+            process.defaultApp,
+            foldersHandedOff(additionalData),
+          ),
+        )
+      ) {
+        return;
+      }
       const window = windows.focusedWindow();
       if (window !== undefined) {
         showAgain(window);
@@ -201,13 +224,6 @@ async function start(asked: readonly string[]): Promise<void> {
     },
   );
   app.on('window-all-closed', () => app.quit());
-  flushBeforeQuit(
-    app,
-    () => asking?.quit(),
-    () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
-    () => Promise.all([stopRunningGit(Infinity), archiveWork.clear()]),
-    () => asking?.quitWaits() ?? Promise.resolve(),
-  );
   const chooseFolders = async (
     options: Electron.OpenDialogOptions,
   ): Promise<Electron.OpenDialogReturnValue> => {

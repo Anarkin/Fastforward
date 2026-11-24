@@ -48,3 +48,22 @@ export function foldersHandedOff(data: unknown): string[] {
       )
     : [];
 }
+
+export function startedAgainWith(
+  argv: readonly string[],
+  fromSource: boolean,
+  folders: readonly string[],
+): string[] {
+  const args = argv.slice(1);
+  const terminator = args.indexOf(switchTerminator);
+  const beforeTerminator = terminator === -1 ? args : args.slice(0, terminator);
+  const source = fromSource
+    ? beforeTerminator.filter((arg) => !arg.startsWith('-')).slice(0, 1)
+    : [];
+  return [
+    ...source,
+    ...beforeTerminator.filter((arg) => arg.startsWith('-')),
+    switchTerminator,
+    ...folders,
+  ];
+}

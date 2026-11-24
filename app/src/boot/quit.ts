@@ -5,6 +5,11 @@ interface QuittingApp {
   ): unknown;
   quit(): void;
   releaseSingleInstanceLock(): void;
+  relaunch(options: { readonly args: string[] }): void;
+}
+
+export interface Quitting {
+  readonly startedAgainAfter: (args: string[]) => boolean;
 }
 
 export async function exitOnFailure(
@@ -29,9 +34,10 @@ export function flushBeforeQuit(
   saved: () => Promise<unknown>,
   stopped: () => Promise<unknown>,
   waited: () => Promise<unknown> = () => Promise.resolve(),
-): void {
+): Quitting {
   let flushed = false;
   let started = false;
+  let relaunching = false;
   app.on('will-quit', (event) => {
     if (flushed) {
       return;
@@ -55,4 +61,16 @@ export function flushBeforeQuit(
         app.quit();
       });
   });
+  return {
+    startedAgainAfter: (args) => {
+      if (!started) {
+        return false;
+      }
+      if (!relaunching) {
+        relaunching = true;
+        app.relaunch({ args });
+      }
+      return true;
+    },
+  };
 }
