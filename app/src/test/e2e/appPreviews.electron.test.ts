@@ -76,6 +76,16 @@ suite('App', () => {
       'Last beta.',
       '',
     ].join('\n'),
+    'folded.md': [
+      '# Folded',
+      '',
+      '<details><summary>More</summary>',
+      '',
+      'A hidden gamma.',
+      '',
+      '</details>',
+      '',
+    ].join('\n'),
     'table.md': [
       '| Folder | What it is for | Size |',
       '|:--|:-:|--:|',
@@ -234,6 +244,31 @@ suite('App', () => {
             preview: true,
           },
         },
+      );
+    } finally {
+      await page.keyboard.press('Escape');
+      await closeViewer();
+    }
+  });
+
+  test('finds in the closed details of a Markdown document previewed, opening them to show the match it goes to, as a browser finding in a page does, rather than counting a match it could not show', async () => {
+    await page.locator('.commit', { hasText: 'first' }).click();
+    await page.locator('.row.file', { hasText: 'folded.md' }).click();
+    await viewFromMenu('folded.md');
+    try {
+      const details = page.locator('.viewer .markdown details');
+      await details.waitFor();
+      const opened = () =>
+        details.evaluate((element) => element.hasAttribute('open'));
+      assert.strictEqual(await opened(), false);
+      await page.locator('.viewer .viewer-body').first().focus();
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.locator('.viewer .search-box-input').waitFor();
+      await page.keyboard.type('gamma');
+      await waitFor(opened, 'the details open on its match');
+      assert.strictEqual(
+        await page.locator('.viewer .search-count').textContent(),
+        '1 of 1',
       );
     } finally {
       await page.keyboard.press('Escape');

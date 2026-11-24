@@ -197,6 +197,21 @@ function measured(range: StaticRange): DOMRect {
   return scratch.getBoundingClientRect();
 }
 
+export function openedTo(match: MarkdownMatch): void {
+  let child: Node =
+    match.kind === 'code' ? match.code : match.range.startContainer;
+  for (
+    let parent = child.parentElement;
+    parent !== null;
+    child = parent, parent = parent.parentElement
+  ) {
+    const summary = isElement(child) && child.tagName === 'SUMMARY';
+    if (parent.tagName === 'DETAILS' && !summary) {
+      parent.setAttribute('open', '');
+    }
+  }
+}
+
 export function revealMarkdownMatch(
   match: MarkdownMatch | undefined,
   blocks: CodeFinds | undefined,
@@ -205,6 +220,7 @@ export function revealMarkdownMatch(
   if (match === undefined || scroller === null) {
     return;
   }
+  openedTo(match);
   const box =
     match.kind === 'prose'
       ? measured(match.range)

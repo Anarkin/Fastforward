@@ -1,7 +1,10 @@
 import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { afterAll, suite, test } from 'vitest';
-import { markdownMatches } from '../../../../../tools/viewer/page/markdownFind';
+import {
+  markdownMatches,
+  openedTo,
+} from '../../../../../tools/viewer/page/markdownFind';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 
 const { window } = new JSDOM('');
@@ -32,6 +35,32 @@ const described = (matches: ReturnType<typeof markdownMatches>): string[] =>
 
 suite('Finding in a Markdown preview', () => {
   afterAll(() => window.close());
+
+  test('opens the closed details a match is in once it goes to it, the outer ones too, as a browser finding in a page does, and leaves a details closed whose summary the match is in', () => {
+    const { root, codeOf } = shown(
+      [
+        '<details><summary>beta told</summary><p>hidden beta</p>',
+        '<details><summary>inner</summary><p>deeper beta</p></details>',
+        '</details>',
+      ].join(''),
+    );
+    const [inSummary, hidden, deeper] = markdownMatches(
+      root,
+      codeOf,
+      'beta',
+      plainSearch,
+    );
+    const [outer, inner] = root.querySelectorAll('details');
+    assert.ok(inSummary && hidden && deeper && outer && inner);
+
+    openedTo(inSummary);
+    assert.strictEqual(outer.hasAttribute('open'), false);
+    openedTo(deeper);
+    assert.deepStrictEqual(
+      [outer.hasAttribute('open'), inner.hasAttribute('open')],
+      [true, true],
+    );
+  });
 
   test('finds in the text of each block as it reads, across bold, links and code inside a line, and in the lines of a block of code drawn as cells, in the order of the document, leaving out what is hidden, as the source of a diagram', () => {
     const { root, codeOf } = shown(
