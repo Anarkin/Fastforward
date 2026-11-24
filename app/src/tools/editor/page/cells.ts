@@ -30,7 +30,6 @@ import {
 import {
   wrappedRows,
   type ScreenRow,
-  type TextLine,
 } from '../../../components/cells/page/lines';
 import {
   seenPlaces,
@@ -53,6 +52,7 @@ import {
   type LinesMarked,
   type LinesShown,
 } from './cellLines';
+import { DrawnLines } from './drawnLines';
 import { scrolledAcross, textAdvance, textStart, wrapColumnsOf } from './rows';
 
 const rowClass = 'editor-row';
@@ -107,7 +107,7 @@ export type ShownOf = (view: EditorSurface) => LinesShown;
 class EditorCells implements SurfacePart {
   private readonly host: HTMLDivElement;
   private readonly unwatched: () => void;
-  private readonly lines = new Map<number, TextLine>();
+  private readonly lines = new DrawnLines();
   private cells: CellView | undefined;
   private drawn: Windowed | undefined;
   private painted: Painted | undefined;
@@ -181,20 +181,6 @@ class EditorCells implements SurfacePart {
     this.drawn = undefined;
     this.painted = undefined;
     this.host.style.display = 'none';
-  }
-
-  private lineOf(
-    number: number,
-    text: string,
-    ending: string | undefined,
-  ): TextLine {
-    const kept = this.lines.get(number);
-    if (kept?.text === text && kept.ending === ending) {
-      return kept;
-    }
-    const line = { start: number, end: number + 1, text, ending };
-    this.lines.set(number, line);
-    return line;
   }
 
   private show(anew: boolean): void {
@@ -343,13 +329,14 @@ class EditorCells implements SurfacePart {
     const tops: number[] = [];
     const parts: (RowPart | undefined)[] = [];
     const bands: Band[] = [];
+    this.lines.draw();
     for (
       let block = view.lineBlockAtHeight(drawn.top);
       block.top < drawn.bottom;
       block = view.lineBlockAt(block.to + 1)
     ) {
       const at = doc.lineAt(block.from);
-      const line = this.lineOf(at.number, at.text, shown.endingOf(at));
+      const line = this.lines.of(at.number, at.text, shown.endingOf(at));
       const wrapped = wrappedRows(
         line,
         columns,
