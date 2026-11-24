@@ -1,4 +1,4 @@
-import { afterAll, vi } from 'vitest';
+import { afterAll, beforeAll, vi } from 'vitest';
 import { leaksSince, stateNow } from './helpers/leaks';
 import {
   letGoOfThePointer,
@@ -6,8 +6,11 @@ import {
 } from './helpers/pageLibraries';
 
 vi.resetModules();
-await loadPageLibrariesAsInTheApp();
-letGoOfThePointer();
+
+beforeAll(async () => {
+  await loadPageLibrariesAsInTheApp();
+  letGoOfThePointer();
+});
 
 const before = stateNow();
 

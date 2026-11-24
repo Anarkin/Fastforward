@@ -91,13 +91,15 @@ export function shuffledBy<T>(items: readonly T[], seed: number): T[] {
   return shuffled;
 }
 
+const sharing = (specification: TestSpecification): boolean =>
+  !specification.project.config.isolate;
+
 export class ShardsByDuration extends BaseSequencer {
   override async sort(
     specifications: TestSpecification[],
   ): Promise<TestSpecification[]> {
-    const sorted = await super.sort(specifications);
-    const sharing = (specification: TestSpecification) =>
-      specification.project.config.isolate === false;
+    const inBaseOrder = BaseSequencer.prototype.sort.bind(this);
+    const sorted = await inBaseOrder(specifications);
     const shared = sorted.filter(sharing);
     const { seed } = this.ctx.config.sequence;
     if (shared.length === 0 || seed === undefined) {
