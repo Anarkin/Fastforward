@@ -71,6 +71,10 @@ export const viewerKeymap = {
     'Shift+F3': true,
   }),
   edit: bind('Showing', strings.actions.editViewed, { F4: true }),
+  refresh: bind('Showing', strings.actions.readFileAgain, {
+    F2: true,
+    'Ctrl+R': true,
+  }),
   followLink: bind('Showing', strings.actions.followLink, { Click: true }),
   closeViewer: bind('Showing', strings.actions.closeViewer, { Escape: true }),
 };

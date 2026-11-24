@@ -123,6 +123,7 @@ export interface GitActions extends DiffActions {
   readonly lookupHash: (query: string) => () => void;
   readonly searchCommits: (query: string, options: SearchOptions) => () => void;
   readonly fetch: () => void;
+  readonly refresh: () => void;
   readonly toggleMerge: (hash: string) => void;
   readonly scrolled: (
     root: string | undefined,

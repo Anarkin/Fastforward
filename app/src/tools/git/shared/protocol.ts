@@ -242,6 +242,7 @@ export type TabMessage =
     }
   | { readonly type: 'checkout'; readonly target: CheckoutTarget }
   | { readonly type: 'fetch' }
+  | { readonly type: 'refresh' }
   | { readonly type: 'pull' }
   | { readonly type: 'push' }
   | { readonly type: 'pushTag'; readonly name: string }

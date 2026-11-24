@@ -34,6 +34,15 @@ export function ViewerTool({
 
   const shown = active && tab !== undefined;
   useBinding(
+    viewerKeymap.refresh,
+    () => {
+      if (tab !== undefined) {
+        post({ type: 'refresh', tab });
+      }
+    },
+    shown,
+  );
+  useBinding(
     viewerKeymap.closeViewer,
     () => {
       if (tab !== undefined) {

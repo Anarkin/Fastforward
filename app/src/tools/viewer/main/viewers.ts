@@ -85,53 +85,56 @@ export class Viewers {
     if (!current()) {
       return;
     }
+    let refreshes = 0;
+    const readAgain = (refreshed: boolean) => {
+      void fs.promises
+        .stat(read)
+        .then(async (stats) => ({
+          stats,
+          changed: await sampledVersion(read, stats),
+        }))
+        .then(
+          ({ stats, changed }) => {
+            if (
+              showing.viewing === viewing &&
+              this.pages.shown.get(page) === showing
+            ) {
+              viewing.blocks.forget();
+              viewing.size = stats.size;
+              post(page, {
+                type: 'viewing',
+                tab,
+                size: stats.size,
+                version: refreshed ? `${changed} ${++refreshes}` : changed,
+                binary,
+                hidden,
+                ...(detected !== undefined && { detected }),
+              });
+            }
+          },
+          (error: unknown) => {
+            if (
+              showing.viewing === viewing &&
+              this.pages.shown.get(page) === showing
+            ) {
+              post(page, {
+                type: 'viewing',
+                tab,
+                size: undefined,
+                error: strings.textFile.couldNotRead(file, reasonOf(error)),
+              });
+            }
+          },
+        );
+    };
     const viewing = {
       tab,
       file: read,
       size,
       binary,
       blocks: blockCache(),
-      stop: this.access.watch(read, () => {
-        void fs.promises
-          .stat(read)
-          .then(async (stats) => ({
-            stats,
-            changed: await sampledVersion(read, stats),
-          }))
-          .then(
-            ({ stats, changed }) => {
-              if (
-                showing.viewing === viewing &&
-                this.pages.shown.get(page) === showing
-              ) {
-                viewing.blocks.forget();
-                viewing.size = stats.size;
-                post(page, {
-                  type: 'viewing',
-                  tab,
-                  size: stats.size,
-                  version: changed,
-                  binary,
-                  hidden,
-                  ...(detected !== undefined && { detected }),
-                });
-              }
-            },
-            (error: unknown) => {
-              if (
-                showing.viewing === viewing &&
-                this.pages.shown.get(page) === showing
-              ) {
-                post(page, {
-                  type: 'viewing',
-                  tab,
-                  size: undefined,
-                  error: strings.textFile.couldNotRead(file, reasonOf(error)),
-                });
-              }
-            },
-          );
-      }),
+      stop: this.access.watch(read, () => readAgain(false)),
+      refresh: () => readAgain(true),
     };
     showing.finding?.abort();
     showing.finding = undefined;

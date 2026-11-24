@@ -8,6 +8,7 @@ interface Viewing {
   readonly binary: boolean;
   readonly blocks: BlockCache;
   readonly stop: () => void;
+  readonly refresh: () => void;
 }
 
 interface Showing {

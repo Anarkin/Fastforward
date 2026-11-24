@@ -489,6 +489,7 @@ suite('Git store', () => {
       vi.useRealTimers();
     }
     actions.fetch();
+    actions.refresh();
     actions.toggleMerge(at);
     actions.scrolled('/other', at, 3, 1);
     actions.loadCommits(0, 50, 2);
@@ -503,6 +504,7 @@ suite('Git store', () => {
       { type: 'searchCommits', query: 'fix', options: plainSearch, root },
       { type: 'stopCommitSearch', root },
       { type: 'fetch', root },
+      { type: 'refresh', root },
       { type: 'toggleMerge', hash: at, root },
       { type: 'scrolled', hash: at, offset: 3, report: 1, root: '/other' },
       { type: 'loadCommits', generation: 2, start: 0, count: 50, root },

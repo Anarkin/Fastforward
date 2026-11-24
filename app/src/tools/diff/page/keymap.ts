@@ -15,4 +15,8 @@ export const compareKeymap = {
   match: diffKeymap.match,
   stopFinding: diffKeymap.stopFinding,
   closeCompare: bind('Diff', strings.actions.closeCompare, { Escape: true }),
+  refresh: bind('Diff', strings.actions.compareAgain, {
+    F2: true,
+    'Ctrl+R': true,
+  }),
 };

@@ -20,6 +20,7 @@ import type { Remotes } from './remotes';
 import type { CommitNavigation } from './commitNavigation';
 import type { Selections } from './selections';
 import type { FileViews } from './fileViews';
+import type { Refreshes } from './refreshes';
 
 export class GitMessages {
   constructor(
@@ -41,6 +42,7 @@ export class GitMessages {
     private readonly commitNavigation: CommitNavigation,
     private readonly selections: Selections,
     private readonly fileViews: FileViews,
+    private readonly refreshes: Refreshes,
     private readonly save: (saving: Promise<void>) => void,
   ) {}
 
@@ -209,6 +211,9 @@ export class GitMessages {
             scrollTo: message.hash,
           });
         }
+        break;
+      case 'refresh':
+        await this.refreshes.refresh(context);
         break;
       case 'checkout':
       case 'fetch':

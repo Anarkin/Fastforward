@@ -9,6 +9,8 @@ export function isWellFormed(message: DiffToHost): boolean {
   switch (message.type) {
     case 'loadTexts':
       return areTextRequests(message.requests);
+    case 'refresh':
+      return true;
     case 'setShowEntireFile':
       return typeof message.show === 'boolean';
     case 'setIgnoreWhitespace':

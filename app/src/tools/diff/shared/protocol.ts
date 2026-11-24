@@ -34,6 +34,7 @@ export type ComparedText = TextRequest & { readonly text: string | undefined };
 
 export type DiffToHost =
   | { readonly type: 'loadTexts'; readonly requests: readonly TextRequest[] }
+  | { readonly type: 'refresh' }
   | {
       readonly type: 'chooseVersion';
       readonly side: ComparedSide;

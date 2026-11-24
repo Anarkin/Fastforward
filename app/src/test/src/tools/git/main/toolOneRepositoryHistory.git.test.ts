@@ -66,6 +66,20 @@ suite('Git tool of one repository', () => {
 
     afterEach(() => connection.dispose());
 
+    test('reads the repository again on F2 or Ctrl+R, the uncommitted changes with it, as a change its watchers missed, on a share or in WSL, showed only once the tab was opened again', async () => {
+      const before = page.last('workingTree')?.files ?? 0;
+      fs.writeFileSync(path.join(repository.root, 'unseen.txt'), 'unseen\n');
+      try {
+        await connection.receive({ type: 'refresh', root: repository.root });
+        await waitFor(
+          () => page.last('workingTree')?.files === before + 1,
+          'the new file to be counted',
+        );
+      } finally {
+        fs.rmSync(path.join(repository.root, 'unseen.txt'));
+      }
+    });
+
     test('starts with no commit selected the first time a tab opens, and opens again with none once the commit is deselected', async () => {
       assert.ok(page.last('commits'));
       assert.strictEqual(page.last('reveal'), undefined);

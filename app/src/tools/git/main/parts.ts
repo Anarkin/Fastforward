@@ -297,6 +297,7 @@ export function buildParts(
     commitNavigation,
     selections,
     fileViews,
+    refreshes,
     save,
   );
   return {

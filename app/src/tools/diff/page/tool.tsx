@@ -49,6 +49,7 @@ export function DiffTool({
     },
     shown,
   );
+  useBinding(compareKeymap.refresh, () => post({ type: 'refresh' }), shown);
   useBinding(diffKeymap.wrap, () => toggleTextView('wordWrap'), shown);
   useBinding(
     diffKeymap.showWhitespace,

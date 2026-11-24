@@ -28,6 +28,10 @@ export const gitKeymap = {
   }),
   merge: bind('Commits', strings.actions.merge, { Space: true }),
   compare: bind('Commits', strings.actions.compare, { 'Mod+Click': true }),
+  refresh: bind('Commits', strings.actions.readRepositoryAgain, {
+    F2: true,
+    'Ctrl+R': true,
+  }),
   message: bind('Messages', strings.actions.message, {
     'Alt+Hover': true,
     Alt: true,

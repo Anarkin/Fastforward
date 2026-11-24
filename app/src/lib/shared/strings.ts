@@ -325,6 +325,9 @@ export const strings = {
     goToPath:
       'Go to a folder by typing or pasting its path, or to the folder of a file with the file selected',
     reread: 'Read the folder of the side again',
+    readFileAgain: 'Read the file again',
+    compareAgain: 'Compare the files again',
+    readRepositoryAgain: 'Read the repository again',
     viewFile: 'View the selected file in a tab of its own',
     editFile: 'Edit the selected file in a tab of its own',
     saveFile: 'Save the file',

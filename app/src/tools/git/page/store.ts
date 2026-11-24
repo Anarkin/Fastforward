@@ -325,6 +325,7 @@ export function createGitStore(
           return () => post({ type: 'stopCommitSearch', root });
         }),
       fetch: () => postTab({ type: 'fetch' }),
+      refresh: () => postTab({ type: 'refresh' }),
       toggleMerge: (hash) => postTab({ type: 'toggleMerge', hash }),
       scrolled: (root, hash, offset, report) => {
         if (root !== undefined) {

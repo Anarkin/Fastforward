@@ -108,7 +108,7 @@ export function GitTool({
 }: GitToolProps) {
   const { toggleTextView } = useShellActions();
   const [store] = useState(() => createGitStore(postToHost, {}, views));
-  const { navigate, jump, showUpstream, showParent, toggleCommits } =
+  const { navigate, jump, showUpstream, showParent, toggleCommits, refresh } =
     store.getState();
   useEffect(() => listen(store.getState().receive), [listen, store]);
   useEffect(() => views.onRelease(store.getState().releaseTab), [views, store]);
@@ -149,6 +149,7 @@ export function GitTool({
     repositoryShown,
   );
   useBinding(gitKeymap.upstream, showUpstream, repositoryShown);
+  useBinding(gitKeymap.refresh, refresh, repositoryShown);
   useBinding(gitKeymap.parent, showParent, repositoryShown);
   useBinding(gitKeymap.wrap, () => toggleTextView('wordWrap'), active);
   useBinding(

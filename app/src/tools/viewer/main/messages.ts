@@ -74,6 +74,13 @@ export class ViewerMessages {
         return this.pages.shown.get(page)?.tab === message.tab
           ? this.compareVersions(page, message.tab)
           : Promise.resolve();
+      case 'refresh': {
+        const viewing = this.pages.shown.get(page)?.viewing;
+        if (viewing?.tab === message.tab) {
+          viewing.refresh();
+        }
+        return Promise.resolve();
+      }
       default:
         return message satisfies never;
     }

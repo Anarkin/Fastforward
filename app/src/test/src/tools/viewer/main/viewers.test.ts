@@ -439,4 +439,51 @@ suite('Viewer tool viewing a file', () => {
     assert.strictEqual(second?.size, first?.size);
     assert.notStrictEqual(second?.version, first?.version);
   });
+
+  test('reads the file viewed again on F2 or Ctrl+R, telling a new version though nothing its watcher sees changed, as a change in the middle of a file that kept its size and dates, on a FAT drive or a share, showed the old text until the tab was opened again', async () => {
+    const big = path.join(opened, 'big.log');
+    const sameDate = new Date('2026-01-02T03:04:05Z');
+    const lines = Array.from(
+      { length: 4000 },
+      (_, row) => `row ${String(row).padStart(4, '0')} ${'.'.repeat(40)}`,
+    );
+    fs.writeFileSync(big, `${lines.join('\n')}\n`);
+    fs.utimesSync(big, sameDate, sameDate);
+    const { tool, page, send } = viewer();
+    await tool.show(page, { id: '3', tool: 'viewer', root: big });
+    const middle = (lines[0]?.length ?? 0) * 2000 + 2000;
+    const rowAtMiddle = async (request: number) => {
+      await send({
+        type: 'readRows',
+        tab: '3',
+        encoding: 'utf-8',
+        request,
+        anchor: middle,
+        exact: false,
+        before: 0,
+        after: 1,
+        least: 0,
+      });
+      return page.of('rows').at(-1)?.rows[0]?.text;
+    };
+    assert.strictEqual(await rowAtMiddle(1), lines[2000]);
+
+    const changed = lines.map((line, row) =>
+      row === 2000 ? line.replace('row', 'ROW') : line,
+    );
+    fs.writeFileSync(big, `${changed.join('\n')}\n`);
+    fs.utimesSync(big, sameDate, sameDate);
+    await send({ type: 'refresh', tab: '4' });
+    assert.strictEqual(page.of('viewing').length, 1);
+    await send({ type: 'refresh', tab: '3' });
+    await waitFor(
+      () => page.of('viewing').length === 2,
+      'the refresh to be told',
+    );
+
+    const [first, second] = page.of('viewing');
+    assert.strictEqual(second?.size, first?.size);
+    assert.notStrictEqual(second?.version, first?.version);
+    assert.strictEqual(await rowAtMiddle(2), changed[2000]);
+  });
 });

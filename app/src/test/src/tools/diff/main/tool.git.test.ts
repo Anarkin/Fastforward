@@ -94,7 +94,7 @@ suite('Diff tool comparing two files', () => {
     removeFolder(files);
   });
 
-  test('diffs the two files of a compare tab, the whole file while the entire file is on, again when one changes, and leaves the comparison for a repository tab', async () => {
+  test('diffs the two files of a compare tab, the whole file while the entire file is on, again when one changes and on F2 or Ctrl+R though nothing changed, for a change its watcher missed, and leaves the comparison for a repository tab', async () => {
     const compare = {
       old: path.join(files, 'old.txt'),
       new: path.join(files, 'new.txt'),
@@ -130,7 +130,14 @@ suite('Diff tool comparing two files', () => {
       'the diff of the file changed',
     );
 
+    const comparedSoFar = comparesIn(opened.page).length;
+    await toDiff({ type: 'refresh' });
+    assert.strictEqual(comparesIn(opened.page).length, comparedSoFar + 1);
+    assert.ok(linesOf(lastCompare()).includes('added at the end'));
+
     await opened.connection.receive({ type: 'selectTab', tab: '1' });
+    assert.strictEqual(diffSent(opened.page).at(-1)?.type, 'hide');
+    await toDiff({ type: 'refresh' });
     assert.strictEqual(diffSent(opened.page).at(-1)?.type, 'hide');
   });
 

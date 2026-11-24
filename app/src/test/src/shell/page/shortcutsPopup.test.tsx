@@ -222,6 +222,7 @@ suite('Shortcuts popup', () => {
           'Choose the version of the file to show, as git keeps them',
           'Compare the version shown with the one before it',
           'Edit the file being viewed in this tab',
+          'Read the file again',
           'Follow a link of a Markdown preview',
           'Close the file being viewed',
         ],
@@ -262,6 +263,7 @@ suite('Shortcuts popup', () => {
           'Go back or forward through the selected commits',
           'Expand or collapse the selected merge',
           'Compare with the selected commit',
+          'Read the repository again',
         ],
       ],
       [
@@ -300,6 +302,7 @@ suite('Shortcuts popup', () => {
           'Show or hide whitespace',
           'Choose the language the text is colored in',
           'Close the files being compared',
+          'Compare the files again',
         ],
       ],
       [

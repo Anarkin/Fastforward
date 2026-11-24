@@ -144,6 +144,9 @@ export class DiffTool implements Tool<'diff'> {
       case 'loadTexts':
         await this.comparisons.sendTexts(page, message.requests);
         return;
+      case 'refresh':
+        await this.comparisons.send(page);
+        return;
       case 'setShowEntireFile':
         this.save(this.setting('showEntireFile', message.show));
         await this.comparisons.send(page);

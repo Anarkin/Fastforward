@@ -9,6 +9,7 @@ export function needsNoWholeHistory(
     case 'loadCommits':
     case 'viewFile':
     case 'fetch':
+    case 'refresh':
     case 'pull':
     case 'push':
     case 'pushTag':

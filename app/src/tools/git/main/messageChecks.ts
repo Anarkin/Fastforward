@@ -95,6 +95,7 @@ function wellFormedInTab(message: TabMessage): boolean {
     case 'showUpstream':
     case 'showParent':
     case 'fetch':
+    case 'refresh':
     case 'pull':
     case 'push':
     case 'stopCommitSearch':
