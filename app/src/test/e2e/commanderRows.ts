@@ -1,5 +1,7 @@
 import type { Locator } from 'playwright-core';
 
+export const nearItsStart = { x: 48, y: 4 };
+
 export interface ShownRow {
   readonly name: string;
   readonly extension: string;

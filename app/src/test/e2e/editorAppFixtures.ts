@@ -8,7 +8,7 @@ import type { SeenRow } from '../../components/cells/page/seen';
 import { viewerTexts } from './cellsSeen';
 import { editorLinesSeen, editorRowPoint, editorRowsSeen } from './editorSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
-import { fileName, rowsShown } from './commanderRows';
+import { fileName, nearItsStart, rowsShown } from './commanderRows';
 
 let folder: string;
 export let opened: string;
@@ -34,7 +34,7 @@ export const select = async (name: string) => {
   await right()
     .locator('.commander-row')
     .nth(await rowIndexOf(name))
-    .click();
+    .click({ position: nearItsStart });
   await waitFor(
     async () => (await rowIndexOf(name)) === (await selectedIndex()),
     `${name} to be selected`,

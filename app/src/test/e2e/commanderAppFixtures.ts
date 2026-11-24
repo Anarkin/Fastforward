@@ -6,7 +6,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { closeOrKill, launchApp } from './appLaunch';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
-import { fileName, rowsShown } from './commanderRows';
+import { fileName, nearItsStart, rowsShown } from './commanderRows';
 
 export let folder: string;
 export let opened: string;
@@ -203,7 +203,9 @@ export const icons = () =>
 export const selected = async () =>
   (await right().locator('.commander-row.selected').textContent()) ?? '';
 export const select = async (name: string | RegExp) => {
-  await right().locator('.commander-row', { hasText: name }).click();
+  await right()
+    .locator('.commander-row', { hasText: name })
+    .click({ position: nearItsStart });
   await waitFor(
     async () => {
       const text = await selected();

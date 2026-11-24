@@ -440,6 +440,10 @@ suite('App with tabs dragged between windows', () => {
       async () => (await contentOf(alone)).y >= lowest + 100,
       'the window below the rows of tabs of the others',
     );
+    await untilSettled(async () => {
+      const { width, height } = await contentOf(alone);
+      return [width, height];
+    }, 'the window fitted to whole cells');
     await alone.evaluate(() => {
       const sizes: string[] = [];
       Object.assign(window, { sizes });
