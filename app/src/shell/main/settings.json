@@ -3,7 +3,8 @@
     "recentFolders": 15
   },
   "windows": {
-    "openingAnimation": true
+    "openingAnimation": true,
+    "taskbarButtonPerWindow": true
   },
   "theme": "auto",
   "dateFormat": "YYYY-MM-DD HH:mm",

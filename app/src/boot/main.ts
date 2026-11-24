@@ -402,6 +402,7 @@ async function start(asked: readonly string[]): Promise<void> {
     }
     applyTheme(userSettings.settings.theme);
     view.reloadSettings();
+    windows.regroup();
     windows.everyWindow.webContents.reloadIgnoringCache();
   };
   tryWatching(log, strings.log.watchingSettingsFailed, () =>

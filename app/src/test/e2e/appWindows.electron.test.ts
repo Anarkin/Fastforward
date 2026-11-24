@@ -13,6 +13,9 @@ import {
   visiblePages,
   type SavedBounds,
 } from './windowFixtures';
+import { appIdsOf, windowHandles } from './windowAppIds';
+import { writeSettings } from './settingsWritten';
+import { taskbarBase } from '../../boot/taskbarIds';
 
 function byPlace(a: SavedBounds, b: SavedBounds): number {
   return a.x - b.x || a.y - b.y;
@@ -232,6 +235,62 @@ suite('App window saved at 125%', () => {
         );
         const [opened] = await visibleBounds(app);
         assert.deepStrictEqual(opened, saved);
+      } finally {
+        await closeOrKill(app);
+        removeFolder(folder);
+      }
+    },
+  );
+});
+
+suite('App windows on the taskbar', () => {
+  test.runIf(process.platform === 'win32')(
+    "gives each window a button of its own on the taskbar, the first under the app's ID so a pinned Fastforward holds it, groups them all under it once `windows.taskbarButtonPerWindow` is off, and parts them again once it is on, at once as the settings are saved",
+    async () => {
+      const folder = tempFolder('taskbar');
+      const profile = path.join(folder, 'profile');
+      fs.mkdirSync(profile, { recursive: true });
+      fs.writeFileSync(
+        path.join(profile, 'state.json'),
+        JSON.stringify({
+          tabs: [
+            { id: '1', tool: 'commander' },
+            { id: '2', tool: 'commander' },
+          ],
+          windows: [
+            { id: '1', tabs: ['1'], active: '1' },
+            { id: '2', tabs: ['2'], active: '2' },
+          ],
+        }),
+      );
+      const app = await launchApp(profile);
+      const base = taskbarBase(true);
+      const ids = async () =>
+        appIdsOf(await windowHandles(app)).toSorted((one, other) =>
+          String(one).localeCompare(String(other)),
+        );
+      try {
+        const [page] = await shownWindows(app, 2);
+        assert.ok(page);
+        const parted = [base, `${base}.window.2`];
+        await waitFor(
+          async () => (await ids()).join() === parted.join(),
+          'a button for each window',
+        );
+        await writeSettings(page, profile, {
+          windows: { taskbarButtonPerWindow: false },
+        });
+        await waitFor(
+          async () => (await ids()).join() === [base, base].join(),
+          'one button for both windows',
+        );
+        await writeSettings(page, profile, {
+          windows: { taskbarButtonPerWindow: true },
+        });
+        await waitFor(
+          async () => (await ids()).join() === parted.join(),
+          'a button for each window again',
+        );
       } finally {
         await closeOrKill(app);
         removeFolder(folder);

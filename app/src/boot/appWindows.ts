@@ -1,7 +1,8 @@
+import * as path from 'node:path';
 import { app, type BrowserWindow, ipcMain, screen } from 'electron';
 import type { Log } from '../shell/main/log';
 import type { ToHost, ToWebview } from '../shell/shared/protocol';
-import { strings } from '../lib/shared/strings';
+import { brand, strings } from '../lib/shared/strings';
 import type { Settings } from '../shell/main/settings';
 import type { JsonFileStore } from '../shell/main/stateFile';
 import type { Storage } from '../shell/main/storage';
@@ -27,6 +28,7 @@ import {
 } from './places';
 import { reloadWhenGone } from './pageGone';
 import type { QuitGuard } from './quitGuard';
+import { TaskbarIds, taskbarBase, taskbarDetails } from './taskbarIds';
 
 interface OpenedWindow {
   readonly window: BrowserWindow;
@@ -58,10 +60,12 @@ export class AppWindows {
   private readonly spareId: () => string;
   private readonly windowDrag: WindowDrag;
   private readonly pixelsReady: Promise<void>;
+  private readonly taskbar: TaskbarIds;
   readonly everyWindow;
 
   constructor(private readonly deps: AppWindowsDeps) {
     this.pixelsReady = prepareWindowPixels(process.platform);
+    this.taskbar = new TaskbarIds(taskbarBase(deps.development));
     this.spareId = spareWindowIds(deps.storage.layout);
     this.windowDrag = new WindowDrag({
       frontToBack: () => this.frontToBack,
@@ -195,6 +199,31 @@ export class AppWindows {
     this.windowDrag.dragged(window, event);
   }
 
+  regroup(): void {
+    for (const [id, { window }] of this.opened) {
+      this.grouped(id, window);
+    }
+  }
+
+  private grouped(id: string, window: BrowserWindow): void {
+    if (process.platform === 'win32' && !window.isDestroyed()) {
+      window.setAppDetails(
+        taskbarDetails(
+          this.taskbar.of(
+            id,
+            this.deps.settings().windows.taskbarButtonPerWindow,
+          ),
+          {
+            icon: path.join(this.deps.dist, 'icon.ico'),
+            program: process.execPath,
+            appPath: app.isPackaged ? undefined : app.getAppPath(),
+            name: brand,
+          },
+        ),
+      );
+    }
+  }
+
   private windowIds(): string[] {
     return this.deps.storage.layout.map((window) => window.id);
   }
@@ -232,6 +261,7 @@ export class AppWindows {
     if (!kept) {
       this.opened.set(id, entry);
       this.frontToBack = [id, ...this.frontToBack];
+      this.grouped(id, window);
     }
     window.on('focus', () => {
       this.focused = id;
@@ -296,6 +326,7 @@ export class AppWindows {
     window.on('closed', () => {
       this.deps.log.info(strings.log.windowClosed(id));
       quitGuard.forget(id);
+      this.taskbar.forget(id);
       disconnect();
       this.windowDrag.forget(id);
       this.frontToBack = this.frontToBack.filter((other) => other !== id);
@@ -358,6 +389,7 @@ export class AppWindows {
     this.spare = undefined;
     this.opened.set(taken.id, taken.entry);
     this.frontToBack = [taken.id, ...this.frontToBack];
+    this.grouped(taken.id, taken.entry.window);
     windowPixels().sizeLike(taken.entry.window, source);
     return taken.id;
   }

@@ -20,6 +20,7 @@ export interface Settings {
   };
   readonly windows: {
     readonly openingAnimation: boolean;
+    readonly taskbarButtonPerWindow: boolean;
   };
   readonly theme: Theme;
   readonly dateFormat: string;
