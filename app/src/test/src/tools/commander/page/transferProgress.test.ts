@@ -7,6 +7,7 @@ import {
   shareDone,
 } from '../../../../../tools/commander/page/transferProgress';
 import type { TransferView } from '../../../../../tools/commander/shared/transfers';
+import { whatOf } from '../../../../../tools/commander/page/items';
 
 suite('The progress of a pack', () => {
   const progress = {
@@ -157,6 +158,61 @@ suite('Commander transferring', () => {
     assert.strictEqual(
       shareDone({ files: 0, totalFiles: 0, bytes: 0, totalBytes: 0 }),
       100,
+    );
+  });
+});
+
+suite('The progress of a delete', () => {
+  const view: TransferView = {
+    id: 1,
+    move: true,
+    deleting: 'permanently',
+    items: 2,
+    target: '/x',
+    stopping: false,
+    progress: {
+      files: 3,
+      totalFiles: 9,
+      bytes: 30,
+      totalBytes: 90,
+      current: '/x/docs/a.txt',
+    },
+  };
+
+  test('names the folder it deletes in and the file it is at, counting the files deleted for good, and the items moved to the Recycle Bin, which it moves whole', () => {
+    assert.deepStrictEqual(
+      runningLines(view),
+      strings.commander.deletingIn(whatOf(2, undefined), '/x'),
+    );
+    assert.deepStrictEqual(progressLines(view), {
+      current: undefined,
+      file: '/x/docs/a.txt',
+      files: '3 of 9 files',
+    });
+    assert.deepStrictEqual(
+      progressLines({
+        ...view,
+        deleting: 'trash',
+        progress: {
+          files: 1,
+          totalFiles: 2,
+          bytes: 0,
+          totalBytes: 0,
+          current: '/x/docs',
+        },
+      }),
+      { current: undefined, file: '/x/docs', files: '1 of 2 items' },
+    );
+  });
+
+  test('fills its bar by the files deleted rather than their bytes, as a large file is deleted as fast as a small one', () => {
+    assert.strictEqual(
+      shareDone({ files: 3, totalFiles: 4, bytes: 10, totalBytes: 1000 }, true),
+      75,
+    );
+    assert.strictEqual(
+      shareDone({ files: 3, totalFiles: 4, bytes: 10, totalBytes: 1000 }),
+      1,
     );
   });
 });

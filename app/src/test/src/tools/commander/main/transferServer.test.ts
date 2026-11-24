@@ -52,6 +52,28 @@ suite('Transfer server', () => {
     assert.ok(events.some((event) => event.type === 'progress'));
   });
 
+  test('deletes the items of a plan that deletes, rather than copying them, telling of its progress and its end', async () => {
+    fs.mkdirSync(path.join(source, 'docs'));
+    fs.writeFileSync(path.join(source, 'docs', 'a.txt'), 'a');
+    const { events, receive, ended } = served();
+
+    receive({
+      type: 'start',
+      plan: {
+        sources: [path.join(source, 'docs')],
+        target: source,
+        move: true,
+        deletes: true,
+      },
+    });
+    await waitFor(ended, 'the delete to end');
+
+    assert.deepStrictEqual(fs.readdirSync(source), []);
+    assert.deepStrictEqual(fs.readdirSync(target), []);
+    assert.deepStrictEqual(events.at(-1), { type: 'done', stopped: false });
+    assert.ok(events.some((event) => event.type === 'progress'));
+  });
+
   test('waits for the answer to a clash it tells of, and stops at once when told to while it waits', async () => {
     for (const name of ['a.txt', 'b.txt']) {
       fs.writeFileSync(path.join(source, name), `new ${name}`);

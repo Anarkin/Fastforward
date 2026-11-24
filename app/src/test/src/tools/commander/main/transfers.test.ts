@@ -220,6 +220,55 @@ suite('Transfers', () => {
     ]);
   });
 
+  test('shows a delete as deleting in its folder, saying once done that it deleted when its dialog was closed, which items could not be deleted and why, and when it stopped unexpectedly', () => {
+    const { coordinator, tell, last, notices } = transfers();
+    const deleting = (names: string[]): TransferAsk => ({
+      plan: {
+        sources: names.map((name) => path.join(source, name)),
+        target: source,
+        move: true,
+        deletes: true,
+      },
+      folder: source,
+      names,
+      deleting: 'permanently',
+    });
+
+    coordinator.start(deleting(['docs']));
+    assert.strictEqual(last()?.deleting, 'permanently');
+    assert.strictEqual(last()?.target, source);
+    coordinator.hide(1);
+    tell(0, { type: 'done', stopped: false });
+    coordinator.start(deleting(['a.txt', 'b.txt']));
+    tell(1, { type: 'failed', name: 'a.txt', reason: 'It is in use' });
+    tell(1, { type: 'failed', name: 'b.txt', reason: 'It is in use' });
+    tell(1, { type: 'done', stopped: false });
+    coordinator.start(deleting(['c.txt']));
+    tell(2, { type: 'done', stopped: false, error: 'gone' });
+
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'info',
+        message: strings.commander.deletedIn(
+          strings.commander.oneItem(path.join(source, 'docs')),
+          source,
+        ),
+      },
+      {
+        level: 'error',
+        message: strings.commander.deleteFailedMany(
+          2,
+          path.join(source, 'a.txt'),
+          'It is in use',
+        ),
+      },
+      {
+        level: 'error',
+        message: strings.commander.deletingInStopped(source),
+      },
+    ]);
+  });
+
   test('says once archives were tested that they passed, its dialog shown or not, which failed and why, and how many failed', () => {
     const { coordinator, tell, last, notices } = transfers();
     coordinator.start(testing(['a.zip', 'b.7z']));

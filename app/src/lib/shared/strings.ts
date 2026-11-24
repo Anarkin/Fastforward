@@ -708,6 +708,18 @@ export const strings = {
       sentence`${namedItem(item)} could not be opened: ${reason}`,
     deleteFailed: (item: string, reason: Sentence) =>
       sentence`${namedItem(item)} could not be deleted: ${reason}`,
+    deleteFailedMany: (count: number, item: string, reason: Sentence) =>
+      sentence`${String(count)} items could not be deleted, among them ${namedItem(item)}: ${reason}`,
+    deletedIn: (what: Value | string, folder: string) =>
+      sentence`Deleted ${what} in ${namedFolder(folder)}`,
+    deletingInStopped: (folder: string) =>
+      sentence`Deleting in ${namedFolder(folder)} stopped unexpectedly.`,
+    deletingIn: (what: Value, folder: string) => [
+      labeled('', what),
+      labeled('In', namedFolder(folder)),
+    ],
+    itemsDone: (items: number, total: number) =>
+      `${items.toLocaleString()} of ${total.toLocaleString()} items`,
     notArchive: (item: string, reason: Sentence) =>
       sentence`${namedItem(item)} could not be opened as an archive: ${reason}`,
     openWithSevenZip: "Open with Commander's 7-Zip",

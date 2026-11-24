@@ -141,6 +141,11 @@ const countedJobs: ReadonlySet<string> = new Set([
 ]);
 
 function titleOf(transfer: TransferView): string {
+  if (transfer.deleting !== undefined) {
+    return transfer.deleting === 'permanently'
+      ? strings.commander.deletePermanentlyTitle
+      : strings.commander.deleteTitle;
+  }
   if (transfer.archiveJob !== undefined) {
     return archiveJobTitles[transfer.archiveJob];
   }
@@ -153,7 +158,7 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
   const { stopTransfer } = useCommanderActions();
   const { commander } = strings;
   const { progress } = transfer;
-  const done = shareDone(progress);
+  const done = shareDone(progress, transfer.deleting !== undefined);
   const stop = useRef<HTMLButtonElement>(null);
   useEffect(() => stop.current?.focus(), []);
   const lines = progressLines(transfer);
@@ -189,9 +194,14 @@ function ProgressBody({ transfer }: { transfer: TransferView }) {
           countedJobs.has(transfer.archiveJob)) && (
           <div className="progress-counts">
             <span>{lines.files}</span>
-            <span>
-              {commander.transferredBytes(progress.bytes, progress.totalBytes)}
-            </span>
+            {transfer.deleting !== 'trash' && (
+              <span>
+                {commander.transferredBytes(
+                  progress.bytes,
+                  progress.totalBytes,
+                )}
+              </span>
+            )}
           </div>
         )}
       <div className="confirm-buttons" onKeyDown={moveBetweenButtons}>

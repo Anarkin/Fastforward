@@ -40,10 +40,13 @@ export type ArchiveJob =
   | 'test'
   | 'update';
 
+export type Deleting = 'trash' | 'permanently';
+
 export interface TransferView {
   readonly id: number;
   readonly move: boolean;
   readonly archiveJob?: ArchiveJob;
+  readonly deleting?: Deleting;
   readonly items: number;
   readonly name?: string;
   readonly target: string;

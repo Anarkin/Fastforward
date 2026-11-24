@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { unlinked } from './deletion';
 
 export interface Stock {
   readonly remove: () => Promise<readonly string[]>;
@@ -37,18 +38,6 @@ const unchanged = (was: fs.BigIntStats, now: fs.BigIntStats): boolean =>
   was.dev === now.dev &&
   was.size === now.size &&
   was.mtimeNs === now.mtimeNs;
-
-async function unlinked(item: string): Promise<void> {
-  try {
-    await fs.promises.unlink(item);
-  } catch (error) {
-    if (process.platform !== 'win32' || codeOf(error) !== 'EPERM') {
-      throw error;
-    }
-    await fs.promises.chmod(item, 0o666);
-    await fs.promises.unlink(item);
-  }
-}
 
 async function removedOriginal({
   item,

@@ -8,8 +8,8 @@ import { type Listed, commander, tab, forged } from './commanderFixtures';
 import { root, at, folder, file } from './entryFixtures';
 
 suite('Commander tool', () => {
-  test('moves the items asked for to the Recycle Bin, or deletes them for good, only when every one is listed in the folder and never its parent, saying which could not be deleted and why', async () => {
-    const { tool, page, send, notices, trashed, removed } = commander({
+  test('moves the items asked for to the Recycle Bin, or deletes them for good, in the window of copies, only when every one is listed in the folder and never its parent, saying which could not be deleted and why', async () => {
+    const { tool, page, send, notices, trashed, transfers } = commander({
       [root]: [
         file('a.txt'),
         folder('dir'),
@@ -22,6 +22,7 @@ suite('Commander tool', () => {
     const remove = (names: string[], permanently: boolean) =>
       send({ type: 'delete', tab: '1', side: 'right', names, permanently });
     await remove(['a.txt', 'dir'], false);
+    await waitFor(() => trashed.length === 2, 'the items in the Recycle Bin');
     await remove(['b.txt'], true);
     await remove(['c.txt', '..'], false);
     await remove(['c.txt', 'gone.txt'], true);
@@ -32,9 +33,35 @@ suite('Commander tool', () => {
       ),
     );
     assert.deepStrictEqual(trashed, [at('a.txt'), at('dir')]);
-    assert.deepStrictEqual(removed, [at('b.txt')]);
+    assert.deepStrictEqual(
+      transfers.map(({ commands }) => commands),
+      [
+        [
+          {
+            type: 'start',
+            plan: {
+              sources: [at('b.txt')],
+              target: root,
+              move: true,
+              deletes: true,
+            },
+          },
+        ],
+      ],
+    );
+    assert.ok(
+      page
+        .of('transfer')
+        .some(
+          ({ view }) =>
+            view?.deleting === 'trash' &&
+            view.target === root &&
+            view.items === 2,
+        ),
+    );
     assert.deepStrictEqual(notices, []);
     await remove(['locked.txt', 'c.txt'], false);
+    await waitFor(() => notices.length === 1, 'the failure told');
     assert.deepStrictEqual(trashed.slice(2), [at('locked.txt'), at('c.txt')]);
     assert.deepStrictEqual(notices, [
       {
@@ -54,7 +81,7 @@ suite('Commander tool', () => {
     await tool.show(page, tab);
     const slow = Promise.withResolvers<void>();
     deletesHeld.until = slow.promise;
-    const deleting = send({
+    await send({
       type: 'delete',
       tab: '1',
       side: 'right',
@@ -63,7 +90,7 @@ suite('Commander tool', () => {
     });
     await send({ type: 'open', tab: '1', side: 'right', name: 'next' });
     slow.resolve();
-    await deleting;
+    await waitFor(() => trashed.length === 2, 'the items in the Recycle Bin');
     assert.deepStrictEqual(trashed, [at('big'), at('dist')]);
     assert.strictEqual(tool.folderOf(tab), at('next'));
   });

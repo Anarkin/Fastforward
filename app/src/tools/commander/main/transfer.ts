@@ -16,6 +16,7 @@ export interface TransferPlan {
   readonly target: string;
   readonly move: boolean;
   readonly as?: string;
+  readonly deletes?: true;
 }
 
 export interface ClashReply {

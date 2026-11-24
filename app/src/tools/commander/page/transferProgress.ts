@@ -22,6 +22,9 @@ const fileOf = (
 export function runningLines(transfer: TransferView): Line[] {
   const { commander } = strings;
   const what = whatOf(transfer.items, transfer.name);
+  if (transfer.deleting !== undefined) {
+    return commander.deletingIn(what, transfer.target);
+  }
   if (transfer.archiveJob !== undefined) {
     return archiveJobLines[transfer.archiveJob](what, transfer.target);
   }
@@ -31,13 +34,16 @@ export function runningLines(transfer: TransferView): Line[] {
   );
 }
 
-export function shareDone(progress: TransferProgress | undefined): number {
+export function shareDone(
+  progress: TransferProgress | undefined,
+  byFiles = false,
+): number {
   if (progress === undefined) {
     return 0;
   }
   const { files, totalFiles, bytes, totalBytes } = progress;
   const share =
-    totalBytes > 0
+    totalBytes > 0 && !byFiles
       ? bytes / totalBytes
       : totalFiles > 0
         ? files / totalFiles
@@ -47,8 +53,9 @@ export function shareDone(progress: TransferProgress | undefined): number {
 
 export function progressLines({
   archiveJob,
+  deleting,
   progress,
-}: Pick<TransferView, 'archiveJob' | 'progress'>): {
+}: Pick<TransferView, 'archiveJob' | 'deleting' | 'progress'>): {
   readonly current: Sentence | undefined;
   readonly file?: string;
   readonly files: string | undefined;
@@ -56,6 +63,12 @@ export function progressLines({
   const { commander } = strings;
   if (progress === undefined) {
     return { current: commander.counting, files: undefined };
+  }
+  if (deleting === 'trash') {
+    return {
+      ...fileOf(progress.current),
+      files: commander.itemsDone(progress.files, progress.totalFiles),
+    };
   }
   if (progress.deleting === true) {
     return {

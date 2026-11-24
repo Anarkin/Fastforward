@@ -127,10 +127,16 @@ export function buildParts(
     shell,
     list: (...listed) => listings.list(...listed),
   });
-  const itemChanges = new ItemChanges(access, sides, archiveCommands, {
-    shell,
-    list: (...listed) => listings.list(...listed),
-  });
+  const itemChanges = new ItemChanges(
+    access,
+    sides,
+    archiveCommands,
+    transfers,
+    {
+      shell,
+      list: (...listed) => listings.list(...listed),
+    },
+  );
   const systemCommands = new SystemCommands(access, sides, copies, {
     shell,
   });

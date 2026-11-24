@@ -10,6 +10,7 @@ import {
   isClashAnswer,
   type ArchiveJob,
   type Clash,
+  type Deleting,
   type TransferProgress,
   type TransferView,
 } from '../shared/transfers';
@@ -34,6 +35,7 @@ export interface TransferAsk {
   readonly plan: TransferPlan;
   readonly folder: string;
   readonly names: readonly string[];
+  readonly deleting?: Deleting;
   readonly archive?: {
     readonly job: ArchiveJob;
     readonly file: string;
@@ -147,6 +149,11 @@ function failureNotice({ ask, failures }: Running): Sentence | undefined {
   }
   const { move, target } = ask.plan;
   const item = path.join(target, first.name);
+  if (ask.deleting !== undefined) {
+    return failures.length === 1
+      ? strings.commander.deleteFailed(item, first.reason)
+      : strings.commander.deleteFailedMany(failures.length, item, first.reason);
+  }
   if (failures.length === 1) {
     return move
       ? strings.commander.moveFailed(item, first.reason)
@@ -306,20 +313,27 @@ export class Transfers {
         message: sentencesOf(running.warnings),
       });
     }
+    const { deleting } = running.ask;
     if (how === 'broke') {
       this.host.notice({
         level: 'error',
-        message: move
-          ? strings.commander.movingStopped(target)
-          : strings.commander.copyingStopped(target),
+        message:
+          deleting !== undefined
+            ? strings.commander.deletingInStopped(target)
+            : move
+              ? strings.commander.movingStopped(target)
+              : strings.commander.copyingStopped(target),
       });
     } else if (how === 'done' && running.hidden) {
       const what = whatOf(running.ask);
       this.host.notice({
         level: 'info',
-        message: move
-          ? strings.commander.moved(what, target)
-          : strings.commander.copied(what, target),
+        message:
+          deleting !== undefined
+            ? strings.commander.deletedIn(what, target)
+            : move
+              ? strings.commander.moved(what, target)
+              : strings.commander.copied(what, target),
       });
     }
     this.host.finished(running.ask);
@@ -387,6 +401,7 @@ export class Transfers {
       id: running.id,
       move: ask.plan.move,
       ...(ask.archive !== undefined && { archiveJob: ask.archive.job }),
+      ...(ask.deleting !== undefined && { deleting: ask.deleting }),
       items: ask.names.length,
       ...(ask.names.length === 1 && { name: firstItemOf(ask) }),
       target: ask.archive?.at ?? ask.archive?.file ?? ask.plan.target,

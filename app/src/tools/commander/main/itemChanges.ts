@@ -9,10 +9,12 @@ import { type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';
 import type { ArchiveCommands } from './archiveCommands';
 import type { CommanderAccess } from './access';
+import type { Transfers } from './transfers';
+import { trashJob } from './trashJob';
 
 export type ItemChangesAccess = Pick<
   CommanderAccess,
-  'remove' | 'trash' | 'makeFolder' | 'renameItem' | 'platform'
+  'trash' | 'makeFolder' | 'renameItem' | 'platform'
 >;
 
 export interface ItemChangesHost {
@@ -33,6 +35,7 @@ export class ItemChanges {
     private readonly access: ItemChangesAccess,
     private readonly sides: Sides,
     private readonly archiveCommands: ArchiveCommands,
+    private readonly transfers: Pick<Transfers, 'start'>,
     private readonly host: ItemChangesHost,
   ) {}
 
@@ -70,31 +73,28 @@ export class ItemChanges {
       });
       return;
     }
-    const deleting = permanently ? this.access.remove : this.access.trash;
-    if (deleting === undefined) {
+    const { folder } = shown.pane;
+    const sources = names.map((name: string) => path.join(folder, name));
+    if (permanently) {
+      this.transfers.start({
+        plan: { sources, target: folder, move: true, deletes: true },
+        folder,
+        names,
+        deleting: 'permanently',
+      });
       return;
     }
-    const { folder } = shown.pane;
-    for (const name of names) {
-      try {
-        await deleting(path.join(folder, name));
-      } catch (error) {
-        this.host.shell().notice(page, {
-          level: 'error',
-          message: strings.commander.deleteFailed(
-            path.join(folder, name),
-            error instanceof Error ? error.message : String(error),
-          ),
-        });
-      }
-    }
-    const { flat } = shown.pane;
-    if (flat !== undefined) {
-      for (const name of names) {
-        flat.tree.changed(name);
-      }
-    } else if (shown.pane.folder === folder) {
-      await this.host.list(page, shown.tab, shown.side, folder, 'show');
+    const { trash } = this.access;
+    if (trash !== undefined) {
+      this.transfers.start(
+        {
+          plan: { sources, target: folder, move: true },
+          folder,
+          names,
+          deleting: 'trash',
+        },
+        trashJob(trash),
+      );
     }
   }
 
