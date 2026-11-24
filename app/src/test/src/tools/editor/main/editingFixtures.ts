@@ -1,3 +1,4 @@
+import { bytesVersion } from '../../../../../lib/main/fileVersions';
 import { ChangeSet } from '@codemirror/state';
 import type { Page } from '../../../../../shell/main/toolContract';
 import type { ToWebview } from '../../../../../shell/shared/protocol';
@@ -52,10 +53,14 @@ export function editing(
   const named: Page[] = [];
   const showing: Page[] = [];
   const windows = new Map<string, Page>();
-  const stamps = new Map<string, number>();
   const watchers: { file: string; onChange: () => void }[] = [];
-  let stamped = 0;
   const held = new Map<string, Promise<void>>();
+  const saving: {
+    until: Promise<void> | undefined;
+    running: number;
+    most: number;
+    after: ((file: string) => void) | undefined;
+  } = { until: undefined, running: 0, most: 0, after: undefined };
   const access: EditingAccess = {
     readFile: async (file) => {
       await held.get(file);
@@ -77,7 +82,14 @@ export function editing(
           : { folder: file.endsWith('/'), size: content.length },
       );
     },
-    saveFile: (file, bytes, overwrite) => {
+    saveFile: async (file, bytes, overwrite) => {
+      saving.running += 1;
+      saving.most = Math.max(saving.most, saving.running);
+      try {
+        await saving.until;
+      } finally {
+        saving.running -= 1;
+      }
       if (file.includes('read-only') && !overwrite) {
         return Promise.reject(new ReadOnlyFile(file));
       }
@@ -92,13 +104,21 @@ export function editing(
         overwrite,
       });
       files[file] = Buffer.from(bytes);
-      stamps.set(file, ++stamped);
+      saving.after?.(file);
       return Promise.resolve('replaced');
     },
-    stampOf: (file) =>
-      Promise.resolve(
-        files[file] === undefined ? undefined : String(stamps.get(file) ?? 0),
-      ),
+    stampOf: (file) => {
+      const content = files[file];
+      return Promise.resolve(
+        content === undefined
+          ? undefined
+          : bytesVersion(
+              typeof content === 'string'
+                ? Buffer.from(content, 'latin1')
+                : content,
+            ),
+      );
+    },
     watch: (file, onChange) => {
       const watcher = { file, onChange };
       watchers.push(watcher);
@@ -131,12 +151,12 @@ export function editing(
   };
   const changeOnDisk = async (file: string, content: string) => {
     files[file] = content;
-    stamps.set(file, ++stamped);
     await touched(file);
   };
   return {
     edits,
     saved,
+    saving,
     notices,
     editedSources,
     named,

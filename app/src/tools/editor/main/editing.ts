@@ -24,6 +24,7 @@ import { reasonOf } from '../../../lib/main/reasons';
 import { rulesOf, type TextDefaults, type TextRules } from './textDefaults';
 import { decodedText } from './textCodec';
 import { looksBinary } from '../../../components/encodings/main/encodingDetection';
+import { bytesVersion } from '../../../lib/main/fileVersions';
 import {
   foundIn,
   sourcesOf,
@@ -129,6 +130,7 @@ const noWatching = () => {};
 
 export class Editing {
   private readonly opened = new Map<string, Opened>();
+  private readonly saves = new Map<string, Promise<unknown>>();
   private readonly opening = new Map<
     string,
     { readonly file: string; readonly loading: Promise<Opened> }
@@ -571,10 +573,27 @@ export class Editing {
     }
   }
 
-  async save(
+  save(
     page: Page,
     tab: string,
     overwriting: Overwriting = {},
+  ): Promise<boolean> {
+    const before = this.saves.get(tab) ?? Promise.resolve();
+    const turn = before.then(() => this.savedNow(page, tab, overwriting));
+    const ended = turn.catch(() => undefined);
+    this.saves.set(tab, ended);
+    void ended.then(() => {
+      if (this.saves.get(tab) === ended) {
+        this.saves.delete(tab);
+      }
+    });
+    return turn;
+  }
+
+  private async savedNow(
+    page: Page,
+    tab: string,
+    overwriting: Overwriting,
   ): Promise<boolean> {
     const opened = this.opened.get(tab);
     const text = opened?.read.text;
@@ -654,7 +673,7 @@ export class Editing {
     opened.read = {
       ...opened.read,
       made: false,
-      stamp: await this.access.stampOf(file),
+      stamp: bytesVersion(written.bytes),
       encodings: sourcesOf(found, opened.chosen, codePage),
     };
     opened.saving = false;
@@ -663,6 +682,7 @@ export class Editing {
     for (const shownIn of this.shell.pagesShowing(tab)) {
       this.postEditing(shownIn, tab, opened);
     }
+    await this.changedOnDisk(tab, opened);
     return true;
   }
 
