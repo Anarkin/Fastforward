@@ -5,7 +5,11 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { replaceBuiltin } from '../../../../helpers/builtins';
 import { fastForward } from '../../../../../tools/git/main/branches';
 import { switchToBranch } from '../../../../../tools/git/main/switches';
-import { writesEnded } from '../../../../../tools/git/main/gitProcesses';
+import {
+  everyWriteEnded,
+  writesEnded,
+  writesRunning,
+} from '../../../../../tools/git/main/gitProcesses';
 import { runGit, stopRunningGit } from '../../../../../tools/git/main/run';
 import { waitFor } from '../../../../helpers/fixtures';
 import {
@@ -253,6 +257,36 @@ suite('Running git in a repository', () => {
         await writing;
       },
     );
+  });
+
+  test('waits for a checkout or fast-forward however long it takes once the app quits, past the time an update gives it, as stopping one midway can leave the working tree half switched', async () => {
+    const folder = tempFolder('quitting-waits');
+    const held = heldHook(folder, 'post-checkout');
+    const hooks = path.join(cwd, '.git', 'hooks');
+    const hook = path.join(hooks, 'post-checkout');
+    fs.mkdirSync(hooks, { recursive: true });
+    fs.writeFileSync(hook, held.script, { mode: 0o755 });
+    await temp.git('branch', 'finishing');
+    try {
+      const switching = switchToBranch(gitPath, cwd, 'finishing');
+      await waitFor(() => fs.existsSync(held.started), 'the checkout to start');
+      await writesEnded(100);
+      const ended = everyWriteEnded();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      assert.strictEqual(await settledYet(ended), false);
+      assert.strictEqual(writesRunning(), true);
+      fs.writeFileSync(held.release, '');
+      await ended;
+      assert.ok(fs.existsSync(held.done));
+      assert.strictEqual(writesRunning(), false);
+      await switching;
+    } finally {
+      fs.writeFileSync(held.release, '');
+      fs.rmSync(hook);
+      await temp.git('checkout', '-q', 'main');
+      await temp.git('branch', '-D', 'finishing');
+      removeFolder(folder);
+    }
   });
 
   test('stops what git started too, even what outlived the process that started it', async (context) => {

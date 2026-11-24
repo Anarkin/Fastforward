@@ -71,6 +71,18 @@ export async function writesEnded(waitTime = writeTime): Promise<void> {
   }
 }
 
+export function writesRunning(): boolean {
+  return writing.size > 0;
+}
+
+export async function everyWriteEnded(): Promise<void> {
+  while (writing.size > 0) {
+    await Promise.all(
+      [...writing.keys()].flatMap((child) => running.get(child) ?? []),
+    );
+  }
+}
+
 export async function stopEveryGit(waitTime = writeTime): Promise<void> {
   await Promise.all([
     writesEnded(waitTime),

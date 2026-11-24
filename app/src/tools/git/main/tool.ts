@@ -1,6 +1,7 @@
 import { viewVersion } from '../shared/protocol';
 import type { AutoFetch } from './autoFetch';
 import { runningGits } from './run';
+import { everyWriteEnded, writesRunning } from './gitProcesses';
 import { locateRepository } from './repositoryLocation';
 import type { Clones } from './clones';
 import type { Log } from '../../../shell/main/log';
@@ -152,6 +153,14 @@ export class GitTool implements Tool<'git'> {
     this.tabLoads = parts.tabLoads;
     this.runs = parts.runs;
     this.messages = parts.messages;
+  }
+
+  quitNote(): string | undefined {
+    return writesRunning() ? strings.messages.quitWaitsForGit : undefined;
+  }
+
+  quitWaits(): Promise<void> {
+    return everyWriteEnded();
   }
 
   quit(): void {

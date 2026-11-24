@@ -735,7 +735,7 @@ export const strings = {
     quitStopsTransfers:
       'A copy, a move or a change of an archive is still running, and quitting stops it unfinished.',
     quitDropsChanges:
-      'A file opened from an archive was changed and not put back yet, and quitting deletes the change.',
+      'A file opened from an archive was changed and not put back yet, and quitting leaves the change in its copy alone, named at the next start.',
     lineBreakInName:
       "7-Zip can't be told the name of an item that holds a line break.",
     namesAlike: (name: string) =>
@@ -1338,6 +1338,8 @@ export const strings = {
   },
   messages: {
     dismiss: 'Dismiss',
+    quitWaitsForGit:
+      'Git is still switching to a branch or moving one, and quitting waits for it to finish.',
     inTab: (tab: string, message: Sentence) => sentence`${tab}: ${message}`,
     settingsProblem: (problem: Sentence) => sentence`Settings: ${problem}`,
     couldNotOpen: (folder: string, reason: Sentence) =>
