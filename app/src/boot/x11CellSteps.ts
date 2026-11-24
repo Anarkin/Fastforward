@@ -8,6 +8,7 @@ import {
   type CellSteps,
 } from './cellSteps';
 import { gridAround } from '../shell/shared/cellGrid';
+import { cellsChanged } from './cellsChanged';
 
 const hintsType = 'CellStepsSizeHints';
 const aspectType = 'CellStepsAspect';
@@ -85,6 +86,7 @@ export function x11CellSteps(): CellSteps | undefined {
       closeDisplay(display);
     }
   };
+  const changedCells = cellsChanged();
   return {
     follow: (window, report) => {
       if (window.isDestroyed()) {
@@ -107,7 +109,7 @@ export function x11CellSteps(): CellSteps | undefined {
               base_height: grid.around.height,
             };
       });
-      if (grid !== undefined) {
+      if (grid !== undefined && changedCells(window, report)) {
         fitByElectron(window, grid);
       }
     },
