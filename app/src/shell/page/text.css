@@ -281,13 +281,8 @@ mark.match,
   width: 100%;
   height: 100%;
   cursor: text;
-}
-
-.cell-selection-watch {
-  position: absolute;
-  visibility: hidden;
-  background-color: var(--selection-background);
-  transition: background-color 1ms;
+  column-rule-color: var(--selection-background);
+  transition: column-rule-color 1ms;
 }
 
 ::highlight(markdown-match) {

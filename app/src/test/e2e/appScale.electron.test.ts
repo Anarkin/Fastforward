@@ -308,7 +308,7 @@ suite('App at a scale of 125%', () => {
     assert.strictEqual(last, before);
   });
 
-  test('centers the buttons of the title of each column between the line of the column and the line under the title, to a device pixel', async () => {
+  test('stands the buttons of the title of each column at its top, outside the frame of the column, with the space of a bar under them and no line, to a device pixel', async () => {
     const gaps = await page
       .locator('.columns > .column')
       .evaluateAll((columns) =>
@@ -320,21 +320,25 @@ suite('App at a scale of 125%', () => {
           }
           const ratio = devicePixelRatio;
           const device = (value: number) => Math.round(value * ratio);
-          const line = parseFloat(
-            getComputedStyle(column).getPropertyValue('--column-line'),
-          );
-          const under = parseFloat(getComputedStyle(title).borderBottomWidth);
+          const space = parseFloat(getComputedStyle(title).paddingBottom);
           const box = button.getBoundingClientRect();
           const edges = title.getBoundingClientRect();
           return {
-            above: device(box.top) - device(edges.top + line),
-            below: device(edges.bottom - under) - device(box.bottom),
+            above: device(box.top) - device(edges.top),
+            below: device(edges.bottom) - device(box.bottom),
+            space: device(space),
+            line: parseFloat(getComputedStyle(title).borderBottomWidth),
           };
         }),
       );
+    assert.ok(
+      gaps.some((gap) => gap !== undefined),
+      JSON.stringify(gaps),
+    );
     for (const gap of gaps) {
       assert.ok(
-        gap !== undefined && Math.abs(gap.above - gap.below) <= 1,
+        gap === undefined ||
+          (gap.above === 0 && gap.below === gap.space && gap.line === 0),
         JSON.stringify(gaps),
       );
     }
@@ -643,7 +647,7 @@ suite('App at a scale of 125%', () => {
     );
   });
 
-  test('opens the search of the commits over their title with its button and line where those of the title are, to a device pixel', async () => {
+  test('opens the search of the commits over their title with its button where that of the title is and its list where the frame of the column starts, to a device pixel', async () => {
     const column = page.locator('.columns > .column').first();
     const place = () =>
       column.evaluate((element) => {
@@ -655,10 +659,8 @@ suite('App at a scale of 125%', () => {
         const line = popup
           ? popup.querySelector('.locations-groups')?.getBoundingClientRect()
               .top
-          : title
-            ? title.getBoundingClientRect().bottom -
-              parseFloat(getComputedStyle(title).borderBottomWidth)
-            : undefined;
+          : element.getBoundingClientRect().top +
+            parseFloat(getComputedStyle(element, '::after').top);
         return {
           button: device(button?.getBoundingClientRect().top ?? Number.NaN),
           line: device(line ?? Number.NaN),
