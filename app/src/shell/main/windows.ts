@@ -91,10 +91,14 @@ export function withOpened(
   tabs: readonly SavedTab[],
 ): Layout {
   return layout.some((each) => each.id === window)
-    ? withWindow(layout, window, (each) => ({
-        ...each,
-        tabs: [...each.tabs, ...tabs],
-      }))
+    ? withWindow(layout, window, (each) => {
+        const active = each.tabs.findIndex((tab) => tab.id === each.active);
+        const at = active === -1 ? each.tabs.length : active + 1;
+        return {
+          ...each,
+          tabs: [...each.tabs.slice(0, at), ...tabs, ...each.tabs.slice(at)],
+        };
+      })
     : layout;
 }
 

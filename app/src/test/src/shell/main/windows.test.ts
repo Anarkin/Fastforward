@@ -62,16 +62,20 @@ suite('Windows of tabs', () => {
     assert.strictEqual(spareWindowIds(layoutOf(['1', []]))(), 's1');
   });
 
-  test('opens tabs at the end of the window asked, leaving the others as they were', () => {
+  test('opens tabs right after the active tab of the window asked, as an editor opens one beside the file it came from, or at its end while none is active, leaving the other windows as they were', () => {
     const opened = withOpened(
-      layoutOf(['1', ['1'], '1'], ['2', ['2'], '2']),
+      layoutOf(['1', ['1'], '1'], ['2', ['2', '5', '6'], '5']),
       '2',
       [tab('3'), tab('4')],
     );
     assert.deepStrictEqual(shapeOf(opened), [
       ['1', ['1'], '1'],
-      ['2', ['2', '3', '4'], '2'],
+      ['2', ['2', '5', '3', '4', '6'], '5'],
     ]);
+    assert.deepStrictEqual(
+      shapeOf(withOpened(layoutOf(['1', ['1', '2']]), '1', [tab('3')])),
+      [['1', ['1', '2', '3']]],
+    );
   });
 
   test('keeps the active tab of each window apart', () => {

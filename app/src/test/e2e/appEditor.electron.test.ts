@@ -268,7 +268,7 @@ suite('App editor', () => {
     await right().locator('.commander-row', { hasText: 'packed' }).waitFor();
   });
 
-  test('edits a file viewed in an editor tab of its own on F4, the cursor on the line the viewer showed at its top, and goes to that tab on F4 again', async () => {
+  test('edits a file viewed in an editor tab of its own on F4, right after the viewer, the cursor on the line the viewer showed at its top, and goes to that tab on F4 again', async () => {
     const lines = Array.from({ length: 400 }, (_, at) => `line ${at + 1}`);
     fs.writeFileSync(path.join(opened, 'long.txt'), `${lines.join('\n')}\n`);
     await backToCommander();
@@ -304,7 +304,7 @@ suite('App editor', () => {
       await page.locator('.tabs [role="tab"]').count(),
       tabs + 1,
     );
-    assert.strictEqual(await activeIndex(), tabs);
+    assert.strictEqual(await activeIndex(), viewerTab + 1);
     await waitFor(
       async () => (await topLine()) === `line ${top[1]}`,
       'the line at the top of the editor',
@@ -314,7 +314,7 @@ suite('App editor', () => {
     await page.locator('.viewer .column-body').first().focus();
     await page.keyboard.press('F4');
     await waitFor(
-      async () => (await activeIndex()) === tabs,
+      async () => (await activeIndex()) === viewerTab + 1,
       'the tab editing the file',
     );
     assert.strictEqual(
