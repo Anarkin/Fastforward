@@ -1,5 +1,5 @@
 import { SerializeAddon } from '@xterm/addon-serialize';
-import { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
+import { UnicodeGraphemesAddon } from './graphemes';
 import { Terminal } from '@xterm/headless';
 import type { WindowsPty } from '../shared/protocol';
 import {
