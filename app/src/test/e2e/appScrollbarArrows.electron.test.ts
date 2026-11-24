@@ -120,32 +120,34 @@ suite('Scrollbar arrows', () => {
           parseFloat(getComputedStyle(element, '::-webkit-scrollbar').width),
         );
         const button = Math.round(size * scale);
-        const down = await scroller.evaluate((element, wide) => {
-          const box = element.getBoundingClientRect();
-          return {
-            x: box.right - wide,
-            y: box.top,
-            width: wide,
-            height: box.height,
-          };
-        }, size);
-        const across = await bar.evaluate((element) => {
-          const box = element.getBoundingClientRect();
-          return {
-            x: box.left,
-            y: box.top,
-            width: box.width,
-            height: box.height,
-          };
-        });
-        const shotOf = async (clip: typeof down) =>
-          Buffer.from(
-            await untilSettled(
-              async () => (await page.screenshot({ clip })).toString('base64'),
-              'the scrollbar to settle',
-            ),
-            'base64',
-          );
+        const down = () =>
+          scroller.evaluate((element, wide) => {
+            const box = element.getBoundingClientRect();
+            return {
+              x: box.right - wide,
+              y: box.top,
+              width: wide,
+              height: box.height,
+            };
+          }, size);
+        const across = () =>
+          bar.evaluate((element) => {
+            const box = element.getBoundingClientRect();
+            return {
+              x: box.left,
+              y: box.top,
+              width: box.width,
+              height: box.height,
+            };
+          });
+        const shotOf = async (clipOf: typeof down) => {
+          const settled = await untilSettled(async () => {
+            const clip = await clipOf();
+            const shot = await page.screenshot({ clip });
+            return `${JSON.stringify(clip)} ${shot.toString('base64')}`;
+          }, 'the scrollbar to settle where it stands');
+          return Buffer.from(settled.slice(settled.indexOf(' ') + 1), 'base64');
+        };
         const arrows = [
           ...(await arrowsIn(page, await shotOf(down), button, false)),
           ...(await arrowsIn(page, await shotOf(across), button, true)),
