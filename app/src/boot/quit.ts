@@ -28,24 +28,31 @@ export function flushBeforeQuit(
   ending: () => void,
   saved: () => Promise<unknown>,
   stopped: () => Promise<unknown>,
+  waited: () => Promise<unknown> = () => Promise.resolve(),
 ): void {
   let flushed = false;
-  let ended = false;
+  let started = false;
   app.on('will-quit', (event) => {
     if (flushed) {
       return;
     }
     event.preventDefault();
-    if (!ended) {
-      ended = true;
-      ending();
+    if (started) {
+      return;
     }
-    void Promise.all([
-      saved().then(() => app.releaseSingleInstanceLock()),
-      stopped(),
-    ]).finally(() => {
-      flushed = true;
-      app.quit();
-    });
+    started = true;
+    void waited()
+      .catch(() => undefined)
+      .then(() => {
+        ending();
+        return Promise.all([
+          saved().then(() => app.releaseSingleInstanceLock()),
+          stopped(),
+        ]);
+      })
+      .finally(() => {
+        flushed = true;
+        app.quit();
+      });
   });
 }

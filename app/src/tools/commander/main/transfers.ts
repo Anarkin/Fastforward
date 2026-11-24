@@ -164,8 +164,11 @@ function failureNotice({ ask, failures }: Running): Sentence | undefined {
     : strings.commander.copyFailedMany(failures.length, item, first.reason);
 }
 
+const puttingBack = ({ ask }: Running) => ask.archive?.job === 'update';
+
 export class Transfers {
   private readonly running: Running[] = [];
+  private readonly updatesWaiting: (() => void)[] = [];
   private ids = 0;
   private asks = 0;
 
@@ -243,6 +246,14 @@ export class Transfers {
     return this.running.length > 0;
   }
 
+  updatesEnded(): Promise<void> {
+    return this.running.some(puttingBack)
+      ? new Promise((resolve) => {
+          this.updatesWaiting.push(resolve);
+        })
+      : Promise.resolve();
+  }
+
   quit(): void {
     for (const running of this.running.splice(0)) {
       running.connection?.dispose();
@@ -295,6 +306,11 @@ export class Transfers {
       return;
     }
     this.running.splice(index, 1);
+    if (!this.running.some(puttingBack)) {
+      for (const resolve of this.updatesWaiting.splice(0)) {
+        resolve();
+      }
+    }
     running.connection?.dispose();
     running.connection = undefined;
     const { move, target } = running.ask.plan;

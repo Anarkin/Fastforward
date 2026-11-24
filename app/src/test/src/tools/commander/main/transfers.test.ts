@@ -269,6 +269,28 @@ suite('Transfers', () => {
     ]);
   });
 
+  test('tells once every put-back of a file edited into its archive has ended, not waiting for a copy, so quitting can wait for the edits to reach the archive', async () => {
+    const { coordinator, tell } = transfers();
+    const putBack: TransferAsk = {
+      ...ask(['notes.txt']),
+      plan: { sources: [], target: source, move: false },
+      archive: { job: 'update', file: path.join(source, 'a.zip') },
+    };
+    let ended = false;
+
+    await coordinator.updatesEnded();
+    coordinator.start(ask(['a.txt']));
+    coordinator.start(putBack);
+    void coordinator.updatesEnded().then(() => {
+      ended = true;
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(ended, false);
+    tell(1, { type: 'done', stopped: false });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(ended, true);
+  });
+
   test('says once archives were tested that they passed, its dialog shown or not, which failed and why, and how many failed', () => {
     const { coordinator, tell, last, notices } = transfers();
     coordinator.start(testing(['a.zip', 'b.7z']));

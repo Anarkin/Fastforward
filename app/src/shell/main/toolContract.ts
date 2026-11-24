@@ -76,6 +76,7 @@ export interface Tool<K extends ToolId> {
   newTab(page: Page): Promise<void>;
   reloadSettings(): void;
   quitNote?(): string | undefined;
+  quitWaits?(): Promise<void>;
   unsaved?(tab: Tab): boolean;
   saveUnsaved?(page: Page, tab: Tab): Promise<boolean>;
   quit(): void;

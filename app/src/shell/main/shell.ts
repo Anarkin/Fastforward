@@ -288,6 +288,14 @@ export class Shell {
     }
   }
 
+  async quitWaits(): Promise<void> {
+    await Promise.all(
+      toolIds.map(
+        (tool) => this.tools[tool].quitWaits?.() ?? Promise.resolve(),
+      ),
+    );
+  }
+
   quit(): void {
     this.viewSaver.flush();
     for (const tool of toolIds) {
@@ -409,6 +417,7 @@ export class Shell {
         ) {
           return;
         }
+        await this.quitWaits();
         host.quit();
         return;
       case 'closeWindow': {
@@ -419,6 +428,7 @@ export class Shell {
         ) {
           return;
         }
+        await this.quitWaits();
         host.closeWindow(window.id);
         return;
       }
