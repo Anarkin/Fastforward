@@ -205,7 +205,7 @@ async function start(asked: readonly string[]): Promise<void> {
     app,
     () => asking?.quit(),
     () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
-    () => Promise.all([stopRunningGit(), archiveWork.clear()]),
+    () => Promise.all([stopRunningGit(Infinity), archiveWork.clear()]),
     () => asking?.quitWaits() ?? Promise.resolve(),
   );
   const chooseFolders = async (

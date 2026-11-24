@@ -125,7 +125,7 @@ suite('App quitting', () => {
     }
   });
 
-  test('starts again while it waits for a checkout to end as it quits', async () => {
+  test('asks before quitting while a checkout runs, saying quitting waits for it, and starts again while it waits for the checkout to end', async () => {
     const folder = tempFolder('quitting-checkout');
     const profile = path.join(folder, 'profile');
     const hooks = path.join(folder, 'hooks');
@@ -166,6 +166,10 @@ suite('App quitting', () => {
           .toSorted((a, b) => a.id - b.id)[0]
           .close(),
       );
+      const asked = page.locator('.confirm-popup', {
+        hasText: strings.messages.quitWaitsForGit,
+      });
+      await asked.locator('.confirm-button.default').click();
       await waitFor(
         () => !holdsStartLock(profile),
         'the app to let another start',

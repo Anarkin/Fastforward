@@ -6,7 +6,6 @@ import { replaceBuiltin } from '../../../../helpers/builtins';
 import { fastForward } from '../../../../../tools/git/main/branches';
 import { switchToBranch } from '../../../../../tools/git/main/switches';
 import {
-  everyWriteEnded,
   writesEnded,
   writesRunning,
 } from '../../../../../tools/git/main/gitProcesses';
@@ -271,7 +270,7 @@ suite('Running git in a repository', () => {
       const switching = switchToBranch(gitPath, cwd, 'finishing');
       await waitFor(() => fs.existsSync(held.started), 'the checkout to start');
       await writesEnded(100);
-      const ended = everyWriteEnded();
+      const ended = stopRunningGit(Infinity);
       await new Promise((resolve) => setTimeout(resolve, 300));
       assert.strictEqual(await settledYet(ended), false);
       assert.strictEqual(writesRunning(), true);

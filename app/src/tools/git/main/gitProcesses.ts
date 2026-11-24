@@ -75,7 +75,7 @@ export function writesRunning(): boolean {
   return writing.size > 0;
 }
 
-export async function everyWriteEnded(): Promise<void> {
+async function everyWriteEnded(): Promise<void> {
   while (writing.size > 0) {
     await Promise.all(
       [...writing.keys()].flatMap((child) => running.get(child) ?? []),
@@ -85,7 +85,7 @@ export async function everyWriteEnded(): Promise<void> {
 
 export async function stopEveryGit(waitTime = writeTime): Promise<void> {
   await Promise.all([
-    writesEnded(waitTime),
+    Number.isFinite(waitTime) ? writesEnded(waitTime) : everyWriteEnded(),
     ...[...running.keys()]
       .filter((child) => !writing.has(child))
       .map((child) => stopGit(child)),
