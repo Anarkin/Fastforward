@@ -1,6 +1,5 @@
 import * as nodeFs from 'node:fs';
 import { createRequire } from 'node:module';
-import * as path from 'node:path';
 
 export type { BigIntStats, Dirent, FSWatcher, Stats } from 'node:fs';
 export type { FileHandle } from 'node:fs/promises';
@@ -18,9 +17,7 @@ function isFileSystem(value: unknown): value is FileSystem {
 
 export function filesWithoutAsar(
   electron: string | undefined = process.versions.electron,
-  load: (name: string) => unknown = createRequire(
-    path.join(process.cwd(), 'files.js'),
-  ),
+  load: (name: string) => unknown = createRequire(process.execPath),
 ): FileSystem {
   if (electron === undefined) {
     return nodeFs;
