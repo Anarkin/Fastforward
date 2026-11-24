@@ -1,5 +1,3 @@
-export const minimumWindowSize = { width: 1280, height: 720 };
-
 export interface Bounds {
   readonly x: number;
   readonly y: number;
@@ -107,20 +105,6 @@ export function firstWindowSize(workArea: Bounds): {
     width: Math.min(1400, workArea.width),
     height: Math.min(900, workArea.height),
   };
-}
-
-export function minimumWidth(workAreas: readonly Bounds[]): number {
-  return Math.min(
-    minimumWindowSize.width,
-    ...workAreas.map((area) => area.width),
-  );
-}
-
-export function minimumHeight(workAreas: readonly Bounds[]): number {
-  return Math.min(
-    minimumWindowSize.height,
-    ...workAreas.map((area) => area.height),
-  );
 }
 
 interface WindowState {

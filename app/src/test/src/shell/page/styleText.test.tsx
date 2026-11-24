@@ -129,9 +129,13 @@ suite('Style', () => {
     });
   });
 
-  test('names the folder of the terminal on the row the viewer and the editor name their file on, one row of monospace text tall, as a line of the diff and its header are, with no line under it, its end clear of the scrollbar of its own tool, the wide one of the text views or the narrow one of the others, so the name stands alike in every tool, as the row of the terminal took the height of its text alone and those of the viewer and the editor a pixel more than the header of the diff', () => {
+  test('names a file on a row one row of monospace text tall, as a line of the diff and its header are, with no line under it, its end clear of the wide scrollbar of the text views, so the name stands alike in every tool, as the rows took the height of their text alone and those of the viewer and the editor a pixel more than the header of the diff', () => {
     const row = withClass(
-      rendered(<TerminalTool active post={noop} listen={() => noop} />),
+      rendered(
+        <section className="column">
+          <div className="path-row" />
+        </section>,
+      ),
       'path-row',
     );
     assert.strictEqual(

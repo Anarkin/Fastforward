@@ -308,7 +308,6 @@ suite('Lessons from past mistakes', () => {
         'tools/diff/page/compareView.tsx',
         'tools/diff/page/tool.tsx',
         'tools/editor/page/tool.tsx',
-        'tools/terminal/page/tool.tsx',
         'tools/viewer/page/tool.tsx',
       ],
     );

@@ -8,10 +8,6 @@ import { useStore } from 'zustand';
 import type { TerminalToHost, TerminalToWebview } from '../shared/protocol';
 import { createTerminalStore } from './store';
 import { pageCursorLook } from '../../../lib/page/cursor';
-import { Toolbar } from '../../../lib/page/toolbar';
-import { SearchButton } from '../../../lib/page/search';
-import { PathTitle } from '../../../lib/page/pathTitle';
-import { strings } from '../../../lib/shared/strings';
 
 export function TerminalTool({
   active,
@@ -38,9 +34,6 @@ export function TerminalTool({
     forgetFolder,
   } = store.getState();
   const scrolling = useShell((state) => state.scrolling);
-  const folder = useShell(
-    (state) => state.tabs?.find((tab) => tab.id === state.active)?.root,
-  );
   const { copyText: onCopy, setToolItems } = useShellActions();
   const scrollingOf = useEffectEvent(() => scrolling);
 
@@ -95,20 +88,8 @@ export function TerminalTool({
 
   return active ? (
     <div className="repository">
-      <div className="columns bars-outside terminal-columns">
+      <div className="columns terminal-columns">
         <section className="column terminal">
-          <header className="column-title">
-            <Toolbar className="column-actions">
-              <SearchButton
-                title={strings.terminal.find}
-                onClick={noop}
-                disabled
-              />
-            </Toolbar>
-          </header>
-          <div className="path-row terminal-path">
-            {folder !== undefined && <PathTitle path={folder} />}
-          </div>
           <div className="column-body terminal-panel">
             <div className="terminal-screen" ref={screen} />
           </div>
@@ -117,5 +98,3 @@ export function TerminalTool({
     </div>
   ) : null;
 }
-
-const noop = () => {};

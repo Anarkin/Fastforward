@@ -84,3 +84,19 @@ export function cellsOf(
         : 0,
   };
 }
+
+export function cellOf(probe: HTMLElement): {
+  readonly width: number;
+  readonly height: number;
+} {
+  fontOf(probe);
+  probe.style.lineHeight = fontVariables.rowHeight;
+  probe.style.width = fontVariables.advance;
+  return {
+    width: onDevicePixels(
+      Number.parseFloat(getComputedStyle(probe).width),
+      devicePixelRatio,
+    ),
+    height: lineHeightOf(probe, Number.NaN, devicePixelRatio),
+  };
+}

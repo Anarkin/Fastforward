@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('fastforward', {
     return () => ipcRenderer.off('message', listener);
   },
   setWindowButtonColor: (color) => ipcRenderer.send('windowButtonColor', color),
+  setCellGrid: (grid) => ipcRenderer.send('cellGrid', grid ?? null),
   showWindow: () => ipcRenderer.send('showWindow'),
   listenMaximized: (handler) => {
     const listener = (_event: IpcRendererEvent, maximized: boolean) =>

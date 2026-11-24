@@ -117,8 +117,9 @@ suite('Terminal view', () => {
           dispose() {}
         },
         FitAddon: class {
-          fit() {
-            done.push('fit');
+          proposeDimensions() {
+            done.push('propose');
+            return undefined;
           }
         },
         WebglAddon: class {
@@ -144,7 +145,7 @@ suite('Terminal view', () => {
       });
       done.length = 0;
       lose();
-      assert.deepStrictEqual(done, ['options', 'fit']);
+      assert.deepStrictEqual(done, ['options', 'propose']);
       view.dispose();
     });
   });
@@ -174,9 +175,8 @@ suite('Terminal view', () => {
           dispose() {}
         },
         FitAddon: class {
-          fit() {
-            fitted.cols = 1150;
-            fitted.rows = 1200;
+          proposeDimensions() {
+            return { cols: 1150, rows: 1200 };
           }
         },
         UnicodeGraphemesAddon: class {
@@ -231,7 +231,9 @@ suite('Terminal view', () => {
           dispose() {}
         },
         FitAddon: class {
-          fit() {}
+          proposeDimensions() {
+            return undefined;
+          }
         },
         UnicodeGraphemesAddon: class {
           dispose() {}
@@ -293,7 +295,9 @@ suite('Terminal view', () => {
           dispose() {}
         },
         FitAddon: class {
-          fit() {}
+          proposeDimensions() {
+            return undefined;
+          }
         },
         UnicodeGraphemesAddon: class {
           dispose() {}

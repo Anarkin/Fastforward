@@ -355,6 +355,23 @@ body {
   background: var(--color-background);
 }
 
+.tool-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.cell-grid-probe {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .repository {
   flex: 1;
   min-height: 0;

@@ -702,7 +702,6 @@ export const strings = {
   },
   terminal: {
     newTab: 'New',
-    find: 'Search the output',
     exited: (code: number) =>
       `The shell exited with code ${code}. Press Enter to start a new one.`,
     couldNotStart: (shell: string, reason: string) =>

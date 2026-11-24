@@ -1,7 +1,7 @@
 import { followDrag } from '../../../lib/page/followDrag';
 
-export const minColumnWidths = [275, 150];
-export const minLastColumnWidth = 240;
+const minColumnWidths = [275, 150];
+const minLastColumnWidth = 240;
 
 export function templateOf(
   widths: readonly number[],

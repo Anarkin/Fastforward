@@ -34,7 +34,7 @@
 | Recent folders | Open a shell in a folder worked in before | — | Advanced | ✅ Yes | Open... and the folders worked in most, weighted by how recently, in the Terminal submenu of the + menu, as many as `tabs.recentFolders` says, 15 by default; removed with their X or Delete |
 | Open from other tools | Open a shell in the folder of a file manager, editor or git client | — | Common | ✅ Yes | Mod+Shift+O in a git or commander tab, `ff <folder>` in a terminal, and Open in Fastforward in the Windows Explorer menu, through the Open With popup; Open with Terminal in the menu of a folder, in the commander or on a part of a path anywhere |
 | New tab in the same folder | Open another shell where this one is | — | Common | ❌ No | Mod+Shift+O offers the other tools only |
-| Folder of the shell | Know the folder the shell is in | OSC 7, OSC 9;9 | Common | ✅ Yes | PowerShell, bash, zsh, fish and the Command Prompt are set up to tell it at each prompt; it names the tab, is named on the row under the header, as the viewer and the editor name their file, and is where Mod+Shift+O opens; a folder on a share is taken only on the server the shell started on, as what a program prints could name any host |
+| Folder of the shell | Know the folder the shell is in | OSC 7, OSC 9;9 | Common | ✅ Yes | PowerShell, bash, zsh, fish and the Command Prompt are set up to tell it at each prompt; it names the tab and is where Mod+Shift+O opens; a folder on a share is taken only on the server the shell started on, as what a program prints could name any host |
 | Background shells | Keep shells running in the tabs not shown | — | Core | ✅ Yes | A headless `xterm.js` keeps each screen, so a tab shown again gets it back whole, in this window or another: the lines it was scrolled back to, followed as the shell prints and older lines leave the history, the text selected in them, the cursor a program hid or gave a shape, and the region it scrolls below a status line; not the cursor a program saved, the character sets it chose or its tab stops |
 | Survive a reload | Keep the shells running while the window's page reloads | — | Niche | ✅ Yes | The shells run in a utility process of their own; the page reloads as the settings are saved |
 | Restore after a restart | Reopen the tabs and their shells once the app starts again | — | Common | 🟡 Partial | The tabs come back in their windows, each with a new shell in the folder it was last in, without their output |
@@ -54,7 +54,7 @@
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | GPU rendering | Draw the screen with the GPU | — | Common | ✅ Yes | `xterm.js`'s WebGL renderer, its canvas shown at its own size in device pixels rather than stretched by a fraction of one, or the DOM one with `tools.terminal.renderer` or once WebGL is lost, which draws the cursor its own way |
-| Font | Choose the font, its size and the line height | — | Core | ✅ Yes | The monospace font, size and line height of the settings, as the diff has them, the cells on whole device pixels, as many whole cells as fit from the frame of the block to its scrollbar and its bottom, less than a cell left over at the right and the bottom |
+| Font | Choose the font, its size and the line height | — | Core | ✅ Yes | The monospace font, size and line height of the settings, as the diff has them, the cells on whole device pixels, as many whole cells as fit from the left of the tab to its scrollbar and its bottom, none left over while the window is sized in whole cells, as [FEATURES](FEATURES.md#common-app) says, and less than a cell at the right and the bottom of a window maximized, snapped or full screen |
 | Zoom | Make the text larger or smaller for now | — | Common | ❌ No |  |
 | Ligatures | Join characters into the ligatures of the font | — | Advanced | ❌ No |  |
 | Colors | Set the 16 colors, the background, text and selection | — | Core | ✅ Yes | In the settings, for the light and the dark theme, following the theme of the app |
@@ -93,7 +93,7 @@
 | Scroll | Scroll back through the output | — | Core | ✅ Yes | The wheel moves `scrolling.wheelRows` rows a notch, 10 by default, gliding with `scrolling.smooth`, while the main screen shows and no program reads the mouse; and its scrollbar, the one every tool has, by its buttons, its track and its thumb, a line at a time |
 | Alternate screen | Keep full-screen programs out of the scrollback | `CSI ? 1049 h` | Core | ✅ Yes | By `xterm.js` |
 | Reflow | Wrap lines anew when the window is resized | — | Common | ✅ Yes | By `xterm.js` |
-| Find | Search the scrollback | — | Core | ❌ No | Its button stands at the right of the header, as in every tool, disabled |
+| Find | Search the scrollback | — | Core | ❌ No | No button; the shell fills its tab, with no bar above it |
 | Clear | Clear the screen and the scrollback from a command | — | Common | ❌ No | The shell's `clear` and `cls` work |
 | Save the output | Save the scrollback as text | — | Advanced | ❌ No |  |
 

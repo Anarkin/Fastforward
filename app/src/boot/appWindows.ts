@@ -29,6 +29,8 @@ import {
 import { reloadWhenGone } from './pageGone';
 import type { QuitGuard } from './quitGuard';
 import { TaskbarIds, taskbarBase, taskbarDetails } from './taskbarIds';
+import { cellSteps, prepareCellSteps } from './cellSteps';
+import { cellReportOf } from '../shell/shared/cellGrid';
 
 interface OpenedWindow {
   readonly window: BrowserWindow;
@@ -60,11 +62,13 @@ export class AppWindows {
   private readonly spareId: () => string;
   private readonly windowDrag: WindowDrag;
   private readonly pixelsReady: Promise<void>;
+  private readonly stepsReady: Promise<void>;
   private readonly taskbar: TaskbarIds;
   readonly everyWindow;
 
   constructor(private readonly deps: AppWindowsDeps) {
     this.pixelsReady = prepareWindowPixels(process.platform);
+    this.stepsReady = prepareCellSteps(process.platform);
     this.taskbar = new TaskbarIds(taskbarBase(deps.development));
     this.spareId = spareWindowIds(deps.storage.layout);
     this.windowDrag = new WindowDrag({
@@ -123,6 +127,17 @@ export class AppWindows {
         );
       },
     );
+    ipcMain.on('cellGrid', (event, grid: unknown) => {
+      const entry = fromApp(event);
+      const checked = cellReportOf(grid);
+      if (entry !== undefined) {
+        void Promise.all([this.pixelsReady, this.stepsReady]).then(() => {
+          if (!entry.window.isDestroyed()) {
+            cellSteps().follow(entry.window, checked);
+          }
+        });
+      }
+    });
     ipcMain.on('showWindow', (event) => {
       fromApp(event)?.showFirst();
     });

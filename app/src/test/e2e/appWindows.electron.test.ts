@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
+import { untilSettled } from './waits';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import {
   shownWindows,
@@ -212,7 +213,7 @@ suite('App with several windows', () => {
 
 suite('App window saved at 125%', () => {
   test.runIf(process.platform === 'win32')(
-    'opens a window at the very size it was saved at, as Windows grew a window saved 1400 by 800 to 1406 by 804 at 125%, and so on at every start',
+    'opens a window at the size it was saved at, never larger, as Windows grew a window saved 1400 by 800 to 1406 by 804 at 125%, and so on at every start, and smaller only by what fitting it down to whole cells of the terminal takes, less than two cells as a fraction of a pixel moves the room around the screen at 125%',
     async () => {
       const folder = tempFolder('window-size');
       const profile = path.join(folder, 'profile');
@@ -228,13 +229,35 @@ suite('App window saved at 125%', () => {
       );
       const app = await launchApp(profile, { scale: 1.25 });
       try {
-        await app.firstWindow();
+        const page = await app.firstWindow();
         await waitFor(
           async () => (await visibleBounds(app)).length === 1,
           'the window to show',
         );
-        const [opened] = await visibleBounds(app);
-        assert.deepStrictEqual(opened, saved);
+        const [opened] = await untilSettled(
+          () => visibleBounds(app),
+          'the window to be fitted',
+        );
+        const cell = await page.evaluate(() => {
+          const box = document
+            .querySelector('.cell-grid-cell')
+            ?.getBoundingClientRect();
+          return { width: box?.width ?? 0, height: box?.height ?? 0 };
+        });
+        assert.ok(opened);
+        const smaller = {
+          width: saved.width - opened.width,
+          height: saved.height - opened.height,
+        };
+        assert.deepStrictEqual(
+          {
+            x: opened.x,
+            y: opened.y,
+            width: smaller.width >= 0 && smaller.width < 2 * cell.width + 1,
+            height: smaller.height >= 0 && smaller.height < 2 * cell.height + 1,
+          },
+          { x: saved.x, y: saved.y, width: true, height: true },
+        );
       } finally {
         await closeOrKill(app);
         removeFolder(folder);

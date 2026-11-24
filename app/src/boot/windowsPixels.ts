@@ -33,6 +33,9 @@ export function windowsPixels(byElectron: WindowPixels): WindowPixels {
   const windowRect = user32.func(
     'bool GetWindowRect(void *window, _Out_ WindowsPixelsRect *rect)',
   );
+  const clientRect = user32.func(
+    'bool GetClientRect(void *window, _Out_ WindowsPixelsRect *rect)',
+  );
   const clientToScreen = user32.func(
     'bool ClientToScreen(void *window, _Inout_ WindowsPixelsPoint *point)',
   );
@@ -90,6 +93,26 @@ export function windowsPixels(byElectron: WindowPixels): WindowPixels {
         0,
         from.right - from.left,
         from.bottom - from.top,
+        keepPlace | keepOrder | keepActivation,
+      );
+    },
+    sizeClientTo: (window, pixels) => {
+      if (window.isMaximized() || window.isFullScreen()) {
+        return;
+      }
+      const handle = handleOf(window);
+      const outer = rectOf(handle);
+      const client = { left: 0, top: 0, right: 0, bottom: 0 };
+      if (outer === undefined || clientRect(handle, client) !== true) {
+        return;
+      }
+      setWindowPos(
+        handle,
+        null,
+        0,
+        0,
+        outer.right - outer.left - client.right + pixels.width,
+        outer.bottom - outer.top - client.bottom + pixels.height,
         keepPlace | keepOrder | keepActivation,
       );
     },

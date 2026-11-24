@@ -10,8 +10,8 @@ import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { notchesOf, type Wheel } from '../../../lib/page/wheelTurns';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
 import { withHiddenCursor, terminalTheme } from './theme';
-import { cellsOf } from './cells';
-import { gridWithin } from './grid';
+import { cellOf, cellsOf } from './cells';
+import { layoutGrid } from './grid';
 import { type TerminalToWebview } from '../shared/protocol';
 import { inputChunks } from './inputChunks';
 import { sizeWithin } from '../shared/size';
@@ -356,13 +356,18 @@ export class TerminalView {
 
   private layOut(): void {
     this.snapToPixels();
-    this.fit.fit();
     const { cols, rows } = this.terminal;
     const drawn = this.element.querySelector('.xterm-screen');
-    const grid = gridWithin(
+    const proposed = this.fit.proposeDimensions();
+    const grid = layoutGrid(
       this.element.getBoundingClientRect(),
       drawn?.getBoundingClientRect() ?? { width: 0, height: 0 },
       { columns: cols, rows },
+      proposed === undefined
+        ? undefined
+        : { columns: proposed.cols, rows: proposed.rows },
+      this.webgl ? devicePixelRatio : undefined,
+      this.webgl ? cellOf(this.probe) : undefined,
     );
     const within = sizeWithin(grid.columns, grid.rows);
     if (

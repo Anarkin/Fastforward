@@ -6,14 +6,10 @@ import {
   draggedWidths,
   drawnWidths,
   maxWidth,
-  minColumnWidths,
-  minLastColumnWidth,
   resetWidth,
   templateOf,
   widthsToLoad,
 } from '../../../../../tools/git/page/columns';
-import { minimumWindowSize } from '../../../../../boot/windowPlacement';
-import { stylesheetPx } from '../../../../helpers/pageSources';
 
 suite('Columns', () => {
   test('gives a hidden column no width instead of dropping it, so it keeps its place', () => {
@@ -35,16 +31,6 @@ suite('Columns', () => {
     assert.strictEqual(maxWidth([460, 300], [true, false], 1, 1000, 0), 760);
     assert.strictEqual(maxWidth([460, 300], [false, false], 1, 500, 0), 150);
     assert.strictEqual(maxWidth([460, 300], [false, false], 0, 500, 0), 275);
-  });
-
-  test('fits every column at its least width in the smallest window, past the padding and gaps between them', () => {
-    const gutter = stylesheetPx(/--gutter-width: (\d+)px;/);
-    const columns = minColumnWidths.length + 1;
-    const least =
-      minColumnWidths.reduce((sum, width) => sum + width, 0) +
-      minLastColumnWidth +
-      (columns + 1) * gutter;
-    assert.ok(least <= minimumWindowSize.width, `${least}`);
   });
 
   test('leaves the last column its room past the padding and gaps between the columns', () => {

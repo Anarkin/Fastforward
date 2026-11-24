@@ -83,7 +83,7 @@ async function withTerminal(
 }
 
 suite('Terminal page', () => {
-  test('stands the screen in a column under a bar of buttons, a find at its right that does nothing yet, and a row naming the folder of its shell, as the viewer and the editor name their file', () => {
+  test('stands the screen alone in its tab, with no bar of buttons, no find and no row naming the folder of its shell, so the shell fills the tab, its folder named by the tab', () => {
     const shown = (
       <ShellStore
         value={tabsStore(
@@ -97,20 +97,15 @@ suite('Terminal page', () => {
     const html = renderToStaticMarkup(shown);
     const page = rendered(shown);
     const column = withClass(page, 'column', 'terminal');
-    const actions = withClass(
-      withClass(column, 'column-title'),
-      'column-actions',
-    );
     assert.deepStrictEqual(
-      allWithClass(actions, 'search-button').map((button) =>
-        button.attributes.get('disabled'),
-      ),
-      [''],
+      [
+        allWithClass(column, 'column-title').length,
+        allWithClass(column, 'path-row').length,
+        allWithClass(column, 'search-button').length,
+      ],
+      [0, 0, 0],
     );
-    assert.match(
-      html,
-      /class="path-row terminal-path">.*>C:\\<.*>Users<.*>me</,
-    );
+    assert.doesNotMatch(html, /Users/);
     assert.strictEqual(
       allWithClass(withClass(column, 'column-body'), 'terminal-screen').length,
       1,

@@ -1,5 +1,19 @@
 .terminal-columns {
   grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+}
+
+.terminal-columns > .column {
+  --column-line: 0px;
+  border-radius: 0;
+}
+
+.terminal-columns > .column::after {
+  content: none;
+}
+
+.terminal-columns .column-body {
+  border-radius: 0;
 }
 
 .terminal-panel {
@@ -13,7 +27,8 @@
   background: var(--color-terminal-background);
 }
 
-.terminal-screen {
+.terminal-screen,
+.cell-grid-screen {
   position: absolute;
   inset: 0 calc(var(--scrollbar-size) + var(--line-right, 0px))
     var(--line-below, 0px) var(--column-line, 0px);
@@ -38,4 +53,12 @@
   height: calc(
     attr(height type(<number>)) * var(--device-pixel, 1px)
   ) !important;
+}
+
+.cell-grid-cell {
+  position: absolute;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  width: var(--terminal-advance);
+  height: var(--terminal-row-height);
 }

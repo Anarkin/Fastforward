@@ -27,6 +27,8 @@ import { newTabItems, newTabTrigger } from './tabMenus';
 import { TabBar } from './tabBar';
 import { useWindowTitle, windowTitle } from './windowTitle';
 import { ToolViews } from './tools';
+import { CellGridProbe } from './cellGridProbe';
+import type { CellReport } from '../shared/cellGrid';
 import { confirmation, type Confirming } from './confirming';
 
 function ShellConfirm({
@@ -196,7 +198,10 @@ export function App({ name, post, listen, dropFiles }: Props) {
               <Popups />
               <Notices />
               <Tooltip />
-              <ToolViews />
+              <div className="tool-area">
+                <ToolViews />
+                <CellGridProbe onGrid={tellCellGrid} />
+              </div>
               <NoticeKey />
             </div>
           </FollowPathContext>
@@ -205,3 +210,5 @@ export function App({ name, post, listen, dropFiles }: Props) {
     </ShellStore>
   );
 }
+
+const tellCellGrid = (grid: CellReport) => window.fastforward.setCellGrid(grid);

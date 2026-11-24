@@ -1,9 +1,10 @@
-import type { BrowserWindow } from 'electron';
+import { screen, type BrowserWindow } from 'electron';
 
 export interface WindowPixels {
   moveContent(window: BrowserWindow, x: number, y: number): void;
   sizeLike(window: BrowserWindow, source: BrowserWindow): void;
   sizeTo(window: BrowserWindow, size: Size): void;
+  sizeClientTo(window: BrowserWindow, pixels: Size): void;
 }
 
 export interface Size {
@@ -51,6 +52,13 @@ const byElectron: WindowPixels = {
     window.setSize(width, height);
   },
   sizeTo: () => undefined,
+  sizeClientTo: (window, pixels) => {
+    const { scaleFactor } = screen.getDisplayMatching(window.getBounds());
+    window.setContentSize(
+      Math.round(pixels.width / scaleFactor),
+      Math.round(pixels.height / scaleFactor),
+    );
+  },
 };
 
 let current = byElectron;
