@@ -257,6 +257,10 @@ export class CommanderTool implements Tool<'commander'> {
     return notes.length === 0 ? undefined : notes.join(' ');
   }
 
+  quitWaits(): Promise<void> {
+    return this.transfers.updatesEnded();
+  }
+
   quit(): void {
     this.transfers.quit();
     for (const { stop } of this.copies.copiesWatched) {
