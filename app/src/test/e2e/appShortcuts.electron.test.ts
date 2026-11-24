@@ -173,8 +173,9 @@ suite('App commander', () => {
       .click();
     await waitFor(
       async () =>
-        (await marks()).marked.join() === 'Clipboard,Kept from the shell',
-      'both groups of the terminal to be marked, as both show',
+        (await marks()).marked.join() ===
+        'Clipboard,Searching,Kept from the shell',
+      'every group of the terminal to be marked, as all of them show',
     );
     const focused = await commanderPage.evaluate(() =>
       document.activeElement?.matches('.shortcuts-filter input'),
