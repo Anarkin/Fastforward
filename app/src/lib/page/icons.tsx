@@ -205,9 +205,13 @@ function TerminalIcon() {
       aria-hidden="true"
     >
       <path d={frameOutline(drawing)} fill="currentColor" stroke="none" />
-      <path className="terminal-screen" d={boxOutline(screen)} stroke="none" />
       <path
-        className="terminal-prompt"
+        className="terminal-icon-screen"
+        d={boxOutline(screen)}
+        stroke="none"
+      />
+      <path
+        className="terminal-icon-prompt"
         d={[...chevron, underscore].map(boxOutline).join('')}
         stroke="none"
       />

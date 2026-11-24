@@ -769,11 +769,11 @@ suite('Style', () => {
       'var(--color-commander-icon-accent)',
     );
     assert.strictEqual(
-      cascaded(withClass(bar, 'terminal-screen'), 'fill'),
+      cascaded(withClass(bar, 'terminal-icon-screen'), 'fill'),
       'var(--color-terminal-icon-screen)',
     );
     assert.strictEqual(
-      cascaded(withClass(bar, 'terminal-prompt'), 'fill'),
+      cascaded(withClass(bar, 'terminal-icon-prompt'), 'fill'),
       'var(--color-terminal-icon-accent)',
     );
   });

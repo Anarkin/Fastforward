@@ -238,11 +238,11 @@
   color: var(--color-terminal-icon);
 }
 
-.tool-terminal .terminal-screen {
+.tool-terminal .terminal-icon-screen {
   fill: var(--color-terminal-icon-screen);
 }
 
-.tool-terminal .terminal-prompt {
+.tool-terminal .terminal-icon-prompt {
   fill: var(--color-terminal-icon-accent);
 }
 

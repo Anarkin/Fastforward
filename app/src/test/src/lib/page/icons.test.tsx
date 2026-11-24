@@ -146,8 +146,8 @@ suite('Icons', () => {
   test('draws the prompt of the terminal on as many units as the device pixels it takes, its screen and its prompt in colors of their own', () => {
     const html = renderToStaticMarkup(<icons.ToolIcon tool="terminal" />);
     assert.match(html, /viewBox="0 0 16 16"/);
-    assert.match(html, /class="terminal-screen"/);
-    assert.match(html, /class="terminal-prompt"/);
+    assert.match(html, /class="terminal-icon-screen"/);
+    assert.match(html, /class="terminal-icon-prompt"/);
   });
 
   test('draws every straight stroke and dot of an icon on half a unit, so at 100% it fills a row or column of whole pixels rather than two half-tone ones', () => {
