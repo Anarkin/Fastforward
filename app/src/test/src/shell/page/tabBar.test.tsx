@@ -33,8 +33,12 @@ function tabsShell(
 }
 
 function tabsOf(nav: React.ReactNode): React.ReactElement[] {
-  assert.ok(isValidElement<{ children: React.ReactElement[] }>(nav));
-  const list = nav.props.children[1];
+  assert.ok(isValidElement<{ children: React.ReactNode[] }>(nav));
+  const list = nav.props.children.find(
+    (child) =>
+      isValidElement<{ className?: string }>(child) &&
+      child.props.className === 'tab-list',
+  );
   assert.ok(isValidElement<{ children: React.ReactElement[] }>(list));
   const strip = list.props.children[0];
   assert.ok(isValidElement<{ children: React.ReactElement[] }>(strip));

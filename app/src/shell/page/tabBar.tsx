@@ -7,7 +7,7 @@ import {
 import { labelTip, tip } from '../../lib/page/tips';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo } from '../shared/protocol';
-import { AddIcon, CloseIcon, ToolIcon } from '../../lib/page/icons';
+import { AddIcon, CloseIcon, ShieldIcon, ToolIcon } from '../../lib/page/icons';
 import { titleBarHeight } from '../shared/titleBar';
 import { shellKeymap } from '../shared/keymap';
 import { clicked, keysOf } from '../../lib/shared/keymap';
@@ -76,6 +76,7 @@ function tabTip({ root, name, tool, compared }: TabInfo): Sentence {
 }
 
 export function TabBar({ menu }: { menu?: React.ReactNode }) {
+  const elevated = useShell((state) => state.about?.elevated);
   const tabs = useShell((state) => state.tabs ?? noTabs);
   const known = useShell((state) => state.tabs !== undefined);
   const active = useShell((state) => state.active);
@@ -197,6 +198,14 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
       style={{ minHeight: titleBarHeight }}
     >
       {menu}
+      {elevated !== undefined && (
+        <span
+          className="app-elevated"
+          {...tip(strings.tabs.elevated[elevated])}
+        >
+          <ShieldIcon />
+        </span>
+      )}
       <div className="tab-list" ref={list}>
         <div
           className={overflowing ? 'tab-strip overflowing' : 'tab-strip'}

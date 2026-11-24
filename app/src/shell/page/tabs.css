@@ -374,3 +374,14 @@
   align-self: center;
   margin: 0 0 2px 4px;
 }
+
+.tabs > .app-elevated {
+  flex: none;
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  height: calc(max(1lh, 20px) + 8px);
+  margin-bottom: 4px;
+  color: var(--color-warning-foreground);
+  -webkit-app-region: no-drag;
+}

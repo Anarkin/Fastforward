@@ -59,6 +59,7 @@ import { viewerToolOf } from './viewerHost';
 import { editorToolOf } from './editorHost';
 import type { EditorTool } from '../tools/editor/main/tool';
 import { shellHostOf } from './shellHost';
+import { runsElevated } from './elevated';
 
 const dist = __dirname;
 const development = !app.isPackaged;
@@ -324,6 +325,7 @@ async function start(asked: readonly string[]): Promise<void> {
     quitGuard,
     git,
     system,
+    elevated: await runsElevated(process.platform),
     commandPlace,
     windows,
     gitTool,

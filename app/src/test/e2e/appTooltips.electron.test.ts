@@ -39,6 +39,18 @@ suite('App tooltips', () => {
   const flat = () =>
     page.locator(`button[data-tip="${strings.commander.flatView}"]`).first();
   const away = () => page.mouse.move(400, 400);
+  const about = (elevated?: 'administrator') =>
+    app.evaluate(({ BrowserWindow }, elevation) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        window.webContents.send('message', {
+          type: 'about',
+          version: '0',
+          development: true,
+          system: 'test',
+          ...(elevation !== undefined && { elevated: elevation }),
+        });
+      }
+    }, elevated);
 
   beforeAll(async () => {
     folder = tempFolder('tooltips');
@@ -214,6 +226,45 @@ suite('App tooltips', () => {
     await page.locator('.tabs .tab').nth(0).click();
     await writeSettings(page, profile, atOnce);
     await page.locator('.commander-pane').first().waitFor();
+  });
+
+  test('marks a window of an app run as administrator by a shield beside the app icon, saying what that means in its tooltip, hidden while the opening plays and faded in with the + once it is done, and none in an app run as a user', async () => {
+    await away();
+    const shield = page.locator('.tabs .app-elevated');
+    assert.strictEqual(await shield.count(), 0);
+    await about('administrator');
+    await shield.hover();
+    await tooltip().waitFor();
+    assert.strictEqual(
+      await tooltip().locator('.card-message').textContent(),
+      strings.tabs.elevated.administrator,
+    );
+    await away();
+    const looks = () =>
+      page.evaluate(() =>
+        ['.tabs .app-elevated', '.tabs .tab-add'].map((selector) => {
+          const element = document.querySelector(selector);
+          return element === null
+            ? undefined
+            : getComputedStyle(element).pointerEvents;
+        }),
+      );
+    await page.evaluate(() =>
+      document.documentElement.setAttribute('data-opening', ''),
+    );
+    assert.deepStrictEqual(await looks(), ['none', 'none']);
+    await page.evaluate(() =>
+      document.documentElement.removeAttribute('data-opening'),
+    );
+    assert.deepStrictEqual(await looks(), ['auto', 'auto']);
+    await waitFor(
+      async () =>
+        (await shield.evaluate((mark) => getComputedStyle(mark).opacity)) ===
+        '1',
+      'the shield faded in whole',
+    );
+    await about();
+    await shield.waitFor({ state: 'detached' });
   });
 
   test('names the byte a sign of the invisible stands for in Hex, by its value, as a byte past ASCII is no character there', async () => {

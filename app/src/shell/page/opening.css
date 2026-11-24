@@ -17,13 +17,15 @@
   visibility: hidden;
 }
 
-.tabs .tab-add {
+.tabs .tab-add,
+.tabs .app-elevated {
   transition:
     opacity 0.3s ease-out,
     transform 0.3s ease-out;
 }
 
-:root[data-opening] .tabs .tab-add {
+:root[data-opening] .tabs .tab-add,
+:root[data-opening] .tabs .app-elevated {
   opacity: 0;
   transform: scale(0.6);
   pointer-events: none;

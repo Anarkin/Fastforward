@@ -9,6 +9,7 @@ import { writeReadOnly } from './readOnlyFile';
 import type { AppWindows } from './appWindows';
 import type { QuitGuard } from './quitGuard';
 import type { Updates } from './updates';
+import type { Elevation } from '../shell/shared/protocol';
 import { tearsOffTabs } from './tabDrag';
 import {
   fileSystemFor,
@@ -38,6 +39,7 @@ export interface ShellHostDeps {
   readonly quitGuard: QuitGuard;
   readonly git: GitLocator;
   readonly system: string;
+  readonly elevated: Elevation | undefined;
   readonly commandPlace: CommandPlace | undefined;
   readonly windows: AppWindows;
   readonly gitTool: Pick<GitTool, 'cloneInto' | 'initRepositoryIn'>;
@@ -55,6 +57,7 @@ export function shellHostOf({
   quitGuard,
   git,
   system,
+  elevated,
   commandPlace,
   windows,
   gitTool,
@@ -93,6 +96,7 @@ export function shellHostOf({
       development,
       ...(git.git.kind === 'found' && { git: git.git.version }),
       system,
+      ...(elevated !== undefined && { elevated }),
     }),
     copyText: (text) => {
       void clipboard.writeText(text);

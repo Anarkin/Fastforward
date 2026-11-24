@@ -220,6 +220,11 @@ export const strings = {
     ok: 'OK',
   },
   tabs: {
+    elevated: {
+      administrator:
+        'Fastforward runs as administrator, so the shells, git and the programs it opens run as administrator too.',
+      root: 'Fastforward runs as root, so the shells, git and the programs it opens run as root too.',
+    },
     tabs: 'Tabs',
     newTab: 'New Tab',
     newWindow: 'New Window',

@@ -54,11 +54,14 @@ export interface ToolChoice {
   readonly fits: boolean;
 }
 
+export type Elevation = 'administrator' | 'root';
+
 export interface AboutInfo {
   readonly version: string;
   readonly development: boolean;
   readonly git?: string;
   readonly system: string;
+  readonly elevated?: Elevation;
 }
 
 export type UpdateStatus =
