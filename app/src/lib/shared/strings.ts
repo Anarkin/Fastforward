@@ -1049,6 +1049,8 @@ export const strings = {
     folderThere: 'A folder of that name is there.',
     fileThere: 'A file of that name is there.',
     itselfThere: 'The item there is this one, reached by another path.',
+    notCopied:
+      'It is a pipe, a socket or a device rather than a file, which has no content to copy.',
     layout: 'Layout',
     layouts: { details: 'Details', thumbnails: 'Thumbnails' },
     groupByColor: 'Group by Color',

@@ -404,8 +404,11 @@ class Transfer {
       await this.copyFolder(source, into, from);
     } else if (from.isSymbolicLink()) {
       await this.copyLink(source, into, overwrite, name);
-    } else {
+    } else if (from.isFile()) {
       await this.copyFile(source, into, from, overwrite, name);
+    } else {
+      this.events.failed(name, strings.commander.notCopied);
+      this.passed({ files: 1, bytes: 0 });
     }
   }
 
@@ -567,8 +570,10 @@ class Transfer {
     const pieceBytes = this.options.pieceBytes ?? 1024 * 1024;
     const input = await fs.promises.open(source, 'r');
     let output: fs.promises.FileHandle | undefined;
+    let made = false;
     try {
       output = await fs.promises.open(target, 'wx', 0o666);
+      made = true;
       const piece = Buffer.allocUnsafe(pieceBytes);
       for (let position = 0; ;) {
         this.stopIfAsked();
@@ -588,7 +593,9 @@ class Transfer {
     } catch (error) {
       await output?.close().catch(ignored);
       output = undefined;
-      await fs.promises.rm(target, { force: true }).catch(ignored);
+      if (made) {
+        await fs.promises.rm(target, { force: true }).catch(ignored);
+      }
       throw error;
     } finally {
       await output?.close();
