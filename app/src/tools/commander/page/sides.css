@@ -509,29 +509,3 @@
   left: var(--bar-space);
   right: auto;
 }
-
-.commander-pane {
-  anchor-scope: --side-list;
-}
-
-.commander-pane > .column-body {
-  anchor-name: --side-list;
-}
-
-.floating-search {
-  position: absolute;
-  position-anchor: --side-list;
-  top: calc(anchor(top) + var(--bar-space));
-  right: calc(anchor(right) + var(--scrollbar-size) + var(--bar-space));
-  z-index: 20;
-  display: flex;
-  box-sizing: border-box;
-  width: min(
-    440px,
-    calc(anchor-size(width) - var(--scrollbar-size) - 2 * var(--bar-space))
-  );
-  padding: var(--bar-space);
-  background: var(--color-panel-background);
-  border-radius: var(--radius);
-  box-shadow: var(--popup-shadow);
-}

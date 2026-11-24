@@ -52,6 +52,32 @@ input[type='checkbox']:focus-visible {
   min-width: 0;
 }
 
+.search-scope {
+  anchor-scope: --search-area;
+}
+
+.search-area {
+  anchor-name: --search-area;
+}
+
+.floating-search {
+  position: absolute;
+  position-anchor: --search-area;
+  top: calc(anchor(top) + var(--bar-space));
+  right: calc(anchor(right) + var(--scrollbar-across) + var(--bar-space));
+  z-index: 20;
+  display: flex;
+  box-sizing: border-box;
+  width: min(
+    440px,
+    calc(anchor-size(width) - var(--scrollbar-across) - 2 * var(--bar-space))
+  );
+  padding: var(--bar-space);
+  background: var(--color-panel-background);
+  border-radius: var(--radius);
+  box-shadow: var(--popup-shadow);
+}
+
 .search-box {
   flex: 1;
   display: flex;

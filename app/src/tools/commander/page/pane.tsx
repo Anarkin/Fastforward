@@ -47,6 +47,7 @@ import { goesOn } from './sideStatus';
 import { folderLooks } from './headerLooks';
 import { PaneMenus } from './paneHeader';
 import { inFirstPart } from '../../../lib/page/pathLooks';
+import { FloatingSearch } from '../../../lib/page/floatingSearch';
 declare module 'react' {
   interface CSSProperties {
     readonly '--commander-extension'?: string;
@@ -338,7 +339,7 @@ export function Pane({
   return (
     <section
       ref={section}
-      className={`column commander-pane${active ? '' : ' inactive'}`}
+      className={`column commander-pane search-scope${active ? '' : ' inactive'}`}
       aria-label={strings.commander.sides[side]}
       onPointerDown={onActivate}
       onFocus={onActivate}
@@ -385,7 +386,7 @@ export function Pane({
         </div>
       )}
       <div
-        className={`column-body${dropInto === null ? ' drop-target' : ''}`}
+        className={`column-body search-area${dropInto === null ? ' drop-target' : ''}`}
         ref={body}
         onContextMenu={openFolderMenu}
         onDragOver={onDragOver}
@@ -435,7 +436,7 @@ export function Pane({
         )}
       </div>
       {filtering && (
-        <div className="floating-search">
+        <FloatingSearch>
           <PaneFilter
             side={side}
             query={query}
@@ -480,7 +481,7 @@ export function Pane({
             }}
             onClose={closeFilter}
           />
-        </div>
+        </FloatingSearch>
       )}
       <PaneStatus
         side={side}
