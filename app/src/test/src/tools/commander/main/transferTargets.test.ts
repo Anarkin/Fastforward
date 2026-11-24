@@ -3,8 +3,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, suite, test } from 'vitest';
-import { refusedTargetOnDisk } from '../../../../../tools/commander/main/transferTargets';
+import {
+  refusedTarget,
+  refusedTargetOnDisk,
+} from '../../../../../tools/commander/main/transferTargets';
 import { strings } from '../../../../../lib/shared/strings';
+
+const from = (...parts: string[]) => path.join(path.sep, 'src', ...parts);
 
 suite('The target of a copy on disk', () => {
   const made: string[] = [];
@@ -46,6 +51,20 @@ suite('The target of a copy on disk', () => {
         process.platform,
         true,
       ),
+      undefined,
+    );
+  });
+
+  test('refuses items of one name from two folders into one folder, as from flat view, as the second took the first for an item there already and Overwrite replaced it, the first moved there lost, its case aside where the system ignores it', () => {
+    const target = path.join(path.sep, 'target');
+    const alike = [from('a', 'x.txt'), from('b', 'X.TXT')];
+    assert.deepStrictEqual(
+      refusedTarget(alike, target, 'win32'),
+      strings.commander.namesAlike('X.TXT'),
+    );
+    assert.strictEqual(refusedTarget(alike, target, 'linux'), undefined);
+    assert.strictEqual(
+      refusedTarget([from('a', 'x.txt'), from('b', 'y.txt')], target, 'win32'),
       undefined,
     );
   });

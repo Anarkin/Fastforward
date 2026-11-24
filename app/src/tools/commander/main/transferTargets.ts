@@ -4,12 +4,32 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import { folderKey } from '../shared/paths';
 
+export function nameShared(
+  sources: readonly string[],
+  platform: NodeJS.Platform,
+): string | undefined {
+  const seen = new Set<string>();
+  for (const source of sources) {
+    const name = path.basename(source);
+    const key = folderKey(name, platform);
+    if (seen.has(key)) {
+      return name;
+    }
+    seen.add(key);
+  }
+  return undefined;
+}
+
 export function refusedTarget(
   sources: readonly string[],
   target: string,
   platform: NodeJS.Platform,
   copiedBesideThemselves = false,
 ): Sentence | undefined {
+  const shared = nameShared(sources, platform);
+  if (shared !== undefined) {
+    return strings.commander.namesAlike(shared);
+  }
   const key = (each: string) => folderKey(path.resolve(each), platform);
   if (
     !copiedBesideThemselves &&

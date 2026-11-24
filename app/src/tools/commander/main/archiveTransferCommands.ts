@@ -16,7 +16,7 @@ import type { ArchiveCommands } from './archiveCommands';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { ArchiveBranch } from './archiveTree';
 import type { TransferCommandsHost } from './transferCommands';
-import { refusedTarget } from './transferTargets';
+import { nameShared, refusedTarget } from './transferTargets';
 import type { Stock } from './originals';
 
 export interface ArchiveTransferCommandsAccess {
@@ -40,22 +40,6 @@ function branchesNamed(
       ) ?? []
     );
   });
-}
-
-function nameShared(
-  names: readonly string[],
-  key: (name: string) => string,
-): string | undefined {
-  const seen = new Set<string>();
-  for (const name of names) {
-    const base = path.basename(name);
-    const each = key(base);
-    if (seen.has(each)) {
-      return base;
-    }
-    seen.add(each);
-  }
-  return undefined;
 }
 
 export class ArchiveTransferCommands {
@@ -100,7 +84,7 @@ export class ArchiveTransferCommands {
       existing === 'skip'
         ? names.filter((name) => !clashing.includes(name))
         : names;
-    const alike = nameShared(kept, key);
+    const alike = nameShared(kept, platform);
     if (alike !== undefined) {
       this.host.refuse(page, strings.commander.namesAlike(alike));
       return;
@@ -233,7 +217,7 @@ export class ArchiveTransferCommands {
     }
     const { archive, inner, paths, withoutFolders, files, bytes, encrypted } =
       found;
-    const alike = withoutFolders ? nameShared(kept, key) : undefined;
+    const alike = withoutFolders ? nameShared(kept, platform) : undefined;
     if (alike !== undefined) {
       this.host.refuse(page, strings.commander.namesAlike(alike));
       return;
