@@ -29,7 +29,7 @@ const target = openedAt(path.join('D:', 'into.7z'));
 const item = (itemPath: string): ArchiveItem => ({
   path: itemPath,
   folder: false,
-  size: 10,
+  size: Buffer.byteLength(itemPath),
   modified: 0,
   hiddenAttribute: false,
   link: false,

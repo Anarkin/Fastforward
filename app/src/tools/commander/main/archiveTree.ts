@@ -11,6 +11,7 @@ export interface ArchiveBranch {
   readonly path: string;
   readonly parts: readonly string[];
   readonly folder: boolean;
+  readonly size?: number;
   readonly children: readonly ArchiveBranch[];
 }
 
@@ -179,6 +180,13 @@ export class ArchiveTree {
           (child) => this.branch(parts, child) ?? [],
         )
       : [];
-    return { path: node.path, parts, folder: node.entry.folder, children };
+    return {
+      path: node.path,
+      parts,
+      folder: node.entry.folder,
+      ...(!node.entry.folder &&
+        node.entry.size !== undefined && { size: node.entry.size }),
+      children,
+    };
   }
 }

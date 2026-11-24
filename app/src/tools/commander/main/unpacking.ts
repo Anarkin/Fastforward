@@ -7,7 +7,7 @@ import type { ConnectTransfer } from './transfers';
 import { itemsAt } from './archiveFiles';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { ArchiveBranch } from './archiveTree';
-import { movedOut, presentIn } from './movedOut';
+import { movedOut, presentIn, type Present } from './movedOut';
 
 interface Moving {
   readonly roots: readonly ArchiveBranch[];
@@ -78,7 +78,7 @@ export function unpackingFirst(
       done: Done,
       { roots, platform }: Moving,
       folder: string,
-      before: ReadonlySet<string>,
+      before: Present,
     ) => {
       const { paths: moved, unmatched } = movedOut(
         roots,
@@ -126,7 +126,7 @@ export function unpackingFirst(
     const finished = (
       done: Done,
       folder: string,
-      before: ReadonlySet<string> | undefined,
+      before: Present | undefined,
     ) => {
       if (
         moving === undefined ||

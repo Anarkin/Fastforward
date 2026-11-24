@@ -14,8 +14,16 @@ import { root, at, file } from './entryFixtures';
 import { withCopiesFolder } from './copiesFixtures';
 import { archiveItem, zipped } from './fakeArchives';
 
+const versionOf = (name: string) => `${archiveItem(name).size ?? 0}:0`;
+
 const keyOf = (name: string) =>
-  thumbnailKey(path.join(at('a.zip'), name), 1, 0, 144, 1.5);
+  thumbnailKey(
+    path.join(at('a.zip'), name),
+    archiveItem(name).size ?? 0,
+    0,
+    144,
+    1.5,
+  );
 
 suite('Commander tool in archives', () => {
   suite('reading its files', () => {
@@ -68,7 +76,7 @@ suite('Commander tool in archives', () => {
       const thumbnail = async (name: string) => {
         const response = await tool.thumbnail(
           new URL(
-            `fastforward://app${thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name }, '1:0')}`,
+            `fastforward://app${thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name }, versionOf(name))}`,
           ),
         );
         return response.ok
@@ -106,7 +114,7 @@ suite('Commander tool in archives', () => {
       thumbnails.set(keyOf('secret.png'), webp);
       const cached = await tool.thumbnail(
         new URL(
-          `fastforward://app${thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name: 'secret.png' }, '1:0')}&box=144&ratio=1.5`,
+          `fastforward://app${thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name: 'secret.png' }, versionOf('secret.png'))}&box=144&ratio=1.5`,
         ),
       );
       assert.strictEqual(cached.status, 404);
@@ -134,7 +142,7 @@ suite('Commander tool in archives', () => {
       const filled = async () => {
         const response = await tool.thumbnail(
           new URL(
-            `fastforward://app${filledThumbnailUrl(boxedThumbnailUrl(thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name: 'a.png' }, '1:0'), 144, 1.5))}`,
+            `fastforward://app${filledThumbnailUrl(boxedThumbnailUrl(thumbnailUrl({ tab: '1', side: 'right', folder: at('a.zip'), name: 'a.png' }, versionOf('a.png')), 144, 1.5))}`,
           ),
         );
         await response.body?.cancel();

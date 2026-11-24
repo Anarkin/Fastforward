@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { crc32 } from 'node:zlib';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import {
   Archives,
@@ -28,6 +29,55 @@ import {
   deepOrOld,
 } from './roundTripFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+
+function storedZip(entries: readonly (readonly [string, string])[]): Buffer {
+  const locals: Buffer[] = [];
+  const centrals: Buffer[] = [];
+  let offset = 0;
+  for (const [name, text] of entries) {
+    const nameBytes = Buffer.from(name, 'utf8');
+    const data = Buffer.from(text, 'utf8');
+    const crc = crc32(data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0x0800, 6);
+    local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(data.length, 18);
+    local.writeUInt32LE(data.length, 22);
+    local.writeUInt16LE(nameBytes.length, 26);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0x0800, 8);
+    central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(data.length, 20);
+    central.writeUInt32LE(data.length, 24);
+    central.writeUInt16LE(nameBytes.length, 28);
+    central.writeUInt32LE(offset, 42);
+    locals.push(local, nameBytes, data);
+    centrals.push(central, nameBytes);
+    offset += local.length + nameBytes.length + data.length;
+  }
+  const directory = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(entries.length, 8);
+  end.writeUInt16LE(entries.length, 10);
+  end.writeUInt32LE(directory.length, 12);
+  end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, directory, end]);
+}
+
+function contentsUnder(root: string): string[] {
+  return fs
+    .readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) =>
+      fs.readFileSync(path.join(entry.parentPath, entry.name), 'utf8'),
+    );
+}
 
 suite('Archives packed, changed and taken out again', () => {
   let folder: string;
@@ -262,7 +312,38 @@ suite('Archives packed, changed and taken out again', () => {
       );
     });
 
-    test('keeps in the archive both files of one name in two folders listed flat, as one takes the place of the other once taken out, saying so', async () => {
+    test('loses no file of an archive whose entries the system takes out under one name, as two entries of one name or a:b.txt beside a_b.txt on Windows, 7-Zip writing the second over the first and the move deleting both from the archive', async () => {
+      const file = at('colliding.zip');
+      const entries = [
+        ['a_b.txt', 'first file'],
+        ['a:b.txt', 'colon file'],
+        ['dup.txt', 'dup one'],
+        ['dup.txt', 'dup two'],
+        ['plain.txt', 'plain file'],
+      ] as const;
+      fs.writeFileSync(file, storedZip(entries));
+      const target = madeTarget('target');
+      const archive = await opened(file);
+      const names = (archive.tree.entries([]) ?? []).map((entry) => entry.name);
+
+      await movedOutOf(file, names, target);
+
+      const left = await opened(file);
+      const leftPaths = (left.tree.entries([]) ?? []).flatMap(
+        (entry) => left.tree.item([], entry.name)?.path ?? [],
+      );
+      const into = madeTarget('left');
+      if (leftPaths.length > 0) {
+        await archives.extract(left, leftPaths, { into });
+      }
+      const kept = [...contentsUnder(target), ...contentsUnder(into)];
+      for (const [, text] of entries) {
+        assert.ok(kept.includes(text), `${text} lost: ${JSON.stringify(kept)}`);
+      }
+      assert.ok(contentsUnder(target).includes('plain file'));
+    });
+
+    test('keeps in the archive both files of one name in two folders listed flat, taking out the second under a name of its own rather than over the first, saying so', async () => {
       const twins = at('twins');
       made(twins, 'one/same.txt', 'One.\n');
       made(twins, 'two/same.txt', 'Two.\n');
@@ -291,10 +372,11 @@ suite('Archives packed, changed and taken out again', () => {
           { type: 'done', stopped: false },
         ],
       );
-      assert.deepStrictEqual(
-        [...treeOf(target).keys()],
-        ['same.txt', 'single.txt'],
-      );
+      assert.deepStrictEqual([...treeOf(target).keys()].toSorted(), [
+        'same.txt',
+        'same_1.txt',
+        'single.txt',
+      ]);
       assert.deepStrictEqual(
         [...(await takenOut(at('twins.zip'))).keys()],
         ['one', 'one/same.txt', 'two', 'two/same.txt'],

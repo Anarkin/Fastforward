@@ -47,6 +47,7 @@ async function extracted(
       [
         withoutFolders ? 'e' : 'x',
         '-y',
+        '-aou',
         ...switches,
         '-snz',
         '-spd',

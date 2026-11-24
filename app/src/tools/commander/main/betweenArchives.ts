@@ -2,7 +2,7 @@ import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { sentencesOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
-import { movedOut, presentIn } from './movedOut';
+import { movedOut, presentIn, type Present } from './movedOut';
 import { itemsAt } from './archiveFiles';
 import { reasonOf } from '../../../lib/main/reasons';
 import type { ArchiveAccess, OpenedArchive } from './archives';
@@ -74,7 +74,7 @@ export async function copiedBetween(
       };
     }
     const name = from.archive.file;
-    let present: ReadonlySet<string>;
+    let present: Present;
     try {
       present = await presentIn(extracted.folder, from.platform);
     } catch (error) {

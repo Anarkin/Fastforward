@@ -301,7 +301,7 @@ suite('Unpacking before a transfer', () => {
 const fileOf = (at: string): ArchiveItem => ({
   path: at,
   folder: false,
-  size: 1,
+  size: Buffer.byteLength(at),
   modified: 0,
   hiddenAttribute: false,
   link: false,

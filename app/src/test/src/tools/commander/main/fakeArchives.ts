@@ -126,7 +126,7 @@ export function fakeArchives() {
               ? path.join(extractedInto, path.posix.basename(item.path))
               : path.join(extractedInto, ...item.path.split('/'));
           await fs.promises.mkdir(path.dirname(copy), { recursive: true });
-          await fs.promises.writeFile(copy, `the ${item.path} of the archive`);
+          await fs.promises.writeFile(copy, extractedText(item.path));
         }
       }
       return { kind: 'extracted', folder: extractedInto };
@@ -236,10 +236,13 @@ export function fakeArchives() {
   };
 }
 
+const extractedText = (itemPath: string): string =>
+  `the ${itemPath} of the archive`;
+
 export const archiveItem = (itemPath: string): ArchiveItem => ({
   path: itemPath,
   folder: false,
-  size: 1,
+  size: Buffer.byteLength(extractedText(itemPath)),
   modified: 0,
   hiddenAttribute: false,
   link: false,
