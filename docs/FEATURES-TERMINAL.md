@@ -54,7 +54,7 @@
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | GPU rendering | Draw the screen with the GPU | — | Common | ✅ Yes | `xterm.js`'s WebGL renderer, its canvas shown at its own size in device pixels rather than stretched by a fraction of one, or the DOM one with `tools.terminal.renderer` or once WebGL is lost, which draws the cursor its own way |
-| Font | Choose the font, its size and the line height | — | Core | ✅ Yes | The monospace font, size and line height of the settings, as the diff has them, the cells on whole device pixels, a cell of room around the screen on every side, as many whole cells as fit within it, none left over while the window is sized in whole cells, as [FEATURES](FEATURES.md#common-app) says, and less than a cell at the right and the bottom of a window maximized, snapped or full screen |
+| Font | Choose the font, its size and the line height | — | Core | ✅ Yes | The monospace font, size and line height of the settings, as the diff has them, the cells on whole device pixels, as many whole cells as fit from the left of the tab to its scrollbar and its bottom, none left over while the window is sized in whole cells, as [FEATURES](FEATURES.md#common-app) says, and less than a cell at the right and the bottom of a window maximized, snapped or full screen |
 | Zoom | Make the text larger or smaller for now | — | Common | ❌ No |  |
 | Ligatures | Join characters into the ligatures of the font | — | Advanced | ❌ No |  |
 | Colors | Set the 16 colors, the background, text and selection | — | Core | ✅ Yes | In the settings, for the light and the dark theme, following the theme of the app |
