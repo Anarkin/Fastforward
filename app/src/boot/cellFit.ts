@@ -73,7 +73,7 @@ function fittedNear(length: number, axis: Axis): number {
       }
     }
   }
-  return length;
+  return fittedUp(length, axis);
 }
 
 const axesOf = (
@@ -97,16 +97,20 @@ const axesOf = (
   },
 });
 
+export type Toward = 'down' | 'near';
+
 export function fittedSize(
   area: Size,
   grid: CellGrid,
   least: Size = noLeast,
   grain = 1,
+  toward: Toward = 'near',
 ): Size {
   const axes = axesOf(grid, least, grain);
+  const fitted = toward === 'down' ? fittedDown : fittedNear;
   return {
-    width: fittedDown(area.width, axes.width),
-    height: fittedDown(area.height, axes.height),
+    width: fitted(area.width, axes.width),
+    height: fitted(area.height, axes.height),
   };
 }
 

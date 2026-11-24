@@ -3,7 +3,7 @@ import type { BrowserWindow } from 'electron';
 import { gridAround, type CellGrid } from '../shell/shared/cellGrid';
 import { structOnce } from '../lib/main/koffiTypes';
 import { fittedSize } from './cellFit';
-import { leastClient, resting, type CellSteps } from './cellSteps';
+import { leastClient, resting, towardOf, type CellSteps } from './cellSteps';
 import { windowPixels } from './windowPixels';
 
 const sizeType = 'CellStepsSize';
@@ -88,6 +88,7 @@ export function macCellSteps(): CellSteps | undefined {
         height: Math.round((outer.size.height - content.size.height) * scale),
       }),
       Number.isInteger(scale) ? scale : 1,
+      towardOf(window),
     );
     if (fitted.width !== pixels.width || fitted.height !== pixels.height) {
       windowPixels().sizeClientTo(window, fitted);

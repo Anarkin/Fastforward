@@ -24,7 +24,7 @@ const room = ({ left, top, right, bottom }: typeof rect) => ({
 });
 
 suite('Fitting the window to the cells of the terminal', () => {
-  test('rounds the area of a window down to whole cells around the room it keeps for the rest of the page, at least a cell, so the terminal fills its screen to the pixel', () => {
+  test('rounds the area of a window to the nearest whole cells around the room it keeps for the rest of the page, at least a cell, so the terminal fills its screen to the pixel', () => {
     assert.deepStrictEqual(fittedSize({ width: 363, height: 257 }, grid), {
       width: 360,
       height: 250,
@@ -37,6 +37,30 @@ suite('Fitting the window to the cells of the terminal', () => {
       width: 40,
       height: 70,
     });
+    assert.deepStrictEqual(fittedSize({ width: 367, height: 268 }, grid), {
+      width: 370,
+      height: 270,
+    });
+  });
+
+  test('rounds the area of a window opened down to whole cells, so it never opens larger than it was saved', () => {
+    assert.deepStrictEqual(
+      fittedSize({ width: 367, height: 268 }, grid, undefined, 1, 'down'),
+      { width: 360, height: 250 },
+    );
+  });
+
+  test('keeps the size of a window fitted again and again as its cells change, as fitting it down to whole cells each time shrank it by up to a cell at each change, until it was a few rows high', () => {
+    const other = { ...grid, cell: { width: 13, height: 27 } };
+    let area = { width: 1360, height: 800 };
+    for (let change = 0; change < 16; change++) {
+      area = fittedSize(area, change % 2 === 0 ? other : grid);
+    }
+    assert.ok(
+      area.width >= 1360 - other.cell.width &&
+        area.height >= 800 - other.cell.height,
+      JSON.stringify(area),
+    );
   });
 
   test('moves the edges of a window dragged to the nearest whole cells, the edge dragged alone and the one across from it kept, so the window resizes in steps of a cell as the Windows console does', () => {

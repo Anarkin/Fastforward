@@ -165,6 +165,10 @@ export async function zoomTo(ratio: number): Promise<void> {
       ),
     `the window at ${ratio * 100}%`,
   );
+  await untilSettled(
+    () => page.evaluate(() => [innerWidth, innerHeight]),
+    `the window fitted to whole cells at ${ratio * 100}%`,
+  );
 }
 
 async function ratioOfPage(): Promise<number> {

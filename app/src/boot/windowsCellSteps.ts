@@ -7,7 +7,7 @@ import {
 } from '../shell/shared/cellGrid';
 import { structOnce } from '../lib/main/koffiTypes';
 import { draggedTo, fittedSize, type DraggedEdge, type Edges } from './cellFit';
-import { leastClient, resting, type CellSteps } from './cellSteps';
+import { leastClient, resting, towardOf, type CellSteps } from './cellSteps';
 import { windowPixels } from './windowPixels';
 
 const sizing = 0x0214;
@@ -149,6 +149,8 @@ export function windowsCellSteps(): CellSteps {
       sizes.client,
       grid,
       leastClient(window, scaleOf(window), frameOf(sizes)),
+      1,
+      towardOf(window),
     );
     if (
       fitted.width !== sizes.client.width ||
