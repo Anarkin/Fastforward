@@ -189,6 +189,34 @@ suite('App commander', () => {
     );
   });
 
+  test('copies a file named as an archive of Electron as the file it is, as the process that copies read a foo.asar of a test as an archive and refused it, invalid', async () => {
+    const from = path.join(opened, 'asar-from');
+    fs.mkdirSync(from);
+    fs.writeFileSync(path.join(from, 'foo.asar'), 'not an archive');
+    const left = page.locator('.commander-pane').nth(0);
+    const into = await left.locator('.column-name').textContent();
+    assert.ok(into !== null && into !== opened, String(into));
+    await waitFor(
+      async () => (await rowNames()).includes('asar-from'),
+      'the folder to be listed',
+    );
+
+    await select('asar-from');
+    await page.keyboard.press('F5');
+    await page.locator('.confirm-popup').waitFor();
+    await page.keyboard.press('Enter');
+    await waitFor(
+      () => fs.existsSync(path.join(into, 'asar-from', 'foo.asar')),
+      'the folder to be copied',
+    );
+    await page.locator('.transfer-popup').waitFor({ state: 'detached' });
+
+    assert.strictEqual(
+      fs.readFileSync(path.join(into, 'asar-from', 'foo.asar'), 'utf8'),
+      'not an archive',
+    );
+  });
+
   test('makes a folder of the name typed on F7 in the folder of the side, selecting it, and says what is wrong with a name taken', async () => {
     const making = path.join(opened, 'making');
     fs.mkdirSync(making);
