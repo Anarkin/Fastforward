@@ -46,25 +46,25 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            shard: 1/6
+            shard: 1/5
           - os: ubuntu-latest
-            shard: 2/6
+            shard: 2/5
           - os: ubuntu-latest
-            shard: 3/6
+            shard: 3/5
           - os: ubuntu-latest
-            shard: 4/6
+            shard: 4/5
           - os: ubuntu-latest
-            shard: 5/6
-          - os: ubuntu-latest
-            shard: 6/6
+            shard: 5/5
           - os: macos-latest
-            shard: 1/4
+            shard: 1/5
           - os: macos-latest
-            shard: 2/4
+            shard: 2/5
           - os: macos-latest
-            shard: 3/4
+            shard: 3/5
           - os: macos-latest
-            shard: 4/4
+            shard: 4/5
+          - os: macos-latest
+            shard: 5/5
           - os: windows-latest
             shard: 1/8
           - os: windows-latest
