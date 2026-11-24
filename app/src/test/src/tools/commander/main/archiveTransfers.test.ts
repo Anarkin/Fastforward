@@ -272,6 +272,47 @@ suite('Commander tool in archives', () => {
       ]);
     });
 
+    test('refuses to take an item out of an archive onto the archive itself, as a.zip holding an a.zip, copied or moved out into the folder of a.zip, replaced the archive it was taken out of once Overwrite was answered', async () => {
+      const made = commander({ [root]: [file('a.zip')] });
+      made.archived.set(at('a.zip'), [
+        archiveItem('a.zip'),
+        archiveItem('b.txt'),
+      ]);
+      made.copies.folder = copiesFolder;
+      await made.tool.show(made.page, tab);
+      const { send, transfers, notices } = made;
+      await send({
+        type: 'enterArchive',
+        tab: '1',
+        side: 'right',
+        name: 'a.zip',
+      });
+
+      for (const move of [false, true]) {
+        await send({
+          type: 'transfer',
+          tab: '1',
+          side: 'right',
+          names: ['a.zip', 'b.txt'],
+          target: root,
+          move,
+        });
+      }
+
+      await waitFor(() => notices.length === 2, 'both refused');
+      assert.deepStrictEqual(plansOf(transfers), []);
+      assert.deepStrictEqual(notices, [
+        {
+          level: 'error',
+          message: strings.commander.overItsArchive(at('a.zip')),
+        },
+        {
+          level: 'error',
+          message: strings.commander.overItsArchive(at('a.zip')),
+        },
+      ]);
+    });
+
     test('moves the items asked for out of an archive into the folder of the other side, deleting them from the archive once the transfer moved them and reading it again, and moves nothing out of an archive inside another, saying it cannot be changed', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);

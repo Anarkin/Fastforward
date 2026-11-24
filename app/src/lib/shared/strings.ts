@@ -1072,6 +1072,8 @@ export const strings = {
     folderThere: 'A folder of that name is there.',
     fileThere: 'A file of that name is there.',
     itselfThere: 'The item there is this one, reached by another path.',
+    overItsArchive: (archive: string) =>
+      sentence`An item of ${namedFile(archive)} would take the place of the archive itself, so nothing is taken out.`,
     changedWhileMoved:
       'It changed while it was copied, so it is kept where it was, beside its copy.',
     notCopied:

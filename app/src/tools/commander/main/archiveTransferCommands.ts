@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { fs } from '../../../lib/main/files';
 import { sentencesOf } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
@@ -40,6 +41,34 @@ function branchesNamed(
       ) ?? []
     );
   });
+}
+
+const realKey = async (
+  file: string,
+  platform: NodeJS.Platform,
+): Promise<string> =>
+  folderKey(
+    await fs.promises.realpath(file).catch(() => path.resolve(file)),
+    platform,
+  );
+
+async function landsOnArchive(
+  names: readonly string[],
+  target: string,
+  file: string,
+  platform: NodeJS.Platform,
+): Promise<boolean> {
+  const archive = await realKey(file, platform);
+  for (const name of names) {
+    const landing = path.join(
+      await realKey(target, platform),
+      path.basename(name),
+    );
+    if (folderKey(landing, platform) === archive) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export class ArchiveTransferCommands {
@@ -295,6 +324,12 @@ export class ArchiveTransferCommands {
       bytes,
       encrypted,
     } = found;
+    if (
+      await landsOnArchive(names, target, archive.file, this.access.platform)
+    ) {
+      this.host.refuse(page, strings.commander.overItsArchive(archive.file));
+      return;
+    }
     if (
       encrypted &&
       !archives.hasPassword(archive.file) &&
