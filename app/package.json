@@ -27,6 +27,7 @@
     "pretest": "npm run build",
     "test": "vitest run --project=!playground --project=!perf",
     "test:unit": "vitest run --project unit",
+    "test:files": "vitest run",
     "test:playground": "vitest run --project playground",
     "perf": "node scripts/perf.mts",
     "format": "prettier --write --cache .",
