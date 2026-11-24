@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { cellsChanged } from '../../../boot/cellsChanged';
+import { cellsChanged, fitToward } from '../../../boot/cellsChanged';
 
 const report = (width: number, height: number) => ({
   cell: { width, height },
@@ -22,6 +22,24 @@ suite('Cells changed', () => {
         changed(one, undefined),
       ],
       [true, false, true, true, true, false],
+    );
+  });
+
+  test('fits a window to the nearest whole cells only once its cells changed since it was fitted, and down otherwise, so it never grows past the size it was opened or moved at, nor shrinks by a cell at each change of its cells', () => {
+    const toward = fitToward();
+    const one = {};
+    const small = { width: 9, height: 18 };
+    const large = { width: 10, height: 20 };
+    assert.deepStrictEqual(
+      [
+        toward(one, small),
+        toward(one, small),
+        toward(one, large),
+        toward(one, large),
+        toward(one, small),
+        toward({}, large),
+      ],
+      ['down', 'down', 'near', 'down', 'near', 'down'],
     );
   });
 });

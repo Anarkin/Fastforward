@@ -150,7 +150,7 @@ export function windowsCellSteps(): CellSteps {
       grid,
       leastClient(window, scaleOf(window), frameOf(sizes)),
       1,
-      towardOf(window),
+      towardOf(window, grid.cell),
     );
     if (
       fitted.width !== sizes.client.width ||

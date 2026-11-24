@@ -6,7 +6,7 @@ import {
   type Size,
 } from '../shell/shared/cellGrid';
 import { fittedSize, type Toward } from './cellFit';
-import { cellsChanged } from './cellsChanged';
+import { cellsChanged, fitToward } from './cellsChanged';
 import { windowPixels } from './windowPixels';
 
 export interface CellSteps {
@@ -40,14 +40,10 @@ export function electronClient(window: BrowserWindow): Size {
   };
 }
 
-const fittedBefore = new WeakSet<BrowserWindow>();
+const toward = fitToward();
 
-export function towardOf(window: BrowserWindow): Toward {
-  if (fittedBefore.has(window)) {
-    return 'near';
-  }
-  fittedBefore.add(window);
-  return 'down';
+export function towardOf(window: BrowserWindow, cell: Size): Toward {
+  return toward(window, cell);
 }
 
 export function fitByElectron(window: BrowserWindow, grid: CellGrid): void {
@@ -66,7 +62,7 @@ export function fitByElectron(window: BrowserWindow, grid: CellGrid): void {
       height: Math.round((bounds.height - content.height) * scale),
     }),
     Number.isInteger(scale) ? scale : 1,
-    towardOf(window),
+    towardOf(window, grid.cell),
   );
   if (fitted.width !== pixels.width || fitted.height !== pixels.height) {
     windowPixels().sizeClientTo(window, fitted);

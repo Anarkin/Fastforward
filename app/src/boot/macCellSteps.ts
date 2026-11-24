@@ -88,7 +88,7 @@ export function macCellSteps(): CellSteps | undefined {
         height: Math.round((outer.size.height - content.size.height) * scale),
       }),
       Number.isInteger(scale) ? scale : 1,
-      towardOf(window),
+      towardOf(window, grid.cell),
     );
     if (fitted.width !== pixels.width || fitted.height !== pixels.height) {
       windowPixels().sizeClientTo(window, fitted);
