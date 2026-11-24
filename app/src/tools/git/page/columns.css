@@ -80,11 +80,7 @@
   --frame-left: var(--repository-inset);
 }
 
-.columns:has(> .repository-path):not(.nothing-selected, .no-changes)
-  > .column:nth-child(3),
-.columns.no-changes:not(.nothing-selected):has(> .repository-path)
-  > .column:nth-child(2),
-.columns.nothing-selected:has(> .repository-path) > .column:nth-child(1) {
+.columns:has(> .repository-path) > .column:nth-child(3) {
   --frame-right: var(--repository-inset);
 }
 

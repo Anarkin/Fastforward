@@ -307,7 +307,7 @@ suite('Style', () => {
     ]);
   });
 
-  test('frames the path of a repository and its columns together, the path atop the frame on the background of the path of every tool and the columns a gutter inside its line, below the path, from its sides and from its bottom, their headers staying where they were, so the three columns read as parts of one repository; the first and the last shown taking the sides, whichever are hidden', () => {
+  test('frames the path of a repository and its columns together, the path atop the frame on the background of the path of every tool and the columns a gutter inside its line, below the path, from its sides and from its bottom, their headers staying where they were, so the three columns read as parts of one repository; the first shown taking the left side, whichever are hidden, and the diff column the right side though it is hidden, as a hidden column keeps its room and the commit column the inset took narrowed its rows as nothing was selected any longer', () => {
     const inset = 'var(--repository-inset)';
     assert.deepStrictEqual(columnSides(columnsClass(true, 'a')), [
       [inset, '0px'],
@@ -320,9 +320,14 @@ suite('Style', () => {
       ['0px', inset],
     ]);
     assert.deepStrictEqual(columnSides(columnsClass(true, undefined)), [
-      [inset, inset],
+      [inset, '0px'],
       ['0px', '0px'],
+      ['0px', inset],
+    ]);
+    assert.deepStrictEqual(columnSides(columnsClass(true, 'a', false)), [
+      [inset, '0px'],
       ['0px', '0px'],
+      ['0px', inset],
     ]);
     const [first] = shownColumns(columnsClass(true, 'a'));
     assert.ok(first);
