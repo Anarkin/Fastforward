@@ -129,7 +129,7 @@ suite('Style', () => {
     });
   });
 
-  test('names the folder of the terminal on the row the viewer and the editor name their file on, one row of monospace text tall, as a line of the diff and its header are, with no line under it, so the name stands alike in every tool, as the row of the terminal took the height of its text alone and those of the viewer and the editor a pixel more than the header of the diff', () => {
+  test('names the folder of the terminal on the row the viewer and the editor name their file on, one row of monospace text tall, as a line of the diff and its header are, with no line under it, its end clear of the scrollbar of its own tool, the wide one of the text views or the narrow one of the others, so the name stands alike in every tool, as the row of the terminal took the height of its text alone and those of the viewer and the editor a pixel more than the header of the diff', () => {
     const row = withClass(
       rendered(<TerminalTool active post={noop} listen={() => noop} />),
       'path-row',
@@ -143,6 +143,21 @@ suite('Style', () => {
       'line-height': 'var(--path-row-height)',
       'border-bottom': undefined,
     });
+    assert.strictEqual(cascaded(row, '--scrollbar-across'), undefined);
+    assert.strictEqual(
+      cascaded(
+        withClass(
+          rendered(
+            <section className="column viewer">
+              <div className="path-row" />
+            </section>,
+          ),
+          'path-row',
+        ),
+        '--scrollbar-across',
+      ),
+      'var(--scrollbar-marked-size)',
+    );
     looks(rendered(<div className="file-header" />), {
       height: 'var(--diff-file-height)',
       'line-height': 'var(--diff-file-height)',

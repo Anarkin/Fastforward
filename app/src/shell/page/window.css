@@ -47,7 +47,7 @@ body {
 }
 
 .viewer-body,
-.path-row,
+.column.viewer > .path-row,
 .editor-surface,
 .diff-view {
   --scrollbar-across: var(--scrollbar-marked-size);
