@@ -320,7 +320,7 @@ export async function rowsFrom(
     length = blockBytes;
     position += offset;
   }
-  return rows;
+  return openingMarked(rows, first);
 }
 
 function startsText(bytes: Buffer, at: number, coding: TextCoding): boolean {
@@ -399,6 +399,13 @@ async function lineEndsBy(
 
 const utf8Mark = Buffer.from([0xef, 0xbb, 0xbf]);
 
+function openingMarked(rows: TextRow[], first: number): TextRow[] {
+  const [opening, ...rest] = rows;
+  return first > 0 && opening?.start === first
+    ? [{ ...opening, opensText: true }, ...rest]
+    : rows;
+}
+
 async function textStartOf(
   read: ReadBytes,
   coding: TextCoding,
@@ -466,5 +473,5 @@ export async function rowsBefore(
     );
     at = start;
   }
-  return rows;
+  return openingMarked(rows, first);
 }

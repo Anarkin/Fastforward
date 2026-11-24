@@ -117,12 +117,12 @@ suite('Rows of text of a file', () => {
     ]);
   });
 
-  test('starts the first row of a file of UTF-8 after its byte order mark, which the encoding button names, read forwards and backwards alike, as the text of the row held it as a character drawn as an invisible one', async () => {
+  test('starts the first row of a file of UTF-8 after its byte order mark, which the encoding button names, read forwards and backwards alike, as the text of the row held it as a character drawn as an invisible one, marking it as the row the text opens with, as the page took a row starting past byte 0 for one with more above it and never put the thumb at the top', async () => {
     const { read, size } = inMemory(
       Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('ab\ncd')]),
     );
     const rows = [
-      { start: 3, end: 6, text: 'ab', ending: '␊' },
+      { start: 3, end: 6, text: 'ab', ending: '␊', opensText: true },
       { start: 6, end: 8, text: 'cd' },
     ];
 

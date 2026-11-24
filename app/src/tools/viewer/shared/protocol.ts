@@ -12,6 +12,7 @@ export interface TextRow {
   readonly text: string;
   readonly cut?: true;
   readonly ending?: string;
+  readonly opensText?: true;
 }
 
 export interface ByteRange {

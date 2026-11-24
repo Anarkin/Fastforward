@@ -83,6 +83,8 @@ function wrappingOf(
 
 const unwrapped = { indent: 0, starts: [0], breaks: [], sizes: [] };
 
+export type ViewerRow = ScreenRow & { readonly opensText?: true };
+
 function rowsOf(
   row: TextRow,
   index: number,
@@ -90,7 +92,7 @@ function rowsOf(
   encoding: TextEncoding,
   continued: boolean,
   widths: TextWidths | undefined,
-): ScreenRow[] {
+): ViewerRow[] {
   const { text } = row;
   const { indent, starts, breaks, sizes } =
     columns === undefined
@@ -101,7 +103,8 @@ function rowsOf(
     const to = starts[part + 1] ?? text.length;
     const last = part === starts.length - 1;
     const end = last ? row.end : Math.min(row.end, start + (sizes[part] ?? 0));
-    const shown: ScreenRow = {
+    const shown: ViewerRow = {
+      ...(part === 0 && row.opensText === true && { opensText: true }),
       start,
       end,
       row,
@@ -123,7 +126,7 @@ const wrapped = new WeakMap<
     readonly columns: number | undefined;
     readonly encoding: TextEncoding;
     readonly widths: TextWidths | undefined;
-    readonly shown: ScreenRow[];
+    readonly shown: ViewerRow[];
   }
 >();
 
@@ -132,7 +135,7 @@ export function screenRows(
   columns: number | undefined,
   encoding: TextEncoding,
   widths?: TextWidths,
-): ScreenRow[] {
+): ViewerRow[] {
   const known = wrapped.get(rows);
   if (
     known !== undefined &&

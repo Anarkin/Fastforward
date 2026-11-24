@@ -3,7 +3,11 @@ import { type Ends, type Thumb } from './scrollThumbs';
 interface Span {
   readonly start: number;
   readonly end: number;
+  readonly opensText?: true;
 }
+
+const opensText = (row: Span): boolean =>
+  row.start === 0 || row.opensText === true;
 
 interface Loaded {
   readonly rows: readonly Span[];
@@ -25,7 +29,7 @@ export function scrolled(
   if (first === undefined || last === undefined) {
     return undefined;
   }
-  const atStart = first.start === 0;
+  const atStart = opensText(first);
   const atEnd = last.end >= size;
   const lastTop = Math.max(0, loaded.rows.length - screen);
   const wanted = loaded.top + by;
@@ -66,7 +70,7 @@ export function jumpedWithin(
   if (first === undefined || last === undefined) {
     return undefined;
   }
-  const atStart = first.start === 0;
+  const atStart = opensText(first);
   const atEnd = last.end >= size;
   const lastTop = Math.max(0, loaded.rows.length - screen);
   if (byte < first.start || (byte >= last.end && !atEnd)) {
@@ -108,7 +112,7 @@ export function textEnds(loaded: Loaded, screen: number, size: number): Ends {
     return { atStart: true, atEnd: true };
   }
   return {
-    atStart: first.start === 0 && loaded.top <= 0,
+    atStart: opensText(first) && loaded.top <= 0,
     atEnd: last.end >= size && loaded.top >= loaded.rows.length - screen,
   };
 }
@@ -128,7 +132,7 @@ export function textThumb(
   const bytes = perRow ?? bytesPerRow(loaded.rows) ?? 1;
   const end = lastScreenStart(size, screen, bytes, lastTop);
   return {
-    start: end > 0 ? Math.min(1, first.start / end) : 0,
+    start: end > 0 && !opensText(first) ? Math.min(1, first.start / end) : 0,
     length: Math.min(1, screen / (size / bytes)),
   };
 }

@@ -31,6 +31,22 @@ const spans = (
   ]);
 
 suite('Rows of a file viewed as the screen shows them', () => {
+  test('carries the row the text opens with after a byte order mark over to the first row it shows, wrapped or not, so the view knows it is at the top of the file', () => {
+    const rows: TextRow[] = [
+      { start: 3, end: 16, text: 'abcdefghijklm', opensText: true },
+      { start: 16, end: 18, text: 'no' },
+    ];
+    assert.deepStrictEqual(
+      [undefined, 6].map((columns) =>
+        screenRows(rows, columns, 'utf-8').map((row) => row.opensText === true),
+      ),
+      [
+        [true, false],
+        [true, false, false, false],
+      ],
+    );
+  });
+
   test('shows each row read as one while lines are not wrapped', () => {
     const rows = [
       { start: 0, end: 4, text: 'one' },

@@ -43,6 +43,31 @@ suite('Commander viewer', () => {
     );
   });
 
+  test('takes the row the text opens with after a byte order mark for the top of the file, putting the thumb at the very top and scrolling no further up, as a row starting past byte 0 passed for one with more above it', () => {
+    const marked = rows(100).map((row, index) => ({
+      ...row,
+      start: row.start + 3,
+      end: row.end + 3,
+      ...(index === 0 && { opensText: true as const }),
+    }));
+    assert.deepStrictEqual(
+      textThumb({ rows: marked, top: 0 }, 10, 1003, 10, 903),
+      { start: 0, length: 10 / (1003 / 10) },
+    );
+    assert.deepStrictEqual(textEnds({ rows: marked, top: 0 }, 10, 1003), {
+      atStart: true,
+      atEnd: false,
+    });
+    assert.deepStrictEqual(scrolled({ rows: marked, top: 0 }, -1, 10, 1003), {
+      top: 0,
+      refill: false,
+    });
+    assert.deepStrictEqual(
+      jumpedWithin({ rows: marked, top: 0 }, 3, 10, 1003),
+      { row: 0, top: 0, refill: false },
+    );
+  });
+
   test('knows the first and the last screen of a file from the rows read, rather than from where the thumb is reckoned to be, a file that fits its view at both at once, and one with no rows read yet too, so nothing is moved where no row is left to move to', () => {
     const middle = rows(30).map((row) => ({
       ...row,
