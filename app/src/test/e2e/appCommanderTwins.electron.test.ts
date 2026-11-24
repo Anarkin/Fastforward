@@ -185,7 +185,10 @@ suite(
       ]);
       await page.keyboard.press('Enter');
       await waitFor(
-        () => fs.readdirSync(target).length === 3,
+        () =>
+          ['default.bar', 'vertical.br2', 'wincmd.ini'].every((name) =>
+            fs.existsSync(path.join(target, name)),
+          ),
         'the marked files to be copied',
       );
       assert.deepStrictEqual(await contentsOf(target), {
