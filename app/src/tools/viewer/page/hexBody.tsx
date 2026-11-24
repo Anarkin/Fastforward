@@ -23,6 +23,7 @@ const rowsAboveMatch = 2;
 import { ScrollBody } from './scrollBody';
 import { rowEnds } from './scrollThumbs';
 import {
+  byteTipAt,
   byteText,
   bytesToAsk,
   hexLine,
@@ -35,6 +36,7 @@ import {
   type LoadedBytes,
 } from './hex';
 import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
+import type { TipOf } from '../../../components/cells/page/cellView';
 import { bytesFound, hexBytes, selectedBytes } from './byteCopies';
 import type { ByteRange } from '../shared/protocol';
 import type { Viewing } from './viewing';
@@ -265,6 +267,14 @@ export function ByteBody({
       );
     };
   }, [layout, digits, showWhitespace, bytes, rowBytes]);
+  const tipOf = useMemo((): TipOf | undefined => {
+    if (bytes === undefined) {
+      return undefined;
+    }
+    const textAt = layout === 'hex' ? hexLine(hexRow(0, [], digits)).textAt : 0;
+    return (row, from) =>
+      byteTipAt(bytes.data, bytes.start, row.start, from, textAt, rowBytes);
+  }, [layout, digits, bytes, rowBytes]);
   const { font, onFont, table, widths, dotLook } = useCellFont();
   const marks = new Map<number, readonly FindMark[]>();
   const copies = new Map<number, readonly FindMark[]>();
@@ -393,6 +403,7 @@ export function ByteBody({
               ? hexLine(hexRow(0, [], digits)).textAt + hexRowBytes
               : rowBytes,
           )}
+          tipOf={tipOf}
         />
       )}
     </ScrollBody>

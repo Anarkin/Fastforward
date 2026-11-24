@@ -11,6 +11,7 @@ import {
   type TextSelection,
 } from '../../../components/cells/page/cellView';
 import { wordAround } from '../../../lib/shared/textMatches';
+import { byteTipText } from '../../../components/cells/page/characterNames';
 
 export const hexRowBytes = 16;
 
@@ -27,6 +28,25 @@ export function byteText(bytes: readonly number[]): string {
       isPrintable(byte) ? String.fromCharCode(byte) : strings.symbols.invisible,
     )
     .join('');
+}
+
+export function byteTipAt(
+  data: ArrayLike<number>,
+  dataStart: number,
+  rowStart: number,
+  column: number,
+  textAt: number,
+  rowBytes: number,
+): string | undefined {
+  const at = column - textAt;
+  if (at < 0 || at >= rowBytes) {
+    return undefined;
+  }
+  const index = rowStart - dataStart + at;
+  const byte = index < 0 || index >= data.length ? undefined : data[index];
+  return byte === undefined || isPrintable(byte)
+    ? undefined
+    : byteTipText(byte);
 }
 
 export interface HexRow {

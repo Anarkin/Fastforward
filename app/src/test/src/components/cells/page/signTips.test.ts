@@ -3,8 +3,13 @@ import { JSDOM } from 'jsdom';
 import { suite, test } from 'vitest';
 import {
   SignTips,
+  characterTipOf,
   signedText,
 } from '../../../../../components/cells/page/signTips';
+
+const line = { start: 0, end: 1, text: '' };
+
+const tipOf = (text: string) => characterTipOf(line, 0, text);
 
 const box = { left: 10, top: 20, width: 7, height: 16 };
 
@@ -25,7 +30,7 @@ suite('Tooltips of the signs of the cells', () => {
   test('stand an anchor over the cells of a sign, naming each of its characters by its code point and name, with a delay of its own, one anchor for one sign where it stands now, another for another character come to the same place, taken away once the pointer is over none', () => {
     const { document } = new JSDOM('<!doctype html><body>').window;
     const tips = new SignTips(document);
-    const first = tips.at('0:2', '\u200b', box);
+    const first = tips.at('0:2', tipOf('\u200b'), box);
     assert.ok(first);
     assert.strictEqual(
       first.getAttribute('data-tip'),
@@ -42,15 +47,15 @@ suite('Tooltips of the signs of the cells', () => {
       ['10px', '20px', '7px', '16px'],
     );
     const moved = { ...box, top: 40 };
-    assert.strictEqual(tips.at('0:2', zeroWidth, moved), first);
+    assert.strictEqual(tips.at('0:2', tipOf(zeroWidth), moved), first);
     assert.strictEqual(first.style.top, '40px');
-    const other = tips.at('0:2', joiner, box);
+    const other = tips.at('0:2', tipOf(joiner), box);
     assert.ok(other && other !== first);
     assert.strictEqual(other.getAttribute('data-tip'), 'U+2060 WORD JOINER');
-    const second = tips.at('0:5', '\u00a0', box);
+    const second = tips.at('0:5', tipOf('\u00a0'), box);
     assert.ok(second && second !== first);
     assert.strictEqual(first.isConnected, false);
-    assert.strictEqual(tips.at('0:6', 'a', box), undefined);
+    assert.strictEqual(tips.at('0:6', tipOf('a'), box), undefined);
     assert.strictEqual(second.isConnected, false);
     assert.strictEqual(document.querySelectorAll('[data-tip]').length, 0);
   });

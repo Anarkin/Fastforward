@@ -110,6 +110,14 @@ function nameOf(code: number): string {
 const codePoint = (code: number): string =>
   `U+${code.toString(16).toUpperCase().padStart(4, '0')}`;
 
+export function byteTipText(byte: number): string {
+  const value = `0x${byte.toString(16).toUpperCase().padStart(2, '0')}`;
+  return strings.characters.byte(
+    value,
+    byte < 0x20 ? controls[byte] : byte === 0x7f ? deleteName : undefined,
+  );
+}
+
 export function characterLines(text: string): readonly string[] {
   return Array.from(text, (character) => {
     const code = character.codePointAt(0) ?? 0;

@@ -30,6 +30,8 @@ suite('Text under the pointer', () => {
 
     assert.deepStrictEqual(unitUnder(rows, advance, rowHeight, 15, 3), {
       text: '\u200b',
+      row: rows.rows[0]?.row,
+      from: 2,
       key: '0:2',
       left: 14,
       top: 0,

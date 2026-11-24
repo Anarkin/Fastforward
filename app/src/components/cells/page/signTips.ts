@@ -3,6 +3,7 @@ import { invisibleParts } from '../../../lib/page/invisibles';
 import { characterTip } from '../../../lib/page/tips';
 import { characterTipText } from './characterNames';
 import { strings } from '../../../lib/shared/strings';
+import type { TextLine } from './lines';
 
 export interface ClientBox {
   readonly left: number;
@@ -10,6 +11,12 @@ export interface ClientBox {
   readonly width: number;
   readonly height: number;
 }
+
+export type TipOf = (
+  row: TextLine,
+  from: number,
+  text: string,
+) => string | undefined;
 
 export function signedText(text: string): string {
   if (blankSignOf(text, true) === strings.symbols.invisible) {
@@ -21,6 +28,11 @@ export function signedText(text: string): string {
     .join('');
 }
 
+export const characterTipOf: TipOf = (_row, _from, text) => {
+  const signed = signedText(text);
+  return signed === '' ? undefined : characterTipText(signed);
+};
+
 const keyApart = '|';
 
 export class SignTips {
@@ -29,17 +41,21 @@ export class SignTips {
 
   constructor(private readonly page: Document) {}
 
-  at(place: string, text: string, box: ClientBox): HTMLElement | undefined {
-    const key = `${place}${keyApart}${text}`;
+  at(
+    place: string,
+    tip: string | undefined,
+    box: ClientBox,
+  ): HTMLElement | undefined {
+    if (tip === undefined) {
+      this.clear();
+      return undefined;
+    }
+    const key = `${place}${keyApart}${tip}`;
     if (this.anchor === undefined || this.key !== key) {
       this.clear();
-      const signed = signedText(text);
-      if (signed === '') {
-        return undefined;
-      }
       this.anchor = this.page.createElement('span');
       this.anchor.className = 'sign-tip';
-      this.anchor.setAttribute('data-tip', characterTipText(signed));
+      this.anchor.setAttribute('data-tip', tip);
       this.anchor.setAttribute(characterTip, '');
       this.page.body.append(this.anchor);
       this.key = key;

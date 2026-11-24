@@ -143,6 +143,8 @@ export const strings = {
   },
   characters: {
     line: (code: string, name: string) => `${code} ${name}`,
+    byte: (value: string, name: string | undefined) =>
+      name === undefined ? `Byte ${value}` : `Byte ${value} ${name}`,
     noncharacter: 'Noncharacter',
     unassigned: 'Unassigned',
   },

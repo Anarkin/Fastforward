@@ -215,4 +215,35 @@ suite('App tooltips', () => {
     await writeSettings(page, profile, atOnce);
     await page.locator('.commander-pane').first().waitFor();
   });
+
+  test('names the byte a sign of the invisible stands for in Hex, by its value, as a byte past ASCII is no character there', async () => {
+    await away();
+    await writeSettings(page, profile, charactersAtOnce);
+    await page.locator('.tabs .tab').nth(1).click();
+    await page.locator('.viewer .viewer-body').first().focus();
+    await page.keyboard.press('1');
+    const signs = `te${strings.symbols.invisible.repeat(3)}xt`;
+    let row: SeenRow | undefined;
+    await waitFor(async () => {
+      [row] = await seenRows(page);
+      return row?.text.endsWith(signs) ?? false;
+    }, 'the bytes in Hex');
+    assert.ok(row);
+    const first = row.text.length - signs.length + 2;
+    await page.mouse.move(
+      row.left + (first - row.column + 0.5) * row.advance,
+      row.top + row.height / 2,
+    );
+    await tooltip().waitFor();
+    assert.strictEqual(
+      await tooltip().locator('.card-message').textContent(),
+      'Byte 0xE2',
+    );
+    await away();
+    await page.locator('.viewer .viewer-body').first().focus();
+    await page.keyboard.press('2');
+    await page.locator('.tabs .tab').nth(0).click();
+    await writeSettings(page, profile, atOnce);
+    await page.locator('.commander-pane').first().waitFor();
+  });
 });

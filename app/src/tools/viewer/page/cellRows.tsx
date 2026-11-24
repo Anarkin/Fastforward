@@ -1,5 +1,8 @@
 import type { FindMark } from '../../../components/cells/page/marks';
-import type { SelectionShape } from '../../../components/cells/page/cellView';
+import type {
+  SelectionShape,
+  TipOf,
+} from '../../../components/cells/page/cellView';
 import type { ScreenRow } from '../../../components/cells/page/lines';
 import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { DotLook } from '../../../lib/page/dotLook';
@@ -47,6 +50,7 @@ interface CellRowsProps {
   readonly move: (rows: number) => void;
   readonly first: number;
   readonly columns: number;
+  readonly tipOf?: TipOf | undefined;
 }
 
 export function CellRows({
@@ -70,6 +74,7 @@ export function CellRows({
   move,
   first,
   columns,
+  tipOf,
 }: CellRowsProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<CellView>(undefined);
@@ -162,6 +167,7 @@ export function CellRows({
       warming,
       kept,
       events: { chosen: onSelected, kept: onKept, move },
+      tipOf,
     });
   });
   useLayoutEffect(() => {

@@ -67,6 +67,8 @@ export function placeUnder(
 
 export interface UnitUnder {
   readonly text: string;
+  readonly row: TextLine;
+  readonly from: number;
   readonly key: string;
   readonly left: number;
   readonly top: number;
@@ -103,6 +105,8 @@ export function unitUnder(
     ? undefined
     : {
         text: row.row.text.slice(unit.from, unit.to),
+        row: row.row,
+        from: unit.from,
         key: `${row.row.start}:${unit.from}`,
         left: left + (unit.column - first) * advance,
         top,

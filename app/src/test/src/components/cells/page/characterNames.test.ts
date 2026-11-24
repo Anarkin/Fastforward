@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { characterLines } from '../../../../../components/cells/page/characterNames';
+import {
+  byteTipText,
+  characterLines,
+} from '../../../../../components/cells/page/characterNames';
 import { blankSignOf } from '../../../../../lib/page/blankSigns';
 import { invisibleParts } from '../../../../../lib/page/invisibles';
 
@@ -25,6 +28,20 @@ suite('Character names', () => {
       'U+007F DELETE',
       'U+0085 NEXT LINE',
     ]);
+  });
+
+  test('names a byte by its value, and a byte of an ASCII control by the control too, as a byte past ASCII is no character until an encoding reads it', () => {
+    assert.deepStrictEqual(
+      [0x00, 0x1b, 0x7f, 0x80, 0xe9, 0xff].map(byteTipText),
+      [
+        'Byte 0x00 NULL',
+        'Byte 0x1B ESCAPE',
+        'Byte 0x7F DELETE',
+        'Byte 0x80',
+        'Byte 0xE9',
+        'Byte 0xFF',
+      ],
+    );
   });
 
   test('names the variation selectors, the tags, a noncharacter and a code point not assigned yet', () => {

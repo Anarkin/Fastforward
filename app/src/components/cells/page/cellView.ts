@@ -22,10 +22,11 @@ import {
   type TextSelection,
 } from './textSelection';
 import { heldRows, unitUnder } from './cellPointing';
-import { SignTips } from './signTips';
+import { SignTips, characterTipOf, type TipOf } from './signTips';
 import { tipSource } from '../../../lib/page/tips';
 
 export type { KeptText, SelectionShape, TextSelection } from './textSelection';
+export type { TipOf } from './signTips';
 export { ordered } from './textSelection';
 
 const scrollingBudget = 2;
@@ -101,6 +102,7 @@ export interface CellViewShown {
   readonly warming?: Warming | undefined;
   readonly events: CellViewEvents;
   readonly size?: CellSize | undefined;
+  readonly tipOf?: TipOf | undefined;
 }
 
 const noRows: readonly ScreenRow[] = [];
@@ -171,6 +173,7 @@ export class CellView {
   private restored = false;
   private events: CellViewEvents | undefined;
   private shown: ShownRows | undefined;
+  private tipOf: TipOf = characterTipOf;
   private warmed: Warming | undefined;
   private columns = 0;
   private size: CellSize | undefined;
@@ -337,9 +340,11 @@ export class CellView {
     warming,
     events,
     size,
+    tipOf = characterTipOf,
   }: CellViewShown): void {
     this.replaced();
     this.shown = shown;
+    this.tipOf = tipOf;
     this.columns = columns;
     this.size = size;
     this.held = held;
@@ -444,12 +449,16 @@ export class CellView {
       this.signTips.clear();
       return undefined;
     }
-    return this.signTips.at(unit.key, unit.text, {
-      left: box.left + unit.left / scale,
-      top: box.top + unit.top / scale,
-      width: unit.width / scale,
-      height: unit.height / scale,
-    });
+    return this.signTips.at(
+      unit.key,
+      this.tipOf(unit.row, unit.from, unit.text),
+      {
+        left: box.left + unit.left / scale,
+        top: box.top + unit.top / scale,
+        width: unit.width / scale,
+        height: unit.height / scale,
+      },
+    );
   }
 
   dispose(): void {

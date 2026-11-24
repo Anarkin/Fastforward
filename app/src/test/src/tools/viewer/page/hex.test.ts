@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  byteTipAt,
   byteText,
   bytesToAsk,
   hexLine,
@@ -40,6 +41,36 @@ suite('Hex rows of a file viewed', () => {
         },
       ],
     });
+  });
+
+  test('names the byte a sign of the invisible stands for among the characters of a row of hex and in the bytes, and nothing for a printable byte, a hex digit or a byte not read', () => {
+    const data = [0x41, 0x1b, 0xe9, 0x20];
+    const textAt = hexLine(hexRow(0, [], 8)).textAt;
+    const hexTip = (column: number, rowStart = 0x10) =>
+      byteTipAt(data, 0x10, rowStart, column, textAt, 16);
+
+    assert.deepStrictEqual(
+      [
+        hexTip(textAt),
+        hexTip(textAt + 1),
+        hexTip(textAt + 2),
+        hexTip(textAt + 3),
+        hexTip(textAt + 4),
+        hexTip(textAt - 3),
+        hexTip(textAt, 0x30),
+        byteTipAt(data, 0x10, 0x10, 2, 0, 4),
+      ],
+      [
+        undefined,
+        'Byte 0x1B ESCAPE',
+        'Byte 0xE9',
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'Byte 0xE9',
+      ],
+    );
   });
 
   test('writes a row of hex whose bytes are not read yet as its offset alone', () => {
