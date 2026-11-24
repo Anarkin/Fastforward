@@ -51,6 +51,7 @@ export function commander(
   drives: readonly string[] = [],
   elevate?: () => Promise<ElevatedFileSystem | undefined>,
   state: Store = new FakeStore(),
+  platform: NodeJS.Platform = 'linux',
 ) {
   const saved: unknown[] = [];
   const watching: {
@@ -163,7 +164,7 @@ export function commander(
       iconsLoaded.push(iconOf);
       return Promise.resolve(new TextEncoder().encode(`icon of ${iconOf}`));
     },
-    platform: 'linux',
+    platform,
     codePage: () => Promise.resolve('windows-1250'),
     elevate,
     shellMenu: (files, point, extended) => {

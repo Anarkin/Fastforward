@@ -10,7 +10,7 @@ import { listedIn } from './listedEntries';
 import type { ArchiveCommands } from './archiveCommands';
 import type { CommanderAccess } from './access';
 import type { Transfers } from './transfers';
-import { trashJob } from './trashJob';
+import { binTrims, trashJob } from './trashJob';
 
 export type ItemChangesAccess = Pick<
   CommanderAccess,
@@ -81,6 +81,16 @@ export class ItemChanges {
         folder,
         names,
         deleting: 'permanently',
+      });
+      return;
+    }
+    const trimmed = sources.find((source: string) =>
+      binTrims(source, this.access.platform),
+    );
+    if (trimmed !== undefined) {
+      this.host.shell().notice(page, {
+        level: 'error',
+        message: strings.commander.binTrims(trimmed),
       });
       return;
     }

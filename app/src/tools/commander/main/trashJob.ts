@@ -63,3 +63,17 @@ export function trashJob(
     };
   };
 }
+
+const trimmedByWindows = /[. ]$/;
+
+export function binTrims(file: string, platform: NodeJS.Platform): boolean {
+  return (
+    platform === 'win32' &&
+    file
+      .split(/[\\/]/)
+      .slice(1)
+      .some(
+        (part) => part !== '.' && part !== '..' && trimmedByWindows.test(part),
+      )
+  );
+}

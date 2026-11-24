@@ -94,6 +94,37 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(trashed, [at('big'), at('dist')]);
     assert.strictEqual(tool.folderOf(tab), at('next'));
   });
+  test('refuses to move to the Recycle Bin of Windows an item whose name ends in a dot or a space, saying why, as the Recycle Bin trims it and took the item of the name without it, and deletes it permanently when asked', async () => {
+    const { tool, page, send, notices, trashed, transfers } = commander(
+      { [root]: [file('name'), file('name.')] },
+      [],
+      undefined,
+      undefined,
+      'win32',
+    );
+    await tool.show(page, tab);
+
+    await send({
+      type: 'delete',
+      tab: '1',
+      side: 'right',
+      names: ['name.'],
+      permanently: false,
+    });
+    await send({
+      type: 'delete',
+      tab: '1',
+      side: 'right',
+      names: ['name.'],
+      permanently: true,
+    });
+
+    assert.deepStrictEqual(trashed, []);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.commander.binTrims(at('name.')) },
+    ]);
+    assert.strictEqual(transfers.length, 1);
+  });
   test('makes a folder of the name asked for in the folder named, selecting it once listed, and none of a name reaching another folder or one Windows would refuse there, saying when the name is taken', async () => {
     const { tool, page, send, madeFolders, notices } = commander({
       [root]: [file('a.txt')],
