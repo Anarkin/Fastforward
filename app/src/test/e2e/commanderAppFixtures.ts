@@ -277,12 +277,18 @@ export const pathPlaces = () =>
     const buttons = box('.column-title');
     const text = box('.path-text');
     const names = box('.commander-header .commander-name');
-    const dates = box('.commander-header .commander-date');
+    const row = box('.commander-path');
+    const padding = getComputedStyle(
+      side.querySelector('.commander-path') ?? side,
+    );
     return {
       underButtons: text.top >= buttons.bottom - 1 / 64,
       aboveHeadings: text.bottom <= names.top + 1 / 64,
-      fromNames: Math.round(text.left - names.left) + 0,
-      shortOfDates: Math.round(dates.right - text.right) + 0,
+      fromStart:
+        Math.round(text.left - row.left - parseFloat(padding.paddingLeft)) + 0,
+      shortOfEnd:
+        Math.round(row.right - parseFloat(padding.paddingRight) - text.right) +
+        0,
     };
   });
 export const savedBookmarks = () => {

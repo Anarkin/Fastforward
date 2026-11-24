@@ -27,7 +27,7 @@ const lines = () =>
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('puts the path of a side on a line of its own under its buttons, starting where the names of its rows start, and a long one running to the end of their dates', async () => {
+  test('puts the path of a side on a line of its own under its buttons, starting at the start of that row as the path of every tool does, and a long one running to its end', async () => {
     const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
     fs.mkdirSync(path.join(opened, long));
     try {
@@ -36,8 +36,8 @@ suite('App commander', () => {
         [
           short.underButtons,
           short.aboveHeadings,
-          short.fromNames,
-          short.shortOfDates >= 0,
+          short.fromStart,
+          short.shortOfEnd >= 0,
         ],
         [true, true, 0, true],
         JSON.stringify(short),
@@ -55,8 +55,8 @@ suite('App commander', () => {
         [
           places.underButtons,
           places.aboveHeadings,
-          places.fromNames,
-          places.shortOfDates,
+          places.fromStart,
+          places.shortOfEnd,
         ],
         [true, true, 0, 0],
         JSON.stringify(places),
