@@ -9,6 +9,7 @@ import {
   succeeded,
   type Pointer,
 } from './windowsCom';
+import { protoOnce, structOnce } from '../../../lib/main/koffiTypes';
 
 export interface ScreenPoint {
   readonly x: number;
@@ -40,7 +41,7 @@ function created() {
   const shell32 = koffi.load('shell32.dll');
   const user32 = koffi.load('user32.dll');
   const kernel32 = koffi.load('kernel32.dll');
-  const invokeInfo = koffi.struct('CMINVOKECOMMANDINFOEX', {
+  const invokeInfo = structOnce('CMINVOKECOMMANDINFOEX', {
     cbSize: 'uint32_t',
     fMask: 'uint32_t',
     hwnd: 'void *',
@@ -57,10 +58,10 @@ function created() {
     lpTitleW: 'void *',
     ptInvoke: koffi.struct({ x: 'int32_t', y: 'int32_t' }),
   });
-  const windowProcedure = koffi.proto(
+  const windowProcedure = protoOnce(
     'intptr_t __stdcall ShellMenuWindowProcedure(void *window, uint32_t message, uintptr_t w, intptr_t l)',
   );
-  const windowClassInfo = koffi.struct('ShellMenuWindowClass', {
+  const windowClassInfo = structOnce('ShellMenuWindowClass', {
     cbSize: 'uint32_t',
     style: 'uint32_t',
     lpfnWndProc: koffi.pointer(windowProcedure),
@@ -107,22 +108,22 @@ function created() {
       'intptr_t DefWindowProcW(void *window, uint32_t message, uintptr_t w, intptr_t l)',
     ),
     moduleHandle: kernel32.func('void *GetModuleHandleW(const char16_t *name)'),
-    queryInterface: koffi.proto(
+    queryInterface: protoOnce(
       'int32_t __stdcall ShellMenuQueryInterface(void *self, const void *iid, _Out_ void **object)',
     ),
-    uiObjectOf: koffi.proto(
+    uiObjectOf: protoOnce(
       'int32_t __stdcall ShellMenuGetUIObjectOf(void *self, void *window, uint32_t count, void *items, const void *iid, void *reserved, _Out_ void **object)',
     ),
-    queryMenu: koffi.proto(
+    queryMenu: protoOnce(
       'int32_t __stdcall ShellMenuQueryContextMenu(void *self, void *menu, uint32_t index, uint32_t first, uint32_t last, uint32_t flags)',
     ),
-    invoke: koffi.proto(
+    invoke: protoOnce(
       `int32_t __stdcall ShellMenuInvokeCommand(void *self, ${invokeInfo.name} *info)`,
     ),
-    commandString: koffi.proto(
+    commandString: protoOnce(
       'int32_t __stdcall ShellMenuGetCommandString(void *self, uintptr_t command, uint32_t kind, void *reserved, void *name, uint32_t length)',
     ),
-    handleMessage: koffi.proto(
+    handleMessage: protoOnce(
       'int32_t __stdcall ShellMenuHandleMenuMsg2(void *self, uint32_t message, uintptr_t w, intptr_t l, _Out_ intptr_t *result)',
     ),
   };

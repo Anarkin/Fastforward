@@ -1,4 +1,5 @@
 import koffi from 'koffi';
+import { protoOnce } from '../../../lib/main/koffiTypes';
 
 export type Pointer = unknown;
 
@@ -24,7 +25,7 @@ function created() {
       'int32_t CoInitializeEx(void *reserved, uint32_t flags)',
     ),
     uninitialize: ole32.func('void CoUninitialize()'),
-    release: koffi.proto('uint32_t __stdcall ShellMenuRelease(void *self)'),
+    release: protoOnce('uint32_t __stdcall ShellMenuRelease(void *self)'),
   };
 }
 

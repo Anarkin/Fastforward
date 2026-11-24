@@ -1,5 +1,6 @@
 import koffi from 'koffi';
 import { comMethod, guid } from './windowsCom';
+import { protoOnce } from '../../../lib/main/koffiTypes';
 
 const apartmentThreaded = 0x2;
 const inProcess = 0x1;
@@ -16,7 +17,7 @@ function created(): (file: string) => boolean {
   const createInstance = ole32.func(
     'int32_t CoCreateInstance(const void *clsid, void *outer, uint32_t context, const void *iid, _Out_ void **object)',
   );
-  const isMemberOf = koffi.proto(
+  const isMemberOf = protoOnce(
     'int32_t __stdcall OverlayIsMemberOf(void *self, const char16_t *path, uint32_t attributes)',
   );
   initialize(null, apartmentThreaded);

@@ -1,6 +1,7 @@
 import koffi from 'koffi';
 import { type BrowserWindow, screen } from 'electron';
 import { copiesPixels, pixelsToSize, type WindowPixels } from './windowPixels';
+import { structOnce } from '../lib/main/koffiTypes';
 
 const keepSize = 0x0001;
 const keepPlace = 0x0002;
@@ -22,13 +23,13 @@ function handleOf(window: BrowserWindow): unknown {
 
 export function windowsPixels(byElectron: WindowPixels): WindowPixels {
   const user32 = koffi.load('user32.dll');
-  koffi.struct('WindowsPixelsRect', {
+  structOnce('WindowsPixelsRect', {
     left: 'int32_t',
     top: 'int32_t',
     right: 'int32_t',
     bottom: 'int32_t',
   });
-  koffi.struct('WindowsPixelsPoint', { x: 'int32_t', y: 'int32_t' });
+  structOnce('WindowsPixelsPoint', { x: 'int32_t', y: 'int32_t' });
   const windowRect = user32.func(
     'bool GetWindowRect(void *window, _Out_ WindowsPixelsRect *rect)',
   );

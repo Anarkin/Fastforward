@@ -2,6 +2,7 @@ import koffi from 'koffi';
 import type { LaunchHelper } from './elevated';
 import { helperArguments, type HelperAddress } from './helperProtocol';
 import type { Native } from '../../../lib/main/nativeCalls';
+import { structOnce } from '../../../lib/main/koffiTypes';
 
 const flagNoUi = 0x400;
 const hidden = 0;
@@ -31,7 +32,7 @@ let shellExecute: Native | undefined;
 function shellExecuteEx(): Native {
   if (shellExecute === undefined) {
     const shell32 = koffi.load('shell32.dll');
-    const info = koffi.struct('SHELLEXECUTEINFOW', {
+    const info = structOnce('SHELLEXECUTEINFOW', {
       cbSize: 'uint32_t',
       fMask: 'uint32_t',
       hwnd: 'void *',
