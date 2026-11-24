@@ -46,3 +46,21 @@ export function errorsLoggedSince(since: number): string[] {
     }
   });
 }
+
+export function lastLines(log: string, count: number): string[] {
+  return log
+    .split('\n')
+    .filter((line) => line !== '')
+    .slice(-count);
+}
+
+export function lastLogged(profile: string, count = 20): string[] {
+  try {
+    return lastLines(
+      fs.readFileSync(path.join(profile, 'logs', 'Fastforward.log'), 'utf8'),
+      count,
+    );
+  } catch {
+    return [];
+  }
+}

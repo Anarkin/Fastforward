@@ -3,7 +3,7 @@ import { spawnSync, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
 import { _electron, type ElectronApplication } from 'playwright-core';
 import { strings } from '../../lib/shared/strings';
-import { rememberProfile } from './appLogs';
+import { lastLogged, rememberProfile } from './appLogs';
 
 export const appFolder = path.join(__dirname, '..', '..', '..');
 
@@ -168,8 +168,7 @@ export async function launchApp(
   app.process().once('exit', (code, signal) => {
     if (!closedByTests.has(app)) {
       process.stderr.write(
-        `The app ended before its test closed it, with exit code ${String(code)} and signal ${String(signal)}
-`,
+        `The app ended before its test closed it, with exit code ${String(code)} and signal ${String(signal)}, the last lines it logged:\n${lastLogged(profile).join('\n')}\n`,
       );
     }
   });

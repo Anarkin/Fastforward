@@ -224,6 +224,12 @@ async function start(asked: readonly string[]): Promise<void> {
     },
   );
   app.on('window-all-closed', () => app.quit());
+  app.on('before-quit', () => log.info(strings.log.quitting));
+  app.on('child-process-gone', (_event, details) =>
+    log.warn(
+      strings.log.childGone(details.type, details.reason, details.exitCode),
+    ),
+  );
   const chooseFolders = async (
     options: Electron.OpenDialogOptions,
   ): Promise<Electron.OpenDialogReturnValue> => {

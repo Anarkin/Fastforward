@@ -294,6 +294,7 @@ export class AppWindows {
       }
     });
     window.on('closed', () => {
+      this.deps.log.info(strings.log.windowClosed(id));
       quitGuard.forget(id);
       disconnect();
       this.windowDrag.forget(id);

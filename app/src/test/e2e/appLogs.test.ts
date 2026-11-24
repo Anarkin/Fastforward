@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { errorsIn } from './appLogs';
+import { errorsIn, lastLines } from './appLogs';
 
 const log = [
   '2026-11-21T00:00:01.000Z [info] Using git 2.52.0',
@@ -31,5 +31,14 @@ suite('Errors an app logged', () => {
       [],
     );
     assert.deepStrictEqual(errorsIn('', 0), []);
+  });
+
+  test('takes the last lines an app logged, to tell why it ended before its test closed it, as an app that quit on its own in the middle of a test told only its exit code', () => {
+    assert.deepStrictEqual(lastLines(log, 3), [
+      '    at MenuButton',
+      '2026-11-21T00:00:07.000Z [warn] Slow page',
+      '2026-11-21T00:00:08.000Z [error] The page did not finish loading',
+    ]);
+    assert.deepStrictEqual(lastLines('', 3), []);
   });
 });

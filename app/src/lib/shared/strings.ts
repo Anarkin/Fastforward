@@ -1559,6 +1559,10 @@ export const strings = {
     updateFailed: 'Updating failed',
     pageNotLoaded: 'The page did not finish loading',
     coloringWindowButtonsFailed: 'Coloring the window buttons failed',
+    childGone: (kind: string, reason: string, exitCode: number) =>
+      `The ${kind} process is gone (${reason}, exit code ${exitCode})`,
+    windowClosed: (id: string) => `Window ${id} closed`,
+    quitting: 'Quitting',
     pageGone: (reason: string, exitCode: number) =>
       `The page's process is gone (${reason}, exit code ${exitCode}), loading the page again`,
     pageGoneAgain: (reason: string, exitCode: number) =>
