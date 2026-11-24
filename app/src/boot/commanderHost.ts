@@ -34,6 +34,7 @@ import { ThumbnailStore } from '../tools/commander/main/thumbnailStore';
 import { Archives } from '../tools/commander/main/archives';
 import { CommanderTool } from '../tools/commander/main/tool';
 import { rootFolder } from '../tools/commander/main/folderPaths';
+import { stockOf } from '../tools/commander/main/originals';
 import { thumbnailFolder } from './profile';
 
 const smallestThumbnailCache = 16;
@@ -160,6 +161,7 @@ export function commanderToolOf({
     openFile: (file) => shell.openPath(file),
     trash: (file) => shell.trashItem(file),
     remove: (file) => fs.promises.rm(file, { recursive: true }),
+    stock: stockOf,
     makeFolder: (folder) => fs.promises.mkdir(folder),
     renameItem: renameUnlessTaken,
     clipboardFiles: { write: writeClipboardFiles, read: readClipboardFiles },

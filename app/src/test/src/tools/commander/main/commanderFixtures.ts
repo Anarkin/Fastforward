@@ -184,6 +184,15 @@ export function commander(
         ? Promise.reject(new Error('It is in use'))
         : Promise.resolve();
     },
+    stock: (item) =>
+      Promise.resolve({
+        remove: () => {
+          removed.push(item);
+          return item.endsWith('locked.txt')
+            ? Promise.reject(new Error('It is in use'))
+            : Promise.resolve(item.endsWith('busy') ? [item] : []);
+        },
+      }),
     openFile: (opening) => {
       opened.push(opening);
       return Promise.resolve(

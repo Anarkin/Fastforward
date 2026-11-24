@@ -97,6 +97,37 @@ suite('Commander tool in archives', () => {
       },
     ]);
   });
+
+  test('keeps what changed in an item moved into an archive while it was packed, deleting only what it took stock of before, and says which', async () => {
+    const { tool, page, send, archived, removed, notices } = commander({
+      [root]: [file('a.zip'), folder('busy'), file('new.txt')],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    await send({ type: 'enterArchive', tab: '1', side: 'left', name: 'a.zip' });
+    await send({
+      type: 'transfer',
+      tab: '1',
+      side: 'right',
+      folder: root,
+      names: ['busy', 'new.txt'],
+      target: at('a.zip'),
+      move: true,
+    });
+    await waitFor(() => notices.length === 1, 'the move to end');
+
+    assert.deepStrictEqual(removed, [at('busy'), at('new.txt')]);
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'error',
+        message: strings.commander.movedWithout(
+          at('a.zip'),
+          strings.commander.changedWhilePacked(['busy']),
+        ),
+      },
+    ]);
+  });
+
   test('refuses files of one name listed flat into an archive, as only one of them could go into its folder', async () => {
     const { tool, page, send, archived, changedInArchives, notices } =
       commander({

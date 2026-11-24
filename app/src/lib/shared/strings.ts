@@ -947,6 +947,8 @@ export const strings = {
     movedWithout: (item: string, reason: Sentence) =>
       sentence`Not every file could be moved into ${namedItem(item)}: ${reason}`,
     originalsKept: 'Every file moved is kept where it was.',
+    changedWhilePacked: (names: readonly string[]) =>
+      sentence`What changed in ${namesBetween(names, ', ')} while it was packed is kept where it was.`,
     keptUnmatched: (item: string, count: number) =>
       count === 1
         ? sentence`A file is kept in ${namedItem(item)}, as 7-Zip took it out under another name, or not at all.`

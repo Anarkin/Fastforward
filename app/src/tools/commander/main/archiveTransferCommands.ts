@@ -17,11 +17,12 @@ import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { ArchiveBranch } from './archiveTree';
 import type { TransferCommandsHost } from './transferCommands';
 import { refusedTarget } from './transferTargets';
+import type { Stock } from './originals';
 
 export interface ArchiveTransferCommandsAccess {
   readonly archives?: ArchiveAccess;
   readonly platform: NodeJS.Platform;
-  readonly remove?: (file: string) => Promise<void>;
+  readonly stock?: (item: string) => Promise<Stock>;
   readonly connectTransfer: ConnectTransfer;
 }
 
@@ -74,12 +75,12 @@ export class ArchiveTransferCommands {
     move: boolean,
     existing: unknown,
   ): void {
-    const { archives, platform, remove } = this.access;
+    const { archives, platform, stock } = this.access;
     const inside = archives?.within(other.folder);
     if (
       archives === undefined ||
       inside === undefined ||
-      (move && remove === undefined)
+      (move && stock === undefined)
     ) {
       return;
     }
@@ -138,6 +139,12 @@ export class ArchiveTransferCommands {
         },
       },
       archiveJob(path.basename(archive.file), async (options) => {
+        const stocks =
+          move && stock !== undefined
+            ? await Promise.all(
+                kept.map((name) => stock(path.join(folder, name))),
+              )
+            : [];
         const added = await archives.addItems(
           archive,
           inner,
@@ -158,16 +165,26 @@ export class ArchiveTransferCommands {
           };
         }
         const failures: string[] = [];
-        for (const name of kept) {
+        const changed: string[] = [];
+        for (const [index, name] of kept.entries()) {
           try {
-            await remove?.(path.join(folder, name));
+            const left = (await stocks[index]?.remove()) ?? [];
+            if (left.length > 0) {
+              changed.push(name);
+            }
           } catch (error) {
             failures.push(`${name}: ${reasonOf(error)}`);
           }
         }
-        return failures.length === 0
+        const warnings = [
+          ...(changed.length > 0
+            ? [strings.commander.changedWhilePacked(changed)]
+            : []),
+          ...failures,
+        ];
+        return warnings.length === 0
           ? added
-          : { kind: 'packed', warning: failures.join(' ') };
+          : { kind: 'packed', warning: sentencesOf(warnings) };
       }),
     );
   }

@@ -13,6 +13,7 @@ import type { ElevatedFileSystem } from './elevated';
 import type { ConnectTransfer } from './transfers';
 import type { SizeWalker } from './sizeWalk';
 import type { Thumbnails } from './thumbnailServing';
+import type { Stock } from './originals';
 
 export interface CommanderAccess {
   readonly fileSystem: () => Promise<LocalFileSystem>;
@@ -47,6 +48,7 @@ export interface CommanderAccess {
   readonly trash?: (file: string) => Promise<void>;
   readonly binOff?: (folder: string) => Promise<boolean>;
   readonly remove?: (file: string) => Promise<void>;
+  readonly stock?: (item: string) => Promise<Stock>;
   readonly makeFolder?: (folder: string) => Promise<void>;
   readonly renameItem?: (from: string, to: string) => Promise<void>;
   readonly startDrag?: (files: readonly string[]) => Promise<void>;
