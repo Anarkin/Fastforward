@@ -164,7 +164,7 @@ suite('Commander menu on a side', () => {
 
   test('opens the menu of the folder shown on a right click on its path outside its parts, copying its path as text', async () => {
     await inPane(async ({ main, rightClick, menu, choose, copied }) => {
-      rightClick(main.querySelector('.commander-path .commander-icon'));
+      rightClick(main.querySelector('.commander-path'));
       assert.deepStrictEqual(menu(), shownFolderMenu);
       choose(strings.commander.copyPath);
       rightClick(rowNamed(main, 'notes'));

@@ -56,6 +56,31 @@ function lineOf(font: 'monospace' | 'proportional') {
   );
 }
 
+const shownColumns = (className: string) =>
+  allWithClass(
+    rendered(
+      <div className={className}>
+        <section className="column">
+          <header className="column-title" />
+        </section>
+        <section className="column">
+          <header className="column-title" />
+        </section>
+        <section className="column">
+          <header className="column-title" />
+        </section>
+        <div className="path-row repository-path" />
+      </div>,
+    ),
+    'column',
+  );
+
+const columnSides = (className: string) =>
+  shownColumns(className).map((column) => [
+    cascaded(column, '--frame-left'),
+    cascaded(column, '--frame-right'),
+  ]);
+
 suite('Style', () => {
   test('highlights what a search matched in the search match colors', () => {
     const matches = allWithClass(
@@ -266,6 +291,68 @@ suite('Style', () => {
     ]) {
       assert.ok(layer(above) > edge, above.classes.join(' '));
     }
+  });
+
+  test('frames the path of a repository and its columns together, the path atop the frame on the background of the path of every tool and the columns a gutter inside its line, below the path, from its sides and from its bottom, their headers staying where they were, so the three columns read as parts of one repository; the first and the last shown taking the sides, whichever are hidden', () => {
+    const inset = 'var(--repository-inset)';
+    assert.deepStrictEqual(columnSides(columnsClass(true, 'a')), [
+      [inset, '0px'],
+      ['0px', '0px'],
+      ['0px', inset],
+    ]);
+    assert.deepStrictEqual(columnSides(columnsClass(false, 'a')), [
+      ['0px', '0px'],
+      [inset, '0px'],
+      ['0px', inset],
+    ]);
+    assert.deepStrictEqual(columnSides(columnsClass(true, undefined)), [
+      [inset, inset],
+      ['0px', '0px'],
+      ['0px', '0px'],
+    ]);
+    const [first] = shownColumns(columnsClass(true, 'a'));
+    assert.ok(first);
+    assert.strictEqual(cascaded(first, '--frame-bottom'), inset);
+    looks(first, {
+      padding: '0 var(--frame-right) var(--frame-bottom) var(--frame-left)',
+    });
+    looks(withClass(first, 'column-title'), {
+      margin:
+        '0 calc(-1 * var(--frame-right)) calc(var(--repository-path-height) + var(--gutter-width)) calc(-1 * var(--frame-left))',
+    });
+    looks(
+      first,
+      {
+        inset:
+          'calc( var(--title-height) + var(--repository-path-height) + var(--gutter-width) ) var(--frame-right) var(--frame-bottom) var(--frame-left)',
+      },
+      after,
+    );
+    const columns = rendered(
+      <div className={columnsClass(true, 'a')}>
+        <div className="path-row repository-path" />
+      </div>,
+    );
+    assert.strictEqual(
+      unwrapped(cascaded(columns, '--repository-inset')),
+      'calc(var(--repository-frame-line) + var(--gutter-width))',
+    );
+    looks(
+      columns,
+      {
+        inset:
+          'var(--repository-frame-top) var(--gutter-width) var(--gutter-width)',
+        'box-shadow':
+          'inset 0 0 0 var(--repository-frame-line) var(--color-border)',
+        'pointer-events': 'none',
+      },
+      { pseudoElement: '::before' },
+    );
+    looks(withClass(columns, 'repository-path'), {
+      top: 'var(--repository-frame-top)',
+      left: 'var(--gutter-width)',
+      right: 'var(--gutter-width)',
+    });
   });
 
   test('edges every column in the border color, whichever has the keyboard, over their contents but letting the pointer through, as wide as the line it tells the scrollbars it draws, and grays what is selected in the columns without the keyboard, so the blue selection alone tells the column that has it, and outlines nothing in them', () => {

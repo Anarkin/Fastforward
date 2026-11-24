@@ -18,6 +18,7 @@ import { closeOrKill, launchApp, within } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import {
   type Shot,
+  around,
   drawnBox,
   cursorWidth,
   selectedBeside,
@@ -209,6 +210,13 @@ export async function settledShot(
     throw new Error(`No shot of ${what}`);
   }
   return last;
+}
+
+export async function aroundInScreen(cell: Box): Promise<Box> {
+  const area = around(cell);
+  const [, top] = await screenLeftTop();
+  const above = Math.max(0, top - area.top);
+  return { ...area, top: area.top + above, height: area.height - above };
 }
 
 async function screenLeftTop(): Promise<[number, number]> {

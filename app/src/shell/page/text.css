@@ -251,6 +251,23 @@ mark.match,
   color: var(--color-syntax-comment);
 }
 
+.path-row {
+  --path-row-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  flex: none;
+  display: flex;
+  height: var(--path-row-height);
+  padding: 0 calc(var(--scrollbar-across) + 8px) 0 8px;
+  line-height: var(--path-row-height);
+  background: var(--color-border);
+}
+
+.path-row > .path-title {
+  min-width: 0;
+}
+
 .path-piece,
 .path-part,
 .path-cut {

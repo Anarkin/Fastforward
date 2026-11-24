@@ -5,7 +5,10 @@ import { suite, test, vi } from 'vitest';
 import { TerminalTool } from '../../../../../tools/terminal/page/tool';
 import { noop } from '../../../../helpers/fixtures';
 import type { TerminalToWebview } from '../../../../../tools/terminal/shared/protocol';
-import { renderIn } from '../../../../helpers/componentFixtures';
+import { renderIn, tabsStore } from '../../../../helpers/componentFixtures';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ShellStore } from '../../../../../shell/page/store';
+import { allWithClass, rendered, withClass } from '../../../../helpers/markup';
 
 const built = vi.hoisted((): string[] => []);
 
@@ -80,6 +83,40 @@ async function withTerminal(
 }
 
 suite('Terminal page', () => {
+  test('stands the screen in a column under a bar of buttons, a find at its right that does nothing yet, and a row naming the folder of its shell, as the viewer and the editor name their file', () => {
+    const shown = (
+      <ShellStore
+        value={tabsStore(
+          [{ id: '1', tool: 'terminal', root: 'C:\\Users\\me', name: 'me' }],
+          '1',
+        )}
+      >
+        <TerminalTool active post={noop} listen={() => noop} />
+      </ShellStore>
+    );
+    const html = renderToStaticMarkup(shown);
+    const page = rendered(shown);
+    const column = withClass(page, 'column', 'terminal');
+    const actions = withClass(
+      withClass(column, 'column-title'),
+      'column-actions',
+    );
+    assert.deepStrictEqual(
+      allWithClass(actions, 'search-button').map((button) =>
+        button.attributes.get('disabled'),
+      ),
+      [''],
+    );
+    assert.match(
+      html,
+      /class="path-row terminal-path">.*>C:\\<.*>Users<.*>me</,
+    );
+    assert.strictEqual(
+      allWithClass(withClass(column, 'column-body'), 'terminal-screen').length,
+      1,
+    );
+  });
+
   test('shows the tab the main process shows though the show comes before the page has done going to another tool and back, as when a tab of another tool is closed right after it opens', async () => {
     built.length = 0;
     await withTerminal(async (show) => {

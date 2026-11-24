@@ -175,11 +175,14 @@ suite('App', () => {
           getComputedStyle(column).getPropertyValue('--column-line'),
         );
         const edge = column.getBoundingClientRect();
+        const frame = getComputedStyle(column, '::after');
         const status = column.querySelector('.column-status');
         const { left, top, right, bottom } = layer.getBoundingClientRect();
         return {
-          right: edge.right - line,
-          bottom: status?.getBoundingClientRect().top ?? edge.bottom - line,
+          right: edge.right - parseFloat(frame.right) - line,
+          bottom:
+            status?.getBoundingClientRect().top ??
+            edge.bottom - parseFloat(frame.bottom) - line,
           marks: { left, top, right, bottom },
         };
       });

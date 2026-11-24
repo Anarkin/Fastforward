@@ -1,3 +1,7 @@
+.terminal-columns {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .terminal-panel {
   --terminal-row-height: round(
     var(--monospace-font-size) * var(--monospace-line-height),
@@ -11,7 +15,8 @@
 
 .terminal-screen {
   position: absolute;
-  inset: 6px calc(4px + var(--scrollbar-size)) 6px 10px;
+  inset: 0 calc(var(--scrollbar-size) + var(--line-right, 0px))
+    var(--line-below, 0px) var(--column-line, 0px);
 }
 
 .terminal-screen .xterm-scrollable-element > .scrollbar {
@@ -20,8 +25,12 @@
 
 .terminal-panel > .scroll-proxy-frame {
   top: 0;
-  right: 0;
-  bottom: 0;
+  right: var(--line-right, 0px);
+  bottom: var(--line-below, 0px);
+}
+
+.terminal-panel .scroll-proxy.vertical {
+  --scrollbar-round-end: var(--corner-round, 0px);
 }
 
 .terminal-screen canvas {

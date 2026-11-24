@@ -264,7 +264,7 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
-  test('spaces the buttons of a header by the Toolbar they stand in, never by a spacer or a style of the header: the Toolbar and its ToolbarSpace alone write their classes, the start and the actions of a header are Toolbars, no stylesheet but that of the buttons styles a toolbar, and every tab but those of git, the viewer, the editor, the diff of two files and the commander, says its buttons stand outside the frame of its blocks, git alone framing its three columns around their buttons, the frame of the one with the keyboard in the focus color, as every header had spacers and paddings of its own until its buttons stood apart by different amounts, closer to one edge than another, and moved as a search opened', () => {
+  test('spaces the buttons of a header by the Toolbar they stand in, never by a spacer or a style of the header: the Toolbar and its ToolbarSpace alone write their classes, the start and the actions of a header are Toolbars, no stylesheet but that of the buttons styles a toolbar, and every tab says its buttons stand outside the frame of its blocks, the commander, the viewer, the editor, the terminal and the diff of two files in their markup and git by the class of its columns, as every header had spacers and paddings of its own until its buttons stood apart by different amounts, closer to one edge than another, and moved as a search opened', () => {
     const pages = ['tools', 'lib', 'components', 'shell'];
     assert.deepStrictEqual(
       pages.flatMap((folder) =>
@@ -308,6 +308,7 @@ suite('Lessons from past mistakes', () => {
         'tools/diff/page/compareView.tsx',
         'tools/diff/page/tool.tsx',
         'tools/editor/page/tool.tsx',
+        'tools/terminal/page/tool.tsx',
         'tools/viewer/page/tool.tsx',
       ],
     );

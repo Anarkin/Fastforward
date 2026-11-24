@@ -222,6 +222,7 @@ const keysAlone: readonly string[] = [
 ];
 
 const withoutShortcut: readonly string[] = [
+  'tools/terminal/page/tool.tsx: <SearchButton strings.terminal.find>',
   'components/diff/page/toggles.tsx: strings.diff.inline',
   'components/diff/page/toggles.tsx: strings.diff.showEntireFile',
   'components/diff/page/toggles.tsx: strings.diff.showWhitespaceChanges',

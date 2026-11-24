@@ -612,7 +612,7 @@ suite('Style', () => {
     });
   });
 
-  test('draws the path above what the commander, the viewer and the editor show on the background of the header of a file in the diff, as git draws the path of each file', () => {
+  test('draws the path above what the commander, the viewer, the editor and the terminal show on the background of the header of a file in the diff, as git draws the path of each file', () => {
     const header = withClass(
       rendered(<div className="file-header" />),
       'file-header',
@@ -620,44 +620,42 @@ suite('Style', () => {
     const rows = rendered(
       <div>
         <div className="commander">
-          <div className="commander-path commander-line" />
+          <div className="path-row commander-path" />
         </div>
-        <div className="viewer-path" />
-        <div className="viewer-path editor-path" />
+        <div className="path-row" />
+        <div className="path-row editor-path" />
+        <div className="path-row terminal-path" />
       </div>,
     );
     assert.deepStrictEqual(
-      [
-        ...allWithClass(rows, 'commander-path'),
-        ...allWithClass(rows, 'viewer-path'),
-      ].map((row) => cascaded(row, 'background')),
-      Array.from({ length: 3 }, () => cascaded(header, 'background')),
+      allWithClass(rows, 'path-row').map((row) => cascaded(row, 'background')),
+      Array.from({ length: 4 }, () => cascaded(header, 'background')),
     );
   });
 
-  test('lays the path of a commander side out as its rows are, on a line of its own with a line under it, starting where the names of the rows start and running to the end of their dates', () => {
+  test('lays the path of a commander side out on the row every tool names its file or folder on, starting at the start of the row as theirs do rather than where the names of the rows start, the shield of a folder read as administrator after it', () => {
     const line = rendered(
       <div className="commander">
-        <div className="commander-path commander-line">
-          <span className="commander-icon" />
+        <div className="path-row commander-path">
           <PathTitle path="C:/notes.txt" looks={[]} />
+          <span className="elevated-mark" />
         </div>
       </div>,
     );
     looks(withClass(line, 'commander-path'), {
-      display: 'grid',
-      flex: 'none',
-      'box-sizing': 'content-box',
-      height: 'var(--commander-row-height)',
-      padding:
-        '0 calc(8px + var(--scrollbar-size)) 0 var(--commander-row-start)',
-      'border-bottom': '1px solid var(--color-border)',
+      display: 'flex',
+      height: 'var(--path-row-height)',
+      padding: '0 calc(var(--scrollbar-across) + 8px) 0 8px',
+      'grid-template-columns': undefined,
+      'border-bottom': undefined,
     });
     looks(withClass(line, 'path-title'), {
-      'grid-column': '2 / -1',
-      'margin-left': 'calc(var(--commander-advance) - var(--commander-gap))',
-      'max-width': 'none',
-      'justify-content': undefined,
+      'grid-column': undefined,
+      'margin-left': undefined,
+      'min-width': '0',
+    });
+    looks(withClass(line, 'elevated-mark'), {
+      'margin-left': 'var(--commander-gap)',
     });
   });
 

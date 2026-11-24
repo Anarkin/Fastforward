@@ -47,7 +47,7 @@ export const backToCommander = async () => {
 export const written = (name: string, text: string | Buffer) =>
   fs.writeFileSync(path.join(opened, name), text);
 const shownPath = (tool: 'viewer' | 'editor') =>
-  page.locator(`.${tool} .viewer-path`).first().textContent();
+  page.locator(`.${tool} .path-row`).first().textContent();
 const showsPathOf = async (tool: 'viewer' | 'editor', name: string) =>
   (await shownPath(tool))?.endsWith(name) === true;
 export const edit = async (name: string) => {

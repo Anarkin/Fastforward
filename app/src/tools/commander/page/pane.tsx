@@ -398,26 +398,21 @@ export function Pane({
           onFilter={openFilter}
         />
       )}
-      <div
-        className="commander-path commander-line"
-        onContextMenu={openFolderMenu}
-      >
-        <span className="commander-icon">
-          {elevated && (
-            <span
-              className="elevated-mark"
-              {...tip(strings.commander.readAsAdministrator)}
-            >
-              <ShieldIcon />
-            </span>
-          )}
-        </span>
+      <div className="path-row commander-path" onContextMenu={openFolderMenu}>
         <PathTitle
           path={paneFolder ?? ''}
           looks={folderLooks(hidden ?? [], archive)}
           flat={flatShown}
           duplicates={duplicatesShown}
         />
+        {elevated && (
+          <span
+            className="elevated-mark"
+            {...tip(strings.commander.readAsAdministrator)}
+          >
+            <ShieldIcon />
+          </span>
+        )}
       </div>
       {!tiled && <ColumnHeader side={side} />}
       {!tiled && (

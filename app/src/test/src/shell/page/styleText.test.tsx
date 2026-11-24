@@ -129,9 +129,31 @@ suite('Style', () => {
     });
   });
 
+  test('names the folder of the terminal on the row the viewer and the editor name their file on, one row of monospace text tall, as a line of the diff and its header are, with no line under it, so the name stands alike in every tool, as the row of the terminal took the height of its text alone and those of the viewer and the editor a pixel more than the header of the diff', () => {
+    const row = withClass(
+      rendered(<TerminalTool active post={noop} listen={() => noop} />),
+      'path-row',
+    );
+    assert.strictEqual(
+      compact(cascaded(row, '--path-row-height')),
+      compact(cascaded(diffView(<DiffViewShown />), '--diff-line-height')),
+    );
+    looks(row, {
+      height: 'var(--path-row-height)',
+      'line-height': 'var(--path-row-height)',
+      'border-bottom': undefined,
+    });
+    looks(rendered(<div className="file-header" />), {
+      height: 'var(--diff-file-height)',
+      'line-height': 'var(--diff-file-height)',
+      'border-bottom': undefined,
+    });
+  });
+
   test('makes a cell of the terminal as tall and as wide as a character of the diff, so code looks the same in both', () => {
-    const panel = rendered(
-      <TerminalTool active post={noop} listen={() => noop} />,
+    const panel = withClass(
+      rendered(<TerminalTool active post={noop} listen={() => noop} />),
+      'terminal-panel',
     );
     assert.strictEqual(
       compact(cascaded(panel, '--terminal-row-height')),

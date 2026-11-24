@@ -11,6 +11,7 @@ import { notchesOf, type Wheel } from '../../../lib/page/wheelTurns';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
 import { withHiddenCursor, terminalTheme } from './theme';
 import { cellsOf } from './cells';
+import { gridWithin } from './grid';
 import { type TerminalToWebview } from '../shared/protocol';
 import { inputChunks } from './inputChunks';
 import { sizeWithin } from '../shared/size';
@@ -357,7 +358,13 @@ export class TerminalView {
     this.snapToPixels();
     this.fit.fit();
     const { cols, rows } = this.terminal;
-    const within = sizeWithin(cols, rows);
+    const drawn = this.element.querySelector('.xterm-screen');
+    const grid = gridWithin(
+      this.element.getBoundingClientRect(),
+      drawn?.getBoundingClientRect() ?? { width: 0, height: 0 },
+      { columns: cols, rows },
+    );
+    const within = sizeWithin(grid.columns, grid.rows);
     if (
       within !== undefined &&
       (within.columns !== cols || within.rows !== rows)

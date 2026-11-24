@@ -134,7 +134,11 @@ suite('App scrollbars alike', () => {
           getComputedStyle(column).getPropertyValue('--column-line'),
         );
         const { right, bottom } = column.getBoundingClientRect();
-        return { right: right - line, bottom: bottom - line };
+        const frame = getComputedStyle(column, '::after');
+        return {
+          right: right - parseFloat(frame.right) - line,
+          bottom: bottom - parseFloat(frame.bottom) - line,
+        };
       });
 
   const keptInside = async (vertical: string, horizontal?: string) => {

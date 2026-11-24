@@ -63,7 +63,7 @@ const pathOf = (elevated: boolean, hidden: readonly boolean[] = []) =>
 const pathPlace = (document: Document) => ({
   inButtons: document.querySelector('.column-title .path-title') !== null,
   underButtons: document.querySelector(
-    '.column-title + .commander-path.commander-line > .path-title',
+    '.column-title + .path-row.commander-path > .path-title',
   )?.textContent,
   aboveHeadings:
     document.querySelector('.commander-path + .commander-header') !== null,
@@ -93,17 +93,18 @@ suite('Commander pane', () => {
     );
   });
 
-  test('marks a folder read as administrator where the icons of its rows are, before its path, and no other', () => {
+  test('marks a folder read as administrator by a shield after its path, and no other', () => {
     assert.match(
       pathLine(true) ?? '',
       new RegExp(
-        `^<span class="commander-icon"><span class="elevated-mark" data-tip="${strings.commander.readAsAdministrator}">.*</span></span><span class="column-name path-title"><span class="path-text">`,
+        `^<span class="column-name path-title"><span class="path-text">.*</span><span class="elevated-mark" data-tip="${strings.commander.readAsAdministrator}">.*</span>$`,
       ),
     );
     assert.match(
       pathLine(false) ?? '',
-      /^<span class="commander-icon"><\/span><span class="column-name path-title"><span class="path-text">/,
+      /^<span class="column-name path-title"><span class="path-text">/,
     );
+    assert.doesNotMatch(pathLine(false) ?? '', /elevated-mark/);
   });
 
   test('dims each hidden folder of its path, as its row is, and no other', () => {

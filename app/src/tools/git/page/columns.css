@@ -35,3 +35,75 @@
   content: '';
   width: calc(var(--bar-edge) + 3 * var(--button-size) + 2 * var(--bar-space));
 }
+
+.columns:has(> .repository-path) {
+  --repository-path-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  --repository-frame-top: calc(
+    var(--gutter-width) + var(--button-size) + var(--bar-space)
+  );
+  --repository-frame-line: round(2px, var(--device-pixel, 1px));
+  --repository-inset: calc(var(--repository-frame-line) + var(--gutter-width));
+  position: relative;
+}
+
+.columns:has(> .repository-path)::before {
+  content: '';
+  position: absolute;
+  inset: var(--repository-frame-top) var(--gutter-width) var(--gutter-width);
+  z-index: 17;
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 var(--repository-frame-line) var(--color-border);
+  pointer-events: none;
+}
+
+.columns > .repository-path {
+  position: absolute;
+  top: var(--repository-frame-top);
+  left: var(--gutter-width);
+  right: var(--gutter-width);
+  z-index: 17;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.columns:has(> .repository-path) > .column {
+  --frame-left: 0px;
+  --frame-right: 0px;
+  --frame-bottom: var(--repository-inset);
+  padding: 0 var(--frame-right) var(--frame-bottom) var(--frame-left);
+}
+
+.columns:has(> .repository-path):not(.commits-hidden) > .column:nth-child(1),
+.columns.commits-hidden:has(> .repository-path) > .column:nth-child(2) {
+  --frame-left: var(--repository-inset);
+}
+
+.columns:has(> .repository-path):not(.nothing-selected, .no-changes)
+  > .column:nth-child(3),
+.columns.no-changes:not(.nothing-selected):has(> .repository-path)
+  > .column:nth-child(2),
+.columns.nothing-selected:has(> .repository-path) > .column:nth-child(1) {
+  --frame-right: var(--repository-inset);
+}
+
+.columns:has(> .repository-path) > .column > .column-title {
+  margin: 0 calc(-1 * var(--frame-right))
+    calc(var(--repository-path-height) + var(--gutter-width))
+    calc(-1 * var(--frame-left));
+}
+
+.columns:has(> .repository-path) > .column::after {
+  inset: calc(
+      var(--title-height) + var(--repository-path-height) + var(--gutter-width)
+    )
+    var(--frame-right) var(--frame-bottom) var(--frame-left);
+}
+
+.columns:has(> .repository-path) .locations-groups {
+  margin: calc(var(--repository-path-height) + var(--gutter-width))
+    calc(var(--frame-right) + var(--column-line, 0px))
+    calc(var(--frame-bottom) + var(--column-line, 0px)) var(--frame-left);
+  border-top: none;
+}

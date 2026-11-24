@@ -238,5 +238,42 @@ for (const scale of ['1', '1.25', '1.5']) {
       assert.deepStrictEqual(moved, []);
       assert.ok(opened >= fitting, String(opened));
     });
+
+    test('draws the row naming the file under the header of the viewer, the editor and a comparison of two files, and the repository above the columns of git, alike, as tall as a row of text, its name as far from the start and the top of the row in each, as the row of the viewer and the editor stood a pixel taller than the header of the diff, its name half a pixel lower', async () => {
+      const rows: Record<string, unknown> = {};
+      for (const tool of ['viewer', 'editor', 'diff', 'git'] as const) {
+        await show(tool);
+        rows[tool] = await untilSettled(
+          () =>
+            page.evaluate(() => {
+              const row = document.querySelector(
+                '.path-row, .compare-view .diff-view .file-header',
+              );
+              const name = row?.querySelector('.path-part');
+              if (!row || !name) {
+                return undefined;
+              }
+              const box = row.getBoundingClientRect();
+              const text = name.getBoundingClientRect();
+              return Object.fromEntries(
+                Object.entries({
+                  height: box.height,
+                  left: text.left - box.left,
+                  top: text.top - box.top,
+                  tall: text.height,
+                }).map(([key, value]) => [key, Math.round(value * 100) / 100]),
+              );
+            }),
+          `the row naming the file of the ${tool}`,
+        );
+      }
+      assert.ok(rows.viewer, JSON.stringify(rows));
+      assert.deepStrictEqual(rows, {
+        viewer: rows.viewer,
+        editor: rows.viewer,
+        diff: rows.viewer,
+        git: rows.viewer,
+      });
+    });
   });
 }

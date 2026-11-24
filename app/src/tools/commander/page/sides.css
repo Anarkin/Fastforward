@@ -49,17 +49,10 @@
   box-sizing: content-box;
 }
 
-.commander-path {
+.commander-path > .elevated-mark {
   flex: none;
-  box-sizing: content-box;
-  background: var(--color-border);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.commander-path > .path-title {
-  grid-column: 2 / -1;
-  max-width: none;
-  margin-left: calc(var(--commander-advance) - var(--commander-gap));
+  align-self: center;
+  margin-left: var(--commander-gap);
 }
 
 .commander-line > * {

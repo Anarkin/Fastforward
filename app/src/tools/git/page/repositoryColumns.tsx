@@ -1,3 +1,4 @@
+import { PathTitle } from '../../../lib/page/pathTitle';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShell } from '../../../shell/page/store';
 import { useBinding } from '../../../lib/page/shortcuts';
@@ -263,6 +264,11 @@ export function RepositoryColumns() {
         <FileColumn />
         <RepositoryDiff />
       </VersionedPaths>
+      {root !== undefined && (
+        <div className="path-row repository-path">
+          <PathTitle path={root} />
+        </div>
+      )}
     </div>
   );
 }

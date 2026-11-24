@@ -98,7 +98,7 @@ export function Editor() {
           onFind={() => setFindAsk(findAskOf(false, view.current?.state))}
         />
       </EditorFindBar>
-      <div className="viewer-path editor-path">
+      <div className="path-row editor-path">
         <PathTitle path={file} file />
         {mark !== undefined && (
           <span

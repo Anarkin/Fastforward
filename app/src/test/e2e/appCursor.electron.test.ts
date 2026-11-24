@@ -25,6 +25,7 @@ import {
   settledShot,
   settledCell,
   promptAtTop,
+  aroundInScreen,
   mountEditorAndField,
   focusEditor,
   focusField,
@@ -66,14 +67,15 @@ suite('Cursor', () => {
           'the cursor of the terminal after what was typed',
           200,
         );
+        const terminalArea = await aroundInScreen(inTerminal);
         const terminalShot = await shotShowing(
-          around(inTerminal),
+          terminalArea,
           expectedBox(inTerminal, style, ratio),
           `the ${style} of the terminal at ${ratio}`,
         );
         const terminalColor = assertDrawn(
           terminalShot,
-          around(inTerminal),
+          terminalArea,
           expectedBox(inTerminal, style, ratio),
           'the terminal',
         );
@@ -163,7 +165,7 @@ suite('Cursor', () => {
         );
         assertDrawn(
           unfocusedShot,
-          around(inTerminal),
+          terminalArea,
           expectedBox(inTerminal, style, ratio),
           'the terminal without the focus',
         );

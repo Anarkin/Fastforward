@@ -351,7 +351,7 @@ export function Viewer() {
           </Toolbar>
         </header>
       )}
-      <div className="viewer-path">
+      <div className="path-row">
         <PathTitle path={file} file looks={fileLooks(viewing?.hidden ?? [])} />
       </div>
       {viewing === undefined ? (
