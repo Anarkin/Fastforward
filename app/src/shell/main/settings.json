@@ -58,6 +58,8 @@
       "colors": {
         "light": {
           "icon": "#000",
+          "icon-screen": "#0c0c0c",
+          "icon-accent": "#33ff66",
 
           "background": "#fff",
           "foreground": "#000000",
@@ -81,6 +83,8 @@
         },
         "dark": {
           "icon": "#ddd",
+          "icon-screen": "#0c0c0c",
+          "icon-accent": "#33ff66",
 
           "background": "#111",
           "foreground": "#c0c0c0",

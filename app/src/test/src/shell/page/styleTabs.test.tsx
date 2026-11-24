@@ -768,5 +768,13 @@ suite('Style', () => {
       cascaded(withClass(bar, 'floppy-lines'), 'fill'),
       'var(--color-commander-icon-accent)',
     );
+    assert.strictEqual(
+      cascaded(withClass(bar, 'terminal-screen'), 'fill'),
+      'var(--color-terminal-icon-screen)',
+    );
+    assert.strictEqual(
+      cascaded(withClass(bar, 'terminal-prompt'), 'fill'),
+      'var(--color-terminal-icon-accent)',
+    );
   });
 });

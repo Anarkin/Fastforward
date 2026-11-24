@@ -238,6 +238,14 @@
   color: var(--color-terminal-icon);
 }
 
+.tool-terminal .terminal-screen {
+  fill: var(--color-terminal-icon-screen);
+}
+
+.tool-terminal .terminal-prompt {
+  fill: var(--color-terminal-icon-accent);
+}
+
 .tool-viewer {
   color: var(--color-viewer-icon);
 }

@@ -1,9 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import {
-  floppyDrawing,
-  type PixelBox,
-} from '../../../../lib/page/floppyDrawing';
+import { floppyDrawing } from '../../../../lib/page/floppyDrawing';
+import type { PixelBox } from '../../../../lib/page/iconPixels';
 
 const sizes = Array.from({ length: 49 }, (_, at) => 16 + at);
 

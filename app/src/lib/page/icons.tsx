@@ -1,6 +1,8 @@
 import { type ChangeKind } from './iconKinds';
 import { usePixelRatio } from './imageSizes';
-import { boxOutline, diskOutline, floppyDrawing } from './floppyDrawing';
+import { diskOutline, floppyDrawing } from './floppyDrawing';
+import { boxOutline } from './iconPixels';
+import { frameOutline, promptDrawing } from './promptDrawing';
 
 function Icon({
   children,
@@ -77,14 +79,6 @@ export function CloseIcon() {
 }
 
 const toolSigns = {
-  terminal: (
-    <path
-      d="M3.5 2.5h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2ZM5.495 6.005 7.99 8.5 5.495 10.995A.7.7 0 0 1 4.505 10.005L6.01 8.5 4.505 6.995A.7.7 0 0 1 5.495 6.005ZM8.5 9.8h2.5a.7.7 0 0 1 0 1.4h-2.5a.7.7 0 0 1 0-1.4Z"
-      fill="currentColor"
-      fillRule="evenodd"
-      stroke="none"
-    />
-  ),
   git: (
     <>
       <circle cx="5.5" cy="3.5" r="1.5" />
@@ -199,13 +193,38 @@ function FloppyIcon() {
   );
 }
 
+function TerminalIcon() {
+  const drawing = promptDrawing(Math.round(toolIconSize * usePixelRatio()));
+  const { size, screen, chevron, underscore } = drawing;
+  return (
+    <svg
+      className="icon tool-icon tool-terminal"
+      width={toolIconSize}
+      height={toolIconSize}
+      viewBox={`0 0 ${size} ${size}`}
+      aria-hidden="true"
+    >
+      <path d={frameOutline(drawing)} fill="currentColor" stroke="none" />
+      <path className="terminal-screen" d={boxOutline(screen)} stroke="none" />
+      <path
+        className="terminal-prompt"
+        d={[...chevron, underscore].map(boxOutline).join('')}
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
 export function ToolIcon({
   tool,
 }: {
-  tool: keyof typeof toolSigns | 'commander';
+  tool: keyof typeof toolSigns | 'commander' | 'terminal';
 }) {
   if (tool === 'commander') {
     return <FloppyIcon />;
+  }
+  if (tool === 'terminal') {
+    return <TerminalIcon />;
   }
   return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }
