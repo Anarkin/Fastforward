@@ -15,8 +15,12 @@ const aspectType = 'CellStepsAspect';
 const resizeSteps = 1 << 6;
 const baseSize = 1 << 8;
 
-const xidOf = (window: BrowserWindow) =>
-  Number(window.getNativeWindowHandle().readBigUInt64LE(0));
+export const xidIn = (handle: Buffer): number =>
+  handle.length >= 8
+    ? Number(handle.readBigUInt64LE(0))
+    : handle.readUInt32LE(0);
+
+const xidOf = (window: BrowserWindow) => xidIn(window.getNativeWindowHandle());
 
 export const onWayland = (
   environment: NodeJS.ProcessEnv,

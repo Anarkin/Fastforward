@@ -305,11 +305,14 @@ suite('App window in whole cells', () => {
           'void *XOpenDisplay(const char *name)',
         )(null);
         const read = Buffer.alloc(80);
+        const handle = window.getNativeWindowHandle();
         x11.func(
           'int XGetWMNormalHints(void *display, unsigned long window, void *hints, _Out_ long *supplied)',
         )(
           display,
-          Number(window.getNativeWindowHandle().readBigUInt64LE(0)),
+          handle.length >= 8
+            ? Number(handle.readBigUInt64LE(0))
+            : handle.readUInt32LE(0),
           read,
           [0],
         );
