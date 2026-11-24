@@ -167,6 +167,53 @@ suite('Terminal', () => {
     await waitForRow((row) => row.includes('marker-file.txt'), 'the listing');
   });
 
+  test('searches the output on Ctrl+Shift+F in a search floating over the terminal, coloring every match, counting them and stepping through them on Enter, and gives the keyboard back to the shell on Escape, the matches no longer colored', async () => {
+    await run('echo needle-one needle-two needle-three');
+    await waitForRow(
+      (row) =>
+        row === 'needle-three' ||
+        (row.startsWith('needle-one') && row.endsWith('needle-three')),
+      'the needles',
+    );
+    await page.keyboard.press('ControlOrMeta+Shift+F');
+    const box = page.locator('.terminal .floating-search .search-box-input');
+    await box.waitFor();
+    await box.fill('needle-');
+    const shown = async () => ({
+      count: await page
+        .locator('.terminal .floating-search .search-count')
+        .evaluateAll((counts) => counts[0]?.textContent),
+      colored: await page.locator('.terminal-screen .xterm-decoration').count(),
+      current: await page
+        .locator('.terminal-screen .terminal-find-current')
+        .count(),
+    });
+    const found = await untilSettled(shown, 'the needles found');
+    await box.press('Enter');
+    const stepped = await untilSettled(shown, 'the next needle');
+    await box.press('Escape');
+    await page.locator('.terminal .floating-search').waitFor({
+      state: 'detached',
+    });
+    const closed = await untilSettled(shown, 'the needles no longer colored');
+    assert.deepStrictEqual(
+      {
+        found: { ...found, colored: found.colored >= 6 },
+        stepped: stepped.count,
+        closed: { colored: closed.colored, current: closed.current },
+        shell: await page.evaluate(() =>
+          document.activeElement?.classList.contains('xterm-helper-textarea'),
+        ),
+      },
+      {
+        found: { count: '1 of 6', colored: true, current: 1 },
+        stepped: '2 of 6',
+        closed: { colored: 0, current: 0 },
+        shell: true,
+      },
+    );
+  });
+
   test('scrolls back the rows of the setting for each notch of the wheel, at once and gliding there as the settings say, coming to rest on the same rows either way', async () => {
     await run(hundredLines);
     await waitForRow((row) => row === 'line100', 'the last line');

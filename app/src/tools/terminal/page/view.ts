@@ -1,7 +1,7 @@
 import type { FitAddon } from '@xterm/addon-fit';
 import type { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import type { WebglAddon } from '@xterm/addon-webgl';
-import type { Terminal } from '@xterm/xterm';
+import type { IDecoration, IMarker, Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
 import { snapOffset, watchDevicePixels } from '../../../lib/page/devicePixels';
 import { dialogHoldsFocus } from '../../../lib/page/modalDialog';
@@ -9,7 +9,11 @@ import { rowGlide } from '../../../lib/page/rowScroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { notchesOf, type Wheel } from '../../../lib/page/wheelTurns';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
-import { withHiddenCursor, terminalTheme } from './theme';
+import { hexOf, withHiddenCursor, terminalTheme } from './theme';
+import { firstFrom, screenMatches, type ScreenMatch } from './screenFind';
+import { maxMatches } from '../../../lib/shared/textMatches';
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
+import type { MatchesFound } from '../../../lib/shared/textMatches';
 import { cellOf, cellsOf } from './cells';
 import { layoutGrid } from './grid';
 import { type TerminalToWebview } from '../shared/protocol';
@@ -89,11 +93,21 @@ export interface TerminalViewOptions {
   readonly onCopy: (text: string) => void;
   readonly scrolling: () => ScrollSettings;
   readonly cursor: CursorLook;
+  readonly onFind: (selected: string) => void;
+  readonly onFound: (found: MatchesFound) => void;
 }
+
+const highlightLimit = 1000;
 
 export class TerminalView {
   private readonly terminal: Terminal;
   private readonly fit: FitAddon;
+  private finding:
+    { readonly query: string; readonly options: SearchOptions } | undefined;
+  private matches: readonly ScreenMatch[] = [];
+  private currentMatch = 0;
+  private highlights: (IMarker | IDecoration)[] = [];
+  private refinding = 0;
   private readonly cursor: PageCursor;
   private readonly place: PlaceReports;
   private readonly probe = document.createElement('span');
@@ -130,6 +144,7 @@ export class TerminalView {
     });
     this.terminal.loadAddon(this.fit);
     this.terminal.loadAddon(new xterm.UnicodeGraphemesAddon());
+    this.terminal.onWriteParsed(this.findAgain);
     this.terminal.attachCustomKeyEventHandler((event) => this.key(event));
     this.terminal.onData((data) => this.typed(data));
     this.terminal.onResize(() => this.resized());
@@ -264,6 +279,7 @@ export class TerminalView {
 
   dispose(): void {
     clearTimeout(this.resizing);
+    cancelAnimationFrame(this.refinding);
     this.observer.disconnect();
     this.scheme.removeEventListener('change', this.followScheme);
     this.element.removeEventListener('wheel', this.wheel, { capture: true });
@@ -300,6 +316,10 @@ export class TerminalView {
       return true;
     }
     const key = terminalKey(event, this.terminal.hasSelection());
+    if (key === 'find') {
+      event.preventDefault();
+      this.options.onFind(this.terminal.getSelection());
+    }
     if (key === 'copy') {
       event.preventDefault();
       if (this.terminal.hasSelection()) {
@@ -400,6 +420,132 @@ export class TerminalView {
   private readonly restyle = () => {
     this.terminal.options.theme = this.theme();
   };
+
+  find(query: string, options: SearchOptions, step: 0 | 1 | -1): void {
+    if (query === '') {
+      this.stopFinding();
+      return;
+    }
+    const same =
+      this.finding?.query === query &&
+      JSON.stringify(this.finding.options) === JSON.stringify(options);
+    this.finding = { query, options };
+    if (!same || step === 0) {
+      const buffer = this.terminal.buffer.active;
+      this.matches = screenMatches(buffer, query, options);
+      this.currentMatch = firstFrom(this.matches, buffer.viewportY, 0);
+    } else if (this.matches.length > 0) {
+      this.currentMatch =
+        (this.currentMatch + step + this.matches.length) % this.matches.length;
+    }
+    this.highlight();
+    this.reveal();
+  }
+
+  stopFinding(): void {
+    this.finding = undefined;
+    this.matches = [];
+    this.currentMatch = 0;
+    this.highlight();
+  }
+
+  focus(): void {
+    this.terminal.focus();
+  }
+
+  private readonly findAgain = () => {
+    if (this.finding === undefined || this.refinding !== 0) {
+      return;
+    }
+    this.refinding = requestAnimationFrame(() => {
+      this.refinding = 0;
+      const { finding } = this;
+      if (finding === undefined) {
+        return;
+      }
+      const shown = this.matches[this.currentMatch]?.[0];
+      const buffer = this.terminal.buffer.active;
+      this.matches = screenMatches(buffer, finding.query, finding.options);
+      this.currentMatch = firstFrom(
+        this.matches,
+        shown?.row ?? buffer.viewportY,
+        shown?.column ?? 0,
+      );
+      this.highlight();
+    });
+  };
+
+  private reveal(): void {
+    const row = this.matches[this.currentMatch]?.[0]?.row;
+    const buffer = this.terminal.buffer.active;
+    if (
+      row !== undefined &&
+      (row < buffer.viewportY || row >= buffer.viewportY + this.terminal.rows)
+    ) {
+      this.terminal.scrollToLine(
+        Math.max(0, row - Math.floor(this.terminal.rows / 3)),
+      );
+    }
+  }
+
+  private highlight(): void {
+    for (const highlight of this.highlights) {
+      highlight.dispose();
+    }
+    this.highlights = [];
+    const count = this.matches.length;
+    this.options.onFound({
+      current: this.currentMatch,
+      matches: count,
+      capped: count >= maxMatches,
+    });
+    const colors = this.matchColors();
+    if (count === 0 || colors === undefined) {
+      return;
+    }
+    const buffer = this.terminal.buffer.active;
+    const cursorLine = buffer.baseY + buffer.cursorY;
+    const from = Math.max(0, this.currentMatch - highlightLimit / 2);
+    this.matches.slice(from, from + highlightLimit).forEach((match, at) => {
+      const current = from + at === this.currentMatch;
+      for (const piece of match) {
+        const marker = this.terminal.registerMarker(piece.row - cursorLine);
+        if (marker === undefined) {
+          continue;
+        }
+        this.highlights.push(marker);
+        const decoration = this.terminal.registerDecoration({
+          marker,
+          x: piece.column,
+          width: piece.width,
+          backgroundColor: colors.background,
+          foregroundColor: colors.foreground,
+          layer: 'top',
+        });
+        if (decoration !== undefined) {
+          this.highlights.push(decoration);
+          if (current) {
+            decoration.onRender((element) =>
+              element.classList.add('terminal-find-current'),
+            );
+          }
+        }
+      }
+    });
+  }
+
+  private matchColors():
+    { readonly background: string; readonly foreground: string } | undefined {
+    const resolved = (color: string) => {
+      this.probe.style.color = color;
+      return hexOf(getComputedStyle(this.probe).color);
+    };
+    const background = resolved('var(--color-search-match)');
+    const foreground = resolved('var(--color-search-match-foreground)');
+    return background === undefined || foreground === undefined
+      ? undefined
+      : { background, foreground };
+  }
 
   private theme() {
     const theme = terminalTheme((color) => {

@@ -411,6 +411,7 @@ export const strings = {
     selectText: 'Select text, or reach from where the selection began',
     chooseLanguage: 'Choose the language the text is colored in',
     findInFile: 'Search the file',
+    findInTerminal: 'Search the output of the terminal',
     viewDiffFile: 'View the file shown in a tab of its own',
     zoomPdf: 'Zoom a PDF in or out',
     realSize: 'Show an image at its real size, or fit it to the viewer',

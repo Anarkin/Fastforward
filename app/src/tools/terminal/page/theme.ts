@@ -33,3 +33,13 @@ export function terminalTheme(resolve: (color: string) => string): ITheme {
 export function withHiddenCursor(theme: ITheme): ITheme {
   return { ...theme, cursor: theme.background };
 }
+
+export function hexOf(color: string): string | undefined {
+  const channels = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
+  return channels === null
+    ? undefined
+    : `#${channels
+        .slice(1, 4)
+        .map((channel) => Number(channel).toString(16).padStart(2, '0'))
+        .join('')}`;
+}

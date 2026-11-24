@@ -1,7 +1,7 @@
 import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 
-export const terminalGroups = ['Clipboard', 'Kept'] as const;
+export const terminalGroups = ['Clipboard', 'Searching', 'Kept'] as const;
 
 export const terminalKeymap = {
   copy: bind(
@@ -15,6 +15,21 @@ export const terminalKeymap = {
     strings.actions.paste,
     { 'Mod+V': true, 'Mod+Shift+V': true },
     { repeats: true },
+  ),
+  find: bind('Searching', strings.actions.findInTerminal, {
+    'Mod+Shift+F': true,
+  }),
+  match: bind(
+    'Searching',
+    strings.actions.match,
+    { Enter: 1, 'Shift+Enter': -1 } as const,
+    { repeats: true, fields: true },
+  ),
+  stopFinding: bind(
+    'Searching',
+    strings.actions.stopFinding,
+    { Escape: true },
+    { fields: true },
   ),
   leftToApp: bind(
     'Kept',

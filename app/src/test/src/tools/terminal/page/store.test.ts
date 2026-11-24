@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { createTerminalStore } from '../../../../../tools/terminal/page/store';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type {
   TerminalToHost,
   TerminalToWebview,
@@ -72,5 +73,32 @@ suite('Terminal store', () => {
       { type: 'openFolder', folder: '/b' },
       { type: 'input', tab: '1', data: 'ls' },
     ]);
+  });
+
+  test('keeps the search of each tab apart, opened with the text selected, its toggles and the matches counted, until it is closed', () => {
+    const store = createTerminalStore(() => undefined);
+    const { openFind, findFor, foundFor, closeFind } = store.getState();
+    openFind('1', 'npm');
+    openFind('2', '');
+    findFor('1', 'npm run', { ...plainSearch, wholeWord: true });
+    foundFor('1', { current: 2, matches: 5 });
+    const opened = store.getState().finds;
+    closeFind('2');
+    assert.deepStrictEqual(
+      [opened.get('2'), [...store.getState().finds]],
+      [
+        { query: '', options: plainSearch, found: { current: 0, matches: 0 } },
+        [
+          [
+            '1',
+            {
+              query: 'npm run',
+              options: { ...plainSearch, wholeWord: true },
+              found: { current: 2, matches: 5 },
+            },
+          ],
+        ],
+      ],
+    );
   });
 });

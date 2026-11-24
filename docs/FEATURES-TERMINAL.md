@@ -78,7 +78,7 @@
 | Copy on select | Copy what is selected, and paste on a middle click | — | Common | ❌ No |  |
 | Context menu | Copy, paste and more from a right click | — | Common | ❌ No |  |
 | Selection | Select words and lines by clicking | — | Core | ✅ Yes | By `xterm.js`: a double click selects a word, a triple click a line |
-| Keys left to programs | Send the shell the keys the app doesn't need | — | Core | ✅ Yes | Every key but Ctrl+Tab, Ctrl+Shift+Tab, Mod+Shift+T, Mod+Shift+N, Mod+Shift+W, Mod+Shift+O and Mod+Shift+I, which opens the developer tools, reaches the shell, and Mod+C while text is selected |
+| Keys left to programs | Send the shell the keys the app doesn't need | — | Core | ✅ Yes | Every key but Ctrl+Tab, Ctrl+Shift+Tab, Mod+Shift+T, Mod+Shift+N, Mod+Shift+W, Mod+Shift+O, Mod+Shift+F, which searches, and Mod+Shift+I, which opens the developer tools, reaches the shell, and Mod+C while text is selected |
 | Option as Meta | Send Option as Meta on macOS | — | Common | ❌ No | Option types characters as macOS has it |
 | Full keyboard reporting | Tell programs every key and modifier | kitty keyboard protocol | Advanced | ❌ No |  |
 | Input methods | Compose text with an input method | — | Core | ✅ Yes | By `xterm.js` |
@@ -93,7 +93,7 @@
 | Scroll | Scroll back through the output | — | Core | ✅ Yes | The wheel moves `scrolling.wheelRows` rows a notch, 10 by default, gliding with `scrolling.smooth`, while the main screen shows and no program reads the mouse; and its scrollbar, the one every tool has, by its buttons, its track and its thumb, a line at a time |
 | Alternate screen | Keep full-screen programs out of the scrollback | `CSI ? 1049 h` | Core | ✅ Yes | By `xterm.js` |
 | Reflow | Wrap lines anew when the window is resized | — | Common | ✅ Yes | By `xterm.js` |
-| Find | Search the scrollback | — | Core | ❌ No | No button; the shell fills its tab, with no bar above it |
+| Find | Search the scrollback | Ctrl+Shift+F | Core | ✅ Yes | Mod+Shift+F, as Mod+F is the shell's, in a search floating over the top right of the screen, as the filter of the commander floats, with the text selected filled in: the screen and the scrollback, a line the terminal wrapped as one, every match colored in the yellow of a find, the current one edged, counted, and stepped through on Enter and Shift+Enter; Aa, W and .* as every search of the app; searched again as output comes, and kept with its tab; Escape gives the keyboard back to the shell; not on the track of the scrollbar yet |
 | Clear | Clear the screen and the scrollback from a command | — | Common | ❌ No | The shell's `clear` and `cls` work |
 | Save the output | Save the scrollback as text | — | Advanced | ❌ No |  |
 

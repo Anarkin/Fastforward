@@ -611,6 +611,7 @@ suite('Architecture', () => {
       'tools/viewer/main/textFind.ts',
       'tools/viewer/page/markdownFind.ts',
       'tools/viewer/page/markPieces.ts',
+      'tools/terminal/page/screenFind.ts',
     ];
     const code = sourceFiles.filter((file) => /\.tsx?$/.test(file));
     assert.deepStrictEqual(

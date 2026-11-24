@@ -61,6 +61,17 @@ suite('Terminal keys', () => {
     assert.strictEqual(terminalKey(keyPress('o', ctrl), false), 'shell');
   });
 
+  test('opens the search of the terminal on Ctrl+Shift+F, or Cmd+Shift+F on macOS, but leaves Ctrl+F to the shell, which moves its cursor on it', () => {
+    assert.strictEqual(terminalKey(keyPress('F', ctrlShift), false), 'find');
+    assert.strictEqual(
+      withMacKeys(() =>
+        terminalKey(keyPress('F', { metaKey: true, shiftKey: true }), false),
+      ),
+      'find',
+    );
+    assert.strictEqual(terminalKey(keyPress('f', ctrl), false), 'shell');
+  });
+
   test('leaves every other key to the shell, the app shortcuts included', () => {
     for (const press of [
       keyPress('F1'),

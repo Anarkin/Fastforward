@@ -8,6 +8,11 @@ import { useStore } from 'zustand';
 import type { TerminalToHost, TerminalToWebview } from '../shared/protocol';
 import { createTerminalStore } from './store';
 import { pageCursorLook } from '../../../lib/page/cursor';
+import { FloatingSearch } from '../../../lib/page/floatingSearch';
+import { SearchBar } from '../../../lib/page/searchBar';
+import { keyPressed } from '../../../lib/page/shortcuts';
+import { keysOf } from '../../../lib/shared/keymap';
+import { terminalKeymap } from './keymap';
 
 export function TerminalTool({
   active,
@@ -24,6 +29,10 @@ export function TerminalTool({
   const shown = useStore(store, (state) => state.shown);
   const settings = useStore(store, (state) => state.settings);
   const folders = useStore(store, (state) => state.folders);
+  const find = useStore(store, (state) =>
+    state.shown === undefined ? undefined : state.finds.get(state.shown),
+  );
+  const findInput = useRef<HTMLInputElement>(null);
   const {
     receive,
     listenScreen,
@@ -32,6 +41,10 @@ export function TerminalTool({
     browseFolders,
     openFolder,
     forgetFolder,
+    openFind,
+    findFor,
+    foundFor,
+    closeFind,
   } = store.getState();
   const scrolling = useShell((state) => state.scrolling);
   const { copyText: onCopy, setToolItems } = useShellActions();
@@ -72,7 +85,16 @@ export function TerminalTool({
           onCopy,
           scrolling: scrollingOf,
           cursor: pageCursorLook(),
+          onFind: (selected) => {
+            openFind(shown, selected);
+            requestAnimationFrame(() => findInput.current?.select());
+          },
+          onFound: (found) => foundFor(shown, found),
         });
+        const kept = store.getState().finds.get(shown);
+        if (kept !== undefined) {
+          view.current.find(kept.query, kept.options, 0);
+        }
       }
     });
     return () => {
@@ -80,7 +102,23 @@ export function TerminalTool({
       view.current?.dispose();
       view.current = undefined;
     };
-  }, [active, shown, settings, send, onCopy]);
+  }, [active, shown, settings, send, onCopy, openFind, foundFor, store]);
+
+  const query = find?.query;
+  const options = find?.options;
+  useEffect(() => {
+    if (query !== undefined && options !== undefined) {
+      view.current?.find(query, options, 0);
+    }
+  }, [query, options]);
+
+  const stopFinding = () => {
+    if (shown !== undefined) {
+      closeFind(shown);
+    }
+    view.current?.stopFinding();
+    view.current?.focus();
+  };
 
   useEffect(() => {
     view.current?.glide(scrolling.smooth);
@@ -89,10 +127,43 @@ export function TerminalTool({
   return active ? (
     <div className="repository">
       <div className="columns terminal-columns">
-        <section className="column terminal">
-          <div className="column-body terminal-panel">
+        <section className="column terminal search-scope">
+          <div className="column-body terminal-panel search-area">
             <div className="terminal-screen" ref={screen} />
           </div>
+          {find !== undefined && shown !== undefined && (
+            <FloatingSearch>
+              <SearchBar
+                font="monospace"
+                query={find.query}
+                options={find.options}
+                found={find.found}
+                input={findInput}
+                onQuery={(next) => findFor(shown, next, find.options)}
+                onOptions={(next) => findFor(shown, find.query, next)}
+                onStep={(step) =>
+                  view.current?.find(find.query, find.options, step)
+                }
+                stepKeys={[
+                  keysOf(terminalKeymap.match, -1),
+                  keysOf(terminalKeymap.match, 1),
+                ]}
+                onClose={stopFinding}
+                onKeyDown={(event) => {
+                  const step = keyPressed(terminalKeymap.match, event);
+                  if (step !== undefined) {
+                    event.preventDefault();
+                    view.current?.find(find.query, find.options, step);
+                  } else if (
+                    keyPressed(terminalKeymap.stopFinding, event) !== undefined
+                  ) {
+                    event.preventDefault();
+                    stopFinding();
+                  }
+                }}
+              />
+            </FloatingSearch>
+          )}
         </section>
       </div>
     </div>

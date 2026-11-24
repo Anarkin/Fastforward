@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  hexOf,
   terminalTheme,
   withHiddenCursor,
 } from '../../../../../tools/terminal/page/theme';
@@ -28,6 +29,13 @@ suite('Terminal theme', () => {
         cursor: '#06c',
       }),
       { background: '#111', foreground: '#ccc', cursor: '#111' },
+    );
+  });
+
+  test('hands the search the colors of a find match as hex, the form its highlights take, from the colors the page resolves', () => {
+    assert.deepStrictEqual(
+      [hexOf('rgb(255, 238, 102)'), hexOf('rgba(0, 0, 0, 1)'), hexOf('red')],
+      ['#ffee66', '#000000', undefined],
     );
   });
 });

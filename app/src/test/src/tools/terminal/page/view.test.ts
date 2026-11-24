@@ -142,6 +142,8 @@ suite('Terminal view', () => {
         onCopy: noop,
         scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
         cursor: defaultCursorLook,
+        onFind: noop,
+        onFound: noop,
       });
       done.length = 0;
       lose();
@@ -194,6 +196,8 @@ suite('Terminal view', () => {
         onCopy: noop,
         scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
         cursor: defaultCursorLook,
+        onFind: noop,
+        onFound: noop,
       });
       assert.deepStrictEqual(posted, [
         { type: 'open', tab: '1', columns: 1000, rows: 1000 },
@@ -249,6 +253,8 @@ suite('Terminal view', () => {
         onCopy: noop,
         scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
         cursor: defaultCursorLook,
+        onFind: noop,
+        onFound: noop,
       });
       painted();
       const size =
@@ -322,6 +328,8 @@ suite('Terminal view', () => {
         onCopy: noop,
         scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
         cursor: defaultCursorLook,
+        onFind: noop,
+        onFound: noop,
       });
 
       assert.ok(given.linkHandler !== undefined);

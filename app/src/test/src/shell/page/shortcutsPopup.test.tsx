@@ -18,7 +18,7 @@ suite('Shortcuts popup', () => {
       shortcutEntries.map((each) => [each.id, each.title, each.groups.length]),
       [
         ['everywhere', 'General', 3],
-        ['terminal', 'Terminal', 2],
+        ['terminal', 'Terminal', 3],
         ['commander', 'Commander', 7],
         ['git', 'Git', 5],
         ['viewer', 'Viewer', 4],
@@ -37,7 +37,7 @@ suite('Shortcuts popup', () => {
       ]),
       [
         ['General', ['Tabs', 'App', 'Lists and popups']],
-        ['Terminal', ['Clipboard', 'Kept from the shell']],
+        ['Terminal', ['Clipboard', 'Searching', 'Kept from the shell']],
         [
           'Commander',
           [
@@ -318,9 +318,17 @@ suite('Shortcuts popup', () => {
     ]);
   });
 
-  test('lists the keys the terminal keeps from the shell, and those that work in every tab, every list and every popup', () => {
+  test('lists the keys the terminal keeps from the shell, those of its search, and those that work in every tab, every list and every popup', () => {
     assert.deepStrictEqual(contents('terminal'), [
       ['Clipboard', ['Copy the selection', 'Paste']],
+      [
+        'Searching',
+        [
+          'Search the output of the terminal',
+          'Next or previous match',
+          'Close the search',
+        ],
+      ],
       ['Kept from the shell', ['Go to the app rather than the shell']],
     ]);
     assert.deepStrictEqual(contents('everywhere'), [
