@@ -30,7 +30,11 @@ const placed = () =>
       header === undefined
       ? undefined
       : {
-          line: box.left + box.width / 2,
+          line:
+            box.left +
+            parseFloat(
+              view === null ? '' : getComputedStyle(view, '::after').left,
+            ),
           middle: header.left + header.width / 2,
           old: [old.left, old.right],
           new: [changed.left, changed.right],
@@ -158,7 +162,7 @@ suite('App', () => {
       await viewerShows(page, 'two');
       assert.strictEqual((await viewerTexts(page)).includes('2'), false);
       assert.strictEqual(
-        await page.locator('.viewer-path').textContent(),
+        await page.locator('.path-row').textContent(),
         path.join(repository.root, 'changed.txt'),
       );
     } finally {
@@ -227,7 +231,7 @@ suite('App', () => {
     }
   });
 
-  test('opens the version of a file viewed against the one before it in a diff tab on Shift+F3, under the whole path of the file, the version of each side on a button in its header, side by side the old ending and the new starting at the line between the sides, inline both in the middle with an arrow between them', async () => {
+  test('opens the version of a file viewed against the one before it in a diff tab on Shift+F3, under the whole path of the file, the version of each side on a button in its header, side by side the old ending and the new starting as far from the line between the sides, which is where the sides meet rather than the middle of the diff with its scrollbar, inline both in the middle with an arrow between them', async () => {
     const [first, second] = await repository.resolve('HEAD~1', 'HEAD');
     await page.locator('.commit', { hasText: 'second' }).click();
     await page
@@ -272,9 +276,8 @@ suite('App', () => {
       const [newStart = 0] = sideBySide.new;
       assert.ok(
         oldEnd <= sideBySide.line + layoutUnit &&
-          sideBySide.line - oldEnd < 12 &&
           newStart >= sideBySide.line - layoutUnit &&
-          newStart - sideBySide.line < 12,
+          Math.abs(sideBySide.line - oldEnd - (newStart - sideBySide.line)) < 1,
         JSON.stringify(sideBySide),
       );
 

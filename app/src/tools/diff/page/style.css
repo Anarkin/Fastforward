@@ -16,6 +16,7 @@
 }
 
 .compare-versions.side-by-side {
+  right: calc(var(--column-line, 0px) + var(--scrollbar-marked-size));
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
