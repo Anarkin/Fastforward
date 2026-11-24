@@ -6,7 +6,7 @@ import {
   type Size,
 } from '../shell/shared/cellGrid';
 import { fittedSize, type Toward } from './cellFit';
-import { cellsChanged, fitToward } from './cellsChanged';
+import { fitsWhenMoved, fitToward } from './cellsChanged';
 import { windowPixels } from './windowPixels';
 
 export interface CellSteps {
@@ -69,7 +69,7 @@ export function fitByElectron(window: BrowserWindow, grid: CellGrid): void {
   }
 }
 
-const changedCells = cellsChanged();
+const fits = fitsWhenMoved();
 
 const byElectron: CellSteps = {
   follow: (window, report) => {
@@ -77,8 +77,13 @@ const byElectron: CellSteps = {
       report === undefined
         ? undefined
         : gridAround(report, electronClient(window), scaleOf(window));
-    if (grid !== undefined && changedCells(window, report)) {
+    if (
+      report !== undefined &&
+      grid !== undefined &&
+      fits.due(window, report, electronClient(window))
+    ) {
       fitByElectron(window, grid);
+      fits.done(window, report, electronClient(window));
     }
   },
 };

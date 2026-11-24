@@ -1,21 +1,22 @@
 import type { CellReport, Size } from '../shell/shared/cellGrid';
 import type { Toward } from './cellFit';
 
-export function cellsChanged(): (
-  window: object,
-  report: CellReport | undefined,
-) => boolean {
+export interface Fits {
+  due(window: object, report: CellReport | undefined, size: Size): boolean;
+  done(window: object, report: CellReport, size: Size): void;
+}
+
+const keyOf = ({ cell }: CellReport, size: Size) =>
+  `${cell.width}x${cell.height} ${size.width}x${size.height}`;
+
+export function fitsWhenMoved(): Fits {
   const fitted = new WeakMap<object, string>();
-  return (window, report) => {
-    if (report === undefined) {
-      return false;
-    }
-    const key = `${report.cell.width}x${report.cell.height}`;
-    if (fitted.get(window) === key) {
-      return false;
-    }
-    fitted.set(window, key);
-    return true;
+  return {
+    due: (window, report, size) =>
+      report !== undefined && fitted.get(window) !== keyOf(report, size),
+    done: (window, report, size) => {
+      fitted.set(window, keyOf(report, size));
+    },
   };
 }
 
