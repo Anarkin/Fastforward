@@ -371,7 +371,7 @@ export function DiffView({
   const font = measures.text?.font ?? '';
   const spacing = measures.text?.spacing ?? 0;
   const placed = virtualizer.measurementsCache;
-  const { spacer, host } = useDiffCells(list, shown, {
+  const { spacer, host, selectAll } = useDiffCells(list, shown, {
     rows,
     keys,
     wrapping,
@@ -519,6 +519,7 @@ export function DiffView({
             virtualizer,
             rows,
             lineHeight,
+            selectAll,
           })
         }
       >

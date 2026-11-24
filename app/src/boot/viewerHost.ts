@@ -1,3 +1,4 @@
+import { clipboard } from 'electron';
 import { watchFolder } from '../lib/main/watch';
 import { systemCodePage } from '../components/encodings/main/codePages';
 import type { CommanderTool } from '../tools/commander/main/tool';
@@ -23,6 +24,9 @@ export function viewerToolOf({
   diffTool,
 }: ViewerHostDeps): ViewerTool {
   return new ViewerTool({
+    copy: (text) => {
+      void clipboard.writeText(text);
+    },
     codePage: () => systemCodePage(process.platform),
     watch: watchFolder,
     pdfPlaces,

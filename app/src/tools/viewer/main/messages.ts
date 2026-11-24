@@ -3,11 +3,13 @@ import {
   isTextEncoding,
   type TextEncoding,
 } from '../../../components/encodings/shared/textEncodings';
-import type { ViewerToHost } from '../shared/protocol';
+import type { CopiedAs, ViewerToHost } from '../shared/protocol';
 import type { ViewerPages } from './pages';
 import type { Viewers } from './viewers';
 import type { ViewerFind } from './find';
 import type { ViewedPdfPlaces } from './viewedPdfPlaces';
+
+const copiedAs: readonly unknown[] = ['text', 'hex', 'bytes'];
 
 export class ViewerMessages {
   constructor(
@@ -28,6 +30,11 @@ export class ViewerMessages {
     private readonly compareVersions: (
       page: Page,
       tab: string,
+    ) => Promise<void>,
+    private readonly copyWhole: (
+      page: Page,
+      as: CopiedAs,
+      encoding: TextEncoding,
     ) => Promise<void>,
   ) {}
 
@@ -80,6 +87,14 @@ export class ViewerMessages {
           viewing.refresh();
         }
         return Promise.resolve();
+      }
+      case 'copyWhole': {
+        const { tab, as, encoding } = message;
+        return this.pages.shown.get(page)?.viewing?.tab === tab &&
+          copiedAs.includes(as) &&
+          isTextEncoding(encoding)
+          ? this.copyWhole(page, as, encoding)
+          : Promise.resolve();
       }
       default:
         return message satisfies never;

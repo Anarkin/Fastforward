@@ -1,8 +1,8 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { byteText } from '../../../../../tools/viewer/shared/byteText';
 import {
   byteTipAt,
-  byteText,
   bytesToAsk,
   hexLine,
   hexRow,

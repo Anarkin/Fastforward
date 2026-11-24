@@ -326,6 +326,8 @@ export const strings = {
       'Go to a folder by typing or pasting its path, or to the folder of a file with the file selected',
     reread: 'Read the folder of the side again',
     readFileAgain: 'Read the file again',
+    selectWholeFile: 'Select the whole file',
+    selectWholeSide: 'Select the whole side',
     compareAgain: 'Compare the files again',
     readRepositoryAgain: 'Read the repository again',
     viewFile: 'View the selected file in a tab of its own',
@@ -1121,6 +1123,8 @@ export const strings = {
       `Documents over ${megabytes} MB are not previewed.`,
     versionNotEdited: (file: string) =>
       sentence`${namedFile(file)} is shown as git keeps a version of it, not as it is on disk, so it can't be edited.`,
+    tooLargeToCopy: (megabytes: string, most: number, as: 'text' | 'bytes') =>
+      `The file is too large to copy whole, ${megabytes} MB, past the ${most} MB it copies at most as ${as}.`,
   },
   encodings: {
     encoding: 'Encoding',

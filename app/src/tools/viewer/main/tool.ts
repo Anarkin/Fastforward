@@ -10,7 +10,7 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/toolContract';
-import type { ViewerToHost } from '../shared/protocol';
+import type { CopiedAs, ViewerToHost } from '../shared/protocol';
 import type { FileHistoryListed } from '../../../components/versions/shared/versions';
 import type { WatchFolder } from '../../../lib/main/watch';
 import { post } from './post';
@@ -20,6 +20,7 @@ import { ViewerFind } from './find';
 import { ViewedPdfPlaces } from './viewedPdfPlaces';
 import type { PdfPlaceStore } from './pdfPlaces';
 import { ViewerMessages } from './messages';
+import { wholeCopy } from './wholeCopies';
 import { Serving } from './serving';
 import { strings } from '../../../lib/shared/strings';
 import { shortHash } from '../../../lib/shared/hashes';
@@ -31,6 +32,7 @@ type VersionCopy =
   | { readonly kind: 'missing' | 'tooLarge' };
 
 export interface ViewerAccess {
+  readonly copy: (text: string) => void;
   readonly codePage: () => Promise<TextEncoding>;
   readonly watch: WatchFolder;
   readonly pdfPlaces: PdfPlaceStore;
@@ -82,6 +84,7 @@ export class ViewerTool implements Tool<'viewer'> {
       (page, tab, at) => this.editViewed(page, tab, at),
       (page, tab, rev) => this.chooseVersion(page, tab, rev),
       (page, tab) => this.compareVersions(page, tab),
+      (page, as, encoding) => this.copyWhole(page, as, encoding),
     );
     this.serving = new Serving(
       () => this.shell.tabs(),
@@ -360,5 +363,29 @@ export class ViewerTool implements Tool<'viewer'> {
       return;
     }
     await this.access.editViewed(page, viewed.root, at);
+  }
+
+  private async copyWhole(
+    page: Page,
+    as: CopiedAs,
+    encoding: TextEncoding,
+  ): Promise<void> {
+    const viewing = this.pages.shown.get(page)?.viewing;
+    if (viewing === undefined) {
+      return;
+    }
+    const copied = await wholeCopy(viewing.file, viewing.size, as, encoding);
+    if (copied.kind === 'copied') {
+      this.access.copy(copied.text);
+      return;
+    }
+    this.shell.notice(page, {
+      level: 'error',
+      message: strings.viewer.tooLargeToCopy(
+        copied.megabytes,
+        copied.most,
+        copied.as,
+      ),
+    });
   }
 }

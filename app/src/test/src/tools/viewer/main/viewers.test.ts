@@ -3,7 +3,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import type { Tab } from '../../../../../shell/main/toolContract';
-import { maxBytesAsked } from '../../../../../tools/viewer/shared/protocol';
+import {
+  maxBytesAsked,
+  maxBytesCopied,
+  maxTextCopied,
+} from '../../../../../tools/viewer/shared/protocol';
 import { maxColoredBytes } from '../../../../../components/syntax/shared/colorLimit';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { readBudgetBytes } from '../../../../../tools/viewer/main/textRows';
@@ -485,5 +489,41 @@ suite('Viewer tool viewing a file', () => {
     assert.strictEqual(second?.size, first?.size);
     assert.notStrictEqual(second?.version, first?.version);
     assert.strictEqual(await rowAtMiddle(2), changed[2000]);
+  });
+
+  test('copies the whole file viewed on Ctrl+A then Ctrl+C, as its text without the byte order mark, as hex pairs or as the characters of its bytes, up to 50 MB of text and 16 MB of bytes, saying how large it is past that, as the page holds only the rows around the screen', async () => {
+    const marked = path.join(opened, 'whole.txt');
+    fs.writeFileSync(
+      marked,
+      Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('é\r\nb\n')]),
+    );
+    const { tool, page, send, clipboard, notices } = viewer();
+    await tool.show(page, { id: '3', tool: 'viewer', root: marked });
+    for (const as of ['text', 'hex', 'bytes'] as const) {
+      await send({ type: 'copyWhole', tab: '3', as, encoding: 'utf-8' });
+    }
+    await send({ type: 'copyWhole', tab: '4', as: 'text', encoding: 'utf-8' });
+    assert.deepStrictEqual(clipboard, [
+      'é\r\nb\n',
+      'EF BB BF C3 A9 0D 0A 62 0A',
+      '¤¤¤¤¤¤¤b¤',
+    ]);
+
+    const large = path.join(opened, 'large.bin');
+    fs.writeFileSync(large, '');
+    fs.truncateSync(large, maxBytesCopied + 1);
+    await tool.show(page, { id: '5', tool: 'viewer', root: large });
+    await send({ type: 'copyWhole', tab: '5', as: 'hex', encoding: 'utf-8' });
+    fs.truncateSync(large, maxTextCopied + 1);
+    await tool.show(page, { id: '6', tool: 'viewer', root: large });
+    await send({ type: 'copyWhole', tab: '6', as: 'text', encoding: 'utf-8' });
+    assert.strictEqual(clipboard.length, 3);
+    assert.deepStrictEqual(
+      notices.map((notice) => plainOf(notice.message)),
+      [
+        'The file is too large to copy whole, 16.0 MB, past the 16 MB it copies at most as bytes.',
+        'The file is too large to copy whole, 50.0 MB, past the 50 MB it copies at most as text.',
+      ],
+    );
   });
 });

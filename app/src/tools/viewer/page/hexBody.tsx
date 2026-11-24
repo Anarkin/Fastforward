@@ -17,6 +17,8 @@ import { CellRows } from './cellRows';
 import { useCellFont } from '../../../components/cells/page/cellFont';
 import { gpuRefused, watchGpu } from '../../../components/cells/page/gpuDevice';
 import type { RowAhead } from '../../../components/cells/page/glyphWarmth';
+import { byteText } from '../shared/byteText';
+import { wholeFile } from './wholeFile';
 import { strings } from '../../../lib/shared/strings';
 
 const rowsAboveMatch = 2;
@@ -24,7 +26,6 @@ import { ScrollBody } from './scrollBody';
 import { rowEnds } from './scrollThumbs';
 import {
   byteTipAt,
-  byteText,
   bytesToAsk,
   hexLine,
   hexRow,
@@ -80,10 +81,13 @@ export function ByteBody({
     keepViewer,
     placeOf,
     keepPlace,
+    copyWhole,
   } = useViewerActions();
   const { tab, version } = viewing;
+  const allAsked = useViewer((state) => state.allAsked);
   const refused = useSyncExternalStore(watchGpu, gpuRefused);
   const size = viewing.size ?? 0;
+  const all = useMemo(() => wholeFile(size), [size]);
   const [screen, setScreen] = useState(1);
   const [columns, setColumns] = useState(minTextColumns);
   const topByte = useViewer((state) => state.places.get(tab) ?? 0);
@@ -404,6 +408,11 @@ export function ByteBody({
               : rowBytes,
           )}
           tipOf={tipOf}
+          allAsked={allAsked}
+          all={all}
+          onCopiedAll={() =>
+            copyWhole(layout === 'hex' ? 'hex' : 'bytes', 'utf-8')
+          }
         />
       )}
     </ScrollBody>

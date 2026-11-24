@@ -271,6 +271,24 @@ export class DiffCells {
     this.anew();
   }
 
+  selectAll(): void {
+    const shown = this.views.flatMap((view, pane) =>
+      view === undefined ? [] : [pane],
+    );
+    const pane =
+      shown.find((each) => this.views[each]?.selection !== undefined) ??
+      shown.at(-1);
+    if (pane === undefined) {
+      return;
+    }
+    for (const [other, each] of this.views.entries()) {
+      if (other !== pane) {
+        each?.clearSelection();
+      }
+    }
+    this.views[pane]?.selectHeld();
+  }
+
   private left(): void {
     for (const view of this.views) {
       view?.dispose();

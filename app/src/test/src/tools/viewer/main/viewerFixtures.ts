@@ -43,7 +43,11 @@ export function viewer() {
   const versions = new Map<string, string>();
   const histories = new Map<string, FileHistoryListed>();
   const comparedHistories: (readonly [string, string | undefined])[] = [];
+  const clipboard: string[] = [];
   const tool = new ViewerTool({
+    copy: (text) => {
+      clipboard.push(text);
+    },
     codePage: () => Promise.resolve('windows-1250'),
     watch: (file, changed) => {
       const watch = { file, changed };
@@ -110,6 +114,7 @@ export function viewer() {
     comparedHistories,
     versionsSet,
     tabsOpened,
+    clipboard,
   };
 }
 

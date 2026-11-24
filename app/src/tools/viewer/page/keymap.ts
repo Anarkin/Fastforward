@@ -42,6 +42,7 @@ export const viewerKeymap = {
   language: bind('Text', strings.actions.chooseLanguage, { L: true }),
   wrap: bind('Text', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Text', strings.actions.showWhitespace, { '.': true }),
+  selectAll: bind('Text', strings.actions.selectWholeFile, { 'Mod+A': true }),
   selectText: bind('Text', strings.actions.selectText, {
     Click: 'start',
     'Shift+Click': 'extend',

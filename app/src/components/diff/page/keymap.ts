@@ -34,6 +34,7 @@ export const diffKeymap = {
     Click: 'start',
     'Shift+Click': 'extend',
   } as const),
+  selectAll: bind('Diff', strings.actions.selectWholeSide, { 'Mod+A': true }),
   wrap: bind('Diff', strings.actions.wrap, { W: true }),
   showWhitespace: bind('Diff', strings.actions.showWhitespace, { '.': true }),
   language: bind('Diff', strings.actions.chooseLanguage, { L: true }),

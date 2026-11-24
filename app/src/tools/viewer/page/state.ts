@@ -1,7 +1,7 @@
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { EncodingChoice } from '../../../components/encodings/page/encodings';
-import type { ByteRange, ViewerToWebview } from '../shared/protocol';
+import type { ByteRange, CopiedAs, ViewerToWebview } from '../shared/protocol';
 import type { PdfPlace } from '../shared/pdf';
 import type { ListedVersions } from '../../../components/versions/shared/versions';
 import type { ViewMode } from './keymap';
@@ -26,6 +26,7 @@ export interface ViewerSource {
   readonly places: ReadonlyMap<string, number>;
   readonly caches: ReadonlyMap<string, Partial<KeptViewer>>;
   readonly anchors: ReadonlyMap<string, string>;
+  readonly allAsked: number;
 }
 
 export interface ViewerActions {
@@ -60,6 +61,8 @@ export interface ViewerActions {
   readonly choose: (choices: Partial<ViewerChoices>) => void;
   readonly chooseVersion: (rev: string | undefined) => void;
   readonly compareVersions: () => void;
+  readonly selectAll: () => void;
+  readonly copyWhole: (as: CopiedAs, encoding: TextEncoding) => void;
   readonly editViewed: (
     tab: string,
     at: number,
@@ -89,6 +92,7 @@ export const viewerDefaults: ViewerSource = {
   places: new Map(),
   caches: new Map(),
   anchors: new Map(),
+  allAsked: 0,
 };
 
 const noChoices: ViewerChoices = {};

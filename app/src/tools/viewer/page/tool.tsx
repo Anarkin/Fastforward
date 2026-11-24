@@ -33,6 +33,7 @@ export function ViewerTool({
   }, [store]);
 
   const shown = active && tab !== undefined;
+  useBinding(viewerKeymap.selectAll, () => store.getState().selectAll(), shown);
   useBinding(
     viewerKeymap.refresh,
     () => {

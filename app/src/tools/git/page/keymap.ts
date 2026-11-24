@@ -72,6 +72,7 @@ export const gitKeymap = {
   change: diffKeymap.change,
   sideways: diffKeymap.sideways,
   wheelSideways: diffKeymap.wheelSideways,
+  selectAll: diffKeymap.selectAll,
   wrap: diffKeymap.wrap,
   showWhitespace: diffKeymap.showWhitespace,
   language: diffKeymap.language,

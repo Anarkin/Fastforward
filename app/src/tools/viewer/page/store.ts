@@ -235,6 +235,13 @@ export function createViewerStore(
           });
         }
       },
+      selectAll: () => set((state) => ({ allAsked: state.allAsked + 1 })),
+      copyWhole: (as, encoding) => {
+        const { tab } = get();
+        if (tab !== undefined) {
+          post({ type: 'copyWhole', tab, as, encoding });
+        }
+      },
       compareVersions: () => {
         const { tab } = get();
         if (tab !== undefined) {

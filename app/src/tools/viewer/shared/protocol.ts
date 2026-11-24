@@ -29,9 +29,21 @@ export const maxPreviewBytes = 1024 * 1024;
 
 export const maxBytesAsked = 64 * 1024;
 
+export const maxTextCopied = 50 * 1024 * 1024;
+
+export const maxBytesCopied = 16 * 1024 * 1024;
+
+export type CopiedAs = 'text' | 'hex' | 'bytes';
+
 export type ViewerToHost =
   | { readonly type: 'compareVersions'; readonly tab: string }
   | { readonly type: 'refresh'; readonly tab: string }
+  | {
+      readonly type: 'copyWhole';
+      readonly tab: string;
+      readonly as: CopiedAs;
+      readonly encoding: TextEncoding;
+    }
   | {
       readonly type: 'readBytes';
       readonly tab: string;

@@ -18,6 +18,7 @@ import { poolOf, type Pool } from './surfacePool';
 import { paletteOf, textStyles, type DotBox, type TextLook } from './textCells';
 import {
   selectedText,
+  textEnd,
   type KeptText,
   type TextSelection,
 } from './textSelection';
@@ -67,6 +68,7 @@ export interface CellViewEvents {
   readonly move: (rows: number) => void;
   readonly began?: () => void;
   readonly kept?: (kept: KeptText | undefined) => void;
+  readonly copiedWhole?: () => void;
 }
 
 export interface CellPlace {
@@ -241,6 +243,7 @@ export class CellView {
       chosen: (copy) => this.events?.chosen(copy),
       kept: (kept) => this.events?.kept?.(kept),
       move: (by) => this.events?.move(by),
+      copiedWhole: () => this.events?.copiedWhole?.(),
     });
     this.warm();
   }
@@ -328,6 +331,24 @@ export class CellView {
 
   clearSelection(): void {
     this.selecting.clear();
+  }
+
+  selectAll(selection: TextSelection, text: string | undefined): void {
+    this.selecting.selectAll(selection, text);
+  }
+
+  selectHeld(): void {
+    const rows = heldRows(this.heldRows());
+    const first = rows[0];
+    const last = rows.at(-1);
+    if (first === undefined || last === undefined) {
+      return;
+    }
+    const selection = {
+      anchor: { start: first.start, char: 0 },
+      focus: { start: last.start, char: textEnd(last.text) },
+    };
+    this.selecting.selectAll(selection, selectedText(selection, rows));
   }
 
   show({

@@ -12,23 +12,11 @@ import {
 } from '../../../components/cells/page/cellView';
 import { wordAround } from '../../../lib/shared/textMatches';
 import { byteTipText } from '../../../components/cells/page/characterNames';
+import { byteText, isPrintable } from '../shared/byteText';
 
 export const hexRowBytes = 16;
 
 const groupBytes = 8;
-const firstPrintable = 0x20;
-const lastPrintable = 0x7e;
-
-const isPrintable = (byte: number) =>
-  byte >= firstPrintable && byte <= lastPrintable;
-
-export function byteText(bytes: readonly number[]): string {
-  return bytes
-    .map((byte) =>
-      isPrintable(byte) ? String.fromCharCode(byte) : strings.symbols.invisible,
-    )
-    .join('');
-}
 
 export function byteTipAt(
   data: ArrayLike<number>,

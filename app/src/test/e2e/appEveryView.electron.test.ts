@@ -11,6 +11,7 @@ import { cellsOf } from './cellsSeen';
 import { diffTexts } from './diffSeen';
 import { untilSettled } from './waits';
 import { strings } from '../../lib/shared/strings';
+import { byteText, hexPairs } from '../../tools/viewer/shared/byteText';
 
 const escape = String.fromCharCode(0x1b);
 
@@ -211,6 +212,9 @@ suite('App, every view alike', () => {
     }
     return drawn;
   };
+
+  const clipboard = () =>
+    app.evaluate(({ clipboard: board }) => board.readText());
 
   const selectSpace = async (view: View) => {
     const drawn = await shown(view);
@@ -440,6 +444,35 @@ suite('App, every view alike', () => {
         ]),
       ),
     );
+  });
+
+  test('selects the whole of every view on Mod+A and copies it, the file viewed as text, in hex and as bytes, read whole by the main process rather than from the rows the page holds, the file edited, the side of the diff the keyboard is in and a Markdown preview with the text of its code, which is in no element of the page', async () => {
+    const copied: Record<string, string> = {};
+    for (const [name, view] of Object.entries(views)) {
+      await shown(view);
+      if (name === 'diff') {
+        const [, side] = await page.locator(view.cells).all();
+        await side?.click();
+      } else if (name === 'editor') {
+        await page.locator('.editor .editor-content').first().focus();
+      } else {
+        await page.locator('.viewer-body').first().focus();
+      }
+      await app.evaluate(({ clipboard: board }) => board.writeText(''));
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.press('ControlOrMeta+c');
+      await waitFor(async () => (await clipboard()) !== '', `${name} copied`);
+      copied[name] = await clipboard();
+    }
+    const text = `${lines.join('\n')}\n`;
+    assert.deepStrictEqual(copied, {
+      viewer: text,
+      editor: text,
+      diff: `${text}omega`,
+      'Markdown code': lines.join('\n'),
+      hex: hexPairs(Buffer.from(text)),
+      bytes: byteText(Buffer.from(`${lines.join('\n')}\u0000`)),
+    });
   });
 
   test('marks the other copies of a space selected alone in every view, the viewer, the editor, the diff, a block of Markdown code, Hex and the bytes, as of any text selected, rather than nothing in the views of text', async () => {

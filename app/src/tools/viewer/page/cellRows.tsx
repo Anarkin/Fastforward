@@ -17,6 +17,7 @@ import {
   CellView,
   viewKey,
   type KeptText,
+  type TextSelection,
   type Warming,
 } from '../../../components/cells/page/cellView';
 import type { RowAhead } from '../../../components/cells/page/glyphWarmth';
@@ -51,6 +52,9 @@ interface CellRowsProps {
   readonly first: number;
   readonly columns: number;
   readonly tipOf?: TipOf | undefined;
+  readonly allAsked?: number;
+  readonly all?: TextSelection;
+  readonly onCopiedAll?: () => void;
 }
 
 export function CellRows({
@@ -75,9 +79,19 @@ export function CellRows({
   first,
   columns,
   tipOf,
+  allAsked = 0,
+  all,
+  onCopiedAll,
 }: CellRowsProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<CellView>(undefined);
+  const allDone = useRef(allAsked);
+  useLayoutEffect(() => {
+    if (allAsked !== allDone.current && all !== undefined) {
+      view.current?.selectAll(all, undefined);
+    }
+    allDone.current = allAsked;
+  }, [allAsked, all]);
   const ratio = devicePixelRatio;
   const generation = useSyncExternalStore(watchGpu, gpuGeneration);
   const advance = Math.round(font.char * ratio) / ratio;
@@ -166,7 +180,12 @@ export function CellRows({
       partial: true,
       warming,
       kept,
-      events: { chosen: onSelected, kept: onKept, move },
+      events: {
+        chosen: onSelected,
+        kept: onKept,
+        move,
+        copiedWhole: onCopiedAll,
+      },
       tipOf,
     });
   });

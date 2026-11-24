@@ -20,6 +20,7 @@ export function diffKeyDown(
     virtualizer,
     rows,
     lineHeight,
+    selectAll,
   }: {
     readonly sideways: number;
     readonly room: number | undefined;
@@ -29,8 +30,14 @@ export function diffKeyDown(
     readonly virtualizer: Virtualizer<HTMLDivElement, Element>;
     readonly rows: readonly DiffRow[];
     readonly lineHeight: number;
+    readonly selectAll: () => void;
   },
 ): void {
+  if (keyPressed(diffKeymap.selectAll, event) !== undefined) {
+    event.preventDefault();
+    selectAll();
+    return;
+  }
   const side = keyPressed(diffKeymap.sideways, event);
   const left =
     side === undefined || room === undefined

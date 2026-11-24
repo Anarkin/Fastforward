@@ -67,6 +67,7 @@ function MarkdownPreview({
       follow(link.path);
     },
   };
+  const allAsked = useViewer((state) => state.allAsked);
   if (tooLarge) {
     return (
       <div className="markdown-pane">
@@ -76,7 +77,15 @@ function MarkdownPreview({
       </div>
     );
   }
-  return <MarkdownPane text={text} images={images} find={find} links={links} />;
+  return (
+    <MarkdownPane
+      text={text}
+      images={images}
+      find={find}
+      links={links}
+      allAsked={allAsked}
+    />
+  );
 }
 
 export function PreviewBody({

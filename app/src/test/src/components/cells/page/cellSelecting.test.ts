@@ -46,7 +46,11 @@ function selectingIn(partial: boolean) {
   let held: readonly ScreenRow[] = all.slice(0, 3);
   const chosen: (string | undefined)[] = [];
   const kept: unknown[] = [];
+  let copiedWhole = 0;
   const selecting = new CellSelecting(host, canvas, {
+    copiedWhole: () => {
+      copiedWhole += 1;
+    },
     shown: () => shown(held),
     held: () => held,
     partial: () => partial,
@@ -63,6 +67,7 @@ function selectingIn(partial: boolean) {
     selecting,
     chosen,
     kept,
+    copiedWhole: () => copiedWhole,
     press: (row: number, char: number, more: MouseEventInit = {}) =>
       host.dispatchEvent(
         new window.MouseEvent('mousedown', pointer(row, char, more)),
@@ -99,6 +104,28 @@ suite('Text selected in cells', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  test('selects the whole text on Ctrl+A, copying the text it is given, or leaving the copy to the view that holds a part of its text, which copies what it does not hold itself', () => {
+    const { selecting, copied, copiedWhole } = selectingIn(true);
+    const whole = {
+      anchor: { start: 0, char: 0 },
+      focus: { start: 1000, char: 0 },
+    };
+
+    selecting.selectAll(whole, 'all of it');
+    assert.deepStrictEqual(selecting.selection, whole);
+    assert.strictEqual(copied(), 'all of it');
+    assert.strictEqual(copiedWhole(), 0);
+
+    selecting.selectAll(whole, undefined);
+    assert.deepStrictEqual(selecting.selection, whole);
+    assert.strictEqual(copied(), undefined);
+    assert.strictEqual(copiedWhole(), 1);
+
+    selecting.clear();
+    assert.strictEqual(copied(), undefined);
+    assert.strictEqual(copiedWhole(), 1);
   });
 
   test('marks the copies of what is selected at once once the selection is done, by a double click or a drag let go, and none while a drag goes on, rather than a quarter of a second after the selection rested, mid drag too', () => {

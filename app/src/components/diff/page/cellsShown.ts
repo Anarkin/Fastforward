@@ -24,6 +24,7 @@ export function useDiffCells(
 ): {
   readonly spacer: RefObject<HTMLDivElement | null>;
   readonly host: (pane: number) => RefCallback<HTMLDivElement>;
+  readonly selectAll: () => void;
 } {
   const spacer = useRef<HTMLDivElement>(null);
   const hosts = useRef<HTMLDivElement[]>([]);
@@ -73,5 +74,6 @@ export function useDiffCells(
     },
     [],
   );
-  return { spacer, host };
+  const selectAll = useCallback(() => cells.current?.selectAll(), []);
+  return { spacer, host, selectAll };
 }

@@ -28,6 +28,7 @@ import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
 import { segmentsFrom } from './textColors';
 import { useColors, useWholeText } from './wholeText';
+import { wholeFile } from './wholeFile';
 
 const cellMargin = 64;
 
@@ -55,7 +56,10 @@ export function TextBody({
     listenViewer: listen,
     keptViewer,
     keepViewer,
+    copyWhole,
   } = useViewerActions();
+  const allAsked = useViewer((state) => state.allAsked);
+  const all = useMemo(() => wholeFile(viewing.size ?? 0), [viewing.size]);
   const sidewaysBody = `text ${encoding}`;
   const sidewaysOf = (
     sideways: ViewerTabView['sideways'],
@@ -246,6 +250,9 @@ export function TextBody({
           move={move}
           first={firstCell}
           columns={Math.max(1, lastCell - firstCell)}
+          allAsked={allAsked}
+          all={all}
+          onCopiedAll={() => copyWhole('text', encoding)}
         />
       )}
     </ScrollBody>

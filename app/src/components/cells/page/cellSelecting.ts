@@ -31,6 +31,7 @@ export interface Selecting {
   readonly chosen: (copy: string | undefined) => void;
   readonly kept?: (kept: KeptText | undefined) => void;
   readonly move: (rows: number) => void;
+  readonly copiedWhole?: () => void;
 }
 
 export class CellSelecting {
@@ -40,6 +41,7 @@ export class CellSelecting {
   private reaching: ReturnType<typeof setInterval> | undefined;
   private told: string | undefined;
   private kept: KeptText | undefined;
+  private whole: TextSelection | undefined;
 
   constructor(
     private readonly host: HTMLElement,
@@ -98,6 +100,15 @@ export class CellSelecting {
     if (!this.dragging) {
       this.on.kept?.(this.kept);
     }
+  }
+
+  selectAll(selection: TextSelection, text: string | undefined): void {
+    this.selection = selection;
+    this.kept = text === undefined ? undefined : { selection, text };
+    this.whole = text === undefined ? selection : undefined;
+    this.on.changed();
+    this.tell();
+    this.on.kept?.(this.kept);
   }
 
   restore(kept: KeptText | undefined): void {
@@ -221,11 +232,16 @@ export class CellSelecting {
   };
 
   private readonly copy = (copying: ClipboardEvent) => {
+    if (this.host.ownerDocument.activeElement?.contains(this.host) !== true) {
+      return;
+    }
+    if (this.whole !== undefined && this.whole === this.selection) {
+      copying.preventDefault();
+      this.on.copiedWhole?.();
+      return;
+    }
     const copied = this.copied();
-    if (
-      copied === undefined ||
-      this.host.ownerDocument.activeElement?.contains(this.host) !== true
-    ) {
+    if (copied === undefined) {
       return;
     }
     copying.preventDefault();

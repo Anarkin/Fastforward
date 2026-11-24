@@ -30,7 +30,7 @@
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Inline and side by side | Show the two sides in one column or two | — | Core | ✅ Yes | Side by side by default |
-| Select and copy | Select code with the pointer and copy it | Mod+C | Core | ✅ Yes | On one side at a time, as [FEATURES](FEATURES.md#common-text) says; the line numbers, the other side and the headers of files left out |
+| Select and copy | Select code with the pointer and copy it | Mod+C | Core | ✅ Yes | On one side at a time, as [FEATURES](FEATURES.md#common-text) says; Mod+A selecting the whole side the selection is on, or else the new side, the code of every file shown on it; the line numbers, the other side and the headers of files left out |
 | Changed words | Mark the words that changed within lines | — | Common | ✅ Yes | Pairs changed lines by how alike they are, keeping their order |
 | Moved lines | Mark lines moved rather than removed and added | — | Advanced | ❌ No |  |
 | Syntax highlighting | Color the code of the diff | L | Common | ✅ Yes | As [FEATURES](FEATURES.md#common-text) says; L chooses another for the one file shown, or Plain Text for every file |

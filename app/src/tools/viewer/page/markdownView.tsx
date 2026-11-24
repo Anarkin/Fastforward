@@ -22,6 +22,7 @@ import { fontDotLook } from '../../../lib/page/dotLook';
 import { useShell } from '../../../shell/page/store';
 import { CodeBlocks } from './codeBlocks';
 import type { CodeLook } from './codeCells';
+import { copiedMarkdown } from './markdownCopy';
 import { showBlocks, showImages, type MarkdownImages } from './markdownBlocks';
 import {
   markdownMatches,
@@ -186,11 +187,13 @@ export function MarkdownPane({
   images,
   find,
   links,
+  allAsked = 0,
 }: {
   text: string | undefined;
   images: MarkdownImages | undefined;
   find?: MarkdownFindControls | undefined;
   links?: MarkdownLinks | undefined;
+  allAsked?: number;
 }) {
   const render = useRenderer();
   const table = useCellTable();
@@ -206,7 +209,38 @@ export function MarkdownPane({
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const marking = useShell((state) => state.textView.highlightOccurrences);
   const content = useRef<HTMLDivElement>(null);
+  const allDone = useRef(allAsked);
+  useEffect(() => {
+    const shown = content.current;
+    if (allAsked !== allDone.current && shown !== null) {
+      shown.ownerDocument.getSelection()?.selectAllChildren(shown);
+    }
+    allDone.current = allAsked;
+  }, [allAsked]);
   const code = useRef<CodeBlocks>(undefined);
+  useEffect(() => {
+    const shown = content.current;
+    if (shown === null) {
+      return undefined;
+    }
+    const copying = (event: ClipboardEvent) => {
+      const selection = shown.ownerDocument.getSelection();
+      const copied =
+        selection === null
+          ? undefined
+          : copiedMarkdown(
+              selection,
+              shown.querySelectorAll(drawnCode),
+              (each) => code.current?.textOf(each),
+            );
+      if (copied !== undefined) {
+        event.preventDefault();
+        event.clipboardData?.setData('text/plain', copied);
+      }
+    };
+    shown.ownerDocument.addEventListener('copy', copying);
+    return () => shown.ownerDocument.removeEventListener('copy', copying);
+  }, []);
   const drawn = useRef(new Map<Element, () => void>());
   const drawnDark = useRef(dark);
   const showDocumentImages = useEffectEvent((element: ParentNode) => {

@@ -220,6 +220,7 @@ export function newView(
       git: view,
       diff,
       viewer: new ViewerTool({
+        copy: () => undefined,
         codePage: () => Promise.resolve('windows-1252'),
         watch: () => () => {},
         pdfPlaces: {
