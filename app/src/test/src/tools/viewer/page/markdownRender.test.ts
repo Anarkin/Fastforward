@@ -5,13 +5,14 @@ import markdownIt from 'markdown-it';
 import { afterAll, suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
 import { markdownRenderer } from '../../../../../tools/viewer/page/markdownRender';
+import { characterTipText } from '../../../../../components/cells/page/characterNames';
 
 const { window } = new JSDOM('');
 const render = markdownRenderer(createDOMPurify(window), markdownIt);
 const noImages = () => undefined;
 
 const sign = (real: string) =>
-  `<span class="control-character" data-real="${real}">${strings.symbols.invisible}</span>`;
+  `<span class="control-character" data-real="${real}" data-tip="${characterTipText(real)}" data-tip-character="">${strings.symbols.invisible}</span>`;
 
 suite('Markdown', () => {
   afterAll(() => window.close());

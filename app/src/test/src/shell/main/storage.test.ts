@@ -40,6 +40,26 @@ suite('Storage', () => {
     }
   });
 
+  test('takes how long the pointer rests on a character drawn as a sign before its tooltip shows from a setting of its own, at once unless set, in whole milliseconds from none to ten seconds, so the characters can answer at once while the buttons wait', () => {
+    assert.strictEqual(storageOf().characterTipDelay, 0);
+    for (const [set, taken] of [
+      [250.6, 251],
+      [-5, 0],
+      [60_000, 10_000],
+      [Number.NaN, 0],
+    ]) {
+      const settings = new UserSettings({
+        ...defaultSettings(),
+        tooltips: { delayMilliseconds: 500, characterDelayMilliseconds: set },
+      });
+      assert.strictEqual(
+        new Storage(settings, new FakeStore()).characterTipDelay,
+        taken,
+        String(set),
+      );
+    }
+  });
+
   test('takes how long the pointer rests on something before its tooltip shows from the settings, half a second unless set, in whole milliseconds from none to ten seconds', () => {
     assert.strictEqual(storageOf().tipDelay, 500);
     for (const [set, taken] of [
@@ -51,7 +71,7 @@ suite('Storage', () => {
     ]) {
       const settings = new UserSettings({
         ...defaultSettings(),
-        tooltips: { delayMilliseconds: set },
+        tooltips: { delayMilliseconds: set, characterDelayMilliseconds: 0 },
       });
       assert.strictEqual(
         new Storage(settings, new FakeStore()).tipDelay,

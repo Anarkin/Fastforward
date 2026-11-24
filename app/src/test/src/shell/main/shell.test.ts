@@ -264,6 +264,7 @@ suite('Shell with no tab open', () => {
         assert.deepStrictEqual(view.page.last('hints'), {
           type: 'hints',
           tipDelay: 500,
+          characterTipDelay: 0,
           noticeTimes: {
             least: 6000,
             most: 15_000,

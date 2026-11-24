@@ -141,6 +141,11 @@ export const strings = {
       end: Sentence | Value,
     ) => sentence`${start}{${from} → ${to}}${end}`,
   },
+  characters: {
+    line: (code: string, name: string) => `${code} ${name}`,
+    noncharacter: 'Noncharacter',
+    unassigned: 'Unassigned',
+  },
   symbols: {
     checked: '✓',
     open: '▾',

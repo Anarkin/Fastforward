@@ -144,6 +144,42 @@ export function charAtColumn(
   return at;
 }
 
+export interface ColumnUnit {
+  readonly from: number;
+  readonly to: number;
+  readonly column: number;
+  readonly columns: number;
+}
+
+export function unitAtColumn(
+  text: string,
+  from: number,
+  to: number,
+  startColumn: number,
+  column: number,
+  widths?: TextWidths,
+): ColumnUnit | undefined {
+  const step = stepsOf(text, widths);
+  let at = from;
+  let reached = startColumn;
+  while (at < to) {
+    const moved = step(at, reached);
+    if (column < moved.column) {
+      return column < reached
+        ? undefined
+        : {
+            from: at,
+            to: moved.next,
+            column: reached,
+            columns: moved.column - reached,
+          };
+    }
+    at = moved.next;
+    reached = moved.column;
+  }
+  return undefined;
+}
+
 export function shownWithin(
   text: string,
   from: number,

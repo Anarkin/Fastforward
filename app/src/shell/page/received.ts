@@ -42,7 +42,11 @@ export function received(
         },
       };
     case 'hints':
-      return { tipDelay: message.tipDelay, noticeTimes: message.noticeTimes };
+      return {
+        tipDelay: message.tipDelay,
+        characterTipDelay: message.characterTipDelay,
+        noticeTimes: message.noticeTimes,
+      };
     case 'textView':
       return { textView: message.view };
     case 'imageView':

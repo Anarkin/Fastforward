@@ -163,6 +163,7 @@ export type ToWebview =
   | {
       readonly type: 'hints';
       readonly tipDelay: number;
+      readonly characterTipDelay: number;
       readonly noticeTimes: NoticeTimes;
     }
   | { readonly type: 'textView'; readonly view: TextView }

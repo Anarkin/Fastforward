@@ -5,6 +5,7 @@ import type { UserSettings } from './userSettings';
 import type { ImageView, TextView } from '../shared/views';
 import {
   defaultNoticeTimes,
+  defaultCharacterTipDelay,
   defaultTipDelay,
   type NoticeTimes,
 } from '../shared/notices';
@@ -24,6 +25,11 @@ export const maxRecentItems = 50;
 const maxWheelRows = 50;
 
 const maxTipDelay = 10_000;
+
+const tipDelayOf = (delay: number, fallback: number): number =>
+  Number.isFinite(delay)
+    ? Math.min(maxTipDelay, Math.max(0, Math.round(delay)))
+    : fallback;
 
 const longestNotice = 3_600_000;
 
@@ -191,10 +197,17 @@ export class Storage {
   }
 
   get tipDelay(): number {
-    const delay = this.settings.tooltips.delayMilliseconds;
-    return Number.isFinite(delay)
-      ? Math.min(maxTipDelay, Math.max(0, Math.round(delay)))
-      : defaultTipDelay;
+    return tipDelayOf(
+      this.settings.tooltips.delayMilliseconds,
+      defaultTipDelay,
+    );
+  }
+
+  get characterTipDelay(): number {
+    return tipDelayOf(
+      this.settings.tooltips.characterDelayMilliseconds,
+      defaultCharacterTipDelay,
+    );
   }
 
   get noticeTimes(): NoticeTimes {

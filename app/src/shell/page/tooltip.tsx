@@ -1,3 +1,4 @@
+import { characterTip } from '../../lib/page/tips';
 import {
   useEffect,
   useLayoutEffect,
@@ -10,10 +11,13 @@ import { placedTip, type TipBox } from './tipPlace';
 import { watchTips, type ShownTip, type TipWatch } from './tipWatch';
 
 let waits = 0;
+let characterWaits = 0;
 let watch: TipWatch | undefined;
 
 const subscribe = (listener: () => void) => {
-  watch ??= watchTips(document, () => waits);
+  watch ??= watchTips(document, (anchor) =>
+    anchor.hasAttribute(characterTip) ? characterWaits : waits,
+  );
   return watch.subscribe(listener);
 };
 
@@ -54,9 +58,11 @@ function place(card: HTMLElement, { tip, anchor }: ShownTip): void {
 
 export function Tooltip() {
   const delay = useShell((state) => state.tipDelay);
+  const characterDelay = useShell((state) => state.characterTipDelay);
   useEffect(() => {
     waits = delay;
-  }, [delay]);
+    characterWaits = characterDelay;
+  }, [delay, characterDelay]);
   const shown = useSyncExternalStore(subscribe, shownNow, shownNowhere);
   const card = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {

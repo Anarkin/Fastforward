@@ -11,22 +11,48 @@ function page(delay = 500) {
       '<button id="find" data-tip="Find"><b id="icon"></b></button>',
       '<p id="plain"></p>',
       '<span id="cut" data-tip="a/long/path.ts" data-tip-cut><i id="inner"></i></span>',
+      '<div id="cells" data-tip-source><canvas id="canvas"></canvas></div>',
     ].join(''),
   );
   const { document } = dom.window;
+  const anchors = new Map<number, Element>();
+  const cells = document.getElementById('cells');
+  assert.ok(cells);
+  Object.assign(cells, {
+    tipUnder: (x: number) => {
+      if (x >= 100) {
+        return undefined;
+      }
+      const cell = Math.floor(x / 10);
+      let anchor = anchors.get(cell);
+      if (anchor === undefined) {
+        anchor = document.createElement('span');
+        anchor.setAttribute('data-tip', `cell ${cell}`);
+        anchor.setAttribute('data-tip-character', '');
+        document.body.append(anchor);
+        anchors.set(cell, anchor);
+      }
+      return anchor;
+    },
+  });
   let now = 0;
   let timers: { at: number; run: () => void }[] = [];
   const waits: number[] = [];
-  const watch = watchTips(document, () => waits.at(-1) ?? delay, {
-    now: () => now,
-    after: (wait, run) => {
-      const timer = { at: now + wait, run };
-      timers.push(timer);
-      return () => {
-        timers = timers.filter((each) => each !== timer);
-      };
+  const watch = watchTips(
+    document,
+    (anchor) =>
+      anchor.hasAttribute('data-tip-character') ? 0 : (waits.at(-1) ?? delay),
+    {
+      now: () => now,
+      after: (wait, run) => {
+        const timer = { at: now + wait, run };
+        timers.push(timer);
+        return () => {
+          timers = timers.filter((each) => each !== timer);
+        };
+      },
     },
-  });
+  );
   const by = (id: string) => {
     const found = document.getElementById(id);
     assert.ok(found, id);
@@ -42,6 +68,10 @@ function page(delay = 500) {
     over: (id: string) =>
       by(id).dispatchEvent(
         new dom.window.MouseEvent('pointerover', { bubbles: true }),
+      ),
+    moveOver: (id: string, x: number) =>
+      by(id).dispatchEvent(
+        new dom.window.MouseEvent('pointermove', { bubbles: true, clientX: x }),
       ),
     outOfTheWindow: () =>
       document.body.dispatchEvent(
@@ -70,6 +100,26 @@ function page(delay = 500) {
 }
 
 suite('The tooltips of the page', () => {
+  test('ask a view that draws its own text, as the cells do, for the tooltip of what the pointer moves over, a character shown after a delay of its own, another asked for as the pointer moves on to it, and none once it rests on nothing that has one, nor on what has its own tooltip', () => {
+    const { over, moveOver, after, said, close } = page();
+    try {
+      over('canvas');
+      moveOver('canvas', 15);
+      assert.strictEqual(said(), 'cell 1');
+      moveOver('canvas', 18);
+      assert.strictEqual(said(), 'cell 1');
+      moveOver('canvas', 35);
+      assert.strictEqual(said(), 'cell 3');
+      moveOver('canvas', 120);
+      assert.strictEqual(said(), undefined);
+      over('wrap');
+      after(500);
+      assert.strictEqual(said(), 'Wrap');
+    } finally {
+      close();
+    }
+  });
+
   test('show the tooltip of the element under the pointer once it has rested there as long as the settings say, found from whatever part of the element the pointer is over, and tell who draws it', () => {
     const { over, after, said, watch, by, changes, close } = page();
     try {

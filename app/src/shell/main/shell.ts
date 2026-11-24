@@ -555,6 +555,7 @@ export class Shell {
     page.post({
       type: 'hints',
       tipDelay: storage.tipDelay,
+      characterTipDelay: storage.characterTipDelay,
       noticeTimes: storage.noticeTimes,
     });
     page.post({ type: 'textView', view: storage.textView });

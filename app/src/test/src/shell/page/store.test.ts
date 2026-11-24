@@ -95,6 +95,7 @@ suite('Shell store', () => {
     receive({
       type: 'hints',
       tipDelay: 120,
+      characterTipDelay: 40,
       noticeTimes: { least: 1, most: 2, errorLeast: 3, errorMost: 4 },
     });
     receive({
@@ -113,8 +114,8 @@ suite('Shell store', () => {
     assert.deepStrictEqual(state.tabs, [terminal, git]);
     assert.strictEqual(state.active, '2');
     assert.deepStrictEqual(
-      [state.tipDelay, state.noticeTimes],
-      [120, { least: 1, most: 2, errorLeast: 3, errorMost: 4 }],
+      [state.tipDelay, state.characterTipDelay, state.noticeTimes],
+      [120, 40, { least: 1, most: 2, errorLeast: 3, errorMost: 4 }],
     );
     assert.strictEqual(state.dateFormat, 'DD.MM.YYYY');
     assert.deepStrictEqual(state.scrolling, {

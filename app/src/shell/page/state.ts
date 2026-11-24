@@ -11,6 +11,7 @@ import {
 import { defaultTextView } from './textView';
 import {
   defaultNoticeTimes,
+  defaultCharacterTipDelay,
   defaultTipDelay,
   type NoticeTimes,
 } from '../shared/notices';
@@ -52,6 +53,7 @@ export interface ShellSource {
   readonly partLooks: KnownLooks;
   readonly scrolling: ScrollSettings;
   readonly tipDelay: number;
+  readonly characterTipDelay: number;
   readonly noticeTimes: NoticeTimes;
   readonly textView: TextView;
   readonly imageView: ImageView;
@@ -131,6 +133,7 @@ export const shellDefaults: ShellSource = {
   partLooks: new Map(),
   scrolling: defaultScrolling,
   tipDelay: defaultTipDelay,
+  characterTipDelay: defaultCharacterTipDelay,
   noticeTimes: defaultNoticeTimes,
   textView: defaultTextView,
   imageView: defaultImageView,

@@ -15,7 +15,8 @@
     "scrollbarSizeWithMarkers": "36px"
   },
   "tooltips": {
-    "delayMilliseconds": 500
+    "delayMilliseconds": 500,
+    "characterDelayMilliseconds": 0
   },
   "notices": {
     "info": {

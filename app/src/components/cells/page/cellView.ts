@@ -21,7 +21,9 @@ import {
   type KeptText,
   type TextSelection,
 } from './textSelection';
-import { heldRows } from './cellPointing';
+import { heldRows, unitUnder } from './cellPointing';
+import { SignTips } from './signTips';
+import { tipSource } from '../../../lib/page/tips';
 
 export type { KeptText, SelectionShape, TextSelection } from './textSelection';
 export { ordered } from './textSelection';
@@ -159,6 +161,7 @@ export class CellView {
   private tiles: GlyphTiles;
   private painting: CellPainting;
   private readonly scheme = matchMedia('(prefers-color-scheme: dark)');
+  private readonly signTips: SignTips;
   private readonly idle: IdleWork;
   private readonly selecting: CellSelecting;
   private held: CellViewShown['held'] = noRows;
@@ -196,6 +199,9 @@ export class CellView {
     this.painting = painting;
     this.scheme.addEventListener('change', this.relook);
     canvas.addEventListener('transitionend', this.relook);
+    this.signTips = new SignTips(host.ownerDocument);
+    host.setAttribute(tipSource, '');
+    host.tipUnder = this.tipUnder;
     this.idle = new IdleWork(
       pageIdling(),
       (slice) => this.tiles.within(slice),
@@ -412,7 +418,43 @@ export class CellView {
     }
   };
 
+  private readonly tipUnder = (x: number, y: number): Element | undefined =>
+    this.signTipAt(x, y);
+
+  private signTipAt(x: number, y: number): Element | undefined {
+    const { shown } = this;
+    const { canvas } = this.surface;
+    const box = canvas.getBoundingClientRect();
+    const scale = box.width > 0 ? canvas.width / box.width : 1;
+    const { advance, rowHeight } = this.tiles.metrics;
+    const unit =
+      shown === undefined
+        ? undefined
+        : unitUnder(
+            shown,
+            advance,
+            rowHeight,
+            (x - box.left) * scale,
+            (y - box.top) * scale,
+          );
+    if (unit === undefined) {
+      this.signTips.clear();
+      return undefined;
+    }
+    return this.signTips.at(unit.key, unit.text, {
+      left: box.left + unit.left / scale,
+      top: box.top + unit.top / scale,
+      width: unit.width / scale,
+      height: unit.height / scale,
+    });
+  }
+
   dispose(): void {
+    this.signTips.clear();
+    if (this.host.tipUnder === this.tipUnder) {
+      this.host.tipUnder = undefined;
+      this.host.removeAttribute(tipSource);
+    }
     this.host.seenGlyphs = undefined;
     this.host.seenDots = undefined;
     this.selecting.dispose();

@@ -43,6 +43,10 @@ export interface Tip {
 
 export const tipped = '[data-tip]';
 
+export const tipSource = 'data-tip-source';
+
+export const characterTip = 'data-tip-character';
+
 const wordsOf = (said: Sentence): string =>
   typeof said === 'string'
     ? said

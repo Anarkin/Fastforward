@@ -293,6 +293,12 @@ mark.match,
   user-select: none;
 }
 
+.sign-tip {
+  position: fixed;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .cell-canvas {
   position: absolute;
   width: 100%;

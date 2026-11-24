@@ -32,6 +32,7 @@ export interface Settings {
   };
   readonly tooltips: {
     readonly delayMilliseconds: number;
+    readonly characterDelayMilliseconds: number;
   };
   readonly notices: {
     readonly info: NoticeSeconds;

@@ -1,3 +1,5 @@
+import { characterTipText } from '../../../components/cells/page/characterNames';
+import { characterTip } from '../../../lib/page/tips';
 import type { DOMPurify } from 'dompurify';
 import type MarkdownIt from 'markdown-it';
 import type { StateCore } from 'markdown-it';
@@ -161,6 +163,8 @@ function signedControls(text: ChildNode, shown: string): void {
     const control = owner.createElement('span');
     control.className = controlClass;
     control.dataset.real = found[0];
+    control.setAttribute('data-tip', characterTipText(found[0]));
+    control.setAttribute(characterTip, '');
     control.textContent = strings.symbols.invisible;
     parts.append(control);
     at = found.index + found[0].length;

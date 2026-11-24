@@ -66,6 +66,7 @@ declare global {
       | undefined;
     seenGlyphs?: ((cluster: string) => readonly SeenGlyph[]) | undefined;
     seenDots?: (() => readonly SeenGlyph[]) | undefined;
+    tipUnder?: ((x: number, y: number) => Element | undefined) | undefined;
   }
 }
 

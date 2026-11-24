@@ -1,4 +1,4 @@
-import { tipOf, tipped, type Tip } from '../../lib/page/tips';
+import { tipOf, tipped, tipSource, type Tip } from '../../lib/page/tips';
 
 export interface ShownTip {
   readonly tip: Tip;
@@ -40,12 +40,28 @@ const isCut = (element: Element) =>
     (part) => part.scrollWidth > part.clientWidth,
   );
 
-const isElement = (target: EventTarget | null): target is Element =>
-  target !== null && 'closest' in target;
+const isElement = (target: unknown): target is Element =>
+  typeof target === 'object' && target !== null && 'closest' in target;
+
+type TipUnder = (x: number, y: number) => Element | undefined;
+
+function tipUnderOf(target: EventTarget | null): TipUnder | undefined {
+  const source = isElement(target) ? target.closest(`[${tipSource}]`) : null;
+  if (source === null || !('tipUnder' in source)) {
+    return undefined;
+  }
+  const { tipUnder } = source;
+  return typeof tipUnder === 'function'
+    ? (x, y) => {
+        const found: unknown = tipUnder.call(source, x, y);
+        return isElement(found) ? found : undefined;
+      }
+    : undefined;
+}
 
 export function watchTips(
   page: Document,
-  delay: () => number,
+  delay: (anchor: Element) => number,
   clock: TipClock = pageClock,
 ): TipWatch {
   const listeners = new Set<() => void>();
@@ -86,25 +102,40 @@ export function watchTips(
     if (anchor === undefined) {
       return;
     }
-    const wait = warm ? 0 : delay();
+    const wait = warm ? 0 : delay(anchor);
     if (wait > 0) {
       due = clock.after(wait, () => show(anchor));
     } else {
       show(anchor);
     }
   };
-  const onOver = (event: Event) =>
+  const onOver = (event: Event) => {
+    if (tipUnderOf(event.target) !== undefined) {
+      return;
+    }
     over(
       isElement(event.target)
         ? (event.target.closest(tipped) ?? undefined)
         : undefined,
     );
+  };
   const onOut = (event: Event) => {
     if ('relatedTarget' in event && event.relatedTarget === null) {
       over(undefined);
     }
   };
-  const onMove = () => {
+  const onMove = (event: Event) => {
+    const tipUnder = tipUnderOf(event.target);
+    if (
+      tipUnder !== undefined &&
+      'clientX' in event &&
+      'clientY' in event &&
+      typeof event.clientX === 'number' &&
+      typeof event.clientY === 'number'
+    ) {
+      over(tipUnder(event.clientX, event.clientY));
+      return;
+    }
     if (shown !== undefined && !shown.anchor.isConnected) {
       hide();
     }

@@ -1,7 +1,7 @@
 import type { ScreenRow } from './lines';
 import type { TextLine } from './lines';
 import type { ShownRows } from './cellPainting';
-import { charAtColumn } from './columns';
+import { charAtColumn, unitAtColumn } from './columns';
 import {
   lineAt,
   ordered,
@@ -63,6 +63,52 @@ export function placeUnder(
       ),
     },
   };
+}
+
+export interface UnitUnder {
+  readonly text: string;
+  readonly key: string;
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export function unitUnder(
+  { rows, parts, widths, first, tops, left = 0 }: ShownRows,
+  advance: number,
+  rowHeight: number,
+  x: number,
+  y: number,
+): UnitUnder | undefined {
+  if (y < 0) {
+    return undefined;
+  }
+  const index = tops === undefined ? Math.floor(y / rowHeight) : rowAt(tops, y);
+  const row = rows[index];
+  const top = tops?.[index] ?? index * rowHeight;
+  if (row === undefined || y >= top + rowHeight) {
+    return undefined;
+  }
+  const part = parts[index];
+  const unit = unitAtColumn(
+    row.row.text,
+    part?.from ?? row.from,
+    part?.to ?? row.to,
+    part?.column ?? 0,
+    (x - left) / advance + first,
+    widths,
+  );
+  return unit === undefined
+    ? undefined
+    : {
+        text: row.row.text.slice(unit.from, unit.to),
+        key: `${row.row.start}:${unit.from}`,
+        left: left + (unit.column - first) * advance,
+        top,
+        width: unit.columns * advance,
+        height: rowHeight,
+      };
 }
 
 export function pressed(

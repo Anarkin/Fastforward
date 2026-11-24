@@ -7,6 +7,7 @@ import {
   pressed,
   reach,
   stillHeld,
+  unitUnder,
 } from '../../../../../components/cells/page/cellPointing';
 import { rowOf, shown } from './cellFixtures';
 
@@ -24,6 +25,26 @@ const charUnder = (
 };
 
 suite('Text under the pointer', () => {
+  test('finds the character drawn where the pointer rests and the box of its cells, and nothing past the end of a row, above the rows or below them, as a tooltip names what is drawn there', () => {
+    const rows = shown([rowOf('ab\u200bc', 0), rowOf('ef', 5)]);
+
+    assert.deepStrictEqual(unitUnder(rows, advance, rowHeight, 15, 3), {
+      text: '\u200b',
+      key: '0:2',
+      left: 14,
+      top: 0,
+      width: 7,
+      height: 16,
+    });
+    assert.deepStrictEqual(
+      unitUnder(rows, advance, rowHeight, 8, 20)?.text,
+      'f',
+    );
+    assert.strictEqual(unitUnder(rows, advance, rowHeight, 15, 20), undefined);
+    assert.strictEqual(unitUnder(rows, advance, rowHeight, 3, -1), undefined);
+    assert.strictEqual(unitUnder(rows, advance, rowHeight, 3, 40), undefined);
+  });
+
   test('finds the row by how far down the pointer is and the character by how far across, at the edge between two characters nearest to it', () => {
     const rows = shown([rowOf('abcd', 0), rowOf('efgh', 5)]);
 

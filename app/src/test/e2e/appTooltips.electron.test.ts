@@ -8,10 +8,17 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { writeSettings } from './settingsWritten';
 import { onceDrawn } from './waits';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { waitFor } from '../helpers/fixtures';
+import { seenRows } from './cellsSeen';
+import type { SeenRow } from '../../components/cells/page/seen';
 
 const atOnce = { tooltips: { delayMilliseconds: 0 } };
 
 const never = { tooltips: { delayMilliseconds: 10_000 } };
+
+const charactersAtOnce = {
+  tooltips: { delayMilliseconds: 10_000, characterDelayMilliseconds: 0 },
+};
 
 suite('App tooltips', () => {
   let folder: string;
@@ -32,7 +39,7 @@ suite('App tooltips', () => {
     fs.mkdirSync(profile);
     fs.mkdirSync(opened);
     viewed = path.join(opened, 'viewed.txt');
-    fs.writeFileSync(viewed, 'text');
+    fs.writeFileSync(viewed, 'te​xt');
     fs.writeFileSync(
       path.join(profile, 'state.json'),
       JSON.stringify({
@@ -162,5 +169,35 @@ suite('App tooltips', () => {
     await page.locator('.commander-pane').first().waitFor();
     await flat().hover();
     await tooltip().waitFor();
+  });
+
+  test('names a character drawn as a sign in a text by its code point and its name in a tooltip over its cell, as soon as the pointer is on it where the settings say so, while the buttons still wait as long as they say', async () => {
+    await away();
+    await writeSettings(page, profile, charactersAtOnce);
+    await page.locator('.tabs .tab').nth(1).click();
+    let row: SeenRow | undefined;
+    await waitFor(async () => {
+      [row] = await seenRows(page);
+      return row?.text === 'te​xt';
+    }, 'the text viewed');
+    assert.ok(row);
+    await page.mouse.move(
+      row.left + (2 - row.column + 0.5) * row.advance,
+      row.top + row.height / 2,
+    );
+    await tooltip().waitFor();
+    assert.strictEqual(
+      await tooltip().locator('.card-message').textContent(),
+      'U+200B ZERO WIDTH SPACE',
+    );
+    await page.mouse.move(
+      row.left + (0 - row.column + 0.5) * row.advance,
+      row.top + row.height / 2,
+    );
+    await tooltip().waitFor({ state: 'detached' });
+    await away();
+    await page.locator('.tabs .tab').nth(0).click();
+    await writeSettings(page, profile, atOnce);
+    await page.locator('.commander-pane').first().waitFor();
   });
 });

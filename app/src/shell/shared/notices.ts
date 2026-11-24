@@ -18,6 +18,8 @@ export const defaultNoticeTimes: NoticeTimes = {
 
 export const defaultTipDelay = 500;
 
+export const defaultCharacterTipDelay = 0;
+
 export function addNotice<Notice extends { readonly message: Sentence }>(
   notices: readonly Notice[],
   notice: Notice,
