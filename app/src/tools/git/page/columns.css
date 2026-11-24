@@ -14,7 +14,7 @@
 }
 
 .columns.nothing-selected > .column:not(:first-child),
-.columns.no-changes > .column:last-child {
+.columns.no-changes > .column:nth-child(3) {
   visibility: hidden;
 }
 

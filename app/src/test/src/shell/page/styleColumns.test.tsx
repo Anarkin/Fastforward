@@ -74,6 +74,9 @@ const shownColumns = (className: string) =>
     'column',
   );
 
+const visibility = (className: string) =>
+  shownColumns(className).map((column) => cascaded(column, 'visibility'));
+
 const columnSides = (className: string) =>
   shownColumns(className).map((column) => [
     cascaded(column, '--frame-left'),
@@ -289,6 +292,19 @@ suite('Style', () => {
     ]) {
       assert.ok(layer(above) > edge, above.classes.join(' '));
     }
+  });
+
+  test('hides the diff column while a commit or the index has no changes, and the files and the diff while nothing is selected, though the path of the repository stands after the columns', () => {
+    assert.deepStrictEqual(visibility(columnsClass(true, 'a', false)), [
+      undefined,
+      undefined,
+      'hidden',
+    ]);
+    assert.deepStrictEqual(visibility(columnsClass(true, undefined)), [
+      undefined,
+      'hidden',
+      'hidden',
+    ]);
   });
 
   test('frames the path of a repository and its columns together, the path atop the frame on the background of the path of every tool and the columns a gutter inside its line, below the path, from its sides and from its bottom, their headers staying where they were, so the three columns read as parts of one repository; the first and the last shown taking the sides, whichever are hidden', () => {
