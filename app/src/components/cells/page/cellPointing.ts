@@ -5,6 +5,7 @@ import { charAtColumn, unitAtColumn } from './columns';
 import {
   lineAt,
   ordered,
+  textEnd,
   wordAt,
   type SelectionShape,
   type TextPlace,
@@ -53,13 +54,16 @@ export function placeUnder(
     row: row.row,
     place: {
       start: row.row.start,
-      char: charAtColumn(
-        row.row.text,
-        part?.from ?? row.from,
-        part?.to ?? row.to,
-        part?.column ?? 0,
-        (x - left) / advance + first,
-        widths,
+      char: Math.min(
+        textEnd(row.row.text),
+        charAtColumn(
+          row.row.text,
+          part?.from ?? row.from,
+          part?.to ?? row.to,
+          part?.column ?? 0,
+          (x - left) / advance + first,
+          widths,
+        ),
       ),
     },
   };

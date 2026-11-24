@@ -105,6 +105,30 @@ suite('Text selected in a file viewed', () => {
     });
   });
 
+  test('keeps a double and a triple click within the text a line ends after, leaving out its carriage return with its line feed, and copies a selection running past the line with the whole line ending the file has', () => {
+    const windows = { start: 0, end: 5, text: 'one\r' };
+
+    assert.deepStrictEqual(wordAt(windows, 3), {
+      anchor: from(0, 0),
+      focus: from(0, 3),
+    });
+    assert.deepStrictEqual(lineAt(windows), {
+      anchor: from(0, 0),
+      focus: from(0, 3),
+    });
+    assert.deepStrictEqual(wordAt({ start: 0, text: '\r' }, 0), {
+      anchor: from(0, 0),
+      focus: from(0, 0),
+    });
+    assert.strictEqual(
+      selectedText({ anchor: from(0, 1), focus: from(5, 2) }, [
+        windows,
+        { start: 5, end: 8, text: 'two' },
+      ]),
+      'ne\r\ntw',
+    );
+  });
+
   test('copies what is selected with a line break after each row it runs past, but none after a row its line goes on from, whichever way it was dragged', () => {
     assert.strictEqual(
       selectedText({ anchor: from(0, 3), focus: from(17, 1) }, rows),

@@ -56,6 +56,14 @@ suite('Text under the pointer', () => {
     assert.deepStrictEqual(charUnder(rows, 15, 20), [5, 2]);
   });
 
+  test('takes the carriage return a line ends with for the line ending it is part of, the pointer over it or past it at the end of the text before it, so it is never selected on its own, as its line feed is not', () => {
+    const rows = shown([rowOf('ab\r', 0), rowOf('cd', 4)]);
+
+    assert.deepStrictEqual(charUnder(rows, 2 * advance + 5, 0), [0, 2]);
+    assert.deepStrictEqual(charUnder(rows, 500, 0), [0, 2]);
+    assert.deepStrictEqual(charUnder(rows, 500, 20), [4, 2]);
+  });
+
   test('takes a pointer above the rows for the first and below them for the last, and one past the end of a row for its end, so a drag past the text selects up to there', () => {
     const rows = shown([rowOf('abcd', 0), rowOf('ef', 5)]);
 

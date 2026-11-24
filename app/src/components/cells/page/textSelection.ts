@@ -18,6 +18,12 @@ export interface CharRange {
 
 const newline = '\n';
 
+const carriageReturn = '\r';
+
+export function textEnd(text: string): number {
+  return text.endsWith(carriageReturn) ? text.length - 1 : text.length;
+}
+
 const before = (one: TextPlace, other: TextPlace) =>
   one.start < other.start ||
   (one.start === other.start && one.char < other.char);
@@ -91,9 +97,10 @@ export function wordAt(
   row: Pick<TextLine, 'start' | 'text'>,
   char: number,
 ): TextSelection {
-  const word = wordAround(row.text, char);
-  const from = word?.start ?? Math.min(char, Math.max(0, row.text.length - 1));
-  const to = word?.end ?? Math.min(row.text.length, from + 1);
+  const text = row.text.slice(0, textEnd(row.text));
+  const word = wordAround(text, char);
+  const from = word?.start ?? Math.min(char, Math.max(0, text.length - 1));
+  const to = word?.end ?? Math.min(text.length, from + 1);
   return {
     anchor: { start: row.start, char: from },
     focus: { start: row.start, char: to },
@@ -103,7 +110,7 @@ export function wordAt(
 export function lineAt(row: Pick<TextLine, 'start' | 'text'>): TextSelection {
   return {
     anchor: { start: row.start, char: 0 },
-    focus: { start: row.start, char: row.text.length },
+    focus: { start: row.start, char: textEnd(row.text) },
   };
 }
 
