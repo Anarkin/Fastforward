@@ -50,15 +50,13 @@ export function CellGridProbe({
   return (
     <div className="cell-grid-probe" aria-hidden="true">
       <div className="repository">
-        <div className="columns terminal-columns">
-          <div className="cell-grid-column">
-            <section className="column terminal">
-              <div className="column-body terminal-panel">
-                <div className="cell-grid-screen" ref={screen} />
-                <span className="cell-grid-cell" ref={cell} />
-              </div>
-            </section>
-          </div>
+        <div className="cell-grid-columns">
+          <section className="column terminal">
+            <div className="column-body terminal-panel">
+              <div className="cell-grid-screen" ref={screen} />
+              <span className="cell-grid-cell" ref={cell} />
+            </div>
+          </section>
         </div>
       </div>
     </div>

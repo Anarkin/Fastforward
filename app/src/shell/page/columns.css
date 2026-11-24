@@ -1,4 +1,5 @@
-.columns {
+.columns,
+.cell-grid-columns {
   flex: 1;
   min-height: 0;
   display: grid;

@@ -1,4 +1,5 @@
-.terminal-columns {
+.terminal-columns,
+.cell-grid-columns {
   grid-template-columns: minmax(0, 1fr);
   padding: 0;
 }
