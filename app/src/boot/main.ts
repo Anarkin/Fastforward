@@ -206,6 +206,7 @@ async function start(asked: readonly string[]): Promise<void> {
     () => asking?.quit(),
     () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
     () => Promise.all([stopRunningGit(), archiveWork.clear()]),
+    () => asking?.quitWaits() ?? Promise.resolve(),
   );
   const chooseFolders = async (
     options: Electron.OpenDialogOptions,
@@ -275,7 +276,14 @@ async function start(asked: readonly string[]): Promise<void> {
   ])) {
     await removeUnviewedCopies(copies, viewedRoots);
   }
-  await archiveWork.clearEnded();
+  for (const kept of await archiveWork.clearEnded()) {
+    void views.promise.then(({ shell: view }) =>
+      view.notify({
+        level: 'error',
+        message: strings.commander.copyKept(kept.copy, kept.archive),
+      }),
+    );
+  }
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
   const gitTool = gitToolOf({
     log,

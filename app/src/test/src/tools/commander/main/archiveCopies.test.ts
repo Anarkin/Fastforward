@@ -88,7 +88,7 @@ suite('Commander tool in archives', () => {
       );
     });
 
-    test('opens a file of an archive in the app the system opens it with from a copy, asking once it is saved whether to put it back, naming the file and its archive by their whole paths, putting it back in the dialog of copies once asked to, asking again once saved again and only while the commander is shown, and from a read-only copy for an archive that cannot be changed', async () => {
+    test('opens a file of an archive in the app the system opens it with from a copy marked as opened elsewhere, so it outlives the app until known put back, asking once it is saved whether to put it back, naming the file and its archive by their whole paths, putting it back in the dialog of copies once asked to, asking again once saved again and only while the commander is shown, and from a read-only copy for an archive that cannot be changed', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);
       made.archived.set(path.join(at('a.zip'), 'inner.zip'), zipped);
@@ -109,6 +109,15 @@ suite('Commander tool in archives', () => {
       const [copy] = opened;
       assert.ok(copy !== undefined);
       assert.strictEqual(path.basename(copy), 'readme.md');
+      assert.deepStrictEqual(
+        JSON.parse(
+          fs.readFileSync(
+            path.join(path.dirname(copy), '.fastforward-copy.json'),
+            'utf8',
+          ),
+        ).name,
+        'docs/readme.md',
+      );
       assert.strictEqual(
         fs.readFileSync(copy, 'utf8'),
         'the docs/readme.md of the archive',

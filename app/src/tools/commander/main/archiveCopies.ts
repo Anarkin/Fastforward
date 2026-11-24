@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
+import { markCopy } from './workFolders';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
@@ -301,6 +302,9 @@ export class ArchiveCopies {
         () => undefined,
       );
     const name = [...inner, path.basename(copy)].join(path.sep);
+    const marked = () =>
+      markCopy(copy, archive.file, [...inner, path.basename(copy)].join('/'));
+    await marked();
     let stamp = await stampNow();
     let busy = false;
     let again = false;
@@ -321,7 +325,9 @@ export class ArchiveCopies {
             );
             stamp = (await stampNow()) ?? now;
             if (update) {
-              this.putBack(archives, archive, inner, copy);
+              this.putBack(archives, archive, inner, copy, marked);
+            } else {
+              await marked();
             }
           }
         } while (again);
@@ -411,6 +417,7 @@ export class ArchiveCopies {
     archive: OpenedArchive,
     inner: readonly string[],
     copy: string,
+    whenPut: () => Promise<void> = () => Promise.resolve(),
   ): void {
     this.transfers.start(
       {
@@ -423,15 +430,19 @@ export class ArchiveCopies {
         names: [path.basename(copy)],
         archive: { job: 'update', file: archive.file },
       },
-      archiveJob(path.basename(archive.file), (options) =>
-        archives.addItems(
+      archiveJob(path.basename(archive.file), async (options) => {
+        const packed = await archives.addItems(
           archive,
           inner,
           path.dirname(copy),
           [path.basename(copy)],
           options,
-        ),
-      ),
+        );
+        if (packed.kind === 'packed' && packed.warning === undefined) {
+          await whenPut();
+        }
+        return packed;
+      }),
     );
   }
 }
