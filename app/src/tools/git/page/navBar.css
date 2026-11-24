@@ -5,23 +5,3 @@
 .fetch-mark.failed {
   background: var(--color-error-foreground);
 }
-
-.history-button {
-  position: relative;
-}
-
-.history-menu {
-  left: 0;
-  right: auto;
-  max-width: 480px;
-}
-
-.history-item {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.history-hash {
-  margin-right: 8px;
-  color: var(--muted-foreground);
-}

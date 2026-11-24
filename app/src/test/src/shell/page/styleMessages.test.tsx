@@ -26,7 +26,6 @@ import {
 } from '../../../helpers/markup';
 import {
   CommitRowShown,
-  HistoryMenuShown,
   MessagePanelShown,
 } from '../../../helpers/styleHistoryFixtures';
 
@@ -212,7 +211,6 @@ suite('Style', () => {
     assert.ok(message > edge);
     for (const above of [
       rendered(<ContextMenuShown />),
-      rendered(<HistoryMenuShown />),
       rendered(<NoticesShown />),
     ]) {
       assert.ok(layer(above) > message, above.classes.join(' '));

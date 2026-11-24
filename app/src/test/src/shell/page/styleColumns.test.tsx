@@ -31,7 +31,6 @@ import { renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {
   CommitColumn,
-  HistoryMenuShown,
   LocationsPopupShown,
   NavButtonsShown,
 } from '../../../helpers/styleHistoryFixtures';
@@ -286,7 +285,6 @@ suite('Style', () => {
     assert.ok(edge > layer(rendered(<LocationsPopupShown query="" />)));
     for (const above of [
       rendered(<ContextMenuShown />),
-      rendered(<HistoryMenuShown />),
       rendered(<NoticesShown />),
     ]) {
       assert.ok(layer(above) > edge, above.classes.join(' '));

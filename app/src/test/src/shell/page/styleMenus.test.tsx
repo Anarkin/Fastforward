@@ -23,7 +23,6 @@ import {
 } from './stylesheetFixtures';
 import { popupOf, scrollbarCover } from '../../../helpers/styleMarkup';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
-import { HistoryMenuShown } from '../../../helpers/styleHistoryFixtures';
 
 const zIndexOf = (className: string) =>
   Number(cascaded(rendered(<div className={className} />), 'z-index'));
@@ -51,12 +50,11 @@ suite('Style', () => {
         onClose={noop}
       />,
     );
-    const widths = [
-      ...allWithClass(menu, 'menu-check'),
-      ...allWithClass(rendered(<HistoryMenuShown />), 'menu-check'),
-    ].map((check) => cascaded(check, 'width'));
+    const widths = allWithClass(menu, 'menu-check').map((check) =>
+      cascaded(check, 'width'),
+    );
 
-    assert.strictEqual(widths.length, 6);
+    assert.strictEqual(widths.length, 5);
     assert.deepStrictEqual(new Set(widths), new Set(['24px']));
   });
 
@@ -142,10 +140,7 @@ suite('Style', () => {
   });
 
   test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
-    for (const menu of [
-      rendered(<ContextMenuShown />),
-      rendered(<HistoryMenuShown />),
-    ]) {
+    for (const menu of [rendered(<ContextMenuShown />)]) {
       looks(menu, {
         background: 'var(--color-panel-background)',
         'box-shadow': 'var(--popup-shadow)',
@@ -252,7 +247,6 @@ suite('Style', () => {
     );
     for (const popup of [
       rendered(<ContextMenuShown />),
-      rendered(<HistoryMenuShown />),
       withClass(rendered(<NoticesShown />), 'notice'),
     ]) {
       looks(popup, { 'box-shadow': 'var(--popup-shadow)', border: undefined });
@@ -308,9 +302,6 @@ suite('Style', () => {
     );
     assert.ok(
       layer(rendered(<ContextMenuShown />)) > layer(rendered(<NoticesShown />)),
-    );
-    assert.ok(
-      layer(rendered(<HistoryMenuShown />)) > layer(rendered(<NoticesShown />)),
     );
     assert.ok(layer(scrollbarCover()) < layer(rendered(<ContextMenuShown />)));
     looks(rendered(<NoticesShown />), { 'pointer-events': 'none' });

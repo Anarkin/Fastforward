@@ -2,15 +2,11 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { comparisonOf } from '../../../../../lib/shared/comparisons';
-import { workingTreeHash } from '../../../../../tools/git/shared/protocol';
+import { locationsPopupKey } from '../../../../../tools/git/page/navHistory';
 import {
-  historyButtonClick,
-  historyLabel,
-  locationsPopupKey,
-  nextHistoryOpen,
-} from '../../../../../tools/git/page/navHistory';
-import { HistoryMenu, NavButtons } from '../../../../../tools/git/page/navBar';
+  HistoryButton,
+  NavButtons,
+} from '../../../../../tools/git/page/navBar';
 import { GitStore } from '../../../../../tools/git/page/store';
 import type {
   GitToHost,
@@ -20,7 +16,6 @@ import {
   gitStore,
   renderedInGit,
   type ShownGit,
-  renderedBy,
 } from '../../../../helpers/componentFixtures';
 import { noop } from '../../../../helpers/fixtures';
 import { classesOf, tagWith } from '../../../../helpers/markup';
@@ -214,7 +209,7 @@ suite('Navigation bar', () => {
     assert.deepStrictEqual(posted, [{ type: 'jump', hash: at, root: '/repo' }]);
     assert.match(
       buttons({}),
-      /data-tip="Forward[^"]*"[^>]*>.*?<\/button><\/div><button class="nav-button" aria-label="Select the checked-out commit" data-tip="Select the checked-out commit" data-tip-keys="H">/,
+      /data-tip="Forward[^"]*"[^>]*>.*?<\/button><button class="nav-button" aria-label="Select the checked-out commit" data-tip="Select the checked-out commit" data-tip-keys="H">/,
     );
     assert.match(
       buttons({ headCommit: undefined }),
@@ -224,101 +219,36 @@ suite('Navigation bar', () => {
 });
 
 suite('History buttons', () => {
-  test('go a step on a click, but not on the one ending a hold', () => {
-    assert.strictEqual(historyButtonClick(false, false), 'step');
-    assert.strictEqual(historyButtonClick(true, true), 'none');
-  });
-
-  test('close their open history on a click instead of going a step', () => {
-    assert.strictEqual(historyButtonClick(false, true), 'close');
-  });
-
-  test('close their history once it has no entries, so it stays closed when entries return', () => {
-    let open = true;
-    open = nextHistoryOpen(open, 0);
-    assert.strictEqual(open, false);
-    open = nextHistoryOpen(open, 2);
-    assert.strictEqual(open, false);
-    assert.strictEqual(nextHistoryOpen(true, 2), true);
-  });
-
-  test('go as many steps as the picked entry is from the current one', () => {
-    const picked: number[] = [];
-    const menu = renderedBy(HistoryMenu, {
-      container: { current: null },
-      entries: ['a', 'b', 'c'].map((hash) => ({
-        hash: hash.repeat(40),
-        subject: hash,
-      })),
-      onPick: (steps) => picked.push(steps),
-      onClose: noop,
-    });
-    assert.ok(
-      isValidElement<{
-        children: React.ReactElement<{
-          children: React.ReactElement<{ onClick: () => void }>;
-        }>[];
-      }>(menu),
+  test('go a step back or forward on a click, with no list of where they went, held or right-clicked, as the commander steps, Alt and the arrows or the mouse buttons doing the same', () => {
+    const posted: GitToHost[] = [];
+    const entry = { hash: at, subject: 'a' };
+    const store = navStore(
+      { back: [entry, entry], forward: [entry] },
+      (message) => posted.push(message),
     );
-    menu.props.children[0].props.children.props.onClick();
-    menu.props.children[2].props.children.props.onClick();
-    assert.deepStrictEqual(picked, [1, 3]);
-  });
-
-  test('hold each entry the way other menus do, so the keys move between them alike, leaving room for a check before it as they do', () => {
-    const menu = renderToStaticMarkup(
-      <HistoryMenu
-        container={{ current: null }}
-        entries={[{ hash: 'a'.repeat(40), subject: 'a' }]}
-        onPick={noop}
-        onClose={noop}
-      />,
+    const steps = (['back', 'forward'] as const).map((direction) =>
+      renderedInGit(store, HistoryButton, { direction }),
     );
-    assert.match(
-      menu,
-      /^<div class="menu history-menu" role="menu"><div class="menu-entry"><button class="menu-item history-item"[^>]*><span class="menu-check"><\/span><span class="history-hash">/,
+    for (const button of steps) {
+      assert.ok(
+        isValidElement<{
+          onClick: () => void;
+          onContextMenu?: unknown;
+          onPointerDown?: unknown;
+        }>(button),
+      );
+      assert.strictEqual(button.type, 'button');
+      assert.strictEqual(button.props.onContextMenu, undefined);
+      assert.strictEqual(button.props.onPointerDown, undefined);
+      button.props.onClick();
+    }
+    assert.deepStrictEqual(posted, [
+      { type: 'navigate', direction: 'back', steps: 1, root: '/repo' },
+      { type: 'navigate', direction: 'forward', steps: 1, root: '/repo' },
+    ]);
+    assert.doesNotMatch(
+      buttons({ back: [entry] }),
+      /history-button|history-menu/,
     );
-  });
-
-  test('label an entry by its short hash, or a comparison by both', () => {
-    const a = 'a'.repeat(40);
-    const b = 'b'.repeat(40);
-    assert.strictEqual(historyLabel(a), 'aaaaaaa');
-    assert.strictEqual(historyLabel(comparisonOf(a, b)), 'aaaaaaa → bbbbbbb');
-    const menu = renderToStaticMarkup(
-      <HistoryMenu
-        container={{ current: null }}
-        entries={[{ hash: comparisonOf(a, b), subject: undefined }]}
-        onPick={noop}
-        onClose={noop}
-      />,
-    );
-    assert.match(menu, /<span class="history-hash">aaaaaaa → bbbbbbb<\/span>/);
-  });
-
-  test('label the uncommitted changes as such, alone or compared', () => {
-    const a = 'a'.repeat(40);
-    assert.strictEqual(historyLabel(workingTreeHash), 'uncommitted');
-    assert.strictEqual(
-      historyLabel(comparisonOf(a, workingTreeHash)),
-      'aaaaaaa → uncommitted',
-    );
-  });
-
-  test('keys history entries apart that are the same commit', () => {
-    const a = 'a'.repeat(40);
-    const menu = renderedBy(HistoryMenu, {
-      container: { current: null },
-      entries: [
-        { hash: a, subject: 'a' },
-        { hash: 'b'.repeat(40), subject: 'b' },
-        { hash: a, subject: 'a' },
-      ],
-      onPick: noop,
-      onClose: noop,
-    });
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(menu));
-    const keys = menu.props.children.map((entry) => entry.key);
-    assert.strictEqual(new Set(keys).size, 3);
   });
 });

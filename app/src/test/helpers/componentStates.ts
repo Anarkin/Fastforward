@@ -248,8 +248,6 @@ export const componentStates: Readonly<Record<string, string>> = {
   'tools/git/page/messagePeek.tsx peek':
     'a moment: the message peeked at, shown only while alt is held over a row',
   'tools/git/page/navBar.tsx now': 'a measure: the clock, read anew every tick',
-  'tools/git/page/navBar.tsx open':
-    'a moment: whether the history dropdown is open; it closes as the focus leaves it, as it does on a tab change',
   'tools/git/page/popupHeight.ts height':
     'a measure: the room left for a popup, measured anew from its box and the window',
   'tools/git/page/repositoryColumns.tsx findAsked':

@@ -31,7 +31,6 @@ import {
   withClass,
   type MarkupElement,
 } from '../../../helpers/markup';
-import { HistoryMenuShown } from '../../../helpers/styleHistoryFixtures';
 
 function widthCap(popup: MarkupElement): { cap: number; room: string } {
   const width = /^min\(([\d.]+)px, (.+)\)$/.exec(
@@ -424,7 +423,6 @@ suite('Style', () => {
     const shortcuts = layer(backdrop);
     for (const below of [
       rendered(<ContextMenuShown />),
-      rendered(<HistoryMenuShown />),
       rendered(<NoticesShown />),
     ]) {
       assert.ok(shortcuts > layer(below), below.classes.join(' '));

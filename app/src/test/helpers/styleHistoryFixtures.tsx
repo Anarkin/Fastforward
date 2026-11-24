@@ -18,7 +18,7 @@ import {
   MessageCorner,
   MessagePanel,
 } from '../../tools/git/page/messagePanel';
-import { HistoryMenu, NavButtons } from '../../tools/git/page/navBar';
+import { NavButtons } from '../../tools/git/page/navBar';
 import { FileRow } from '../../lib/page/tree';
 import { WorktreeBar } from '../../tools/git/page/worktreeBar';
 import { commitInfo } from './gitValues';
@@ -185,17 +185,6 @@ export function FolderRowShown() {
         onSelect: noop,
         cursor: undefined,
       }}
-    />
-  );
-}
-
-export function HistoryMenuShown() {
-  return (
-    <HistoryMenu
-      container={{ current: null }}
-      entries={[{ hash: 'a', subject: 'a' }]}
-      onPick={noop}
-      onClose={noop}
     />
   );
 }
