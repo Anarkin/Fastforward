@@ -81,24 +81,32 @@ const starters = [
   ['execSync', true],
 ] as const;
 
-function noting(
-  start: unknown,
-  inShell: boolean,
-  note: (program: Program) => void,
-): unknown {
-  if (typeof start !== 'function') {
+const notedBy = Symbol.for('fastforward.programsStarted.noted');
+
+const noteOfFile = Symbol.for('fastforward.programsStarted.note');
+
+function noteStarted(program: Program): void {
+  const note: unknown = Reflect.get(globalThis, noteOfFile);
+  if (typeof note === 'function') {
+    Reflect.apply(note, undefined, [program]);
+  }
+}
+
+function noting(start: unknown, inShell: boolean): unknown {
+  if (typeof start !== 'function' || Reflect.get(start, notedBy) === true) {
     return start;
   }
   const noted = (...args: unknown[]): unknown => {
     const program = realProgramOf(args[0], inShell);
     if (program !== undefined) {
-      note(program);
+      noteStarted(program);
     }
     return Reflect.apply(start, undefined, args);
   };
+  Reflect.set(noted, notedBy, true);
   const custom: unknown = Reflect.get(start, promisify.custom);
   if (custom !== undefined) {
-    Reflect.set(noted, promisify.custom, noting(custom, inShell, note));
+    Reflect.set(noted, promisify.custom, noting(custom, inShell));
   }
   return noted;
 }
@@ -110,14 +118,14 @@ export class ProgramsStarted {
 
   constructor(private readonly file: string) {
     this.expected = programExpectedOf(file);
-    const note = (program: Program): void => {
+    Reflect.set(globalThis, noteOfFile, (program: Program): void => {
       this.started.add(program);
-    };
+    });
     for (const [name, inShell] of starters) {
       Reflect.set(
         childProcess,
         name,
-        noting(Reflect.get(childProcess, name), inShell, note),
+        noting(Reflect.get(childProcess, name), inShell),
       );
     }
     syncBuiltinESMExports();
@@ -126,7 +134,7 @@ export class ProgramsStarted {
       Reflect.set(
         Object(pty),
         'spawn',
-        noting(Reflect.get(Object(pty), 'spawn'), false, note),
+        noting(Reflect.get(Object(pty), 'spawn'), false),
       );
     }
   }
@@ -149,7 +157,7 @@ export class ProgramsStarted {
       !this.started.has(this.expected)
     ) {
       throw new Error(
-        `This *.${suffixOf(this.file) ?? ''}.test.ts file never started ${this.expected}, so it runs apart from verify:fast for nothing: name it for the program it starts, ${namedFor}, or *.test.ts when it starts none`,
+        `This *.${suffixOf(this.file) ?? ''}.test.ts file never started ${this.expected}, so it runs apart from the unit tests for nothing: name it for the program it starts, ${namedFor}, or *.test.ts when it starts none`,
       );
     }
   }
