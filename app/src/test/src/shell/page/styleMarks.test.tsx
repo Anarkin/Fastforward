@@ -189,7 +189,7 @@ suite('Style', () => {
     );
   });
 
-  test('reaches a mark in a menu out to the edges of its item, by the padding of the item, so it is as tall as the item shows itself chosen, as a mark in a row of the commander is as tall as the row', () => {
+  test('draws a mark in a menu as tall as its item, whose line is the item, with no padding above or below it, as a mark in a row of the commander is as tall as the row', () => {
     for (const where of ['a menu', 'a name in a menu']) {
       const mark = marks.find(([name]) => name === where)?.[1];
       assert.ok(mark);
@@ -198,14 +198,15 @@ suite('Style', () => {
         item = item.parent;
       }
       assert.ok(item);
+      looks(item, {
+        height: 'var(--menu-item-height)',
+        'line-height': 'var(--menu-item-height)',
+      });
       const { top, bottom } = paddingOf(item);
-      assert.strictEqual(top, bottom);
-      looks(mark, { '--mark-reach': top });
+      assert.deepStrictEqual([top, bottom], ['0', '0']);
     }
-    for (const [where, mark] of marks) {
-      if (!where.includes('menu')) {
-        looks(mark, { '--mark-reach': undefined });
-      }
+    for (const [, mark] of marks) {
+      looks(mark, { '--mark-reach': undefined });
     }
   });
 
