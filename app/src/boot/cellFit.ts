@@ -1,4 +1,4 @@
-import type { CellGrid, Size } from '../shell/shared/cellGrid';
+import { pagePixels, type CellGrid, type Size } from '../shell/shared/cellGrid';
 
 export interface Edges {
   readonly left: number;
@@ -19,41 +19,78 @@ export type DraggedEdge =
 
 const noLeast: Size = { width: 0, height: 0 };
 
-const fitted = (
-  length: number,
+export const screenAt = (
+  client: number,
   around: number,
-  cell: number,
-  rounded: (cells: number) => number,
-  least: number,
-) =>
-  around +
-  Math.max(
-    1,
-    rounded((length - around) / cell),
-    Math.ceil((least - around) / cell),
-  ) *
-    cell;
+  scale: number,
+): number => pagePixels(client, scale) - around;
+
+interface Axis {
+  readonly around: number;
+  readonly cell: number;
+  readonly scale: number;
+  readonly least: number;
+}
+
+const fits = (client: number, { around, cell, scale, least }: Axis) => {
+  const screen = screenAt(client, around, scale);
+  return client >= least && screen >= cell && screen % cell === 0;
+};
+
+const reachOf = ({ cell, scale }: Axis) => Math.ceil(2 * cell * scale) + 4;
+
+function fittedUp(length: number, axis: Axis): number {
+  const from = Math.max(length, axis.least);
+  for (let client = from; client <= from + reachOf(axis); client++) {
+    if (fits(client, axis)) {
+      return client;
+    }
+  }
+  return length;
+}
+
+function fittedDown(length: number, axis: Axis): number {
+  for (let client = length; client >= length - reachOf(axis); client--) {
+    if (fits(client, axis)) {
+      return client;
+    }
+  }
+  return fittedUp(length, axis);
+}
+
+function fittedNear(length: number, axis: Axis): number {
+  for (let by = 0; by <= reachOf(axis); by++) {
+    for (const client of [length - by, length + by]) {
+      if (fits(client, axis)) {
+        return client;
+      }
+    }
+  }
+  return length;
+}
+
+const axesOf = (
+  { cell, around, scale }: CellGrid,
+  least: Size,
+): { readonly width: Axis; readonly height: Axis } => ({
+  width: { around: around.width, cell: cell.width, scale, least: least.width },
+  height: {
+    around: around.height,
+    cell: cell.height,
+    scale,
+    least: least.height,
+  },
+});
 
 export function fittedSize(
   area: Size,
-  { cell, around }: CellGrid,
+  grid: CellGrid,
   least: Size = noLeast,
 ): Size {
+  const axes = axesOf(grid, least);
   return {
-    width: fitted(
-      area.width,
-      around.width,
-      cell.width,
-      Math.floor,
-      least.width,
-    ),
-    height: fitted(
-      area.height,
-      around.height,
-      cell.height,
-      Math.floor,
-      least.height,
-    ),
+    width: fittedDown(area.width, axes.width),
+    height: fittedDown(area.height, axes.height),
   };
 }
 
@@ -85,25 +122,15 @@ export function draggedTo(
   rect: Edges,
   edge: DraggedEdge,
   frame: Size,
-  { cell, around }: CellGrid,
+  grid: CellGrid,
   least: Size = noLeast,
 ): Edges {
+  const axes = axesOf(grid, least);
   const width =
-    fitted(
-      rect.right - rect.left - frame.width,
-      around.width,
-      cell.width,
-      Math.round,
-      least.width,
-    ) + frame.width;
+    fittedNear(rect.right - rect.left - frame.width, axes.width) + frame.width;
   const height =
-    fitted(
-      rect.bottom - rect.top - frame.height,
-      around.height,
-      cell.height,
-      Math.round,
-      least.height,
-    ) + frame.height;
+    fittedNear(rect.bottom - rect.top - frame.height, axes.height) +
+    frame.height;
   return {
     left: movesLeft.has(edge) ? rect.right - width : rect.left,
     right: movesRight.has(edge) ? rect.left + width : rect.right,

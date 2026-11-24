@@ -1,10 +1,12 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { draggedTo, fittedSize } from '../../../boot/cellFit';
+import { draggedTo, fittedSize, screenAt } from '../../../boot/cellFit';
+import { gridAround } from '../../../shell/shared/cellGrid';
 
 const grid = {
   cell: { width: 10, height: 20 },
   around: { width: 30, height: 50 },
+  scale: 1,
 };
 
 const rect = {
@@ -82,6 +84,37 @@ suite('Fitting the window to the cells of the terminal', () => {
         height: 251,
       }),
       { ...rect, right: rect.left + 8 + 370, bottom: rect.top + 4 + 270 },
+    );
+  });
+
+  test('fits the window by the screen the page lays out at a fractional scale, a CSS pixel larger than the window rounded up, so the screen is whole cells at every step of a drag at 125% rather than a pixel off at every other one', () => {
+    const scaled = gridAround(
+      { cell: { width: 9, height: 22 }, screen: { width: 1746, height: 1078 } },
+      { width: 1777, height: 1128 },
+      1.25,
+    );
+    assert.ok(scaled);
+    const screens = Array.from({ length: 60 }, (_, step) => {
+      const dragged = draggedTo(
+        { left: 0, top: 0, right: 1700 + step * 3, bottom: 1000 + step * 5 },
+        'bottomRight',
+        { width: 0, height: 0 },
+        scaled,
+      );
+      return [
+        screenAt(dragged.right, scaled.around.width, 1.25) % 9,
+        screenAt(dragged.bottom, scaled.around.height, 1.25) % 22,
+      ];
+    });
+    assert.deepStrictEqual(new Set(screens.flat()), new Set([0]));
+    const fitted = fittedSize({ width: 1790, height: 1140 }, scaled);
+    assert.deepStrictEqual(
+      [
+        screenAt(fitted.width, scaled.around.width, 1.25) % 9,
+        screenAt(fitted.height, scaled.around.height, 1.25) % 22,
+        fitted.width <= 1790 && fitted.height <= 1140,
+      ],
+      [0, 0, true],
     );
   });
 });

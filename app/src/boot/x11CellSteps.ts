@@ -1,7 +1,12 @@
 import koffi from 'koffi';
 import { app, type BrowserWindow } from 'electron';
 import { structOnce } from '../lib/main/koffiTypes';
-import { electronClient, fitByElectron, type CellSteps } from './cellSteps';
+import {
+  electronClient,
+  fitByElectron,
+  scaleOf,
+  type CellSteps,
+} from './cellSteps';
 import { gridAround } from '../shell/shared/cellGrid';
 
 const hintsType = 'CellStepsSizeHints';
@@ -84,7 +89,7 @@ export function x11CellSteps(): CellSteps | undefined {
       const grid =
         report === undefined
           ? undefined
-          : gridAround(report, electronClient(window));
+          : gridAround(report, electronClient(window), scaleOf(window));
       hinted(window, (hints) => {
         const flags = Number(hints.flags) & ~(resizeSteps | baseSize);
         return grid === undefined

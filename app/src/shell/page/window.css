@@ -363,6 +363,10 @@ body {
   flex-direction: column;
 }
 
+.cell-grid-column {
+  display: contents;
+}
+
 .cell-grid-probe {
   position: absolute;
   inset: 0;

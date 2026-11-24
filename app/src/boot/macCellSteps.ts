@@ -118,10 +118,14 @@ export function macCellSteps(): CellSteps | undefined {
       const grid =
         report === undefined
           ? undefined
-          : gridAround(report, {
-              width: Math.round(content.size.width * scale),
-              height: Math.round(content.size.height * scale),
-            });
+          : gridAround(
+              report,
+              {
+                width: Math.round(content.size.width * scale),
+                height: Math.round(content.size.height * scale),
+              },
+              scale,
+            );
       if (grid === undefined) {
         setSize(nsWindow, selectors.increments, unstepped);
         return;

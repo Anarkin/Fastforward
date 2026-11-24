@@ -11,6 +11,7 @@ export interface CellReport {
 export interface CellGrid {
   readonly cell: Size;
   readonly around: Size;
+  readonly scale: number;
 }
 
 const mostPixels = 1 << 16;
@@ -44,13 +45,21 @@ export function cellReportOf(value: unknown): CellReport | undefined {
     : { cell, screen };
 }
 
+const hair = 1e-9;
+
+export const pagePixels = (client: number, scale: number): number =>
+  Math.ceil(Math.ceil(client / scale - hair) * scale - hair);
+
 export function gridAround(
   { cell, screen }: CellReport,
   client: Size,
+  scale = 1,
 ): CellGrid | undefined {
   const around = {
-    width: client.width - screen.width,
-    height: client.height - screen.height,
+    width: pagePixels(client.width, scale) - screen.width,
+    height: pagePixels(client.height, scale) - screen.height,
   };
-  return around.width < 0 || around.height < 0 ? undefined : { cell, around };
+  return around.width < 0 || around.height < 0
+    ? undefined
+    : { cell, around, scale };
 }

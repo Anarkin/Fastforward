@@ -32,11 +32,20 @@ suite('Cell grid', () => {
     }
   });
 
-  test('takes the room around the screen from the client area of the window rather than the page, as Chromium lays a page out a pixel larger than its window at 125%, and none from a screen larger than the window', () => {
+  test('takes the room around the screen from the client area of the window rather than the page, as Chromium lays a page out to a whole CSS pixel rounded up, a device pixel larger than its window at 125% but where the window is a multiple of 5 pixels, and none from a screen larger than the window', () => {
     assert.deepStrictEqual(gridAround(report, { width: 1744, height: 1107 }), {
       cell: report.cell,
       around: { width: 34, height: 51 },
+      scale: 1,
     });
+    assert.deepStrictEqual(
+      gridAround(report, { width: 1744, height: 1107 }, 1.25),
+      {
+        cell: report.cell,
+        around: { width: 1745 - 1710, height: 1108 - 1056 },
+        scale: 1.25,
+      },
+    );
     assert.strictEqual(
       gridAround(report, { width: 1700, height: 1107 }),
       undefined,

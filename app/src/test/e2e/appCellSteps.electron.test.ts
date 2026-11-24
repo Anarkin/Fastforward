@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
+import { pagePixels } from '../../shell/shared/cellGrid';
 
 const koffiPath = path.resolve('node_modules/koffi');
 
@@ -86,15 +87,17 @@ suite('App window in whole cells', () => {
   };
 
   const gridOf = async () => {
-    const [{ cell, screen }, client] = await Promise.all([
+    const [{ cell, screen }, client, scale] = await Promise.all([
       reportOf(page),
       clientPixels(),
+      page.evaluate(() => devicePixelRatio),
     ]);
     return {
       cell,
+      scale,
       around: {
-        width: client.width - screen.width,
-        height: client.height - screen.height,
+        width: pagePixels(client.width, scale) - screen.width,
+        height: pagePixels(client.height, scale) - screen.height,
       },
     };
   };
@@ -226,10 +229,12 @@ suite('App window in whole cells', () => {
           left: dragged.left,
           top: dragged.top,
           width:
-            (dragged.width - dragged.frame.width - grid.around.width) %
+            (pagePixels(dragged.width - dragged.frame.width, grid.scale) -
+              grid.around.width) %
             grid.cell.width,
           height:
-            (dragged.height - dragged.frame.height - grid.around.height) %
+            (pagePixels(dragged.height - dragged.frame.height, grid.scale) -
+              grid.around.height) %
             grid.cell.height,
         },
         { left: 0, top: 0, width: 0, height: 0 },

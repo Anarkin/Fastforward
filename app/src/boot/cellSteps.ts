@@ -27,6 +27,9 @@ export function leastClient(
   };
 }
 
+export const scaleOf = (window: BrowserWindow): number =>
+  screen.getDisplayMatching(window.getBounds()).scaleFactor;
+
 export function electronClient(window: BrowserWindow): Size {
   const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
   const [width = 0, height = 0] = window.getContentSize();
@@ -65,7 +68,7 @@ const byElectron: CellSteps = {
     const grid =
       report === undefined
         ? undefined
-        : gridAround(report, electronClient(window));
+        : gridAround(report, electronClient(window), scaleOf(window));
     if (grid !== undefined && fittedGrids.get(window) !== key) {
       fittedGrids.set(window, key);
       fitByElectron(window, grid);

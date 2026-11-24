@@ -162,7 +162,7 @@ export function windowsCellSteps(): CellSteps {
     const grid =
       report === undefined || sizes === undefined
         ? undefined
-        : gridAround(report, sizes.client);
+        : gridAround(report, sizes.client, scaleOf(window));
     if (grid === undefined) {
       grids.delete(window);
       return;
