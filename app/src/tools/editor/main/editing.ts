@@ -478,6 +478,17 @@ export class Editing {
     }
     const wanted = encoding === 'auto' ? text.onDisk() : { encoding, bom };
     const tried = text.saveIn(wanted.encoding, wanted.bom);
+    if ('keptIn' in tried) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.editor.keptUnsaved(
+          opened.file,
+          wanted.encoding,
+          tried.keptIn,
+        ),
+      });
+      return;
+    }
     if (!('bytes' in tried)) {
       const characters = [
         ...new Set(tried.unencodable.map(({ character }) => character)),

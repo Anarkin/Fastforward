@@ -128,6 +128,22 @@ suite('Text being edited', () => {
     );
   });
 
+  test('saves bytes kept as they were only in the encoding they were read in, refusing another while it holds any, and takes it once they are deleted', () => {
+    const edited = read('a\xe9b\n');
+    assert.deepStrictEqual(edited.saveIn('utf-16le', false), {
+      keptIn: 'utf-8',
+    });
+    assert.deepStrictEqual(edited.saveIn('windows-1252', false), {
+      keptIn: 'utf-8',
+    });
+    assert.deepStrictEqual(edited.target(), { encoding: 'utf-8', bom: false });
+    assert.ok('bytes' in edited.saveIn('utf-8', true));
+    assert.strictEqual(bytesOf(edited), '\xef\xbb\xbfa\xe9b\n');
+    assert.ok(edited.edit(change(edited, { from: 1, to: 2 })));
+    assert.ok('bytes' in edited.saveIn('utf-16le', false));
+    assert.strictEqual(bytesOf(edited), 'a\0b\0\n\0');
+  });
+
   test('tells the byte of the file on disk a place of its text starts at, its byte order mark, line endings and multibyte characters counted', () => {
     const utf8 = new EditedText(
       decodedText(

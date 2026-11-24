@@ -123,8 +123,15 @@ export class EditedText {
     return { encoding: this.encoding, bom: this.bom };
   }
 
-  saveIn(encoding: TextEncoding, bom: boolean): EncodedText {
-    const tried = encodedText({ ...this.shown(), encoding, bom });
+  saveIn(
+    encoding: TextEncoding,
+    bom: boolean,
+  ): EncodedText | { readonly keptIn: TextEncoding } {
+    const shown = this.shown();
+    if (encoding !== this.read.encoding && shown.keptBytes.length > 0) {
+      return { keptIn: this.read.encoding };
+    }
+    const tried = encodedText({ ...shown, encoding, bom });
     if ('bytes' in tried) {
       this.encoding = encoding;
       this.bom = bom;

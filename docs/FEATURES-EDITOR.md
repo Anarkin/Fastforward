@@ -40,7 +40,7 @@
 | Encodings | Read and write the encodings of the viewer | — | Common | ✅ Yes | Read and written as [FEATURES](FEATURES.md#common-text) says |
 | Reopen in an encoding | Read the bytes again in another encoding | — | Common | ✅ Yes | From the encoding button above the text marked (read), which lists them as the viewer does, Auto naming the one it read the file in, the one chosen checked; asks first while it has changes, the question kept with its tab until answered |
 | Save in an encoding | Write the text in another encoding | — | Common | ✅ Yes | From the encoding button marked (write) beside it, which lists them alike, UTF-8 with a byte order mark too, Auto first, saving it as it is on disk, with or without its byte order mark, the one it saves in checked, the two buttons saying the encoding it has on disk and the one it saves in, the file taken as read in the one it was saved in; the (read) one disabled for a new file, Auto naming the encoding its .editorconfig or the settings give it; refused, naming them, while the text has characters the encoding has no byte for |
-| Bytes it cannot decode | Keep bytes that are not text of the encoding | — | Niche | 🟡 Partial | Kept and written back as they were; drawn as a replacement character rather than a box with their value |
+| Bytes it cannot decode | Keep bytes that are not text of the encoding | — | Niche | 🟡 Partial | Kept and written back as they were, in the encoding they were read in alone, saving in another refused, saying so; drawn as a replacement character rather than a box with their value |
 | Binary files | Edit a file of binary data | — | Niche | ❌ No | Refused; F3 views it as hex |
 
 ## Line endings

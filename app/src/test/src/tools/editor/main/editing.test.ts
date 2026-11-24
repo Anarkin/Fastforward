@@ -409,6 +409,31 @@ suite('Editing a file', () => {
     assert.strictEqual(edits.unsaved('1'), false);
   });
 
+  test("keeps the encoding of a text holding bytes it couldn't read rather than writing them into another, saying why", async () => {
+    const { edits, notices, showing } = editing({
+      'a.txt': Buffer.from('caf\xe9\n', 'latin1'),
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, {
+      type: 'reopenIn',
+      tab: '1',
+      encoding: 'utf-8',
+    });
+    await edits.receive(page, {
+      type: 'saveIn',
+      tab: '1',
+      encoding: 'windows-1252',
+      bom: false,
+    });
+    assert.deepStrictEqual(notices, [
+      'Couldn\'t save "a.txt" in windows-1252, as it holds bytes utf-8 couldn\'t read, which are kept as they were only in utf-8.',
+    ]);
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'utf-8');
+    assert.strictEqual(edits.unsaved('1'), false);
+  });
+
   test('saves the text in the encoding and byte order mark the file has on disk once Auto is asked for, telling the page what it has on disk only while it is to be saved otherwise', async () => {
     const { edits, showing } = editing({
       'a.txt': Buffer.from('\xef\xbb\xbfcaf\xc3\xa9\n', 'latin1'),

@@ -632,6 +632,7 @@ export const strings = {
     diagram: 'Diagram',
     diagramFailed: 'This diagram could not be drawn.',
     onlyWhitespace: 'Only whitespace changed',
+    onlyEncoding: 'Only the encoding changed',
     identical: 'Identical',
     readAs: (old: string, changed: string) =>
       old === changed ? `Read as ${old}` : `Read as ${old} → ${changed}`,
@@ -1185,6 +1186,8 @@ export const strings = {
       characters: readonly string[],
     ) =>
       sentence`Couldn't save ${namedFile(file)}, as ${encoding} has no ${namesBetween(characters, ', ')}.`,
+    keptUnsaved: (file: string, encoding: string, keptIn: string) =>
+      sentence`Couldn't save ${namedFile(file)} in ${encoding}, as it holds bytes ${keptIn} couldn't read, which are kept as they were only in ${keptIn}.`,
     readOnly: (file: string) =>
       sentence`${namedFile(file)} is open read-only, so it isn't saved.`,
     changedOutside: (file: string) =>
