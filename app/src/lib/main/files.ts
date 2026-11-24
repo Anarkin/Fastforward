@@ -16,7 +16,7 @@ function isFileSystem(value: unknown): value is FileSystem {
   );
 }
 
-export function filesWithoutArchives(
+export function filesWithoutAsar(
   electron: string | undefined = process.versions.electron,
   load: (name: string) => unknown = createRequire(
     path.join(process.cwd(), 'files.js'),
@@ -32,6 +32,6 @@ export function filesWithoutArchives(
   return loaded;
 }
 
-export const fs: FileSystem = filesWithoutArchives();
+export const fs: FileSystem = filesWithoutAsar();
 
 export const fsPromises: FileSystem['promises'] = fs.promises;
