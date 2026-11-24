@@ -28,6 +28,8 @@ const charactersAtOnce = {
   tooltips: { delayMilliseconds: 10_000, characterDelayMilliseconds: 0 },
 };
 
+const mod = process.platform === 'darwin' ? strings.keys.Command : 'Ctrl';
+
 suite('App tooltips', () => {
   let folder: string;
   let profile: string;
@@ -36,8 +38,7 @@ suite('App tooltips', () => {
   let page: Page;
 
   const tooltip = () => page.locator('.card.tip');
-  const flat = () =>
-    page.locator(`button[data-tip="${strings.commander.flatView}"]`).first();
+  const add = () => page.locator('.tab-add');
   const away = () => page.mouse.move(400, 400);
   const about = (elevated?: 'administrator') =>
     app.evaluate(({ BrowserWindow }, elevation) => {
@@ -87,14 +88,14 @@ suite('App tooltips', () => {
 
   test('shows the tooltip of a button the pointer rests on as a card of the app, its words and the keys that do the same as a key cap after them, centered below the button, inside the window and on whole device pixels, the browser showing none of its own', async () => {
     await away();
-    await flat().hover();
+    await add().hover();
     await tooltip().waitFor();
     assert.deepStrictEqual(
       [
         await tooltip().locator('.card-message').textContent(),
         await tooltip().locator('.shortcut-combo kbd').allTextContents(),
       ],
-      [strings.commander.flatView, ['Ctrl', 'B']],
+      [strings.tabs.newTab, [mod, 'T', mod, 'Shift', 'T']],
     );
     const placed = await page.evaluate((selector) => {
       const card = document.querySelector('.card.tip');
@@ -122,7 +123,7 @@ suite('App tooltips', () => {
         untouchable: getComputedStyle(card).pointerEvents,
         titled: document.querySelectorAll('[title]').length,
       };
-    }, `button[data-tip="${strings.commander.flatView}"]`);
+    }, '.tab-add');
     assert.deepStrictEqual(placed, {
       centered: true,
       below: true,
@@ -137,11 +138,11 @@ suite('App tooltips', () => {
 
   test('hides the tooltip once the pointer leaves its button, and at a press, staying hidden over the button pressed until the pointer has left it', async () => {
     await away();
-    await flat().hover();
+    await add().hover();
     await tooltip().waitFor();
     await away();
     await tooltip().waitFor({ state: 'detached' });
-    await flat().hover();
+    await add().hover();
     await tooltip().waitFor();
     await page.mouse.down();
     await tooltip().waitFor({ state: 'detached' });
@@ -150,9 +151,9 @@ suite('App tooltips', () => {
     await onceDrawn(page);
     assert.strictEqual(await tooltip().count(), 0);
     await away();
-    await flat().hover();
+    await add().hover();
     await tooltip().waitFor();
-    await flat().click();
+    await add().click();
     await tooltip().waitFor({ state: 'detached' });
     await away();
   });
@@ -181,14 +182,14 @@ suite('App tooltips', () => {
     await away();
     await writeSettings(page, profile, never);
     await page.locator('.commander-pane').first().waitFor();
-    await flat().hover();
+    await add().hover();
     await onceDrawn(page);
     await onceDrawn(page);
     assert.strictEqual(await tooltip().count(), 0);
     await away();
     await writeSettings(page, profile, atOnce);
     await page.locator('.commander-pane').first().waitFor();
-    await flat().hover();
+    await add().hover();
     await tooltip().waitFor();
   });
 

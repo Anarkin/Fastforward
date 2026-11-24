@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  inFirstPart,
   joinedPath,
   knownWith,
   newlyKnown,
@@ -210,5 +211,30 @@ suite('The parts of a path, as the commander lists them', () => {
       () => {},
     );
     assert.deepStrictEqual(told, ['C:\\Temp\\docs']);
+  });
+
+  test('tells whether a press landed in the first part of a path, its drive or root, and not in the parts after it, the separators or around the path', async () => {
+    await mounted(
+      <PathLooksContext value={source(new Map())}>
+        <div className="row">
+          <PathName path={'C:\\Temp\\docs'} looks={[folder, folder, folder]} />
+        </div>
+      </PathLooksContext>,
+      (main) => {
+        const row = main.querySelector('.row');
+        assert.ok(row);
+        const parts = [...row.querySelectorAll('.path-part')];
+        assert.deepStrictEqual(
+          [
+            inFirstPart(row, parts[0]?.firstChild),
+            inFirstPart(row, parts[0]),
+            inFirstPart(row, parts[1]),
+            inFirstPart(row, row),
+            inFirstPart(row, undefined),
+          ],
+          [true, true, false, false, false],
+        );
+      },
+    );
   });
 });

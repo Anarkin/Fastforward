@@ -295,7 +295,7 @@ suite('App editor', () => {
     const alone = await pathLine.evaluate(baselinesOf);
     assert.strictEqual(alone.mark, undefined);
     await backToCommander();
-    await page.keyboard.press('Alt+F');
+    await page.keyboard.press('F10');
     await page.getByText(strings.tabs.openDefaultSettings).click();
     await pathLine
       .locator('.editor-mark', { hasText: strings.editor.readOnlyMark })

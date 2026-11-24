@@ -88,26 +88,18 @@ suite('App commander', () => {
     );
   });
 
-  test('hands the focus to the list of a side once a layout or a bookmark is chosen with the pointer from the menus of its header, and to the text of a file viewed once an encoding or a language is, so their keys work at once', async () => {
+  test('hands the focus to the list of a side once a bookmark is chosen with the pointer from the menu Ctrl+D opens atop its path, and to the text of a file viewed once an encoding or a language is, so their keys work at once', async () => {
     const inList = '.commander-pane:nth-child(2) .column-body';
     await select('notes');
 
     const chosen: boolean[] = [];
-    await choose(
-      `.commander-pane:nth-child(2) .commander-layout`,
-      `.menu-item:has-text("${strings.commander.layouts.details}")`,
-    );
-    chosen.push(await focusIn(inList));
-    const bookmarks = right().locator(
-      `button[data-tip="${strings.commander.bookmarks}"]`,
-    );
     const addOrRemove = page.locator('.menu-item', {
       hasText: new RegExp(
         `^(${strings.commander.addBookmark}|${strings.commander.removeBookmark})$`,
       ),
     });
     const toggleBookmark = async () => {
-      await bookmarks.click();
+      await page.keyboard.press('Control+d');
       await addOrRemove.click();
       return focusIn(inList);
     };
@@ -120,7 +112,7 @@ suite('App commander', () => {
     await choose('.viewer .language-button', '.menu-item[aria-checked="true"]');
     chosen.push(await focusIn('.viewer-body'));
 
-    assert.deepStrictEqual(chosen, [true, true, true, true, true]);
+    assert.deepStrictEqual(chosen, [true, true, true, true]);
     await page.keyboard.press('Escape');
     await page.locator('.viewer').waitFor({ state: 'detached' });
   });

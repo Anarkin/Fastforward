@@ -19,6 +19,16 @@ import {
 const folderShown = async () =>
   (await right().locator('.column-name').textContent()) ?? '';
 
+const offered = async () => {
+  await page.keyboard.press('Control+d');
+  const item = right().locator('.menu-item').first();
+  await waitFor(
+    () => item.evaluate((element) => element === document.activeElement),
+    'the menu of the bookmarks to have the keyboard',
+  );
+  return item.textContent();
+};
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -152,17 +162,14 @@ suite('App commander', () => {
     }
   });
 
-  test('goes back through the folders of the side with Alt+Left, and forward again with its button', async () => {
+  test('goes back through the folders of the side with Alt+Left, and forward again with Alt+Right', async () => {
     await right().locator('.virtual-rows').focus();
     await page.keyboard.press('Alt+ArrowLeft');
     await waitFor(
       async () => (await rowNames()).join() === '..,main.ts',
       'the folder before, src',
     );
-    await right()
-      .locator('.nav-button', { has: page.locator('svg') })
-      .nth(1)
-      .click();
+    await page.keyboard.press('Alt+ArrowRight');
     await waitFor(
       async () =>
         (await right().locator('.column-name').textContent()) === opened,
@@ -212,20 +219,14 @@ suite('App commander', () => {
     );
   });
 
-  test('bookmarks the folder of the active side from the menu Ctrl+D opens, filling the star of the side and saving it to the user settings, and goes back to it by its key from another folder', async () => {
-    const filledStar = right().locator(
-      `button[data-tip="${strings.commander.bookmarks}"] .bookmark-icon.filled`,
-    );
+  test('bookmarks the folder of the active side from the menu Ctrl+D opens, which offers to remove it from then on, saving it to the user settings, and goes back to it by its key from another folder', async () => {
     const bookmarked = await folderShown();
     await right().locator('.virtual-rows').focus();
-    assert.strictEqual(await filledStar.count(), 0);
 
-    await page.keyboard.press('Control+d');
-    await right()
-      .locator('.menu-item', { hasText: strings.commander.addBookmark })
-      .waitFor();
+    assert.strictEqual(await offered(), strings.commander.addBookmark);
     await page.keyboard.press('Enter');
-    await filledStar.waitFor();
+    assert.strictEqual(await offered(), strings.commander.removeBookmark);
+    await page.keyboard.press('Escape');
     await waitFor(
       () => savedBookmarks() === JSON.stringify([bookmarked]),
       'the folder of the side to be saved as a bookmark',
@@ -237,7 +238,8 @@ suite('App commander', () => {
       async () => (await folderShown()) === path.join(bookmarked, 'src'),
       'src to open',
     );
-    await filledStar.waitFor({ state: 'detached' });
+    assert.strictEqual(await offered(), strings.commander.addBookmark);
+    await page.keyboard.press('Escape');
     await page.keyboard.press('Control+d');
     await right().locator('.menu-item', { hasText: bookmarked }).waitFor();
     await page.keyboard.press('1');
@@ -245,7 +247,8 @@ suite('App commander', () => {
       async () => (await folderShown()) === bookmarked,
       'the bookmark to open',
     );
-    await filledStar.waitFor();
+    assert.strictEqual(await offered(), strings.commander.removeBookmark);
+    await page.keyboard.press('Escape');
   });
 
   test('opens the selected folder on the left side with Mod+Left, or the folder it is in when a file is selected', async () => {

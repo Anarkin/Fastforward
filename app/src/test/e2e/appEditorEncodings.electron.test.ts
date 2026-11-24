@@ -104,7 +104,7 @@ suite('App editor', () => {
 
   test('shows the encodings and the line ending of a file opened read-only, the encoding to read in to be chosen, as reading the file again writes nothing, and the encoding to write in and the line ending disabled rather than left out, as the toolbar told nothing of the file, and the encoding to read in of a new file disabled', async () => {
     await backToCommander();
-    await page.keyboard.press('Alt+F');
+    await page.keyboard.press('F10');
     await page.getByText(strings.tabs.openDefaultSettings).click();
     await page
       .locator('.editor .editor-mark', { hasText: strings.editor.readOnlyMark })

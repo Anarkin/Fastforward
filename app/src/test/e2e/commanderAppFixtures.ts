@@ -274,7 +274,6 @@ export const pathPlaces = () =>
       }
       return found.getBoundingClientRect();
     };
-    const buttons = box('.column-title');
     const text = box('.path-text');
     const names = box('.commander-header .commander-name');
     const row = box('.commander-path');
@@ -282,7 +281,9 @@ export const pathPlaces = () =>
       side.querySelector('.commander-path') ?? side,
     );
     return {
-      underButtons: text.top >= buttons.bottom - 1 / 64,
+      atTop:
+        side.querySelector('.column-title') === null &&
+        side.firstElementChild === side.querySelector('.commander-path'),
       aboveHeadings: text.bottom <= names.top + 1 / 64,
       fromStart:
         Math.round(text.left - row.left - parseFloat(padding.paddingLeft)) + 0,

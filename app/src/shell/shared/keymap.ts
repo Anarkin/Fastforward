@@ -27,7 +27,7 @@ export const shellKeymap = {
   moveTab: bind('Tabs', strings.actions.moveTab, {
     Drag: true,
   }),
-  mainMenu: bind('App', strings.actions.mainMenu, { 'Alt+F': true }),
+  mainMenu: bind('App', strings.actions.mainMenu, { F10: true }),
   dismissNotice: bind('App', strings.actions.dismissNotice, { Escape: true }),
   shortcuts: bind(
     'App',

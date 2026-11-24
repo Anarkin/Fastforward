@@ -94,8 +94,12 @@ const across = () =>
       return tops.filter((top) => top === tops[0]).length;
     });
 
-const layoutLabel = () =>
-  right().locator('.commander-layout .menu-button-label').textContent();
+const layoutShown = async () =>
+  (await right().locator('.commander-header').count()) > 0
+    ? 'details'
+    : (await right().locator('.commander-tile').count()) > 0
+      ? 'thumbnails'
+      : undefined;
 
 const thumbnailOf = (name: string) =>
   right()
@@ -132,7 +136,7 @@ const selectedName = () =>
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('shows a side as thumbnails from the menu of its layout or on Mod+2, each file and folder a tile of its icon, name, size and date, moving among them as on a grid, and as details again on Mod+1, for its tab only, another tab showing details', async () => {
+  test('shows a side as thumbnails on Mod+2, each file and folder a tile of its icon, name, size and date, moving among them as on a grid, and as details again on Mod+1, for its tab only, another tab showing details', async () => {
     const tiles = path.join(opened, 'tiles');
     fs.mkdirSync(tiles);
     for (let index = 1; index <= 7; index++) {
@@ -145,23 +149,13 @@ suite('App commander', () => {
       async () => (await rowNames()).includes('t7.txt'),
       'the files of the folder',
     );
-    assert.strictEqual(await layoutLabel(), strings.commander.layouts.details);
-    await right()
-      .locator(`button[data-tip="${strings.commander.layout}"]`)
-      .click();
-    await page
-      .getByRole('menuitemcheckbox', {
-        name: strings.commander.layouts.thumbnails,
-      })
-      .click();
+    assert.strictEqual(await layoutShown(), 'details');
+    await page.keyboard.press('ControlOrMeta+2');
     await waitFor(
       async () => (await tileNames()).length === 8,
       'a tile for each file and the parent folder',
     );
-    assert.strictEqual(
-      await layoutLabel(),
-      strings.commander.layouts.thumbnails,
-    );
+    assert.strictEqual(await layoutShown(), 'thumbnails');
     assert.strictEqual(
       await right().locator('.commander-row.commander-line').count(),
       0,
@@ -235,7 +229,7 @@ suite('App commander', () => {
     );
     await waitFor(
       async () =>
-        (await layoutLabel()) === strings.commander.layouts.details &&
+        (await layoutShown()) === 'details' &&
         (await right().locator('.commander-row').count()) > 0,
       'the other tab showing details',
     );
@@ -249,10 +243,7 @@ suite('App commander', () => {
       async () => (await tileNames()).length === 8,
       'the thumbnails of the first tab again',
     );
-    assert.strictEqual(
-      await layoutLabel(),
-      strings.commander.layouts.thumbnails,
-    );
+    assert.strictEqual(await layoutShown(), 'thumbnails');
     await right().locator('.commander-tile').first().click();
     await page.keyboard.press('ControlOrMeta+1');
     await waitFor(

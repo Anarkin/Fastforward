@@ -23,11 +23,22 @@ const appMenu = `nav button[data-tip="${strings.tabs.settings}"]`;
 
 const kinds = ['commander', 'commander', 'git', 'git', 'terminal'] as const;
 
-const toolMenus = {
-  commander: `.commander-pane button[data-tip="${strings.commander.bookmarks}"]`,
-  git: undefined,
-  terminal: undefined,
-} as const;
+interface Opening {
+  readonly trigger: string;
+  readonly key?: string;
+}
+
+const appMenuOpening: Opening = { trigger: appMenu };
+
+const toolMenus: Readonly<Record<(typeof kinds)[number], Opening | undefined>> =
+  {
+    commander: {
+      trigger: `.commander-pane button[data-tip="${strings.commander.bookmarks}"]`,
+      key: 'Control+d',
+    },
+    git: undefined,
+    terminal: undefined,
+  };
 
 const countMenusOpened = () =>
   page.evaluate(() => {
@@ -57,12 +68,16 @@ async function shownAndSettled(index: number, what: string): Promise<void> {
 
 async function openedThenNextTab(
   index: number,
-  trigger: string,
+  { trigger, key }: Opening,
 ): Promise<void> {
   await showTab(page, index);
   await settledLooks(page);
   const button = page.locator(trigger).first();
-  await button.click();
+  if (key === undefined) {
+    await button.click();
+  } else {
+    await page.keyboard.press(key);
+  }
   await page.locator('.menu .menu-item').first().waitFor();
   await page.locator('.menu .menu-item').first().focus();
   const opened = await menusOpened();
@@ -123,10 +138,10 @@ suite('Menus of a tab', () => {
     for (const [index, kind] of kinds.entries()) {
       if (index + 1 < kinds.length) {
         const menu = toolMenus[kind];
-        for (const trigger of menu === undefined
-          ? [appMenu]
-          : [menu, appMenu]) {
-          await openedThenNextTab(index, trigger);
+        for (const opening of menu === undefined
+          ? [appMenuOpening]
+          : [menu, appMenuOpening]) {
+          await openedThenNextTab(index, opening);
         }
       }
     }

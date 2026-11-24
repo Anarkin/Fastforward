@@ -108,15 +108,14 @@ suite('App buttons', () => {
     await page.locator('.tabs .tab:has(.tool-commander)').click();
     const right = page.locator('.commander-pane').nth(1);
     await right.locator('.commander-row', { hasText: /^a\s*txt/ }).click();
-    const commander = await buttonsOf(page);
     await page.keyboard.press('F3');
     await page.locator('.viewer').waitFor();
     const viewer = await buttonsOf(page);
-    const all = [git, commander, viewer];
+    const all = [git, viewer];
     const gaps = all.flatMap((layout) => layout.gaps);
     const widths = all.flatMap((layout) => layout.widths);
 
-    assert.ok(git.gaps.length > 10 && commander.gaps.length > 6);
+    assert.ok(git.gaps.length > 10);
     assert.ok(viewer.gaps.length > 4);
     assert.ok(whole(gaps), gaps.join());
     assert.strictEqual(
@@ -124,7 +123,6 @@ suite('App buttons', () => {
       1,
       JSON.stringify({
         git: git.gaps,
-        commander: commander.gaps,
         viewer: viewer.gaps,
       }),
     );

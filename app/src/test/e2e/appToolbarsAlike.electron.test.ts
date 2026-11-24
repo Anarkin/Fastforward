@@ -13,7 +13,7 @@ const tools = ['commander', 'viewer', 'editor', 'git', 'diff'] as const;
 type Tool = (typeof tools)[number];
 
 const searches: Record<Tool, number> = {
-  commander: 2,
+  commander: 0,
   viewer: 1,
   editor: 1,
   git: 3,

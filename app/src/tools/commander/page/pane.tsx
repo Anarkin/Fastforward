@@ -45,7 +45,8 @@ import { useNameRoom } from './nameRoom';
 import { PaneStatus } from './paneStatus';
 import { goesOn } from './sideStatus';
 import { folderLooks } from './headerLooks';
-import { PaneTitle } from './paneHeader';
+import { PaneMenus } from './paneHeader';
+import { inFirstPart } from '../../../lib/page/pathLooks';
 declare module 'react' {
   interface CSSProperties {
     readonly '--commander-extension'?: string;
@@ -73,6 +74,11 @@ export function Pane({
   bookmarkTrigger: React.Ref<HTMLButtonElement>;
   resizer: React.ReactNode;
 }) {
+  const openDrives = () => {
+    if (typeof driveTrigger === 'object' && driveTrigger !== null) {
+      driveTrigger.current?.click();
+    }
+  };
   const tab = useCommander((state) => state.view.tab);
   const active = useCommander((state) => state.view.active === side);
   const paneShown = useCommander(
@@ -342,63 +348,21 @@ export function Pane({
         '--commander-date': String(columns.date),
       }}
     >
-      {filtering ? (
-        <header className="column-title searching">
-          <PaneFilter
-            side={side}
-            query={query}
-            options={options}
-            found={keptFiles(rows, selectedName)}
-            input={filterInput}
-            onQuery={filterTo}
-            onOptions={(chosen) => actions.filterSide(side, query, chosen)}
-            onStep={(step) => {
-              const next = steppedFile(rows, selectedName, step);
-              if (next !== undefined) {
-                onSelect(next);
-              }
-            }}
-            onMove={(move) => {
-              if (rows.length === 0) {
-                return;
-              }
-              const rowHeight =
-                body.current
-                  ?.querySelector('.commander-row')
-                  ?.getBoundingClientRect().height ?? 1;
-              const page = Math.max(
-                1,
-                Math.floor((body.current?.clientHeight ?? 0) / rowHeight) - 1,
-              );
-              const next = filterStep(
-                move,
-                Math.max(0, selectedIndex),
-                rows.length,
-                page,
-              );
-              onSelect(rows[next].key);
-            }}
-            onLeave={() => {
-              const row =
-                selectedIndex === -1 ? undefined : rows[selectedIndex];
-              focusList();
-              if (row !== undefined && goesInto(row)) {
-                onOpen(row.key);
-              }
-            }}
-            onClose={closeFilter}
-          />
-        </header>
-      ) : (
-        <PaneTitle
+      <div
+        className="path-row commander-path"
+        onContextMenu={openFolderMenu}
+        onClick={(event) => {
+          if (inFirstPart(event.currentTarget, event.target)) {
+            openDrives();
+          }
+        }}
+      >
+        <PaneMenus
           side={side}
           driveTrigger={driveTrigger}
           bookmarkTrigger={bookmarkTrigger}
           onChosen={focusList}
-          onFilter={openFilter}
         />
-      )}
-      <div className="path-row commander-path" onContextMenu={openFolderMenu}>
         <PathTitle
           path={paneFolder ?? ''}
           looks={folderLooks(hidden ?? [], archive)}
@@ -470,6 +434,54 @@ export function Pane({
           />
         )}
       </div>
+      {filtering && (
+        <div className="floating-search">
+          <PaneFilter
+            side={side}
+            query={query}
+            options={options}
+            found={keptFiles(rows, selectedName)}
+            input={filterInput}
+            onQuery={filterTo}
+            onOptions={(chosen) => actions.filterSide(side, query, chosen)}
+            onStep={(step) => {
+              const next = steppedFile(rows, selectedName, step);
+              if (next !== undefined) {
+                onSelect(next);
+              }
+            }}
+            onMove={(move) => {
+              if (rows.length === 0) {
+                return;
+              }
+              const rowHeight =
+                body.current
+                  ?.querySelector('.commander-row')
+                  ?.getBoundingClientRect().height ?? 1;
+              const page = Math.max(
+                1,
+                Math.floor((body.current?.clientHeight ?? 0) / rowHeight) - 1,
+              );
+              const next = filterStep(
+                move,
+                Math.max(0, selectedIndex),
+                rows.length,
+                page,
+              );
+              onSelect(rows[next].key);
+            }}
+            onLeave={() => {
+              const row =
+                selectedIndex === -1 ? undefined : rows[selectedIndex];
+              focusList();
+              if (row !== undefined && goesInto(row)) {
+                onOpen(row.key);
+              }
+            }}
+            onClose={closeFilter}
+          />
+        </div>
+      )}
       <PaneStatus
         side={side}
         selected={selectedIndex === -1 ? undefined : rows[selectedIndex]}

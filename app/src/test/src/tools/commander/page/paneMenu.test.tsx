@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
-import { act } from 'react';
+import { act, createRef } from 'react';
 import { strings } from '../../../../../lib/shared/strings';
 import { Pane } from '../../../../../tools/commander/page/pane';
 import type { PaneView } from '../../../../../tools/commander/page/paneView';
@@ -45,8 +45,8 @@ const inPane = (
   inSide(
     <Pane
       side="left"
-      driveTrigger={null}
-      bookmarkTrigger={null}
+      driveTrigger={createRef()}
+      bookmarkTrigger={createRef()}
       resizer={null}
     />,
     run,
@@ -78,7 +78,7 @@ const shownFolderMenu = [
 ];
 
 suite('Commander menu on a side', () => {
-  test('hands the focus to the list of the side once a drive, a bookmark or a layout is chosen from the menus of its header, so its keys work at once', async () => {
+  test('hands the focus to the list of the side once a drive or a bookmark is chosen from the menus atop its path, so its keys work at once', async () => {
     await inPane(async ({ main }) => {
       const chosenFrom = async (title: string, label: string) => {
         const trigger = main.querySelector<HTMLButtonElement>(
@@ -101,33 +101,39 @@ suite('Commander menu on a side', () => {
         [
           await chosenFrom(strings.commander.chooseDrive, 'D:\\'),
           await chosenFrom(strings.commander.bookmarks, '/work/docs'),
-          await chosenFrom(
-            strings.commander.layout,
-            strings.commander.layouts.details,
-          ),
         ],
-        [true, true, true],
+        [true, true],
       );
     });
   });
 
-  test('names the drive of a side on its button as its menu names it, with its backslash, as the button left it out above a path and a menu that had it', async () => {
+  test('draws no path in the hidden button of the drives, so the drive of the path itself is the first part of its row, which a click opens the drives on, checked in the menu of the drives', async () => {
     await inPane(
       async ({ main }) => {
         const trigger = main.querySelector<HTMLButtonElement>(
           `button[data-tip="${strings.commander.chooseDrive}"]`,
         );
         assert.ok(trigger);
-        const named = trigger.textContent;
-        await act(async () => trigger.click());
-        const drives = [
-          ...main.querySelectorAll<HTMLButtonElement>('.menu-item'),
+        assert.strictEqual(trigger.querySelector('.path-part'), null);
+        const drive = main.querySelector('.commander-path .path-part');
+        assert.ok(drive);
+        const named = drive.textContent;
+        await act(async () => {
+          drive.dispatchEvent(
+            new (main.ownerDocument.defaultView ?? window).MouseEvent('click', {
+              bubbles: true,
+            }),
+          );
+        });
+        const checked = [
+          ...main.querySelectorAll<HTMLButtonElement>(
+            '.menu-item[aria-checked="true"]',
+          ),
         ].map((each) => each.textContent);
-
-        assert.match(named, /^[A-Z]:\\$/);
-        assert.ok(
-          drives.some((drive) => drive.includes(named)),
-          `${named} among ${drives.join(', ')}`,
+        assert.deepStrictEqual(
+          checked.map((each) => each.includes(named.replace(/\$/, ''))),
+          [true],
+          `${named} checked among ${checked.join(', ')}`,
         );
       },
       undefined,

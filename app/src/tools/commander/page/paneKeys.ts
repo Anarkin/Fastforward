@@ -1,4 +1,3 @@
-import { shellKeymap } from '../../../shell/shared/keymap';
 import { clicked, letterTyped, type Click } from '../../../lib/shared/keymap';
 import {
   listMoveOf,
@@ -181,7 +180,6 @@ export function paneKey(
     return { act: { kind: 'menu', key: row?.key } };
   }
   const letter =
-    keyPressed(shellKeymap.mainMenu, event) === undefined &&
     keyPressed(commanderKeymap.filterLetter, event) !== undefined
       ? letterTyped(event)
       : undefined;

@@ -122,6 +122,11 @@ export function shownParts(
   });
 }
 
+export function inFirstPart(path: Element, target: unknown): boolean {
+  const first = path.querySelector('.path-part');
+  return first !== null && target instanceof Node && first.contains(target);
+}
+
 export function joinedPath(root: string | undefined, path: string): string {
   if (root === undefined || root === '') {
     return path;

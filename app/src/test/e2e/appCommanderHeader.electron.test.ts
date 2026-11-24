@@ -27,14 +27,14 @@ const lines = () =>
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('puts the path of a side on a line of its own under its buttons, starting at the start of that row as the path of every tool does, and a long one running to its end', async () => {
+  test('puts the path of a side on a line of its own at its top, with no bar of buttons above it, starting at the start of that row as the path of every tool does, and a long one running to its end', async () => {
     const long = `a folder named at such length that its path is cut ${'x'.repeat(160)}`;
     fs.mkdirSync(path.join(opened, long));
     try {
       const short = await pathPlaces();
       assert.deepStrictEqual(
         [
-          short.underButtons,
+          short.atTop,
           short.aboveHeadings,
           short.fromStart,
           short.shortOfEnd >= 0,
@@ -53,7 +53,7 @@ suite('App commander', () => {
       const places = await pathPlaces();
       assert.deepStrictEqual(
         [
-          places.underButtons,
+          places.atTop,
           places.aboveHeadings,
           places.fromStart,
           places.shortOfEnd,

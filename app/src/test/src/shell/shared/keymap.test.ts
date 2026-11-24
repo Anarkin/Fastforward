@@ -22,26 +22,18 @@ const inField = (binding: Binding<1 | -1>, key: string, held = {}) =>
   pressed(binding, keyPress(key, held), true);
 
 suite('Keymap of the shell', () => {
-  test('opens the main menu with Alt+F, or Option+F though it types ƒ, but not with F alone, nor in a text field', () => {
+  test('opens the main menu with F10, rather than Alt+F, which the commander takes to filter by its letter, from a text field too, which types nothing for it', () => {
+    assert.strictEqual(
+      pressed(shellKeymap.mainMenu, keyPress('F10'), false),
+      true,
+    );
     assert.strictEqual(
       pressed(shellKeymap.mainMenu, keyPress('f', { altKey: true }), false),
-      true,
-    );
-    assert.strictEqual(
-      pressed(
-        shellKeymap.mainMenu,
-        keyPress('ƒ', { code: 'KeyF', altKey: true }),
-        false,
-      ),
-      true,
-    );
-    assert.strictEqual(
-      pressed(shellKeymap.mainMenu, keyPress('f'), false),
       undefined,
     );
     assert.strictEqual(
-      pressed(shellKeymap.mainMenu, keyPress('f', { altKey: true }), true),
-      undefined,
+      pressed(shellKeymap.mainMenu, keyPress('F10'), true),
+      true,
     );
   });
 

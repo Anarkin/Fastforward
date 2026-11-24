@@ -190,7 +190,7 @@ export function CommanderTool({
     <CommanderStore value={store}>
       <div className="repository commander">
         <div
-          className="columns bars-outside commander-columns"
+          className="columns commander-columns"
           ref={columns}
           data-active-side={activeSide}
           style={{
