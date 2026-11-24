@@ -117,4 +117,32 @@ suite('Fitting the window to the cells of the terminal', () => {
       [0, 0, true],
     );
   });
+
+  test('takes the smallest of the window sizes that lay the page out alike, so a drag never stops on a size a pixel from one that shows the same, as 1536 and 1537 pixels showed one screen at 125%', () => {
+    const scaled = gridAround(
+      { cell: { width: 9, height: 22 }, screen: { width: 1746, height: 1078 } },
+      { width: 1777, height: 1128 },
+      1.25,
+    );
+    assert.ok(scaled);
+    const widths = new Set(
+      Array.from(
+        { length: 200 },
+        (_, step) =>
+          draggedTo(
+            { left: 0, top: 0, right: 1500 + step, bottom: 1000 },
+            'right',
+            { width: 0, height: 0 },
+            scaled,
+          ).right,
+      ),
+    );
+    const sorted = [...widths].toSorted((one, other) => one - other);
+    assert.deepStrictEqual(
+      sorted.filter(
+        (width, at) => at > 0 && width - (sorted[at - 1] ?? 0) === 1,
+      ),
+      [],
+    );
+  });
 });

@@ -34,7 +34,12 @@ interface Axis {
 
 const fits = (client: number, { around, cell, scale, least }: Axis) => {
   const screen = screenAt(client, around, scale);
-  return client >= least && screen >= cell && screen % cell === 0;
+  return (
+    client >= least &&
+    screen >= cell &&
+    screen % cell === 0 &&
+    screenAt(client - 1, around, scale) !== screen
+  );
 };
 
 const reachOf = ({ cell, scale }: Axis) => Math.ceil(2 * cell * scale) + 4;
