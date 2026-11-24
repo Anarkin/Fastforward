@@ -31,8 +31,14 @@
 .terminal-screen,
 .cell-grid-screen {
   position: absolute;
-  inset: 0 calc(var(--scrollbar-size) + var(--line-right, 0px))
-    var(--line-below, 0px) var(--column-line, 0px);
+  inset: var(--terminal-row-height)
+    calc(
+      var(--scrollbar-size) + var(--line-right, 0px) + var(--terminal-advance)
+    )
+    calc(var(--line-below, 0px) + var(--terminal-row-height))
+    calc(var(--column-line, 0px) + var(--terminal-advance));
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
 }
 
 .terminal-screen .xterm-scrollable-element > .scrollbar {
