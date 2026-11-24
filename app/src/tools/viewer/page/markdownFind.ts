@@ -3,6 +3,7 @@ import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { FindMark } from '../../../components/cells/page/marks';
 import { scratchRange } from '../../../shell/page/scratchRange';
 import { codeRows } from './codeCells';
+import type { MatchSpan } from './markdownMarks';
 
 export type MarkdownMatch =
   | { readonly kind: 'prose'; readonly range: StaticRange }
@@ -195,6 +196,23 @@ function measured(range: StaticRange): DOMRect {
   scratch.setStart(range.startContainer, range.startOffset);
   scratch.setEnd(range.endContainer, range.endOffset);
   return scratch.getBoundingClientRect();
+}
+
+export function matchSpans(
+  matches: readonly MarkdownMatch[],
+  blocks: CodeFinds | undefined,
+  scroller: Element,
+): MatchSpan[] {
+  const sight = scroller.getBoundingClientRect();
+  return matches.flatMap((match) => {
+    const box =
+      match.kind === 'prose'
+        ? measured(match.range)
+        : blocks?.boxOf(match.code, match.line, match.start, match.end);
+    return box === undefined || box.height === 0
+      ? []
+      : [{ top: box.top - sight.top + scroller.scrollTop, height: box.height }];
+  });
 }
 
 export function openedTo(match: MarkdownMatch): void {

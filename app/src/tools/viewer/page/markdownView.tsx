@@ -24,8 +24,15 @@ import { CodeBlocks } from './codeBlocks';
 import type { CodeLook } from './codeCells';
 import { copiedMarkdown } from './markdownCopy';
 import { showBlocks, showImages, type MarkdownImages } from './markdownBlocks';
+import { createPortal } from 'react-dom';
+import {
+  ScrollbarMarks,
+  type ScrollbarMark,
+} from '../../../lib/page/scrollbarMarks';
+import { markdownMarks } from './markdownMarks';
 import {
   markdownMatches,
+  matchSpans,
   revealMarkdownMatch,
   showMarkdownMatches,
   type MarkdownMatch,
@@ -139,6 +146,8 @@ function stopDrawing(blocks: Map<Element, () => void>): void {
 }
 
 const noMatches: readonly MarkdownMatch[] = [];
+
+const noMarks: readonly ScrollbarMark[] = [];
 
 export interface MarkdownLinks {
   readonly document: string;
@@ -293,6 +302,25 @@ export function MarkdownPane({
   const jump = find?.jump ?? 0;
   const matches = useRef(noMatches);
   const shownAt = useRef(current);
+  const [marks, setMarks] = useState(noMarks);
+  const [frame, setFrame] = useState<Element | null>(null);
+  const remarked = useEffectEvent(() => {
+    const scroller = content.current?.closest('.viewer-body');
+    if (!scroller) {
+      return;
+    }
+    setFrame(scroller.parentElement);
+    setMarks(
+      matches.current.length === 0 ||
+        scroller.scrollHeight <= scroller.clientHeight
+        ? noMarks
+        : markdownMarks(
+            matchSpans(matches.current, code.current, scroller),
+            scroller.scrollHeight,
+            scroller.clientHeight,
+          ),
+    );
+  });
   const marked = useEffectEvent((at: number) => {
     shownAt.current = Math.min(at, matches.current.length - 1);
     showMarkdownMatches(
@@ -321,6 +349,7 @@ export function MarkdownPane({
       );
       marked(current);
       found(matches.current.length);
+      remarked();
     },
   );
   useLayoutEffect(
@@ -333,6 +362,18 @@ export function MarkdownPane({
     [html, dark, table, showWhitespace, marking, query, options],
   );
   useLayoutEffect(() => marked(current), [current]);
+  useEffect(() => {
+    const element = content.current;
+    const scroller = element?.closest('.viewer-body');
+    const Observer = element?.ownerDocument.defaultView?.ResizeObserver;
+    if (!element || !scroller || Observer === undefined) {
+      return undefined;
+    }
+    const observer = new Observer(() => remarked());
+    observer.observe(element);
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
   const jumped = useRef(jump);
   useEffect(() => {
     if (jumped.current === jump) {
@@ -422,6 +463,9 @@ export function MarkdownPane({
         onClick={followed}
         onContextMenu={askedMenu}
       />
+      {frame !== null &&
+        marks.length > 0 &&
+        createPortal(<ScrollbarMarks marks={marks} />, frame)}
     </div>
   );
 }

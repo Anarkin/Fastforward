@@ -28,3 +28,12 @@ export function tickJoiner(least: number): TickJoiner {
       spans.map(({ top, bottom }) => ({ top, height: bottom - top })),
   };
 }
+
+export function leastMark(total: number, viewport: number): number {
+  const marked = Math.min(total, viewport);
+  return marked > 0 ? leastTick / marked : 0;
+}
+
+export function marksScale(total: number, viewport: number): number {
+  return total > 0 && total < viewport ? total / viewport : 1;
+}

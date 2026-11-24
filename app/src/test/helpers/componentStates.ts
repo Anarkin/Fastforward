@@ -97,6 +97,10 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the bytes that fit in a row, measured anew from the body once mounted',
   'tools/viewer/page/hexBody.tsx screen':
     'a measure: the rows that fit, measured anew from the body once mounted',
+  'tools/viewer/page/markdownView.tsx marks':
+    'a measure: the marks of the matches of the find on the track of the scrollbar of a Markdown preview, measured anew from the document as it is searched and as it or its scroller changes size',
+  'tools/viewer/page/markdownView.tsx frame':
+    'a measure: the column around the scroller of a Markdown preview, which its marks are drawn in over its scrollbar, found anew as it is searched',
   'tools/viewer/page/markdownView.tsx render':
     'made once: the markdown renderer, loaded once for the page and read from the module as mounted',
   'tools/commander/page/pane.tsx focusAsks':

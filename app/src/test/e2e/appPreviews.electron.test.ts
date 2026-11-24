@@ -73,6 +73,7 @@ suite('App', () => {
       'const beta = 1;',
       '```',
       '',
+      ...Array.from({ length: 80 }, (_, at) => `Filler ${at}.\n`),
       'Last beta.',
       '',
     ].join('\n'),
@@ -194,7 +195,7 @@ suite('App', () => {
     }
   });
 
-  test('finds in a Markdown document previewed without leaving the preview, in its prose across bold and links and in its code drawn as cells, counting the matches, marking each and the current one, and stepping through them in the order of the document on Enter', async () => {
+  test('finds in a Markdown document previewed without leaving the preview, in its prose across bold and links and in its code drawn as cells, counting the matches, marking each and the current one, and each on the track of its scrollbar, and stepping through them in the order of the document on Enter', async () => {
     await page.locator('.commit', { hasText: 'first' }).click();
     await page.locator('.row.file', { hasText: 'found.md' }).click();
     await viewFromMenu('found.md');
@@ -224,6 +225,39 @@ suite('App', () => {
         preview: await page.locator('.viewer .markdown').isVisible(),
       });
       const first = await untilSettled(shown, 'the matches of beta');
+      const marks = await untilSettled(
+        () =>
+          page.evaluate(() => {
+            const preview = document.querySelector('.viewer .viewer-preview');
+            const frame = document.querySelector(
+              '.viewer .viewer-preview ~ .scrollbar-marks',
+            );
+            if (preview === null || frame === null) {
+              return undefined;
+            }
+            const scroller = preview.getBoundingClientRect();
+            const track = frame.getBoundingClientRect();
+            const tops = [
+              ...frame.querySelectorAll('.scrollbar-mark.match'),
+            ].map((mark) => mark.getBoundingClientRect().top);
+            return {
+              marked: tops.length > 0,
+              ordered: tops.every(
+                (top, at) => at === 0 || top >= (tops[at - 1] ?? 0),
+              ),
+              overScrollbar:
+                Math.abs(track.right - scroller.right) < 1 &&
+                Math.abs(track.width - (scroller.width - preview.clientWidth)) <
+                  1,
+            };
+          }),
+        'the marks of beta on the scrollbar',
+      );
+      assert.deepStrictEqual(marks, {
+        marked: true,
+        ordered: true,
+        overScrollbar: true,
+      });
       for (let step = 0; step < 3; step++) {
         await page.keyboard.press('Enter');
       }

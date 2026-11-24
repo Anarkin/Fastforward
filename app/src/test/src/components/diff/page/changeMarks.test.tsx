@@ -4,9 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {
   matchMarks,
   changedMarks,
-  leastMark,
-  marksScale,
 } from '../../../../../components/diff/page/changeMarks';
+import { leastMark, marksScale } from '../../../../../lib/page/scrollbarTicks';
 import { ScrollbarMarks } from '../../../../../lib/page/scrollbarMarks';
 import type { DiffRow } from '../../../../../components/diff/page/rows';
 import {

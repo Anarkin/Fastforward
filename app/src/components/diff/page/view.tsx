@@ -55,7 +55,7 @@ import { useSideways } from './sideways';
 import { SidewaysBars } from './sidewaysBars';
 import { ScrollbarMarks } from '../../../lib/page/scrollbarMarks';
 import { scrollbarHeldAttribute } from '../../../lib/page/scrollbars';
-import { leastMark, marksScale } from './changeMarks';
+import { leastMark, marksScale } from '../../../lib/page/scrollbarTicks';
 import { snappedLeft } from '../../../lib/page/columnScroll';
 import { useLaterRows } from '../../../lib/page/laterRows';
 import { useFoundJumps, useRevealFound } from './jumps';

@@ -1,8 +1,4 @@
-import {
-  leastTick,
-  tickJoiner,
-  type TickJoiner,
-} from '../../../lib/page/scrollbarTicks';
+import { tickJoiner, type TickJoiner } from '../../../lib/page/scrollbarTicks';
 
 export interface ChangeMark {
   readonly kind: 'added' | 'removed' | 'match';
@@ -71,13 +67,4 @@ export function matchMarks(
     (_, index) => (found.has(index) ? 'match' : undefined),
     least,
   );
-}
-
-export function leastMark(total: number, viewport: number): number {
-  const marked = Math.min(total, viewport);
-  return marked > 0 ? leastTick / marked : 0;
-}
-
-export function marksScale(total: number, viewport: number): number {
-  return total > 0 && total < viewport ? total / viewport : 1;
 }
