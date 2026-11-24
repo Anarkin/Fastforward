@@ -30,15 +30,17 @@ interface Axis {
   readonly cell: number;
   readonly scale: number;
   readonly least: number;
+  readonly grain: number;
 }
 
-const fits = (client: number, { around, cell, scale, least }: Axis) => {
+const fits = (client: number, { around, cell, scale, least, grain }: Axis) => {
   const screen = screenAt(client, around, scale);
   return (
     client >= least &&
+    client % grain === 0 &&
     screen >= cell &&
     screen % cell === 0 &&
-    screenAt(client - 1, around, scale) !== screen
+    screenAt(client - grain, around, scale) !== screen
   );
 };
 
@@ -77,13 +79,21 @@ function fittedNear(length: number, axis: Axis): number {
 const axesOf = (
   { cell, around, scale }: CellGrid,
   least: Size,
+  grain = 1,
 ): { readonly width: Axis; readonly height: Axis } => ({
-  width: { around: around.width, cell: cell.width, scale, least: least.width },
+  width: {
+    around: around.width,
+    cell: cell.width,
+    scale,
+    least: least.width,
+    grain,
+  },
   height: {
     around: around.height,
     cell: cell.height,
     scale,
     least: least.height,
+    grain,
   },
 });
 
@@ -91,8 +101,9 @@ export function fittedSize(
   area: Size,
   grid: CellGrid,
   least: Size = noLeast,
+  grain = 1,
 ): Size {
-  const axes = axesOf(grid, least);
+  const axes = axesOf(grid, least, grain);
   return {
     width: fittedDown(area.width, axes.width),
     height: fittedDown(area.height, axes.height),

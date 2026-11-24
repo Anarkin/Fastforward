@@ -4,6 +4,7 @@ import { gridAround, type CellGrid } from '../shell/shared/cellGrid';
 import { structOnce } from '../lib/main/koffiTypes';
 import { fittedSize } from './cellFit';
 import { leastClient, resting, type CellSteps } from './cellSteps';
+import { windowPixels } from './windowPixels';
 
 const sizeType = 'CellStepsSize';
 const pointType = 'CellStepsPoint';
@@ -56,14 +57,12 @@ export function macCellSteps(): CellSteps | undefined {
   const frame = send(frameType);
   const contentOf = send(frameType, frameType);
   const setSize = send('void', sizeType);
-  const setFrame = send('void', frameType, 'bool');
   const selectors = {
     window: selector('window'),
     scale: selector('backingScaleFactor'),
     frame: selector('frame'),
     content: selector('contentRectForFrameRect:'),
     increments: selector('setContentResizeIncrements:'),
-    setFrame: selector('setFrame:display:'),
   };
   const nsWindowOf = (window: BrowserWindow): unknown =>
     object(
@@ -88,22 +87,10 @@ export function macCellSteps(): CellSteps | undefined {
         width: Math.round((outer.size.width - content.size.width) * scale),
         height: Math.round((outer.size.height - content.size.height) * scale),
       }),
+      Number.isInteger(scale) ? scale : 1,
     );
-    const across = (fitted.width - pixels.width) / scale;
-    const down = (fitted.height - pixels.height) / scale;
-    if (across !== 0 || down !== 0) {
-      setFrame(
-        nsWindow,
-        selectors.setFrame,
-        {
-          origin: { x: outer.origin.x, y: outer.origin.y - down },
-          size: {
-            width: outer.size.width + across,
-            height: outer.size.height + down,
-          },
-        },
-        true,
-      );
+    if (fitted.width !== pixels.width || fitted.height !== pixels.height) {
+      windowPixels().sizeClientTo(window, fitted);
     }
   };
   return {

@@ -145,4 +145,23 @@ suite('Fitting the window to the cells of the terminal', () => {
       [],
     );
   });
+
+  test('fits the window to a size Electron can give it where it sizes a window in whole points, an even number of device pixels at 2x, as resizing it in the middle of a call of Objective-C ran the resize events of Electron inside that call and ended the app', () => {
+    const doubled = { ...grid, cell: { width: 17, height: 35 }, scale: 2 };
+    const fitted = fittedSize(
+      { width: 401, height: 301 },
+      doubled,
+      undefined,
+      2,
+    );
+    assert.deepStrictEqual(
+      [
+        fitted.width % 2,
+        fitted.height % 2,
+        (fitted.width - 30) % 17,
+        (fitted.height - 50) % 35,
+      ],
+      [0, 0, 0, 0],
+    );
+  });
 });

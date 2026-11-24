@@ -242,44 +242,48 @@ suite('App window in whole cells', () => {
     },
   );
 
-  test.runIf(
-    process.platform === 'darwin' &&
-      process.env.FASTFORWARD_MAC_CELL_STEPS === '1',
-  )('has macOS resize the window in steps of a cell, in points', async () => {
-    const grid = await gridOf();
-    const steps = await app.evaluate(({ BrowserWindow, screen }, where) => {
-      const koffi: typeof import('koffi') = process.mainModule?.require(where);
-      const window = BrowserWindow.getAllWindows().find((each) =>
-        each.isVisible(),
-      );
-      if (window === undefined) {
-        return undefined;
-      }
-      const objc = koffi.load('/usr/lib/libobjc.A.dylib');
-      try {
-        koffi.struct('CellTestSize', { width: 'double', height: 'double' });
-      } catch {
-        koffi.type('CellTestSize');
-      }
-      const selector = objc.func('void *sel_registerName(const char *name)');
-      const object = objc.func('objc_msgSend', 'void *', ['void *', 'void *']);
-      const size = objc.func('objc_msgSend', 'CellTestSize', [
-        'void *',
-        'void *',
-      ]);
-      const nsWindow: unknown = object(
-        koffi.decode(window.getNativeWindowHandle(), 'void *'),
-        selector('window'),
-      );
-      const read: { width: number; height: number } = size(
-        nsWindow,
-        selector('contentResizeIncrements'),
-      );
-      const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
-      return { width: read.width * scale, height: read.height * scale };
-    }, koffiPath);
-    assert.deepStrictEqual(steps, grid.cell);
-  });
+  test.runIf(process.platform === 'darwin')(
+    'has macOS resize the window in steps of a cell, in points',
+    async () => {
+      const grid = await gridOf();
+      const steps = await app.evaluate(({ BrowserWindow, screen }, where) => {
+        const koffi: typeof import('koffi') =
+          process.mainModule?.require(where);
+        const window = BrowserWindow.getAllWindows().find((each) =>
+          each.isVisible(),
+        );
+        if (window === undefined) {
+          return undefined;
+        }
+        const objc = koffi.load('/usr/lib/libobjc.A.dylib');
+        try {
+          koffi.struct('CellTestSize', { width: 'double', height: 'double' });
+        } catch {
+          koffi.type('CellTestSize');
+        }
+        const selector = objc.func('void *sel_registerName(const char *name)');
+        const object = objc.func('objc_msgSend', 'void *', [
+          'void *',
+          'void *',
+        ]);
+        const size = objc.func('objc_msgSend', 'CellTestSize', [
+          'void *',
+          'void *',
+        ]);
+        const nsWindow: unknown = object(
+          koffi.decode(window.getNativeWindowHandle(), 'void *'),
+          selector('window'),
+        );
+        const read: { width: number; height: number } = size(
+          nsWindow,
+          selector('contentResizeIncrements'),
+        );
+        const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+        return { width: read.width * scale, height: read.height * scale };
+      }, koffiPath);
+      assert.deepStrictEqual(steps, grid.cell);
+    },
+  );
 
   test.runIf(
     process.platform === 'linux' && (process.env.WAYLAND_DISPLAY ?? '') === '',

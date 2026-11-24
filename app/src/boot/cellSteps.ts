@@ -54,6 +54,7 @@ export function fitByElectron(window: BrowserWindow, grid: CellGrid): void {
       width: Math.round((bounds.width - content.width) * scale),
       height: Math.round((bounds.height - content.height) * scale),
     }),
+    Number.isInteger(scale) ? scale : 1,
   );
   if (fitted.width !== pixels.width || fitted.height !== pixels.height) {
     windowPixels().sizeClientTo(window, fitted);
@@ -86,9 +87,7 @@ const loaded: Partial<
       windowsCellSteps(),
     ),
   darwin: () =>
-    process.env.FASTFORWARD_MAC_CELL_STEPS === '1'
-      ? import('./macCellSteps.js').then(({ macCellSteps }) => macCellSteps())
-      : Promise.resolve(undefined),
+    import('./macCellSteps.js').then(({ macCellSteps }) => macCellSteps()),
   linux: () =>
     import('./x11CellSteps.js').then(({ x11CellSteps }) => x11CellSteps()),
 };
