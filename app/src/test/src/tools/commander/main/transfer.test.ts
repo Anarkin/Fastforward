@@ -1,18 +1,16 @@
 import * as assert from 'node:assert';
-import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import {
-  runTransfer,
-  type ClashReply,
-  type TransferOptions,
-  type TransferPlan,
-} from '../../../../../tools/commander/main/transfer';
-import type {
-  Clash,
-  TransferProgress,
-} from '../../../../../tools/commander/shared/transfers';
+  crossingDrives,
+  hide,
+  past,
+  run,
+  tree,
+  write,
+} from './transferFixtures';
+import type { ClashReply } from '../../../../../tools/commander/main/transfer';
 import { strings } from '../../../../../lib/shared/strings';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
@@ -32,70 +30,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   removeFolder(folder);
 });
-
-const past = new Date('2020-02-03T04:05:06Z');
-
-function write(file: string, text: string): string {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, text);
-  fs.utimesSync(file, past, past);
-  return file;
-}
-
-function hide(file: string): void {
-  if (process.platform === 'win32') {
-    execFileSync('attrib', ['+h', file]);
-  }
-}
-
-function tree(root: string): Record<string, string> {
-  const found: Record<string, string> = {};
-  for (const name of fs.readdirSync(root, {
-    recursive: true,
-    encoding: 'utf8',
-  })) {
-    const each = path.join(root, name);
-    const key = name.replaceAll('\\', '/');
-    found[key] = fs.lstatSync(each).isDirectory()
-      ? '/'
-      : fs.readFileSync(each, 'utf8');
-  }
-  return found;
-}
-
-async function run(
-  plan: TransferPlan,
-  {
-    answers = [],
-    ...options
-  }: Partial<TransferOptions> & { answers?: ClashReply[] } = {},
-) {
-  const clashes: Clash[] = [];
-  const failures: string[] = [];
-  const progress: TransferProgress[] = [];
-  const end = await runTransfer(
-    plan,
-    {
-      progress: (each) => progress.push(each),
-      clash: (clash) => {
-        clashes.push(clash);
-        return Promise.resolve(
-          answers.shift() ?? { answer: 'stop', all: false },
-        );
-      },
-      failed: (name, reason) => failures.push(`${name}: ${reason}`),
-    },
-    { stopped: () => false, ...options },
-  );
-  return { end, clashes, failures, progress };
-}
-
-const crossingDrives = (from: string, to: string) =>
-  Promise.reject(
-    Object.assign(new Error(`EXDEV: cross-device link, ${from} -> ${to}`), {
-      code: 'EXDEV',
-    }),
-  );
 
 suite('Transfer', () => {
   test('copies files and folders into the target with their contents and modification times, leaving the sources, and tells how many files and bytes it copied of how many', async () => {
@@ -363,77 +297,6 @@ suite('Transfer', () => {
       'moved.txt': 'new moved.txt',
       'writable.txt': 'new writable.txt',
     });
-  });
-
-  test('refuses to move an item onto itself, reached through a link to its folder or as a hard link of it, without asking, and asks about one copied onto itself as the item itself, keeping both under the first free name, a folder by its whole name, and never overwriting it, keeping its bytes', async () => {
-    write(path.join(source, 'big.bin'), 'b'.repeat(10_000));
-    write(path.join(source, 'docs.v1', 'note.txt'), 'note');
-    write(path.join(source, 'twin.bin'), 't'.repeat(10_000));
-    write(path.join(source, 'big (2).bin'), 'taken');
-    fs.linkSync(path.join(source, 'twin.bin'), path.join(target, 'twin.bin'));
-    const linked = path.join(folder, 'linked');
-    fs.symlinkSync(source, linked, 'junction');
-    const pieces = { piecesFrom: 4000, pieceBytes: 1000, cloning: false };
-
-    const copied = await run(
-      {
-        sources: [
-          path.join(source, 'big.bin'),
-          path.join(source, 'docs.v1'),
-          path.join(source, 'twin.bin'),
-        ],
-        target: linked,
-        move: false,
-      },
-      {
-        ...pieces,
-        answers: [
-          { answer: 'keepBoth', all: false },
-          { answer: 'keepBoth', all: false },
-          { answer: 'overwrite', all: false },
-        ],
-      },
-    );
-    const moved = await run(
-      { sources: [path.join(source, 'big.bin')], target: linked, move: true },
-      { ...pieces, rename: crossingDrives },
-    );
-    const twin = await run(
-      { sources: [path.join(source, 'twin.bin')], target, move: true },
-      { ...pieces, rename: crossingDrives },
-    );
-
-    assert.deepStrictEqual(
-      copied.clashes.map(({ name, itself, keptAs }) => [name, itself, keptAs]),
-      [
-        ['big.bin', true, 'big (3).bin'],
-        ['docs.v1', true, 'docs.v1 (2)'],
-        ['twin.bin', true, 'twin (2).bin'],
-      ],
-    );
-    assert.deepStrictEqual([...moved.clashes, ...twin.clashes], []);
-    assert.deepStrictEqual(
-      [...copied.failures, ...moved.failures, ...twin.failures],
-      [
-        `twin.bin: ${strings.commander.itselfThere}`,
-        `big.bin: ${strings.commander.itselfThere}`,
-        `twin.bin: ${strings.commander.itselfThere}`,
-      ],
-    );
-    assert.deepStrictEqual(tree(source), {
-      'big (2).bin': 'taken',
-      'big (3).bin': 'b'.repeat(10_000),
-      'big.bin': 'b'.repeat(10_000),
-      'docs.v1': '/',
-      'docs.v1 (2)': '/',
-      'docs.v1 (2)/note.txt': 'note',
-      'docs.v1/note.txt': 'note',
-      'twin.bin': 't'.repeat(10_000),
-    });
-    assert.strictEqual(
-      fs.readFileSync(path.join(target, 'twin.bin'), 'utf8'),
-      't'.repeat(10_000),
-    );
   });
 
   test('keeps a read-only file it was told to overwrite read-only when its copy is stopped, as it is left as it was', async () => {

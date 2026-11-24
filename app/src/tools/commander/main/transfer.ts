@@ -157,6 +157,7 @@ class Transfer {
   private current: string | undefined;
   private reported = Number.NEGATIVE_INFINITY;
   private always: ClashAnswer | undefined;
+  private readonly made = new Set<string>();
   private readonly rename: (from: string, to: string) => Promise<void>;
   private readonly now: () => number;
 
@@ -461,8 +462,18 @@ class Transfer {
     target: string,
     stats: Stats,
   ): Promise<void> {
+    const was = await identityOf(source);
+    if (was !== undefined && this.made.has(was)) {
+      this.events.failed(this.nameOf(target), strings.commander.madeByThisCopy);
+      this.passed(this.countOf(source, stats));
+      return;
+    }
     try {
       await fs.promises.mkdir(target);
+      const madeHere = await identityOf(target);
+      if (madeHere !== undefined) {
+        this.made.add(madeHere);
+      }
     } catch (error) {
       this.failed(this.nameOf(target), error);
       this.passed(this.countOf(source, stats));
