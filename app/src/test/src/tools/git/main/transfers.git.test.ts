@@ -514,6 +514,58 @@ suite('Git repository', () => {
           removeFolder(folder);
         }
       });
+
+      test('leaves alone the locks of the refs a fetch never writes once it is stopped, as another git, a commit in a terminal, may be holding them', async () => {
+        const folder = tempFolder('fetch-stopped-others');
+        const started = path.join(folder, 'started').replaceAll('\\', '/');
+        try {
+          const upstream = await tempRepository(path.join(folder, 'upstream'));
+          await upstream.commit('one');
+          const local = await tempRepository(path.join(folder, 'local'));
+          await local.commit('mine');
+          await local.git('remote', 'add', 'origin', upstream.root);
+          const hook = path.join(
+            local.root,
+            '.git',
+            'hooks',
+            'reference-transaction',
+          );
+          fs.mkdirSync(path.dirname(hook), { recursive: true });
+          fs.writeFileSync(
+            hook,
+            `#!/bin/sh\nif [ "$1" = prepared ]; then echo > '${started}'; sleep 15; fi\n`,
+            { mode: 0o755 },
+          );
+          const stop = new AbortController();
+          const fetching = assert.rejects(
+            fetchAllRemotes(gitPath, local.root, { stop: stop.signal }),
+          );
+          await waitFor(() => fs.existsSync(started), 'the refs to be locked');
+          const others = ['HEAD.lock', 'refs/heads/main.lock'].map((lock) =>
+            path.join(local.root, '.git', lock),
+          );
+          for (const lock of others) {
+            fs.writeFileSync(lock, '');
+          }
+          stop.abort();
+          await fetching;
+          assert.deepStrictEqual(
+            others.filter((lock) => !fs.existsSync(lock)),
+            [],
+          );
+          assert.deepStrictEqual(
+            fs
+              .readdirSync(path.join(local.root, '.git', 'refs', 'remotes'), {
+                recursive: true,
+              })
+              .map(String)
+              .filter((entry) => entry.endsWith('.lock')),
+            [],
+          );
+        } finally {
+          removeFolder(folder);
+        }
+      });
     },
   );
 });

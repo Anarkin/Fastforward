@@ -105,7 +105,11 @@ async function removeIndexLock({ cwd, since }: Write): Promise<void> {
   }
 }
 
-const refsLockedIn = ['refs', 'reftable'];
+const refsLockedIn = [
+  join('refs', 'remotes'),
+  join('refs', 'tags'),
+  'reftable',
+];
 
 const lockedBesideRefs = ['packed-refs.lock', 'shallow.lock', 'config.lock'];
 
