@@ -228,10 +228,11 @@ suite('App tooltips', () => {
     await page.locator('.commander-pane').first().waitFor();
   });
 
-  test('marks a window of an app run as administrator by a shield beside the app icon, saying what that means in its tooltip, hidden while the opening plays and faded in with the + once it is done, and none in an app run as a user', async () => {
+  test('marks a window of an app run as administrator by a shield beside the app icon, saying what that means in its tooltip, hidden while the opening plays and faded in with the + once it is done, and none in an app run as a user, as the machines of CI run elevated', async () => {
     await away();
     const shield = page.locator('.tabs .app-elevated');
-    assert.strictEqual(await shield.count(), 0);
+    await about();
+    await shield.waitFor({ state: 'detached' });
     await about('administrator');
     await shield.hover();
     await tooltip().waitFor();
