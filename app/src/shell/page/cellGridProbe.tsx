@@ -49,7 +49,7 @@ export function CellGridProbe({
   }, [onGrid]);
   return (
     <div className="cell-grid-probe" aria-hidden="true">
-      <div className="repository">
+      <div className="cell-grid-repository">
         <div className="cell-grid-columns">
           <section className="column terminal">
             <div className="column-body terminal-panel">
