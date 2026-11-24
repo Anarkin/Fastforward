@@ -24,7 +24,7 @@ import type { SideListed } from './versionChoice';
 import type { ComparedSide } from '../shared/protocol';
 import type { DecodedSides } from './decodedSides';
 import type { FileHistoryListed } from '../../../components/versions/shared/versions';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 
 const sameCompared = (a: Compared, b: Compared): boolean =>
   a.old === b.old &&

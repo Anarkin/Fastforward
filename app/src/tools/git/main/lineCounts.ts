@@ -1,6 +1,5 @@
-import { createReadStream } from 'node:fs';
-import { lstat } from 'node:fs/promises';
 import { stampOf } from './fileStamps';
+import { fs, fsPromises } from '../../../lib/main/files';
 import { isBinary, maxFileSize } from './files';
 
 async function addedLines(file: string): Promise<number | 'tooLarge'> {
@@ -8,14 +7,14 @@ async function addedLines(file: string): Promise<number | 'tooLarge'> {
   let last = 0x0a;
   let first = true;
   try {
-    const stats = await lstat(file);
+    const stats = await fsPromises.lstat(file);
     if (stats.isSymbolicLink()) {
       return 1;
     }
     if (!stats.isFile()) {
       return 0;
     }
-    for await (const chunk of createReadStream(file)) {
+    for await (const chunk of fs.createReadStream(file)) {
       if (!(chunk instanceof Buffer)) {
         continue;
       }
@@ -55,7 +54,7 @@ export class LineCounts {
   ) {}
 
   async of(file: string): Promise<Counted> {
-    const stats = await lstat(file).catch(() => undefined);
+    const stats = await fsPromises.lstat(file).catch(() => undefined);
     if (stats === undefined) {
       return this.count(file);
     }

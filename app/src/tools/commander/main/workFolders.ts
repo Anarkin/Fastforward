@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 
 export async function removed(folder: string): Promise<void> {

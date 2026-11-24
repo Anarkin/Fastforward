@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { appFs } from '../../../lib/main/appFiles';
 import { Worker } from 'node:worker_threads';
 import type { Hashed } from './contentHash';
 import type { ContentReader } from './duplicates';
@@ -31,7 +31,7 @@ export function hashWorkers(
   folder: string,
 ): (ContentReader & { close(): void }) | undefined {
   const file = path.join(folder, workerFile);
-  if (!existsSync(file)) {
+  if (!appFs.existsSync(file)) {
     return undefined;
   }
   let code: string | undefined;
@@ -54,7 +54,7 @@ export function hashWorkers(
   };
 
   const spawn = (): Thread => {
-    code ??= readFileSync(file, 'utf8');
+    code ??= appFs.readFileSync(file, 'utf8');
     const worker = new Worker(code, { eval: true });
     worker.unref();
     const thread: Thread = { worker, task: undefined };

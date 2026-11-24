@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { folderKey } from '../shared/paths';
 import type { ArchiveBranch } from './archiveTree';

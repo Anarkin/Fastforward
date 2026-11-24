@@ -1,7 +1,7 @@
 import { runFolderCommand } from '../../../lib/main/folderCommands';
 import { isFolderCommand } from '../../../lib/shared/folderCommands';
 import { randomUUID } from 'node:crypto';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';

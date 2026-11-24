@@ -1,4 +1,4 @@
-import * as fs from 'node:fs/promises';
+import { fsPromises as fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import { gitErrorText } from '../../../lib/main/errorText';

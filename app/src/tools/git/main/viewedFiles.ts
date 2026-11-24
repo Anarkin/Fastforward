@@ -1,4 +1,4 @@
-import * as fs from 'node:fs/promises';
+import { fsPromises as fs } from '../../../lib/main/files';
 import { basename, dirname, join } from 'node:path';
 import { isFullHash } from '../../../lib/shared/hashes';
 import { isFileRev } from '../shared/fileRevs';

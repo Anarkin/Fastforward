@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import type { Tab } from '../../../shell/main/toolContract';
 import { imageType, maxImageSize } from '../../../lib/shared/images';

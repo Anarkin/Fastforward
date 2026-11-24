@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../lib/main/files';
 import * as path from 'node:path';
 
 export type UpdateMode = 'install' | 'notify' | 'off';

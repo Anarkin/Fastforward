@@ -1,5 +1,5 @@
-import type { Stats } from 'node:fs';
-import * as fs from 'node:fs/promises';
+import type { Stats } from '../../../lib/main/files';
+import { fsPromises as fs } from '../../../lib/main/files';
 import { dirname, join, relative, sep } from 'node:path';
 import { isMissing } from '../../../lib/main/missing';
 

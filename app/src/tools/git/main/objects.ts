@@ -1,4 +1,4 @@
-import * as fs from 'node:fs/promises';
+import { fsPromises as fs } from '../../../lib/main/files';
 import { join } from 'node:path';
 import { gitDirOf } from './gitDir';
 import { runningGits, runGit, runGitBytes } from './run';

@@ -1,4 +1,4 @@
-import type { Stats } from 'node:fs';
+import type { Stats } from '../../../lib/main/files';
 
 export function stampOf(
   { size, mtimeMs, ctimeMs, ino }: Stats,

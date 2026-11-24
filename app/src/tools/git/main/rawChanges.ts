@@ -1,5 +1,5 @@
-import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fsPromises } from '../../../lib/main/files';
 import { linkMode, type FileChange } from '../shared/protocol';
 import { blobSizes } from './objects';
 import { splitNul } from './splitNul';
@@ -25,7 +25,9 @@ export async function withBytes(
     blobsToSize(changes, { fromDisk, reverse }),
   );
   const sizeOnDisk = async (path: string) => {
-    const stats = await lstat(join(cwd, path)).catch(() => undefined);
+    const stats = await fsPromises
+      .lstat(join(cwd, path))
+      .catch(() => undefined);
     return stats?.isFile() ? stats.size : 0;
   };
   return Promise.all(

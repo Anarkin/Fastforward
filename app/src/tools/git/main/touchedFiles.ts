@@ -1,5 +1,5 @@
-import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fsPromises } from '../../../lib/main/files';
 import type { FileChange } from '../shared/protocol';
 import { stampOf } from './fileStamps';
 import { gitQuoted } from './patchText';
@@ -93,7 +93,7 @@ export class FileHashes {
   ): Promise<(string | undefined)[]> {
     const stamps = await Promise.all(
       files.map((file) =>
-        lstat(join(cwd, file)).then(
+        fsPromises.lstat(join(cwd, file)).then(
           (stats) => stampOf(stats, false),
           () => undefined,
         ),

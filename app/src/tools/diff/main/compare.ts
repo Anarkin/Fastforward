@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFile, realpath, stat } from 'node:fs/promises';
+import { fsPromises } from '../../../lib/main/files';
 import { tmpdir } from 'node:os';
 import { basename, dirname } from 'node:path';
 import type { Compared } from '../../../shell/main/savedTabs';
@@ -62,11 +62,11 @@ async function regularFiles(
   compared: Compared,
 ): Promise<readonly [string, string]> {
   const files = await Promise.all(
-    [compared.old, compared.new].map((file) => realpath(file)),
+    [compared.old, compared.new].map((file) => fsPromises.realpath(file)),
   );
   const sizes = await Promise.all(
     files.map(async (file) => {
-      const stats = await stat(file);
+      const stats = await fsPromises.stat(file);
       if (!stats.isFile()) {
         throw new CompareNotFile();
       }
@@ -85,7 +85,7 @@ export async function comparedText(
 ): Promise<string | undefined> {
   try {
     const [old, changed] = await regularFiles(read);
-    return await readFile(side === 'old' ? old : changed, 'utf8');
+    return await fsPromises.readFile(side === 'old' ? old : changed, 'utf8');
   } catch {
     return undefined;
   }
@@ -108,15 +108,15 @@ export async function comparedImage(
   const names = comparedNames(compared);
   const sides = [read.old, read.new].filter((_, side) => names[side] === path);
   for (const side of sides) {
-    const file = await realpath(side).catch(() => undefined);
-    const stats = file === undefined ? undefined : await stat(file);
+    const file = await fsPromises.realpath(side).catch(() => undefined);
+    const stats = file === undefined ? undefined : await fsPromises.stat(file);
     if (file === undefined || stats?.isFile() !== true) {
       continue;
     }
     if (stats.size > limit) {
       return { kind: 'tooLarge' };
     }
-    const bytes = await readFile(file);
+    const bytes = await fsPromises.readFile(file);
     if (objectId(bytes, id.length) === id) {
       return { kind: 'image', bytes };
     }
@@ -127,8 +127,8 @@ export async function comparedImage(
 async function bytesAlike(files: Compared): Promise<boolean> {
   const [old, changed] = await regularFiles(files);
   const [oldBytes, newBytes] = await Promise.all([
-    readFile(old),
-    readFile(changed),
+    fsPromises.readFile(old),
+    fsPromises.readFile(changed),
   ]);
   return oldBytes.equals(newBytes);
 }

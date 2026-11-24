@@ -97,6 +97,44 @@
         "no-restricted-imports": [
           "error",
           {
+            "paths": [
+              {
+                "name": "node:fs",
+                "message": "Electron reads a file named *.asar through fs as an archive of its own, so a user's foo.asar fails as an invalid package: read the user's files with fs or fsPromises of src/lib/main/files.ts, and the app's own files inside its asar with appFs of src/lib/main/appFiles.ts"
+              },
+              {
+                "name": "fs",
+                "message": "Electron reads a file named *.asar through fs as an archive of its own, so a user's foo.asar fails as an invalid package: read the user's files with fs or fsPromises of src/lib/main/files.ts, and the app's own files inside its asar with appFs of src/lib/main/appFiles.ts"
+              },
+              {
+                "name": "node:fs/promises",
+                "message": "Electron reads a file named *.asar through fs as an archive of its own, so a user's foo.asar fails as an invalid package: read the user's files with fs or fsPromises of src/lib/main/files.ts, and the app's own files inside its asar with appFs of src/lib/main/appFiles.ts"
+              },
+              {
+                "name": "fs/promises",
+                "message": "Electron reads a file named *.asar through fs as an archive of its own, so a user's foo.asar fails as an invalid package: read the user's files with fs or fsPromises of src/lib/main/files.ts, and the app's own files inside its asar with appFs of src/lib/main/appFiles.ts"
+              },
+              {
+                "name": "original-fs",
+                "message": "Electron reads a file named *.asar through fs as an archive of its own, so a user's foo.asar fails as an invalid package: read the user's files with fs or fsPromises of src/lib/main/files.ts, and the app's own files inside its asar with appFs of src/lib/main/appFiles.ts"
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["**/page/**"],
+                "message": "The main process doesn't import the page's code"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/lib/main/files.ts", "src/lib/main/appFiles.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
             "patterns": [
               {
                 "group": ["**/page/**"],

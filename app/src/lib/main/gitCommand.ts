@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
 import { win32 } from 'node:path';
+import { fs } from './files';
 
 export const unnamedBareRefused = ['-c', 'safe.bareRepository=explicit'];
 
@@ -63,7 +63,7 @@ export function realGit(
   launcher: string,
   env: NodeJS.ProcessEnv = process.env,
   platform = process.platform,
-  exists: (file: string) => boolean = existsSync,
+  exists: (file: string) => boolean = fs.existsSync,
 ): GitCommand | undefined {
   const { dir, base } = win32.parse(launcher);
   const root = win32.dirname(dir);

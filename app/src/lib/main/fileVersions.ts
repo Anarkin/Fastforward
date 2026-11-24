@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import * as fs from 'node:fs';
+import { fs } from './files';
 
 const sampledBytes = 64 * 1024;
 

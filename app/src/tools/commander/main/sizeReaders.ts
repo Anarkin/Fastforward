@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { Dirent, Stats } from '../../../lib/main/files';
 import * as path from 'node:path';
 import type { load } from 'koffi';
 import type { SizeRead } from './sizeWalk';
@@ -24,7 +25,7 @@ import {
 
 export type FolderReader = (folder: string) => SizeRead | undefined;
 
-function statsOf(file: string): fs.Stats | undefined {
+function statsOf(file: string): Stats | undefined {
   try {
     return fs.lstatSync(file);
   } catch {
@@ -34,7 +35,7 @@ function statsOf(file: string): fs.Stats | undefined {
 
 export function nodeSizeReader(): FolderReader {
   return (folder) => {
-    let found: fs.Dirent[];
+    let found: Dirent[];
     try {
       found = fs.readdirSync(folder, { withFileTypes: true });
     } catch {

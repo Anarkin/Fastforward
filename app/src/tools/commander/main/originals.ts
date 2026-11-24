@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { BigIntStats } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { unlinked } from './deletion';
 
@@ -9,10 +10,10 @@ export interface Stock {
 interface Original {
   readonly item: string;
   readonly folder: boolean;
-  readonly stats: fs.BigIntStats;
+  readonly stats: BigIntStats;
 }
 
-const lstatOf = (item: string): Promise<fs.BigIntStats | undefined> =>
+const lstatOf = (item: string): Promise<BigIntStats | undefined> =>
   fs.promises.lstat(item, { bigint: true }).catch(() => undefined);
 
 const codeOf = (error: unknown): unknown =>
@@ -33,7 +34,7 @@ async function originalsOf(item: string, found: Original[]): Promise<void> {
   found.push({ item, folder, stats });
 }
 
-const unchanged = (was: fs.BigIntStats, now: fs.BigIntStats): boolean =>
+const unchanged = (was: BigIntStats, now: BigIntStats): boolean =>
   was.ino === now.ino &&
   was.dev === now.dev &&
   was.size === now.size &&

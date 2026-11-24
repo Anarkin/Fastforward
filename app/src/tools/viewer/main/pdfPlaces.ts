@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import { writeAtomically } from '../../../lib/main/textFiles';
 import { isPdfFingerprint, pdfPlaceOf, type PdfPlace } from '../shared/pdf';
 

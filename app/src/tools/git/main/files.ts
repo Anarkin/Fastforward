@@ -1,5 +1,5 @@
 import type { ImageRead } from '../../../components/diff/main/imageReads';
-import * as fs from 'node:fs/promises';
+import { fsPromises as fs } from '../../../lib/main/files';
 import { isAbsolute, join, relative, sep } from 'node:path';
 import {
   maxImageSize,

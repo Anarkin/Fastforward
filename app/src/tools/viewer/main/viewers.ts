@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
 import {

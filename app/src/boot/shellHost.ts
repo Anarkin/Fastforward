@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from '../lib/main/files';
+import { appFs } from '../lib/main/appFiles';
 import * as path from 'node:path';
 import { app, clipboard } from 'electron';
 import type { ShellHost } from '../shell/main/shell';
@@ -74,7 +75,7 @@ export function shellHostOf({
     defaultSettingsFile: () => {
       writeReadOnly(
         defaultSettingsCopy,
-        fs.readFileSync(path.join(dist, 'settings.json'), 'utf8'),
+        appFs.readFileSync(path.join(dist, 'settings.json'), 'utf8'),
       );
       return Promise.resolve(defaultSettingsCopy);
     },

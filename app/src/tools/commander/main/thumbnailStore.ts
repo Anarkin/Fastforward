@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 
 const keyPattern = /^[\da-f]{64}$/;

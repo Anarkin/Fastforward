@@ -1,5 +1,5 @@
 import type { Sentence } from '../lib/shared/sentences';
-import * as fs from 'node:fs';
+import { fs } from '../lib/main/files';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { app, type BrowserWindow, nativeImage, shell } from 'electron';

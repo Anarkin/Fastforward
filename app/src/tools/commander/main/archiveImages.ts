@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { entryParts } from './archiveTree';
 import type { ArchiveAccess, OpenedArchive } from './archives';

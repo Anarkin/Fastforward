@@ -1,5 +1,5 @@
-import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fsPromises } from '../../../lib/main/files';
 import type { FileChange } from '../shared/protocol';
 import {
   changesArgs,
@@ -77,7 +77,7 @@ export async function workingTreeFiles(
       const lines = added === 'tooLarge' ? 0 : added;
       const sized = added !== 0 || unmeasured;
       const stats = sized
-        ? await lstat(file).catch(() => undefined)
+        ? await fsPromises.lstat(file).catch(() => undefined)
         : undefined;
       const size = sized ? stats?.size : 0;
       const bytes =
@@ -189,7 +189,7 @@ async function addedOnDisk(
   measured: boolean,
 ): Promise<FileChange> {
   const onDisk = join(cwd, file.path);
-  const stats = await lstat(onDisk).catch(() => undefined);
+  const stats = await fsPromises.lstat(onDisk).catch(() => undefined);
   if (stats === undefined) {
     return file;
   }

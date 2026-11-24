@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from '../../lib/main/files';
+import type { Stats } from '../../lib/main/files';
 import * as path from 'node:path';
 
 export function watchSettings(
@@ -31,7 +32,7 @@ export function watchSettings(
     watcher.on('error', () => watcher.close());
     return watcher;
   });
-  const looked = (now: fs.Stats, before: fs.Stats) => {
+  const looked = (now: Stats, before: Stats) => {
     if (now.mtimeMs !== before.mtimeMs || now.size !== before.size) {
       changed();
     }

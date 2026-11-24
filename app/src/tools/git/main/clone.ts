@@ -1,4 +1,4 @@
-import * as fs from 'node:fs/promises';
+import { fsPromises as fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
 import type { CloneProgress } from '../shared/clone';

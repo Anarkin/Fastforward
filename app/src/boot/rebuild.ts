@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { appFs as fs } from '../lib/main/appFiles';
 
 interface RebuiltWindow {
   on(event: 'closed', listener: () => void): unknown;

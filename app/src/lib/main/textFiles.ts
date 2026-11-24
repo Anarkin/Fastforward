@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import * as fs from 'node:fs';
+import { fs } from './files';
 import * as path from 'node:path';
 
 function isMissing(error: unknown): boolean {

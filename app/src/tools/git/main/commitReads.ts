@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { existsSync, readFileSync } from 'node:fs';
+import { appFs } from '../../../lib/main/appFiles';
 import { join } from 'node:path';
 import { Worker } from 'node:worker_threads';
 import { strings } from '../../../lib/shared/strings';
@@ -167,7 +167,7 @@ function inWorker(
   receive: (message: FromReader) => void,
   lost: () => void,
 ): Send {
-  const worker = new Worker(readFileSync(file, 'utf8'), { eval: true });
+  const worker = new Worker(appFs.readFileSync(file, 'utf8'), { eval: true });
   worker.unref();
   worker.on('message', receive);
   worker.on('error', lost);
@@ -179,7 +179,7 @@ const readerFile = 'commitReader.js';
 
 export function commitReads(folder: string): CommitReads {
   const file = join(folder, readerFile);
-  const threaded = existsSync(file);
+  const threaded = appFs.existsSync(file);
   let current: Thread | undefined;
   let lastId = 0;
   const opened = (): Thread => {

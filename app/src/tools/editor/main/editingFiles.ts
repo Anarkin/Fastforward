@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import { firstBytes } from '../../../components/encodings/main/encodingDetection';
 import type { EditingAccess } from './editing';
 import { saveFile } from './fileSaving';

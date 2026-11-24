@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { Stats } from '../../../lib/main/files';
 import * as path from 'node:path';
 import koffi from 'koffi';
 import type { Entry } from '../shared/protocol';
@@ -58,7 +59,7 @@ function foundOnPage(page: Buffer): Found[] {
   return found;
 }
 
-async function targetOf(file: string): Promise<fs.Stats | undefined> {
+async function targetOf(file: string): Promise<Stats | undefined> {
   try {
     return await fs.promises.stat(file);
   } catch {

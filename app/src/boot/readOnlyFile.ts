@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../lib/main/files';
 
 export function writeReadOnly(file: string, text: string): void {
   if (fs.existsSync(file)) {

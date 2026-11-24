@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { closeSync, fstatSync, openSync, readSync } from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import type { ContentReader } from './duplicates';
 import { fileIdOf } from './fileIds';
 
@@ -12,15 +12,15 @@ export interface Hashed {
 }
 
 export function hashOf(file: string, bytes: number | undefined): Hashed {
-  const handle = openSync(file, 'r');
+  const handle = fs.openSync(file, 'r');
   try {
-    const stats = fstatSync(handle, { bigint: true });
+    const stats = fs.fstatSync(handle, { bigint: true });
     const hash = createHash('sha256');
     const limit = bytes ?? Number.POSITIVE_INFINITY;
     const buffer = Buffer.allocUnsafe(Math.min(chunkBytes, limit));
     for (let read = 0; read < limit;) {
       const wanted = Math.min(buffer.length, limit - read);
-      const got = readSync(handle, buffer, 0, wanted, read);
+      const got = fs.readSync(handle, buffer, 0, wanted, read);
       if (got === 0) {
         break;
       }
@@ -33,7 +33,7 @@ export function hashOf(file: string, bytes: number | undefined): Hashed {
       size: Number(stats.size),
     };
   } finally {
-    closeSync(handle);
+    fs.closeSync(handle);
   }
 }
 

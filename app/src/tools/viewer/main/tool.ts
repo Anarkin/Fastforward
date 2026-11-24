@@ -24,7 +24,7 @@ import { Serving } from './serving';
 import { strings } from '../../../lib/shared/strings';
 import { shortHash } from '../../../lib/shared/hashes';
 import type { FileVersion } from '../../../shell/main/savedTabs';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 
 type VersionCopy =
   | { readonly kind: 'file'; readonly file: string }

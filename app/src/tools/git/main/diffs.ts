@@ -51,7 +51,7 @@ import { decodedHunks } from './decodedHunks';
 import { blobOf, readObjects } from './objects';
 import { maxFileSize, repositoryFile } from './files';
 import { systemCodePage } from '../../../components/encodings/main/codePages';
-import * as fs from 'node:fs/promises';
+import { fsPromises as fs } from '../../../lib/main/files';
 
 export class Diffs {
   constructor(

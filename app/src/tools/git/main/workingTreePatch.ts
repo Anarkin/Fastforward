@@ -1,5 +1,5 @@
-import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fsPromises } from '../../../lib/main/files';
 import {
   diffArgs,
   diffOptionArgs,
@@ -100,7 +100,9 @@ export async function workingTreePatch(
     if (file.endsWith('/')) {
       return '';
     }
-    const stats = await lstat(join(cwd, file)).catch(() => undefined);
+    const stats = await fsPromises
+      .lstat(join(cwd, file))
+      .catch(() => undefined);
     const stamp = stats && stampOf(stats, workingTree.reverse);
     const known = kept.get(file);
     if (stamp !== undefined && known?.stamp === stamp) {

@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { fsPromises } from '../../../lib/main/files';
 import { basename, join } from 'node:path';
 import type { Compared } from '../../../shell/main/savedTabs';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
@@ -24,12 +24,14 @@ interface DecodedSide {
 
 async function writtenWhole(file: string, text: string): Promise<void> {
   const writing = `${file}.${randomUUID()}`;
-  await writeFile(writing, text, 'utf8');
+  await fsPromises.writeFile(writing, text, 'utf8');
   try {
-    await rename(writing, file);
+    await fsPromises.rename(writing, file);
   } catch (failure) {
-    await rm(writing, { force: true });
-    if ((await stat(file).catch(() => undefined))?.isFile() !== true) {
+    await fsPromises.rm(writing, { force: true });
+    if (
+      (await fsPromises.stat(file).catch(() => undefined))?.isFile() !== true
+    ) {
       throw failure;
     }
   }
@@ -40,11 +42,11 @@ async function decodedSide(
   copies: string,
   codePage: () => Promise<TextEncoding>,
 ): Promise<DecodedSide> {
-  const size = (await stat(file).catch(() => undefined))?.size;
+  const size = (await fsPromises.stat(file).catch(() => undefined))?.size;
   if (size === undefined || size > compareMaxBytes) {
     return { file };
   }
-  const bytes = await readFile(file);
+  const bytes = await fsPromises.readFile(file);
   const decoded = decodedText(bytes, await codePage());
   if (decoded === undefined || (decoded.encoding === 'utf-8' && !decoded.bom)) {
     return { file };
@@ -54,8 +56,8 @@ async function decodedSide(
     createHash('sha256').update(bytes).digest('hex'),
     basename(file),
   );
-  if ((await stat(copy).catch(() => undefined))?.isFile() !== true) {
-    await mkdir(join(copy, '..'), { recursive: true });
+  if ((await fsPromises.stat(copy).catch(() => undefined))?.isFile() !== true) {
+    await fsPromises.mkdir(join(copy, '..'), { recursive: true });
     await writtenWhole(copy, decoded.text);
   }
   return { file: copy, encoding: decoded.encoding, bom: decoded.bom };

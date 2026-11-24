@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 
 export async function isFolder(folder: string): Promise<boolean> {
   try {

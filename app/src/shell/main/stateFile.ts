@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../../lib/main/files';
 import { isObject } from '../../lib/main/json';
 import { readText } from './readText';
 import { writeAtomically } from '../../lib/main/textFiles';

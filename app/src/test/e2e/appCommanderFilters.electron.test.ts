@@ -128,6 +128,36 @@ suite('App commander', () => {
     }
   });
 
+  test('finds the copies among files named as archives of Electron, as foo.asar, hashing each as the file it is, as the hashing threads took them for archives and failed', async () => {
+    const dupes = path.join(opened, 'asar-dupes');
+    fs.mkdirSync(dupes);
+    fs.writeFileSync(path.join(dupes, 'one.asar'), 'same content');
+    fs.writeFileSync(path.join(dupes, 'two.asar'), 'same content');
+    fs.writeFileSync(path.join(dupes, 'other.asar'), 'other content');
+    try {
+      await openFolder('asar-dupes', dupes);
+
+      await page.keyboard.press('Control+Shift+G');
+      await waitFor(
+        async () => (await sortedRows()) === '..,one.asar,two.asar',
+        'the files with a copy',
+      );
+      await page.keyboard.press('Control+Shift+G');
+      await waitFor(
+        async () => (await sortedRows()) === '..,one.asar,other.asar,two.asar',
+        'every file again',
+      );
+    } finally {
+      await page.keyboard.press('Backspace');
+      fs.rmSync(dupes, { recursive: true, force: true });
+      await waitFor(
+        async () =>
+          (await right().locator('.column-name').textContent()) === opened,
+        'the folder opened',
+      );
+    }
+  });
+
   test('lists the files of every folder in the folder of a side on Ctrl+B, giving the whole path of the file selected once read, following changes in them, and the folder alone again on Ctrl+B', async () => {
     const later = path.join(opened, 'src', 'later.ts');
     try {

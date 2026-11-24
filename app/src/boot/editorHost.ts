@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from '../lib/main/files';
 import * as path from 'node:path';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { GitLocator } from '../tools/git/main/gitLocator';

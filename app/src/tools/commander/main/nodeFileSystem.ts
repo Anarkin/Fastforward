@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { Dirent, Stats } from '../../../lib/main/files';
 import * as path from 'node:path';
 import type { Entry } from '../shared/protocol';
 import type { LocalFileSystem } from './fileSystem';
@@ -6,7 +7,7 @@ import type { LocalFileSystem } from './fileSystem';
 async function statsOf(
   file: string,
   follow: boolean,
-): Promise<fs.Stats | undefined> {
+): Promise<Stats | undefined> {
   try {
     return await (follow ? fs.promises.stat(file) : fs.promises.lstat(file));
   } catch {
@@ -16,7 +17,7 @@ async function statsOf(
 
 const anyoneRuns = 0o111;
 
-async function entryOf(folder: string, found: fs.Dirent): Promise<Entry> {
+async function entryOf(folder: string, found: Dirent): Promise<Entry> {
   const link = found.isSymbolicLink();
   const stats = await statsOf(path.join(folder, found.name), link);
   const isFolder = stats?.isDirectory() ?? found.isDirectory();

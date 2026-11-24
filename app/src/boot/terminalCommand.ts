@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import * as fs from 'node:fs';
+import { fs } from '../lib/main/files';
 import * as path from 'node:path';
 import { strings } from '../lib/shared/strings';
 import type { CommandInstall, CommandState } from '../shell/main/commandOffer';

@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { FileHandle, Stats } from '../../../lib/main/files';
 import * as path from 'node:path';
 
 export type ReplaceFile = (
@@ -50,7 +51,7 @@ async function linkedTarget(file: string): Promise<string> {
   }
 }
 
-async function statOf(file: string): Promise<fs.Stats | undefined> {
+async function statOf(file: string): Promise<Stats | undefined> {
   try {
     return await fs.promises.stat(file);
   } catch (error) {
@@ -70,12 +71,12 @@ async function writable(file: string): Promise<boolean> {
   }
 }
 
-const ownedByAnother = (stat: fs.Stats) => {
+const ownedByAnother = (stat: Stats) => {
   const user = process.getuid?.();
   return user !== undefined && user !== 0 && stat.uid !== user;
 };
 
-async function writeAll(handle: fs.promises.FileHandle, bytes: Uint8Array) {
+async function writeAll(handle: FileHandle, bytes: Uint8Array) {
   for (let at = 0; at < bytes.length;) {
     const { bytesWritten } = await handle.write(
       bytes,
@@ -99,7 +100,7 @@ async function writtenBeside(
 ): Promise<string | undefined> {
   for (let tries = 0; ; tries++) {
     const beside = savingName(target);
-    let handle: fs.promises.FileHandle;
+    let handle: FileHandle;
     try {
       handle = await fs.promises.open(beside, 'wx');
     } catch (error) {
@@ -131,7 +132,7 @@ async function freeBytesOf(folder: string): Promise<number> {
 
 async function writtenInPlace(
   target: string,
-  stat: fs.Stats,
+  stat: Stats,
   bytes: Uint8Array,
   saving: Saving,
 ): Promise<Saved> {
@@ -170,7 +171,7 @@ async function inPlaceOfMoved(target: string, beside: string): Promise<Saved> {
 
 async function replaced(
   target: string,
-  stat: fs.Stats,
+  stat: Stats,
   bytes: Uint8Array,
   saving: Saving,
 ): Promise<Saved> {

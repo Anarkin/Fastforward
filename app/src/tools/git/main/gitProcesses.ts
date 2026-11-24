@@ -1,5 +1,5 @@
 import type { ChildProcess } from 'node:child_process';
-import { lstat, readdir, rm } from 'node:fs/promises';
+import { fsPromises } from '../../../lib/main/files';
 import { join } from 'node:path';
 import { commonDirOf, gitDirOf } from './gitDir';
 import { processHolderAt } from './processHold';
@@ -105,7 +105,11 @@ async function removeRefLocks({ cwd, since }: Write): Promise<void> {
   const common = await commonDirOf(gitDir);
   const inFolders = await Promise.all(
     refsLockedIn.map(async (folder) =>
-      (await readdir(join(common, folder), { recursive: true }).catch(() => []))
+      (
+        await fsPromises
+          .readdir(join(common, folder), { recursive: true })
+          .catch(() => [])
+      )
         .filter((entry) => entry.endsWith('.lock'))
         .map((entry) => join(common, folder, entry)),
     ),
@@ -119,9 +123,11 @@ async function removeRefLocks({ cwd, since }: Write): Promise<void> {
 }
 
 async function removeLockSince(lock: string, since: number): Promise<void> {
-  const locked = await lstat(lock).catch(() => undefined);
+  const locked = await fsPromises.lstat(lock).catch(() => undefined);
   if (locked !== undefined && locked.mtimeMs >= since - 1000) {
-    await rm(lock, { force: true, maxRetries: 10 }).catch(() => undefined);
+    await fsPromises
+      .rm(lock, { force: true, maxRetries: 10 })
+      .catch(() => undefined);
   }
 }
 

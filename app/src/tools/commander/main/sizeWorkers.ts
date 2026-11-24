@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { appFs } from '../../../lib/main/appFiles';
 import { Worker } from 'node:worker_threads';
 import { strings } from '../../../lib/shared/strings';
 import type { SizeWalk, SizeWalked, SizeWalker } from './sizeWalk';
@@ -32,7 +32,7 @@ export function sizeWorkers(
   koffi: string | undefined,
 ): (SizeWalker & { close(): void }) | undefined {
   const file = path.join(folder, workerFile);
-  if (!existsSync(file)) {
+  if (!appFs.existsSync(file)) {
     return undefined;
   }
   let code: string | undefined;
@@ -55,7 +55,7 @@ export function sizeWorkers(
   };
 
   const spawn = (): Thread => {
-    code ??= readFileSync(file, 'utf8');
+    code ??= appFs.readFileSync(file, 'utf8');
     const worker = new Worker(code, { eval: true, workerData: { koffi } });
     worker.unref();
     const thread: Thread = { worker, task: undefined };

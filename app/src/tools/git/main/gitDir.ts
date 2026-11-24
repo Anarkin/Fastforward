@@ -1,14 +1,14 @@
-import { lstat, readFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
+import { fsPromises } from '../../../lib/main/files';
 
 export async function gitDirOf(cwd: string): Promise<string | undefined> {
   const dotGit = join(cwd, '.git');
-  const stats = await lstat(dotGit).catch(() => undefined);
+  const stats = await fsPromises.lstat(dotGit).catch(() => undefined);
   if (!stats?.isFile()) {
     return dotGit;
   }
   const named = /^gitdir: (.*)$/m
-    .exec(await readFile(dotGit, 'utf8').catch(() => ''))?.[1]
+    .exec(await fsPromises.readFile(dotGit, 'utf8').catch(() => ''))?.[1]
     ?.trim();
   if (named === undefined) {
     return undefined;
@@ -18,7 +18,7 @@ export async function gitDirOf(cwd: string): Promise<string | undefined> {
 
 export async function commonDirOf(gitDir: string): Promise<string> {
   const named = (
-    await readFile(join(gitDir, 'commondir'), 'utf8').catch(() => '')
+    await fsPromises.readFile(join(gitDir, 'commondir'), 'utf8').catch(() => '')
   ).trim();
   return named === '' ? gitDir : resolve(gitDir, named);
 }

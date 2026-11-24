@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from './files';
+import type { FileHandle } from './files';
 
 export interface ByteRange {
   readonly start: number;
@@ -37,7 +38,7 @@ function body(
   start: number,
   end: number,
 ): ReadableStream<Uint8Array> {
-  let handle: fs.promises.FileHandle | undefined;
+  let handle: FileHandle | undefined;
   let finished = false;
   let position = start;
   const finish = async () => {

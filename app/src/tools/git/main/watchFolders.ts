@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { Dirent } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { InFlight } from '../../../lib/main/inFlight';
 import { isMissing } from '../../../lib/main/missing';
@@ -284,7 +285,7 @@ export async function watchTree(
     entry.watcher.on('error', watchFailed(folder.path));
     watched.set(folder.path, entry);
     parent?.children.add(folder.path);
-    let entries: fs.Dirent[];
+    let entries: Dirent[];
     try {
       entries = await fs.promises.readdir(folder.path, { withFileTypes: true });
     } catch (error) {

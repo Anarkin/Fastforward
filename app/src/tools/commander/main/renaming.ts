@@ -1,8 +1,9 @@
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { BigIntStats } from '../../../lib/main/files';
 import { fileIdOf } from './fileIds';
 import { codeOf } from '../../../lib/main/reasons';
 
-async function statOf(file: string): Promise<fs.BigIntStats | undefined> {
+async function statOf(file: string): Promise<BigIntStats | undefined> {
   try {
     return await fs.promises.lstat(file, { bigint: true });
   } catch (error) {
@@ -16,8 +17,8 @@ async function statOf(file: string): Promise<fs.BigIntStats | undefined> {
 function sameItem(
   from: string,
   to: string,
-  source: fs.BigIntStats,
-  there: fs.BigIntStats,
+  source: BigIntStats,
+  there: BigIntStats,
 ): boolean {
   const id = fileIdOf(source);
   return id === undefined

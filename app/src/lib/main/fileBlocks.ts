@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { fs } from './files';
 
 export const blockBytes = 64 * 1024;
 

@@ -1,4 +1,4 @@
-import * as fs from 'node:fs';
+import { appFs as fs } from '../../lib/main/appFiles';
 import type { ThemeColors, ToolSettings } from '../shared/tools';
 import { strings } from '../../lib/shared/strings';
 import type { TextView } from '../shared/views';

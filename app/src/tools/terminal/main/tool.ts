@@ -1,5 +1,5 @@
 import { viewVersion } from '../shared/protocol';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { HostLink, type ConnectHost } from './hostLink';
 import type { HostEvent, ShellLaunch } from './hostProtocol';

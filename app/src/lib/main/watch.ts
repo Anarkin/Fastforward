@@ -1,4 +1,5 @@
-import * as fs from 'node:fs';
+import { fs } from './files';
+import type { FSWatcher, Stats } from './files';
 import * as path from 'node:path';
 
 export type WatchFolder = (
@@ -14,7 +15,7 @@ const longestRetry = 60_000;
 export type StartWatching = (
   folder: string,
   listener: (event: string, name: string | null) => void,
-) => fs.FSWatcher;
+) => FSWatcher;
 
 const startWatching: StartWatching = (folder, listener) =>
   fs.watch(folder, { persistent: false }, listener);
@@ -23,7 +24,7 @@ export function watched(
   start: StartWatching,
   folder: string,
   listener: (event: string, name: string | null) => void,
-): fs.FSWatcher | undefined {
+): FSWatcher | undefined {
   try {
     return start(folder, listener);
   } catch {
@@ -31,13 +32,13 @@ export function watched(
   }
 }
 
-type Stat = (folder: string) => Promise<fs.Stats>;
+type Stat = (folder: string) => Promise<Stats>;
 
-function identityOf(stats: fs.Stats): string {
+function identityOf(stats: Stats): string {
   return `${stats.ino}:${stats.birthtimeMs}`;
 }
 
-function stampOf(stats: fs.Stats): string {
+function stampOf(stats: Stats): string {
   return `${stats.ino}:${stats.mtimeMs}`;
 }
 

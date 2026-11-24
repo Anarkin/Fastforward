@@ -1,5 +1,5 @@
-import { lstat } from 'node:fs/promises';
 import * as path from 'node:path';
+import { fsPromises } from '../../../lib/main/files';
 import { gitErrorText } from '../../../lib/main/errorText';
 import { isFolder, sameFolder, spelledFrom, spellingOf } from './folders';
 import { repositoryRoot } from './repository';
@@ -61,7 +61,7 @@ export async function locateRepository(
 }
 
 function hasGitEntry(folder: string): Promise<boolean> {
-  return lstat(path.join(folder, '.git')).then(
+  return fsPromises.lstat(path.join(folder, '.git')).then(
     () => true,
     () => false,
   );

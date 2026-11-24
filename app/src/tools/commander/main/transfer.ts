@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import * as fs from 'node:fs';
+import { fs } from '../../../lib/main/files';
+import type { FileHandle, Stats } from '../../../lib/main/files';
 import * as path from 'node:path';
 import type {
   Clash,
@@ -55,7 +56,7 @@ function codeOf(error: unknown): unknown {
   return error instanceof Error && 'code' in error ? error.code : undefined;
 }
 
-async function statsOf(file: string): Promise<fs.Stats | undefined> {
+async function statsOf(file: string): Promise<Stats | undefined> {
   try {
     return await fs.promises.lstat(file);
   } catch {
@@ -99,7 +100,7 @@ function partOf(target: string): string {
 
 const ownerWrites = 0o200;
 
-function sideOf(stats: fs.Stats): ClashSide {
+function sideOf(stats: Stats): ClashSide {
   return {
     size: stats.isDirectory() ? undefined : stats.size,
     modified: stats.mtimeMs,
@@ -122,7 +123,7 @@ async function freeName(file: string, folder: boolean): Promise<string> {
 
 const ignored = () => undefined;
 
-async function lockedAgain(target: string, was: fs.Stats): Promise<void> {
+async function lockedAgain(target: string, was: Stats): Promise<void> {
   const now = await statsOf(target);
   if (now !== undefined && now.ino === was.ino && now.dev === was.dev) {
     await fs.promises.chmod(target, was.mode).catch(ignored);
@@ -241,7 +242,7 @@ class Transfer {
     return stats === undefined ? none : this.countWith(source, stats);
   }
 
-  private async countWith(source: string, stats: fs.Stats): Promise<Count> {
+  private async countWith(source: string, stats: Stats): Promise<Count> {
     if (!stats.isDirectory()) {
       return { files: 1, bytes: stats.isFile() ? stats.size : 0 };
     }
@@ -268,7 +269,7 @@ class Transfer {
     return count;
   }
 
-  private countOf(source: string, stats: fs.Stats): Count {
+  private countOf(source: string, stats: Stats): Count {
     if (stats.isDirectory()) {
       return this.counts.get(source) ?? none;
     }
@@ -277,8 +278,8 @@ class Transfer {
 
   private async answerTo(
     name: string,
-    source: fs.Stats,
-    target: fs.Stats,
+    source: Stats,
+    target: Stats,
     { itself, keptAs }: { readonly itself: boolean; readonly keptAs: string },
   ): Promise<ClashAnswer> {
     if (this.always !== undefined) {
@@ -309,7 +310,7 @@ class Transfer {
   ): Promise<void> {
     this.stopIfAsked();
     const name = this.nameOf(target);
-    let from: fs.Stats;
+    let from: Stats;
     try {
       from = await fs.promises.lstat(source);
     } catch (error) {
@@ -319,7 +320,7 @@ class Transfer {
     const there = await statsOf(target);
     let into = target;
     let overwrite = false;
-    let unlocked: fs.Stats | undefined;
+    let unlocked: Stats | undefined;
     if (there !== undefined) {
       const itself = await sameItem(source, target);
       if (itself && this.plan.move) {
@@ -374,7 +375,7 @@ class Transfer {
     }
   }
 
-  private itselfThere(name: string, source: string, from: fs.Stats): void {
+  private itselfThere(name: string, source: string, from: Stats): void {
     this.events.failed(name, strings.commander.itselfThere);
     this.passed(this.countOf(source, from));
   }
@@ -383,7 +384,7 @@ class Transfer {
     source: string,
     target: string,
     into: string,
-    from: fs.Stats,
+    from: Stats,
     overwrite: boolean,
     renaming: boolean,
   ): Promise<void> {
@@ -440,7 +441,7 @@ class Transfer {
   private async copyFolder(
     source: string,
     target: string,
-    stats: fs.Stats,
+    stats: Stats,
   ): Promise<void> {
     try {
       await fs.promises.mkdir(target);
@@ -499,7 +500,7 @@ class Transfer {
   private async copyFile(
     source: string,
     target: string,
-    stats: fs.Stats,
+    stats: Stats,
     overwrite: boolean,
     name: string,
   ): Promise<void> {
@@ -544,7 +545,7 @@ class Transfer {
   private async copyLarge(
     source: string,
     target: string,
-    stats: fs.Stats,
+    stats: Stats,
   ): Promise<void> {
     if (this.options.cloning ?? true) {
       try {
@@ -566,11 +567,11 @@ class Transfer {
   private async copyInPieces(
     source: string,
     target: string,
-    stats: fs.Stats,
+    stats: Stats,
   ): Promise<void> {
     const pieceBytes = this.options.pieceBytes ?? 1024 * 1024;
     const input = await fs.promises.open(source, 'r');
-    let output: fs.promises.FileHandle | undefined;
+    let output: FileHandle | undefined;
     let made = false;
     try {
       output = await fs.promises.open(target, 'wx', 0o666);

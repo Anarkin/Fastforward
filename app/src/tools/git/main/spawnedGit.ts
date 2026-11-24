@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { existsSync, readFileSync } from 'node:fs';
+import { appFs } from '../../../lib/main/appFiles';
 import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
 import { Worker } from 'node:worker_threads';
@@ -168,7 +168,7 @@ function inWorker(
   receive: (message: FromSpawner) => void,
   lost: () => void,
 ): Connection {
-  const worker = new Worker(readFileSync(file, 'utf8'), {
+  const worker = new Worker(appFs.readFileSync(file, 'utf8'), {
     eval: true,
     workerData: { koffi },
   });
@@ -218,7 +218,7 @@ export function gitStarter(
   koffi = koffiOnWindows(),
 ): GitStarter {
   const file = join(folder, starterFile);
-  const threaded = existsSync(file);
+  const threaded = appFs.existsSync(file);
   const threads: Thread[] = [];
   let lastId = 0;
   const opened = (): Thread => {
