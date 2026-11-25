@@ -191,6 +191,7 @@
 .markdown a[href],
 .markdown a[data-link] {
   color: var(--color-focus);
+  cursor: pointer;
 }
 
 .markdown a[data-link] {

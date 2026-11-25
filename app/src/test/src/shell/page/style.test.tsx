@@ -557,20 +557,26 @@ suite('Style', () => {
     }
   });
 
-  test('keeps the arrow cursor of a desktop app but for resizing and over the text drawn as cells, which the browser takes for no text and shows no text cursor over by itself, the fields and the text of elements showing the text cursor of their own', () => {
+  test('keeps the arrow cursor of a desktop app but for resizing, the links of a Markdown preview, which show the hand of a link as a page shows it, and over the text drawn as cells, which the browser takes for no text and shows no text cursor over by itself, the fields and the text of elements showing the text cursor of their own', () => {
     assert.deepStrictEqual(
       [
         ...new Set(
           [...css.matchAll(/cursor: ([^;]+);/g)].map((match) => match[1]),
         ),
       ].toSorted(),
-      ['col-resize', 'text'],
+      ['col-resize', 'pointer', 'text'],
     );
     assert.deepStrictEqual(
       [...css.matchAll(/([^{}]+)\{[^{}]*cursor: text;/g)].map((match) =>
         match[1].trim(),
       ),
       ['.cell-canvas'],
+    );
+    assert.deepStrictEqual(
+      [...css.matchAll(/([^{}]+)\{[^{}]*cursor: pointer;/g)].map((match) =>
+        match[1].trim().replaceAll(/\s+/g, ' '),
+      ),
+      ['.markdown a[href], .markdown a[data-link]'],
     );
   });
 
