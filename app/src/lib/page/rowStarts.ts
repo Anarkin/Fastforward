@@ -40,6 +40,33 @@ export function snappedToStart(
   return Math.max(0, Math.min(max, startOf(index)));
 }
 
+export function snappedToStartOrLine(
+  startOf: (index: number) => number,
+  count: number,
+  top: number,
+  toward: number,
+  max: number,
+  { line, room, total }: { line: number; room: number; total: number },
+  near = onStart,
+): number {
+  const next = firstStartFrom(startOf, count, top, near);
+  const at =
+    next < count && Math.abs(startOf(next) - top) <= near ? next : next - 1;
+  if (at >= 0 && line > 0) {
+    const start = startOf(at);
+    const end = at + 1 < count ? startOf(at + 1) : total;
+    if (end - start > room) {
+      const lines = (top - start) / line;
+      const taken =
+        toward < 0
+          ? Math.floor(lines + near / line)
+          : Math.ceil(lines - near / line);
+      return Math.max(0, Math.min(max, end, start + taken * line));
+    }
+  }
+  return snappedToStart(startOf, count, top, toward, max, near);
+}
+
 export function endPaddingToStart(
   startOf: (index: number) => number,
   count: number,

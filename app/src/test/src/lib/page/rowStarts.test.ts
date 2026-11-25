@@ -3,12 +3,20 @@ import { suite, test } from 'vitest';
 import {
   endPaddingToStart,
   snappedToStart,
+  snappedToStartOrLine,
   startsBelowCover,
 } from '../../../../lib/page/rowStarts';
 
 const starts = [0, 18, 54, 90, 144, 180];
 const startOf = (index: number) => starts[index];
 const count = starts.length;
+
+const short = (top: number, toward: number) =>
+  snappedToStartOrLine(startOf, count, top, toward, 1000, {
+    line: 18,
+    room: 400,
+    total: 216,
+  });
 
 suite('Row starts', () => {
   test('stops a scroll on the start of a row, the next one going down and the one before going up, as rows of a list may be one, two or three lines tall', () => {
@@ -57,5 +65,24 @@ suite('Row starts', () => {
       [0, 0, 0, 24],
     );
     assert.deepStrictEqual(startsBelowCover([], 38), []);
+  });
+
+  test('stops a scroll inside a row taller than the view on one of its lines, so a commit of many bubbles can be scrolled through rather than jumped over, and on row starts elsewhere', () => {
+    const tall = [0, 18, 2018, 2036];
+    const tallStart = (index: number) => tall[index];
+    const lines = { line: 18, room: 400, total: 2054 };
+    const snap = (top: number, toward: number) =>
+      snappedToStartOrLine(tallStart, tall.length, top, toward, 1654, lines);
+    assert.strictEqual(snap(1000, 1), 1008);
+    assert.strictEqual(snap(1000, -1), 990);
+    assert.strictEqual(snap(1000, 0), 1008);
+    assert.strictEqual(snap(1008.004, 1), 1008);
+    assert.strictEqual(snap(20, 1), 36);
+    assert.strictEqual(snap(1600, 1), 1602);
+    assert.strictEqual(snap(1653, 1), 1654);
+    assert.strictEqual(snap(10, 1), 18);
+    assert.strictEqual(snap(10, -1), 0);
+    assert.strictEqual(short(60, 1), 90);
+    assert.strictEqual(short(60, -1), 54);
   });
 });

@@ -58,7 +58,10 @@ import { useCommitFilter } from './commitFiltering';
 import { filterRanges, searchFilter } from '../../../lib/shared/filter';
 import { useBinding } from '../../../lib/page/shortcuts';
 import { realHeight, scrollCap } from './cappedScroll';
-import { endPaddingToStart, snappedToStart } from '../../../lib/page/rowStarts';
+import {
+  endPaddingToStart,
+  snappedToStartOrLine,
+} from '../../../lib/page/rowStarts';
 import { followRows, type RowFollower } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
 import { usePlacesMenu } from './placesMenuShown';
@@ -251,7 +254,13 @@ export function Commits({ navigation }: { navigation?: React.ReactNode }) {
     ? 0
     : endPaddingToStart(startOf, count, totalSize, room);
   const snapTo = useEffectEvent((top: number, toward: number, max: number) =>
-    capped ? top : snappedToStart(startOf, count, top, toward, max),
+    capped
+      ? top
+      : snappedToStartOrLine(startOf, count, top, toward, max, {
+          line,
+          room,
+          total: totalSize,
+        }),
   );
   const lineStep = useEffectEvent(() => (capped ? 0 : line));
   const perNotch = useEffectEvent(() => scrollSettings.wheelRows);
