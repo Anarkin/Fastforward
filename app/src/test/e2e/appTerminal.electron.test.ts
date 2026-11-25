@@ -429,9 +429,10 @@ suite('Terminal', () => {
     );
     await page.keyboard.press('Enter');
     await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
-    assert.ok(
-      sameFolder((await tabs.nth(1).getAttribute('data-tip')) ?? '', inner),
+    const sides = ((await tabs.nth(1).getAttribute('data-tip')) ?? '').split(
+      '\n',
     );
+    assert.ok(sameFolder(sides.at(-1) ?? '', inner), sides.join(' | '));
     await page.keyboard.press('ControlOrMeta+Shift+W');
     await waitFor(async () => (await tabs.count()) === 1, 'the tab to close');
     await page.locator('.terminal-screen .xterm-rows').waitFor();
