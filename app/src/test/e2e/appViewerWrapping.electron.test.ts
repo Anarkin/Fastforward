@@ -16,6 +16,7 @@ import {
 } from './cellsSeen';
 import { gridLines, gridRuler } from './gridLines';
 import { waitForFocus } from './waits';
+import { writeSettings } from './settingsWritten';
 import {
   opened,
   profile,
@@ -95,6 +96,14 @@ const lastBars = async () => {
   }
   const [ruler, ...rows] = columns;
   return rows.map((column) => column - (ruler ?? Number.NaN));
+};
+
+const barsOf = async () => {
+  await waitFor(
+    async () => (await lastBars()).length === 1,
+    'the bar of the tabbed row',
+  );
+  return lastBars();
 };
 
 suite('App commander', () => {
@@ -459,6 +468,38 @@ suite('App commander', () => {
       fs.rmSync(path.join(opened, 'grid.txt'));
       await waitFor(
         async () => !(await rowNames()).includes('grid.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('draws a tab to the next stop of the tab size of the settings, 4 columns by default and as many as text.tabSize says, the page laying it out anew once the settings are saved', async () => {
+    const file = path.join(profile, 'settings.user.json');
+    const saved = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '{}';
+    const settings: { text?: object } = JSON.parse(saved);
+    fs.writeFileSync(
+      path.join(opened, 'tabbed.txt'),
+      ['        |', '	|'].join(String.fromCharCode(10)),
+    );
+    try {
+      await select('tabbed');
+      await page.keyboard.press('F3');
+      const byDefault = await barsOf();
+      await writeSettings(page, profile, {
+        ...settings,
+        text: { ...settings.text, tabSize: 8 },
+      });
+      const set = await barsOf();
+      assert.deepStrictEqual({ byDefault, set }, { byDefault: [-4], set: [0] });
+    } finally {
+      await writeSettings(page, profile, JSON.parse(saved));
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'tabbed.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('tabbed.txt'),
         'the file to be gone from the list',
       );
     }

@@ -487,7 +487,7 @@ export function DiffView({
     <div
       className={`diff-view ${split ? 'side-by-side' : ''} ${whole && !split ? 'whole-file' : ''} ${wordWrap ? 'wrap' : ''} ${showWhitespace ? 'show-whitespace' : ''}`}
       style={{
-        ...layoutVariables,
+        ...layoutVariables(),
         '--diff-snap-inline': `${snap.inline}px`,
         '--diff-snap-left': `${snap.left}px`,
         '--diff-snap-right': `${snap.right}px`,

@@ -40,7 +40,7 @@ export interface Settings {
     readonly error: NoticeSeconds;
   };
   readonly cursor: CursorLook;
-  readonly text: TextView;
+  readonly text: TextView & { readonly tabSize: number };
   readonly tools: ToolSettings;
   readonly fonts: {
     readonly family: string;

@@ -1,4 +1,4 @@
-import { tabSize } from '../../../lib/page/tabStops';
+import { tabSizeOf } from '../../../lib/page/tabStops';
 import type { WrapColumns } from './rowMeasures';
 
 declare module 'react' {
@@ -42,12 +42,12 @@ export function sameTextMeasures(
   );
 }
 
-export const layoutVariables: React.CSSProperties = {
+export const layoutVariables = (): React.CSSProperties => ({
   '--diff-file-height': 'var(--diff-line-height)',
-  '--diff-tab-size': String(tabSize),
+  '--diff-tab-size': String(tabSizeOf(undefined)),
   '--diff-number-width': `${numberWidth}px`,
   '--diff-code-padding': `${codePadding}px`,
-};
+});
 
 export interface Edges {
   readonly top: number;

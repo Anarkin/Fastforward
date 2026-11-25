@@ -1,4 +1,4 @@
-import { tabStop } from './tabStops';
+import { tabSizeOf, tabStop } from './tabStops';
 import { isBlank } from './wordWrap';
 
 interface Blank {
@@ -42,7 +42,8 @@ function countedColumns(row: string): (index: number) => number {
   let column = 0;
   return (index) => {
     while (at < index) {
-      column = row[at] === '\t' ? tabStop(column) : column + 1;
+      column =
+        row[at] === '\t' ? tabStop(column, tabSizeOf(undefined)) : column + 1;
       at += (row.codePointAt(at) ?? 0) > 0xffff ? 2 : 1;
     }
     return column;

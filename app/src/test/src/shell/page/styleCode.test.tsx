@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { tabSize } from '../../../../lib/page/tabStops';
+import { defaultTabSize } from '../../../../lib/page/tabStops';
 import { diffView, shownRow } from '../../../helpers/styleMarkup';
 import { cascaded } from '../../../helpers/cascade';
 import { bodyVariable, compact, looks } from './stylesheetFixtures';
@@ -109,6 +109,9 @@ suite('Style', () => {
         { 'tab-size': 'var(--diff-tab-size)' },
       );
     }
-    assert.strictEqual(layoutVariables['--diff-tab-size'], String(tabSize));
+    assert.strictEqual(
+      layoutVariables()['--diff-tab-size'],
+      String(defaultTabSize),
+    );
   });
 });

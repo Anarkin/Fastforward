@@ -1,6 +1,6 @@
 import { graphemes, type Units } from '../../../lib/page/graphemes';
 import { onceAText } from './onceAText';
-import { tabSize, tabStop } from '../../../lib/page/tabStops';
+import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { joins } from './joined';
 
@@ -21,10 +21,11 @@ type Step = (
 
 function stepsOf(text: string, widths: TextWidths | undefined): Step {
   let clusters: Units | undefined;
+  const size = tabSizeOf(widths);
   return (at, column) => {
     const code = text.charCodeAt(at);
     if (code === tab) {
-      return { next: at + 1, column: tabStop(column) };
+      return { next: at + 1, column: tabStop(column, size) };
     }
     if (
       widths === undefined ||
@@ -76,8 +77,6 @@ export const keptColumnsOf = onceAText(
   (text: string, widths: TextWidths | undefined) => columnsOf(text, widths),
 );
 
-const mostColumnsAUnit = tabSize;
-
 export function widestColumns(
   text: string,
   widths: TextWidths | undefined,
@@ -96,7 +95,7 @@ export function widestColumns(
     }
   }
   for (const line of others) {
-    if (line.length * mostColumnsAUnit > widest) {
+    if (line.length * Math.max(2, tabSizeOf(widths)) > widest) {
       widest = Math.max(widest, columnsOf(line, widths));
     }
   }

@@ -1,3 +1,4 @@
+import { defaultTabSize } from '../../lib/shared/tabSize';
 import type { Settings } from './settings';
 import type { ToolId } from '../shared/tools';
 import { cursorVariables } from '../../lib/shared/cursorSettings';
@@ -35,8 +36,17 @@ function fileColorRules(groups: readonly FileColor[]): string[] {
       ];
 }
 
+const mostTabSize = 16;
+
+function tabSizeOf(size: number): number {
+  return Number.isFinite(size)
+    ? Math.min(mostTabSize, Math.max(1, Math.round(size)))
+    : defaultTabSize;
+}
+
 export function themeCss({
   fonts,
+  text,
   scrolling,
   cursor,
   colors,
@@ -57,6 +67,7 @@ export function themeCss({
     `  --monospace-font-family: ${fonts.monospaceFamily};`,
     `  --monospace-font-size: ${fonts.monospaceSize};`,
     `  --monospace-line-height: ${fonts.monospaceLineHeight};`,
+    `  --tab-size: ${tabSizeOf(text.tabSize)};`,
     `  --scrollbar-setting: ${scrolling.scrollbarSize};`,
     `  --scrollbar-marked-setting: ${scrolling.scrollbarSizeWithMarkers};`,
     `  ${cursorVariables.style}: ${cursor.style};`,

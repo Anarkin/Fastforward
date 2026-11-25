@@ -2,6 +2,7 @@ import { cellsOf, plainCells, type CellTable } from './cellTable';
 
 export interface TextWidths {
   readonly char: number;
+  readonly tabSize?: number;
   readonly of: (cluster: string) => number;
   readonly boxed?: (cluster: string) => number | undefined;
   readonly scaled?: (cluster: string) => number | undefined;

@@ -1,7 +1,7 @@
 import { blankSignOf } from '../../../lib/page/blankSigns';
 import { invisibleParts } from '../../../lib/page/invisibles';
 import { graphemes, nonAscii, type Units } from '../../../lib/page/graphemes';
-import { tabStop } from '../../../lib/page/tabStops';
+import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { strings } from '../../../lib/shared/strings';
 import { filled, over, packedOf, parsedColor, type Rgba } from './cellColors';
@@ -396,7 +396,7 @@ function drawText(
           selected,
         );
       }
-      column = tabStop(column);
+      column = tabStop(column, tabSizeOf(drawing.widths));
       at++;
     } else {
       let cluster = text[at];

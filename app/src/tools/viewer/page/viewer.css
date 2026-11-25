@@ -99,7 +99,7 @@
   font-size: var(--monospace-font-size);
   letter-spacing: calc(var(--text-advance) - 1ch);
   white-space: pre;
-  tab-size: 4;
+  tab-size: var(--tab-size);
 }
 
 .viewer-probe {

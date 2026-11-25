@@ -1,4 +1,4 @@
-import { tabStop } from './tabStops';
+import { tabSizeOf, tabStop } from './tabStops';
 import { graphemes, type Units } from './graphemes';
 import type { TextWidths } from './textWidths';
 
@@ -35,7 +35,7 @@ export function columnsOf(
       at = next;
       const cluster = clusterAt(at);
       if (!cluster) {
-        column = tabStop(column);
+        column = tabStop(column, tabSizeOf(widths));
         at += 1;
       } else if (cluster.end > index) {
         return column;

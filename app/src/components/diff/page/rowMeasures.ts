@@ -1,4 +1,4 @@
-import { tabStop } from '../../../lib/page/tabStops';
+import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
 import { wrappedLines } from '../../../lib/page/wordWrap';
 import { inLines, measureInLines } from '../../../lib/page/lineHeight';
 import type { TextWidths } from '../../../lib/page/textWidths';
@@ -88,7 +88,7 @@ function spanOf(text: string, widths: TextWidths | undefined): TextSpan {
   for (let at = 0; at < length; at++) {
     const code = text.codePointAt(at) ?? 0;
     if (code === tabCode) {
-      columns = tabStop(columns);
+      columns = tabStop(columns, tabSizeOf(widths));
     } else if (code <= lastAscii || !measured) {
       columns += 1;
     } else {

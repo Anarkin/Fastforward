@@ -232,7 +232,9 @@ export class Storage {
   }
 
   get textView(): TextView {
-    return this.settings.text;
+    const { wordWrap, showWhitespace, highlightSyntax, highlightOccurrences } =
+      this.settings.text;
+    return { wordWrap, showWhitespace, highlightSyntax, highlightOccurrences };
   }
 
   async setTextView(view: TextView): Promise<void> {

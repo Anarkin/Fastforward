@@ -1,6 +1,5 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { tabSize } from '../../../../lib/page/tabStops';
 import { cascaded } from '../../../helpers/cascade';
 import { diffView } from '../../../helpers/styleMarkup';
 import { compact, looks, noop } from './stylesheetFixtures';
@@ -215,7 +214,7 @@ suite('Style', () => {
         ),
         'shown',
       ),
-      { display: 'block', 'tab-size': String(tabSize) },
+      { display: 'block', 'tab-size': 'var(--tab-size)' },
     );
   });
 

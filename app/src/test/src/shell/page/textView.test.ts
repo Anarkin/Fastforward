@@ -11,6 +11,9 @@ suite('How text is shown until it is chosen', () => {
       highlightSyntax: true,
       highlightOccurrences: true,
     });
-    assert.deepStrictEqual(defaultSettings().text, defaultTextView);
+    assert.deepStrictEqual(defaultSettings().text, {
+      ...defaultTextView,
+      tabSize: 4,
+    });
   });
 });

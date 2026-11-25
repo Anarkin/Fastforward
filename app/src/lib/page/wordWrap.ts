@@ -5,7 +5,7 @@ import {
   type Box,
 } from './lineBreaks';
 import type { TextWidths } from './textWidths';
-import { tabSize, tabStop } from './tabStops';
+import { tabSizeOf, tabStop } from './tabStops';
 
 const blankKind = 1;
 const breaksAfter = 2;
@@ -76,14 +76,18 @@ export function leadLength(text: string): number {
   return at;
 }
 
-export function wrapIndent(text: string, columns: number): number {
+export function wrapIndent(
+  text: string,
+  columns: number,
+  tabSize = tabSizeOf(undefined),
+): number {
   const lead = leadLength(text);
   if (lead === text.length) {
     return 0;
   }
   let indent = 0;
   for (let at = 0; at < lead; at++) {
-    indent = text[at] === '\t' ? tabStop(indent) : indent + 1;
+    indent = text[at] === '\t' ? tabStop(indent, tabSize) : indent + 1;
   }
   const offStops = indent % tabSize !== 0 && text.includes('\t');
   return offStops || indent + fullWidthColumns > columns ? 0 : indent;
@@ -233,7 +237,10 @@ function measuredStarts(
     }
     column += width;
     for (at = end; at < clusters.length && blank(at); at++) {
-      column = clusters[at].text === '\t' ? tabStop(column) : column + 1;
+      column =
+        clusters[at].text === '\t'
+          ? tabStop(column, tabSizeOf(widths))
+          : column + 1;
     }
   }
   return starts;
@@ -242,13 +249,13 @@ function measuredStarts(
 export function wrapStarts(
   text: string,
   columns: number,
-  indent = wrapIndent(text, columns),
+  indent?: number,
   widths?: TextWidths,
 ): number[] {
   return startsOf(
     text.endsWith('\r') ? text.slice(0, -1) : text,
     columns,
-    indent,
+    indent ?? wrapIndent(text, columns, tabSizeOf(widths)),
     widths,
     breaksMarked(text),
   );
@@ -295,7 +302,10 @@ function startsOf(
     }
     column += length;
     for (at = end; isBlankAt(text, at); at++) {
-      column = text.charCodeAt(at) === tabCode ? tabStop(column) : column + 1;
+      column =
+        text.charCodeAt(at) === tabCode
+          ? tabStop(column, tabSizeOf(widths))
+          : column + 1;
     }
   }
   return starts;

@@ -63,13 +63,20 @@ function uses(): Set<string> {
   const names = new Set<string>();
   for (const { text } of pageFiles()) {
     for (const match of text.matchAll(
-      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|line-height|monospace-line-height|scrollbar-setting|scrollbar-marked-setting))/g,
+      /var\(\s*(--(?:(?:color|font|monospace-font)-[\w-]+|line-height|monospace-line-height|tab-size|scrollbar-setting|scrollbar-marked-setting))/g,
     )) {
       names.add(match[1]);
     }
   }
   return names;
 }
+
+const sized = (tabSize: number) => {
+  const settings = defaultSettings();
+  return /--tab-size: ([^;]+);/.exec(
+    themeCss({ ...settings, text: { ...settings.text, tabSize } }),
+  )?.[1];
+};
 
 suite('Theme', () => {
   test('defines every color and font the view uses', () => {
@@ -183,6 +190,7 @@ suite('Theme', () => {
         '  --monospace-font-family: Mono;',
         '  --monospace-font-size: 12px;',
         '  --monospace-line-height: 1.4;',
+        '  --tab-size: 4;',
         '  --scrollbar-setting: 25px;',
         '  --scrollbar-marked-setting: 36px;',
         '  --cursor-style: bar;',
@@ -254,5 +262,19 @@ suite('Theme', () => {
         scheme,
       );
     }
+  });
+
+  test('writes the tab size of the settings as the width every view draws a tab to, a whole number of columns from 1 to 16, 4 by default', () => {
+    assert.deepStrictEqual(
+      [
+        /--tab-size: ([^;]+);/.exec(theme)?.[1],
+        sized(2),
+        sized(8.4),
+        sized(0),
+        sized(99),
+        sized(Number.NaN),
+      ],
+      ['4', '2', '8', '1', '16', '4'],
+    );
   });
 });

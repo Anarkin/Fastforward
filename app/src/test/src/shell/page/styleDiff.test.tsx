@@ -60,8 +60,8 @@ suite('Style', () => {
     looks(withClass(row, 'code'), { padding: '0 var(--diff-code-padding)' });
     assert.deepStrictEqual(
       [
-        layoutVariables['--diff-number-width'],
-        layoutVariables['--diff-code-padding'],
+        layoutVariables()['--diff-number-width'],
+        layoutVariables()['--diff-code-padding'],
       ],
       [`${numberWidth}px`, `${codePadding}px`],
     );

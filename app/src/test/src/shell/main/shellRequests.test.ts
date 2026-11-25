@@ -452,14 +452,20 @@ suite('Shell with no tab open', () => {
           highlightOccurrences: false,
         };
         await view.connection.receive({ type: 'setTextView', view: chosen });
-        assert.deepStrictEqual(view.settings.settings.text, chosen);
+        assert.deepStrictEqual(view.settings.settings.text, {
+          ...chosen,
+          tabSize: 4,
+        });
         assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
         await view.connection.receive({ type: 'ready' });
         assert.deepStrictEqual(view.page.last('textView')?.view, chosen);
         await view.connection.receive(
           forged('{ "type": "setTextView", "view": { "wordWrap": "yes" } }'),
         );
-        assert.deepStrictEqual(view.settings.settings.text, chosen);
+        assert.deepStrictEqual(view.settings.settings.text, {
+          ...chosen,
+          tabSize: 4,
+        });
       },
       true,
       undefined,
