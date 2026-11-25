@@ -13,6 +13,18 @@ export interface RowShown {
 export const rowsShown = (page: Page, rows: string): Promise<RowShown[]> =>
   page.locator(rows).evaluateAll((elements) =>
     elements.flatMap((element) => {
+      const commits =
+        element instanceof HTMLElement ? element.seenCommits?.() : undefined;
+      if (commits !== undefined) {
+        return commits.map((commit) => ({
+          text: commit.subject ?? '',
+          left: commit.left,
+          top: commit.top,
+          bottom: commit.top + commit.height,
+          width: commit.width,
+          height: commit.height,
+        }));
+      }
       const seen =
         element instanceof HTMLElement ? element.seenRows?.() : undefined;
       const box = element.getBoundingClientRect();

@@ -34,7 +34,7 @@ export const views = {
   'commit list': {
     tab: 4,
     pane: '.virtual-rows.list',
-    rows: '.virtual-row',
+    rows: '.graph-layer',
     vertical: '.virtual-rows.list',
     horizontal: undefined,
     across: undefined,
@@ -75,6 +75,19 @@ export function placeDown(pane: Element, rows: string): Place {
     (parseFloat(getComputedStyle(pane).scrollPaddingTop) || 0);
   const boxes = [...pane.querySelectorAll(rows)]
     .flatMap((row) => {
+      const commits =
+        row instanceof HTMLElement ? row.seenCommits?.() : undefined;
+      if (commits !== undefined) {
+        return commits.map((commit) => ({
+          box: new DOMRect(
+            commit.left,
+            commit.top,
+            commit.width,
+            commit.height,
+          ),
+          text: (commit.subject ?? '').slice(0, 24),
+        }));
+      }
       const seen = row instanceof HTMLElement ? row.seenRows?.() : undefined;
       const box = row.getBoundingClientRect();
       return seen === undefined

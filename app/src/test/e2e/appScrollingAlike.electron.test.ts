@@ -22,6 +22,7 @@ import {
   type Place,
   type ViewName,
 } from './scrollingPlaces';
+import { commitRow } from './commitRows';
 
 const everyViewTime = 180_000;
 
@@ -126,10 +127,7 @@ suite('App scrolling alike', () => {
       .click();
     if (name === 'files') {
       const commits = views['commit list'];
-      await page
-        .locator(`${commits.pane} ${commits.rows}`, { hasText: 'files' })
-        .first()
-        .waitFor();
+      await commitRow(page, 'files').waitFor();
       await page.locator(commits.pane).first().focus();
       await page.keyboard.press('h');
     }

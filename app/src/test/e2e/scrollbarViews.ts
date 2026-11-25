@@ -35,7 +35,7 @@ export const views = {
   },
   'commit list': {
     tab: 4,
-    rows: '.virtual-rows.list .virtual-row',
+    rows: '.virtual-rows.list .graph-layer',
     vertical: '.virtual-rows.list',
     horizontal: undefined,
     marks: undefined,
