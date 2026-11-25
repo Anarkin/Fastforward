@@ -1,4 +1,10 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import '@xterm/xterm/css/xterm.css';
 import './style.css';
 import { folderMenuItems } from './folderMenu';
@@ -33,6 +39,15 @@ export function TerminalTool({
     state.shown === undefined ? undefined : state.finds.get(state.shown),
   );
   const findInput = useRef<HTMLInputElement>(null);
+  const asked = find?.asked;
+  const answered = useRef(asked);
+  useLayoutEffect(() => {
+    if (asked !== undefined && asked !== answered.current) {
+      findInput.current?.focus();
+      findInput.current?.select();
+    }
+    answered.current = asked;
+  }, [asked]);
   const {
     receive,
     listenScreen,
@@ -85,10 +100,7 @@ export function TerminalTool({
           onCopy,
           scrolling: scrollingOf,
           cursor: pageCursorLook(),
-          onFind: (selected) => {
-            openFind(shown, selected);
-            requestAnimationFrame(() => findInput.current?.select());
-          },
+          onFind: (selected) => openFind(shown, selected),
           onFound: (found) => foundFor(shown, found),
         });
         const kept = store.getState().finds.get(shown);

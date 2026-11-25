@@ -26,6 +26,7 @@ interface TerminalFind {
   readonly query: string;
   readonly options: SearchOptions;
   readonly found: MatchesFound;
+  readonly asked: number;
 }
 
 const nothingFound: MatchesFound = { current: 0, matches: 0 };
@@ -78,6 +79,7 @@ export function createTerminalStore(
             query: selected !== '' ? selected : (kept?.query ?? ''),
             options: kept?.options ?? plainSearch,
             found: kept?.found ?? nothingFound,
+            asked: (kept?.asked ?? 0) + 1,
           }),
         };
       }),

@@ -75,9 +75,10 @@ suite('Terminal store', () => {
     ]);
   });
 
-  test('keeps the search of each tab apart, opened with the text selected, its toggles and the matches counted, until it is closed', () => {
+  test('keeps the search of each tab apart, opened with the text selected, its toggles, the matches counted and how often it was asked for, so its box takes the keyboard only when asked, until it is closed', () => {
     const store = createTerminalStore(() => undefined);
     const { openFind, findFor, foundFor, closeFind } = store.getState();
+    openFind('1', '');
     openFind('1', 'npm');
     openFind('2', '');
     findFor('1', 'npm run', { ...plainSearch, wholeWord: true });
@@ -87,7 +88,12 @@ suite('Terminal store', () => {
     assert.deepStrictEqual(
       [opened.get('2'), [...store.getState().finds]],
       [
-        { query: '', options: plainSearch, found: { current: 0, matches: 0 } },
+        {
+          query: '',
+          options: plainSearch,
+          found: { current: 0, matches: 0 },
+          asked: 1,
+        },
         [
           [
             '1',
@@ -95,6 +101,7 @@ suite('Terminal store', () => {
               query: 'npm run',
               options: { ...plainSearch, wholeWord: true },
               found: { current: 2, matches: 5 },
+              asked: 2,
             },
           ],
         ],
