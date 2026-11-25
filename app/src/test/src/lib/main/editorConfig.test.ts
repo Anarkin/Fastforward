@@ -1,10 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import {
-  editorConfigOf,
-  globPattern,
-} from '../../../../../tools/editor/main/config';
+import { editorConfigOf, globPattern } from '../../../../lib/main/editorConfig';
 
 const root = path.resolve('/work');
 const at = (...parts: string[]) => path.join(root, ...parts);
@@ -31,7 +28,7 @@ suite('EditorConfig', () => {
     assert.ok(!matches('v{1..3}.txt', 'v4.txt'));
   });
 
-  test('takes the properties of the sections that match the file, a later section over an earlier one and a file closer to it over one further, up to the one that says it is the root', async () => {
+  test('takes the properties of the sections that match the file, a later section over an earlier one and a file closer to it over one further, up to the one that says it is the root, naming the file each came from', async () => {
     const config = await editorConfigOf(
       at('src', 'app', 'main.ts'),
       reading({
@@ -62,6 +59,8 @@ suite('EditorConfig', () => {
       setIn: {
         endOfLine: at('src', '.editorconfig'),
         charset: at('src', '.editorconfig'),
+        indentStyle: at('src', '.editorconfig'),
+        indentSize: at('src', '.editorconfig'),
       },
     });
   });
@@ -80,7 +79,11 @@ suite('EditorConfig', () => {
         indentStyle: 'tab',
         tabWidth: 8,
         files: [at('.editorconfig')],
-        setIn: { charset: at('.editorconfig') },
+        setIn: {
+          charset: at('.editorconfig'),
+          indentStyle: at('.editorconfig'),
+          tabWidth: at('.editorconfig'),
+        },
       },
     );
     assert.deepStrictEqual(await editorConfigOf(at('a.txt'), reading({})), {

@@ -1,5 +1,9 @@
+import type { FileTabSize } from '../shared/tabSize';
 import * as path from 'node:path';
-import { isLineEnding, type LineEnding } from '../shared/textMarks';
+type LineEnding = 'lf' | 'crlf' | 'cr';
+
+const isLineEnding = (value: unknown): value is LineEnding =>
+  value === 'lf' || value === 'crlf' || value === 'cr';
 
 const charsets = [
   'latin1',
@@ -23,6 +27,9 @@ export interface EditorConfig {
   readonly setIn: {
     readonly endOfLine?: string;
     readonly charset?: string;
+    readonly indentStyle?: string;
+    readonly indentSize?: string;
+    readonly tabWidth?: string;
   };
 }
 
@@ -175,6 +182,16 @@ function typed(
   const trimTrailingWhitespace = boolean(valueOf('trim_trailing_whitespace'));
   const endOfLineIn = properties.get('end_of_line')?.file;
   const charsetIn = properties.get('charset')?.file;
+  const fileOf = (key: string, value: unknown) => {
+    const file = properties.get(key)?.file;
+    return value === undefined || file === undefined ? undefined : file;
+  };
+  const indentStyleIn = fileOf(
+    'indent_style',
+    indentStyle === 'space' || indentStyle === 'tab' ? indentStyle : undefined,
+  );
+  const indentSizeIn = fileOf('indent_size', indentSize);
+  const tabWidthIn = fileOf('tab_width', tabWidth);
   return {
     ...(isLineEnding(endOfLine) && { endOfLine }),
     ...(isCharset(charset) && { charset }),
@@ -189,6 +206,9 @@ function typed(
         endOfLineIn !== undefined && { endOfLine: endOfLineIn }),
       ...(isCharset(charset) &&
         charsetIn !== undefined && { charset: charsetIn }),
+      ...(indentStyleIn !== undefined && { indentStyle: indentStyleIn }),
+      ...(indentSizeIn !== undefined && { indentSize: indentSizeIn }),
+      ...(tabWidthIn !== undefined && { tabWidth: tabWidthIn }),
     },
   };
 }
@@ -238,4 +258,25 @@ export async function editorConfigOf(
     }
   }
   return typed(properties, files);
+}
+
+export function fileTabSizeOf(config: EditorConfig): FileTabSize | undefined {
+  if (config.tabWidth !== undefined) {
+    return {
+      size: config.tabWidth,
+      key: 'tab_width',
+      ...(config.setIn.tabWidth !== undefined && {
+        file: config.setIn.tabWidth,
+      }),
+    };
+  }
+  return config.indentSize === undefined
+    ? undefined
+    : {
+        size: config.indentSize,
+        key: 'indent_size',
+        ...(config.setIn.indentSize !== undefined && {
+          file: config.setIn.indentSize,
+        }),
+      };
 }

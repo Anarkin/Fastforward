@@ -1,3 +1,4 @@
+import { widthsFor } from '../../../lib/page/textWidths';
 import {
   EditorSelection,
   type EditorState,
@@ -15,8 +16,6 @@ import { clicked } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
 import { pointerHeld } from './occurrences';
 import { charAt, gridOf, rowsOf, type Grid } from './grid';
-
-const beyondAscii = /[^\0-\x7f]/;
 
 const reachMs = 50;
 
@@ -77,7 +76,7 @@ export function blockBetween(
   const last = Math.max(from.line, to.line);
   for (let number = first; number <= last; number++) {
     const line = state.doc.line(number);
-    const widths = beyondAscii.test(line.text) ? grid.widths : undefined;
+    const widths = widthsFor(line.text, grid.widths);
     const charOf = (column: number) =>
       charAtColumn(line.text, 0, line.length, 0, column, widths);
     const anchor = charOf(from.column);

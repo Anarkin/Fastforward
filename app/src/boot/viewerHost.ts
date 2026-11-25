@@ -1,3 +1,5 @@
+import { fs } from '../lib/main/files';
+import { editorConfigOf, fileTabSizeOf } from '../lib/main/editorConfig';
 import { clipboard } from 'electron';
 import { watchFolder } from '../lib/main/watch';
 import { systemCodePage } from '../components/encodings/main/codePages';
@@ -28,6 +30,10 @@ export function viewerToolOf({
       void clipboard.writeText(text);
     },
     codePage: () => systemCodePage(process.platform),
+    fileTabSize: (file) =>
+      editorConfigOf(file, (config) =>
+        fs.promises.readFile(config, 'utf8').catch(() => undefined),
+      ).then(fileTabSizeOf),
     watch: watchFolder,
     pdfPlaces,
     hiddenParts: (file) => commanderTool.hiddenParts(file),

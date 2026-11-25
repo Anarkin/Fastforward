@@ -1,7 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useCellTable, type CellTable } from '../../../lib/page/cellTable';
 import { fontDotLook, type DotLook } from '../../../lib/page/dotLook';
-import { textWidths, type TextWidths } from '../../../lib/page/textWidths';
+import {
+  textWidths,
+  withTabSize,
+  type TextWidths,
+} from '../../../lib/page/textWidths';
 import type { CellFont } from './cellLook';
 
 interface CellFontMeasured {
@@ -12,7 +16,7 @@ interface CellFontMeasured {
   readonly dotLook: DotLook | undefined;
 }
 
-export function useCellFont(): CellFontMeasured {
+export function useCellFont(tabSize?: number): CellFontMeasured {
   const [font, setFont] = useState<CellFont>({
     char: 0,
     family: '',
@@ -31,9 +35,12 @@ export function useCellFont(): CellFontMeasured {
   const widths = useMemo(
     () =>
       font.char > 0 && table !== undefined
-        ? textWidths(font.char, font.family, font.spacing, table)
+        ? withTabSize(
+            textWidths(font.char, font.family, font.spacing, table),
+            tabSize,
+          )
         : undefined,
-    [font, table],
+    [font, table, tabSize],
   );
   const dotLook = useMemo(
     () => fontDotLook(font.family, font.char, 1 / devicePixelRatio),

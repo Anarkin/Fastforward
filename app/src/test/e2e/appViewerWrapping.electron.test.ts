@@ -7,6 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import {
   copied,
   dragOver,
+  cellsOf,
   keepCopied,
   rightOfCell,
   seenDots,
@@ -479,7 +480,7 @@ suite('App commander', () => {
     const settings: { text?: object } = JSON.parse(saved);
     fs.writeFileSync(
       path.join(opened, 'tabbed.txt'),
-      ['        |', '	|'].join(String.fromCharCode(10)),
+      ['        |', String.fromCharCode(9) + '|'].join(String.fromCharCode(10)),
     );
     try {
       await select('tabbed');
@@ -492,14 +493,55 @@ suite('App commander', () => {
       const set = await barsOf();
       assert.deepStrictEqual({ byDefault, set }, { byDefault: [-4], set: [0] });
     } finally {
-      await writeSettings(page, profile, JSON.parse(saved));
       if (await page.locator('.viewer').isVisible()) {
         await page.keyboard.press('Escape');
         await page.locator('.viewer').waitFor({ state: 'detached' });
       }
+      await writeSettings(page, profile, JSON.parse(saved));
       fs.rmSync(path.join(opened, 'tabbed.txt'));
       await waitFor(
         async () => !(await rowNames()).includes('tabbed.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('draws a tab as wide as tab_width of the .editorconfig of the file, over the tab size of the settings, in the viewer and in the editor alike', async () => {
+    const config = path.join(opened, '.editorconfig');
+    fs.writeFileSync(
+      config,
+      ['[*.tsv]', 'tab_width = 8', ''].join(String.fromCharCode(10)),
+    );
+    fs.writeFileSync(
+      path.join(opened, 'wide.tsv'),
+      ['        |', String.fromCharCode(9) + '|'].join(String.fromCharCode(10)),
+    );
+    try {
+      await select('wide');
+      await page.keyboard.press('F3');
+      const viewed = await barsOf();
+      await page.keyboard.press('F4');
+      const edited = cellsOf(page, '.editor .editor-cells');
+      await waitFor(
+        async () => (await edited.glyphs('|')).length === 2,
+        'the bars in the editor',
+      );
+      const columns = (await edited.glyphs('|')).map(({ column }) => column);
+      assert.deepStrictEqual(
+        { viewed, edited: columns },
+        { viewed: [0], edited: [8, 8] },
+      );
+    } finally {
+      for (const shown of ['.editor', '.viewer']) {
+        if (await page.locator(shown).isVisible()) {
+          await page.keyboard.press('Escape');
+          await page.locator(shown).waitFor({ state: 'detached' });
+        }
+      }
+      fs.rmSync(config);
+      fs.rmSync(path.join(opened, 'wide.tsv'));
+      await waitFor(
+        async () => !(await rowNames()).includes('wide.tsv'),
         'the file to be gone from the list',
       );
     }

@@ -1,3 +1,4 @@
+import type { FileTabSize } from '../../../lib/shared/tabSize';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { EncodingChoice } from '../../../components/encodings/page/encodings';
@@ -21,6 +22,7 @@ export interface ViewerSource {
   readonly versions: ReadonlyMap<string, ListedVersions>;
   readonly viewed: Viewing | undefined;
   readonly keptViewed: ReadonlyMap<string, Viewing>;
+  readonly fileTabSizes: ReadonlyMap<string, FileTabSize | undefined>;
   readonly choices: ReadonlyMap<string, ViewerChoices>;
   readonly tabViews: ReadonlyMap<string, ViewerTabView>;
   readonly places: ReadonlyMap<string, number>;
@@ -87,6 +89,7 @@ export const viewerDefaults: ViewerSource = {
   versions: new Map(),
   viewed: undefined,
   keptViewed: new Map(),
+  fileTabSizes: new Map(),
   choices: new Map(),
   tabViews: new Map(),
   places: new Map(),

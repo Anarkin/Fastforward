@@ -14,7 +14,7 @@ import type { ViewerFind } from './find';
 import { textMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
 import { columnAt } from '../../../components/cells/page/columns';
-import { cellWidthsOf } from '../../../lib/page/textWidths';
+import { cellWidthsOf, withTabSize } from '../../../lib/page/textWidths';
 import { plainCells } from '../../../lib/page/cellTable';
 import { useCellFont } from '../../../components/cells/page/cellFont';
 import { useViewer, useViewerActions } from './store';
@@ -75,8 +75,12 @@ export function TextBody({
   const [measured, setMeasured] = useState<number>();
   const screen = measured ?? 1;
   const [columns, setColumns] = useState<number>();
-  const { font, onFont, table, widths, dotLook } = useCellFont();
-  const counting = widths ?? cellWidthsOf(table ?? plainCells);
+  const tabSize = useViewer((state) =>
+    state.fileTabSizes.get(viewing.tab),
+  )?.size;
+  const { font, onFont, table, widths, dotLook } = useCellFont(tabSize);
+  const counting =
+    widths ?? withTabSize(cellWidthsOf(table ?? plainCells), tabSize);
   const wordWrap = useShell((state) => state.textView.wordWrap);
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const highlightOccurrences = useShell(

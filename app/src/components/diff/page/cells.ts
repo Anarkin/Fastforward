@@ -1,3 +1,4 @@
+import { widthsFor } from '../../../lib/page/textWidths';
 import type { CellFont } from '../../cells/page/cellLook';
 import type {
   Band,
@@ -32,7 +33,7 @@ import { clicked } from '../../../lib/shared/keymap';
 import type { FindRange } from './find';
 import { diffKeymap } from './keymap';
 import { paneLine, paneOf } from './paneLines';
-import { beyondAscii, type WrapColumns } from './rowMeasures';
+import { type WrapColumns } from './rowMeasures';
 import type { DiffRow } from './rows';
 import { codePadding, numberWidth } from './textLayout';
 import { bandTint, diffLookOf, lineClass, rowTints } from './tints';
@@ -318,7 +319,7 @@ export class DiffCells {
       : wrappedRows(
           lined.line,
           this.columnsOf(pane),
-          beyondAscii.test(lined.line.text) ? shown.widths : undefined,
+          widthsFor(lined.line.text, shown.widths),
         );
   }
 
@@ -538,7 +539,7 @@ export class DiffCells {
                 lined.line.text.length,
                 Math.max(0, Math.floor(first) - 1),
                 Math.floor(first) + inSight,
-                beyondAscii.test(lined.line.text) ? shown.widths : undefined,
+                widthsFor(lined.line.text, shown.widths),
               )
             : { from: part.from, to: part.to, column: part.indent },
         );

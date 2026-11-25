@@ -5,7 +5,7 @@ import type { GitLocator } from '../tools/git/main/gitLocator';
 import { watchFolder } from '../lib/main/watch';
 import { systemCodePage } from '../components/encodings/main/codePages';
 import type { CommanderTool } from '../tools/commander/main/tool';
-import { editorConfigOf } from '../tools/editor/main/config';
+import { editorConfigOf } from '../lib/main/editorConfig';
 import { saveFile } from '../tools/editor/main/fileSaving';
 import { gitEndingOf } from '../tools/editor/main/gitEnding';
 import {

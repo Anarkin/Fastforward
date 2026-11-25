@@ -318,7 +318,7 @@ export function rowHeight(
   return isMeasured(kind) ? undefined : rowLines[kind] * lineHeight;
 }
 
-export const beyondAscii = /[^\0-\x7f]/;
+const beyondAscii = /[^\0-\x7f]/;
 
 export function markedRows(
   rows: readonly DiffRow[],

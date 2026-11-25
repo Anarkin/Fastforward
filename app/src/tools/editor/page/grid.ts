@@ -1,3 +1,5 @@
+import { tabSizeField } from './indent';
+import { widthsFor } from '../../../lib/page/textWidths';
 import { clusterBreak } from '../../../lib/page/graphemes';
 import { type Line } from '@codemirror/state';
 import type { EditorSurface } from './surface';
@@ -11,8 +13,6 @@ import { cellsOf } from '../../../lib/page/cellTable';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import { textAdvance, textLeft, wrapColumnsOf } from './rows';
-
-const beyondAscii = /[^\0-\x7f]/;
 
 export interface Grid {
   readonly advance: number;
@@ -36,7 +36,20 @@ export interface GridPlace {
   readonly column: number;
 }
 
-const cellWidths: TextWidths = { char: 1, of: (cluster) => cellsOf(cluster) };
+const cellWidths = new Map<number | undefined, TextWidths>();
+
+function cellWidthsOf(tabSize: number | undefined): TextWidths {
+  let widths = cellWidths.get(tabSize);
+  if (widths === undefined) {
+    widths = {
+      char: 1,
+      of: (cluster) => cellsOf(cluster),
+      ...(tabSize !== undefined && { tabSize }),
+    };
+    cellWidths.set(tabSize, widths);
+  }
+  return widths;
+}
 
 export function gridOf(view: EditorSurface): Grid | undefined {
   if (!view.contentDOM.isConnected) {
@@ -50,7 +63,7 @@ export function gridOf(view: EditorSurface): Grid | undefined {
         rowHeight,
         left: textLeft(view),
         columns: view.lineWrapping ? wrapColumnsOf(view) : undefined,
-        widths: cellWidths,
+        widths: cellWidthsOf(view.state.field(tabSizeField, false)),
       }
     : undefined;
 }
@@ -76,11 +89,7 @@ export function rowsOf(
   { columns, widths }: Pick<Grid, 'columns' | 'widths'>,
   line: Pick<Line, 'number' | 'text'>,
 ): readonly ScreenRow[] {
-  return wrappedRows(
-    keptLine(line),
-    columns,
-    beyondAscii.test(line.text) ? widths : undefined,
-  );
+  return wrappedRows(keptLine(line), columns, widthsFor(line.text, widths));
 }
 
 export function rowHolding(
@@ -109,7 +118,7 @@ export function columnIn(
       text,
       Math.min(char, text.length),
       row.from,
-      beyondAscii.test(text) ? widths : undefined,
+      widthsFor(text, widths),
     )
   );
 }
@@ -144,7 +153,7 @@ export function charAt(
     row.to,
     row.indent,
     column,
-    beyondAscii.test(text) ? widths : undefined,
+    widthsFor(text, widths),
   );
 }
 

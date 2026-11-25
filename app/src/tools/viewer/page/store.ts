@@ -109,6 +109,7 @@ export function createViewerStore(
           set((state) => ({
             caches: without(state.caches, tab),
             keptViewed: without(state.keptViewed, tab),
+            fileTabSizes: without(state.fileTabSizes, tab),
             choices: without(state.choices, tab),
             tabViews: without(state.tabViews, tab),
             places: without(state.places, tab),
@@ -196,6 +197,14 @@ export function createViewerStore(
             }));
             break;
           }
+          case 'tabSize':
+            set((state) => ({
+              fileTabSizes: new Map(state.fileTabSizes).set(
+                message.tab,
+                message.tabSize,
+              ),
+            }));
+            break;
           case 'viewing': {
             const viewed = viewingOf(message);
             if (!sameViewing(get().viewed, viewed)) {

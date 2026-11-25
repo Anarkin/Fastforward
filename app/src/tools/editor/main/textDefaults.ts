@@ -7,7 +7,12 @@ import type {
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { EditorSettings } from '../shared/settings';
 import { isLineEnding, type LineEnding } from '../shared/textMarks';
-import type { EditorCharset, EditorConfig } from './config';
+import {
+  fileTabSizeOf,
+  type EditorCharset,
+  type EditorConfig,
+} from '../../../lib/main/editorConfig';
+import type { FileTabSize } from '../../../lib/shared/tabSize';
 import type { GitEnding } from './gitEnding';
 
 export interface TextDefaults {
@@ -16,6 +21,7 @@ export interface TextDefaults {
   readonly bom: boolean;
   readonly indent?: string;
   readonly fallbackIndent: string;
+  readonly tabSize?: FileTabSize;
   readonly charsets: readonly CharsetSource[];
   readonly trimTrailingWhitespace?: true;
   readonly insertFinalNewline?: true;
@@ -135,6 +141,7 @@ export async function textDefaultsOf(
       ? charsetOf(settings.charset)
       : { encoding: charset.encoding, bom: charset.bom === true };
   const indent = indentOf(config);
+  const tabSize = fileTabSizeOf(config);
   return {
     ending,
     encoding,
@@ -142,6 +149,7 @@ export async function textDefaultsOf(
     ...(indent !== undefined && { indent }),
     fallbackIndent:
       settings.indentStyle === 'tab' ? '\t' : ' '.repeat(settings.indentSize),
+    ...(tabSize !== undefined && { tabSize }),
     charsets: sources.charsets,
     ...(config.trimTrailingWhitespace === true && {
       trimTrailingWhitespace: true,
@@ -152,7 +160,11 @@ export async function textDefaultsOf(
 
 export type TextRules = Pick<
   TextShown,
-  'indent' | 'fallbackIndent' | 'trimTrailingWhitespace' | 'insertFinalNewline'
+  | 'indent'
+  | 'fallbackIndent'
+  | 'tabSize'
+  | 'trimTrailingWhitespace'
+  | 'insertFinalNewline'
 >;
 
 export const rulesOf = (defaults: TextDefaults | undefined) =>
@@ -162,6 +174,7 @@ export const rulesOf = (defaults: TextDefaults | undefined) =>
         rules: {
           ...(defaults.indent !== undefined && { indent: defaults.indent }),
           fallbackIndent: defaults.fallbackIndent,
+          ...(defaults.tabSize !== undefined && { tabSize: defaults.tabSize }),
           ...(defaults.trimTrailingWhitespace === true && {
             trimTrailingWhitespace: true,
           }),

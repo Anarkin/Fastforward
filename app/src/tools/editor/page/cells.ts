@@ -1,3 +1,5 @@
+import { tabSizeField } from './indent';
+import { widthsFor } from '../../../lib/page/textWidths';
 import type { Extension } from '@codemirror/state';
 import {
   surfacePlugin,
@@ -60,8 +62,6 @@ const rowClass = 'editor-row';
 const mostCanvas = 8192;
 
 const layoutUnits = 64;
-
-const beyondAscii = /[^\0-\x7f]/;
 
 const noRowsAhead: readonly never[] = [];
 
@@ -249,8 +249,17 @@ class EditorCells implements SurfacePart {
       return;
     }
     this.drawn = drawn;
-    if (this.widths === undefined || this.widths.char !== char) {
-      this.widths = elementWidths(view.contentDOM, this.table);
+    const tabSize = view.state.field(tabSizeField, false);
+    if (
+      this.widths === undefined ||
+      this.widths.char !== char ||
+      this.widths.tabSize !== tabSize
+    ) {
+      const measured = elementWidths(view.contentDOM, this.table);
+      this.widths =
+        measured === undefined || tabSize === undefined
+          ? measured
+          : { ...measured, tabSize };
     }
     const { widths } = this;
     if (widths === undefined) {
@@ -337,11 +346,7 @@ class EditorCells implements SurfacePart {
     ) {
       const at = doc.lineAt(block.from);
       const line = this.lines.of(at.number, at.text, shown.endingOf(at));
-      const wrapped = wrappedRows(
-        line,
-        columns,
-        beyondAscii.test(line.text) ? widths : undefined,
-      );
+      const wrapped = wrappedRows(line, columns, widthsFor(line.text, widths));
       for (const [index, part] of wrapped.entries()) {
         const y = block.top + index * lineHeight;
         if (y + lineHeight <= drawn.top || y >= drawn.bottom) {
@@ -357,7 +362,7 @@ class EditorCells implements SurfacePart {
                 line.text.length,
                 Math.max(0, Math.floor(first) - 1),
                 Math.floor(first) + inSight,
-                beyondAscii.test(line.text) ? widths : undefined,
+                widthsFor(line.text, widths),
               )
             : { from: part.from, to: part.to, column: part.indent },
         );

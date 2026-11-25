@@ -222,6 +222,7 @@ export function newView(
       viewer: new ViewerTool({
         copy: () => undefined,
         codePage: () => Promise.resolve('windows-1252'),
+        fileTabSize: () => Promise.resolve(undefined),
         watch: () => () => {},
         pdfPlaces: {
           of: () => Promise.resolve(undefined),

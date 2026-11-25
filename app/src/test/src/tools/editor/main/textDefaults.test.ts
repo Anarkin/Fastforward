@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import type { EditorConfig } from '../../../../../tools/editor/main/config';
+import type { EditorConfig } from '../../../../../lib/main/editorConfig';
 import type { GitEnding } from '../../../../../tools/editor/main/gitEnding';
 import {
   endingSourcesOf,
@@ -160,5 +160,26 @@ suite('What a file edited gets', () => {
       '  ',
     );
     assert.strictEqual((await defaultsOf({})).indent, undefined);
+  });
+
+  test('draws a tab as wide as tab_width of its .editorconfig says, else as indent_size, as the EditorConfig spec defaults one to the other, else leaves it to the settings', async () => {
+    assert.deepStrictEqual(
+      [
+        (
+          await defaultsOf({
+            tabWidth: 8,
+            indentSize: 2,
+            setIn: { tabWidth: 'a/.editorconfig' },
+          })
+        ).tabSize,
+        (await defaultsOf({ indentStyle: 'tab', indentSize: 2 })).tabSize,
+        (await defaultsOf({})).tabSize,
+      ],
+      [
+        { size: 8, key: 'tab_width', file: 'a/.editorconfig' },
+        { size: 2, key: 'indent_size' },
+        undefined,
+      ],
+    );
   });
 });

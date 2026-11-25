@@ -1,5 +1,10 @@
 import { indentUnit } from '@codemirror/language';
-import { StateField, type Extension, type Text } from '@codemirror/state';
+import {
+  StateEffect,
+  StateField,
+  type Extension,
+  type Text,
+} from '@codemirror/state';
 
 const leadPattern = /^[ \t]*/;
 const scannedLines = 10_000;
@@ -51,4 +56,23 @@ export function indentionOf(
   }: { readonly indent?: string; readonly fallbackIndent?: string },
 ): Extension {
   return indentField.init(() => indent ?? detectedIndent(doc, fallbackIndent));
+}
+
+export const setTabSize = StateEffect.define<number | undefined>();
+
+export const tabSizeField = StateField.define<number | undefined>({
+  create: () => undefined,
+  update: (size, transaction) =>
+    transaction.effects.reduce(
+      (chosen, effect) => (effect.is(setTabSize) ? effect.value : chosen),
+      size,
+    ),
+});
+
+export function tabSizeFrom({
+  tabSize,
+}: {
+  readonly tabSize?: { readonly size: number };
+}): Extension {
+  return tabSizeField.init(() => tabSize?.size);
 }

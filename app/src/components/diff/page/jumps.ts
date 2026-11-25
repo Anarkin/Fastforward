@@ -1,3 +1,4 @@
+import { widthsFor } from '../../../lib/page/textWidths';
 import type { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import {
   useEffect,
@@ -13,7 +14,7 @@ import { foundMiddle, foundRows, foundScroll } from './found';
 import { wrappedRows } from '../../cells/page/lines';
 import { paneLine } from './paneLines';
 import { jumpStep, type FindMatch } from './find';
-import { beyondAscii, rowLines, type WrapColumns } from './rowMeasures';
+import { rowLines, type WrapColumns } from './rowMeasures';
 import { readSideBox } from './sideways';
 
 export function useFoundJumps({
@@ -176,7 +177,7 @@ export function useRevealFound({
           wrappedRows(
             lined.line,
             pane === 0 ? wrapping?.left : wrapping?.right,
-            beyondAscii.test(lined.line.text) ? widths : undefined,
+            widthsFor(lined.line.text, widths),
           ),
           found,
           lineHeight,

@@ -1,3 +1,4 @@
+import { tabSizeField } from './indent';
 import {
   ChangeSet,
   EditorSelection,
@@ -409,8 +410,16 @@ export class EditorSurface {
     if (widths === undefined || !(rowHeight > 0)) {
       return undefined;
     }
-    if (this.measured?.char !== widths.char) {
-      this.measured = { char: widths.char, of: widths.of };
+    const tabSize = this.current.field(tabSizeField, false);
+    if (
+      this.measured?.char !== widths.char ||
+      this.measured.tabSize !== tabSize
+    ) {
+      this.measured = {
+        char: widths.char,
+        of: widths.of,
+        ...(tabSize !== undefined && { tabSize }),
+      };
     }
     const pixel = 1 / ratio;
     return {
@@ -486,7 +495,9 @@ export class EditorSurface {
     this.current = state;
     const docChanged = transactions.some((each) => each.docChanged);
     const rewrapped =
-      startState.facet(linesWrapped) !== state.facet(linesWrapped);
+      startState.facet(linesWrapped) !== state.facet(linesWrapped) ||
+      startState.field(tabSizeField, false) !==
+        state.field(tabSizeField, false);
     const rowsBefore = this.rows;
     let relaid = geometryChanged;
     if (rewrapped) {

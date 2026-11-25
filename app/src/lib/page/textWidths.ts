@@ -110,3 +110,23 @@ export function elementWidths(
     ? textWidths(char, font, spacing, table, () => measurer)
     : undefined;
 }
+
+const beyondAscii = /[^\0-\x7f]/;
+
+export function widthsFor(
+  text: string,
+  widths: TextWidths | undefined,
+): TextWidths | undefined {
+  return widths?.tabSize !== undefined || beyondAscii.test(text)
+    ? widths
+    : undefined;
+}
+
+export function withTabSize(
+  widths: TextWidths,
+  tabSize: number | undefined,
+): TextWidths {
+  return tabSize === undefined || widths.tabSize === tabSize
+    ? widths
+    : { ...widths, tabSize };
+}

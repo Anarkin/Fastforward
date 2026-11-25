@@ -49,6 +49,12 @@ export function viewer() {
       clipboard.push(text);
     },
     codePage: () => Promise.resolve('windows-1250'),
+    fileTabSize: (file) =>
+      Promise.resolve(
+        file.endsWith('.go')
+          ? { size: 8, key: 'tab_width' as const, file: '.editorconfig' }
+          : undefined,
+      ),
     watch: (file, changed) => {
       const watch = { file, changed };
       watching.push(watch);

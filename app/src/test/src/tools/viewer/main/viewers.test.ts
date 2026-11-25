@@ -48,6 +48,28 @@ suite('Viewer tool viewing a file', () => {
       ],
     );
   });
+  test('tells the tab width the .editorconfig of a file viewed asks for, and where it says so, or that it asks for none', async () => {
+    const go = path.join(opened, 'main.go');
+    const notes = path.join(opened, 'plain.txt');
+    fs.writeFileSync(go, 'package main');
+    fs.writeFileSync(notes, 'one');
+    const { tool, page } = viewer();
+    await tool.show(page, { id: '4', tool: 'viewer', root: go });
+    await tool.show(page, { id: '5', tool: 'viewer', root: notes });
+    await waitFor(
+      () => Promise.resolve(page.of('tabSize').length === 2),
+      'both tab widths told',
+    );
+    assert.deepStrictEqual(page.of('tabSize'), [
+      {
+        type: 'tabSize',
+        tab: '4',
+        tabSize: { size: 8, key: 'tab_width', file: '.editorconfig' },
+      },
+      { type: 'tabSize', tab: '5' },
+    ]);
+  });
+
   test('tells the size of a file viewed and reads its rows around a place, answering each request by its number', async () => {
     const notes = path.join(opened, 'notes.txt');
     fs.writeFileSync(notes, 'one\ntwo\nthree\nfour\n');

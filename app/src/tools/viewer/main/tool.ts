@@ -1,3 +1,4 @@
+import type { FileTabSize } from '../../../lib/shared/tabSize';
 import { sameRoot } from '../../../lib/main/paths';
 import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
@@ -34,6 +35,7 @@ type VersionCopy =
 export interface ViewerAccess {
   readonly copy: (text: string) => void;
   readonly codePage: () => Promise<TextEncoding>;
+  readonly fileTabSize: (file: string) => Promise<FileTabSize | undefined>;
   readonly watch: WatchFolder;
   readonly pdfPlaces: PdfPlaceStore;
   readonly hiddenParts: (file: string) => Promise<readonly boolean[]>;

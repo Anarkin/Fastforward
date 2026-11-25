@@ -1,3 +1,4 @@
+import type { FileTabSize } from '../../../lib/shared/tabSize';
 import type { ListedVersions } from '../../../components/versions/shared/versions';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
@@ -120,6 +121,11 @@ export type ViewerToWebview =
     } & ListedVersions)
   | { readonly type: 'hide' }
   | { readonly type: 'closed'; readonly tab: string }
+  | {
+      readonly type: 'tabSize';
+      readonly tab: string;
+      readonly tabSize?: FileTabSize;
+    }
   | {
       readonly type: 'viewing';
       readonly tab: string;

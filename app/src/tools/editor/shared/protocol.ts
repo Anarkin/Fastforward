@@ -1,3 +1,4 @@
+import type { FileTabSize } from '../../../lib/shared/tabSize';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import type { KeptBytes, LineEnding, StrayEnding } from './textMarks';
@@ -50,6 +51,7 @@ export interface TextShown {
   readonly keptBytes: readonly KeptBytes[];
   readonly indent?: string;
   readonly fallbackIndent?: string;
+  readonly tabSize?: FileTabSize;
   readonly trimTrailingWhitespace?: true;
   readonly insertFinalNewline?: true;
 }

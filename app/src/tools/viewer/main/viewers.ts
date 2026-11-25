@@ -1,3 +1,4 @@
+import type { FileTabSize } from '../../../lib/shared/tabSize';
 import { fs } from '../../../lib/main/files';
 import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
@@ -29,6 +30,7 @@ import { post } from './post';
 
 export interface ViewersAccess {
   readonly codePage: () => Promise<TextEncoding>;
+  readonly fileTabSize: (file: string) => Promise<FileTabSize | undefined>;
   readonly watch: WatchFolder;
 }
 
@@ -149,6 +151,10 @@ export class Viewers {
       hidden,
       ...(detected !== undefined && { detected }),
     });
+    const tabSize = await this.access.fileTabSize(file);
+    if (current()) {
+      post(page, { type: 'tabSize', tab, ...(tabSize && { tabSize }) });
+    }
   }
 
   async readBytes(
