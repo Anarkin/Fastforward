@@ -1,3 +1,4 @@
+import type { FindRange } from '../../../lib/shared/textMatches';
 import type { ShownBubble } from './commitHits';
 
 export type RowLook =
@@ -11,6 +12,10 @@ export type RowLook =
       readonly compareFrom: boolean;
       readonly bubbles: readonly ShownBubble[];
       readonly lines: readonly number[] | undefined;
+      readonly marks?: {
+        readonly subject: readonly FindRange[];
+        readonly author: readonly FindRange[];
+      };
     }
   | {
       readonly kind: 'workingTree';

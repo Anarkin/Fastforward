@@ -11,7 +11,6 @@ import {
   ColumnShown,
   ContextMenuShown,
   NoticesShown,
-  SearchButtonShown,
 } from '../../../helpers/styleFixtures';
 import { columnTitle, diffView } from '../../../helpers/styleMarkup';
 import {
@@ -268,11 +267,6 @@ suite('Style', () => {
     ]) {
       looks(field, { height: 'var(--search-height)' });
     }
-    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      width: 'var(--button-size)',
-      height: 'var(--button-size)',
-      'border-radius': 'var(--radius)',
-    });
   });
 
   test('draws the edge of a column over the search popup that covers the column, but under menus and notices', () => {
@@ -478,10 +472,7 @@ suite('Style', () => {
     }
   });
 
-  test('mutes the search placeholders like other muted text, the magnifier of the search button in the color of every button', () => {
-    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      color: 'var(--color-foreground)',
-    });
+  test('mutes the search placeholders like other muted text', () => {
     for (const field of [
       withClass(rendered(<LocationsPopupShown query="" />), 'search-box-input'),
       withClass(rendered(<DiffFindShown />), 'search-box-input'),

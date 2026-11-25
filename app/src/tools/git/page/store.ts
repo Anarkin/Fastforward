@@ -315,13 +315,19 @@ export function createGitStore(
           postTab({ type: 'lookupHash', query });
           return () => undefined;
         }),
-      searchCommits: (query, options) =>
+      searchCommits: (query, options, limit) =>
         startAfter(commitSearchDelay, () => {
           const { root } = get().tab;
           if (root === undefined) {
             return () => undefined;
           }
-          post({ type: 'searchCommits', query, options, root });
+          post({
+            type: 'searchCommits',
+            query,
+            options,
+            root,
+            ...(limit !== undefined && { limit }),
+          });
           return () => post({ type: 'stopCommitSearch', root });
         }),
       fetch: () => postTab({ type: 'fetch' }),
@@ -412,6 +418,24 @@ export function createGitStore(
             });
           }
           return { fileFilters };
+        }),
+      filterCommits: (filter, options) =>
+        set((state) => {
+          const { root } = state.tab;
+          if (root === undefined) {
+            return state;
+          }
+          const commitFilters = new Map(state.commitFilters);
+          if (filter === undefined) {
+            commitFilters.delete(root);
+          } else {
+            commitFilters.set(root, {
+              query: filter,
+              options:
+                options ?? commitFilters.get(root)?.options ?? plainSearch,
+            });
+          }
+          return { commitFilters };
         }),
       toggleFolder: (kind, folder) =>
         set((state) => {

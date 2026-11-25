@@ -14,10 +14,7 @@ import {
   DiffFindShown,
   DiffOptionsShown,
 } from '../../../helpers/styleDiffFixtures';
-import {
-  MenuButtonShown,
-  SearchButtonShown,
-} from '../../../helpers/styleFixtures';
+import { MenuButtonShown } from '../../../helpers/styleFixtures';
 import {
   LocationsPopupShown,
   NavButtonsShown,
@@ -86,7 +83,6 @@ function barsShown(): MarkupElement[] {
       renderedBy(Column, {
         start: <DiffOptionsShown />,
         actions: <MenuButtonShown label="Details" />,
-        search: <SearchButtonShown />,
         children: null,
       }),
     ),

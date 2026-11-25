@@ -16,7 +16,7 @@ import { waitForCount, waitForFocus } from './waits';
 import { wheelsByWholeRows } from './scrollProbes';
 import { locationRows } from '../../tools/git/page/locationKeys';
 import { waitFor } from '../helpers/fixtures';
-import { commitBubble, commitRow } from './commitRows';
+import { commitBubble, commitRow, commitsSeen } from './commitRows';
 
 async function removeWorktree(worktree: string, branch: string): Promise<void> {
   await repository
@@ -79,17 +79,68 @@ suite('App', () => {
       .waitFor();
   });
 
-  test('opens the commit search from the button at the far right of the commit column', async () => {
+  test('filters the commit list on Ctrl+F to the commits whose message matches, with neither the working tree nor the graph, counting the commit selected among them, stepping to the next found, and gives the whole list back on Escape at the commit selected', async () => {
+    await commitRow(page, 'first').click();
+    await page.keyboard.press('ControlOrMeta+F');
     const commits = page.locator('.columns > .column').first();
-    const button = commits.locator('.column-actions > .search-button');
+    const field = commits.locator('.floating-search .search-box-input');
+    await waitForFocus(field, 'the filter of the commits');
+    await page.keyboard.type('second');
+    await waitFor(
+      async () =>
+        (await commitsSeen(page)).map((row) => row.subject).join() === 'second',
+      'the commits filtered down to the second',
+    );
+    assert.strictEqual(
+      await commits
+        .locator('.graph-layer')
+        .evaluate((layer) =>
+          layer instanceof HTMLElement ? layer.seenShapes?.().length : -1,
+        ),
+      0,
+    );
+    await commits
+      .locator('.floating-search .search-count', { hasText: '0 of 1' })
+      .waitFor();
+    await commits
+      .locator('.floating-search .search-steps .nav-button')
+      .last()
+      .click();
+    await commitRow(page, 'second', { selected: true }).waitFor();
+    await commits
+      .locator('.floating-search .search-count', { hasText: '1 of 1' })
+      .waitFor();
+    await field.focus();
+    await page.keyboard.press('Escape');
+    await field.waitFor({ state: 'detached' });
+    await commitRow(page, 'No uncommitted changes').waitFor();
+    await commitRow(page, 'second', { selected: true }).waitFor();
+    await commitRow(page, 'first').waitFor();
+  });
+
+  test('filters the commit list to the commit a hash typed starts, and closes the filter on Escape in the list too', async () => {
+    const [first = ''] = await repository.resolve('HEAD~1');
+    await page.locator('.virtual-rows.list').first().focus();
+    await page.keyboard.press('ControlOrMeta+F');
+    const commits = page.locator('.columns > .column').first();
+    const field = commits.locator('.floating-search .search-box-input');
+    await waitForFocus(field, 'the filter of the commits');
+    await page.keyboard.type(first.slice(0, 8));
+    await waitFor(
+      async () =>
+        (await commitsSeen(page)).map((row) => row.subject).join() === 'first',
+      'the commits filtered down to the first',
+    );
+    await page.locator('.virtual-rows.list').first().focus();
+    await page.keyboard.press('Escape');
+    await field.waitFor({ state: 'detached' });
+    await commitRow(page, 'second').waitFor();
+  });
+
+  test('opens the commit search on Ctrl+D in the commit list, and closes it on Escape', async () => {
     const popup = page.locator('.locations-popup');
-    const [shown, header] = await Promise.all([
-      button.boundingBox(),
-      commits.locator('.column-title').boundingBox(),
-    ]);
-    assert.ok(shown && header);
-    assert.ok(header.x + header.width - (shown.x + shown.width) <= 8);
-    await button.click();
+    await page.locator('.virtual-rows.list').focus();
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(
       page.locator('.locations-popup .search-box-input'),
       'the search field',
@@ -101,7 +152,7 @@ suite('App', () => {
   test('searches the commits in the case of the query while its toggle is pressed, counting what it found in place of a line under its box', async () => {
     const field = page.locator('.locations-popup .search-box-input');
     const popup = page.locator('.locations-popup');
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(field, 'the search field');
     await field.fill('SECOND');
     await popup.locator('.commit', { hasText: 'second' }).waitFor();
@@ -120,7 +171,7 @@ suite('App', () => {
   test('ends the search popup where its column ends, showing none of its list in the gap below', async () => {
     const commits = page.locator('.columns > .column').first();
     const popup = page.locator('.locations-popup');
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(
       page.locator('.locations-popup .search-box-input'),
       'the search field',
@@ -150,7 +201,7 @@ suite('App', () => {
       await repository.git('branch', '-q', '-D', ...branches);
     });
     const popup = page.locator('.locations-popup');
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(popup.locator('.search-box-input'), 'the search field');
     await page.keyboard.press('Backspace');
     await popup.locator('.tree-row.folder', { hasText: 'wheel' }).click();
@@ -168,12 +219,12 @@ suite('App', () => {
     const list = page.locator('.virtual-rows.list');
     const field = page.locator('.locations-popup .search-box-input');
     const popup = page.locator('.locations-popup');
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(field, 'the search field');
     await page.keyboard.press('Escape');
     await popup.waitFor({ state: 'detached' });
     await waitForFocus(list, 'the commit list');
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(field, 'the search field');
     await field.fill('second');
     await popup.locator('.commit', { hasText: 'second' }).waitFor();
@@ -183,7 +234,7 @@ suite('App', () => {
     await waitForFocus(list, 'the commit list');
     await page.keyboard.press('ArrowDown');
     await commitRow(page, 'first', { selected: true }).waitFor();
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(field, 'the search field');
     await field.fill('main');
     await popup.locator('.row.result[data-tip="main"]').click();
@@ -214,7 +265,7 @@ suite('App', () => {
       await waitForCount(worktrees, 0, 'worktrees');
     });
     await waitForCount(worktrees, 2, 'worktrees');
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     await waitForFocus(field, 'the search field');
     await page.keyboard.type('second');
     await page.keyboard.press('ArrowLeft');

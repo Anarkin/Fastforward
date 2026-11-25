@@ -9,7 +9,6 @@ import {
   Columns,
   ContextMenuShown,
   NoticesShown,
-  SearchButtonShown,
   TabBarShown,
 } from '../../../helpers/styleFixtures';
 import {
@@ -66,13 +65,7 @@ const found = (classes: string, current: boolean) =>
   );
 
 suite('Style', () => {
-  test('draws the search button as every button of a bar is drawn, in its ground, its color and its size, as one in the border color with a muted icon stood apart from the buttons beside it, and draws the strip between hunks in the border color', () => {
-    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      background: 'var(--button-background)',
-      color: 'var(--color-foreground)',
-      width: 'var(--button-size)',
-      height: 'var(--button-size)',
-    });
+  test('draws the strip between hunks in the border color', () => {
     looks(
       withClass(
         diffView(
@@ -555,7 +548,6 @@ suite('Style', () => {
       rendered(<LocationsPopupShown query="" />),
       rendered(<DiffFindShown />),
       rendered(<NoticesShown />),
-      rendered(<SearchButtonShown />),
       rendered(<NavButtonsShown />),
     ].flatMap((root) =>
       allWithClass(root).filter((element) =>

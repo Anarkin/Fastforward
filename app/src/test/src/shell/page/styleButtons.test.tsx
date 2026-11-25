@@ -6,7 +6,6 @@ import {
   AboutPopupShown,
   MenuButtonShown,
   NoticesShown,
-  SearchButtonShown,
   ShortcutsPopupShown,
   TabBarIn,
   TabBarShown,
@@ -82,9 +81,6 @@ suite('Style', () => {
         height: 'var(--button-size)',
       });
     }
-    looks(withClass(rendered(<SearchButtonShown />), 'search-button'), {
-      width: 'var(--button-size)',
-    });
     assert.strictEqual(
       cascaded(
         rendered(renderedBy(Column, { children: null })),

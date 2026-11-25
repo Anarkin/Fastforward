@@ -241,6 +241,10 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: the text selected whose copies are marked, read from the selection of the page once it rests; the selection goes with a tab change, and the copies with it',
   'components/diff/page/view.tsx dragged':
     'a moment: true only while the thumb of the scrollbar is held',
+  'tools/git/page/commitList.tsx filterAsked':
+    'a trigger: counts the find key presses, read only as changes; the filter itself is kept per repository in commitFilters',
+  'tools/git/page/commitFiltering.ts kept':
+    'a moment: the commits found last, shown while git looks for those of what was typed since',
   'tools/git/page/filesColumn.tsx filterAsked':
     'a trigger: counts the find key presses, read only as changes; the filter itself is kept per repository in fileFilters',
   'tools/git/page/filesFilter.ts clicked':

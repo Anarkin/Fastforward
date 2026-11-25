@@ -58,6 +58,7 @@ export const gitKeymap = {
     { repeats: true },
   ),
   commits: bind('Moving', strings.actions.commits, { C: true }),
+  places: bind('Commits', strings.actions.places, { 'Mod+D': true }),
   find: diffKeymap.find,
   match: diffKeymap.match,
   stopFinding: diffKeymap.stopFinding,

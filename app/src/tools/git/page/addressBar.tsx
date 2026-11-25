@@ -12,7 +12,7 @@ export function AddressBar() {
   const { search } = useGitActions();
   const [asked, setAsked] = useState(0);
   useBinding(
-    gitKeymap.find,
+    gitKeymap.places,
     () => {
       setAsked((count) => count + 1);
       search(true);

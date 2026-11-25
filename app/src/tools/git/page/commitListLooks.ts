@@ -16,6 +16,11 @@ export interface Looks {
   readonly baseline: number;
   readonly ink: string;
   readonly muted: string;
+  readonly markInk: string;
+  readonly markGround: Rgba;
+  readonly markTop: number;
+  readonly textScale: number;
+  readonly markHeight: number;
   readonly mutedWorkingTree: string;
   readonly emptyWorkingTree: string;
   readonly family: string;
@@ -23,7 +28,6 @@ export interface Looks {
   readonly weight: string;
   readonly bold: string;
   readonly lanes: readonly Rgba[];
-  readonly textScale: number;
 }
 
 export const over = (base: Rgba, layer: Rgba): Rgba => [
@@ -88,8 +92,9 @@ export function looksOf(list: HTMLElement, scale: number): Looks {
       `<div class="commit working-tree"><span class="subject">a</span></div>` +
       `<div class="commit working-tree empty"><span class="subject">a</span></div>` +
       `<div class="commit-line" data-line><span class="subject">a<span data-baseline></span></span></div>` +
+      `<span class="bar"></span><span data-hover></span><span data-focus></span>` +
       `<div class="commit-line"><span class="subject" data-sample></span></div>` +
-      `<span class="bar"></span><span data-hover></span><span data-focus></span>`,
+      `<div class="commit-line" data-marked><span class="subject"><span data-mark>a</span></span></div>`,
   );
   const at = (selector: string) => {
     const element = probe.querySelector<HTMLElement>(selector);
@@ -117,6 +122,9 @@ export function looksOf(list: HTMLElement, scale: number): Looks {
   baselineMark.style.display = 'inline-block';
   baselineMark.style.verticalAlign = 'baseline';
   baselineMark.style.height = '0';
+  const marked = at('[data-mark]');
+  marked.style.color = 'var(--color-search-match-foreground)';
+  marked.style.background = 'var(--color-search-match)';
   const sample = at('[data-sample]');
   sample.textContent = shapedSample;
   const looks: Looks = {
@@ -137,6 +145,12 @@ export function looksOf(list: HTMLElement, scale: number): Looks {
     barRadius: parseFloat(bar.borderTopLeftRadius) || 0,
     ink: subject.color,
     muted: getComputedStyle(at('.secondary .author')).color,
+    markInk: getComputedStyle(marked).color,
+    markGround: over([0, 0, 0, 1], layerOf(marked)),
+    markTop:
+      marked.getBoundingClientRect().top -
+      at('[data-marked]').getBoundingClientRect().top,
+    markHeight: marked.getBoundingClientRect().height,
     mutedWorkingTree: muted,
     emptyWorkingTree: fadedOf(emptyText.color, Number(emptyText.opacity)),
     family: subject.fontFamily,

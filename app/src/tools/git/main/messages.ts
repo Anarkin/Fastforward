@@ -158,6 +158,7 @@ export class GitMessages {
           sessions.knownRoot(message.root),
           message.query,
           message.options,
+          message.limit,
         );
         return;
       case 'stopCommitSearch':

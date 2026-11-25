@@ -13,14 +13,6 @@ const tools = ['commander', 'viewer', 'editor', 'git', 'diff'] as const;
 
 type Tool = (typeof tools)[number];
 
-const searches: Record<Tool, number> = {
-  commander: 0,
-  viewer: 0,
-  editor: 0,
-  git: 1,
-  diff: 0,
-};
-
 interface Bar {
   readonly name: string;
   readonly tall: number;
@@ -197,49 +189,6 @@ for (const scale of ['1', '1.25', '1.5']) {
       assert.deepStrictEqual(off, []);
       assert.ok(seen >= fitting, String(seen));
       assert.strictEqual(single, seen);
-    });
-
-    test('keeps the first and the last button of a header where they were as its search opens in their place, the search of the commits alone opening so as every other floats over what it searches, the field between them, the bar of the search spaced as its header is, wherever both have room, so no button moves under the pointer that opened it', async () => {
-      const [model] = await show('git');
-      assert.ok(model);
-      const moved: string[] = [];
-      let opened = 0;
-      for (const tool of tools) {
-        const closed = await show(tool);
-        const buttons = page.locator('.search-button:visible');
-        assert.strictEqual(await buttons.count(), searches[tool], tool);
-        for (let index = 0; index < searches[tool]; index += 1) {
-          const button = buttons.nth(index);
-          const at = await button.evaluate(
-            (element) => element.getBoundingClientRect().right,
-          );
-          const before = closed.find((bar) => !apart(bar.right, at));
-          await button.click();
-          await page.locator('.search-box-input:focus').waitFor();
-          const open = (await bars(`the search of ${tool}`)).find(
-            (bar) => bar.searching,
-          );
-          await page.keyboard.press('Escape');
-          await page.locator('.search-box-input:focus').waitFor({
-            state: 'detached',
-          });
-          if (before?.fits !== true || open?.fits !== true) {
-            continue;
-          }
-          opened += 1;
-          if (
-            apart(open.left, before.left) ||
-            apart(open.right, before.right) ||
-            unlike(open, model).length > 0
-          ) {
-            moved.push(
-              `${tool} ${String(index)}: ${JSON.stringify({ before, open })}`,
-            );
-          }
-        }
-      }
-      assert.deepStrictEqual(moved, []);
-      assert.ok(opened >= 1, String(opened));
     });
 
     test('draws the row naming the file under the header of the viewer, the editor and a comparison of two files, and the repository above the columns of git, alike, as tall as a row of text, its name as far from the start and the top of the row in each, as the row of the viewer and the editor stood a pixel taller than the header of the diff, its name half a pixel lower', async () => {

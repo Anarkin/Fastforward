@@ -27,6 +27,7 @@ export const worktreeViewSchema = record({
   searching: optional(oneOf([true])),
   column: optional(oneOf(columnOrder)),
   filter: optional(searchSchema),
+  commitFilter: optional(searchSchema),
   search: optional(searchSchema),
   folders: optional(
     record({ view: optional(text()), open: names, closed: names }),

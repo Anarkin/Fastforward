@@ -68,6 +68,7 @@ export interface GitSource extends DiffSource {
   readonly searching: ReadonlySet<string>;
   readonly activeColumns: ReadonlyMap<string, ColumnName>;
   readonly fileFilters: ReadonlyMap<string, Search>;
+  readonly commitFilters: ReadonlyMap<string, Search>;
   readonly searches: ReadonlyMap<string, Search>;
   readonly foundCommits: ReadonlyMap<string, FoundCommits>;
   readonly folders: ReadonlyMap<string, ViewFolders>;
@@ -121,7 +122,11 @@ export interface GitActions extends DiffActions {
   readonly showUpstream: () => void;
   readonly showParent: () => void;
   readonly lookupHash: (query: string) => () => void;
-  readonly searchCommits: (query: string, options: SearchOptions) => () => void;
+  readonly searchCommits: (
+    query: string,
+    options: SearchOptions,
+    limit?: number,
+  ) => () => void;
   readonly fetch: () => void;
   readonly refresh: () => void;
   readonly toggleMerge: (hash: string) => void;
@@ -152,6 +157,10 @@ export interface GitActions extends DiffActions {
   readonly preloadWorktree: (root: string) => void;
   readonly activateColumn: (column: ColumnName) => void;
   readonly filterFiles: (
+    filter: string | undefined,
+    options?: SearchOptions,
+  ) => void;
+  readonly filterCommits: (
     filter: string | undefined,
     options?: SearchOptions,
   ) => void;
@@ -195,6 +204,7 @@ export const gitDefaults: GitSource = {
   searching: new Set(),
   activeColumns: new Map(),
   fileFilters: new Map(),
+  commitFilters: new Map(),
   searches: new Map(),
   foundCommits: new Map(),
   folders: new Map(),

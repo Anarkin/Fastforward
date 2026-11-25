@@ -250,6 +250,24 @@ suite('Git tool navigating the history', () => {
     );
   });
 
+  test('searches as many commits as the page asks for, as a filter of the list takes more than the search lists, and says how many it was asked for', async () => {
+    let asked: unknown;
+    stubMethod(fastforward, 'commitsMatching', async (original, ...args) => {
+      asked = args[4];
+      return original(...args);
+    });
+    page.clear();
+    await connection.receive({
+      type: 'searchCommits',
+      root: repository.root,
+      query: 'test',
+      options: plainSearch,
+      limit: 1000,
+    });
+    assert.strictEqual(asked, 1000);
+    assert.strictEqual(page.last('commitSearch')?.limit, 1000);
+  });
+
   test('stops a commit search the page asks to stop, posting nothing for it', async () => {
     const held = gate();
     let searching: AbortSignal | undefined;

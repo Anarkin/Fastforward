@@ -170,11 +170,8 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
       ? []
       : [`ends ${end} device pixels down`];
   });
-  await page
-    .locator('.columns > .column')
-    .first()
-    .locator('.column-actions > .search-button')
-    .click();
+  await page.locator('.virtual-rows.list').first().focus();
+  await page.keyboard.press('ControlOrMeta+D');
   await page.locator('.locations-popup .search-box-input').waitFor();
   await page.keyboard.type('s');
   await look('commit search');

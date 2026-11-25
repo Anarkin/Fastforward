@@ -253,6 +253,7 @@ export type TabMessage =
       readonly type: 'searchCommits';
       readonly query: string;
       readonly options: SearchOptions;
+      readonly limit?: number;
     }
   | { readonly type: 'stopCommitSearch' }
   | {
@@ -318,6 +319,7 @@ export type GitToWebview =
       readonly type: 'commitSearch';
       readonly query: string;
       readonly options: SearchOptions;
+      readonly limit?: number;
       readonly result: CommitSearch;
     }
   | {

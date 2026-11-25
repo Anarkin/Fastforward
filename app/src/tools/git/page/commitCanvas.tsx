@@ -47,6 +47,7 @@ import {
   type RecordedRow,
   type SeenText,
 } from './commitRecords';
+import type { FindRange } from '../../../lib/shared/textMatches';
 
 export interface GraphPlace {
   readonly top: number;
@@ -62,6 +63,39 @@ declare global {
 }
 
 const ellipsis = '…';
+
+const noMarks: readonly FindRange[] = [];
+
+interface Piece {
+  readonly text: string;
+  readonly start: number;
+  readonly marked: boolean;
+}
+
+function piecesOf(
+  run: string,
+  marks: readonly FindRange[],
+  shownLength: number,
+): Piece[] {
+  const pieces: Piece[] = [];
+  let at = 0;
+  for (const mark of marks) {
+    const start = Math.max(mark.start, at);
+    const end = Math.min(mark.end, shownLength);
+    if (end <= start) {
+      continue;
+    }
+    if (start > at) {
+      pieces.push({ text: run.slice(at, start), start: at, marked: false });
+    }
+    pieces.push({ text: run.slice(start, end), start, marked: true });
+    at = end;
+  }
+  if (at < run.length) {
+    pieces.push({ text: run.slice(at), start: at, marked: false });
+  }
+  return pieces;
+}
 
 function fitted(
   atlas: RunAtlas,
@@ -364,27 +398,51 @@ export function CommitCanvas({
         x: number,
         top: number,
         ground: Rgba,
+        marks: readonly FindRange[] = noMarks,
       ) => {
         if (run === '') {
           return;
         }
-        const left = x * scale;
-        const tile = runs.tile(
-          run,
-          styleOf(font, ink, ground, top),
-          offsetOf(left),
-        );
-        if (tile === undefined) {
-          return;
+        const shownLength =
+          run.endsWith(ellipsis) && marks.length > 0
+            ? run.length - ellipsis.length
+            : run.length;
+        const pieces = piecesOf(run, marks, shownLength);
+        const tileTop = Math.round(top * scale);
+        for (const piece of pieces) {
+          const from =
+            x * scale +
+            (piece.start === 0
+              ? 0
+              : runs.measure(run.slice(0, piece.start), font));
+          const pieceGround = piece.marked ? looks.markGround : ground;
+          if (piece.marked) {
+            const markLeft = Math.round(from);
+            record.rects.push(
+              markLeft,
+              Math.round((top + looks.markTop) * scale),
+              Math.round(from + runs.measure(piece.text, font)) - markLeft,
+              Math.round((top + looks.markTop + looks.markHeight) * scale) -
+                Math.round((top + looks.markTop) * scale),
+              packed(looks.markGround),
+            );
+          }
+          const tile = runs.tile(
+            piece.text,
+            styleOf(font, piece.marked ? looks.markInk : ink, pieceGround, top),
+            offsetOf(from),
+          );
+          if (tile !== undefined) {
+            record.tiles.push(
+              Math.floor(from) - runPadding,
+              tileTop,
+              tile.u,
+              tile.v,
+              tile.width,
+              packed(pieceGround),
+            );
+          }
         }
-        record.tiles.push(
-          Math.floor(left) - runPadding,
-          Math.round(top * scale),
-          tile.u,
-          tile.v,
-          tile.width,
-          packed(ground),
-        );
         record.texts.push({ text: run, x, y: top });
       };
       const now = performance.now();
@@ -592,7 +650,15 @@ export function CommitCanvas({
         }
         const subjectFont = fontOf(look.checkedOut ? looks.bold : looks.weight);
         const subject = fitted(runs, look.subject, subjectFont, room * scale);
-        text(subject, subjectFont, looks.ink, indent, place.top, ground);
+        text(
+          subject,
+          subjectFont,
+          looks.ink,
+          indent,
+          place.top,
+          ground,
+          look.marks?.subject,
+        );
         record.hit = rowHit(subject, subjectFont);
         const font = fontOf(looks.weight);
         const dateWidth = runs.measure(look.date, font) / scale;
@@ -603,6 +669,7 @@ export function CommitCanvas({
           indent,
           place.top + line,
           ground,
+          look.marks?.author,
         );
         text(
           look.date,

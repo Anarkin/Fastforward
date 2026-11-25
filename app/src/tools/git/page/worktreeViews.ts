@@ -77,6 +77,7 @@ function worktreeViewOf(source: GitSource, root: string): WorktreeView {
     searching: source.searching.has(root) ? true : undefined,
     column: source.activeColumns.get(root),
     filter: source.fileFilters.get(root),
+    commitFilter: source.commitFilters.get(root),
     search: source.searches.get(root),
     folders:
       folders !== undefined &&
@@ -196,6 +197,7 @@ export function restoredWorktree(
     searching: withKey(source.searching, root, view.searching === true),
     activeColumns: withEntry(source.activeColumns, root, view.column),
     fileFilters: withEntry(source.fileFilters, root, view.filter),
+    commitFilters: withEntry(source.commitFilters, root, view.commitFilter),
     searches: withEntry(source.searches, root, view.search),
     folders: withEntry(
       source.folders,
@@ -261,6 +263,7 @@ function changedMembers(
 const keptByRoot = [
   'activeColumns',
   'fileFilters',
+  'commitFilters',
   'searches',
   'folders',
   'fileFolds',

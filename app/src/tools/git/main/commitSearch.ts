@@ -22,6 +22,7 @@ export class CommitSearch {
     root: string,
     query: string,
     options: SearchOptions,
+    limit?: number,
   ): Promise<void> {
     this.commitSearches.get(root)?.abort();
     const search = new AbortController();
@@ -39,19 +40,27 @@ export class CommitSearch {
         query,
         options,
         search.signal,
+        limit,
       ).catch((error: unknown) => {
         if (!search.signal.aborted) {
           context.post({
             type: 'commitSearch',
             query,
             options,
+            ...(limit !== undefined && { limit }),
             result: { commits: [], capped: false },
           });
         }
         throw error;
       });
       if (!search.signal.aborted) {
-        context.post({ type: 'commitSearch', query, options, result });
+        context.post({
+          type: 'commitSearch',
+          query,
+          options,
+          ...(limit !== undefined && { limit }),
+          result,
+        });
       }
     } catch (error) {
       if (!search.signal.aborted) {
@@ -69,6 +78,7 @@ export class CommitSearch {
     query: string,
     options: SearchOptions,
     signal: AbortSignal,
+    limit?: number,
   ): Promise<CommitSearchResult> {
     return searchCommits(
       context.gitPath,
@@ -78,6 +88,7 @@ export class CommitSearch {
       this.storage.soloOf(context.root),
       [...context.tab.stashes.keys()],
       signal,
+      limit,
     );
   }
 

@@ -227,7 +227,7 @@ suite('App git tabs shown again', () => {
   test('brings back the commit search open with what was typed in it and its caret', async () => {
     await showTab(page, 0);
     await page.locator('.virtual-rows.list').focus();
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     const field = page.locator('.locations-popup .search-box-input');
     await waitForFocus(field, 'the commit search');
     await page.keyboard.type('second');
@@ -346,7 +346,7 @@ suite('App git tabs shown again', () => {
     );
     await comesBackReloaded('A worktree with its diff found in');
     await page.locator('.virtual-rows.list').focus();
-    await page.keyboard.press('ControlOrMeta+F');
+    await page.keyboard.press('ControlOrMeta+D');
     const field = page.locator('.locations-popup .search-box-input');
     await waitForFocus(field, 'the commit search');
     await page.keyboard.type('second');

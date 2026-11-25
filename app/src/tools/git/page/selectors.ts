@@ -102,6 +102,13 @@ export function searchOf({ tab, searches }: GitSource): Search {
     : (searches.get(tab.root) ?? noSearch);
 }
 
+export function commitFilterOf({
+  tab,
+  commitFilters,
+}: GitSource): Search | undefined {
+  return tab.root === undefined ? undefined : commitFilters.get(tab.root);
+}
+
 export function fileFilterOf({
   tab,
   fileFilters,

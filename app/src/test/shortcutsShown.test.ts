@@ -163,6 +163,7 @@ const keysAlone: readonly string[] = [
   'editorKeymap.wheelSideways',
   'gitKeymap.column',
   'gitKeymap.commits',
+  'gitKeymap.places',
   'gitKeymap.compare',
   'gitKeymap.folder',
   'gitKeymap.head',

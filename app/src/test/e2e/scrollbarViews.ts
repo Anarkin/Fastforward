@@ -106,11 +106,8 @@ export async function showView(page: Page, name: ViewName): Promise<void> {
 
 export async function searchCommits(page: Page): Promise<void> {
   await showView(page, 'commit list');
-  await page
-    .locator('.columns > .column')
-    .first()
-    .locator('.column-actions > .search-button')
-    .click();
+  await page.locator('.virtual-rows.list').first().focus();
+  await page.keyboard.press('ControlOrMeta+D');
   await page.locator('.locations-popup .search-box-input').waitFor();
   await page.keyboard.type('topic');
   await waitFor(

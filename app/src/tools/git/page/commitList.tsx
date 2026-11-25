@@ -34,6 +34,7 @@ import {
   type BubbleLook,
 } from './bubbleLooks';
 import {
+  activeColumnOf,
   layoutSelectionOf,
   openingOf,
   searchingOf,
@@ -52,7 +53,11 @@ import { Words } from '../../../lib/page/name';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { fullyVisible } from '../../../lib/page/listMoves';
 import { useCappedScroll } from './cappedVirtualizer';
-import { SearchButton } from './searchButton';
+import { FileFilterField } from './filesFilterField';
+import { foundCount, steppedCommit } from './commitFilter';
+import { useCommitFilter } from './commitFiltering';
+import { filterRanges, searchFilter } from '../../../lib/shared/filter';
+import { useBinding } from '../../../lib/page/shortcuts';
 import { realHeight, scrollCap } from './cappedScroll';
 import { endPaddingToStart, snappedToStart } from '../../../lib/page/rowStarts';
 import { followRows, type RowFollower } from '../../../lib/page/rowScroll';
@@ -136,7 +141,12 @@ export function Commits({
   navigation?: React.ReactNode;
   search?: React.ReactNode;
 }) {
-  const history = useGit((state) => state.tab.history);
+  const fullHistory = useGit((state) => state.tab.history);
+  const [filterAsked, setFilterAsked] = useState(0);
+  const filtering = useCommitFilter(filterAsked);
+  const filtered = filtering.history;
+  const history = filtered ?? fullHistory;
+  const findsHere = useGit((state) => activeColumnOf(state) === 'commits');
   const worktree = useGit((state) => state.tab.root);
   const opening = useGit(openingOf);
   const scrollTarget = useGit((state) => state.tab.scrollTarget);
@@ -153,7 +163,8 @@ export function Commits({
     toggleMerge: onToggleMerge,
     scrolled: reportScrolled,
     loadCommits: onLoad,
-    search: openSearch,
+    filterCommits,
+    jump,
     keptFocusOf,
     pinMessage,
   } = useGitActions();
@@ -173,7 +184,17 @@ export function Commits({
   const list = useRef<HTMLDivElement>(null);
   const spacer = useRef<HTMLDivElement>(null);
   const hits = useRef<readonly RowHit[]>([]);
-  const hasWorkingTree = workingTree !== undefined;
+  const hasWorkingTree = workingTree !== undefined && filtered === undefined;
+  useBinding(
+    gitKeymap.find,
+    () => {
+      setFilterAsked((asked) => asked + 1);
+      if (filtering.filter === undefined) {
+        filterCommits('');
+      }
+    },
+    findsHere,
+  );
   const openMenu = useOpenMenu();
   const offset = hasWorkingTree ? 1 : 0;
   const skeleton = useSkeleton(opening);
@@ -408,7 +429,20 @@ export function Commits({
     }
   }, [focusKey]);
 
+  const closeFilter = () => {
+    filtering.close();
+    jump(sidesOf(selected).at(-1));
+  };
+
   const onKeyDown = (event: React.KeyboardEvent) => {
+    if (
+      filtering.filter !== undefined &&
+      keyPressed(gitKeymap.stopFinding, event)
+    ) {
+      event.preventDefault();
+      closeFilter();
+      return;
+    }
     if (keyPressed(gitKeymap.merge, event)) {
       event.preventDefault();
       const merge = history && mergeToToggle(history, selected);
@@ -461,6 +495,9 @@ export function Commits({
   };
 
   const graphOf = (index: number) => {
+    if (filtered !== undefined) {
+      return undefined;
+    }
     if (hasWorkingTree && index === 0) {
       return history?.workingTreeGraph;
     }
@@ -472,7 +509,15 @@ export function Commits({
 
   const indent = (index: number) => indentOf(rowLanes(graphOf(index)));
 
+  const words = useMemo(
+    () =>
+      filtered === undefined || filtering.filter === undefined
+        ? undefined
+        : searchFilter(filtering.filter.query, filtering.filter.options),
+    [filtered, filtering.filter],
+  );
   const lookParts = [
+    words,
     history,
     version,
     selected,
@@ -544,6 +589,12 @@ export function Commits({
         return { look: bubble, checkedOut, running };
       }),
       lines: bubbleRows.get(index - offset),
+      ...(words !== undefined && {
+        marks: {
+          subject: filterRanges(commit.subject, words),
+          author: filterRanges(commit.authorName, words),
+        },
+      }),
       subject: commit.subject,
       author: commit.authorName,
       date: formatDate(commit.commitDate, dateFormat),
@@ -579,11 +630,33 @@ export function Commits({
           {countedCommits}
         </ColumnStatus>
       }
-      search={
-        <SearchButton
-          title={strings.actions.search}
-          onClick={() => openSearch(true)}
-        />
+      searchOverTitle
+      searching={
+        filtering.filter !== undefined && (
+          <FileFilterField
+            focusName="commits-filter"
+            query={filtering.filter.query}
+            options={filtering.filter.options}
+            found={foundCount(
+              filtering.found,
+              sidesOf(selected).at(-1),
+              filtering.capped,
+            )}
+            input={filtering.input}
+            onQuery={filtering.onQuery}
+            onOptions={filtering.onOptions}
+            onStep={(step) => {
+              const next =
+                filtering.found &&
+                steppedCommit(filtering.found, sidesOf(selected).at(-1), step);
+              if (next !== undefined) {
+                onSelect(next, true);
+              }
+            }}
+            onLeave={filtering.toList}
+            onClose={closeFilter}
+          />
+        )
       }
       resizer={<ColumnResizer index={0} />}
       start={navigation}

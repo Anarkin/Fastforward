@@ -11,6 +11,7 @@ export function FileFilterField({
   options,
   found,
   input,
+  focusName = 'files-filter',
   onQuery,
   onOptions,
   onStep,
@@ -21,6 +22,7 @@ export function FileFilterField({
   options: SearchOptions;
   found: MatchesFound;
   input?: RefObject<HTMLInputElement | null>;
+  focusName?: string;
   onQuery: (query: string) => void;
   onOptions: (options: SearchOptions) => void;
   onStep: (step: 1 | -1) => void;
@@ -35,7 +37,7 @@ export function FileFilterField({
       found={found}
       placeholder={strings.find.placeholder}
       input={input}
-      focusName="files-filter"
+      focusName={focusName}
       onQuery={onQuery}
       onOptions={onOptions}
       onStep={onStep}

@@ -265,6 +265,7 @@ suite('Shortcuts popup', () => {
           'Expand or collapse the selected merge',
           'Compare with the selected commit',
           'Read the repository again',
+          'Go to a bookmark, a branch, a tag or a commit',
         ],
       ],
       [

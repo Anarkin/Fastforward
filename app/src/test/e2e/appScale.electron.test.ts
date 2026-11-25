@@ -683,7 +683,8 @@ suite('App at a scale of 125%', () => {
         };
       });
     const closed = await place();
-    await column.locator('.search-button').first().click();
+    await column.locator('.virtual-rows.list').focus();
+    await page.keyboard.press('ControlOrMeta+D');
     await column.locator('.locations-popup').waitFor();
     const opened = await place();
     await page.keyboard.press('Escape');

@@ -34,6 +34,8 @@ function isCheckoutTarget(value: unknown): boolean {
         typeof value.name === 'string';
 }
 
+const mostFound = 10_000;
+
 function isWhole(value: number, least: number, most: number): boolean {
   return Number.isInteger(value) && value >= least && value <= most;
 }
@@ -122,7 +124,14 @@ function wellFormedInTab(message: TabMessage): boolean {
     case 'lookupHash':
       return isString(message.query);
     case 'searchCommits':
-      return isString(message.query) && isSearchOptions(message.options);
+      return (
+        isString(message.query) &&
+        isSearchOptions(message.options) &&
+        isOptional(
+          message.limit,
+          (limit) => typeof limit === 'number' && isWhole(limit, 1, mostFound),
+        )
+      );
     case 'checkout':
       return isCheckoutTarget(message.target);
     case 'viewFile':

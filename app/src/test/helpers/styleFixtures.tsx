@@ -6,7 +6,6 @@ import { Column } from '../../lib/page/column';
 import { ColumnResizer } from '../../tools/git/page/columnResizer';
 import { ContextMenu } from '../../shell/page/contextMenu';
 import { tabsStore } from './componentFixtures';
-import { SearchButton } from '../../tools/git/page/searchButton';
 import { Notices } from '../../shell/page/notices';
 import { MenuButton } from '../../lib/page/menu';
 import { defaultScrolling } from '../../lib/page/scrollSettings';
@@ -159,10 +158,6 @@ export function ShortcutsPopupShown() {
       <ShortcutsPopup />
     </ShellStore>
   );
-}
-
-export function SearchButtonShown() {
-  return <SearchButton title="Search" onClick={noop} />;
 }
 
 export function PathTitleShown({
