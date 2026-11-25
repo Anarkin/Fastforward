@@ -548,4 +548,21 @@ suite('Viewer tool viewing a file', () => {
       ],
     );
   });
+
+  test('says it could not read a file viewed that is gone or locked once it is copied whole, leaving the clipboard as it was, rather than failing with no word', async () => {
+    const gone = path.join(opened, 'gone.txt');
+    fs.writeFileSync(gone, 'text');
+    const { tool, page, send, clipboard, notices } = viewer();
+    await tool.show(page, { id: '7', tool: 'viewer', root: gone });
+    fs.rmSync(gone);
+    await send({ type: 'copyWhole', tab: '7', as: 'text', encoding: 'utf-8' });
+    assert.deepStrictEqual(clipboard, []);
+    assert.deepStrictEqual(
+      notices.map((notice) => [
+        notice.level,
+        plainOf(notice.message).startsWith("Couldn't read"),
+      ]),
+      [['error', true]],
+    );
+  });
 });

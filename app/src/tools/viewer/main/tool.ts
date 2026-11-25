@@ -27,6 +27,7 @@ import { strings } from '../../../lib/shared/strings';
 import { shortHash } from '../../../lib/shared/hashes';
 import type { FileVersion } from '../../../shell/main/savedTabs';
 import { fs } from '../../../lib/main/files';
+import { reasonOf } from '../../../lib/main/reasons';
 
 type VersionCopy =
   | { readonly kind: 'file'; readonly file: string }
@@ -390,7 +391,16 @@ export class ViewerTool implements Tool<'viewer'> {
     if (viewing === undefined) {
       return;
     }
-    const copied = await wholeCopy(viewing.file, viewing.size, as, encoding);
+    let copied: Awaited<ReturnType<typeof wholeCopy>>;
+    try {
+      copied = await wholeCopy(viewing.file, viewing.size, as, encoding);
+    } catch (error) {
+      this.shell.notice(page, {
+        level: 'error',
+        message: strings.textFile.couldNotRead(viewing.file, reasonOf(error)),
+      });
+      return;
+    }
     if (copied.kind === 'copied') {
       this.access.copy(copied.text);
       return;
