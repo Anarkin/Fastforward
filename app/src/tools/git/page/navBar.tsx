@@ -1,13 +1,7 @@
 import { labelTip } from '../../../lib/page/tips';
 import { useEffect, useState } from 'react';
-import type { Direction, LastFetch } from '../shared/protocol';
-import {
-  BackIcon,
-  ForwardIcon,
-  HomeIcon,
-  PinIcon,
-  RefreshIcon,
-} from '../../../lib/page/icons';
+import type { LastFetch } from '../shared/protocol';
+import { PinIcon, RefreshIcon } from '../../../lib/page/icons';
 import { fetchStatus } from './fetchStatus';
 import { useGit, useGitActions } from './store';
 import { strings } from '../../../lib/shared/strings';
@@ -43,16 +37,10 @@ function useNow(): number {
 
 export function NavButtons() {
   const fetching = useGit((state) => state.tab.fetching);
-  const headCommit = useGit((state) => state.tab.repository?.headCommit);
   const autoFetch = useGit((state) => state.autoFetch);
   const autoFetchMinutes = useGit((state) => state.autoFetchMinutes);
   const lastFetch = useGit((state) => state.lastFetch);
-  const {
-    jump,
-    fetch: onFetch,
-    changeAutoFetch: onAutoFetch,
-  } = useGitActions();
-  const onHome = headCommit === undefined ? undefined : () => jump(headCommit);
+  const { fetch: onFetch, changeAutoFetch: onAutoFetch } = useGitActions();
   const now = Math.max(
     useNow(),
     lastFetch.succeeded ?? 0,
@@ -62,16 +50,6 @@ export function NavButtons() {
   const title = fetchTitle(lastFetch, status === 'failed', now);
   return (
     <Toolbar>
-      <HistoryButton direction="back" />
-      <HistoryButton direction="forward" />
-      <button
-        className="nav-button"
-        {...labelTip(strings.actions.head)}
-        disabled={onHome === undefined}
-        onClick={onHome}
-      >
-        <HomeIcon />
-      </button>
       <Toolbar className="pin-pair">
         <button
           className={`nav-button ${fetching ? 'running' : ''}`}
@@ -97,23 +75,5 @@ export function NavButtons() {
         </button>
       </Toolbar>
     </Toolbar>
-  );
-}
-
-export function HistoryButton({ direction }: { direction: Direction }) {
-  const steps = useGit(
-    (state) =>
-      (direction === 'back' ? state.tab.back : state.tab.forward).length,
-  );
-  const { navigate: onNavigate } = useGitActions();
-  return (
-    <button
-      className="nav-button"
-      {...labelTip(strings.navigation.history[direction])}
-      disabled={steps === 0}
-      onClick={() => onNavigate(direction, 1)}
-    >
-      {direction === 'back' ? <BackIcon /> : <ForwardIcon />}
-    </button>
   );
 }

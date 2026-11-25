@@ -172,7 +172,7 @@ suite('Style', () => {
       ...allWithClass(nav, 'nav-button'),
       ...allWithClass(options, 'nav-button'),
     ];
-    assert.ok(buttons.length >= 11, String(buttons.length));
+    assert.ok(buttons.length >= 8, String(buttons.length));
     const switchedOn = buttons.filter((button) =>
       button.classes.includes('active'),
     );

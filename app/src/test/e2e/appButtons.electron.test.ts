@@ -116,7 +116,7 @@ suite('App buttons', () => {
     const gaps = all.flatMap((layout) => layout.gaps);
     const widths = all.flatMap((layout) => layout.widths);
 
-    assert.ok(git.gaps.length > 10);
+    assert.ok(git.gaps.length > 7, String(git.gaps.length));
     assert.ok(viewer.gaps.length > 4);
     assert.ok(whole(gaps), gaps.join());
     assert.strictEqual(

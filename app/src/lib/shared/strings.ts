@@ -500,10 +500,6 @@ export const strings = {
     Letter: 'A–Z',
   },
   navigation: {
-    history: {
-      back: 'Back; hold or right-click for the history',
-      forward: 'Forward; hold or right-click for the history',
-    },
     fetch: 'Fetch every remote, dropping branches deleted there',
     fetchedTitle: (elapsed: number) =>
       `Fetch every remote, dropping branches deleted there\n${fetchedAgo(elapsed)}`,

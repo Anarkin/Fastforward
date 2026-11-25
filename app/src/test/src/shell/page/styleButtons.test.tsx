@@ -74,7 +74,7 @@ suite('Style', () => {
       ...allWithClass(nav, 'nav-button'),
       ...allWithClass(options, 'nav-button'),
     ];
-    assert.ok(buttons.length > 8);
+    assert.ok(buttons.length >= 8);
     for (const button of buttons) {
       looks(button, {
         width: 'var(--button-size)',
@@ -116,8 +116,11 @@ suite('Style', () => {
     for (const button of filled) {
       looksAlike(button, ['background'], hovered);
     }
-    const disabled = withClass(pinned, 'nav-button');
-    assert.ok(disabled.attributes.has('disabled'));
+    const disabled = allWithClass(
+      rendered(<NavButtonsShown autoFetchMinutes={0} />),
+      'nav-button',
+    ).find((button) => button.attributes.has('disabled'));
+    assert.ok(disabled);
     looks(disabled, { 'box-shadow': undefined }, hovered);
   });
 

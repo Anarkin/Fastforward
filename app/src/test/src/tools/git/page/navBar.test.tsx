@@ -2,10 +2,7 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import {
-  HistoryButton,
-  NavButtons,
-} from '../../../../../tools/git/page/navBar';
+import { NavButtons } from '../../../../../tools/git/page/navBar';
 import { GitStore } from '../../../../../tools/git/page/store';
 import type {
   GitToHost,
@@ -55,12 +52,14 @@ const hour = 60 * minute;
 const day = 24 * hour;
 
 suite('Navigation bar', () => {
-  test('greys out back and forward without steps', () => {
-    const html = buttons({
-      back: [{ hash: 'a'.repeat(40), subject: 'a' }],
-    });
-    assert.match(html, /data-tip="Back[^"]*"(?![^>]*disabled)/);
-    assert.match(html, /data-tip="Forward[^"]*" disabled=""/);
+  test('shows no back, forward or home buttons, the keys and the mouse buttons stepping back and forward and H selecting the checked-out commit alone', () => {
+    const entry = { hash: at, subject: 'a' };
+    const html = buttons({ back: [entry], forward: [entry] });
+    assert.doesNotMatch(
+      html,
+      /data-tip="(Back|Forward|Select the checked-out commit)/,
+    );
+    assert.match(html, /^<div class="toolbar"><div class="toolbar pin-pair">/);
   });
 
   test('spins the fetch button while fetching', () => {
@@ -160,8 +159,8 @@ suite('Navigation bar', () => {
         NavButtons,
         {},
       );
-      assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
-      const pair = bar.props.children[3];
+      assert.ok(isValidElement<{ children: React.ReactElement }>(bar));
+      const pair = bar.props.children;
       assert.ok(isValidElement<{ children: React.ReactElement[] }>(pair));
       for (const button of pair.props.children) {
         assert.ok(isValidElement<{ onClick: () => void }>(button));
@@ -183,62 +182,5 @@ suite('Navigation bar', () => {
         ),
       );
     }
-  });
-
-  test('selects the checked-out commit on a home button after forward, as H does, disabled while there is none', () => {
-    const posted: GitToHost[] = [];
-    const bar = renderedInGit(
-      navStore({}, (message) => posted.push(message)),
-      NavButtons,
-      {},
-    );
-    assert.ok(isValidElement<{ children: React.ReactElement[] }>(bar));
-    const home = bar.props.children[2];
-    assert.ok(isValidElement<{ onClick: () => void }>(home));
-    home.props.onClick();
-    assert.deepStrictEqual(posted, [{ type: 'jump', hash: at, root: '/repo' }]);
-    assert.match(
-      buttons({}),
-      /data-tip="Forward[^"]*"[^>]*>.*?<\/button><button class="nav-button" aria-label="Select the checked-out commit" data-tip="Select the checked-out commit">/,
-    );
-    assert.match(
-      buttons({ headCommit: undefined }),
-      /data-tip="Select the checked-out commit" disabled=""/,
-    );
-  });
-});
-
-suite('History buttons', () => {
-  test('go a step back or forward on a click, with no list of where they went, held or right-clicked, as the commander steps, Alt and the arrows or the mouse buttons doing the same', () => {
-    const posted: GitToHost[] = [];
-    const entry = { hash: at, subject: 'a' };
-    const store = navStore(
-      { back: [entry, entry], forward: [entry] },
-      (message) => posted.push(message),
-    );
-    const steps = (['back', 'forward'] as const).map((direction) =>
-      renderedInGit(store, HistoryButton, { direction }),
-    );
-    for (const button of steps) {
-      assert.ok(
-        isValidElement<{
-          onClick: () => void;
-          onContextMenu?: unknown;
-          onPointerDown?: unknown;
-        }>(button),
-      );
-      assert.strictEqual(button.type, 'button');
-      assert.strictEqual(button.props.onContextMenu, undefined);
-      assert.strictEqual(button.props.onPointerDown, undefined);
-      button.props.onClick();
-    }
-    assert.deepStrictEqual(posted, [
-      { type: 'navigate', direction: 'back', steps: 1, root: '/repo' },
-      { type: 'navigate', direction: 'forward', steps: 1, root: '/repo' },
-    ]);
-    assert.doesNotMatch(
-      buttons({ back: [entry] }),
-      /history-button|history-menu/,
-    );
   });
 });
