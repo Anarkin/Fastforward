@@ -430,7 +430,7 @@ export function Commits({
       : row;
   };
 
-  const renderGraph = (index: number, height: number) => {
+  const renderGraph = (index: number, height: number, top: number) => {
     const graphRow = graphOf(index);
     return (
       graphRow && (
@@ -439,6 +439,7 @@ export function Commits({
           height={height}
           line={line}
           hash={history?.at(index - offset)?.hash}
+          top={top}
           scale={scale}
           onToggleMerge={onToggleMerge}
         />
@@ -577,7 +578,7 @@ export function Commits({
                 }
                 style={rowPlace(row.start - shift, height)}
               >
-                {renderGraph(row.index, row.size)}
+                {renderGraph(row.index, row.size, row.start)}
                 {renderRow(row.index)}
               </div>
             );

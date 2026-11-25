@@ -42,6 +42,38 @@ const laneAt = (scale: number) => {
   };
 };
 
+const dashed = (top: number, scale: number) => {
+  const html = renderToStaticMarkup(
+    <GraphCell
+      row={{
+        lane: 0,
+        color: 0,
+        lines: [
+          { from: 0, to: 0, color: 0, bottom: false, dashed: true },
+          { from: 0, to: 0, color: 0, bottom: true, dashed: true },
+        ],
+      }}
+      height={44}
+      line={22}
+      top={top}
+      scale={scale}
+      onToggleMerge={noop}
+    />,
+  );
+  return {
+    dashes: attributes(html, 'path', 'stroke-dasharray'),
+    offsets: attributes(html, 'path', 'stroke-dashoffset').map(Number),
+  };
+};
+const near = (actual: readonly number[], expected: readonly number[]) =>
+  assert.ok(
+    actual.length === expected.length &&
+      actual.every(
+        (value, at) => Math.abs(value - (expected[at] ?? NaN)) < 1e-9,
+      ),
+    `${actual.join(' ')} rather than ${expected.join(' ')}`,
+  );
+
 suite('Graph cell', () => {
   test('draws solid lines from 1 px above the row, over the ends of the lines of the row above, so rows meeting within a device pixel at scales like 125% leave no seam, and dashed ones from its top, keeping their dashes in step with those of the row above, to the foot of the row, curving between lanes over a line, with the dot in the middle of the first line', () => {
     const html = cell(
@@ -73,6 +105,16 @@ suite('Graph cell', () => {
       ),
       [false, false, true, true, false, true],
     );
+  });
+
+  test('draws the dashes of a dashed line and the gaps between them whole device pixels long, at 125% too, and keeps them in step down the whole list, each dashed part offset by where it starts in the list, as the dots of a line from the uncommitted changes to HEAD stood unevenly, a dash of 2.5 device pixels rounded either way and the pattern starting anew at each half of each row', () => {
+    const atFull = dashed(47, 1);
+    assert.deepStrictEqual(atFull.dashes, ['2 3', '2 3']);
+    near(atFull.offsets, [2, 3]);
+
+    const at125 = dashed(44, 1.25);
+    assert.deepStrictEqual(at125.dashes, ['2.4 3.2', '2.4 3.2']);
+    near(at125.offsets, [44 - 5.6 * 7, 55 - 5.6 * 9]);
   });
 
   test('puts the dot in the middle of the first line of the line height the list measured, curving over that line', () => {

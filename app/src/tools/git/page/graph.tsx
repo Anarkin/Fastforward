@@ -10,6 +10,25 @@ const dotRadius = 4;
 
 const overlap = 1;
 
+const dash = 2;
+
+const dashGap = 3;
+
+function dashesOf(scale: number): readonly [number, number] {
+  return [
+    Math.max(1, Math.round(dash * scale)) / scale,
+    Math.max(1, Math.round(dashGap * scale)) / scale,
+  ];
+}
+
+function startOf(line: GraphLine, lineHeight: number): number {
+  return line.bottom ? lineHeight / 2 : 0;
+}
+
+function dashOffset(at: number, period: number): number {
+  return ((at % period) + period) % period;
+}
+
 function devicePixelsOfLine(scale: number): number {
   return Math.max(1, Math.round(laneLine * scale - 1e-6));
 }
@@ -54,6 +73,7 @@ export const GraphCell = memo(function GraphCell({
   height,
   line,
   hash,
+  top = 0,
   scale = 1,
   onToggleMerge,
 }: {
@@ -61,12 +81,15 @@ export const GraphCell = memo(function GraphCell({
   height: number;
   line: number;
   hash?: string;
+  top?: number;
   scale?: number;
   onToggleMerge: (hash: string) => void;
 }) {
   const cx = x(row.lane, scale);
   const dotY = line / 2;
   const laneColor = color(row.color);
+  const dashes = dashesOf(scale);
+  const period = dashes[0] + dashes[1];
   return (
     <svg className="graph" width={graphWidth(rowLanes(row))} height={height}>
       {row.lines.map((graphLine) => {
@@ -78,7 +101,13 @@ export const GraphCell = memo(function GraphCell({
             d={d}
             stroke={stroke}
             strokeWidth={lineWidth(scale)}
-            strokeDasharray={graphLine.dashed ? '2 3' : undefined}
+            {...(graphLine.dashed === true && {
+              strokeDasharray: dashes.join(' '),
+              strokeDashoffset: dashOffset(
+                top + startOf(graphLine, line),
+                period,
+              ),
+            })}
             fill="none"
           />
         );
