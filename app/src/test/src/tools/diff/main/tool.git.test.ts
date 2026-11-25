@@ -47,8 +47,6 @@ const comparesIn = (page: FakePage): CompareView[] =>
     message.type === 'compare' ? [message.compare] : [],
   );
 
-const short = (hash: string | undefined) => hash?.slice(0, 7);
-
 const textsIn = (page: FakePage) =>
   diffSent(page).flatMap((message) =>
     message.type === 'texts' ? [message.texts] : [],
@@ -141,7 +139,7 @@ suite('Diff tool comparing two files', () => {
     assert.strictEqual(diffSent(opened.page).at(-1)?.type, 'hide');
   });
 
-  test('diffs two versions of a file, or a version against the file on disk, reading each version from a copy git takes out of it, its tab named after the file and the two versions', async () => {
+  test('diffs two versions of a file, or a version against the file on disk, reading each version from a copy git takes out of it, its tab named after the file alone, as the buttons of its header name the versions', async () => {
     const story = path.join(repository.root, 'story.txt');
     await repository.commit('one', { 'story.txt': 'one\n' });
     await repository.commit('two', { 'story.txt': 'two\n' });
@@ -163,13 +161,7 @@ suite('Diff tool comparing two files', () => {
           .names([{ id: '12', tool: 'diff', compare: onDisk }])
           .get('12'),
       ],
-      [
-        { name: 'story.txt', folder: `${short(one)} → ${short(two)}` },
-        {
-          name: 'story.txt',
-          folder: `${short(one)} → ${strings.commits.uncommittedSide}`,
-        },
-      ],
+      [{ name: 'story.txt' }, { name: 'story.txt' }],
     );
 
     await opened.store.update(tabsKey, [

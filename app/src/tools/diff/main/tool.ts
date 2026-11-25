@@ -20,8 +20,7 @@ import type { TextEncoding } from '../../../components/encodings/shared/textEnco
 import { withChosen } from './versionChoice';
 import type { ComparedSide } from '../shared/protocol';
 import type { FileHistoryListed } from '../../../components/versions/shared/versions';
-import type { Compared, FileVersion } from '../../../shell/main/savedTabs';
-import { shortHash } from '../../../lib/shared/hashes';
+import type { Compared } from '../../../shell/main/savedTabs';
 import { ComparedImages } from './comparedImages';
 import { Comparisons } from './comparisons';
 import { isWellFormed } from './messageChecks';
@@ -40,30 +39,13 @@ export interface DiffAccess {
   readonly codePage: () => Promise<TextEncoding>;
 }
 
-const versionLabel = (version: FileVersion | undefined): string => {
-  if (version === undefined) {
-    return strings.commits.uncommittedSide;
-  }
-  return version.rev === 'index'
-    ? strings.versions.staged
-    : shortHash(version.rev);
-};
-
 function comparedTabName(compared: Compared): TabName {
   const [oldName, newName] = comparedNames(compared);
-  const versioned =
-    compared.oldVersion !== undefined || compared.newVersion !== undefined;
   return {
     name:
       oldName === newName
         ? newName
         : strings.messages.compareTab(oldName, newName),
-    ...(versioned && {
-      folder: strings.common.fromTo(
-        versionLabel(compared.oldVersion),
-        versionLabel(compared.newVersion),
-      ),
-    }),
   };
 }
 
