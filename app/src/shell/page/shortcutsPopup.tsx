@@ -277,6 +277,18 @@ export function ShortcutsPopup() {
     }
     measure();
   });
+  useLayoutEffect(() => {
+    const element = pane.current;
+    if (!element) {
+      return undefined;
+    }
+    const resized = new ResizeObserver(() => {
+      const { keys } = paneView(element);
+      setVisible((before) => (before?.join() === keys.join() ? before : keys));
+    });
+    resized.observe(element);
+    return () => resized.disconnect();
+  }, []);
   const openEntry = (id: ShortcutEntryId) => {
     if (id === open) {
       scrollPane('');
