@@ -29,6 +29,14 @@ const offered = async () => {
   return item.textContent();
 };
 
+const offeredOnceSettled = async (label: string) =>
+  waitFor(async () => {
+    const shown = await offered();
+    await page.keyboard.press('Escape');
+    await right().locator('.menu-item').first().waitFor({ state: 'detached' });
+    return shown === label;
+  }, `the menu of the bookmarks to offer ${label}`);
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -225,8 +233,7 @@ suite('App commander', () => {
 
     assert.strictEqual(await offered(), strings.commander.addBookmark);
     await page.keyboard.press('Enter');
-    assert.strictEqual(await offered(), strings.commander.removeBookmark);
-    await page.keyboard.press('Escape');
+    await offeredOnceSettled(strings.commander.removeBookmark);
     await waitFor(
       () => savedBookmarks() === JSON.stringify([bookmarked]),
       'the folder of the side to be saved as a bookmark',
