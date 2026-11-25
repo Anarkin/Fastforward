@@ -3,6 +3,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   changeKind,
+  changeMark,
   changeTitle,
   renamedPath,
 } from '../../../../lib/page/fileStatus';
@@ -31,6 +32,53 @@ suite('File status', () => {
         'modified',
         'deleted',
         'renamed',
+      ],
+    );
+  });
+
+  test('marks each file with the letter of its status before its name, as git writes it, N for a file git does not track, as git keeps U for a conflict, ! for a file in conflict, @ after it for a symbolic link, and two blanks for an unchanged file, so every name starts in one column', () => {
+    assert.deepStrictEqual(
+      (['A', 'U', 'C', 'M', 'T', '?', 'D', 'R'] as const).map((status) =>
+        changeMark(change('a.ts', { status })),
+      ),
+      ['A ', 'N ', 'C ', 'M ', 'T ', '? ', 'D ', 'R '],
+    );
+    assert.deepStrictEqual(
+      [
+        changeMark(change('a.ts', { status: 'M', conflict: true })),
+        changeMark(change('a.ts', { status: 'A', link: true })),
+        changeMark(change('a.ts', { status: 'M', conflict: true, link: true })),
+        changeMark(undefined),
+      ],
+      ['! ', 'A@', '!@', '  '],
+    );
+  });
+
+  test('sorts a file in conflict apart from the four kinds, whatever git calls its change, so it is drawn in the color of a conflict', () => {
+    assert.deepStrictEqual(
+      [
+        changeKind(change('a.ts', { status: 'M', conflict: true })),
+        changeKind(change('a.ts', { status: '?', conflict: true })),
+      ],
+      ['conflict', 'conflict'],
+    );
+  });
+
+  test('tells on a first line what the mark of a file means and on a second its path, as the mark alone is a letter', () => {
+    assert.deepStrictEqual(
+      [
+        plainOf(changeTitle(change('src/a.ts', { status: 'M' }))),
+        plainOf(changeTitle(change('src/a.ts', { status: 'U' }))),
+        plainOf(changeTitle(change('src/a.ts', { status: 'A', link: true }))),
+        plainOf(
+          changeTitle(change('src/a.ts', { status: 'M', conflict: true })),
+        ),
+      ],
+      [
+        'M: Modified\n"src/a.ts"',
+        'N: Untracked\n"src/a.ts"',
+        'A@: Added symbolic link\n"src/a.ts"',
+        '!: In conflict\n"src/a.ts"',
       ],
     );
   });
@@ -103,14 +151,14 @@ suite('File status', () => {
     assert.deepStrictEqual(
       changeTitle(change('new.ts', { status: 'R', oldPath: 'old.ts' }), '/r'),
       [
-        'Renamed: ',
+        'R: Renamed\n',
         { name: 'old.ts', path: 'file', root: '/r' },
         ' → ',
         { name: 'new.ts', path: 'file', root: '/r' },
       ],
     );
     assert.deepStrictEqual(changeTitle(change('gone.ts', { status: 'D' })), [
-      'Deleted: ',
+      'D: Deleted\n',
       { name: 'gone.ts', path: 'file' },
     ]);
   });
@@ -121,18 +169,18 @@ suite('File status', () => {
         plainOf(changeTitle(change('l', { status, link: true }))),
       ),
       [
-        'Added symbolic link: "l"',
-        'Modified symbolic link: "l"',
-        'Deleted symbolic link: "l"',
-        'Changed to a symbolic link: "l"',
-        'Untracked symbolic link: "l"',
+        'A@: Added symbolic link\n"l"',
+        'M@: Modified symbolic link\n"l"',
+        'D@: Deleted symbolic link\n"l"',
+        'T@: Changed to a symbolic link\n"l"',
+        'N@: Untracked symbolic link\n"l"',
       ],
     );
     assert.strictEqual(
       plainOf(
         changeTitle(change('b', { status: 'R', oldPath: 'a', link: true })),
       ),
-      'Renamed symbolic link: "a" → "b"',
+      'R@: Renamed symbolic link\n"a" → "b"',
     );
   });
 });

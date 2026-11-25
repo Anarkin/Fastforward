@@ -562,6 +562,7 @@
       "change-deleted-mark": "50%",
       "change-modified": "#a70",
       "change-renamed": "#06c",
+      "change-conflict": "#90c",
 
       "syntax-keyword": "#00d",
       "syntax-type": "#088",
@@ -613,6 +614,7 @@
       "change-deleted-mark": "50%",
       "change-modified": "#d92",
       "change-renamed": "#5af",
+      "change-conflict": "#c8f",
 
       "syntax-keyword": "#59c",
       "syntax-type": "#088",

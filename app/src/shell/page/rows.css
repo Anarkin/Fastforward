@@ -41,31 +41,32 @@
   font-size: var(--monospace-font-size);
 }
 
-.row .change-icon {
-  margin-right: 4px;
+.row .change-mark {
   flex-shrink: 0;
+  margin-right: 1ch;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  white-space: pre;
 }
 
-.change-icon.added {
+.change-mark.added {
   color: var(--color-change-added);
 }
 
-.change-icon.modified {
+.change-mark.modified {
   color: var(--color-change-modified);
 }
 
-.change-icon.deleted {
+.change-mark.deleted {
   color: var(--color-change-deleted);
 }
 
-.change-icon.renamed {
+.change-mark.renamed {
   color: var(--color-change-renamed);
 }
 
-.row .link-icon {
-  margin-left: 4px;
-  flex-shrink: 0;
-  opacity: var(--muted-opacity);
+.change-mark.conflict {
+  color: var(--color-change-conflict);
 }
 
 .row .path.unchanged,

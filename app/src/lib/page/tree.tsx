@@ -2,10 +2,9 @@ import { namedFile, type Sentence } from '../shared/sentences';
 import { tip } from './tips';
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
-import { changeTitle, changeClass, changeKind } from './fileStatus';
+import { changeTitle, changeClass, changeKind, changeMark } from './fileStatus';
 import { CutPathName } from './pathName';
 import { noFilter, type Filter } from '../shared/filter';
-import { ChangeIcon, LinkIcon } from './icons';
 import { treeIndent, twistyWidth } from './treeLayout';
 
 export function Twisty({ open }: { open: boolean }) {
@@ -79,7 +78,16 @@ export function FileRow({
       {...tip(change ? changeTitle(change, root) : [namedFile(path, root)])}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
-      {change && <ChangeIcon kind={changeKind(change)} />}
+      <span
+        className={
+          change === undefined
+            ? 'change-mark'
+            : `change-mark ${changeKind(change)}`
+        }
+        aria-hidden="true"
+      >
+        {changeMark(change)}
+      </span>
       <CutPathName
         className={changeClass(change)}
         path={name}
@@ -87,7 +95,6 @@ export function FileRow({
         {...(root !== undefined && { root })}
         filter={filter}
       />
-      {change?.link && <LinkIcon />}
     </div>
   );
 }

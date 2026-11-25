@@ -1,1 +1,2 @@
-export type ChangeKind = 'added' | 'modified' | 'deleted' | 'renamed';
+export type ChangeKind =
+  'added' | 'modified' | 'deleted' | 'renamed' | 'conflict';

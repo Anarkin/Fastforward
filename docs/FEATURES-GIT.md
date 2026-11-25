@@ -34,7 +34,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Status | List the changed, added, deleted and untracked files | `git status --porcelain=v2` | Core | ✅ Yes | An Uncommitted changes row on top of the graph, with a count; `git diff` against the index and HEAD, and for untracked files `git ls-files --others`, or `git status` on Windows |
+| Status | List the changed, added, deleted and untracked files | `git status --porcelain=v2` | Core | ✅ Yes | An Uncommitted changes row on top of the graph, with a count; `git diff` against the index and HEAD, and for untracked files `git ls-files --others`, or `git status` on Windows; each file starts with the letter of its change in the color of its kind, A added, N untracked, C copied, M modified, T type changed, D deleted, R renamed, ! in conflict, in a column of its own that unchanged files leave blank, so every name of a folder starts alike, the tooltip telling on a first line what the letter means and on a second the path |
 | Staged and unstaged apart | Show the index and the working tree separately | `git diff --cached`, `git diff` | Core | ✅ Yes | All Changes against HEAD, Staged, and Unstaged against the index |
 | Ignored files | List the files `.gitignore` hides | `git status --ignored` | Advanced | ❌ No |  |
 | Stage and unstage files | Add files to the index, or take them out | `git add`, `git restore --staged` | Core | ❌ No | The staged and unstaged views are read-only |
@@ -45,7 +45,7 @@
 | Stop tracking a file | Take a file out of git, keeping it on disk | `git rm --cached` | Common | ❌ No |  |
 | Hide local edits | Keep edits of tracked files out of the status | `git update-index --assume-unchanged`, `--skip-worktree` | Niche | ❌ No |  |
 | Move and remove tracked files | Rename or delete files through git | `git mv`, `git rm` | Niche | ❌ No |  |
-| Symbolic links | Show links as links rather than files | — | Advanced | ✅ Yes | Marked in the files; the diff names the target of each side, whether git makes real links or not |
+| Symbolic links | Show links as links rather than files | — | Advanced | ✅ Yes | Marked @ after the letter of their change in the files; the diff names the target of each side, whether git makes real links or not |
 
 ## Committing
 
@@ -205,7 +205,7 @@
 
 | Feature | What it does | Git command | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Conflicted files | List and mark the files in conflict | `git ls-files -u` | Core | ❌ No | Shown as changed files, diffed against our side with the markers as added lines |
+| Conflicted files | List and mark the files in conflict | `git ls-files -u` | Core | 🟡 Partial | Marked ! in the purple of a conflict, the tooltip saying In conflict, as git tells an unmerged file from a changed one; diffed against our side with the markers as added lines; not resolved in the app |
 | Ours or theirs | Resolve a file by taking one side | `git checkout --ours`, `--theirs` | Common | ❌ No |  |
 | Merge editor | Resolve in a three-way editor | — | Common | ❌ No |  |
 | External merge tool | Resolve in another app | `git mergetool` | Common | ❌ No |  |

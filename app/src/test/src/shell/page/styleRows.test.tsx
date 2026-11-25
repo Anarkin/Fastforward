@@ -137,20 +137,26 @@ suite('Style', () => {
     );
   });
 
-  test('starts a changed file with its icon, spaced from its name, in the theme color of its kind', () => {
-    for (const [status, kind] of [
-      ['A', 'added'],
-      ['M', 'modified'],
-      ['D', 'deleted'],
-      ['R', 'renamed'],
+  test('starts a file with its mark in monospace, its blanks kept, spaced from its name by a column, in the theme color of its kind of change, a conflict in a color of its own', () => {
+    for (const [extra, kind] of [
+      [{ status: 'A' }, 'added'],
+      [{ status: 'M' }, 'modified'],
+      [{ status: 'D' }, 'deleted'],
+      [{ status: 'R' }, 'renamed'],
+      [{ status: 'M', conflict: true }, 'conflict'],
     ] as const) {
-      const icon = withClass(
-        rendered(<FileRowShown change={fileChange('src/a.ts', { status })} />),
-        'change-icon',
+      const mark = withClass(
+        rendered(<FileRowShown change={fileChange('src/a.ts', extra)} />),
+        'change-mark',
         kind,
       );
-      looks(icon, { color: `var(--color-change-${kind})`, 'flex-shrink': '0' });
-      assert.ok(parseFloat(cascaded(icon, 'margin-right') ?? '') > 0);
+      looks(mark, {
+        color: `var(--color-change-${kind})`,
+        'flex-shrink': '0',
+        'margin-right': '1ch',
+        'font-family': 'var(--monospace-font-family)',
+        'white-space': 'pre',
+      });
     }
   });
 });

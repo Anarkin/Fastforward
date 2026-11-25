@@ -1,4 +1,3 @@
-import { type ChangeKind } from './iconKinds';
 import { usePixelRatio } from './imageSizes';
 import { diskOutline, floppyDrawing } from './floppyDrawing';
 import { boxOutline } from './iconPixels';
@@ -26,37 +25,6 @@ function Icon({
     >
       {children}
     </svg>
-  );
-}
-
-const changeSigns: Record<ChangeKind, React.ReactNode> = {
-  added: (
-    <>
-      <path d="M7.5 5v5" />
-      <path d="M5 7.5h5" />
-    </>
-  ),
-  modified: (
-    <circle cx="7.5" cy="7.5" r="1.6" fill="currentColor" stroke="none" />
-  ),
-  deleted: <path d="M5 7.5h5" />,
-  renamed: <path d="M4.5 7.5h5.5M8 5.5l2 2-2 2" />,
-};
-
-export function ChangeIcon({ kind }: { kind: ChangeKind }) {
-  return (
-    <Icon className={`change-icon ${kind}`}>
-      <rect x="2.5" y="2.5" width="10" height="10" rx="2" />
-      {changeSigns[kind]}
-    </Icon>
-  );
-}
-
-export function LinkIcon() {
-  return (
-    <Icon className="link-icon">
-      <path d="M4.5 4.5v3.5a2.5 2.5 0 0 0 2.5 2.5H12M9.5 8L12 10.5l-2.5 2.5" />
-    </Icon>
   );
 }
 

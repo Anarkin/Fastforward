@@ -616,7 +616,10 @@ export const strings = {
       U: 'Untracked symbolic link',
       '?': 'Changed symbolic link',
     },
-    change: (status: string, path: Sentence) => sentence`${status}: ${path}`,
+    conflict: 'In conflict',
+    linkConflict: 'Symbolic link in conflict',
+    change: (mark: string, status: string, path: Sentence) =>
+      sentence`${mark}: ${status}\n${path}`,
   },
   diff: {
     linesCounted: (added: number, removed: number) =>

@@ -20,8 +20,32 @@ const kinds: Record<FileChange['status'], ChangeKind> = {
   R: 'renamed',
 };
 
+const letters: Record<FileChange['status'], string> = {
+  A: 'A',
+  U: 'N',
+  C: 'C',
+  M: 'M',
+  T: 'T',
+  '?': '?',
+  D: 'D',
+  R: 'R',
+};
+
+const conflictLetter = '!';
+
+const linkLetter = '@';
+
 export function changeKind(change: FileChange): ChangeKind {
-  return kinds[change.status];
+  return change.conflict === true ? 'conflict' : kinds[change.status];
+}
+
+export function changeMark(change: FileChange | undefined): string {
+  if (change === undefined) {
+    return '  ';
+  }
+  const letter =
+    change.conflict === true ? conflictLetter : letters[change.status];
+  return `${letter}${change.link === true ? linkLetter : ' '}`;
 }
 
 export function changeClass(change: FileChange | undefined): string {
@@ -88,8 +112,14 @@ export function changeTitle(change: FileChange, root?: string): Sentence {
   const path = change.oldPath
     ? strings.common.fileFromTo(change.oldPath, change.path, root)
     : [namedFile(change.path, root)];
-  const statuses = change.link
-    ? strings.files.linkStatuses
-    : strings.files.statuses;
-  return strings.files.change(statuses[change.status], path);
+  const link = change.link === true;
+  const status =
+    change.conflict === true
+      ? link
+        ? strings.files.linkConflict
+        : strings.files.conflict
+      : (link ? strings.files.linkStatuses : strings.files.statuses)[
+          change.status
+        ];
+  return strings.files.change(changeMark(change).trimEnd(), status, path);
 }

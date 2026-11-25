@@ -34,64 +34,61 @@ function changedRow(status: FileChange['status']): string {
   );
 }
 
+const rowOf = (extra: Partial<FileChange>) =>
+  renderToStaticMarkup(
+    <FileRow
+      path="AGENTS.md"
+      name="AGENTS.md"
+      depth={0}
+      change={change('AGENTS.md', extra)}
+      selected={undefined}
+      marked={false}
+      onSelect={noop}
+    />,
+  );
+
 suite('File rows', () => {
-  test('starts a changed file with the icon of its kind of change, striking only a deleted name through', () => {
-    for (const [status, kind] of [
-      ['A', 'added'],
-      ['U', 'added'],
-      ['M', 'modified'],
-      ['R', 'renamed'],
+  test('starts a changed file with the letter of its change in the color of its kind before its name, striking only a deleted name through', () => {
+    for (const [status, kind, mark] of [
+      ['A', 'added', 'A '],
+      ['U', 'added', 'N '],
+      ['M', 'modified', 'M '],
+      ['R', 'renamed', 'R '],
     ] as const) {
       assert.match(
         changedRow(status),
         new RegExp(
-          `<svg class="icon change-icon ${kind}".*?</svg><span class="path path-cut"><span class="path-piece"><span class="path-part">a\\.ts</span></span></span>`,
+          `<span class="change-mark ${kind}" aria-hidden="true">${mark}</span><span class="path path-cut"><span class="path-piece"><span class="path-part">a\\.ts</span></span></span>`,
         ),
         status,
       );
     }
     assert.match(
       changedRow('D'),
-      /<svg class="icon change-icon deleted".*?<\/svg><span class="path deleted path-cut"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
+      /<span class="change-mark deleted" aria-hidden="true">D <\/span><span class="path deleted path-cut"><span class="path-piece"><span class="path-part">a\.ts<\/span><\/span><\/span>/,
     );
   });
 
-  test('draws each kind of change as its own sign in the same frame', () => {
-    const signs = (['A', 'M', 'D', 'R'] as const).map((status) =>
-      changedRow(status).replace(/^.*?<svg[^>]*>|<\/svg>.*$/g, ''),
-    );
-    const frames = signs.map((sign) => /<rect[^>]*>/.exec(sign)?.[0]);
-    assert.ok(frames[0]);
-    assert.deepStrictEqual(new Set(frames).size, 1);
-    assert.strictEqual(new Set(signs).size, signs.length);
-  });
-
-  test('marks a symbolic link after its name, naming it one in its tooltip, besides its kind of change', () => {
-    const html = renderToStaticMarkup(
-      <FileRow
-        path="AGENTS.md"
-        name="AGENTS.md"
-        depth={0}
-        change={change('AGENTS.md', { status: 'A', link: true })}
-        selected={undefined}
-        marked={false}
-        onSelect={noop}
-      />,
-    );
+  test('marks a symbolic link with @ beside the letter of its change, in one mark before its name, and a file in conflict with ! in the color of a conflict, its tooltip telling on a first line what the mark means and on a second the path', () => {
+    const link = rowOf({ status: 'A', link: true });
     assert.match(
-      html,
-      /<svg class="icon change-icon added".*?<\/svg><span class="path path-cut"><span class="path-piece"><span class="path-part">AGENTS\.md<\/span><\/span><\/span><svg class="icon link-icon"/,
+      link,
+      /<span class="change-mark added" aria-hidden="true">A@<\/span><span class="path path-cut">/,
     );
+    assert.doesNotMatch(link, /<svg/);
     tagWith(
-      html,
-      'data-tip="Added symbolic link: AGENTS.md"',
+      link,
+      'data-tip="A@: Added symbolic link\nAGENTS.md"',
       'row',
       'tree-row',
     );
-    assert.doesNotMatch(changedRow('A'), /link-icon/);
+    assert.match(
+      rowOf({ status: 'M', conflict: true }),
+      /<span class="change-mark conflict" aria-hidden="true">! <\/span>/,
+    );
   });
 
-  test('gives an unchanged file no icon', () => {
+  test('gives an unchanged file two blanks where a changed one has its mark, so every name in a folder starts in one column', () => {
     const html = renderToStaticMarkup(
       <FileRow
         path="a.ts"
@@ -104,6 +101,10 @@ suite('File rows', () => {
       />,
     );
     assert.doesNotMatch(html, /<svg/);
+    assert.match(
+      html,
+      /<span class="change-mark" aria-hidden="true"> {2}<\/span><span class="path unchanged path-cut">/,
+    );
   });
 
   test('dims an unchanged file', () => {

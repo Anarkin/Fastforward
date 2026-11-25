@@ -7,12 +7,9 @@ import * as icons from '../../../../lib/page/icons';
 import {
   AddIcon,
   BookmarkIcon,
-  ChangeIcon,
   CloseIcon,
   ExpandAllIcon,
 } from '../../../../lib/page/icons';
-
-const kinds = ['added', 'modified', 'deleted', 'renamed'] as const;
 
 function withoutProps(value: unknown): value is () => React.ReactNode {
   return typeof value === 'function' && value.length === 0;
@@ -26,10 +23,6 @@ function everyIcon(): { readonly name: string; readonly html: string }[] {
   );
   return [
     ...plain,
-    ...kinds.map((kind) => ({
-      name: `ChangeIcon ${kind}`,
-      html: renderToStaticMarkup(<ChangeIcon kind={kind} />),
-    })),
     ...tools.map((tool) => ({
       name: `ToolIcon ${tool}`,
       html: renderToStaticMarkup(<icons.ToolIcon tool={tool} />),
@@ -184,11 +177,9 @@ suite('Icons', () => {
     assert.deepStrictEqual(
       [
         renderToStaticMarkup(<AddIcon />),
-        renderToStaticMarkup(<ChangeIcon kind="added" />),
         renderToStaticMarkup(<ExpandAllIcon />),
       ].map(strokesOfPaths),
       [
-        [1, 1],
         [1, 1],
         [1, 1, 1],
       ],
