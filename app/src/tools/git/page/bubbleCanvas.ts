@@ -220,6 +220,7 @@ function tagPath(
 }
 
 interface BubblePlace {
+  readonly textScale: number;
   readonly left: number;
   readonly top: number;
   readonly tileLeft: number;
@@ -371,6 +372,24 @@ function paintHover(
 
 const hoverShare = 0.22;
 
+function written(
+  context: OffscreenCanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  textScale: number,
+): void {
+  if (textScale === 1) {
+    context.fillText(text, x, y);
+    return;
+  }
+  context.save();
+  context.translate(x, y);
+  context.scale(textScale, textScale);
+  context.fillText(text, 0, 0);
+  context.restore();
+}
+
 export function paintBubble(
   context: OffscreenCanvasRenderingContext2D,
   bubble: PaintedBubble,
@@ -400,12 +419,14 @@ export function paintBubble(
   context.rect(box.x0, box.y0, box.x1 - box.x0, box.y1 - box.y0);
   context.clip();
   context.fillStyle = inks.ink;
-  context.font = bubbleFontOf(looks, scale);
+  context.font = bubbleFontOf(looks, scale / place.textScale);
   context.textBaseline = 'alphabetic';
-  context.fillText(
+  written(
+    context,
     bubble.text,
     (place.left + geometry.textLeft) * scale - tileLeft,
     box.y0 + Math.round(looks.baseline * scale),
+    place.textScale,
   );
   const shift = bubble.width - geometry.width;
   bubble.look.actions
@@ -413,10 +434,12 @@ export function paintBubble(
     .forEach((action, at) => {
       const count = geometry.counts[at];
       if (count !== undefined) {
-        context.fillText(
+        written(
+          context,
           String(action.count),
           (place.left + count.left + shift) * scale - tileLeft,
           box.y0 + Math.round((count.top + looks.baseline) * scale),
+          place.textScale,
         );
       }
     });

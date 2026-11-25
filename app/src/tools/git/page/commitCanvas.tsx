@@ -259,7 +259,7 @@ export function CommitCanvas({
       const end = origin + viewHeight;
       const lookKey = [dark, scale, line, generation].join(' ');
       if (read.current?.key !== lookKey) {
-        read.current = { key: lookKey, looks: looksOf(listed) };
+        read.current = { key: lookKey, looks: looksOf(listed, scale) };
       }
       const { looks } = read.current;
       const probe = bubbleProbe.current;
@@ -327,6 +327,8 @@ export function CommitCanvas({
       cells.sized(pixelWidth, pixelHeight);
       cells.grounded(looks.ground);
       cells.texturedBy(runs.texture);
+      runs.textScale = looks.textScale;
+      const fontScale = scale / looks.textScale;
       const frame = cells.frame;
       frame.reset();
       cells.under.reset();
@@ -338,7 +340,7 @@ export function CommitCanvas({
       let record = recordOf([]);
       const originPixels = Math.round(origin * scale);
       const fontOf = (weight: string) =>
-        `${weight} ${looks.size * scale}px ${looks.family}`;
+        `${weight} ${looks.size * fontScale}px ${looks.family}`;
       const styleOf = (
         font: string,
         ink: string,
@@ -398,7 +400,7 @@ export function CommitCanvas({
           return;
         }
         let counted = 0;
-        const bubbleFont = bubbleFontOf(bubbleLooks, scale);
+        const bubbleFont = bubbleFontOf(bubbleLooks, fontScale);
         const most = room + bubbleInset;
         const clipRight = Math.round((indent + room) * scale);
         const lines = look.lines ?? [look.bubbles.length];
@@ -465,6 +467,7 @@ export function CommitCanvas({
               cssOf(ground),
               (context) =>
                 paintBubble(context, painted, bubbleLooks, {
+                  textScale: looks.textScale,
                   left,
                   top,
                   tileLeft,

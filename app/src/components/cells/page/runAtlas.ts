@@ -31,6 +31,7 @@ export class RunAtlas {
   readonly texture: GPUTexture;
   generation = 0;
   full = false;
+  textScale = 1;
   private readonly shelf: OffscreenCanvas;
   private readonly stage: OffscreenCanvasRenderingContext2D;
   private readonly measuring: OffscreenCanvasRenderingContext2D;
@@ -70,7 +71,7 @@ export class RunAtlas {
     const key = `${font}\u0000${text}`;
     const known = this.widths.get(key);
     if (known !== undefined) {
-      return known;
+      return known * this.textScale;
     }
     if (this.measuredFont !== font) {
       this.measuring.font = font;
@@ -81,11 +82,11 @@ export class RunAtlas {
       this.widths.clear();
     }
     this.widths.set(key, width);
-    return width;
+    return width * this.textScale;
   }
 
   tile(text: string, style: RunStyle, offset: number): RunTile | undefined {
-    const key = `${style.key}\u0000${offset}\u0000${text}`;
+    const key = `${style.key}\u0000${this.textScale}\u0000${offset}\u0000${text}`;
     const known = this.tiles.get(key);
     if (known !== undefined) {
       return known;
@@ -117,7 +118,15 @@ export class RunAtlas {
       this.font = style.font;
     }
     stage.fillStyle = style.ink;
-    stage.fillText(text, x + runPadding + offset, style.baseline);
+    if (this.textScale === 1) {
+      stage.fillText(text, x + runPadding + offset, style.baseline);
+    } else {
+      stage.save();
+      stage.translate(x + runPadding + offset, style.baseline);
+      stage.scale(this.textScale, this.textScale);
+      stage.fillText(text, 0, 0);
+      stage.restore();
+    }
     this.waiting = true;
     const tile = { u: x, v: this.shelfY, width };
     this.tiles.set(key, tile);

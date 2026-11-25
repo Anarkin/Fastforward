@@ -1,3 +1,4 @@
+import { scratchRange } from '../../../shell/page/scratchRange';
 import { layerOf } from '../../../components/cells/page/cellLook';
 import { graphColors } from '../shared/protocol';
 import { fadedOf } from './bubbleCanvas';
@@ -22,6 +23,7 @@ export interface Looks {
   readonly weight: string;
   readonly bold: string;
   readonly lanes: readonly Rgba[];
+  readonly textScale: number;
 }
 
 export const over = (base: Rgba, layer: Rgba): Rgba => [
@@ -50,7 +52,34 @@ function probed(host: HTMLElement, html: string): HTMLElement {
   return probe;
 }
 
-export function looksOf(list: HTMLElement): Looks {
+const shapedSample =
+  'The quick brown fox jumps over the lazy dog, 0123456789 times';
+
+let measuring: OffscreenCanvasRenderingContext2D | null | undefined;
+
+function textScaleOf(sample: HTMLElement, scale: number): number {
+  measuring ??= new OffscreenCanvas(1, 1).getContext('2d');
+  if (measuring === null || scale === 1) {
+    return 1;
+  }
+  const style = getComputedStyle(sample);
+  const size = parseFloat(style.fontSize);
+  const widthAt = (pixels: number) => {
+    if (measuring === null || measuring === undefined) {
+      return 0;
+    }
+    measuring.font = `${style.fontWeight} ${pixels}px ${style.fontFamily}`;
+    return measuring.measureText(shapedSample).width;
+  };
+  const range = scratchRange();
+  range.selectNodeContents(sample);
+  const laid = range.getBoundingClientRect().width;
+  const asDevice = widthAt(size * scale) / scale;
+  const asCss = widthAt(size);
+  return Math.abs(asCss - laid) < Math.abs(asDevice - laid) ? scale : 1;
+}
+
+export function looksOf(list: HTMLElement, scale: number): Looks {
   const probe = probed(
     list,
     `<div class="commit"><div class="commit-line"><span class="subject">a</span></div><div class="commit-line secondary"><span class="author">a</span></div></div>` +
@@ -59,6 +88,7 @@ export function looksOf(list: HTMLElement): Looks {
       `<div class="commit working-tree"><span class="subject">a</span></div>` +
       `<div class="commit working-tree empty"><span class="subject">a</span></div>` +
       `<div class="commit-line" data-line><span class="subject">a<span data-baseline></span></span></div>` +
+      `<div class="commit-line"><span class="subject" data-sample></span></div>` +
       `<span class="bar"></span><span data-hover></span><span data-focus></span>`,
   );
   const at = (selector: string) => {
@@ -87,7 +117,10 @@ export function looksOf(list: HTMLElement): Looks {
   baselineMark.style.display = 'inline-block';
   baselineMark.style.verticalAlign = 'baseline';
   baselineMark.style.height = '0';
+  const sample = at('[data-sample]');
+  sample.textContent = shapedSample;
   const looks: Looks = {
+    textScale: textScaleOf(sample, scale),
     baseline:
       baselineMark.getBoundingClientRect().bottom -
       at('[data-line]').getBoundingClientRect().top,
