@@ -51,6 +51,7 @@ export function ScrollbarMarksShown() {
           { kind: 'added', top: 0, height: 0.1 },
           { kind: 'removed', top: 0.2, height: 0.1 },
           { kind: 'match', top: 0.4, height: 0.1 },
+          { kind: 'current', top: 0.4, height: 0.1 },
         ]}
       />
     </div>

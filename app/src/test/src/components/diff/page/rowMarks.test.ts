@@ -39,4 +39,20 @@ suite('Find in diff', () => {
     ]);
     assert.deepStrictEqual(kinds(1), ['removed', 'added', 'match']);
   });
+
+  test('marks the line of the current match orange over the other matches, where the find is, and nothing more without one', () => {
+    const rows = diffRows(parsePatch(patch), new Map(), undefined);
+    const keys = lineKeys(rows);
+    const matched = new Map([['0:3', []]]);
+    const marks = (current: string | undefined) =>
+      diffMarks(rows, keys, matched, 0, undefined, current)
+        .filter((mark) => mark.kind === 'match' || mark.kind === 'current')
+        .map((mark) => [mark.kind, mark.top]);
+    const [match] = marks(undefined);
+    assert.ok(match);
+    assert.deepStrictEqual(
+      [marks('0:3'), marks(undefined)],
+      [[match, ['current', match[1]]], [match]],
+    );
+  });
 });

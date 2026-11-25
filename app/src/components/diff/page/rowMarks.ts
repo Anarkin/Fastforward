@@ -6,6 +6,7 @@ import { markedRows } from './rowMeasures';
 
 interface MarksInput {
   readonly rows: readonly DiffRow[];
+  readonly currentKey: string | undefined;
   readonly keys: readonly (readonly string[])[];
   readonly matched: ReadonlyMap<string, unknown>;
   readonly least: number;
@@ -14,6 +15,7 @@ interface MarksInput {
 
 const noMarksInput: MarksInput = {
   rows: [],
+  currentKey: undefined,
   keys: [],
   matched: new Map(),
   least: 0,
@@ -26,6 +28,7 @@ export function diffMarks(
   matchedLines: ReadonlyMap<string, unknown>,
   least: number,
   measured?: (index: number) => number | undefined,
+  currentKey?: string,
 ): ChangeMark[] {
   const heights = markedRows(rows, measured);
   const matched = new Set(
@@ -33,9 +36,18 @@ export function diffMarks(
       row.some((key) => matchedLines.has(key)) ? [index] : [],
     ),
   );
+  const current = keys.findIndex((row) =>
+    row.some((key) => key === currentKey),
+  );
   return [
     ...changedMarks(heights, least),
     ...matchMarks(heights, matched, least),
+    ...(current === -1
+      ? []
+      : matchMarks(heights, new Set([current]), least).map((mark) => ({
+          ...mark,
+          kind: 'current' as const,
+        }))),
   ];
 }
 
@@ -43,10 +55,12 @@ export function useDiffMarks({
   rows,
   keys,
   rangesByLine,
+  currentKey,
   least,
   virtualizer,
 }: {
   readonly rows: readonly DiffRow[];
+  readonly currentKey: string | undefined;
   readonly keys: readonly (readonly string[])[];
   readonly rangesByLine: ReadonlyMap<string, unknown>;
   readonly least: number;
@@ -57,12 +71,13 @@ export function useDiffMarks({
     useMemo(
       () => ({
         rows,
+        currentKey,
         keys,
         matched: rangesByLine,
         least,
         measurements,
       }),
-      [rows, keys, rangesByLine, least, measurements],
+      [rows, currentKey, keys, rangesByLine, least, measurements],
     ),
     noMarksInput,
   );
@@ -74,6 +89,7 @@ export function useDiffMarks({
         marksInput.matched,
         marksInput.least,
         (index) => marksInput.measurements[index]?.size,
+        marksInput.currentKey,
       ),
     [marksInput],
   );

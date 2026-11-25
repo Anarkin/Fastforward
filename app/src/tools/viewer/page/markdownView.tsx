@@ -318,6 +318,11 @@ export function MarkdownPane({
             matchSpans(matches.current, code.current, scroller),
             scroller.scrollHeight,
             scroller.clientHeight,
+            matchSpans(
+              matches.current.slice(shownAt.current, shownAt.current + 1),
+              code.current,
+              scroller,
+            )[0],
           ),
     );
   });
@@ -361,7 +366,10 @@ export function MarkdownPane({
       }),
     [html, dark, table, showWhitespace, marking, query, options],
   );
-  useLayoutEffect(() => marked(current), [current]);
+  useLayoutEffect(() => {
+    marked(current);
+    remarked();
+  }, [current]);
   useEffect(() => {
     const element = content.current;
     const scroller = element?.closest('.viewer-body');

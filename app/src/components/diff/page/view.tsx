@@ -447,6 +447,7 @@ export function DiffView({
     rows,
     keys,
     rangesByLine,
+    currentKey: foundKey,
     least: leastMark(marked, viewport),
     virtualizer,
   });

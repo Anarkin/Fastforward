@@ -355,6 +355,7 @@ export function ByteBody({
     <ScrollBody
       numbered={layout === 'text'}
       matches={find?.matches}
+      currentMatch={find?.current}
       size={size}
       thumb={
         lastTop === 0

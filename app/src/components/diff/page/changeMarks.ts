@@ -1,7 +1,7 @@
 import { tickJoiner, type TickJoiner } from '../../../lib/page/scrollbarTicks';
 
 export interface ChangeMark {
-  readonly kind: 'added' | 'removed' | 'match';
+  readonly kind: 'added' | 'removed' | 'match' | 'current';
   readonly top: number;
   readonly height: number;
 }

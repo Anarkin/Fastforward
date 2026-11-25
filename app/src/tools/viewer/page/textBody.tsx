@@ -196,6 +196,7 @@ export function TextBody({
     <ScrollBody
       numbered
       matches={find?.matches}
+      currentMatch={find?.current}
       size={size}
       thumb={textThumb(loaded, screen, size ?? 0, perRow, lastTop)}
       ends={textEnds(loaded, screen, size ?? 0)}

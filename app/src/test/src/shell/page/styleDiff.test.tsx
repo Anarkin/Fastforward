@@ -554,7 +554,7 @@ suite('Style', () => {
     looks(end, { position: 'sticky', right: padding.right });
   });
 
-  test('highlights what a find in the diff matched in the search match colors, the current match orange, and ticks the scrollbar in them', () => {
+  test('highlights what a find in the diff matched in the search match colors, the current match orange, and ticks the scrollbar in them, the current match orange over the others', () => {
     const [match, current] = allWithClass(
       diffView(<DiffViewShown />, <InlineLine kind="context" finds />),
       'find-match',
@@ -570,6 +570,15 @@ suite('Style', () => {
       withClass(rendered(<ScrollbarMarksShown />), 'scrollbar-mark', 'match'),
       {
         background: 'var(--color-search-match)',
+      },
+    );
+    looks(
+      withClass(rendered(<ScrollbarMarksShown />), 'scrollbar-mark', 'current'),
+      {
+        left: '50%',
+        right: '10%',
+        'z-index': '1',
+        background: 'var(--color-search-match-current)',
       },
     );
   });

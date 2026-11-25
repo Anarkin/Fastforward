@@ -48,4 +48,25 @@ suite('Marks of a Markdown preview', () => {
   test('marks nothing in a preview of no height, as a tab not shown yet has', () => {
     assert.deepStrictEqual(markdownMarks([{ top: 0, height: 20 }], 0, 500), []);
   });
+
+  test('marks the current match orange over the others, at least two pixels of the track tall, so the track shows where the search is', () => {
+    assert.deepStrictEqual(
+      rounded(
+        markdownMarks(
+          [
+            { top: 0, height: 20 },
+            { top: 300, height: 20 },
+          ],
+          1000,
+          500,
+          { top: 300, height: 1 },
+        ),
+      ),
+      [
+        { kind: 'match', top: 0, height: 0.02 },
+        { kind: 'match', top: 0.3, height: 0.02 },
+        { kind: 'current', top: 0.3, height: 0.004 },
+      ],
+    );
+  });
 });

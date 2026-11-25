@@ -134,6 +134,10 @@ function currentOf(state: EditorState): number {
   );
 }
 
+export function currentFound(state: EditorState): Found | undefined {
+  return findingOf(state).found[currentOf(state)];
+}
+
 export interface FoundMark extends Found {
   readonly current: boolean;
 }

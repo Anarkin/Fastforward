@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
+  currentTick,
   matchTicks,
   rowEnds,
 } from '../../../../../tools/viewer/page/scrollThumbs';
@@ -33,6 +34,23 @@ suite('Scroll thumbs', () => {
         { atStart: false, atEnd: false },
         { atStart: false, atEnd: true },
         { atStart: true, atEnd: true },
+      ],
+    );
+  });
+
+  test('places the current match on the track where the thumb comes to stand once it is at the top, at least as tall as a tick, and nowhere without one or a file', () => {
+    assert.deepStrictEqual(
+      [
+        currentTick({ start: 400, end: 404 }, 1000, 1 / 64),
+        currentTick({ start: 400, end: 600 }, 1000, 1 / 64),
+        currentTick(undefined, 1000, 1 / 64),
+        currentTick({ start: 0, end: 4 }, 0, 1 / 64),
+      ],
+      [
+        { top: 0.4, height: 1 / 64 },
+        { top: 0.4, height: 0.2 },
+        undefined,
+        undefined,
       ],
     );
   });

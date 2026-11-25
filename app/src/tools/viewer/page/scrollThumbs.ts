@@ -29,3 +29,16 @@ export function matchTicks(
   }
   return joined.ticks();
 }
+
+export function currentTick(
+  match: ByteRange | undefined,
+  size: number,
+  least: number,
+): Tick | undefined {
+  return match === undefined || size <= 0
+    ? undefined
+    : {
+        top: match.start / size,
+        height: Math.max((match.end - match.start) / size, least),
+      };
+}

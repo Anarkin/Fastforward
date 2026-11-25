@@ -61,6 +61,7 @@ export function ScrollBody({
   onLeft,
   reveal,
   matches = noMatches,
+  currentMatch,
   size = 0,
   lead = 0,
   children,
@@ -82,6 +83,7 @@ export function ScrollBody({
   onLeft?: (left: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
   matches?: readonly ByteRange[];
+  currentMatch?: ByteRange | undefined;
   size?: number;
   lead?: number;
   children: React.ReactNode;
@@ -441,6 +443,7 @@ export function ScrollBody({
         <MatchTicks
           ticks={scrollbar}
           matches={matches}
+          current={currentMatch}
           size={size}
           track={track}
         />

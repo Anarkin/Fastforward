@@ -1,6 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { ticksOf } from '../../../../../tools/editor/page/findTicks';
+import {
+  currentTickOf,
+  ticksOf,
+} from '../../../../../tools/editor/page/findTicks';
 
 const rounded = (ticks: ReturnType<typeof ticksOf>) =>
   ticks.map(({ top, height }) => ({
@@ -50,5 +53,22 @@ suite('The marks of a find on the scrollbar of the editor', () => {
 
   test('marks nothing in a text of no height', () => {
     assert.deepStrictEqual(ticksOf([{ top: 0, bottom: 20 }], 0, 400), []);
+  });
+
+  test('marks the line of the current match orange over the others, two pixels of the track tall at least, and nothing without one', () => {
+    assert.deepStrictEqual(
+      [
+        currentTickOf({ top: 500, bottom: 520 }, 1000, 400),
+        currentTickOf({ top: 500, bottom: 501 }, 1000, 400),
+        currentTickOf(undefined, 1000, 400),
+        currentTickOf({ top: 0, bottom: 20 }, 0, 400),
+      ],
+      [
+        { top: 0.5, height: 0.02 },
+        { top: 0.5, height: 0.005 },
+        undefined,
+        undefined,
+      ],
+    );
   });
 });

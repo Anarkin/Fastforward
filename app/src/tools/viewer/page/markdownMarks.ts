@@ -1,7 +1,7 @@
 import { leastMark, tickJoiner } from '../../../lib/page/scrollbarTicks';
 
 export interface MatchMark {
-  readonly kind: 'match';
+  readonly kind: 'match' | 'current';
   readonly top: number;
   readonly height: number;
 }
@@ -15,6 +15,7 @@ export function markdownMarks(
   spans: readonly MatchSpan[],
   total: number,
   viewport: number,
+  current?: MatchSpan,
 ): MatchMark[] {
   if (total <= 0) {
     return [];
@@ -25,5 +26,16 @@ export function markdownMarks(
   )) {
     joiner.add(top / total, (top + height) / total);
   }
-  return joiner.ticks().map((tick) => ({ kind: 'match' as const, ...tick }));
+  const marks: MatchMark[] = joiner
+    .ticks()
+    .map((tick) => ({ kind: 'match' as const, ...tick }));
+  if (current !== undefined) {
+    const least = leastMark(total, viewport);
+    marks.push({
+      kind: 'current',
+      top: current.top / total,
+      height: Math.max(current.height / total, least),
+    });
+  }
+  return marks;
 }
