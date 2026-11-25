@@ -36,7 +36,7 @@ suite('The tab width menu', () => {
       },
     );
     assert.deepStrictEqual(rowsOf(items), [
-      '(Tab width rules (first one applies):)',
+      '(Tab width rules for drawing (first one applies):)',
       '✓ 8 columns, from "tab_width" in "a/.editorconfig"',
       '4 columns, from "text.tabSize" in the settings',
     ]);
@@ -59,9 +59,29 @@ suite('The tab width menu', () => {
 
   test('checks the settings where no .editorconfig sets a width', () => {
     assert.deepStrictEqual(rowsOf(tabSizeItems({ settings: 4 }, opening)), [
-      '(Tab width rules (first one applies):)',
+      '(Tab width rules for drawing (first one applies):)',
       '(No .editorconfig sets "tab_width" or "indent_size")',
       '✓ 4 columns, from "text.tabSize" in the settings',
     ]);
+  });
+
+  test('names indent_size as where the width comes from once no tab_width is set, and opens its file', () => {
+    const opened: string[] = [];
+    const items = tabSizeItems(
+      {
+        file: { size: 2, key: 'indent_size', file: 'b/.editorconfig' },
+        settings: 4,
+      },
+      { file: (file) => opened.push(file), settings: () => undefined },
+    );
+    assert.deepStrictEqual(rowsOf(items).slice(1), [
+      '✓ 2 columns, from "indent_size" in "b/.editorconfig"',
+      '4 columns, from "text.tabSize" in the settings',
+    ]);
+    const row = items[1];
+    if (row !== undefined && !('separator' in row)) {
+      row.onClick?.();
+    }
+    assert.deepStrictEqual(opened, ['b/.editorconfig']);
   });
 });

@@ -48,6 +48,8 @@ async function charsetOf(config: Config) {
 const defaultsOf = (config: Config) =>
   textDefaultsOf('a.ts', false, sources(config).sources);
 
+const indentOf = async (config: Config) => (await defaultsOf(config)).indent;
+
 suite('What a file edited gets', () => {
   test('ends the lines of a new file as its .editorconfig says, else as git would check it out, else as the settings say for its extension and then for every file', async () => {
     const fromConfig = sources(
@@ -177,6 +179,18 @@ suite('What a file edited gets', () => {
         ).indentFile,
       ],
       ['b/.editorconfig', 'a/.editorconfig'],
+    );
+  });
+
+  test('indents by spaces where the .editorconfig gives indent_size alone, by as many as tab_width where it says spaces with no indent_size or with indent_size of tab, and by four where neither tells how many', async () => {
+    assert.deepStrictEqual(
+      [
+        await indentOf({ indentSize: 3 }),
+        await indentOf({ indentStyle: 'space', tabWidth: 2 }),
+        await indentOf({ indentStyle: 'space' }),
+        await indentOf({ indentStyle: 'tab', indentSize: 2 }),
+      ],
+      ['   ', '  ', '    ', String.fromCharCode(9)],
     );
   });
 

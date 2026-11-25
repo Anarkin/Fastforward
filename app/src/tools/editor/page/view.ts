@@ -60,7 +60,6 @@ function keptIndent(
   const now = indentShownOf(state);
   return before !== undefined &&
     before.indent === now.indent &&
-    before.converted === now.converted &&
     before.lines === now.lines &&
     before.rules === now.rules
     ? before

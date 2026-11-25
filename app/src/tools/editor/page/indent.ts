@@ -1,7 +1,6 @@
 import { indentUnit } from '@codemirror/language';
 import {
   Facet,
-  StateEffect,
   StateField,
   type EditorState,
   type Extension,
@@ -65,22 +64,10 @@ const linesIndentField = StateField.define<string | undefined>({
   update: (unit) => unit,
 });
 
-export const setIndent = StateEffect.define<string>();
-
 export const indentField = StateField.define<string>({
   create: () => ' '.repeat(4),
-  update: (unit, transaction) =>
-    transaction.effects.reduce(
-      (set, effect) => (effect.is(setIndent) ? effect.value : set),
-      unit,
-    ),
+  update: (unit) => unit,
   provide: (field) => indentUnit.from(field),
-});
-
-const convertedField = StateField.define<boolean>({
-  create: () => false,
-  update: (converted, transaction) =>
-    converted || transaction.effects.some((effect) => effect.is(setIndent)),
 });
 
 export function drawnTabSize(state: EditorState): number | undefined {
@@ -89,7 +76,6 @@ export function drawnTabSize(state: EditorState): number | undefined {
 
 export interface IndentShown {
   readonly indent: string;
-  readonly converted: boolean;
   readonly lines: string | undefined;
   readonly rules: IndentRules;
 }
@@ -97,7 +83,6 @@ export interface IndentShown {
 export function indentShownOf(state: EditorState): IndentShown {
   return {
     indent: state.field(indentField),
-    converted: state.field(convertedField, false) ?? false,
     lines: state.field(linesIndentField, false),
     rules: state.facet(indentRules),
   };
@@ -111,6 +96,5 @@ export function indentionOf(doc: Text, rules: IndentRules): Extension {
     indentField.init(
       () => rules.indent ?? lines ?? rules.fallbackIndent ?? ' '.repeat(4),
     ),
-    convertedField,
   ];
 }

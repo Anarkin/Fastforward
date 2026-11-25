@@ -1,7 +1,11 @@
 import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { editorConfigOf, globPattern } from '../../../../lib/main/editorConfig';
+import {
+  editorConfigOf,
+  fileTabSizeOf,
+  globPattern,
+} from '../../../../lib/main/editorConfig';
 
 const root = path.resolve('/work');
 const at = (...parts: string[]) => path.join(root, ...parts);
@@ -106,5 +110,46 @@ suite('EditorConfig', () => {
     assert.deepStrictEqual(config.setIn, {
       endOfLine: at('src', '.editorconfig'),
     });
+  });
+
+  test('draws a tab as wide as tab_width, else as indent_size, as the EditorConfig spec defaults one to the other, naming the file each comes from, and leaves it to the settings once indent_size is tab with no tab_width, as tab tells no width', async () => {
+    const tabOf = async (content: string) =>
+      fileTabSizeOf(
+        await editorConfigOf(
+          at('a.txt'),
+          reading({ [at('.editorconfig')]: content }),
+        ),
+      );
+    assert.deepStrictEqual(
+      [
+        await tabOf('[*]\nindent_size = 2\n'),
+        await tabOf('[*]\nindent_size = 2\ntab_width = 8\n'),
+        await tabOf('[*]\nindent_style = tab\nindent_size = tab\n'),
+        await tabOf('[*]\nindent_size = tab\ntab_width = 8\n'),
+        await tabOf('[*]\nindent_style = tab\n'),
+      ],
+      [
+        { size: 2, key: 'indent_size', file: at('.editorconfig') },
+        { size: 8, key: 'tab_width', file: at('.editorconfig') },
+        undefined,
+        { size: 8, key: 'tab_width', file: at('.editorconfig') },
+        undefined,
+      ],
+    );
+  });
+
+  test('draws a tab as wide as indent_size once a file closer to it unsets tab_width, naming the file indent_size comes from', async () => {
+    assert.deepStrictEqual(
+      fileTabSizeOf(
+        await editorConfigOf(
+          at('src', 'a.go'),
+          reading({
+            [at('.editorconfig')]: '[*]\nindent_size = 4\ntab_width = 8\n',
+            [at('src', '.editorconfig')]: '[*.go]\ntab_width = unset\n',
+          }),
+        ),
+      ),
+      { size: 4, key: 'indent_size', file: at('.editorconfig') },
+    );
   });
 });

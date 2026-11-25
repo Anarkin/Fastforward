@@ -1322,13 +1322,10 @@ export const strings = {
     title: 'Indentation and tab width',
     spaces: (count: number) => `Spaces: ${count}`,
     tabSize: (columns: number) => `Tab Size: ${columns}`,
-    toTabs: 'Convert indentation to tabs',
-    toSpaces: 'Convert indentation to spaces',
-    indentHeading: 'Indentation rules (first one applies):',
+    indentHeading: 'Indentation rules for typing (first one applies):',
     tabUnit: 'A tab',
     spacesUnit: (count: number) =>
       count === 1 ? '1 space' : `${count} spaces`,
-    converted: (unit: string) => `${unit}, as the indentation was converted`,
     fromEditorConfig: (unit: string, key: string, file: string) =>
       sentence`${unit}, from ${named(key)} in ${namedFile(file)}`,
     notInEditorConfig: sentence`No .editorconfig sets ${named('indent_style')} or ${named('indent_size')}`,
@@ -1338,7 +1335,7 @@ export const strings = {
     noIndentedLines: 'The file has no indented lines to go by',
     fromIndentSettings: (unit: string, key: string) =>
       sentence`${unit}, from ${named(key)} in the settings`,
-    drawnHeading: 'Tab width rules (first one applies):',
+    drawnHeading: 'Tab width rules for drawing (first one applies):',
     columns: (count: number) => (count === 1 ? '1 column' : `${count} columns`),
     widthFromEditorConfig: (columns: string, key: string, file: string) =>
       sentence`${columns}, from ${named(key)} in ${namedFile(file)}`,

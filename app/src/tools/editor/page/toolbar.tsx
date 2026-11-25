@@ -29,8 +29,8 @@ import { editedShown } from './state';
 import { Toolbar } from '../../../lib/page/toolbar';
 import { drawnSize, tabSizeItems } from '../../../lib/page/tabSizeMenu';
 import { tabSizeOf } from '../../../lib/page/tabStops';
-import { setIndent, type IndentShown } from './indent';
-import { indentItems, indentLabel, indentationChanges } from './indentation';
+import type { IndentShown } from './indent';
+import { indentItems, indentLabel } from './indentation';
 
 export function EditorToolbar({
   view,
@@ -103,17 +103,6 @@ export function EditorToolbar({
           }),
           settings: tabSizeOf(undefined),
         };
-  const convertIndentation = (to: 'tabs' | 'spaces') => {
-    const current = view.current;
-    if (current === undefined || tabsShown === undefined) {
-      return;
-    }
-    const size = drawnSize(tabsShown);
-    current.dispatch({
-      changes: indentationChanges(current.state.doc, to, size),
-      effects: setIndent.of(to === 'tabs' ? '\t' : ' '.repeat(size)),
-    });
-  };
 
   return (
     <>
@@ -198,19 +187,6 @@ export function EditorToolbar({
                 title={strings.indentation.title}
                 label={indentLabel(indentShown.indent, drawnSize(tabsShown))}
                 items={[
-                  {
-                    label: strings.indentation.toTabs,
-                    ...(readOnly
-                      ? { disabled: true }
-                      : { onClick: () => convertIndentation('tabs') }),
-                  },
-                  {
-                    label: strings.indentation.toSpaces,
-                    ...(readOnly
-                      ? { disabled: true }
-                      : { onClick: () => convertIndentation('spaces') }),
-                  },
-                  { separator: true },
                   ...indentItems(indentShown, opening),
                   { separator: true },
                   ...tabSizeItems(tabsShown, opening),

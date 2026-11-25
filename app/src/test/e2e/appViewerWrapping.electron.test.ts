@@ -17,7 +17,6 @@ import {
 } from './cellsSeen';
 import { gridLines, gridRuler } from './gridLines';
 import { waitForFocus } from './waits';
-import { editorLinesSeen } from './editorSeen';
 import { writeSettings } from './settingsWritten';
 import {
   opened,
@@ -558,7 +557,42 @@ suite('App commander', () => {
     }
   });
 
-  test('tells in a menu of the viewer and of the editor how wide a tab is drawn and where from, and converts the indentation of the editor to spaces by the tab stops', async () => {
+  test('draws a tab in the viewer as wide as indent_size of the .editorconfig of the file where it sets no tab_width, as the EditorConfig spec defaults one to the other', async () => {
+    const config = path.join(opened, '.editorconfig');
+    fs.writeFileSync(
+      config,
+      ['[*.psv]', 'indent_size = 2', ''].join(String.fromCharCode(10)),
+    );
+    fs.writeFileSync(
+      path.join(opened, 'narrow.psv'),
+      ['  |', String.fromCharCode(9) + '|'].join(String.fromCharCode(10)),
+    );
+    try {
+      await select('narrow');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await labelOf('.viewer-tab-size')) === 'Tab Size: 2',
+        'the width of indent_size on the button',
+      );
+      await waitFor(
+        async () => JSON.stringify(await barsOf()) === '[0]',
+        'the tab drawn two columns wide',
+      );
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(config);
+      fs.rmSync(path.join(opened, 'narrow.psv'));
+      await waitFor(
+        async () => !(await rowNames()).includes('narrow.psv'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('tells in a menu of the viewer and of the editor how wide a tab is drawn and where from, and in the editor what Tab types and where from', async () => {
     const tab = String.fromCharCode(9);
     fs.writeFileSync(
       path.join(opened, 'tabs.txt'),
@@ -584,18 +618,9 @@ suite('App commander', () => {
       const rows = (
         await editorMenu.locator('.menu-item').allTextContents()
       ).map((row) => row.replace('✓', '').trim());
-      await editorMenu
-        .locator('.menu-item', { hasText: 'Convert indentation to spaces' })
-        .click();
-      await waitFor(
-        async () => (await editorLinesSeen(page))[1]?.text === '    |',
-        'the tab converted to spaces',
-      );
-      await page.keyboard.press('ControlOrMeta+Z');
-      await waitFor(
-        async () => (await editorLinesSeen(page))[1]?.text === tab + '|',
-        'the conversion undone',
-      );
+      await page.keyboard.press('Escape');
+      await editorMenu.waitFor({ state: 'detached' });
+      await page.locator('.editor .editor-content').click();
       assert.deepStrictEqual(
         {
           before,
@@ -613,7 +638,7 @@ suite('App commander', () => {
           before: [-4],
           viewerLabel: 'Tab Size: 4',
           viewerRows: [
-            'Tab width rules (first one applies):',
+            'Tab width rules for drawing (first one applies):',
             'No .editorconfig sets tab_width or indent_size',
             '4 columns, from text.tabSize in the settings',
           ],

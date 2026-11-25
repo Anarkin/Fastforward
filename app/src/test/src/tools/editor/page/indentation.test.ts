@@ -1,10 +1,8 @@
 import * as assert from 'node:assert';
-import { Text } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import {
   indentItems,
   indentLabel,
-  indentationChanges,
 } from '../../../../../tools/editor/page/indentation';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 
@@ -33,7 +31,6 @@ suite('The indentation of the editor', () => {
         indentItems(
           {
             indent: '  ',
-            converted: false,
             lines: '  ',
             rules: { fallbackIndent: tab },
           },
@@ -41,7 +38,7 @@ suite('The indentation of the editor', () => {
         ),
       ),
       [
-        '(Indentation rules (first one applies):)',
+        '(Indentation rules for typing (first one applies):)',
         '(No .editorconfig sets "indent_style" or "indent_size")',
         '✓ 2 spaces, as the lines of the file are most often indented by',
         'A tab, from "tools.editor.indentStyle" in the settings',
@@ -51,8 +48,7 @@ suite('The indentation of the editor', () => {
       rowsOf(
         indentItems(
           {
-            indent: tab,
-            converted: true,
+            indent: '    ',
             lines: undefined,
             rules: {
               indent: '    ',
@@ -64,34 +60,41 @@ suite('The indentation of the editor', () => {
         ),
       ),
       [
-        '(Indentation rules (first one applies):)',
-        '✓ A tab, as the indentation was converted',
-        '4 spaces, from "indent_size" in "a/.editorconfig"',
+        '(Indentation rules for typing (first one applies):)',
+        '✓ 4 spaces, from "indent_size" in "a/.editorconfig"',
         '(The file has no indented lines to go by)',
         '4 spaces, from "tools.editor.indentSize" in the settings',
       ],
     );
   });
 
-  test('converts the indentation of every line to tabs or to spaces by the tab stops, keeping what is past the indentation and leaving a line already so alone', () => {
-    const doc = Text.of(['a', '    b', tab + '  c', '      d', tab + 'e']);
-    const apply = (to: 'tabs' | 'spaces') => {
-      let text = doc;
-      for (const change of indentationChanges(doc, to, 4).toReversed()) {
-        text = text.replace(change.from, change.to, Text.of([change.insert]));
+  test('names indent_style as where a tab comes from, and opens the .editorconfig or the settings a row comes from once it is clicked', () => {
+    const opened: string[] = [];
+    const items = indentItems(
+      {
+        indent: tab,
+        lines: '  ',
+        rules: {
+          indent: tab,
+          indentFile: 'a/.editorconfig',
+          fallbackIndent: '  ',
+        },
+      },
+      {
+        file: (file) => opened.push(file),
+        settings: () => opened.push('settings'),
+      },
+    );
+    assert.deepStrictEqual(rowsOf(items).slice(1), [
+      '✓ A tab, from "indent_style" in "a/.editorconfig"',
+      '2 spaces, as the lines of the file are most often indented by',
+      '2 spaces, from "tools.editor.indentSize" in the settings',
+    ]);
+    for (const item of items) {
+      if (!('separator' in item) && item.disabled !== true) {
+        item.onClick?.();
       }
-      return text.toString();
-    };
-    assert.deepStrictEqual(
-      [apply('tabs'), apply('spaces')],
-      [
-        ['a', tab + 'b', tab + '  c', tab + '  d', tab + 'e'].join('\n'),
-        ['a', '    b', '      c', '      d', '    e'].join('\n'),
-      ],
-    );
-    assert.deepStrictEqual(
-      indentationChanges(Text.of(['a', tab + 'b']), 'tabs', 4),
-      [],
-    );
+    }
+    assert.deepStrictEqual(opened, ['a/.editorconfig', 'settings']);
   });
 });
