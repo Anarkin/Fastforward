@@ -655,7 +655,7 @@ suite('App at a scale of 125%', () => {
         const device = (value: number) => Math.round(value * ratio);
         const popup = element.querySelector('.locations-popup');
         const title = element.querySelector('.column-title');
-        const button = (popup ?? title)?.querySelector('button');
+        const button = (popup ?? title)?.querySelector('.nav-button');
         const line = popup
           ? popup.querySelector('.locations-groups')?.getBoundingClientRect()
               .top

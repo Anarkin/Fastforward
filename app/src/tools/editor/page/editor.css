@@ -7,29 +7,9 @@
   height: 100%;
 }
 
-.editor-replace {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-}
-
-.editor-replace-input {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  font-family: var(--monospace-font-family);
-  font-size: var(--monospace-font-size);
-  color: var(--color-foreground);
-  background: none;
-  border: none;
-  outline: none;
-}
-
-.editor-replace-input::placeholder {
-  color: var(--muted-foreground);
-  opacity: 1;
+.nav-button-room {
+  flex: none;
+  width: var(--button-size);
 }
 
 .editor-path {

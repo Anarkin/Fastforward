@@ -587,22 +587,18 @@ suite('Files search', () => {
     );
   });
 
-  test('opens the search from its round magnifier, giving it the header while it is open, taking the keyboard only when asked so a tab switched back to keeps it where it was', () => {
-    const store = filesStore();
-    const closed = filesOf(store);
+  test('has no button of its own for the search, Ctrl+F opening it, floating it above the files rather than over them, taking the keyboard only when asked so a tab switched back to keeps it where it was', () => {
+    const closed = filesOf(filesStore());
     assert.ok(
       isValidElement<{
-        search: React.ReactElement<{ title: string; onClick: () => void }>;
+        search: unknown;
         searching: unknown;
+        searchOverTitle: boolean;
       }>(closed),
     );
-    assert.strictEqual(closed.props.search.props.title, 'Search files');
+    assert.strictEqual(closed.props.search, undefined);
     assert.ok(!closed.props.searching);
-    closed.props.search.props.onClick();
-    assert.deepStrictEqual(fileFilterOf(store.getState()), {
-      query: '',
-      options: plainSearch,
-    });
+    assert.strictEqual(closed.props.searchOverTitle, true);
     const open = filesOf(filesStore({ filter: 'view' }));
     assert.ok(isValidElement<{ searching: React.ReactNode }>(open));
     const html = renderToStaticMarkup(<>{open.props.searching}</>);
@@ -611,7 +607,7 @@ suite('Files search', () => {
     assert.match(html, /<input[^>]*placeholder="Search…"[^>]*value="view"/);
   });
 
-  test('counts the selected file of the files kept, steps among them around and around, and keeps its toggles with its query, the back button closing it as Esc does', () => {
+  test('counts the selected file of the files kept, steps among them around and around, and keeps its toggles with its query, the X closing it as Esc does', () => {
     const store = filesStore({
       filter: 'view',
       filterOptions: { ...plainSearch, caseSensitive: true },

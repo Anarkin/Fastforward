@@ -123,7 +123,7 @@ function blocks(className: string): MarkupElement {
 }
 
 suite('Style', () => {
-  test('stands the buttons of a header the one space of a bar from the line around its column on every side, the header as tall as that line, the space, a button, the space and the line under it, an open search and the search over the commits alike, so its buttons are as far from its top and its bottom as from either end and none moves as a search opens', () => {
+  test('stands the buttons of a header the one space of a bar from the line around its column on every side, the header as tall as that line, the space, a button, the space and the line under it, the search over the commits alike, so its buttons are as far from its top and its bottom as from either end and none moves as a search opens', () => {
     assert.strictEqual(deviceRounded('bar-space'), 4);
     assert.strictEqual(
       bodyVariable('hairline'),
@@ -167,13 +167,6 @@ suite('Style', () => {
       right: 'var(--bar-edge)',
     });
     const padding = 'var(--title-above) var(--bar-edge) var(--title-below)';
-    looks(
-      withClass(
-        rendered(renderedBy(Column, { searching: <span />, children: null })),
-        'column-title',
-      ),
-      { padding },
-    );
     looks(
       withClass(rendered(<LocationsPopupShown query="" />), 'locations-bar'),
       {

@@ -5,6 +5,7 @@ import { findKeyDown } from '../../../lib/page/findKeys';
 import { strings } from '../../../lib/shared/strings';
 import type { ViewerSearch } from './find';
 import { viewerKeymap } from './keymap';
+import { FloatingSearch } from '../../../lib/page/floatingSearch';
 
 export function ViewerFindBar({
   searched,
@@ -20,7 +21,7 @@ export function ViewerFindBar({
   onClose: () => void;
 }) {
   return (
-    <header className="column-title searching">
+    <FloatingSearch below>
       <SearchBar
         font={proportional ? 'proportional' : 'monospace'}
         query={searched.query}
@@ -38,6 +39,6 @@ export function ViewerFindBar({
         onClose={onClose}
         onKeyDown={findKeyDown(viewerKeymap, searched.step, onClose)}
       />
-    </header>
+    </FloatingSearch>
   );
 }

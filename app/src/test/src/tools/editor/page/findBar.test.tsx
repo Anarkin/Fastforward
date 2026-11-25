@@ -37,11 +37,9 @@ suite('The find bar of the editor', () => {
         view={{ current: undefined }}
         finder={finder(query, asked)}
         findCount={{ current: 2, matches: 7, capped: false, invalid: false }}
-      >
-        {null}
-      </EditorFindBar>,
+      />,
       (main) => {
-        const bar = main.querySelector('.column-title.searching > .search-bar');
+        const bar = main.querySelector('.floating-search > .search-bar');
         assert.ok(bar?.classList.contains('monospace'), 'the font of the code');
         assert.ok(bar);
         assert.strictEqual(bar.querySelector('input')?.value, 'let');

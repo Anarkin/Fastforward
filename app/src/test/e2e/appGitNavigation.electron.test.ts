@@ -326,12 +326,13 @@ suite('App', () => {
     }
   });
 
-  test('filters the files from their button, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
+  test('filters the files on Ctrl+F in them, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
     const files = page.locator('.columns > .column').nth(1);
     const names = () => files.locator('.row.file .path').allTextContents();
     await page.locator('.commit', { hasText: 'first' }).click();
     await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
-    await files.locator('.column-actions > .search-button').click();
+    await files.locator('[data-column-focus]').first().focus();
+    await page.keyboard.press('ControlOrMeta+F');
     const field = files.locator('.search-box-input');
     await waitForFocus(field, 'the files search');
     await field.fill('txt ch');
@@ -469,7 +470,8 @@ suite('App', () => {
       async () => (await status()) === '2 files changed',
       'the files changed counted',
     );
-    await files.locator('.column-actions > .search-button').click();
+    await files.locator('[data-column-focus]').first().focus();
+    await page.keyboard.press('ControlOrMeta+F');
     const field = files.locator('.search-box-input');
     await waitForFocus(field, 'the files search');
     await field.fill('kept');

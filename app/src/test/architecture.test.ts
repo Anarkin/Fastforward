@@ -735,7 +735,7 @@ suite('Architecture', () => {
     );
     const editorFindBar = read('tools/editor/page/findBar.tsx');
     assert.strictEqual(editorFindBar.match(/<input\b/g)?.length, 1);
-    assert.match(editorFindBar, /<input\s+className="editor-replace-input"/);
+    assert.match(editorFindBar, /<input\s+className="editor-replace-input\b/);
   });
 
   test('hands the options of a search, its case, whole words and regular expression, on whole as one SearchOptions, naming them one by one only where it is defined and checked, in the SearchBar that toggles them, in the matchers and the finds that match by them, and where the PDF hands them to PDF.js', () => {

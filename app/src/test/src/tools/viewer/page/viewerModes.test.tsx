@@ -52,7 +52,6 @@ const toolbar = (enabled: ReadonlySet<string>) =>
     strings.common.showWhitespace,
     strings.common.wrap,
     strings.viewer.realSize,
-    strings.textFile.findInFile,
   ].map((said) => [said, !enabled.has(said)]);
 
 const kinds = [
@@ -108,7 +107,7 @@ suite('The buttons a file viewed is viewed as', () => {
   test('keeps every control of its toolbar in its place in every mode, disabling those that do not apply rather than leaving them out, as the toolbar shifted from mode to mode', () =>
     inViewerTool(ViewerTool, async (tool) => {
       const { viewHex, viewText, viewPreview } = strings.viewer;
-      const always = [viewHex, viewText, strings.textFile.findInFile];
+      const always = [viewHex, viewText];
       await viewed(tool, 'C:\\work\\notes.txt');
 
       assert.deepStrictEqual(

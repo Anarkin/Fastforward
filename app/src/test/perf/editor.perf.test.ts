@@ -33,7 +33,7 @@ const findMarked = (page: Page, marked: boolean) =>
           ))) === wanted
     );
   }, marked);
-const findInput = '.editor .column-title.searching input';
+const findInput = '.editor .search-box-input:not(.editor-replace-input)';
 
 for (const wordWrap of [false, true]) {
   const mode = wordWrap ? 'wrapped' : 'unwrapped';

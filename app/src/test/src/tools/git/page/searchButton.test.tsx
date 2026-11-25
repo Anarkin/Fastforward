@@ -2,9 +2,9 @@ import * as assert from 'node:assert';
 import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { SearchButton } from '../../../../lib/page/search';
-import { noop } from '../../../helpers/fixtures';
-import { tagWith } from '../../../helpers/markup';
+import { SearchButton } from '../../../../../tools/git/page/searchButton';
+import { noop } from '../../../../helpers/fixtures';
+import { tagWith } from '../../../../helpers/markup';
 
 const page = (html: string) => new JSDOM(html).window.document;
 

@@ -28,7 +28,7 @@ const occurrences = () => seenMarked(page, 'occurrence');
 suite('App commander', () => {
   sharedCommanderApp();
 
-  test('searches a file viewed on Ctrl+F as the diff does, counting the matches, marking each, stepping to them with Enter and Shift+Enter, matching the case or a regular expression while their toggles are pressed, and closes the search on Esc, then the viewer', async () => {
+  test('searches a file viewed on Ctrl+F as the diff does, in a box floating over the top right of the file, its toolbar kept, counting the matches, marking each, stepping to them with Enter and Shift+Enter, matching the case or a regular expression while their toggles are pressed, and closes the search on Esc, then the viewer', async () => {
     const lines = Array.from({ length: 300 }, (_, index) =>
       index % 100 === 50 ? `Needle ${index}` : `row ${index}`,
     );
@@ -46,15 +46,21 @@ suite('App commander', () => {
         page.locator('.viewer .search-box-input'),
         'the search',
       );
-      assert.ok(
-        (await page
-          .locator('.viewer .search-bar')
-          .evaluate(
-            (row) =>
-              row.getBoundingClientRect().left -
-              (row.closest('.viewer')?.getBoundingClientRect().left ?? 0),
-          )) < 8,
-        'The search starts at the start of the header, as in the diff',
+      assert.deepStrictEqual(
+        await page.locator('.viewer .floating-search').evaluate((box) => {
+          const viewer = box.closest('.viewer')?.getBoundingClientRect();
+          const placed = box.getBoundingClientRect();
+          return {
+            atRight:
+              viewer !== undefined &&
+              placed.right > viewer.right - 80 &&
+              placed.left > viewer.left + viewer.width / 3,
+            toolbar:
+              box.closest('.viewer')?.querySelector('.viewer-actions') !== null,
+          };
+        }),
+        { atRight: true, toolbar: true },
+        'The search floats over the top right, as in the diff, the toolbar kept',
       );
       await page.keyboard.type('needle');
       await waitFor(async () => (await findCount()) === '1 of 3', 'the count');

@@ -7,7 +7,6 @@ import { Words } from '../../../lib/page/name';
 import { languageOf } from '../../../lib/page/languages';
 import { startColorer } from '../../../components/syntax/page/colorer';
 import { StatusLine } from '../../../lib/page/statusLine';
-import { findAskOf } from './find';
 import {
   languageChoiceOf,
   shownLanguage,
@@ -53,7 +52,6 @@ export function Editor() {
     status,
     findCount,
     findAsk,
-    setFindAsk,
     goingToLine,
     setGoingToLine,
     lineCount,
@@ -81,26 +79,23 @@ export function Editor() {
         : undefined;
 
   return (
-    <section className="column viewer editor" ref={section}>
-      <EditorFindBar view={view} finder={finder} findCount={findCount}>
-        <EditorToolbar
-          view={view}
-          endingsShown={endingsShown}
-          indentShown={indentShown}
-          language={
-            <LanguageButton
-              choice={languageChoice}
-              detected={detectedLanguage}
-              single
-              choose={chooseLanguage}
-              onChosen={() => view.current?.focus()}
-              scrolling={scrolling}
-            />
-          }
-          onFind={() => setFindAsk(findAskOf(false, view.current?.state))}
-        />
-      </EditorFindBar>
-      <div className="path-row editor-path">
+    <section className="column viewer editor search-scope" ref={section}>
+      <EditorToolbar
+        view={view}
+        endingsShown={endingsShown}
+        indentShown={indentShown}
+        language={
+          <LanguageButton
+            choice={languageChoice}
+            detected={detectedLanguage}
+            single
+            choose={chooseLanguage}
+            onChosen={() => view.current?.focus()}
+            scrolling={scrolling}
+          />
+        }
+      />
+      <div className="path-row editor-path search-area">
         <PathTitle path={file} file />
         {mark !== undefined && (
           <span
@@ -111,6 +106,7 @@ export function Editor() {
           </span>
         )}
       </div>
+      <EditorFindBar view={view} finder={finder} findCount={findCount} />
       {said === undefined ? (
         <>
           <div className="column-body editor-body" ref={host} />

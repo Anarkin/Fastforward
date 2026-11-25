@@ -517,3 +517,19 @@ export function NextIcon() {
     </Icon>
   );
 }
+
+export function ReplaceIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 4.5h7M2.5 7.5h4M12.5 3.5v5a3 3 0 0 1-3 3h-6M5.5 9.5l-2 2 2 2" />
+    </Icon>
+  );
+}
+
+export function ReplaceAllIcon() {
+  return (
+    <Icon>
+      <path d="M2.5 2.5h7M2.5 5.5h7M2.5 8.5h4M12.5 2.5v6a3 3 0 0 1-3 3h-6M5.5 9.5l-2 2 2 2" />
+    </Icon>
+  );
+}

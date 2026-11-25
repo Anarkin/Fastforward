@@ -1,5 +1,26 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEventHandler, ReactNode } from 'react';
 
-export function FloatingSearch({ children }: { children: ReactNode }) {
-  return <div className="floating-search">{children}</div>;
+export function FloatingSearch({
+  below = false,
+  over = false,
+  onKeyDown,
+  children,
+}: {
+  below?: boolean;
+  over?: boolean;
+  onKeyDown?: KeyboardEventHandler<HTMLDivElement>;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={[
+        'floating-search',
+        ...(below ? ['below'] : []),
+        ...(over ? ['over'] : []),
+      ].join(' ')}
+      onKeyDown={onKeyDown}
+    >
+      {children}
+    </div>
+  );
 }

@@ -14,10 +14,10 @@ type Tool = (typeof tools)[number];
 
 const searches: Record<Tool, number> = {
   commander: 0,
-  viewer: 1,
-  editor: 1,
-  git: 3,
-  diff: 1,
+  viewer: 0,
+  editor: 0,
+  git: 1,
+  diff: 0,
 };
 
 interface Bar {
@@ -32,6 +32,7 @@ interface Bar {
   readonly left: number;
   readonly right: number;
   readonly searching: boolean;
+  readonly endsRight: boolean;
   readonly fits: boolean;
   readonly single: boolean;
 }
@@ -76,6 +77,10 @@ function barsShown(): Bar[] {
         left: first?.left ?? 0,
         right: last?.right ?? 0,
         searching: bar.contains(document.activeElement),
+        endsRight:
+          bar.querySelector(
+            ':scope > .column-actions, :scope > .search-bar',
+          ) !== null,
         single: bar.closest('.columns.bars-outside') !== null,
         fits:
           bar.scrollWidth <= bar.clientWidth &&
@@ -101,7 +106,7 @@ function unlike(bar: Bar, model: Bar): string[] {
     apart(bar.above, around) && 'top',
     apart(bar.below, space) && 'bottom',
     apart(bar.before, around) && 'left',
-    apart(bar.after, around) && 'right',
+    bar.endsRight && apart(bar.after, around) && 'right',
     bar.gaps.some((each) => apart(each, space)) && 'gaps',
     bar.heights.some((each) => height === undefined || apart(each, height)) &&
       'buttons',
@@ -171,7 +176,7 @@ for (const scale of ['1', '1.25', '1.5']) {
       removeFolder(folder);
     });
 
-    test('stands the buttons of every header that has room for them at its top and at either end of it, with the space of a bar under them alone and between one another, all of one height, the same in every tool, its bars standing outside the frame of the block below, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
+    test('stands the buttons of every header that has room for them at its top and at its start, and at its end where it has buttons there, with the space of a bar under them alone and between one another, all of one height, the same in every tool, its bars standing outside the frame of the block below, as each header had spaces of its own, wider between some buttons than others and closer to one edge than another', async () => {
       const [model] = await show('git');
       assert.ok(model);
       assert.ok(model.below > 0, JSON.stringify(model));
@@ -196,7 +201,7 @@ for (const scale of ['1', '1.25', '1.5']) {
       assert.strictEqual(single, seen);
     });
 
-    test('keeps the first and the last button of a header where they were as its search opens in their place, the field between them, the bar of the search spaced as its header is, wherever both have room, so no button moves under the pointer that opened it', async () => {
+    test('keeps the first and the last button of a header where they were as its search opens in their place, the search of the commits alone opening so as every other floats over what it searches, the field between them, the bar of the search spaced as its header is, wherever both have room, so no button moves under the pointer that opened it', async () => {
       const [model] = await show('git');
       assert.ok(model);
       const moved: string[] = [];
@@ -236,7 +241,7 @@ for (const scale of ['1', '1.25', '1.5']) {
         }
       }
       assert.deepStrictEqual(moved, []);
-      assert.ok(opened >= fitting, String(opened));
+      assert.ok(opened >= 1, String(opened));
     });
 
     test('draws the row naming the file under the header of the viewer, the editor and a comparison of two files, and the repository above the columns of git, alike, as tall as a row of text, its name as far from the start and the top of the row in each, as the row of the viewer and the editor stood a pixel taller than the header of the diff, its name half a pixel lower', async () => {

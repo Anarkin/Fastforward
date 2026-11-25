@@ -38,7 +38,7 @@ import { Words } from '../../../lib/page/name';
 import { columnFocusAttribute } from '../../../lib/page/columnFocus';
 import { fullyVisible } from '../../../lib/page/listMoves';
 import { useCappedScroll } from './cappedVirtualizer';
-import { SearchButton } from '../../../lib/page/search';
+import { SearchButton } from './searchButton';
 import { realHeight, scrollCap } from './cappedScroll';
 import { endPaddingToStart, snappedToStart } from '../../../lib/page/rowStarts';
 import { followRows, type RowFollower } from '../../../lib/page/rowScroll';

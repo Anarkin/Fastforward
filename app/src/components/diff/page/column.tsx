@@ -1,5 +1,3 @@
-import { diffKeymap } from './keymap';
-import { keysOf } from '../../../lib/shared/keymap';
 import {
   useEffect,
   useEffectEvent,
@@ -26,7 +24,6 @@ import {
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
-import { SearchButton } from '../../../lib/page/search';
 import type { WholeFile } from './rows';
 import { DiffView } from './view';
 import { shownFiles, filteredDiffFiles } from './files';
@@ -155,7 +152,7 @@ export function Diff({
     fileContent,
     findAsked,
   });
-  const { jump, matches, shown, finding, openFind } = find;
+  const { jump, matches, shown, finding } = find;
   const [firstChange, setFirstChange] = useState(0);
   const [entireSeen, setEntireSeen] = useState(entire);
   const [awaitedDiff, setAwaitedDiff] = useState<number>();
@@ -177,13 +174,6 @@ export function Diff({
       focusName="diff"
       start={options}
       title={heading}
-      search={
-        <SearchButton
-          title={strings.find.title}
-          keys={keysOf(diffKeymap.find)}
-          onClick={openFind}
-        />
-      }
       status={
         <ColumnStatus loading={loading} font="monospace">
           {lines}

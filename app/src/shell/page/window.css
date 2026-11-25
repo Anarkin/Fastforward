@@ -48,6 +48,8 @@ body {
 
 .viewer-body,
 .column.viewer > .path-row,
+.column.viewer > .floating-search,
+.column:has(.diff-view) > .floating-search,
 .editor-surface,
 .diff-view {
   --scrollbar-across: var(--scrollbar-marked-size);

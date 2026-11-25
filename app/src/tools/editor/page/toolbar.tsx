@@ -1,5 +1,3 @@
-import { editorKeymap } from './keymap';
-import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import type { ReactNode, RefObject } from 'react';
 import type { EditorSurface } from './surface';
@@ -7,7 +5,6 @@ import { strings } from '../../../lib/shared/strings';
 import { ConfirmPopup } from '../../../shell/page/confirmPopup';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { ShowWhitespaceIcon, WordWrapIcon } from '../../../lib/page/icons';
-import { SearchButton } from '../../../lib/page/search';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
   encodingSourceItems,
@@ -37,13 +34,11 @@ export function EditorToolbar({
   endingsShown,
   indentShown,
   language,
-  onFind,
 }: {
   view: RefObject<EditorSurface | undefined>;
   endingsShown: EndingsShown | undefined;
   indentShown: IndentShown | undefined;
   language: ReactNode;
-  onFind: () => void;
 }) {
   const file = useEditor((state) => state.file) ?? '';
   const tab = useEditor((state) => state.tab);
@@ -218,13 +213,6 @@ export function EditorToolbar({
               <WordWrapIcon />
             </button>
           </Toolbar>
-        </Toolbar>
-        <Toolbar className="column-actions">
-          <SearchButton
-            title={strings.textFile.findInFile}
-            keys={keysOf(editorKeymap.find)}
-            onClick={onFind}
-          />
         </Toolbar>
       </header>
       {reopening !== undefined && tab !== undefined && (

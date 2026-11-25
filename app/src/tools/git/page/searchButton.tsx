@@ -1,5 +1,5 @@
-import { labelTip } from './tips';
-import { SearchIcon } from './icons';
+import { labelTip } from '../../../lib/page/tips';
+import { SearchIcon } from '../../../lib/page/icons';
 
 export function SearchButton({
   title,

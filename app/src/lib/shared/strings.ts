@@ -595,7 +595,6 @@ export const strings = {
     allChanges: 'All Changes',
     staged: 'Staged',
     unstaged: 'Unstaged',
-    search: 'Search files',
     noMatches: 'No files match',
     statuses: {
       A: 'Added',
@@ -1201,7 +1200,6 @@ export const strings = {
   textFile: {
     couldNotRead: (file: string, reason: Sentence) =>
       sentence`Couldn't read ${namedFile(file)}. ${reason}`,
-    findInFile: 'Search the file',
   },
   editor: {
     tooLarge: (file: string) =>
@@ -1353,7 +1351,6 @@ export const strings = {
       "Part of the file couldn't be read. It may have changed or been removed.",
   },
   find: {
-    title: 'Search the diff',
     placeholder: 'Search…',
     unsearched: (count: number) =>
       `Large files not shown yet are not searched: ${count}`,

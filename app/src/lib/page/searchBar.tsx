@@ -4,7 +4,7 @@ import type { InputHTMLAttributes, KeyboardEvent, RefObject } from 'react';
 import type { SearchOptions } from '../shared/searchOptions';
 import { strings } from '../shared/strings';
 import { matchCount, type MatchesFound } from '../shared/textMatches';
-import { BackIcon, NextIcon, PreviousIcon } from './icons';
+import { CloseIcon, NextIcon, PreviousIcon } from './icons';
 import { focusNameAttribute } from './viewFocus';
 import { Toolbar } from './toolbar';
 
@@ -124,11 +124,6 @@ export function SearchBar({
     <Toolbar
       className={`search-bar${font === 'monospace' ? ' monospace' : ''}${compact ? ' compact' : ''}`}
     >
-      {!compact && onClose !== undefined && (
-        <button className="nav-button" {...closeTip} onClick={onClose}>
-          <BackIcon />
-        </button>
-      )}
       <div className={`search-box${query ? ' active' : ''}`}>
         <input
           ref={input}
@@ -168,6 +163,11 @@ export function SearchBar({
             <NextIcon />
           </button>
         </Toolbar>
+      )}
+      {!compact && onClose !== undefined && (
+        <button className="nav-button" {...closeTip} onClick={onClose}>
+          <CloseIcon />
+        </button>
       )}
     </Toolbar>
   );

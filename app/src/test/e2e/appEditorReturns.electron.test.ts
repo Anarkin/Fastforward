@@ -114,9 +114,13 @@ suite('App editor tabs shown again', () => {
     assert.strictEqual(await page.locator('.editor .find-match').count(), 0);
 
     await showTab(page, editorTab);
-    await page.locator('.editor .search-box-input').focus();
+    await page
+      .locator('.editor .search-box-input:not(.editor-replace-input)')
+      .focus();
     await page.keyboard.press('Escape');
-    await page.locator('.editor .search-box').waitFor({ state: 'detached' });
+    await page
+      .locator('.editor .floating-search')
+      .waitFor({ state: 'detached' });
     await throughEveryOther('The editor once its find closed');
     assert.strictEqual(await page.locator('.editor .find-match').count(), 0);
   });

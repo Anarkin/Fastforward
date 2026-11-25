@@ -3,7 +3,6 @@ import { JSDOM } from 'jsdom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { Column } from '../../../../lib/page/column';
-import { SearchButton } from '../../../../lib/page/search';
 import { SearchBar } from '../../../../lib/page/searchBar';
 import { plainSearch } from '../../../../lib/shared/searchOptions';
 import { noop } from '../../../helpers/fixtures';
@@ -17,7 +16,7 @@ suite('Column', () => {
         <Column
           title="Files"
           actions={<button className="other" />}
-          search={<SearchButton title="Search files" onClick={noop} />}
+          search={<button className="nav-button search-button" />}
           overlay={<div className="opened" />}
         >
           <div className="body" />
@@ -38,7 +37,7 @@ suite('Column', () => {
   test('gives a header with only a search the place for it', () => {
     const document = page(
       renderToStaticMarkup(
-        <Column search={<SearchButton title="Search" onClick={noop} />}>
+        <Column search={<button className="nav-button search-button" />}>
           <div />
         </Column>,
       ),
@@ -46,14 +45,14 @@ suite('Column', () => {
     assert.ok(document.querySelector('.column-actions .search-button'));
   });
 
-  test('gives the whole header of a column to its open search, hiding its other buttons and its title', () => {
+  test('floats the open search of a column over the top right of its body, keeping its header, its title and its buttons as they were, as the commander and the terminal float theirs', () => {
     const document = page(
       renderToStaticMarkup(
         <Column
           title="Files"
           start={<button className="start" />}
           actions={<button className="other" />}
-          search={<SearchButton title="Search files" onClick={noop} />}
+          search={<button className="nav-button search-button" />}
           searching={
             <SearchBar
               font="proportional"
@@ -70,11 +69,20 @@ suite('Column', () => {
       ),
     );
     const header = document.querySelector('.column-title');
-    assert.ok(header);
-    assert.ok(header.classList.contains('searching'));
     assert.deepStrictEqual(
-      Array.from(header.children, (child) => child.className),
-      ['toolbar search-bar'],
+      Array.from(header?.children ?? [], (child) => child.className),
+      ['toolbar column-start', 'column-name', 'toolbar column-actions'],
+    );
+    const column = document.querySelector('section.column');
+    assert.ok(column?.classList.contains('search-scope') === true);
+    assert.ok(column);
+    assert.deepStrictEqual(
+      Array.from(column.children, (child) => child.className),
+      ['column-title', 'column-body search-area', 'floating-search'],
+    );
+    assert.ok(
+      document.querySelector('.floating-search > .search-bar'),
+      'the search in the floating box',
     );
   });
 });
@@ -96,7 +104,7 @@ suite('Status line', () => {
         document.querySelector('section.column')?.children ?? [],
         (child) => child.className,
       ),
-      ['column-title', 'column-body', 'column-status'],
+      ['column-title', 'column-body search-area', 'column-status'],
     );
   });
 });

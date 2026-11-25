@@ -35,7 +35,7 @@ suite('The find of the viewer', () => {
         onClose={() => closed++}
       />,
       (main) => {
-        const bar = main.querySelector('.column-title.searching > .search-bar');
+        const bar = main.querySelector('.floating-search > .search-bar');
         assert.ok(bar);
         assert.ok(bar.classList.contains('monospace'), 'the font of the text');
         assert.strictEqual(bar.querySelector('input')?.value, 'needle');

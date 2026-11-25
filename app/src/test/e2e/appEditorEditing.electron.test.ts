@@ -188,7 +188,9 @@ suite('App editor', () => {
     );
     await toStart();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.editor .search-box .search-box-input');
+    const field = page.locator(
+      '.editor .search-box-input:not(.editor-replace-input)',
+    );
     await field.waitFor();
     await field.fill('one');
     const count = page.locator('.editor .search-count');
@@ -214,7 +216,7 @@ suite('App editor', () => {
     await replacing.waitFor();
     await replacing.fill('ONE');
     await page
-      .locator('.editor-replace .confirm-button', { hasText: 'Replace All' })
+      .locator('.replace-bar .nav-button[data-tip="Replace All"]')
       .click();
     await waitFor(
       async () => (await editedText()) === 'ONE two ONE\nthree ONE\n',
@@ -222,7 +224,7 @@ suite('App editor', () => {
     );
     await field.press('Escape');
     await page
-      .locator('.editor .search-box .search-box-input')
+      .locator('.editor .search-box-input:not(.editor-replace-input)')
       .waitFor({ state: 'detached' });
   });
 
@@ -247,7 +249,9 @@ suite('App editor', () => {
     );
     await toStart();
     await page.keyboard.press('ControlOrMeta+F');
-    const field = page.locator('.editor .search-box .search-box-input');
+    const field = page.locator(
+      '.editor .search-box-input:not(.editor-replace-input)',
+    );
     await field.waitFor();
     await field.fill('needle');
     const count = page.locator('.editor .search-count');

@@ -43,10 +43,6 @@ input[type='checkbox']:focus-visible {
   outline-offset: 1px;
 }
 
-.column-title.searching {
-  padding: var(--title-above) var(--bar-edge) var(--title-below);
-}
-
 .search-bar {
   flex: 1;
   min-width: 0;
@@ -64,18 +60,35 @@ input[type='checkbox']:focus-visible {
   position: absolute;
   position-anchor: --search-area;
   top: calc(anchor(top) + var(--bar-space));
-  right: calc(anchor(right) + var(--scrollbar-across) + var(--bar-space));
+  right: calc(
+    anchor(right) + var(--column-line, 0px) + var(--scrollbar-across) +
+      var(--bar-space)
+  );
   z-index: 20;
   display: flex;
+  flex-direction: column;
+  gap: var(--bar-space);
   box-sizing: border-box;
   width: min(
     440px,
-    calc(anchor-size(width) - var(--scrollbar-across) - 2 * var(--bar-space))
+    calc(
+      anchor-size(width) - 2 * var(--column-line, 0px) -
+        var(--scrollbar-across) - 2 * var(--bar-space)
+    )
   );
   padding: var(--bar-space);
   background: var(--color-panel-background);
   border-radius: var(--radius);
   box-shadow: var(--popup-shadow);
+}
+
+.floating-search.below {
+  top: calc(anchor(bottom) + var(--bar-space));
+}
+
+.floating-search.over {
+  top: auto;
+  bottom: calc(anchor(top) + var(--bar-space));
 }
 
 .search-box {

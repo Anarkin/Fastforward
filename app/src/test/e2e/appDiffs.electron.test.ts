@@ -245,23 +245,25 @@ suite('App', () => {
     await noFinds();
   });
 
-  test('opens the diff search from its button, giving it the header but for going back, the toggles inside its box and stepping between matches, matching case while its toggle is pressed, and closes it from the back button', async () => {
+  test('opens the diff search on Ctrl+F floating over the top right of the diff, its header kept, the toggles inside its box, stepping between matches and an X closing it at its end, matching case while its toggle is pressed, and closes it from the X', async () => {
     await openChangedFile();
     const diff = page.locator('.columns > .column').nth(2);
-    await diff.locator('.column-actions > .search-button').click();
+    await page.locator('.diff-view .virtual-rows').focus();
+    await page.keyboard.press('ControlOrMeta+F');
     const field = page.locator('.search-box-input');
     await waitForFocus(field, 'the find field');
-    assert.strictEqual(await diff.locator('.diff-options').count(), 0);
+    assert.strictEqual(await diff.locator('.diff-options').count(), 1);
+    assert.strictEqual(await diff.locator('.column-actions').count(), 0);
     const titles = (selector: string) =>
       diff
         .locator(selector)
         .evaluateAll((buttons) =>
           buttons.map((button) => button.getAttribute('data-tip')),
         );
-    assert.deepStrictEqual(await titles('.column-title .nav-button'), [
-      'Close',
+    assert.deepStrictEqual(await titles('.floating-search .nav-button'), [
       'Previous Match',
       'Next Match',
+      'Close',
     ]);
     assert.deepStrictEqual(await titles('.search-box .search-toggle'), [
       'Match Case',
@@ -280,7 +282,7 @@ suite('App', () => {
     await waitForFocus(field, 'the find field');
     await matchCase.click();
     await diff.locator('.search-count', { hasText: '1 of 2' }).waitFor();
-    await diff.locator('.search-bar > .nav-button').first().click();
+    await diff.locator('.search-bar > .nav-button').last().click();
     await field.waitFor({ state: 'detached' });
     await noFinds();
     await diff.locator('.diff-options').waitFor();

@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { useMemo, useState } from 'react';
 import { type ChangeArea } from '../shared/protocol';
@@ -26,7 +25,6 @@ import { Column } from '../../../lib/page/column';
 import { ColumnResizer } from './columnResizer';
 import { narrows, searchFilter } from '../../../lib/shared/filter';
 import { noSearch } from '../../../lib/shared/searchOptions';
-import { SearchButton } from '../../../lib/page/search';
 import { useSettled } from './settled';
 import {
   AllFilesIcon,
@@ -144,7 +142,6 @@ export function Files() {
     input,
     toList,
     closeFilter,
-    openFilter,
   } = useFilesFilter({ view, words, filter, onFilter, filterAsked });
   const shownClosed = filtering ? closedWhileFiltering : closedFolders;
   const shownOpened = useMemo(
@@ -326,13 +323,7 @@ export function Files() {
           {counted}
         </ColumnStatus>
       }
-      search={
-        <SearchButton
-          title={strings.files.search}
-          keys={keysOf(gitKeymap.find)}
-          onClick={openFilter}
-        />
-      }
+      searchOverTitle
       searching={
         filter !== undefined && (
           <FileFilterField

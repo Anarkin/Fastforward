@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { BackIcon } from '../../../../lib/page/icons';
+import { CloseIcon } from '../../../../lib/page/icons';
 import { SearchBar } from '../../../../lib/page/searchBar';
 import {
   plainSearch,
@@ -55,17 +55,17 @@ suite('Search bar', () => {
     assert.strictEqual(named({ focusName: 'filter' }), 'filter');
   });
 
-  test('draws, from the left, the back button, the box with its input, the counter and the three toggles at its right end, and the previous and next buttons', () => {
+  test('draws, from the left, the box with its input, the counter and the three toggles at its right end, the previous and next buttons, and an X closing it at the end, as a popup closes, rather than a back arrow first, which read as going somewhere', () => {
     const document = page();
     const shown = document.querySelector('.search-bar');
     assert.deepStrictEqual(classesOf(shown), [
-      'nav-button',
       'search-box active',
       'toolbar search-steps',
+      'nav-button',
     ]);
-    const back = shown?.firstElementChild;
-    assert.strictEqual(back?.getAttribute('data-tip'), 'Close');
-    assert.strictEqual(back?.innerHTML, renderToStaticMarkup(<BackIcon />));
+    const close = shown?.lastElementChild;
+    assert.strictEqual(close?.getAttribute('data-tip'), 'Close');
+    assert.strictEqual(close?.innerHTML, renderToStaticMarkup(<CloseIcon />));
     assert.deepStrictEqual(classesOf(document.querySelector('.search-box')), [
       'search-box-input',
       'search-count',
@@ -185,7 +185,7 @@ suite('Search bar', () => {
     );
   });
 
-  test('steps to the previous and next match and goes back by its buttons, handing the keys typed in its box on', async () => {
+  test('steps to the previous and next match and closes by its buttons, handing the keys typed in its box on', async () => {
     const steps: number[] = [];
     const keys: string[] = [];
     let closed = 0;
@@ -198,12 +198,13 @@ suite('Search bar', () => {
         })}
       />,
       (main, window) => {
-        const [back, previous, next] = main.querySelectorAll<HTMLButtonElement>(
-          '.search-bar > .nav-button, .search-steps button',
-        );
+        const [previous, next, close] =
+          main.querySelectorAll<HTMLButtonElement>(
+            '.search-steps button, .search-bar > .nav-button',
+          );
         clicked(previous);
         clicked(next);
-        clicked(back);
+        clicked(close);
         const input = main.querySelector('input');
         assert.ok(input);
         act(() => {

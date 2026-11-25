@@ -218,18 +218,14 @@
 }
 
 .column-title:has(> .column-start.viewer-actions) {
+  justify-content: flex-start;
   gap: var(--bar-space);
   padding: var(--title-above) var(--bar-edge) var(--title-below);
 }
 
-.column-title:has(> .column-start.viewer-actions) > .column-start,
-.column-title:has(> .column-start.viewer-actions) > .column-actions {
+.column-title:has(> .column-start.viewer-actions) > .column-start {
   position: static;
   flex: none;
-}
-
-.column-title:has(> .column-start.viewer-actions) > .column-actions {
-  margin-left: auto;
 }
 
 .viewer-encoding .menu-button-trigger {
