@@ -60,7 +60,8 @@ suite('Message peek', () => {
     assert.strictEqual(tagsWith(pinned, 'message-corner', 'pinned').length, 1);
     const [close] = tagsWith(pinned, 'message-close');
     assert.doesNotMatch(close ?? '', /disabled/);
-    assert.match(close ?? '', /data-tip="Close"/);
+    assert.match(close ?? '', /aria-label="Close"/);
+    assert.doesNotMatch(close ?? '', /data-tip=/);
   });
 
   test('names the keys that pin from the keyboard on a message peeked at from the keyboard, as the click is not at hand there', () => {

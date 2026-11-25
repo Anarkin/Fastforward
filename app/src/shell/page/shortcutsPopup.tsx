@@ -1,4 +1,4 @@
-import { closeTip } from '../../lib/page/closeTip';
+import { closeLabel } from '../../lib/page/closeLabel';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { shellKeymap } from '../shared/keymap';
 import { KeyCombo } from '../../lib/page/keyCombo';
@@ -355,7 +355,7 @@ export function ShortcutsPopup() {
       >
         <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
           <span>{strings.shortcuts.title}</span>
-          <button className="nav-button" {...closeTip} onClick={onClose}>
+          <button className="nav-button" {...closeLabel} onClick={onClose}>
             <CloseIcon />
           </button>
         </div>

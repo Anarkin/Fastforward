@@ -34,7 +34,7 @@ export function AppMenu() {
       scrolling={scrolling}
       trigger={trigger}
       title={strings.tabs.settings}
-      keys={keysOf(shellKeymap.mainMenu)}
+      tipped={false}
       icon={<AppIcon />}
       onContextMenu={(event) => {
         event.preventDefault();

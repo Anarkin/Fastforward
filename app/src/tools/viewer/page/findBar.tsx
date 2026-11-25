@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import type { RefObject } from 'react';
 import { SearchBar } from '../../../lib/page/searchBar';
 import { findKeyDown } from '../../../lib/page/findKeys';
@@ -32,10 +31,6 @@ export function ViewerFindBar({
         onQuery={searched.search}
         onOptions={searched.choose}
         onStep={searched.step}
-        stepKeys={[
-          keysOf(viewerKeymap.match, -1),
-          keysOf(viewerKeymap.match, 1),
-        ]}
         onClose={onClose}
         onKeyDown={findKeyDown(viewerKeymap, searched.step, onClose)}
       />

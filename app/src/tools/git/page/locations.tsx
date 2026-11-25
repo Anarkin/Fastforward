@@ -1,5 +1,3 @@
-import { keymap } from '../../../lib/page/keymap';
-import { keysOf } from '../../../lib/shared/keymap';
 import { useCallback, useEffect, useId, useMemo, useRef } from 'react';
 import { searchedBookmarks } from './bookmarks';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
@@ -300,7 +298,6 @@ export function LocationsPopup({
           onQuery={(next) => onQuery(next)}
           onOptions={(next) => onQuery(query, next)}
           onStep={(step) => stepTo(stepMatch(active, keys.length, step))}
-          stepKeys={[keysOf(keymap.result, -1), keysOf(keymap.result, 1)]}
           onClose={onClose}
         />
       </div>

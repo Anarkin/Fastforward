@@ -64,7 +64,8 @@ suite('Search bar', () => {
       'nav-button',
     ]);
     const close = shown?.lastElementChild;
-    assert.strictEqual(close?.getAttribute('data-tip'), 'Close');
+    assert.strictEqual(close?.getAttribute('aria-label'), 'Close');
+    assert.strictEqual(close?.getAttribute('data-tip'), null);
     assert.strictEqual(close?.innerHTML, renderToStaticMarkup(<CloseIcon />));
     assert.deepStrictEqual(classesOf(document.querySelector('.search-box')), [
       'search-box-input',
@@ -88,10 +89,17 @@ suite('Search bar', () => {
       ],
     );
     assert.deepStrictEqual(
-      Array.from(document.querySelectorAll('.search-steps button'), (button) =>
-        button.getAttribute('data-tip'),
+      Array.from(
+        document.querySelectorAll('.search-steps button'),
+        (button) => [
+          button.getAttribute('aria-label'),
+          button.getAttribute('data-tip'),
+        ],
       ),
-      ['Previous Match', 'Next Match'],
+      [
+        ['Previous Match', null],
+        ['Next Match', null],
+      ],
     );
   });
 

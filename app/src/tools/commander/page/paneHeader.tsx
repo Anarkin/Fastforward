@@ -1,5 +1,3 @@
-import { commanderKeymap } from './keymap';
-import { keysOf } from '../../../lib/shared/keymap';
 import { type Side } from '../shared/sides';
 import { useCommander, useCommanderActions } from './store';
 import { useShell } from '../../../shell/page/store';
@@ -32,7 +30,7 @@ function BookmarkButton({
     <MenuButton
       scrolling={scrolling}
       title={strings.commander.bookmarks}
-      keys={keysOf(commanderKeymap.bookmarks)}
+      tipped={false}
       icon={<BookmarkIcon filled={bookmark !== undefined} />}
       arrow
       trigger={trigger}
@@ -74,7 +72,7 @@ export function PaneMenus({
           <MenuButton
             scrolling={scrolling}
             title={strings.commander.chooseDrive}
-            keys={keysOf(commanderKeymap.drive, side)}
+            tipped={false}
             trigger={driveTrigger}
             onChosen={onChosen}
             items={driveMenu(drives, current, onDrive)}

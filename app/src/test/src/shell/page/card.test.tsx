@@ -23,26 +23,20 @@ const tip = (
 );
 
 suite('The card a tooltip and a notice are drawn as', () => {
-  test('draws a tooltip as a notice is drawn, by the one card: its words, a path among them as every path, and every shortcut of what it explains after them, each a key cap as the list of shortcuts draws it, a button of the mouse too, with no button and no icon', () => {
+  test('draws a tooltip as a notice is drawn, by the one card: its words, a path among them as every path, with no keys, no button and no icon, as a tooltip names what a control does and the list of shortcuts its keys', () => {
     const html = renderToStaticMarkup(tip);
     assert.match(
       html,
       /^<div role="tooltip" class="card tip info"><span class="card-message">Moved from <code class="name named-path">.*old\.ts.*<\/code><\/span><\/div>$/,
     );
-    assert.match(
-      renderToStaticMarkup(
-        <Card kind="tip" said="Back" keys="BackButton Alt+ArrowLeft" />,
-      ),
-      /^<div class="card tip info"><span class="card-message">Back<\/span><span class="shortcut-keys"><span class="shortcut-combo"><kbd class="pointer">.*Back<\/kbd><\/span><span class="shortcut-combo"><kbd>Alt<\/kbd>.*<kbd>←<\/kbd><\/span><\/span><\/div>$/,
-    );
+    assert.doesNotMatch(html, /shortcut|<kbd/);
   });
 
-  test('draws the rows a tooltip tells under its words and their keys, a row its name and its values in monospace, and the keys right after the words rather than at the far end of the rows', () => {
+  test('draws the rows a tooltip tells under its words, a row its name and its values in monospace', () => {
     const html = renderToStaticMarkup(
       <Card
         kind="tip"
         said="Preview"
-        keys="3"
         rows={[
           { name: 'Markdown', values: '.md .markdown' },
           { name: 'PDF', values: '.pdf' },
@@ -52,13 +46,12 @@ suite('The card a tooltip and a notice are drawn as', () => {
 
     assert.match(
       html,
-      /^<div class="card tip info detailed"><span class="card-message">Preview<\/span><span class="shortcut-keys">.*<\/span><span class="card-details"><span class="card-row-name">Markdown<\/span><code class="card-row-values">\.md \.markdown<\/code><span class="card-row-name">PDF<\/span><code class="card-row-values">\.pdf<\/code><\/span><\/div>$/,
+      /^<div class="card tip info detailed"><span class="card-message">Preview<\/span><span class="card-details"><span class="card-row-name">Markdown<\/span><code class="card-row-values">\.md \.markdown<\/code><span class="card-row-name">PDF<\/span><code class="card-row-values">\.pdf<\/code><\/span><\/div>$/,
     );
     const card = rendered(
       <Card
         kind="tip"
         said="Preview"
-        keys="3"
         rows={[{ name: 'PDF', values: '.pdf' }]}
       />,
     );
@@ -80,7 +73,7 @@ suite('The card a tooltip and a notice are drawn as', () => {
     );
     assert.match(
       html,
-      /^<div class="card notice error"><svg class="icon error-icon".*<\/svg><span class="card-message">failed<\/span><button class="card-close" aria-label="Dismiss" data-tip="Dismiss" data-tip-keys="Escape">/,
+      /^<div class="card notice error"><svg class="icon error-icon".*<\/svg><span class="card-message">failed<\/span><button class="card-close" aria-label="Dismiss">/,
     );
   });
 
@@ -104,7 +97,7 @@ suite('The card a tooltip and a notice are drawn as', () => {
     }
   });
 
-  test('gives a tooltip the corners and the shadow of a notice, and words that wrap within its width, as far in from its edges as the words of a menu are from the edges of the menu, on a ground of its own in the theme, that of a menu unless set, as the yellow of a notice was liked in neither theme', () => {
+  test('gives a tooltip the corners, the shadow and the edge of a notice, its lines a line of monospace tall as the rows of the app are, its words 8 pixels in from its sides, edged by an inset shadow of 2 pixels rounded down to whole device pixels rather than a border, which Chromium rounds and shifts the words by, on a ground of its own in the theme, the gray of the row of a path unless set, which its edge, in the muted color of the text, sets apart from that row', () => {
     const card = withClass(rendered(tip), 'card');
     const notice = withClass(rendered(<NoticesShown />), 'notice');
     for (const property of [
@@ -113,6 +106,7 @@ suite('The card a tooltip and a notice are drawn as', () => {
       'box-shadow',
       'max-width',
       'box-sizing',
+      'line-height',
     ]) {
       assert.strictEqual(
         cascaded(card, property),
@@ -122,14 +116,19 @@ suite('The card a tooltip and a notice are drawn as', () => {
       assert.ok(cascaded(card, property) !== undefined, property);
     }
     looks(card, {
-      padding: '8px 14px',
+      padding: 'var(--card-edge) calc(var(--card-edge) + 8px)',
       'align-items': 'center',
+      'line-height': 'var(--card-line)',
+      '--card-edge': 'round(down, 2px, var(--device-pixel, 1px))',
+      border: undefined,
+      'box-shadow':
+        'inset 0 0 0 var(--card-edge) var(--muted-foreground), var(--popup-drop)',
       background: 'var(--color-tooltip-background)',
     });
     const { light, dark } = defaultSettings().colors;
     assert.deepStrictEqual(
       [light['tooltip-background'], dark['tooltip-background']],
-      [light['panel-background'], dark['panel-background']],
+      [light.border, dark.border],
     );
     looks(withClass(card, 'card-message'), {
       'overflow-wrap': 'anywhere',

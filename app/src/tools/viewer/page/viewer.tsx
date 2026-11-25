@@ -1,9 +1,8 @@
 import { drawnSize, tabSizeItems } from '../../../lib/page/tabSizeMenu';
 import { tabSizeOf } from '../../../lib/page/tabStops';
-import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { viewerKeymap, type ViewMode } from './keymap';
+import { type ViewMode } from './keymap';
 import { columnFocusOf } from '../../../lib/page/columnFocus';
 import { focusBack, useFocusKeeper } from '../../../lib/page/viewFocus';
 import { useRestore } from '../../../lib/page/restore';
@@ -257,7 +256,6 @@ export function Viewer() {
                 key={each}
                 className={`nav-button toggle ${mode === each ? 'active' : ''}`}
                 {...labelTip(title, {
-                  keys: keysOf(viewerKeymap.viewAs, each),
                   ...(each === 'preview' && {
                     rows: previewKinds(),
                   }),
@@ -276,7 +274,6 @@ export function Viewer() {
             <MenuButton
               scrolling={scrolling}
               title={strings.encodings.encoding}
-              keys={keysOf(viewerKeymap.encoding)}
               trigger={encodingTrigger}
               onChosen={focusBody}
               label={strings.encodings.short[shown]}
@@ -302,7 +299,6 @@ export function Viewer() {
             choice={languageChoice}
             detected={detectedLanguage}
             single
-            keys={keysOf(viewerKeymap.language)}
             choose={chooseLanguage}
             trigger={languageTrigger}
             onChosen={focusBody}
@@ -312,9 +308,7 @@ export function Viewer() {
           <Toolbar className="viewer-toggles">
             <button
               className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-              {...labelTip(strings.common.showWhitespace, {
-                keys: keysOf(viewerKeymap.showWhitespace),
-              })}
+              {...labelTip(strings.common.showWhitespace)}
               aria-pressed={showWhitespace}
               disabled={mode === 'preview' && !showsCode}
               onMouseDown={(event) => event.preventDefault()}
@@ -326,9 +320,7 @@ export function Viewer() {
             </button>
             <button
               className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-              {...labelTip(strings.common.wrap, {
-                keys: keysOf(viewerKeymap.wrap),
-              })}
+              {...labelTip(strings.common.wrap)}
               aria-pressed={wordWrap}
               disabled={!readsText}
               onMouseDown={(event) => event.preventDefault()}
@@ -340,9 +332,7 @@ export function Viewer() {
           <Toolbar className="viewer-toggles">
             <button
               className={`nav-button toggle ${realSize ? 'active' : ''}`}
-              {...labelTip(strings.viewer.realSize, {
-                keys: keysOf(viewerKeymap.realSize),
-              })}
+              {...labelTip(strings.viewer.realSize)}
               aria-pressed={realSize}
               disabled={!showsImage}
               onMouseDown={(event) => event.preventDefault()}

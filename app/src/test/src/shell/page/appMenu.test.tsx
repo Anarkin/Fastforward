@@ -94,11 +94,13 @@ suite('App menu', () => {
     assert.deepStrictEqual(picked, ['ff']);
   });
 
-  test("opens from the app's icon, as the menu of the whole app", () => {
+  test("opens from the app's icon, as the menu of the whole app, named Settings for a screen reader with no tooltip, as the icon is the app's own", () => {
+    const html = renderToStaticMarkup(withStores(<AppMenu />));
     assert.match(
-      renderToStaticMarkup(withStores(<AppMenu />)),
-      /^<div class="menu-button"><button [^>]*data-tip="Settings"[^>]*><svg class="title-bar-icon"[^]*<\/svg><\/button><\/div>$/,
+      html,
+      /^<div class="menu-button"><button [^>]*aria-label="Settings"[^>]*><svg class="title-bar-icon"[^]*<\/svg><\/button><\/div>$/,
     );
+    assert.doesNotMatch(html, /data-tip=/);
   });
 
   test('drops its menu to the right, from the left end of the tab row, opening its submenus beside it rather than over it', () => {

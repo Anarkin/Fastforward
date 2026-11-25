@@ -21,6 +21,25 @@ const fonts = [
   },
 ] as const;
 
+function baselineMark(document: Document): HTMLElement {
+  const mark = document.createElement('span');
+  Object.assign(mark.style, {
+    display: 'inline-block',
+    width: '0',
+    height: '0',
+    verticalAlign: 'baseline',
+  });
+  return mark;
+}
+
+const baselineIn = ({
+  row,
+  baseline,
+}: {
+  readonly row: HTMLElement;
+  readonly baseline: HTMLElement;
+}) => baseline.getBoundingClientRect().top - row.getBoundingClientRect().top;
+
 export function installTextHeights(view: MeasuringWindow = window): () => void {
   const { document } = view;
   const probe = document.createElement('div');
@@ -44,7 +63,17 @@ export function installTextHeights(view: MeasuringWindow = window): () => void {
     text.textContent = 'x';
     line.append(text);
     probe.append(line);
-    return { variable, line, text };
+    const row = document.createElement('div');
+    Object.assign(row.style, {
+      width: 'max-content',
+      fontFamily: family,
+      fontSize: size,
+      lineHeight: 'var(--row-line-height)',
+    });
+    const baseline = baselineMark(document);
+    row.append('x', baseline);
+    probe.append(row);
+    return { variable, line, text, row, baseline };
   });
   document.body.append(probe);
   const measure = () => {
@@ -54,10 +83,18 @@ export function installTextHeights(view: MeasuringWindow = window): () => void {
         `${text.getBoundingClientRect().height}px`,
       );
     }
+    const [words, keys] = samples;
+    if (words !== undefined && keys !== undefined) {
+      document.documentElement.style.setProperty(
+        '--monospace-baseline-shift',
+        `${baselineIn(words) - baselineIn(keys)}px`,
+      );
+    }
   };
   const resized = new view.ResizeObserver(measure);
-  for (const { line } of samples) {
+  for (const { line, row } of samples) {
     resized.observe(line);
+    resized.observe(row);
   }
   const stopWatching = watchDevicePixels(measure, view);
   measure();

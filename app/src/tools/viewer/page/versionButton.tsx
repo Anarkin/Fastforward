@@ -1,5 +1,3 @@
-import { viewerKeymap } from './keymap';
-import { keysOf } from '../../../lib/shared/keymap';
 import { VersionButton as VersionMenuButton } from '../../../components/versions/page/versionButton';
 import { useShell } from '../../../shell/page/store';
 import { useViewer, useViewerActions } from './store';
@@ -26,7 +24,6 @@ export function ViewedVersionButton({
       dateFormat={dateFormat}
       scrolling={scrolling}
       trigger={trigger}
-      keys={keysOf(viewerKeymap.version)}
       onChosen={onChosen}
     />
   );

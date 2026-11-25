@@ -4,6 +4,7 @@ import { cascaded, matchingRules } from '../../../helpers/cascade';
 import { ContextMenuShown, NoticesShown } from '../../../helpers/styleFixtures';
 import { columnTitle } from '../../../helpers/styleMarkup';
 import { looks, bodyVariable, paddingOf } from './stylesheetFixtures';
+import { defaultSettings } from '../../../helpers/fixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import { CommitColumn } from '../../../helpers/styleHistoryFixtures';
 
@@ -20,14 +21,14 @@ suite('Style', () => {
     assert.ok(cascaded(message, 'max-height'));
   });
 
-  test('draws a notice like a context menu, but on a background of its own, so it stands apart from the panels it floats over, and with twice the room around its message, as it is read rather than scanned', () => {
+  test('draws a notice as a tooltip is drawn, with the corners of a context menu, on a ground of its own in the theme, the gray of the row of a path unless set, edged in the muted color of the text, its lines a line of monospace tall, its message 8 pixels in from its left, with no room above or below it', () => {
     const menu = rendered(<ContextMenuShown />);
     for (const level of ['info', 'error']) {
       const shown = rendered(<NoticesShown level={level} />);
       looks(
         withClass(shown, 'notice'),
         Object.fromEntries(
-          ['border-radius', 'box-shadow'].map((property) => [
+          ['border-radius'].map((property) => [
             property,
             cascaded(menu, property),
           ]),
@@ -35,27 +36,33 @@ suite('Style', () => {
       );
       looks(withClass(shown, 'notice'), {
         background: 'var(--color-notice-background)',
-        padding: `${2 * parseFloat(cascaded(menu, 'padding') ?? '')}px`,
         border: undefined,
-        'border-left': undefined,
+        'box-shadow':
+          'inset 0 0 0 var(--card-edge) var(--muted-foreground), var(--popup-drop)',
+        'line-height': 'var(--card-line)',
+        padding:
+          'var(--card-edge) var(--card-edge) var(--card-edge) calc(var(--card-edge) + 8px)',
       });
-      looks(withClass(shown, 'card-message'), {
-        padding: '6px 0 6px 12px',
-      });
+      looks(withClass(shown, 'card-message'), { padding: '0' });
     }
+    const { light, dark } = defaultSettings().colors;
+    assert.deepStrictEqual(
+      [light['notice-background'], dark['notice-background']],
+      [light.border, dark.border],
+    );
   });
 
-  test("sets a notice's close button in as far as the message's first line, as it is shorter than the message's padding and line", () => {
+  test("makes a notice's close button and its icon of an error a line square, as tall as the lines of its message, so they stand on its first line", () => {
     const shown = rendered(<NoticesShown />);
-    const message = withClass(shown, 'card-message');
-    const close = withClass(shown, 'card-close');
-    assert.ok(message && close);
-    const marginTop = (cascaded(close, 'margin') ?? '0').split(' ')[0];
-    assert.strictEqual(
-      Number.parseInt(marginTop) + 2,
-      Number.parseInt(paddingOf(message).top),
-    );
-    looks(close, { height: '20px' });
+    looks(withClass(shown, 'card-close'), {
+      width: 'var(--card-line)',
+      height: 'var(--card-line)',
+      margin: '0',
+    });
+    looks(withClass(shown, 'error-icon'), {
+      height: 'var(--card-line)',
+      margin: '0',
+    });
   });
 
   test('puts the notices in the bottom right corner, below the column titles, or of the whole window when it has no tab, so they hide nothing being worked on in the middle', () => {

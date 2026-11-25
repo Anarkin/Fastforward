@@ -20,7 +20,6 @@ export interface TipRow {
 export interface TipOptions {
   readonly at?: TipAt;
   readonly cut?: boolean;
-  readonly keys?: string | undefined;
   readonly rows?: readonly TipRow[] | undefined;
 }
 
@@ -29,7 +28,6 @@ export interface TipProps {
   readonly 'data-tip-said'?: string;
   readonly 'data-tip-at'?: TipAt;
   readonly 'data-tip-cut'?: '';
-  readonly 'data-tip-keys'?: string;
   readonly 'data-tip-rows'?: string;
 }
 
@@ -37,7 +35,6 @@ export interface Tip {
   readonly said: Sentence;
   readonly at: TipAt;
   readonly cut: boolean;
-  readonly keys: string | undefined;
   readonly rows?: readonly TipRow[];
 }
 
@@ -58,7 +55,7 @@ const centered = 'button';
 
 export function tip(
   said: Sentence | false | undefined,
-  { at, cut = false, keys, rows }: TipOptions = {},
+  { at, cut = false, rows }: TipOptions = {},
 ): TipProps {
   if (said === undefined || said === false || wordsOf(said) === '') {
     return {};
@@ -68,10 +65,13 @@ export function tip(
     ...(typeof said !== 'string' && { 'data-tip-said': JSON.stringify(said) }),
     ...(at !== undefined && { 'data-tip-at': at }),
     ...(cut && { 'data-tip-cut': '' as const }),
-    ...(keys !== undefined && { 'data-tip-keys': keys }),
     ...(rows !== undefined &&
       rows.length > 0 && { 'data-tip-rows': JSON.stringify(rows) }),
   };
+}
+
+export function labelled(label: string): { readonly 'aria-label': string } {
+  return { 'aria-label': label };
 }
 
 export function labelTip(
@@ -144,7 +144,6 @@ export function tipOf(element: Element): Tip | undefined {
     said: saidOf(plain, element.getAttribute('data-tip-said')),
     at: isPlace(at) ? at : element.matches(centered) ? 'below-center' : 'below',
     cut: element.hasAttribute('data-tip-cut'),
-    keys: element.getAttribute('data-tip-keys') ?? undefined,
     ...(rows !== undefined && { rows }),
   };
 }

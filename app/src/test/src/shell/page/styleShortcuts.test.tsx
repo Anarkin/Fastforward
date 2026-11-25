@@ -303,15 +303,15 @@ suite('Style', () => {
     }
   });
 
-  test('draws a shortcut as one key cap on a ground a little dimmer than a panel, between it and the color of its edge, so it is a key on a panel and on the row of a menu under the pointer alike, holding its keys inside its line, two pixels short of it and centered, its keys on the line of the words beside it, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted, its middle on the middle of the capitals of its key rather than of its small letters, where it stood low', () => {
+  test('draws a shortcut as one key cap on a ground a little dimmer than a panel, between it and the color of its edge, so it is a key on a panel and on the row of a menu under the pointer alike, as tall as the line it stands in, a row of the list or of a menu, its keys on the line of the words beside it, its edge drawn without taking room, split by a line in the color of its edge, the plus kept for reading aloud and copying but not drawn, and the mouse of a part done with it muted, its middle on the middle of the capitals of its key rather than of its small letters, where it stood low', () => {
     const popup = popupOf(<ShortcutsPopupShown />);
     const combo = withClass(popup, 'shortcut-combo');
     looks(combo, {
       display: 'inline-flex',
       'white-space': 'nowrap',
       'box-sizing': 'border-box',
-      height: 'calc(var(--row-line-height) - 2px)',
-      margin: '1px 0',
+      height: 'var(--keycap-line, var(--row-line-height))',
+      margin: undefined,
       border: undefined,
       'box-shadow':
         'inset 0 0 0 1px var(--color-border), inset 0 -2px var(--color-border)',
@@ -326,8 +326,8 @@ suite('Style', () => {
     looks(key, {
       border: undefined,
       padding: '0 5px',
-      margin: '-1px 0',
-      'line-height': 'var(--row-line-height)',
+      margin: undefined,
+      'line-height': 'var(--keycap-line, var(--row-line-height))',
     });
     looks(withClass(combo, 'shortcut-joiner'), {
       'align-self': 'stretch',
@@ -352,8 +352,17 @@ suite('Style', () => {
       'font-family': 'var(--monospace-font-family)',
       'font-size': 'var(--monospace-font-size)',
       'font-weight': undefined,
-      'line-height': 'var(--row-line-height)',
+      'line-height': 'var(--keycap-line, var(--row-line-height))',
     });
+  });
+
+  test('sets the keys of a shortcut on the baseline of the words beside them, though their font is another, by the difference of where the two fonts put their baselines in a row of the app, as the page measures it, so a key cap stands on its line as the words do', () => {
+    const key = keyOf(
+      withClass(popupOf(<ShortcutsPopupShown />), 'shortcut-combo'),
+    );
+    assert.ok(key);
+    looks(key, { position: 'relative' });
+    looks(key, { top: 'var(--monospace-baseline-shift, 0px)' });
   });
 
   test('marks what the filter found in a shortcut, words and keys alike, in the colors of a search match', () => {

@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import type { RefObject } from 'react';
 import { commanderKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
@@ -49,10 +48,6 @@ export function PaneFilter({
       onQuery={onQuery}
       onOptions={onOptions}
       onStep={onStep}
-      stepKeys={[
-        keysOf(commanderKeymap.filterMove, 'up'),
-        keysOf(commanderKeymap.filterMove, 'down'),
-      ]}
       onClose={onClose}
       onKeyDown={(event) => {
         if (keyPressed(commanderKeymap.stopFiltering, event) !== undefined) {

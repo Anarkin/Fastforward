@@ -36,7 +36,7 @@ suite('App tooltips', () => {
   let page: Page;
 
   const tooltip = () => page.locator('.card.tip');
-  const add = () => page.locator('.tab-add');
+  const firstTab = () => page.locator('.tabs .tab').first();
   const away = () => page.mouse.move(400, 400);
   const about = (elevated?: 'administrator') =>
     app.evaluate(({ BrowserWindow }, elevation) => {
@@ -84,7 +84,7 @@ suite('App tooltips', () => {
     removeFolder(folder);
   });
 
-  test('shows the tooltip of a button the pointer rests on as a card of the app, its words and the keys that do the same as a key cap after them, centered below the button, inside the window and on whole device pixels, the browser showing none of its own', async () => {
+  test('shows the tooltip of a button the pointer rests on as a card of the app, its words alone, without the keys that do the same, which the list of shortcuts names, centered below the button, inside the window and on whole device pixels, the browser showing none of its own', async () => {
     const wrap = `.viewer button[data-tip="${strings.common.wrap}"]`;
     await page.locator('.tabs [role="tab"]').nth(1).click();
     await away();
@@ -93,9 +93,9 @@ suite('App tooltips', () => {
     assert.deepStrictEqual(
       [
         await tooltip().locator('.card-message').textContent(),
-        await tooltip().locator('.shortcut-combo kbd').allTextContents(),
+        await tooltip().locator('.shortcut-combo, kbd').count(),
       ],
-      [strings.common.wrap, ['W']],
+      [strings.common.wrap, 0],
     );
     const placed = await page.evaluate((selector) => {
       const card = document.querySelector('.card.tip');
@@ -140,11 +140,11 @@ suite('App tooltips', () => {
 
   test('hides the tooltip once the pointer leaves its button, and at a press, staying hidden over the button pressed until the pointer has left it', async () => {
     await away();
-    await add().hover();
+    await firstTab().hover();
     await tooltip().waitFor();
     await away();
     await tooltip().waitFor({ state: 'detached' });
-    await add().hover();
+    await firstTab().hover();
     await tooltip().waitFor();
     await page.mouse.down();
     await tooltip().waitFor({ state: 'detached' });
@@ -153,9 +153,9 @@ suite('App tooltips', () => {
     await onceDrawn(page);
     assert.strictEqual(await tooltip().count(), 0);
     await away();
-    await add().hover();
+    await firstTab().hover();
     await tooltip().waitFor();
-    await add().click();
+    await firstTab().click();
     await tooltip().waitFor({ state: 'detached' });
     await away();
   });
@@ -184,14 +184,14 @@ suite('App tooltips', () => {
     await away();
     await writeSettings(page, profile, never);
     await page.locator('.commander-pane').first().waitFor();
-    await add().hover();
+    await firstTab().hover();
     await onceDrawn(page);
     await onceDrawn(page);
     assert.strictEqual(await tooltip().count(), 0);
     await away();
     await writeSettings(page, profile, atOnce);
     await page.locator('.commander-pane').first().waitFor();
-    await add().hover();
+    await firstTab().hover();
     await tooltip().waitFor();
   });
 

@@ -15,8 +15,17 @@ function measuringPage(ratio: number) {
     ['var(--font-family)', 16],
     ['var(--monospace-font-family)', 14],
   ]);
+  const ascents = new Map([
+    ['var(--font-family)', 12],
+    ['var(--monospace-font-family)', 11],
+  ]);
   Object.assign(dom.window.HTMLElement.prototype, {
     getBoundingClientRect(this: HTMLElement) {
+      if (this.tagName === 'SPAN' && this.style.display === 'inline-block') {
+        const top =
+          ascents.get(this.parentElement?.style.fontFamily ?? '') ?? 0;
+        return { top, bottom: top, left: 0, right: 0, width: 0, height: 0 };
+      }
       const height =
         this.tagName === 'SPAN'
           ? (heights.get(this.parentElement?.style.fontFamily ?? '') ?? 0)
@@ -59,6 +68,7 @@ function measuringPage(ratio: number) {
     document,
     shownAs: dom.window.HTMLElement,
     heights,
+    ascents,
     observers,
     queries,
     view,
@@ -81,20 +91,36 @@ suite('Text heights', () => {
       [...probe.children].map((line) => [
         line instanceof shownAs ? line.style.fontFamily : undefined,
         line instanceof shownAs ? line.style.fontSize : undefined,
-        line.firstElementChild?.tagName,
+        line instanceof shownAs ? line.style.lineHeight : undefined,
       ]),
       [
-        ['var(--font-family)', 'var(--font-size)', 'SPAN'],
-        ['var(--monospace-font-family)', 'var(--monospace-font-size)', 'SPAN'],
+        ['var(--font-family)', 'var(--font-size)', ''],
+        ['var(--font-family)', 'var(--font-size)', 'var(--row-line-height)'],
+        ['var(--monospace-font-family)', 'var(--monospace-font-size)', ''],
+        [
+          'var(--monospace-font-family)',
+          'var(--monospace-font-size)',
+          'var(--row-line-height)',
+        ],
       ],
     );
+  });
+
+  test('measures how far the baseline of the monospace font stands from that of the font of the app, each on its own in a row of the app, by an empty box on the baseline of each, so a key cap in the monospace font is shifted onto the baseline of the words beside it, whatever rounding the scale brings', () => {
+    const { ascents, observers, view, variable } = measuringPage(1.25);
+    installTextHeights(view);
+    assert.strictEqual(variable('--monospace-baseline-shift'), '1px');
+    ascents.set('var(--monospace-font-family)', 11.5);
+    const [resized] = observers;
+    resized?.callback([], resized.observer);
+    assert.strictEqual(variable('--monospace-baseline-shift'), '0.5px');
   });
 
   test('measures them again once a probe changes size, as once the theme loads or a font changes, and once the display scale changes, which rounds them anew', () => {
     const { heights, observers, queries, view, variable } = measuringPage(1.25);
     installTextHeights(view);
     assert.strictEqual(observers.length, 1);
-    assert.strictEqual(observers[0]?.watched.length, 2);
+    assert.strictEqual(observers[0]?.watched.length, 4);
     heights.set('var(--font-family)', 17.6);
     const [resized] = observers;
     resized?.callback([], resized.observer);

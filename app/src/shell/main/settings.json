@@ -533,8 +533,8 @@
 
       "background": "#ccc",
       "panel-background": "#fff",
-      "notice-background": "#ffd",
-      "tooltip-background": "#fff",
+      "notice-background": "#ccc",
+      "tooltip-background": "#ccc",
 
       "border": "#ccc",
 
@@ -585,8 +585,8 @@
 
       "background": "#2a2a2a",
       "panel-background": "#111",
-      "notice-background": "#3d3a26",
-      "tooltip-background": "#111",
+      "notice-background": "#2a2a2a",
+      "tooltip-background": "#2a2a2a",
 
       "border": "#2a2a2a",
 

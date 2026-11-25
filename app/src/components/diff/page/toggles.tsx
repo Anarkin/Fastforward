@@ -1,5 +1,3 @@
-import { diffKeymap } from './keymap';
-import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import {
   EntireFileIcon,
@@ -51,9 +49,7 @@ export function DiffToggles({
       {language}
       <button
         className={`nav-button toggle ${showWhitespace ? 'active' : ''}`}
-        {...labelTip(strings.common.showWhitespace, {
-          keys: keysOf(diffKeymap.showWhitespace),
-        })}
+        {...labelTip(strings.common.showWhitespace)}
         aria-pressed={showWhitespace}
         onClick={() => onShowWhitespace(!showWhitespace)}
       >
@@ -69,7 +65,7 @@ export function DiffToggles({
       </button>
       <button
         className={`nav-button toggle ${wordWrap ? 'active' : ''}`}
-        {...labelTip(strings.common.wrap, { keys: keysOf(diffKeymap.wrap) })}
+        {...labelTip(strings.common.wrap)}
         aria-pressed={wordWrap}
         onClick={() => onWordWrap(!wordWrap)}
       >

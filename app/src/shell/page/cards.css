@@ -1,13 +1,21 @@
 .card {
+  --card-line: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  --card-edge: round(down, 2px, var(--device-pixel, 1px));
   box-sizing: border-box;
   max-width: 480px;
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  line-height: var(--card-line);
   color: var(--color-foreground);
   background: var(--color-notice-background);
   border-radius: var(--radius);
-  box-shadow: var(--popup-shadow);
+  box-shadow:
+    inset 0 0 0 var(--card-edge) var(--muted-foreground),
+    var(--popup-drop);
 }
 
 .card-message {
@@ -47,7 +55,7 @@
   z-index: 30;
   visibility: hidden;
   align-items: center;
-  padding: 8px 14px;
+  padding: var(--card-edge) calc(var(--card-edge) + 8px);
   background: var(--color-tooltip-background);
   pointer-events: none;
 }

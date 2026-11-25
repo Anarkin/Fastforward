@@ -19,7 +19,7 @@ const shownTab = () =>
     all.findIndex((tab) => tab.getAttribute('aria-selected') === 'true'),
   );
 
-const appMenu = `nav button[data-tip="${strings.tabs.settings}"]`;
+const appMenu = `nav button[aria-label="${strings.tabs.settings}"]`;
 
 const kinds = ['commander', 'commander', 'git', 'git', 'terminal'] as const;
 
@@ -33,7 +33,7 @@ const appMenuOpening: Opening = { trigger: appMenu };
 const toolMenus: Readonly<Record<(typeof kinds)[number], Opening | undefined>> =
   {
     commander: {
-      trigger: `.commander-pane button[data-tip="${strings.commander.bookmarks}"]`,
+      trigger: `.commander-pane button[aria-label="${strings.commander.bookmarks}"]`,
       key: 'Control+d',
     },
     git: undefined,

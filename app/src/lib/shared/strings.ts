@@ -130,6 +130,9 @@ export const strings = {
     fromTo: (from: string, to: string) => `${from} → ${to}`,
     fileFromTo: (from: string, to: string, root?: string) =>
       sentence`${namedFile(from, root)} → ${namedFile(to, root)}`,
+    filesCompared: (old: string, compared: string) =>
+      sentence`${namedFile(old)}
+${namedFile(compared)}`,
     folderGone: (folder: string) =>
       sentence`${namedFolder(folder)} doesn't exist anymore`,
     renamed: (from: Sentence | Value, to: Sentence | Value) =>
@@ -181,7 +184,6 @@ export const strings = {
     address: 'https://github.com/Anarkin/Fastforward',
     copy: 'Copy',
     copied: 'Copied',
-    copyTitle: 'Copy these lines, as for a bug report',
   },
   tools: {
     terminal: 'Terminal',
@@ -618,8 +620,6 @@ export const strings = {
     },
     conflict: 'In conflict',
     linkConflict: 'Symbolic link in conflict',
-    change: (mark: string, status: string, path: Sentence) =>
-      sentence`${mark}: ${status}\n${path}`,
   },
   diff: {
     linesCounted: (added: number, removed: number) =>

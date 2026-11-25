@@ -99,7 +99,27 @@ suite('Style', () => {
     });
   });
 
-  test("puts a removable item's X at the right end of its entry, drawn like a tab's X and shown only on hovering or reaching the entry, keeping the label clear of it", () => {
+  test('makes a key cap in a menu as tall as an item of the menu, as it is as tall as a row in the list of shortcuts, its item centering it as it centers its words', () => {
+    const menu = rendered(
+      <ContextMenu
+        menu={{
+          x: 0,
+          y: 0,
+          items: [{ label: 'Details', keys: 'Mod+1', onClick: noop }],
+        }}
+        onClose={noop}
+      />,
+    );
+    looks(withClass(menu, 'menu-keys'), {
+      '--keycap-line': 'var(--menu-item-height)',
+    });
+    looks(withClass(menu, 'menu-item'), {
+      display: 'flex',
+      'align-items': 'center',
+    });
+  });
+
+  test("puts a removable item's X at the right end of its entry, a square as tall as the line of the menu, rounded like a tab's X and shown only on hovering or reaching the entry, keeping the label clear of it", () => {
     const menu = rendered(
       <ContextMenu
         menu={{
@@ -116,13 +136,20 @@ suite('Style', () => {
     looks(
       remove,
       Object.fromEntries(
-        ['width', 'height', 'border-radius'].map((property) => [
+        ['border-radius'].map((property) => [
           property,
           cascaded(tabClose, property),
         ]),
       ),
     );
-    looks(remove, { position: 'absolute', visibility: 'hidden' });
+    looks(remove, {
+      position: 'absolute',
+      top: '0',
+      right: '2px',
+      width: 'var(--menu-item-height)',
+      height: 'var(--menu-item-height)',
+      visibility: 'hidden',
+    });
     looks(remove, { visibility: undefined }, { hover: entry });
     looks(
       remove,
@@ -130,13 +157,9 @@ suite('Style', () => {
       { focus: withClass(menu, 'menu-item') },
     );
     looks(remove, { background: 'var(--hover-background)' }, hovered);
-    assert.ok(
-      parseFloat(
-        cascaded(withClass(menu, 'menu-item'), 'padding-right') ?? '',
-      ) >=
-        parseFloat(cascaded(remove, 'right') ?? '') +
-          parseFloat(cascaded(remove, 'width') ?? ''),
-    );
+    looks(withClass(menu, 'menu-item'), {
+      'padding-right': 'calc(var(--menu-item-height) + 12px)',
+    });
   });
 
   test('draws a menu like the other popups, its separators in the border color and the item under the pointer like a selected row', () => {
@@ -245,12 +268,15 @@ suite('Style', () => {
       bodyVariable('popup-shadow'),
       'inset 0 0 0 var(--hairline) var(--color-border), var(--popup-drop)',
     );
-    for (const popup of [
-      rendered(<ContextMenuShown />),
-      withClass(rendered(<NoticesShown />), 'notice'),
-    ]) {
-      looks(popup, { 'box-shadow': 'var(--popup-shadow)', border: undefined });
-    }
+    looks(rendered(<ContextMenuShown />), {
+      'box-shadow': 'var(--popup-shadow)',
+      border: undefined,
+    });
+    looks(withClass(rendered(<NoticesShown />), 'notice'), {
+      'box-shadow':
+        'inset 0 0 0 var(--card-edge) var(--muted-foreground), var(--popup-drop)',
+      border: undefined,
+    });
     const dialog = popupOf(<ShortcutsPopupShown />);
     looks(dialog, {
       'box-shadow': 'var(--popup-drop)',

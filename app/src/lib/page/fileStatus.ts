@@ -109,9 +109,12 @@ export function renamedPath(from: string, to: string, root?: string): Sentence {
 }
 
 export function changeTitle(change: FileChange, root?: string): Sentence {
-  const path = change.oldPath
+  return change.oldPath
     ? strings.common.fileFromTo(change.oldPath, change.path, root)
     : [namedFile(change.path, root)];
+}
+
+export function changeMeaning(change: FileChange): Sentence {
   const link = change.link === true;
   const status =
     change.conflict === true
@@ -121,5 +124,5 @@ export function changeTitle(change: FileChange, root?: string): Sentence {
       : (link ? strings.files.linkStatuses : strings.files.statuses)[
           change.status
         ];
-  return strings.files.change(changeMark(change).trimEnd(), status, path);
+  return sentence`${status}`;
 }

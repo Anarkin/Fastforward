@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import { useRef } from 'react';
 import { languageChoiceOf } from '../../syntax/page/languageMenu';
 import { LanguageButton } from '../../syntax/page/languageChoice';
@@ -36,7 +35,6 @@ export function DiffLanguage({
       choice={choice}
       detected={shown && languageOf(shown)}
       single={languageKey !== undefined}
-      keys={keysOf(diffKeymap.language)}
       choose={choose}
       trigger={trigger}
       scrolling={scrolling}

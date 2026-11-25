@@ -18,12 +18,13 @@
 }
 
 .card.notice {
-  padding: 8px;
+  padding: var(--card-edge) var(--card-edge) var(--card-edge)
+    calc(var(--card-edge) + 8px);
   pointer-events: auto;
 }
 
 .notice .card-message {
-  padding: 6px 0 6px 12px;
+  padding: 0;
   max-height: 50vh;
   overflow-y: auto;
   --scrollbar-track-background: color-mix(
@@ -36,7 +37,8 @@
 
 .notice .error-icon {
   flex: none;
-  margin: 8px -4px 0 12px;
+  height: var(--card-line);
+  margin: 0;
   color: var(--color-error-foreground);
 }
 
@@ -45,9 +47,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  margin: 4px;
+  width: var(--card-line);
+  height: var(--card-line);
+  margin: 0;
   padding: 0;
   color: inherit;
   background: none;

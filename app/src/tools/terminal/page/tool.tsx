@@ -17,7 +17,6 @@ import { pageCursorLook } from '../../../lib/page/cursor';
 import { FloatingSearch } from '../../../lib/page/floatingSearch';
 import { SearchBar } from '../../../lib/page/searchBar';
 import { keyPressed } from '../../../lib/page/shortcuts';
-import { keysOf } from '../../../lib/shared/keymap';
 import { terminalKeymap } from './keymap';
 
 export function TerminalTool({
@@ -156,10 +155,6 @@ export function TerminalTool({
                 onStep={(step) =>
                   view.current?.find(find.query, find.options, step)
                 }
-                stepKeys={[
-                  keysOf(terminalKeymap.match, -1),
-                  keysOf(terminalKeymap.match, 1),
-                ]}
                 onClose={stopFinding}
                 onKeyDown={(event) => {
                   const step = keyPressed(terminalKeymap.match, event);

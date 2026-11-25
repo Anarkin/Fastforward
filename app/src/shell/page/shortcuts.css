@@ -145,8 +145,7 @@
 .shortcut-combo {
   display: inline-flex;
   box-sizing: border-box;
-  height: calc(var(--row-line-height) - 2px);
-  margin: 1px 0;
+  height: var(--keycap-line, var(--row-line-height));
   white-space: nowrap;
   background: color-mix(
     in srgb,
@@ -160,12 +159,13 @@
 }
 
 .shortcut-combo kbd {
+  position: relative;
+  top: var(--monospace-baseline-shift, 0px);
   min-width: 1.2em;
-  margin: -1px 0;
   padding: 0 5px;
-  line-height: var(--row-line-height);
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
+  line-height: var(--keycap-line, var(--row-line-height));
   text-align: center;
 }
 

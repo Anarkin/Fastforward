@@ -1,4 +1,4 @@
-import { closeTip } from '../../lib/page/closeTip';
+import { closeLabel } from '../../lib/page/closeLabel';
 import { tip } from '../../lib/page/tips';
 import { useEffectEvent, useLayoutEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
@@ -103,7 +103,7 @@ export function PromptPopup({
       >
         <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
           <span>{title}</span>
-          <button className="nav-button" {...closeTip} onClick={onCancel}>
+          <button className="nav-button" {...closeLabel} onClick={onCancel}>
             <CloseIcon />
           </button>
         </div>

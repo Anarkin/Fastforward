@@ -1,5 +1,4 @@
-import { closeTip } from '../../lib/page/closeTip';
-import { tip } from '../../lib/page/tips';
+import { closeLabel } from '../../lib/page/closeLabel';
 import {
   useCallback,
   useEffect,
@@ -30,7 +29,6 @@ export function CopyButton({
     <button
       ref={ref}
       className={`about-copy ${copied ? 'copied' : ''}`}
-      {...tip(strings.about.copyTitle)}
       onClick={onClick}
     >
       {copied ? strings.about.copied : strings.about.copy}
@@ -75,7 +73,7 @@ export function AboutPopup() {
       >
         <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
           <span>{strings.about.title}</span>
-          <button className="nav-button" {...closeTip} onClick={onClose}>
+          <button className="nav-button" {...closeLabel} onClick={onClose}>
             <CloseIcon />
           </button>
         </div>

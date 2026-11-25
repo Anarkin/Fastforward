@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import { CollapseMergesButton } from './collapseMergesButton';
 import {
   useCallback,
@@ -502,7 +501,6 @@ export function Commits({
       search={
         <SearchButton
           title={strings.actions.search}
-          keys={keysOf(gitKeymap.find)}
           onClick={() => openSearch(true)}
         />
       }

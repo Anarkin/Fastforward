@@ -4,6 +4,7 @@ import { suite, test } from 'vitest';
 import {
   changeKind,
   changeMark,
+  changeMeaning,
   changeTitle,
   renamedPath,
 } from '../../../../lib/page/fileStatus';
@@ -64,22 +65,32 @@ suite('File status', () => {
     );
   });
 
-  test('tells on a first line what the mark of a file means and on a second its path, as the mark alone is a letter', () => {
+  test('tells what the mark of a file means in the words alone, as its tooltip shows over the mark itself, and names the path of the file apart', () => {
     assert.deepStrictEqual(
       [
-        plainOf(changeTitle(change('src/a.ts', { status: 'M' }))),
-        plainOf(changeTitle(change('src/a.ts', { status: 'U' }))),
-        plainOf(changeTitle(change('src/a.ts', { status: 'A', link: true }))),
+        plainOf(changeMeaning(change('src/a.ts', { status: 'M' }))),
+        plainOf(changeMeaning(change('src/a.ts', { status: 'U' }))),
+        plainOf(changeMeaning(change('src/a.ts', { status: 'A', link: true }))),
         plainOf(
-          changeTitle(change('src/a.ts', { status: 'M', conflict: true })),
+          changeMeaning(change('src/a.ts', { status: 'M', conflict: true })),
+        ),
+        plainOf(
+          changeMeaning(
+            change('src/a.ts', { status: 'M', conflict: true, link: true }),
+          ),
         ),
       ],
       [
-        'M: Modified\n"src/a.ts"',
-        'N: Untracked\n"src/a.ts"',
-        'A@: Added symbolic link\n"src/a.ts"',
-        '!: In conflict\n"src/a.ts"',
+        'Modified',
+        'Untracked',
+        'Added symbolic link',
+        'In conflict',
+        'Symbolic link in conflict',
       ],
+    );
+    assert.strictEqual(
+      plainOf(changeTitle(change('src/a.ts', { status: 'M' }))),
+      '"src/a.ts"',
     );
   });
 
@@ -147,40 +158,33 @@ suite('File status', () => {
     );
   });
 
-  test('names the status and both paths of a rename in the tooltip, each path as a file of its repository, so a tooltip draws them as every path is drawn', () => {
+  test('names both paths of a rename in the tooltip of its row, each path as a file of its repository, so a tooltip draws them as every path is drawn', () => {
     assert.deepStrictEqual(
       changeTitle(change('new.ts', { status: 'R', oldPath: 'old.ts' }), '/r'),
       [
-        'R: Renamed\n',
         { name: 'old.ts', path: 'file', root: '/r' },
         ' → ',
         { name: 'new.ts', path: 'file', root: '/r' },
       ],
     );
     assert.deepStrictEqual(changeTitle(change('gone.ts', { status: 'D' })), [
-      'D: Deleted\n',
       { name: 'gone.ts', path: 'file' },
     ]);
   });
 
-  test('names a symbolic link as one in the tooltip, with each status', () => {
+  test('names a symbolic link as one in the tooltip of its mark, with each status', () => {
     assert.deepStrictEqual(
-      (['A', 'M', 'D', 'T', 'U'] as const).map((status) =>
-        plainOf(changeTitle(change('l', { status, link: true }))),
+      (['A', 'M', 'D', 'T', 'U', 'R'] as const).map((status) =>
+        plainOf(changeMeaning(change('l', { status, link: true }))),
       ),
       [
-        'A@: Added symbolic link\n"l"',
-        'M@: Modified symbolic link\n"l"',
-        'D@: Deleted symbolic link\n"l"',
-        'T@: Changed to a symbolic link\n"l"',
-        'N@: Untracked symbolic link\n"l"',
+        'Added symbolic link',
+        'Modified symbolic link',
+        'Deleted symbolic link',
+        'Changed to a symbolic link',
+        'Untracked symbolic link',
+        'Renamed symbolic link',
       ],
-    );
-    assert.strictEqual(
-      plainOf(
-        changeTitle(change('b', { status: 'R', oldPath: 'a', link: true })),
-      ),
-      'R@: Renamed symbolic link\n"a" → "b"',
     );
   });
 });

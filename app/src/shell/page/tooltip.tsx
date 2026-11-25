@@ -77,7 +77,6 @@ export function Tooltip() {
         kind="tip"
         role="tooltip"
         said={shown.tip.said}
-        {...(shown.tip.keys !== undefined && { keys: shown.tip.keys })}
         rows={shown.tip.rows}
       />
     )

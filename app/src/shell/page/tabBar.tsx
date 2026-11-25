@@ -4,13 +4,13 @@ import {
   namedFolder,
   type Sentence,
 } from '../../lib/shared/sentences';
-import { labelTip, tip } from '../../lib/page/tips';
+import { labelled, tip } from '../../lib/page/tips';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo } from '../shared/protocol';
 import { AddIcon, CloseIcon, ShieldIcon, ToolIcon } from '../../lib/page/icons';
 import { titleBarHeight } from '../shared/titleBar';
 import { shellKeymap } from '../shared/keymap';
-import { clicked, keysOf } from '../../lib/shared/keymap';
+import { clicked } from '../../lib/shared/keymap';
 import { strings } from '../../lib/shared/strings';
 import { useBinding } from '../../lib/page/shortcuts';
 import { useShell, useShellActions } from './store';
@@ -30,11 +30,7 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
       {tab.name}
     </span>,
     tab.unsaved === true && (
-      <span
-        key="unsaved"
-        className="tab-unsaved"
-        {...tip(strings.editor.unsaved)}
-      >
+      <span key="unsaved" className="tab-unsaved">
         {strings.symbols.unsaved}
       </span>
     ),
@@ -46,9 +42,7 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
     <button
       key="close"
       className="tab-close"
-      {...labelTip(strings.common.close, {
-        keys: keysOf(shellKeymap.closeTab),
-      })}
+      {...labelled(strings.common.close)}
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => {
         event.stopPropagation();
@@ -68,7 +62,7 @@ function tabTip({ root, name, tool, compared }: TabInfo): Sentence {
   if (compared !== undefined) {
     return compared.old === compared.new
       ? [namedFile(compared.new)]
-      : strings.common.fileFromTo(compared.old, compared.new);
+      : strings.common.filesCompared(compared.old, compared.new);
   }
   return root === undefined
     ? name
@@ -279,9 +273,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
         <button
           ref={add}
           className={`nav-button tab-add ${adding ? 'open' : ''}`}
-          {...labelTip(strings.tabs.newTab, {
-            keys: keysOf(shellKeymap.newTab),
-          })}
+          {...labelled(strings.tabs.newTab)}
           aria-haspopup="menu"
           aria-expanded={adding}
           onClick={onAdd}

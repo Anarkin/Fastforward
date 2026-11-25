@@ -121,8 +121,41 @@ suite('App commander', () => {
           '.shortcuts-pane .shortcut-combo',
         ),
       ].map((cap) => cap.getBoundingClientRect().height);
+      const rows = [
+        ...document.querySelectorAll<HTMLElement>(
+          '.shortcuts-pane .shortcut-row',
+        ),
+      ].slice(0, 8);
+      const lineHeight = parseFloat(
+        getComputedStyle(
+          document.querySelector('.shortcuts-pane') ?? document.body,
+        ).lineHeight,
+      );
       const box = document.querySelector<HTMLElement>('.shortcuts-pane');
       return {
+        tall: rows.map((row) =>
+          Math.abs(
+            (row.querySelector('.shortcut-combo')?.getBoundingClientRect()
+              .height ?? 0) - lineHeight,
+          ),
+        ),
+        aligned: rows.map((row) => {
+          const key = row.querySelector('.shortcut-combo kbd');
+          const words = row.lastElementChild;
+          if (!key || !words) {
+            return Infinity;
+          }
+          const [keyLine = 0, wordsLine = 0] = [key, words].map((element) => {
+            const marker = document.createElement('span');
+            marker.style.cssText =
+              'display: inline-block; width: 0; height: 0; vertical-align: baseline';
+            element.prepend(marker);
+            const top = marker.getBoundingClientRect().top;
+            marker.remove();
+            return top;
+          });
+          return Math.abs(keyLine - wordsLine);
+        }),
         sideways: scrollers.filter(
           (scroller) => scroller.scrollWidth > scroller.clientWidth,
         ).length,
@@ -195,6 +228,14 @@ suite('App commander', () => {
     );
     assert.strictEqual(laidOut.sideways, 0, 'Something scrolls sideways');
     assert.ok(laidOut.down, 'The shortcuts fit without scrolling down');
+    assert.ok(
+      laidOut.tall.every((off) => off < 0.05),
+      `The key caps are off the height of a line by ${laidOut.tall.join(', ')}`,
+    );
+    assert.ok(
+      laidOut.aligned.every((off) => off < 0.05),
+      `The keys stand off the baseline of their words by ${laidOut.aligned.join(', ')}`,
+    );
     const [lowest = 0, highest = 0] = laidOut.heights;
     assert.ok(
       highest - lowest < 2,

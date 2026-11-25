@@ -58,57 +58,33 @@ const ownerOf = (binding: Binding<unknown>) =>
 
 const owned = [...new Set(named.map(({ binding }) => ownerOf(binding)))];
 
-const onControls: readonly string[] = [
-  'commanderKeymap.bookmarks',
+const inMenus: readonly string[] = [
   'commanderKeymap.compare',
   'commanderKeymap.copyPaths',
-  'commanderKeymap.drive',
   'commanderKeymap.edit',
-  'commanderKeymap.filterMove',
   'commanderKeymap.groupByColor',
   'commanderKeymap.layout',
   'commanderKeymap.openWithSevenZip',
   'commanderKeymap.view',
-  'diffKeymap.find',
-  'diffKeymap.language',
-  'diffKeymap.match',
-  'diffKeymap.showWhitespace',
-  'diffKeymap.wrap',
-  'editorKeymap.match',
-  'gitKeymap.head',
-  'gitKeymap.navigate',
-  'keymap.close',
-  'keymap.removeItem',
-  'keymap.result',
   'keymap.systemMenu',
   'shellKeymap.about',
-  'shellKeymap.closeTab',
-  'shellKeymap.dismissNotice',
-  'shellKeymap.mainMenu',
-  'shellKeymap.newTab',
   'shellKeymap.newWindow',
   'shellKeymap.shortcuts',
-  'viewerKeymap.encoding',
-  'viewerKeymap.language',
-  'terminalKeymap.match',
-  'viewerKeymap.match',
-  'viewerKeymap.realSize',
-  'viewerKeymap.showWhitespace',
-  'viewerKeymap.version',
-  'viewerKeymap.viewAs',
-  'viewerKeymap.wrap',
 ];
 
 const keysAlone: readonly string[] = [
+  'commanderKeymap.bookmarks',
   'commanderKeymap.contextMenu',
   'commanderKeymap.copyAs',
   'commanderKeymap.copyNames',
   'commanderKeymap.copyToClipboard',
   'commanderKeymap.countSizes',
   'commanderKeymap.deleteItems',
+  'commanderKeymap.drive',
   'commanderKeymap.duplicates',
   'commanderKeymap.filter',
   'commanderKeymap.filterLetter',
+  'commanderKeymap.filterMove',
   'commanderKeymap.flatView',
   'commanderKeymap.goTo',
   'commanderKeymap.history',
@@ -142,11 +118,16 @@ const keysAlone: readonly string[] = [
   'compareKeymap.closeCompare',
   'compareKeymap.refresh',
   'diffKeymap.change',
+  'diffKeymap.find',
+  'diffKeymap.language',
+  'diffKeymap.match',
   'diffKeymap.selectAll',
   'diffKeymap.selectText',
+  'diffKeymap.showWhitespace',
   'diffKeymap.sideways',
   'diffKeymap.stopFinding',
   'diffKeymap.wheelSideways',
+  'diffKeymap.wrap',
   'editorKeymap.addCursor',
   'editorKeymap.closeEditor',
   'editorKeymap.columnSelection',
@@ -163,6 +144,7 @@ const keysAlone: readonly string[] = [
   'editorKeymap.find',
   'editorKeymap.goToLine',
   'editorKeymap.indent',
+  'editorKeymap.match',
   'editorKeymap.moveLines',
   'editorKeymap.newLine',
   'editorKeymap.nextOccurrence',
@@ -183,8 +165,10 @@ const keysAlone: readonly string[] = [
   'gitKeymap.commits',
   'gitKeymap.compare',
   'gitKeymap.folder',
+  'gitKeymap.head',
   'gitKeymap.merge',
   'gitKeymap.message',
+  'gitKeymap.navigate',
   'gitKeymap.parent',
   'gitKeymap.peekStep',
   'gitKeymap.pin',
@@ -193,6 +177,7 @@ const keysAlone: readonly string[] = [
   'gitKeymap.upstream',
   'gitKeymap.viewFile',
   'gitKeymap.worktree',
+  'keymap.close',
   'keymap.dialogButton',
   'keymap.dialogFocus',
   'keymap.drag',
@@ -201,9 +186,15 @@ const keysAlone: readonly string[] = [
   'keymap.menuItem',
   'keymap.move',
   'keymap.page',
+  'keymap.removeItem',
+  'keymap.result',
   'keymap.submenu',
+  'shellKeymap.closeTab',
   'shellKeymap.devTools',
+  'shellKeymap.dismissNotice',
+  'shellKeymap.mainMenu',
   'shellKeymap.moveTab',
+  'shellKeymap.newTab',
   'shellKeymap.openIn',
   'shellKeymap.shortcutsGroup',
   'shellKeymap.shortcutsPage',
@@ -212,112 +203,34 @@ const keysAlone: readonly string[] = [
   'terminalKeymap.copy',
   'terminalKeymap.find',
   'terminalKeymap.leftToApp',
+  'terminalKeymap.match',
   'terminalKeymap.paste',
   'terminalKeymap.stopFinding',
   'viewerKeymap.closeViewer',
   'viewerKeymap.compareVersions',
   'viewerKeymap.edit',
+  'viewerKeymap.encoding',
   'viewerKeymap.find',
   'viewerKeymap.followLink',
+  'viewerKeymap.language',
+  'viewerKeymap.match',
+  'viewerKeymap.realSize',
   'viewerKeymap.refresh',
   'viewerKeymap.scroll',
   'viewerKeymap.scrollSideways',
   'viewerKeymap.selectAll',
   'viewerKeymap.selectText',
+  'viewerKeymap.showWhitespace',
   'viewerKeymap.stopFinding',
+  'viewerKeymap.version',
+  'viewerKeymap.viewAs',
   'viewerKeymap.wheelSideways',
+  'viewerKeymap.wrap',
   'viewerKeymap.zoomPdf',
 ];
 
-const withoutShortcut: readonly string[] = [
-  'components/diff/page/toggles.tsx: strings.diff.inline',
-  'components/diff/page/toggles.tsx: strings.diff.showEntireFile',
-  'components/diff/page/toggles.tsx: strings.diff.showWhitespaceChanges',
-  'components/diff/page/toggles.tsx: strings.diff.sideBySide',
-  'lib/page/searchBar.tsx: off ? noRegex : title',
-  'tools/commander/page/paneCells.tsx: strings.commander.openRepository',
-  'tools/diff/page/compareVersions.tsx: <VersionButton >',
-  'tools/editor/page/editor.tsx: <LanguageButton >',
-  'tools/editor/page/findBar.tsx: strings.editor.replaceAll',
-  'tools/editor/page/toolbar.tsx: <MenuButton endingsTitle(endingsShown)>',
-  'tools/editor/page/toolbar.tsx: <MenuButton strings.editor.readEncodingTitle>',
-  'tools/editor/page/toolbar.tsx: <MenuButton strings.editor.writeEncodingTitle>',
-  'tools/editor/page/toolbar.tsx: <MenuButton strings.indentation.title>',
-  'tools/editor/page/toolbar.tsx: strings.common.showWhitespace',
-  'tools/editor/page/toolbar.tsx: strings.common.wrap',
-  'tools/git/page/bubbles.tsx: title',
-  'tools/git/page/collapseMergesButton.tsx: strings.commits.collapseMerges',
-  'tools/git/page/filesColumn.tsx: strings.files.collapseAll',
-  'tools/git/page/filesColumn.tsx: strings.files.expandAll',
-  'tools/git/page/filesColumn.tsx: strings.files.showAll',
-  'tools/git/page/navBar.tsx: strings.navigation.fetchEvery(autoFetchMinutes)',
-  'tools/git/page/navBar.tsx: title',
-  'tools/git/page/soloButton.tsx: strings.commits.solo',
-  'tools/viewer/page/viewer.tsx: <MenuButton strings.indentation.title>',
-];
-
-function argumentsOf(text: string, from: number): string[] {
-  const parts = [''];
-  let depth = 0;
-  for (let at = from; at < text.length; at++) {
-    const char = text[at] ?? '';
-    if ('([{'.includes(char)) {
-      depth++;
-    } else if (')]}'.includes(char)) {
-      if (depth === 0) {
-        break;
-      }
-      depth--;
-    }
-    if (char === ',' && depth === 0) {
-      parts.push('');
-    } else {
-      parts[parts.length - 1] += char;
-    }
-  }
-  return parts.map((part) => part.replaceAll(/\s+/g, ' ').trim());
-}
-
-function tagOf(text: string, from: number): string {
-  let depth = 0;
-  for (let at = from; at < text.length; at++) {
-    const char = text[at];
-    if (char === '{') {
-      depth++;
-    } else if (char === '}') {
-      depth--;
-    } else if (char === '>' && depth === 0) {
-      return text.slice(from, at);
-    }
-  }
-  return text.slice(from);
-}
-
-const keyed = ['SearchButton', 'MenuButton', 'LanguageButton', 'VersionButton'];
-
-function unkeyedIn(file: string): string[] {
-  const text = textOf(file);
-  const tips = [...text.matchAll(/\blabelTip\(/g)]
-    .map((call) => argumentsOf(text, call.index + call[0].length))
-    .filter(([, options]) => options === undefined || !/\bkeys\b/.test(options))
-    .map(([label]) => `${file}: ${label}`);
-  const buttons = [
-    ...text.matchAll(new RegExp(`<(${keyed.join('|')})(?=[\\s/>])`, 'g')),
-  ]
-    .map((opened) => ({
-      name: opened[1],
-      tag: tagOf(text, opened.index + opened[0].length),
-    }))
-    .filter(({ tag }) => !/\skeys=/.test(tag))
-    .map(
-      ({ name, tag }) =>
-        `${file}: <${name} ${/\stitle=\{([^}]*)\}/.exec(tag)?.[1] ?? ''}>`,
-    );
-  return [...tips, ...buttons];
-}
-
 suite('Shortcuts shown', () => {
-  test('shows keys in a tooltip or a menu from a binding alone, by keysOf, never written out, so what a control says of its keys is what the list of shortcuts says and what the keys do', () => {
+  test('shows keys in a menu from a binding alone, by keysOf, never written out, so what a menu says of its keys is what the list of shortcuts says and what the keys do, and none in a tooltip, which names what a control does in words alone', () => {
     assert.deepStrictEqual(
       pageFiles.filter((file) =>
         /\b(?:keys|stepKeys)(?:=\{?|:)\s*\[?\s*['"`]/.test(textOf(file)),
@@ -326,11 +239,11 @@ suite('Shortcuts shown', () => {
     );
     assert.deepStrictEqual(
       pageFiles.filter((file) => textOf(file).includes('data-tip-keys')),
-      ['lib/page/tips.ts'],
+      [],
     );
   });
 
-  test('decides for every binding whether a control shows its keys, a button in its tooltip or an item of a menu, or the keys alone do it, so a binding added is looked at, and shows the keys of each that a control shows', () => {
+  test('decides for every binding whether an item of a menu shows its keys or the keys alone do it, so a binding added is looked at, and shows the keys of each that a control shows', () => {
     const passed = new Set(
       pageFiles.flatMap((file) =>
         [...textOf(file).matchAll(/keysOf\(\s*(\w+\.\w+)/g)].map(
@@ -344,20 +257,10 @@ suite('Shortcuts shown', () => {
           ownerOf(binding) === id && passed.has(alias),
       ),
     );
-    assert.deepStrictEqual(shown.toSorted(), onControls.toSorted());
+    assert.deepStrictEqual(shown.toSorted(), inMenus.toSorted());
     assert.deepStrictEqual(
       owned.filter((id) => !shown.includes(id)).toSorted(),
       keysAlone.toSorted(),
-    );
-  });
-
-  test('decides for every button with a tooltip whether keys do the same, so a button added either shows its keys or is known to have none', () => {
-    assert.deepStrictEqual(
-      pageFiles
-        .filter((file) => file.endsWith('.tsx'))
-        .flatMap(unkeyedIn)
-        .toSorted(),
-      withoutShortcut.toSorted(),
     );
   });
 });

@@ -44,6 +44,7 @@ export function ChangesTreeItem({
       title={[namedFolder(row.path, root)]}
       depth={row.depth}
       open={row.open}
+      marks
       className={[
         ...(showsAll && !row.changed ? ['dimmed'] : []),
         ...(cursor === key ? ['selected'] : []),

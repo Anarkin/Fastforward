@@ -112,6 +112,55 @@ suite('Tab bar', () => {
     );
   });
 
+  test('names in the tooltip of a tab comparing two files the whole path of each on a line of its own, the old first, as a part both share is kept outside braces in the header of the diff and cut its paths apart, and the one path of a file compared with itself', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <ShellStore
+          value={tabsStore(
+            [
+              {
+                id: '1',
+                tool: 'diff',
+                name: 'AGENTS.md',
+                compared: {
+                  old: 'C:\\Code\\AGENTS.md',
+                  new: 'C:\\Code\\CONTRIBUTING.md',
+                },
+              },
+              {
+                id: '2',
+                tool: 'diff',
+                name: 'a.md',
+                compared: { old: 'C:\\Code\\a.md', new: 'C:\\Code\\a.md' },
+              },
+            ],
+            '1',
+            false,
+          )}
+        >
+          <TabBar />
+        </ShellStore>,
+      ),
+    ).window.document;
+    assert.deepStrictEqual(
+      [...document.querySelectorAll('.tabs .tab')].map((tab) => [
+        tab.getAttribute('data-tip'),
+        JSON.parse(tab.getAttribute('data-tip-said') ?? 'null'),
+      ]),
+      [
+        [
+          'C:\\Code\\AGENTS.md\nC:\\Code\\CONTRIBUTING.md',
+          [
+            { name: 'C:\\Code\\AGENTS.md', path: 'file' },
+            '\n',
+            { name: 'C:\\Code\\CONTRIBUTING.md', path: 'file' },
+          ],
+        ],
+        ['C:\\Code\\a.md', [{ name: 'C:\\Code\\a.md', path: 'file' }]],
+      ],
+    );
+  });
+
   test('marks the + button open while its menu is, as the menu button is, telling assistive technology it opens a menu', () => {
     const open = addButton(true);
     assert.ok(open);
@@ -331,7 +380,8 @@ suite('Tab bar for assistive technology', () => {
     const add = document.querySelector('.tab-add');
     const close = document.querySelector('.tab-close');
     assert.strictEqual(add?.textContent, '');
-    assert.strictEqual(add.getAttribute('data-tip'), strings.tabs.newTab);
+    assert.strictEqual(add.getAttribute('aria-label'), strings.tabs.newTab);
+    assert.strictEqual(add.getAttribute('data-tip'), null);
     assert.strictEqual(add.innerHTML, renderToStaticMarkup(<AddIcon />));
     assert.strictEqual(
       add.querySelector('svg')?.getAttribute('stroke-width'),

@@ -70,7 +70,10 @@ suite('About popup', () => {
 
   test('says Copied on its copy button for a moment after copying, so the click shows it took', () => {
     const copied = renderToStaticMarkup(<CopyButton copied onClick={noop} />);
-    assert.match(tagWith(copied, '', 'about-copy', 'copied'), /data-tip="/);
+    assert.doesNotMatch(
+      tagWith(copied, '', 'about-copy', 'copied'),
+      /data-tip="/,
+    );
     assert.match(copied, />Copied<\/button>$/);
     assert.match(
       renderToStaticMarkup(<CopyButton copied={false} onClick={noop} />),

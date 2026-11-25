@@ -1,4 +1,4 @@
-import { labelTip, tip } from './tips';
+import { labelled, labelTip, tip } from './tips';
 import { pathMenuClass } from './pathMenu';
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { keymap } from './keymap';
@@ -47,7 +47,7 @@ function thenChosen(
 
 export function MenuButton({
   title,
-  keys,
+  tipped = true,
   items,
   marked = false,
   icon = <MoreIcon />,
@@ -62,7 +62,7 @@ export function MenuButton({
   onContextMenu,
 }: {
   title: string;
-  keys?: string | undefined;
+  tipped?: boolean;
   items: readonly ContextMenuItem[];
   marked?: boolean;
   icon?: React.ReactNode;
@@ -100,8 +100,10 @@ export function MenuButton({
         ref={trigger}
         className={`nav-button menu-button-trigger${label === undefined ? '' : ' labelled'}${arrow ? ' arrowed' : ''}${open ? ' open' : ''}`}
         {...(label === undefined
-          ? labelTip(title, { keys })
-          : tip(title, { keys }))}
+          ? tipped
+            ? labelTip(title)
+            : labelled(title)
+          : tip(title))}
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={disabled}

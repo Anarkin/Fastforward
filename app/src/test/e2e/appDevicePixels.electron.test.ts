@@ -179,7 +179,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await look('commit search');
   await page.keyboard.press('Escape');
   await page.locator('.locations-popup').waitFor({ state: 'detached' });
-  await page.locator('.tabs .tab-add').hover();
+  await page.locator('.tabs .tab').first().hover();
   await page.locator('.card.tip').waitFor();
   await look('tooltip');
   await page.mouse.move(1, 1);

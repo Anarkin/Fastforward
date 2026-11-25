@@ -1,5 +1,5 @@
-import { closeTip } from './closeTip';
-import { labelTip, tip } from './tips';
+import { closeLabel } from './closeLabel';
+import { labelled, labelTip, tip } from './tips';
 import type { InputHTMLAttributes, KeyboardEvent, RefObject } from 'react';
 import type { SearchOptions } from '../shared/searchOptions';
 import { strings } from '../shared/strings';
@@ -88,7 +88,6 @@ export function SearchBar({
   onQuery,
   onOptions,
   onStep,
-  stepKeys,
   onClose,
   onKeyDown,
 }: {
@@ -106,7 +105,6 @@ export function SearchBar({
   onQuery: (query: string) => void;
   onOptions: (options: SearchOptions) => void;
   onStep?: (step: 1 | -1) => void;
-  stepKeys?: readonly [previous: string | undefined, next: string | undefined];
   onClose?: () => void;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 }) {
@@ -148,7 +146,7 @@ export function SearchBar({
         <Toolbar className="search-steps">
           <button
             className="nav-button"
-            {...labelTip(strings.find.previous, { keys: stepKeys?.[0] })}
+            {...labelled(strings.find.previous)}
             disabled={found.matches === 0}
             onClick={() => onStep(-1)}
           >
@@ -156,7 +154,7 @@ export function SearchBar({
           </button>
           <button
             className="nav-button"
-            {...labelTip(strings.find.next, { keys: stepKeys?.[1] })}
+            {...labelled(strings.find.next)}
             disabled={found.matches === 0}
             onClick={() => onStep(1)}
           >
@@ -165,7 +163,7 @@ export function SearchBar({
         </Toolbar>
       )}
       {!compact && onClose !== undefined && (
-        <button className="nav-button" {...closeTip} onClick={onClose}>
+        <button className="nav-button" {...closeLabel} onClick={onClose}>
           <CloseIcon />
         </button>
       )}

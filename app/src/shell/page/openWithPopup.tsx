@@ -1,4 +1,4 @@
-import { closeTip } from '../../lib/page/closeTip';
+import { closeLabel } from '../../lib/page/closeLabel';
 import { useCallback, useEffect, useRef } from 'react';
 import { strings } from '../../lib/shared/strings';
 import type { ToolId } from '../shared/tools';
@@ -69,7 +69,7 @@ export function OpenWithPopup() {
       >
         <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
           <span>{strings.openWith.title}</span>
-          <button className="nav-button" {...closeTip} onClick={onClose}>
+          <button className="nav-button" {...closeLabel} onClick={onClose}>
             <CloseIcon />
           </button>
         </div>

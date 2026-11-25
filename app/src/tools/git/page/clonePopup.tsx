@@ -1,4 +1,4 @@
-import { closeTip } from '../../../lib/page/closeTip';
+import { closeLabel } from '../../../lib/page/closeLabel';
 import { namedFolder } from '../../../lib/shared/sentences';
 import { tip } from '../../../lib/page/tips';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -231,7 +231,7 @@ export function ClonePopup() {
       >
         <div className="shortcuts-title" onPointerDown={drag.onPointerDown}>
           <span>{strings.clone.title}</span>
-          <button className="nav-button" {...closeTip} onClick={onClose}>
+          <button className="nav-button" {...closeLabel} onClick={onClose}>
             <CloseIcon />
           </button>
         </div>

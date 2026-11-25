@@ -2,10 +2,41 @@ import { namedFile, type Sentence } from '../shared/sentences';
 import { tip } from './tips';
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
-import { changeTitle, changeClass, changeKind, changeMark } from './fileStatus';
+import {
+  changeTitle,
+  changeClass,
+  changeKind,
+  changeMark,
+  changeMeaning,
+} from './fileStatus';
 import { CutPathName } from './pathName';
 import { noFilter, type Filter } from '../shared/filter';
 import { treeIndent, twistyWidth } from './treeLayout';
+
+function MarkStrip({
+  change,
+  indent,
+}: {
+  change: FileChange | undefined;
+  indent: number;
+}) {
+  return (
+    <>
+      <span
+        className={
+          change === undefined
+            ? 'change-mark'
+            : `change-mark ${changeKind(change)}`
+        }
+        aria-hidden="true"
+        {...(change !== undefined && tip(changeMeaning(change)))}
+      >
+        {changeMark(change)}
+      </span>
+      <span className="tree-indent" style={{ width: indent }} />
+    </>
+  );
+}
 
 export function Twisty({ open }: { open: boolean }) {
   return (
@@ -20,6 +51,7 @@ export function FolderRow({
   title,
   depth,
   open,
+  marks = false,
   className,
   style,
   onToggle,
@@ -30,6 +62,7 @@ export function FolderRow({
   title?: Sentence;
   depth: number;
   open: boolean;
+  marks?: boolean;
   className: string;
   style?: React.CSSProperties;
   onToggle: (folder: string) => void;
@@ -40,10 +73,19 @@ export function FolderRow({
     <div
       {...itemProps}
       className={`row tree-row folder ${className}`}
-      style={{ paddingLeft: treeIndent(depth), ...style }}
+      style={{
+        paddingLeft: marks ? treeIndent(0) : treeIndent(depth),
+        ...style,
+      }}
       {...tip(title)}
       onClick={() => onToggle(path)}
     >
+      {marks && (
+        <MarkStrip
+          change={undefined}
+          indent={treeIndent(depth) - treeIndent(0)}
+        />
+      )}
       <Twisty open={open} />
       {children}
     </div>
@@ -74,20 +116,14 @@ export function FileRow({
   return (
     <div
       className={`row tree-row file ${marked ? 'selected' : ''}`}
-      style={{ paddingLeft: treeIndent(depth) + twistyWidth }}
+      style={{ paddingLeft: treeIndent(0) }}
       {...tip(change ? changeTitle(change, root) : [namedFile(path, root)])}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
-      <span
-        className={
-          change === undefined
-            ? 'change-mark'
-            : `change-mark ${changeKind(change)}`
-        }
-        aria-hidden="true"
-      >
-        {changeMark(change)}
-      </span>
+      <MarkStrip
+        change={change}
+        indent={treeIndent(depth) - treeIndent(0) + twistyWidth}
+      />
       <CutPathName
         className={changeClass(change)}
         path={name}

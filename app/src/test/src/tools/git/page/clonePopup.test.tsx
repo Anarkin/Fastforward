@@ -302,7 +302,7 @@ suite('Clone popup', () => {
         await act(async () =>
           dom.window.document
             .querySelector<HTMLButtonElement>(
-              `button[data-tip="${strings.common.close}"]`,
+              `button[aria-label="${strings.common.close}"]`,
             )
             ?.click(),
         );

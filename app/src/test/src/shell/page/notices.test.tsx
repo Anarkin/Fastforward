@@ -97,7 +97,7 @@ suite('Notices', () => {
     assert.ok(isValidElement<React.ComponentProps<typeof Card>>(older));
     const card = Card(older.props);
     assert.ok(isValidElement<{ children: React.ReactElement[] }>(card));
-    const close = card.props.children[3];
+    const close = card.props.children[2];
     assert.ok(
       isValidElement<{
         onClick: () => void;

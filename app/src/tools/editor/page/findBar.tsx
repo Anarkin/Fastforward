@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import type { RefObject } from 'react';
 import type { EditorSurface } from './surface';
 import { strings } from '../../../lib/shared/strings';
@@ -77,10 +76,6 @@ export function EditorFindBar({
         onQuery={(text) => search({ ...query, text })}
         onOptions={(options) => search({ ...query, options })}
         onStep={findStep}
-        stepKeys={[
-          keysOf(editorKeymap.match, -1),
-          keysOf(editorKeymap.match, 1),
-        ]}
         onClose={closeFind}
         onKeyDown={findKeyDown(editorKeymap, findStep, closeFind)}
       />
@@ -111,9 +106,7 @@ export function EditorFindBar({
           <Toolbar className="search-steps">
             <button
               className="nav-button"
-              {...labelTip(strings.editor.replaceOne, {
-                keys: keysOf(editorKeymap.match, 1),
-              })}
+              {...labelTip(strings.editor.replaceOne)}
               disabled={(findCount?.matches ?? 0) === 0}
               onClick={() => {
                 if (view.current !== undefined) {

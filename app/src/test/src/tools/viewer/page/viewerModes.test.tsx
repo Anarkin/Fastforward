@@ -82,7 +82,6 @@ suite('The buttons a file viewed is viewed as', () => {
         said: 'Preview',
         at: 'below-center',
         cut: false,
-        keys: '3',
         rows: kinds,
       });
       await tool.press('3');
@@ -99,7 +98,6 @@ suite('The buttons a file viewed is viewed as', () => {
         said: 'Preview',
         at: 'below-center',
         cut: false,
-        keys: '3',
         rows: kinds,
       });
     }));

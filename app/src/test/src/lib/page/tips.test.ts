@@ -29,15 +29,11 @@ suite('The tooltip of an element', () => {
       'data-tip': 'Moved from a/old.ts',
       'data-tip-said': JSON.stringify(moved),
     });
-    assert.deepStrictEqual(
-      tip('C:\\Code', { at: 'over', cut: true, keys: 'Ctrl+W' }),
-      {
-        'data-tip': 'C:\\Code',
-        'data-tip-at': 'over',
-        'data-tip-cut': '',
-        'data-tip-keys': 'Ctrl+W',
-      },
-    );
+    assert.deepStrictEqual(tip('C:\\Code', { at: 'over', cut: true }), {
+      'data-tip': 'C:\\Code',
+      'data-tip-at': 'over',
+      'data-tip-cut': '',
+    });
   });
 
   test('tells rows of a name and its values under its words, as the button of the preview of a file viewed lists the kinds of file it previews, and reads them back, only where they are given', () => {
@@ -46,25 +42,22 @@ suite('The tooltip of an element', () => {
       { name: 'PDF', values: '.pdf' },
     ];
     const told = tip('Preview', {
-      keys: '3',
       rows,
     });
 
     assert.deepStrictEqual(told, {
       'data-tip': 'Preview',
-      'data-tip-keys': '3',
       'data-tip-rows': JSON.stringify(rows),
     });
     assert.deepStrictEqual(tipOf(element(told, 'button')), {
       said: 'Preview',
       at: 'below-center',
       cut: false,
-      keys: '3',
       rows,
     });
     assert.deepStrictEqual(
       tipOf(element({ ...tip('Preview'), 'data-tip-rows': '[{"name":1}]' })),
-      { said: 'Preview', at: 'below', cut: false, keys: undefined },
+      { said: 'Preview', at: 'below', cut: false },
     );
   });
 
@@ -82,11 +75,6 @@ suite('The tooltip of an element', () => {
       'aria-label': 'Close',
       'data-tip': 'Close',
     });
-    assert.deepStrictEqual(labelTip('Find', { keys: 'Ctrl+F' }), {
-      'aria-label': 'Find',
-      'data-tip': 'Find',
-      'data-tip-keys': 'Ctrl+F',
-    });
     assert.deepStrictEqual([labelTip(undefined), labelTip('')], [{}, {}]);
   });
 
@@ -98,12 +86,11 @@ suite('The tooltip of an element', () => {
         said: moved,
         at: 'above-end',
         cut: false,
-        keys: undefined,
       },
     );
     assert.deepStrictEqual(
-      tipOf(element({ ...tip('src/a.ts', { cut: true, keys: 'F3' }) })),
-      { said: 'src/a.ts', at: 'below', cut: true, keys: 'F3' },
+      tipOf(element({ ...tip('src/a.ts', { cut: true }) })),
+      { said: 'src/a.ts', at: 'below', cut: true },
     );
     assert.strictEqual(element({ ...tip('Wrap') }).matches(tipped), true);
   });
@@ -135,7 +122,7 @@ suite('The tooltip of an element', () => {
             'data-tip-at': 'sideways',
           }),
         ),
-        { said: 'plain', at: 'below', cut: false, keys: undefined },
+        { said: 'plain', at: 'below', cut: false },
         said,
       );
     }

@@ -1,6 +1,5 @@
 import { KeyCombo } from './keyCombo';
-import { keysOf } from '../shared/keymap';
-import { labelTip, tip } from './tips';
+import { labelled, tip } from './tips';
 import { useLayoutEffect, useRef, useState } from 'react';
 import {
   CloseIcon,
@@ -173,9 +172,8 @@ export function MenuItems({
             {item.onRemove && (
               <button
                 className="menu-remove"
-                {...labelTip(item.removeTitle, {
-                  keys: keysOf(keymap.removeItem),
-                })}
+                {...(item.removeTitle !== undefined &&
+                  labelled(item.removeTitle))}
                 tabIndex={-1}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={(event) => {

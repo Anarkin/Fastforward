@@ -41,7 +41,7 @@ const bookmarkStar = (bookmarks: readonly string[], platform: string) =>
     ),
   ).window.document
     .querySelector(
-      `button[data-tip="${strings.commander.bookmarks}"] .bookmark-icon`,
+      `button[aria-label="${strings.commander.bookmarks}"] .bookmark-icon`,
     )
     ?.getAttribute('class');
 

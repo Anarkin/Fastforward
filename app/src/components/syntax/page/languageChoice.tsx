@@ -11,7 +11,6 @@ export function LanguageButton({
   choice,
   detected,
   single,
-  keys,
   choose,
   trigger,
   onChosen,
@@ -21,7 +20,6 @@ export function LanguageButton({
   choice: LanguageChoice;
   detected: string | undefined;
   single: boolean;
-  keys?: string | undefined;
   choose: (choice: LanguageChoice) => void;
   trigger?: React.Ref<HTMLButtonElement>;
   onChosen?: () => void;
@@ -33,7 +31,6 @@ export function LanguageButton({
     <div className="language-button">
       <MenuButton
         title={language}
-        keys={keys}
         trigger={trigger}
         label={languageButtonLabel(choice, detected, single)}
         filter={single ? findLanguage : undefined}

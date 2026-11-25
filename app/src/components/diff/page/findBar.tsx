@@ -1,4 +1,3 @@
-import { keysOf } from '../../../lib/shared/keymap';
 import { SearchBar } from '../../../lib/page/searchBar';
 import { findKeyDown } from '../../../lib/page/findKeys';
 import { strings } from '../../../lib/shared/strings';
@@ -33,7 +32,6 @@ export function DiffFindBar({
         find.goTo(0);
       }}
       onStep={step}
-      stepKeys={[keysOf(diffKeymap.match, -1), keysOf(diffKeymap.match, 1)]}
       onClose={closeFind}
       onKeyDown={findKeyDown(diffKeymap, step, closeFind)}
     />
