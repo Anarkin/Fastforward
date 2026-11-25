@@ -382,7 +382,7 @@ suite('Style', () => {
     }
   });
 
-  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, the current one filled orange, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and what the editor marks on its own, a bracket it matches and the occurrences of the word at the cursor or of the text selected, as a plain rectangle too, in that yellow at the share the theme gives such marks', () => {
+  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, the current one filled in the blue of the cursor with its white text, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and what the editor marks on its own, a bracket it matches and the occurrences of the word at the cursor or of the text selected, as a plain rectangle too, in that yellow at the share the theme gives such marks', () => {
     const match = {
       color: 'var(--color-search-match-foreground)',
       background: 'var(--color-search-match)',

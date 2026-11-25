@@ -547,7 +547,8 @@
       "cursor-text": "var(--color-focus-foreground)",
 
       "search-match": "#fe6",
-      "search-match-current": "#ff9632",
+      "search-match-current": "var(--color-focus)",
+      "search-match-current-foreground": "var(--color-focus-foreground)",
       "search-match-foreground": "#000",
       "search-match-implicit": "100%",
 
@@ -597,7 +598,8 @@
       "cursor-text": "var(--color-focus-foreground)",
 
       "search-match": "#fc0",
-      "search-match-current": "#ff9632",
+      "search-match-current": "var(--color-focus)",
+      "search-match-current-foreground": "var(--color-focus-foreground)",
       "search-match-foreground": "#000",
       "search-match-implicit": "100%",
 

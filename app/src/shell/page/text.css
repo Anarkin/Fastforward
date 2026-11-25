@@ -199,6 +199,7 @@ mark.match,
 }
 
 .find-match.current {
+  color: var(--color-search-match-current-foreground);
   background: var(--color-search-match-current);
 }
 
@@ -306,6 +307,6 @@ mark.match,
 }
 
 ::highlight(markdown-match-current) {
-  color: var(--color-search-match-foreground);
+  color: var(--color-search-match-current-foreground);
   background-color: var(--color-search-match-current);
 }

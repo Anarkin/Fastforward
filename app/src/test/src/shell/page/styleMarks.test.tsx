@@ -210,7 +210,7 @@ suite('Style', () => {
     }
   });
 
-  test('fills the current match orange, the color of a current match in the theme, with no edge, which was hardly seen, so it stands apart from the yellow of the other matches at a glance', () => {
+  test('fills the current match in the blue of the cursor with its white text, the colors of a current match in the theme, as an orange beside the yellow of the other matches was hardly told from it, and with no edge, which was hardly seen, so it stands apart from the yellow of the other matches at a glance', () => {
     const current = marks.filter(([, mark]) =>
       mark.classes.includes('current'),
     );

@@ -77,7 +77,7 @@ export function pixels(value: string | undefined): number {
 }
 
 export const currentMatch = {
-  color: 'var(--color-search-match-foreground)',
+  color: 'var(--color-search-match-current-foreground)',
   background: 'var(--color-search-match-current)',
   'box-shadow': undefined,
 };

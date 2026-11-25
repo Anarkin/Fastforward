@@ -493,7 +493,7 @@ suite('Cells of a text', () => {
     );
   });
 
-  test('fills the find the search is at in the ground of the current match, orange, across what several pieces hold, and frames it with nothing, as the hairline around it was hardly seen', () => {
+  test('fills the find the search is at in the ground of the current match, across what several pieces hold, and frames it with nothing, as the hairline around it was hardly seen', () => {
     const { frame } = drawn([
       { text: 'a' },
       { text: 'bc', kind: 'keyword', mark: 'current' },

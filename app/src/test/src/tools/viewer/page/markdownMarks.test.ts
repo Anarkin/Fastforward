@@ -49,7 +49,7 @@ suite('Marks of a Markdown preview', () => {
     assert.deepStrictEqual(markdownMarks([{ top: 0, height: 20 }], 0, 500), []);
   });
 
-  test('marks the current match orange over the others, at least two pixels of the track tall, so the track shows where the search is', () => {
+  test('marks the current match in its own color over the others, at least two pixels of the track tall, so the track shows where the search is', () => {
     assert.deepStrictEqual(
       rounded(
         markdownMarks(

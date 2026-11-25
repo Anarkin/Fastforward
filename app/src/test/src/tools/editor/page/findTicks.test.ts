@@ -55,7 +55,7 @@ suite('The marks of a find on the scrollbar of the editor', () => {
     assert.deepStrictEqual(ticksOf([{ top: 0, bottom: 20 }], 0, 400), []);
   });
 
-  test('marks the line of the current match orange over the others, two pixels of the track tall at least, and nothing without one', () => {
+  test('marks the line of the current match in its own color over the others, two pixels of the track tall at least, and nothing without one', () => {
     assert.deepStrictEqual(
       [
         currentTickOf({ top: 500, bottom: 520 }, 1000, 400),

@@ -519,7 +519,9 @@ export class TerminalView {
           x: piece.column,
           width: piece.width,
           backgroundColor: current ? colors.current : colors.background,
-          foregroundColor: colors.foreground,
+          foregroundColor: current
+            ? colors.currentForeground
+            : colors.foreground,
           layer: 'top',
         });
         if (decoration !== undefined) {
@@ -534,6 +536,7 @@ export class TerminalView {
         readonly background: string;
         readonly current: string;
         readonly foreground: string;
+        readonly currentForeground: string;
       }
     | undefined {
     const resolved = (color: string) => {
@@ -543,11 +546,15 @@ export class TerminalView {
     const background = resolved('var(--color-search-match)');
     const current = resolved('var(--color-search-match-current)');
     const foreground = resolved('var(--color-search-match-foreground)');
+    const currentForeground = resolved(
+      'var(--color-search-match-current-foreground)',
+    );
     return background === undefined ||
       current === undefined ||
-      foreground === undefined
+      foreground === undefined ||
+      currentForeground === undefined
       ? undefined
-      : { background, current, foreground };
+      : { background, current, foreground, currentForeground };
   }
 
   private theme() {

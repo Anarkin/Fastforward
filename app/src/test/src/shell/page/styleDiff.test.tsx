@@ -554,7 +554,7 @@ suite('Style', () => {
     looks(end, { position: 'sticky', right: padding.right });
   });
 
-  test('highlights what a find in the diff matched in the search match colors, the current match orange, and ticks the scrollbar in them, the current match orange over the others', () => {
+  test('highlights what a find in the diff matched in the search match colors, the current match in the blue of the cursor, and ticks the scrollbar in them, the current match in the blue of the cursor over the others', () => {
     const [match, current] = allWithClass(
       diffView(<DiffViewShown />, <InlineLine kind="context" finds />),
       'find-match',

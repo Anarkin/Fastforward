@@ -167,7 +167,7 @@ suite('Terminal', () => {
     await waitForRow((row) => row.includes('marker-file.txt'), 'the listing');
   });
 
-  test('searches the output on Ctrl+Shift+F in a search floating over the terminal, coloring every match and the current one orange, counting them and stepping through them on Enter, and gives the keyboard back to the shell on Escape, the matches no longer colored', async () => {
+  test('searches the output on Ctrl+Shift+F in a search floating over the terminal, coloring every match and the current one in the blue of the cursor with its white text, counting them and stepping through them on Enter, and gives the keyboard back to the shell on Escape, the matches no longer colored', async () => {
     await run('echo needle-one needle-two needle-three');
     await waitForRow(
       (row) =>
@@ -190,7 +190,9 @@ suite('Terminal', () => {
           spans
             .filter(
               (span) =>
-                getComputedStyle(span).backgroundColor === 'rgb(255, 150, 50)',
+                !span.classList.contains('xterm-cursor') &&
+                getComputedStyle(span).backgroundColor === 'rgb(0, 102, 204)' &&
+                getComputedStyle(span).color === 'rgb(255, 255, 255)',
             )
             .map((span) => span.textContent)
             .join(''),

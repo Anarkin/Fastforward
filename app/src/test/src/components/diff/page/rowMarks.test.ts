@@ -40,7 +40,7 @@ suite('Find in diff', () => {
     assert.deepStrictEqual(kinds(1), ['removed', 'added', 'match']);
   });
 
-  test('marks the line of the current match orange over the other matches, where the find is, and nothing more without one', () => {
+  test('marks the line of the current match in its own color over the other matches, where the find is, and nothing more without one', () => {
     const rows = diffRows(parsePatch(patch), new Map(), undefined);
     const keys = lineKeys(rows);
     const matched = new Map([['0:3', []]]);
