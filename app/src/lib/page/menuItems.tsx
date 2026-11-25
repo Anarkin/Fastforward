@@ -130,7 +130,11 @@ export function MenuItems({
                 }
               }}
             >
-              <span className="menu-check">
+              <span
+                className={
+                  item.indented === true ? 'menu-check indented' : 'menu-check'
+                }
+              >
                 {item.icon === undefined ? (
                   item.checked ? (
                     strings.symbols.checked
@@ -146,7 +150,11 @@ export function MenuItems({
                   <HighlightWords text={detail} filter={filter} />
                 </span>
               ))}
-              {item.sentence !== undefined ? (
+              {item.sentence !== undefined && item.struck === true ? (
+                <span className="menu-struck">
+                  <Words filter={filter}>{item.sentence}</Words>
+                </span>
+              ) : item.sentence !== undefined ? (
                 <Words filter={filter}>{item.sentence}</Words>
               ) : item.path === true ? (
                 <NamedPath path={item.label} filter={filter} />

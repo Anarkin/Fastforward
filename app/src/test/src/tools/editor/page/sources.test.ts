@@ -52,10 +52,10 @@ suite('Where the editor says its text comes from', () => {
         ),
       ),
       [
-        '(off) New lines end in:',
+        '(off) Line ending rules:',
         '✓ CRLF, as most lines of the file end',
         '-',
-        '(off) With no line break yet, new lines end in the first of these that applies:',
+        '(off) Line ending rules with no line break yet:',
         `✓ LF, from "end_of_line" in "${config}"`,
         'CRLF, from "core.autocrlf" of git',
         '(off) "tools.editor.files" in the settings sets nothing for ".txt"',
@@ -78,7 +78,7 @@ suite('Where the editor says its text comes from', () => {
       [
         '(off) The file has no line break yet',
         '-',
-        '(off) With no line break yet, new lines end in the first of these that applies:',
+        '(off) Line ending rules with no line break yet:',
         '(off) No .editorconfig sets "end_of_line"',
         '✓ LF, from the "eol" attribute of git',
         'CRLF, from "tools.editor.files" for ".cmd" in the settings',
@@ -137,7 +137,7 @@ suite('Where the editor says its text comes from', () => {
         ),
       ),
       [
-        '(off) Read in the first of these that applies:',
+        '(off) Encoding rules to read in:',
         '(off) No encoding chosen for this file',
         '(off) No byte order mark',
         "(off) Its bytes don't look like UTF-16",
@@ -183,7 +183,7 @@ suite('Where the editor says its text comes from', () => {
       opens,
     );
     assert.deepStrictEqual(rowsOf(items), [
-      '(off) Written in the first of these that applies:',
+      '(off) Encoding rules to write in:',
       `✓ UTF-8 with BOM, from "charset" in "${config}"`,
       'UTF-8, from "tools.editor.charset" in the settings',
     ]);

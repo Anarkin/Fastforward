@@ -21,6 +21,8 @@ export type ContextMenuItem =
       readonly onClick?: () => void;
       readonly submenu?: readonly ContextMenuItem[];
       readonly disabled?: boolean;
+      readonly struck?: boolean;
+      readonly indented?: boolean;
       readonly checked?: boolean;
       readonly onRemove?: () => void;
       readonly removeTitle?: string;

@@ -102,6 +102,45 @@ suite('Menu items', () => {
     assert.match(html, />Open</);
   });
 
+  test('strikes a struck item through with one line across its whole label, its names in monospace too, rather than by the line of each font, which stood at another height in a name and skipped some names', () => {
+    const struck = sentence`No ${named('tab_width')} here`;
+    const html = renderToStaticMarkup(
+      <MenuItems
+        scrolling={defaultScrolling}
+        items={[
+          { label: 'a', sentence: struck, struck: true, disabled: true },
+          { label: 'b', sentence: struck, disabled: true },
+        ]}
+        onClose={() => undefined}
+      />,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/<span class="menu-struck">(.*?)<\/span><\/button>/g)]
+        .map(([, inner]) => inner.replaceAll(/<[^>]*>/g, ''))
+        .map((text) => text.trim()),
+      ['No tab_width here'],
+    );
+  });
+
+  test('sets an indented item in past the column of its check, so the rules under a heading read as set in under it, their checks where every check stands', () => {
+    const html = renderToStaticMarkup(
+      <MenuItems
+        scrolling={defaultScrolling}
+        items={[
+          { label: 'Rules:', disabled: true },
+          { label: 'A rule', checked: true, disabled: true, indented: true },
+        ]}
+        onClose={() => undefined}
+      />,
+    );
+    assert.deepStrictEqual(
+      [...html.matchAll(/<span class="(menu-check[^"]*)">/g)].map(
+        ([, name]) => name,
+      ),
+      ['menu-check', 'menu-check indented'],
+    );
+  });
+
   test('keys items apart that have the same label', () => {
     const items = renderedBy(MenuItems, {
       scrolling: defaultScrolling,

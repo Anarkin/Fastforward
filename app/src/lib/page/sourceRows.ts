@@ -27,9 +27,10 @@ export function sourceItems(
       sentence: row.sentence,
       keywords: heading,
       checked: index === applied,
+      indented: true,
       ...(row.set
         ? row.onClick !== undefined && { onClick: row.onClick }
-        : { disabled: true }),
+        : { disabled: true, struck: true }),
     })),
   ];
 }

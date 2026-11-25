@@ -110,6 +110,10 @@
   width: 24px;
 }
 
+.menu-check.indented {
+  width: 40px;
+}
+
 .menu-detail {
   margin-right: 12px;
   white-space: pre;
@@ -221,6 +225,20 @@
 
 .menu-item:disabled {
   opacity: var(--muted-opacity);
+}
+
+.menu-struck {
+  position: relative;
+}
+
+.menu-struck::after {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  content: '';
+  background: currentcolor;
 }
 
 .menu-separator {

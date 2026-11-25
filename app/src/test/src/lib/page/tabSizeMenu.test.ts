@@ -36,7 +36,7 @@ suite('The tab width menu', () => {
       },
     );
     assert.deepStrictEqual(rowsOf(items), [
-      '(Tabs are drawn as wide as the first of these that applies:)',
+      '(Tab width rules:)',
       '✓ 8 columns, from "tab_width" in "a/.editorconfig"',
       '4 columns, from "text.tabSize" in the settings',
     ]);
@@ -48,9 +48,18 @@ suite('The tab width menu', () => {
     assert.deepStrictEqual(opened, ['a/.editorconfig', 'settings']);
   });
 
+  test('strikes through the rows that set nothing, as they apply to nothing, and none of those that do', () => {
+    assert.deepStrictEqual(
+      tabSizeItems({ settings: 4 }, opening).map(
+        (item) => !('separator' in item) && item.struck === true,
+      ),
+      [false, true, false],
+    );
+  });
+
   test('checks the settings where no .editorconfig sets a width', () => {
     assert.deepStrictEqual(rowsOf(tabSizeItems({ settings: 4 }, opening)), [
-      '(Tabs are drawn as wide as the first of these that applies:)',
+      '(Tab width rules:)',
       '(No .editorconfig sets "tab_width" or "indent_size")',
       '✓ 4 columns, from "text.tabSize" in the settings',
     ]);
