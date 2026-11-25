@@ -506,6 +506,6 @@
 
 .commander-path-menus .menu {
   top: calc(100% + var(--bar-space));
-  left: var(--bar-space);
+  left: calc(var(--column-line, 0px) + var(--bar-space));
   right: auto;
 }

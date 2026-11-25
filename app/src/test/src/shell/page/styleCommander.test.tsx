@@ -240,6 +240,23 @@ suite('Style', () => {
     });
   });
 
+  test('opens the bookmarks and the drives below the path of a side as far in from the frame of the side as from the path, past the line of the frame, as the floating search stands', () => {
+    looks(
+      withClass(
+        rendered(
+          <div className="commander-path-menus">
+            <div className="menu" />
+          </div>,
+        ),
+        'menu',
+      ),
+      {
+        top: 'calc(100% + var(--bar-space))',
+        left: 'calc(var(--column-line, 0px) + var(--bar-space))',
+      },
+    );
+  });
+
   test('keeps the name of the commander one character after its icon, as the icon is not a column to stand apart from', () => {
     for (const className of [
       'commander-line commander-header',
