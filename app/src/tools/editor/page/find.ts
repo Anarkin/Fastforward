@@ -34,9 +34,13 @@ interface Finding {
 
 const maxFound = 10_000;
 
-function rangesIn(doc: Text, { text, options }: FindQuery): FindRange[] {
+function rangesIn(
+  doc: Text,
+  { text, options }: FindQuery,
+  limit = maxFound + 1,
+): FindRange[] {
   if (options.regex) {
-    return matchesIn(doc.toString(), text, options, maxFound + 1);
+    return matchesIn(doc.toString(), text, options, limit);
   }
   const ranges: FindRange[] = [];
   let at = 0;
@@ -45,11 +49,11 @@ function rangesIn(doc: Text, { text, options }: FindQuery): FindRange[] {
       line,
       text,
       options,
-      maxFound + 1 - ranges.length,
+      limit - ranges.length,
     )) {
       ranges.push({ start: at + start, end: at + end });
     }
-    if (ranges.length > maxFound) {
+    if (ranges.length >= limit) {
       break;
     }
     at += line.length + 1;
@@ -203,6 +207,9 @@ export function findNearest(view: EditorSurface): void {
 
 export function replace(view: EditorSurface, replacement: string): void {
   const { state } = view;
+  if (state.readOnly) {
+    return;
+  }
   const { query, found } = findingOf(state);
   const current = found[currentOf(state)];
   if (query === undefined || current === undefined) {
@@ -224,19 +231,25 @@ export function replace(view: EditorSurface, replacement: string): void {
 
 export function replaceAll(view: EditorSurface, replacement: string): number {
   const { state } = view;
-  const { query, found } = findingOf(state);
-  if (query === undefined || found.length === 0) {
+  const { query, found, capped } = findingOf(state);
+  if (state.readOnly || query === undefined || found.length === 0) {
     return 0;
   }
+  const every = capped
+    ? rangesIn(state.doc, query, Infinity).map(({ start, end }) => ({
+        from: start,
+        to: end,
+      }))
+    : found;
   view.dispatch({
-    changes: found.map(({ from, to }) => ({
+    changes: every.map(({ from, to }) => ({
       from,
       to,
       insert: replacedText(state.sliceDoc(from, to), query, replacement),
     })),
     userEvent: 'input.replace.all',
   });
-  return found.length;
+  return every.length;
 }
 
 export interface FindCount {
