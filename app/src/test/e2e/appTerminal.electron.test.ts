@@ -429,10 +429,14 @@ suite('Terminal', () => {
     );
     await page.keyboard.press('Enter');
     await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
-    const sides = ((await tabs.nth(1).getAttribute('data-tip')) ?? '').split(
-      '\n',
+    const right = page
+      .locator('.commander-pane')
+      .nth(1)
+      .locator('.commander-path');
+    await waitFor(
+      async () => sameFolder((await right.textContent()) ?? '', inner),
+      'the commander to show the folder on its right',
     );
-    assert.ok(sameFolder(sides.at(-1) ?? '', inner), sides.join(' | '));
     await page.keyboard.press('ControlOrMeta+Shift+W');
     await waitFor(async () => (await tabs.count()) === 1, 'the tab to close');
     await page.locator('.terminal-screen .xterm-rows').waitFor();
@@ -463,8 +467,11 @@ suite('Terminal', () => {
     }, 'the folder to be offered');
     await offered.click();
     await waitFor(async () => (await tabs.count()) === 2, 'a second tab');
-    assert.ok(
-      sameFolder((await tabs.nth(1).getAttribute('data-tip')) ?? '', inner),
+    await waitFor(
+      async () =>
+        (await tabs.nth(1).locator('.tab-name').textContent()) ===
+        path.basename(inner),
+      'the new terminal to be named after the folder it opened in',
     );
     const popup = page.locator('.confirm-popup');
     await page.keyboard.press('ControlOrMeta+Shift+W');
