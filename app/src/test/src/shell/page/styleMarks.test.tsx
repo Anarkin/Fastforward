@@ -12,7 +12,7 @@ import {
 } from '../../../helpers/markup';
 import {
   body,
-  currentMatchOutline,
+  currentMatch,
   looks,
   paddingOf,
   unwrapped,
@@ -210,13 +210,13 @@ suite('Style', () => {
     }
   });
 
-  test('outlines the current match inside its line, at the top and the bottom rows of device pixels the mark fills, and beside it, as before, so neither the next line nor a side clipping its code hides the outline', () => {
+  test('fills the current match orange, the color of a current match in the theme, with no edge, which was hardly seen, so it stands apart from the yellow of the other matches at a glance', () => {
     const current = marks.filter(([, mark]) =>
       mark.classes.includes('current'),
     );
     assert.strictEqual(current.length, 2);
     for (const [, mark] of current) {
-      looks(mark, { 'box-shadow': currentMatchOutline });
+      looks(mark, currentMatch);
     }
   });
 

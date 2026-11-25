@@ -24,7 +24,7 @@
 
 .pdf-pane .textLayer .highlight {
   --highlight-bg-color: var(--color-search-match);
-  --highlight-selected-bg-color: var(--highlight-bg-color);
+  --highlight-selected-bg-color: var(--color-search-match-current);
   border-radius: 0;
 }
 
@@ -34,10 +34,6 @@
 
 .pdf-pane .textLayer br::selection {
   background-color: transparent;
-}
-
-.pdf-pane .textLayer .highlight.selected {
-  box-shadow: 0 0 0 var(--hairline) var(--color-search-match-foreground);
 }
 
 .pdf-failure {

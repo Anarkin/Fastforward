@@ -167,7 +167,7 @@ suite('Terminal', () => {
     await waitForRow((row) => row.includes('marker-file.txt'), 'the listing');
   });
 
-  test('searches the output on Ctrl+Shift+F in a search floating over the terminal, coloring every match, counting them and stepping through them on Enter, and gives the keyboard back to the shell on Escape, the matches no longer colored', async () => {
+  test('searches the output on Ctrl+Shift+F in a search floating over the terminal, coloring every match and the current one orange, counting them and stepping through them on Enter, and gives the keyboard back to the shell on Escape, the matches no longer colored', async () => {
     await run('echo needle-one needle-two needle-three');
     await waitForRow(
       (row) =>
@@ -185,8 +185,16 @@ suite('Terminal', () => {
         .evaluateAll((counts) => counts[0]?.textContent),
       colored: await page.locator('.terminal-screen .xterm-decoration').count(),
       current: await page
-        .locator('.terminal-screen .terminal-find-current')
-        .count(),
+        .locator('.terminal-screen .xterm-rows span')
+        .evaluateAll((spans) =>
+          spans
+            .filter(
+              (span) =>
+                getComputedStyle(span).backgroundColor === 'rgb(255, 150, 50)',
+            )
+            .map((span) => span.textContent)
+            .join(''),
+        ),
     });
     const found = await untilSettled(shown, 'the needles found');
     await box.press('Enter');
@@ -206,9 +214,9 @@ suite('Terminal', () => {
         ),
       },
       {
-        found: { count: '1 of 6', colored: true, current: 1 },
+        found: { count: '1 of 6', colored: true, current: 'needle-' },
         stepped: '2 of 6',
-        closed: { colored: 0, current: 0 },
+        closed: { colored: 0, current: '' },
         shell: true,
       },
     );

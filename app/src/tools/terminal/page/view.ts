@@ -518,33 +518,36 @@ export class TerminalView {
           marker,
           x: piece.column,
           width: piece.width,
-          backgroundColor: colors.background,
+          backgroundColor: current ? colors.current : colors.background,
           foregroundColor: colors.foreground,
           layer: 'top',
         });
         if (decoration !== undefined) {
           this.highlights.push(decoration);
-          if (current) {
-            decoration.onRender((element) =>
-              element.classList.add('terminal-find-current'),
-            );
-          }
         }
       }
     });
   }
 
   private matchColors():
-    { readonly background: string; readonly foreground: string } | undefined {
+    | {
+        readonly background: string;
+        readonly current: string;
+        readonly foreground: string;
+      }
+    | undefined {
     const resolved = (color: string) => {
       this.probe.style.color = color;
       return hexOf(getComputedStyle(this.probe).color);
     };
     const background = resolved('var(--color-search-match)');
+    const current = resolved('var(--color-search-match-current)');
     const foreground = resolved('var(--color-search-match-foreground)');
-    return background === undefined || foreground === undefined
+    return background === undefined ||
+      current === undefined ||
+      foreground === undefined
       ? undefined
-      : { background, foreground };
+      : { background, current, foreground };
   }
 
   private theme() {

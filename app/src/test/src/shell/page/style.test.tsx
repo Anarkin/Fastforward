@@ -27,7 +27,7 @@ import {
   noop,
   body,
   css,
-  currentMatchOutline,
+  currentMatch,
 } from './stylesheetFixtures';
 import { HunkDivider } from '../../../../components/diff/page/rowParts';
 import { Crash } from '../../../../shell/page/errorBoundary';
@@ -382,7 +382,7 @@ suite('Style', () => {
     }
   });
 
-  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, outlining the current one, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and what the editor marks on its own, a bracket it matches and the occurrences of the word at the cursor or of the text selected, as a plain rectangle too, in that yellow at the share the theme gives such marks', () => {
+  test('marks every match of a search in the colors of a match as a plain rectangle, as the cursor is one, the current one filled orange, in the editor, the viewer, the diff, PDFs, the commander, the commits, the files, the locations and the shortcuts, and what the editor marks on its own, a bracket it matches and the occurrences of the word at the cursor or of the text selected, as a plain rectangle too, in that yellow at the share the theme gives such marks', () => {
     const match = {
       color: 'var(--color-search-match-foreground)',
       background: 'var(--color-search-match)',
@@ -390,10 +390,7 @@ suite('Style', () => {
     };
     for (const classes of ['editor-surface', 'viewer-row', 'diff-line']) {
       looks(found(classes, false), { ...match, 'box-shadow': undefined });
-      looks(found(classes, true), {
-        ...match,
-        'box-shadow': currentMatchOutline,
-      });
+      looks(found(classes, true), currentMatch);
     }
     for (const classes of [
       'row commander-row',
@@ -423,6 +420,22 @@ suite('Style', () => {
         'match',
       ),
       match,
+    );
+    looks(
+      withClass(
+        inside(
+          'pdf-pane',
+          <div className="textLayer">
+            <span className="highlight selected">x</span>
+          </div>,
+        ),
+        'highlight',
+        'selected',
+      ),
+      {
+        '--highlight-selected-bg-color': 'var(--color-search-match-current)',
+        'box-shadow': undefined,
+      },
     );
     for (const classes of [
       'highlight',

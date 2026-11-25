@@ -493,25 +493,30 @@ suite('Cells of a text', () => {
     );
   });
 
-  test('frames the find the search is at with a hairline in the ink of a find, above and below within its row and before and after it, once around what several pieces hold', () => {
+  test('fills the find the search is at in the ground of the current match, orange, across what several pieces hold, and frames it with nothing, as the hairline around it was hardly seen', () => {
     const { frame } = drawn([
       { text: 'a' },
       { text: 'bc', kind: 'keyword', mark: 'current' },
       { text: 'd', mark: 'current' },
     ]);
+    const rects = rectsIn(frame);
 
     assert.deepStrictEqual(
-      rectsIn(frame)
-        .filter(({ color }) => color === 0xff000000)
-        .map(({ x, y, width, height }) => [x, y, width, height]),
-      [
-        [7, 0, 14, 1],
-        [7, 15, 14, 1],
-        [6, 0, 1, 16],
-        [21, 0, 7, 1],
-        [21, 15, 7, 1],
-        [28, 0, 1, 16],
-      ],
+      {
+        orange: rects
+          .filter(({ color }) => color === 0xff3296ff)
+          .map(({ x, width }) => [x, width]),
+        hairlines: rects.filter(
+          ({ width, height }) => width === 1 || height === 1,
+        ).length,
+      },
+      {
+        orange: [
+          [7, 14],
+          [21, 7],
+        ],
+        hairlines: 0,
+      },
     );
   });
 

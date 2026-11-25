@@ -198,13 +198,8 @@ mark.match,
   --mark-text-height: var(--monospace-text-height, 1lh);
 }
 
-.find-match.current,
-.terminal-find-current {
-  box-shadow:
-    inset 0 var(--hairline) var(--color-search-match-foreground),
-    inset 0 calc(-1 * var(--hairline)) var(--color-search-match-foreground),
-    var(--hairline) 0 var(--color-search-match-foreground),
-    calc(-1 * var(--hairline)) 0 var(--color-search-match-foreground);
+.find-match.current {
+  background: var(--color-search-match-current);
 }
 
 .diff-line .syntax-plain,
@@ -311,7 +306,6 @@ mark.match,
 }
 
 ::highlight(markdown-match-current) {
-  text-decoration-line: underline overline;
-  text-decoration-color: var(--color-search-match-foreground);
-  text-decoration-thickness: var(--hairline);
+  color: var(--color-search-match-foreground);
+  background-color: var(--color-search-match-current);
 }

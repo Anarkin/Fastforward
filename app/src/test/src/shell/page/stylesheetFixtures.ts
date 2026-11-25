@@ -76,12 +76,11 @@ export function pixels(value: string | undefined): number {
     .reduce((sum, term) => sum + term, 0);
 }
 
-export const currentMatchOutline = [
-  'inset 0 var(--hairline) var(--color-search-match-foreground)',
-  'inset 0 calc(-1 * var(--hairline)) var(--color-search-match-foreground)',
-  'var(--hairline) 0 var(--color-search-match-foreground)',
-  'calc(-1 * var(--hairline)) 0 var(--color-search-match-foreground)',
-].join(', ');
+export const currentMatch = {
+  color: 'var(--color-search-match-foreground)',
+  background: 'var(--color-search-match-current)',
+  'box-shadow': undefined,
+};
 
 export const compact = (value: string | undefined) =>
   value?.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');

@@ -79,7 +79,6 @@ export function lookWithin(
     current: { ink: colorOf(current), ground: layerOf(current) },
     occurrence: { ink: colorOf(occurrence), ground: layerOf(occurrence) },
     selected: layerOf(selected),
-    outline: over(ground, parsedColor(colorOf(current))),
   };
 }
 

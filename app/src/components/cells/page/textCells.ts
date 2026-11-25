@@ -32,7 +32,6 @@ export interface TextLook {
   readonly current: MarkLook;
   readonly occurrence: MarkLook;
   readonly selected: Rgba;
-  readonly outline: Rgba;
   readonly tints?: ReadonlyMap<string, Rgba> | undefined;
   readonly line?: Rgba | undefined;
 }
@@ -42,7 +41,6 @@ export interface TextPalette {
   readonly styles: Map<string, GlyphStyle>;
   readonly grounds: Map<string, Rgba>;
   readonly dotFills: Map<string | undefined, number>;
-  readonly outline: number;
 }
 
 export const paletteOf = (look: TextLook): TextPalette => ({
@@ -50,7 +48,6 @@ export const paletteOf = (look: TextLook): TextPalette => ({
   styles: new Map(),
   grounds: new Map(),
   dotFills: new Map([[undefined, packedOf(look.dots)]]),
-  outline: packedOf(look.outline),
 });
 
 const tintsApart = '+';
@@ -505,7 +502,7 @@ export function drawPieces(
   const { tiles, frame, first, left: textLeft, limit } = drawing;
   const { advance, rowHeight } = tiles.metrics;
   let column = from;
-  for (const [index, piece] of pieces.entries()) {
+  for (const piece of pieces) {
     const { text, kind, mark, selected } = piece;
     const tint = piece.tint ?? rowTint;
     const start = column;
@@ -551,20 +548,6 @@ export function drawPieces(
         rowHeight,
         style.packed,
       );
-    }
-    if (mark === 'current' && end > start) {
-      const { hairline } = drawing.dot;
-      const { outline } = drawing.palette;
-      const left = textLeft + Math.round((start - first) * advance);
-      const width = (end - start) * advance;
-      frame.rect(left, y, width, hairline, outline);
-      frame.rect(left, y + rowHeight - hairline, width, hairline, outline);
-      if (pieces[index - 1]?.mark !== 'current') {
-        frame.rect(left - hairline, y, hairline, rowHeight, outline);
-      }
-      if (pieces[index + 1]?.mark !== 'current') {
-        frame.rect(left + width, y, hairline, rowHeight, outline);
-      }
     }
   }
   return column;

@@ -14,7 +14,7 @@ import {
   looks,
   paddingOf,
   after,
-  currentMatchOutline,
+  currentMatch,
 } from './stylesheetFixtures';
 import { sideSnaps } from '../../../../components/diff/page/codeSnap';
 import {
@@ -554,7 +554,7 @@ suite('Style', () => {
     looks(end, { position: 'sticky', right: padding.right });
   });
 
-  test('highlights what a find in the diff matched in the search match colors, edging the current match, and ticks the scrollbar in them', () => {
+  test('highlights what a find in the diff matched in the search match colors, the current match orange, and ticks the scrollbar in them', () => {
     const [match, current] = allWithClass(
       diffView(<DiffViewShown />, <InlineLine kind="context" finds />),
       'find-match',
@@ -564,10 +564,7 @@ suite('Style', () => {
       background: 'var(--color-search-match)',
     };
     looks(match, { ...colors, 'box-shadow': undefined });
-    looks(current, {
-      ...colors,
-      'box-shadow': currentMatchOutline,
-    });
+    looks(current, currentMatch);
     assert.ok(current.classes.includes('current'));
     looks(
       withClass(rendered(<ScrollbarMarksShown />), 'scrollbar-mark', 'match'),
