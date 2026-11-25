@@ -18,7 +18,7 @@ import {
   wheeledAlone,
   type KeyPress,
 } from '../../../../lib/shared/keymap';
-import { keyLabels } from '../../../../lib/page/keyLabels';
+import { keyLabels } from '../../../../shell/page/keyLabels';
 import { keymap } from '../../../../lib/page/keymap';
 import { gitKeymap } from '../../../../tools/git/page/keymap';
 import { keyPress, noModifiers, withMacKeys } from '../../../helpers/keys';

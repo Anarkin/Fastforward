@@ -58,7 +58,7 @@ const ownerOf = (binding: Binding<unknown>) =>
 
 const owned = [...new Set(named.map(({ binding }) => ownerOf(binding)))];
 
-const inMenus: readonly string[] = [
+const keysAlone: readonly string[] = [
   'commanderKeymap.compare',
   'commanderKeymap.copyPaths',
   'commanderKeymap.edit',
@@ -70,9 +70,6 @@ const inMenus: readonly string[] = [
   'shellKeymap.about',
   'shellKeymap.newWindow',
   'shellKeymap.shortcuts',
-];
-
-const keysAlone: readonly string[] = [
   'commanderKeymap.bookmarks',
   'commanderKeymap.contextMenu',
   'commanderKeymap.copyAs',
@@ -231,7 +228,7 @@ const keysAlone: readonly string[] = [
 ];
 
 suite('Shortcuts shown', () => {
-  test('shows keys in a menu from a binding alone, by keysOf, never written out, so what a menu says of its keys is what the list of shortcuts says and what the keys do, and none in a tooltip, which names what a control does in words alone', () => {
+  test('writes out no keys in a menu or a tooltip, as the list of shortcuts alone names keys', () => {
     assert.deepStrictEqual(
       pageFiles.filter((file) =>
         /\b(?:keys|stepKeys)(?:=\{?|:)\s*\[?\s*['"`]/.test(textOf(file)),
@@ -244,7 +241,7 @@ suite('Shortcuts shown', () => {
     );
   });
 
-  test('decides for every binding whether an item of a menu shows its keys or the keys alone do it, so a binding added is looked at, and shows the keys of each that a control shows', () => {
+  test('shows the keys of no binding in a menu, the list of shortcuts alone naming keys, and lists every binding, so a binding added is looked at', () => {
     const passed = new Set(
       pageFiles.flatMap((file) =>
         [...textOf(file).matchAll(/keysOf\(\s*(\w+\.\w+)/g)].map(
@@ -258,7 +255,7 @@ suite('Shortcuts shown', () => {
           ownerOf(binding) === id && passed.has(alias),
       ),
     );
-    assert.deepStrictEqual(shown.toSorted(), inMenus.toSorted());
+    assert.deepStrictEqual([...shown], []);
     assert.deepStrictEqual(
       owned.filter((id) => !shown.includes(id)).toSorted(),
       keysAlone.toSorted(),

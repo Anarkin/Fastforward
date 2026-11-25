@@ -1,4 +1,4 @@
-import { keyLabels } from '../../lib/page/keyLabels';
+import { keyLabels } from './keyLabels';
 import type { Binding } from '../../lib/shared/keymap';
 import type { ToolId } from '../shared/tools';
 import {

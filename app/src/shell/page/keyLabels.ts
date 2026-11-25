@@ -1,5 +1,5 @@
-import { comboOf, isPointerKey, usesMacKeys } from '../shared/keymap';
-import { strings } from '../shared/strings';
+import { comboOf, isPointerKey, usesMacKeys } from '../../lib/shared/keymap';
+import { strings } from '../../lib/shared/strings';
 
 export function keyLabels(keys: string, mac = usesMacKeys()): string[] {
   const combo = comboOf(keys);

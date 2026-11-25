@@ -394,38 +394,21 @@ suite('Menu items', () => {
     );
   });
 
-  test('shows the keys of an item as key caps at its right end, the shortcuts that do what it does and, when asked, the key that picks it in its menu, as the shortcuts are listed, kept from the name assistive technology reads, and shows none for an item that has none', () => {
+  test('shows no key caps in a menu, as only the list of shortcuts names keys, telling the key that picks an item to assistive technology alone', () => {
     const html = renderToStaticMarkup(
       <MenuItems
         scrolling={defaultScrolling}
         items={[
-          {
-            label: 'C:\\Code',
-            accessKey: '1',
-            showAccessKey: true,
-            checked: true,
-            onClick: noop,
-          },
+          { label: 'C:\\Code', accessKey: '1', checked: true, onClick: noop },
           { label: 'D:\\', accessKey: 'D', onClick: noop },
-          { label: 'Details', keys: 'Mod+1 F9', onClick: noop },
+          { label: 'Details', onClick: noop },
         ]}
         onClose={noop}
       />,
     );
-    assert.match(
-      html,
-      /aria-keyshortcuts="1"[^>]*><span class="menu-check">✓<\/span>C:\\Code<span class="menu-keys" aria-hidden="true"><span class="shortcut-combo"><kbd>1<\/kbd><\/span><\/span><\/button>/,
-    );
-    assert.match(
-      html,
-      /data-access-key="D"><span class="menu-check"><\/span>D:\\<\/button>/,
-    );
-    assert.match(
-      html,
-      /Details<span class="menu-keys" aria-hidden="true"><span class="shortcut-combo"><kbd>Ctrl<\/kbd>.*<kbd>1<\/kbd><\/span><span class="shortcut-combo"><kbd>F9<\/kbd><\/span><\/span><\/button>/,
-    );
-    assert.strictEqual(tagsWith(html, 'menu-keys').length, 2);
-    assert.strictEqual(tagsWith(html, 'menu-access-key').length, 0);
+    assert.doesNotMatch(html, /<kbd|menu-keys|shortcut-combo/);
+    assert.match(html, /aria-keyshortcuts="1"/);
+    assert.match(html, /aria-keyshortcuts="D"/);
   });
 
   test('leaves room for a check before every item, whether it can be checked or not, so the labels of every menu line up alike', () => {

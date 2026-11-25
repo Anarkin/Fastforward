@@ -389,7 +389,6 @@ suite('Message peek', () => {
           await new Promise((resolve) => setTimeout(resolve, 10));
         });
         assert.match(pinned()?.textContent ?? '', /More of the second/);
-        const restored = pinned()?.querySelector('.message-hint')?.textContent;
         assert.ok(
           pinned()?.contains(document.activeElement) !== true,
           'the keyboard left where the tab gives it back',
@@ -400,10 +399,7 @@ suite('Message peek', () => {
         await type('Enter', true);
         assert.strictEqual(pinned(), null);
         await type('Enter', true);
-        assert.strictEqual(
-          pinned()?.querySelector('.message-hint')?.textContent,
-          restored,
-        );
+        assert.match(pinned()?.textContent ?? '', /More of the second/);
         assert.deepStrictEqual(told, [
           undefined,
           { hash: commits[2]?.hash, byKey: true },
@@ -473,13 +469,11 @@ suite('Message peek', () => {
       list.focus();
       await type('Alt', true);
       assert.match(panel()?.textContent ?? '', /More of the second/);
-      assert.match(panel()?.textContent ?? '', /Alt\+Enter/);
       select(1);
       await type('ArrowUp', true);
       assert.match(panel()?.textContent ?? '', /More of the first/);
       await point(2, true);
       assert.match(panel()?.textContent ?? '', /More of the second/);
-      assert.match(panel()?.textContent ?? '', /Alt\+Click/);
       await type('ArrowDown', true);
       assert.match(panel()?.textContent ?? '', /More of the first/);
       await key('keyup', 'Alt', false);

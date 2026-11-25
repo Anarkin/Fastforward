@@ -41,15 +41,12 @@ suite('Message peek', () => {
     assert.match(html, /<div class="extended">Row<\/div>/);
   });
 
-  test('hints at pinning a message peeked at with the pin and the keys that pin it, and closes a pinned one with a button in their place, holding both either way so pinning keeps the width', () => {
+  test('hints nothing at pinning a message peeked at, as only the list of shortcuts names keys, and closes a pinned one with a button, holding it either way so pinning keeps the width', () => {
     const peeked = renderToStaticMarkup(<MessageCorner />);
     const pinned = renderToStaticMarkup(<MessageCorner onUnpin={() => 0} />);
     for (const html of [peeked, pinned]) {
-      assert.strictEqual(tagsWith(html, 'message-hint').length, 1);
-      assert.match(
-        html,
-        /<kbd>Alt<\/kbd><span class="shortcut-joiner">\+<\/span><kbd class="pointer"><svg class="icon mouse-icon"[^>]*>.*?<\/svg>Click<\/kbd>/,
-      );
+      assert.strictEqual(tagsWith(html, 'message-hint').length, 0);
+      assert.doesNotMatch(html, /<kbd/);
       assert.strictEqual(tagsWith(html, 'message-close').length, 1);
     }
     assert.deepStrictEqual(
@@ -62,19 +59,6 @@ suite('Message peek', () => {
     assert.doesNotMatch(close ?? '', /disabled/);
     assert.match(close ?? '', /aria-label="Close"/);
     assert.doesNotMatch(close ?? '', /data-tip=/);
-  });
-
-  test('names the keys that pin from the keyboard on a message peeked at from the keyboard, as the click is not at hand there', () => {
-    for (const html of [
-      renderToStaticMarkup(<MessageCorner byKeys />),
-      renderToStaticMarkup(<MessageCorner byKeys onUnpin={() => 0} />),
-    ]) {
-      assert.match(
-        html,
-        /<kbd>Alt<\/kbd><span class="shortcut-joiner">\+<\/span><kbd>Enter<\/kbd>/,
-      );
-      assert.doesNotMatch(html, /Click/);
-    }
   });
 
   test('tells how many lines of the rest of a message are cut off under it, as a cut through a blank line shows nothing of them, but not of one scrolling them, as a pinned one does', async () => {

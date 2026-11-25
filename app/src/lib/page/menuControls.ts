@@ -135,13 +135,6 @@ export function openedSubmenu(
   return item.submenu ? { focusFirst: detail === 0 } : undefined;
 }
 
-export function shownKey(item: {
-  readonly accessKey?: string;
-  readonly showAccessKey?: boolean;
-}): string | undefined {
-  return item.showAccessKey === true ? item.accessKey : undefined;
-}
-
 export const submenuLift = 4;
 
 export function submenuPlace(

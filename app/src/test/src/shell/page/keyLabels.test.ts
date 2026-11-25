@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
 import { shortcutOf } from '../../../../lib/shared/keymap';
-import { keyLabels, keyParts } from '../../../../lib/page/keyLabels';
+import { keyLabels, keyParts } from '../../../../shell/page/keyLabels';
 import { keymap } from '../../../../lib/page/keymap';
 import { strings } from '../../../../lib/shared/strings';
 import { gitKeymap } from '../../../../tools/git/page/keymap';

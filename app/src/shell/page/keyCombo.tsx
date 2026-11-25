@@ -1,8 +1,8 @@
 import { Fragment } from 'react';
 import { keyParts } from './keyLabels';
-import { strings } from '../shared/strings';
-import { foldedForFilter } from '../shared/filter';
-import { MouseIcon } from './icons';
+import { strings } from '../../lib/shared/strings';
+import { foldedForFilter } from '../../lib/shared/filter';
+import { MouseIcon } from '../../lib/page/icons';
 
 function keyClass(pointer: boolean, matched: boolean): string | undefined {
   const names = [pointer && 'pointer', matched && 'match'].filter(Boolean);

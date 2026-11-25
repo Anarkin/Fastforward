@@ -131,17 +131,14 @@ suite('Editing a file', () => {
       const refusal: Sentence | undefined = await edits.refusal(file);
       return refusal === undefined ? undefined : plainOf(refusal);
     };
-    assert.strictEqual(
-      await plain('folder/'),
-      '"folder/" is a folder. F4 edits files.',
-    );
+    assert.strictEqual(await plain('folder/'), '"folder/" is a folder.');
     assert.strictEqual(
       await plain('image.png'),
-      '"image.png" holds binary data, so it can\'t be edited as text. F3 views it.',
+      '"image.png" holds binary data, so it can\'t be edited as text.',
     );
     assert.strictEqual(
       await plain('big.log'),
-      '"big.log" is over 50 MB, too large to edit. F3 views it.',
+      '"big.log" is over 50 MB, too large to edit.',
     );
     assert.strictEqual(await plain('a.txt'), undefined);
     assert.strictEqual(await plain('missing.txt'), undefined);

@@ -1,4 +1,3 @@
-import { keysOf } from '../../lib/shared/keymap';
 import { useRef } from 'react';
 import { shellKeymap } from '../shared/keymap';
 import { strings } from '../../lib/shared/strings';
@@ -44,7 +43,6 @@ export function AppMenu() {
       items={[
         {
           label: strings.tabs.newWindow,
-          keys: keysOf(shellKeymap.newWindow),
           onClick: onNewWindow,
         },
         { separator: true },
@@ -64,12 +62,10 @@ export function AppMenu() {
           : []),
         {
           label: strings.shortcuts.title,
-          keys: keysOf(shellKeymap.shortcuts),
           onClick: onShowShortcuts,
         },
         {
           label: strings.tabs.about,
-          keys: keysOf(shellKeymap.about),
           onClick: onShowAbout,
         },
       ]}

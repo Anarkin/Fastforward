@@ -45,7 +45,6 @@ export function bookmarkMenu({
       label: folder,
       path: true,
       accessKey: bookmarkKey(index),
-      showAccessKey: true,
       checked: folder === bookmark,
       onClick: () => onGo(folder),
       onRemove: () => onRemove(folder),

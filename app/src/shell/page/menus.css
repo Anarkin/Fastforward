@@ -175,18 +175,9 @@
   background: var(--hover-background);
 }
 
-.menu-item.has-submenu,
-.menu-item:has(> .menu-keys) {
+.menu-item.has-submenu {
   display: flex;
   align-items: center;
-}
-
-.menu-keys {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-  padding-left: 24px;
-  --keycap-line: var(--menu-item-height);
 }
 
 .submenu-arrow {

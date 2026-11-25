@@ -141,8 +141,8 @@ suite('Commander bookmark keys', () => {
       assert.deepStrictEqual(menuOf(0), []);
       assert.deepStrictEqual(menuOf(1), [
         strings.commander.addBookmark,
-        'C:\\Code1',
-        'D:\\Work2',
+        'C:\\Code',
+        'D:\\Work',
       ]);
       assert.strictEqual(focused(), strings.commander.addBookmark);
       await act(async () =>

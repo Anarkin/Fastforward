@@ -344,34 +344,10 @@ suite('App commander', () => {
       };
       const appMenu = page.locator('.context-menu');
       const appMenuItems = () =>
-        appMenu.locator('.menu-item:not(:disabled)').evaluateAll((items) =>
-          items.map((item) =>
-            [...item.childNodes]
-              .filter(
-                (part) =>
-                  !(
-                    part instanceof Element &&
-                    part.classList.contains('menu-keys')
-                  ),
-              )
-              .map((part) => part.textContent ?? '')
-              .join(''),
-          ),
-        );
-      const appMenuKeys = () =>
         appMenu
           .locator('.menu-item:not(:disabled)')
-          .evaluateAll((items) =>
-            items.map((item) =>
-              [...item.querySelectorAll('.menu-keys .shortcut-combo')]
-                .map((combo) =>
-                  [...combo.querySelectorAll('kbd')]
-                    .map((key) => key.textContent)
-                    .join(' '),
-                )
-                .join(', '),
-            ),
-          );
+          .evaluateAll((items) => items.map((item) => item.textContent ?? ''));
+      const keyCaps = () => appMenu.locator('kbd').count();
       const closeWindowsMenu = async (closing: string) => {
         postMessage(shown(), 0x100, 0x1b, 0);
         await waitFor(() => shown() === null, closing);
@@ -391,14 +367,7 @@ suite('App commander', () => {
           strings.commander.copyPath,
           strings.commander.showMoreOptions,
         ]);
-        assert.deepStrictEqual(await appMenuKeys(), [
-          'Shift Enter',
-          'F3',
-          'Shift F3',
-          'F4',
-          'Ctrl Shift C',
-          'Shift Right-click',
-        ]);
+        assert.strictEqual(await keyCaps(), 0);
         const choosing = appMenu
           .getByRole('menuitem', {
             name: strings.commander.showMoreOptions,

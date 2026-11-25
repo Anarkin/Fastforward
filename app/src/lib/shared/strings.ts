@@ -693,12 +693,10 @@ export const strings = {
   },
   terminal: {
     newTab: 'New',
-    exited: (code: number) =>
-      `The shell exited with code ${code}. Press Enter to start a new one.`,
+    exited: (code: number) => `The shell exited with code ${code}.`,
     couldNotStart: (shell: string, reason: string) =>
-      `Couldn't start ${shell}. ${reason} Press Enter to try again.`,
-    stopped:
-      'The terminal process stopped, so the shell did too. Press Enter to start a new one.',
+      `Couldn't start ${shell}. ${reason}`,
+    stopped: 'The terminal process stopped, so the shell did too.',
   },
   commander: {
     openFailed: (item: string, reason: Sentence) =>
@@ -1194,11 +1192,11 @@ export const strings = {
   },
   editor: {
     tooLarge: (file: string) =>
-      sentence`${namedFile(file)} is over 50 MB, too large to edit. F3 views it.`,
+      sentence`${namedFile(file)} is over 50 MB, too large to edit.`,
     binary: (file: string) =>
-      sentence`${namedFile(file)} holds binary data, so it can't be edited as text. F3 views it.`,
+      sentence`${namedFile(file)} holds binary data, so it can't be edited as text.`,
     folder: (item: string) =>
-      sentence`${namedItem(item, 'folder')} is a folder. F4 edits files.`,
+      sentence`${namedItem(item, 'folder')} is a folder.`,
     asAdministrator: (item: string) =>
       sentence`${namedItem(item)} is in a folder read as administrator, where files can't be edited yet.`,
     notSavedToView: (file: string) =>

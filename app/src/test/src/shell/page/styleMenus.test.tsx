@@ -100,26 +100,6 @@ suite('Style', () => {
     });
   });
 
-  test('makes a key cap in a menu as tall as an item of the menu, as it is as tall as a row in the list of shortcuts, its item centering it as it centers its words', () => {
-    const menu = rendered(
-      <ContextMenu
-        menu={{
-          x: 0,
-          y: 0,
-          items: [{ label: 'Details', keys: 'Mod+1', onClick: noop }],
-        }}
-        onClose={noop}
-      />,
-    );
-    looks(withClass(menu, 'menu-keys'), {
-      '--keycap-line': 'var(--menu-item-height)',
-    });
-    looks(withClass(menu, 'menu-item'), {
-      display: 'flex',
-      'align-items': 'center',
-    });
-  });
-
   test("puts a removable item's X at the right end of its entry, a square as tall as the line of the menu, rounded like a tab's X and shown only on hovering or reaching the entry, keeping the label clear of it", () => {
     const menu = rendered(
       <ContextMenu

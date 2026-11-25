@@ -4,7 +4,7 @@ import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
 import { shellKeymap } from '../../../../shell/shared/keymap';
-import { keyParts } from '../../../../lib/page/keyLabels';
+import { keyParts } from '../../../../shell/page/keyLabels';
 import { commanderKeymap } from '../../../../tools/commander/page/keymap';
 import {
   entryFor,

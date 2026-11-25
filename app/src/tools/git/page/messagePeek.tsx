@@ -331,10 +331,7 @@ export function MessagePeek({
           onUnpin={unpin}
           takesKeyboard={pinned.byKey && pinned.restored !== true}
         >
-          {renderRow(
-            pinned.commit,
-            <MessageCorner onUnpin={unpin} byKeys={pinned.byKey} />,
-          )}
+          {renderRow(pinned.commit, <MessageCorner onUnpin={unpin} />)}
         </MessagePanel>
       )}
       {peeked && (
@@ -343,7 +340,7 @@ export function MessagePeek({
           anchor={peeked.anchor}
           indent={indent}
         >
-          {renderRow(peeked.commit, <MessageCorner byKeys={peeked.byKeys} />)}
+          {renderRow(peeked.commit, <MessageCorner />)}
         </MessagePanel>
       )}
     </>

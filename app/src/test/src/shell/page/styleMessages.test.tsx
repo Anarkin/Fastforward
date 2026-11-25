@@ -6,7 +6,6 @@ import {
   Columns,
   ContextMenuShown,
   NoticesShown,
-  ShortcutsPopupShown,
 } from '../../../helpers/styleFixtures';
 import {
   looks,
@@ -17,7 +16,6 @@ import {
 } from './stylesheetFixtures';
 import { createElement } from 'react';
 import { scrollbarCoverClass } from '../../../../lib/page/scrollbars';
-import { keyOf, popupOf } from '../../../helpers/styleMarkup';
 import { stylesheet } from '../../../helpers/pageSources';
 import {
   rendered,
@@ -66,35 +64,6 @@ suite('Style', () => {
       color: 'var(--muted-foreground)',
       'font-size': 'calc(var(--font-size) * 0.85)',
     });
-    looks(withClass(corner, 'message-hint'), {
-      'grid-area': '1 / 1',
-      display: 'flex',
-      'align-items': 'center',
-    });
-    const shortcutCap = withClass(
-      popupOf(<ShortcutsPopupShown />),
-      'shortcut-combo',
-    );
-    const cornerCap = withClass(corner, 'shortcut-combo');
-    for (const property of [
-      'display',
-      'border',
-      'border-bottom-width',
-      'border-radius',
-    ]) {
-      assert.strictEqual(
-        cascaded(cornerCap, property),
-        cascaded(shortcutCap, property),
-        property,
-      );
-    }
-    const shortcutKey = keyOf(shortcutCap);
-    const cornerKey = keyOf(cornerCap);
-    assert.ok(shortcutKey && cornerKey);
-    assert.strictEqual(
-      cascaded(cornerKey, 'padding'),
-      cascaded(shortcutKey, 'padding'),
-    );
     const close = withClass(
       rendered(<MessagePanelShown pinned />),
       'message-close',
@@ -115,12 +84,10 @@ suite('Style', () => {
     looks(close, { background: 'var(--hover-background)' }, hovered);
   });
 
-  test("keeps the corner of a message as wide pinned as peeked at, stacking the pin hint and the close button in one place and hiding whichever doesn't apply, so pinning doesn't change the width", () => {
+  test("keeps the corner of a message as wide pinned as peeked at, holding the close button hidden while peeked at, so pinning doesn't change the width", () => {
     const peeked = rendered(<MessagePanelShown />);
     const pinned = rendered(<MessagePanelShown pinned />);
-    looks(withClass(peeked, 'message-hint'), { visibility: undefined });
     looks(withClass(peeked, 'message-close'), { visibility: 'hidden' });
-    looks(withClass(pinned, 'message-hint'), { visibility: 'hidden' });
     looks(withClass(pinned, 'message-close'), { visibility: undefined });
   });
 

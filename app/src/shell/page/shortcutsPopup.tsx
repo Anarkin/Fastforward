@@ -1,7 +1,7 @@
 import { closeLabel } from '../../lib/page/closeLabel';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { shellKeymap } from '../shared/keymap';
-import { KeyCombo } from '../../lib/page/keyCombo';
+import { KeyCombo } from './keyCombo';
 import { HighlightWords } from '../../lib/page/highlight';
 import { activeTabOf } from './selectors';
 import { useShell, useShellActions } from './store';

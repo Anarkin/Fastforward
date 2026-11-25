@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { plainFilter } from '../../../helpers/filters';
 import { HighlightWords } from '../../../../lib/page/highlight';
-import { KeyCombo } from '../../../../lib/page/keyCombo';
+import { KeyCombo } from '../../../../shell/page/keyCombo';
 import { Name } from '../../../../lib/page/name';
 import { cascaded } from '../../../helpers/cascade';
 import {

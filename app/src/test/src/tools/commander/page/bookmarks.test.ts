@@ -17,7 +17,6 @@ const shown = (items: readonly ContextMenuItem[]) =>
           item.label,
           item.accessKey ?? '',
           item.checked ?? false,
-          item.showAccessKey ?? false,
           item.removeTitle ?? '',
         ],
   );
@@ -39,7 +38,7 @@ suite('Commander bookmarks menu', () => {
     );
   });
 
-  test('offers to add the folder of the side, then past a line every bookmark, each with its key before it and an X removing it', () => {
+  test('offers to add the folder of the side, then past a line every bookmark, each picked by its key, shown nowhere but in the list of shortcuts, and an X removing it', () => {
     const done: string[] = [];
     const items = bookmarkMenu({
       bookmarks: ['C:\\Code', 'D:\\Work'],
@@ -49,22 +48,10 @@ suite('Commander bookmarks menu', () => {
       onGo: (folder) => done.push(`go ${folder}`),
     });
     assert.deepStrictEqual(shown(items), [
-      [strings.commander.addBookmark, '', false, false, ''],
+      [strings.commander.addBookmark, '', false, ''],
       '---',
-      [
-        'C:\\Code',
-        '1',
-        false,
-        true,
-        strings.commander.removeBookmarkOf('C:\\Code'),
-      ],
-      [
-        'D:\\Work',
-        '2',
-        false,
-        true,
-        strings.commander.removeBookmarkOf('D:\\Work'),
-      ],
+      ['C:\\Code', '1', false, strings.commander.removeBookmarkOf('C:\\Code')],
+      ['D:\\Work', '2', false, strings.commander.removeBookmarkOf('D:\\Work')],
     ]);
     for (const item of items) {
       if (!('separator' in item)) {
@@ -119,7 +106,7 @@ suite('Commander bookmarks menu', () => {
           onGo: noop,
         }),
       ),
-      [[strings.commander.addBookmark, '', false, false, '']],
+      [[strings.commander.addBookmark, '', false, '']],
     );
   });
 

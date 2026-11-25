@@ -1,5 +1,3 @@
-import { keymap } from './keymap';
-import { keysOf } from '../shared/keymap';
 import { imageType, vectorType } from '../shared/images';
 import { strings } from '../shared/strings';
 import type { FolderCommand } from '../shared/folderCommands';
@@ -44,16 +42,7 @@ function namesOf(target: MenuTarget): readonly string[] {
   }
 }
 
-export interface FileMenuKeys {
-  readonly view?: string | undefined;
-  readonly compare?: string | undefined;
-  readonly edit?: string | undefined;
-  readonly enterArchive?: string | undefined;
-  readonly copyPaths?: string | undefined;
-}
-
 export interface FileMenuPlace {
-  readonly keys?: FileMenuKeys;
   readonly inArchive?: boolean;
   readonly gitMissing?: boolean;
   readonly onDisk?: boolean;
@@ -77,7 +66,6 @@ function toolItems(
   target: MenuTarget,
   { onFolder, onEnterArchive, onView, onCompare, onEdit }: FileMenuActions,
   {
-    keys = {},
     inArchive = false,
     gitMissing = false,
     onDisk = true,
@@ -104,7 +92,6 @@ function toolItems(
     }),
     offered(strings.commander.openWithSevenZip, opens, {
       icon: 'sevenZip',
-      keys: keys.enterArchive,
       onClick: () => onEnterArchive(name),
     }),
     offered(strings.commander.openWithGit, git && inRepository, {
@@ -124,7 +111,6 @@ function toolItems(
       opens || (ofVersion && file !== undefined),
       {
         icon: 'viewer',
-        keys: keys.view,
         onClick: () => onView(name),
       },
     ),
@@ -133,13 +119,11 @@ function toolItems(
       target.kind !== 'folder' && onCompare !== undefined,
       {
         icon: 'diff',
-        keys: keys.compare,
         ...(onCompare !== undefined && { onClick: onCompare }),
       },
     ),
     offered(strings.commander.openWithEditor, opens, {
       icon: 'editor',
-      keys: keys.edit,
       onClick: () => onEdit(name),
     }),
     offered(
@@ -153,14 +137,12 @@ function toolItems(
 function copyItems(
   target: MenuTarget,
   { onCopy }: FileMenuActions,
-  { keys = {} }: FileMenuPlace,
 ): ContextMenuItem[] {
   const names = namesOf(target);
   const many = target.kind === 'items';
   return [
     {
       label: many ? strings.commander.copyPaths : strings.commander.copyPath,
-      keys: keys.copyPaths,
       onClick: () => onCopy('paths', names),
     },
   ];
@@ -174,11 +156,10 @@ export function fileMenuItems(
   const { onSystemMenu } = actions;
   const groups: ContextMenuItem[][] = [
     toolItems(target, actions, place),
-    copyItems(target, actions, place),
+    copyItems(target, actions),
     [
       offered(strings.commander.showMoreOptions, onSystemMenu !== undefined, {
         title: strings.commander.showMoreOptionsTitle,
-        keys: keysOf(keymap.systemMenu),
         ...(onSystemMenu !== undefined && {
           onClick: () => onSystemMenu(namesOf(target)),
         }),

@@ -17,7 +17,6 @@ export type ContextMenuItem =
       readonly path?: boolean;
       readonly icon?: MenuIcon;
       readonly title?: Sentence;
-      readonly keys?: string | undefined;
       readonly onClick?: () => void;
       readonly submenu?: readonly ContextMenuItem[];
       readonly filtered?: boolean;
@@ -27,7 +26,6 @@ export type ContextMenuItem =
       readonly onRemove?: () => void;
       readonly removeTitle?: string;
       readonly accessKey?: string;
-      readonly showAccessKey?: boolean;
       readonly keywords?: string;
       readonly details?: readonly string[];
     }

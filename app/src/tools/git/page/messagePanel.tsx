@@ -1,7 +1,7 @@
 import { closeLabel } from '../../../lib/page/closeLabel';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { clicked, shortcutOf } from '../../../lib/shared/keymap';
+import { clicked } from '../../../lib/shared/keymap';
 import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import { listenForDismiss } from '../../../lib/page/dismiss';
@@ -16,8 +16,7 @@ function isNode(target: EventTarget | null): target is Node {
 function isElement(target: EventTarget | null): target is Element {
   return isNode(target) && 'closest' in target;
 }
-import { CloseIcon, PinIcon } from '../../../lib/page/icons';
-import { KeyCombo } from '../../../lib/page/keyCombo';
+import { CloseIcon } from '../../../lib/page/icons';
 import { type PeekAnchor, nextLift, hiddenLines } from './messageHolding';
 
 export function MessagePanel({
@@ -111,20 +110,9 @@ export function MessagePanel({
   );
 }
 
-export function MessageCorner({
-  onUnpin,
-  byKeys = false,
-}: {
-  onUnpin?: () => void;
-  byKeys?: boolean;
-}) {
-  const keys = shortcutOf(gitKeymap.pin, byKeys ? 'keyboard' : 'pointer') ?? '';
+export function MessageCorner({ onUnpin }: { onUnpin?: () => void }) {
   return (
     <span className={onUnpin ? 'message-corner pinned' : 'message-corner'}>
-      <span className="message-hint">
-        <PinIcon />
-        <KeyCombo keys={keys} />
-      </span>
       <button
         className="message-close"
         {...closeLabel}

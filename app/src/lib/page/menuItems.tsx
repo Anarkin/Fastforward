@@ -1,4 +1,3 @@
-import { KeyCombo } from './keyCombo';
 import { labelled, tip } from './tips';
 import { useLayoutEffect, useRef, useState } from 'react';
 import {
@@ -17,7 +16,6 @@ import {
   menuRows,
   onMenuKeyDown,
   openedSubmenu,
-  shownKey,
   submenuPlace,
   useMenuFocus,
 } from './menuControls';
@@ -46,14 +44,6 @@ function MenuIconOf({ icon }: { icon: MenuIcon }) {
     default:
       return icon satisfies never;
   }
-}
-
-function capsOf(item: Extract<ContextMenuItem, { label: string }>): string[] {
-  const picks = shownKey(item);
-  return [
-    ...(item.keys?.split(' ') ?? []),
-    ...(picks === undefined ? [] : [picks]),
-  ];
 }
 
 export function MenuItems({
@@ -117,7 +107,7 @@ export function MenuItems({
               }
               aria-checked={item.checked}
               data-access-key={item.accessKey}
-              aria-keyshortcuts={shownKey(item)}
+              aria-keyshortcuts={item.accessKey}
               {...tip(item.title)}
               aria-haspopup={item.submenu ? 'menu' : undefined}
               aria-expanded={item.submenu ? openSubmenu === index : undefined}
@@ -166,13 +156,6 @@ export function MenuItems({
                 <NamedPath path={item.label} filter={filter} />
               ) : (
                 <HighlightWords text={item.label} filter={filter} />
-              )}
-              {capsOf(item).length > 0 && (
-                <span className="menu-keys" aria-hidden="true">
-                  {capsOf(item).map((combo) => (
-                    <KeyCombo key={combo} keys={combo} />
-                  ))}
-                </span>
               )}
               {item.submenu && (
                 <span className="submenu-arrow">

@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { plainFilter } from '../../../helpers/filters';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { HighlightWords } from '../../../../lib/page/highlight';
-import { KeyCombo } from '../../../../lib/page/keyCombo';
+import { KeyCombo } from '../../../../shell/page/keyCombo';
 import {
   AboutPopupShown,
   Columns,
