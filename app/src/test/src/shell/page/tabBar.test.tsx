@@ -161,6 +161,61 @@ suite('Tab bar', () => {
     );
   });
 
+  test('names in the tooltip of a commander tab the whole folder of each side on a line of its own, left first, as its name gives only their last names, both though they show one folder, as each side is named for what it shows', () => {
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        <ShellStore
+          value={tabsStore(
+            [
+              {
+                id: '1',
+                tool: 'commander',
+                name: 'src · /',
+                root: '/',
+                sides: { left: '/home/me/src', right: '/' },
+              },
+              {
+                id: '2',
+                tool: 'commander',
+                name: 'src · src',
+                root: '/home/me/src',
+                sides: { left: '/home/me/src', right: '/home/me/src' },
+              },
+            ],
+            '1',
+            false,
+          )}
+        >
+          <TabBar />
+        </ShellStore>,
+      ),
+    ).window.document;
+    assert.deepStrictEqual(
+      [...document.querySelectorAll('.tabs .tab')].map((tab) => [
+        tab.getAttribute('data-tip'),
+        JSON.parse(tab.getAttribute('data-tip-said') ?? 'null'),
+      ]),
+      [
+        [
+          '/home/me/src\n/',
+          [
+            { name: '/home/me/src', path: 'folder' },
+            '\n',
+            { name: '/', path: 'folder' },
+          ],
+        ],
+        [
+          '/home/me/src\n/home/me/src',
+          [
+            { name: '/home/me/src', path: 'folder' },
+            '\n',
+            { name: '/home/me/src', path: 'folder' },
+          ],
+        ],
+      ],
+    );
+  });
+
   test('marks the + button open while its menu is, as the menu button is, telling assistive technology it opens a menu', () => {
     const open = addButton(true);
     assert.ok(open);

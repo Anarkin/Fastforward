@@ -9,9 +9,15 @@ export interface Page {
 
 export type Tab = SavedTab;
 
+interface TabSides {
+  readonly left: string;
+  readonly right: string;
+}
+
 export interface TabName {
   readonly name: string;
   readonly folder?: string;
+  readonly sides?: TabSides;
   readonly unsaved?: true;
 }
 

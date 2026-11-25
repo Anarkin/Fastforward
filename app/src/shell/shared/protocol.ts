@@ -25,6 +25,7 @@ export interface TabInfo {
   readonly folder?: string;
   readonly root?: string;
   readonly compared?: { readonly old: string; readonly new: string };
+  readonly sides?: { readonly left: string; readonly right: string };
   readonly unsaved?: true;
 }
 

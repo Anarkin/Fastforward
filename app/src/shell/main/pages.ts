@@ -152,6 +152,7 @@ export class Pages {
         tool,
         name: name?.name ?? strings.tools[tool],
         ...(name?.folder !== undefined && { folder: name.folder }),
+        ...(name?.sides !== undefined && { sides: name.sides }),
         ...(root !== undefined && { root }),
         ...(compare !== undefined && {
           compared: { old: compare.old, new: compare.new },

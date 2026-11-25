@@ -257,6 +257,11 @@ export const commanderTabName = strings.tabs.sides(
   commanderRootName,
 );
 
+export const commanderTabSides = () => {
+  const root = path.join(os.tmpdir(), commanderRootName);
+  return { left: root, right: root };
+};
+
 function commanderRoot(): string {
   const root = path.join(os.tmpdir(), commanderRootName);
   fs.mkdirSync(root, { recursive: true });

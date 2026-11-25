@@ -33,6 +33,26 @@ suite('Commander tool', () => {
     assert.ok(tabsPosted.length > before, String(tabsPosted.length));
   });
 
+  test('tells the whole folder of each side of its tab beside its name, left first, so the tooltip of the tab names both, and tells the tabs anew once a side goes into a folder of the name it had, as a name alone would not change', async () => {
+    const users = path.join(root, 'Users');
+    const deeper = path.join(users, 'Users');
+    const { tool, page, send, tabsPosted } = commander({
+      [root]: [folder('Users')],
+      [users]: [folder('Users')],
+      [deeper]: [file('notes.txt')],
+    });
+    const sides = () => tool.names([tab]).get(tab.id)?.sides;
+
+    assert.deepStrictEqual(sides(), { left: root, right: root });
+    await tool.show(page, tab);
+    await send({ type: 'open', tab: tab.id, side: 'right', name: 'Users' });
+    assert.deepStrictEqual(sides(), { left: root, right: users });
+    const before = tabsPosted.length;
+    await send({ type: 'open', tab: tab.id, side: 'right', name: 'Users' });
+    assert.deepStrictEqual(sides(), { left: root, right: deeper });
+    assert.ok(tabsPosted.length > before, String(tabsPosted.length));
+  });
+
   test('lists the root on both sides of a tab opened without a folder, and the drives', async () => {
     const { tool, page } = commander(
       { [root]: [folder('Users'), file('notes.txt')] },

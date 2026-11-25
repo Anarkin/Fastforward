@@ -1,6 +1,10 @@
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
-import type { ShellAccess, Tab } from '../../../shell/main/toolContract';
+import type {
+  ShellAccess,
+  Tab,
+  TabName,
+} from '../../../shell/main/toolContract';
 import type { SavedSides } from './savedSides';
 import type { Sides } from './sides';
 
@@ -31,22 +35,22 @@ export class TabNames {
     private readonly root: string,
   ) {}
 
-  of({ id, root }: Tab): string {
+  of({ id, root }: Tab): TabName {
     const panes = this.sides.panes.get(id);
     const saved = this.saved.of(id);
-    const name = sidesName(
-      panes?.left.folder ?? saved.left ?? this.root,
-      panes?.right.folder ?? saved.right ?? root ?? this.root,
-    );
-    this.told.set(id, name);
-    return name;
+    const left = panes?.left.folder ?? saved.left ?? this.root;
+    const right = panes?.right.folder ?? saved.right ?? root ?? this.root;
+    const named = { name: sidesName(left, right), sides: { left, right } };
+    this.told.set(id, JSON.stringify(named));
+    return named;
   }
 
   changed(tab: string): void {
     const shown = this.shell()
       .tabs()
       .find((each) => each.id === tab) ?? { id: tab, tool: 'commander' };
-    if (this.told.get(tab) === this.of(shown)) {
+    const told = this.told.get(tab);
+    if (told === JSON.stringify(this.of(shown))) {
       return;
     }
     const shell = this.shell();

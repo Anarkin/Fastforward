@@ -211,10 +211,7 @@ export class CommanderTool implements Tool<'commander'> {
 
   names(tabs: readonly Tab[]): ReadonlyMap<string, TabName> {
     return new Map(
-      tabs.map((tab): [string, TabName] => [
-        tab.id,
-        { name: this.tabNames.of(tab) },
-      ]),
+      tabs.map((tab): [string, TabName] => [tab.id, this.tabNames.of(tab)]),
     );
   }
 

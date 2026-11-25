@@ -58,7 +58,10 @@ const noTabs: readonly TabInfo[] = [];
 
 const shownAsFile: readonly ToolId[] = ['viewer', 'editor'];
 
-function tabTip({ root, name, tool, compared }: TabInfo): Sentence {
+function tabTip({ root, name, tool, compared, sides }: TabInfo): Sentence {
+  if (sides !== undefined) {
+    return strings.common.foldersShown(sides.left, sides.right);
+  }
   if (compared !== undefined) {
     return compared.old === compared.new
       ? [namedFile(compared.new)]

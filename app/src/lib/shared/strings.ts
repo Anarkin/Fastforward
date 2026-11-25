@@ -130,6 +130,9 @@ export const strings = {
     fromTo: (from: string, to: string) => `${from} → ${to}`,
     fileFromTo: (from: string, to: string, root?: string) =>
       sentence`${namedFile(from, root)} → ${namedFile(to, root)}`,
+    foldersShown: (left: string, right: string) =>
+      sentence`${namedFolder(left)}
+${namedFolder(right)}`,
     filesCompared: (old: string, compared: string) =>
       sentence`${namedFile(old)}
 ${namedFile(compared)}`,
