@@ -4,11 +4,20 @@ const region = '[data-signed]';
 
 const sign = '[data-real]';
 
+const elementNode = 1;
+
+const textNode = 3;
+
+const isElement = (node: Node): node is Element =>
+  node.nodeType === elementNode;
+
+const isText = (node: Node | null): node is Text => node?.nodeType === textNode;
+
 function elementOf(node: Node): Element | null {
-  return node instanceof Element ? node : node.parentElement;
+  return isElement(node) ? node : node.parentElement;
 }
 
-function realText(selection: Selection): string {
+export function realText(selection: Selection): string {
   const shown = selection.toString();
   if (selection.rangeCount === 0) {
     return shown;
@@ -25,15 +34,15 @@ function realText(selection: Selection): string {
     return shown;
   }
   const texts = signs.map((each) => each.firstChild);
-  const drawn = texts.map((text) => (text instanceof Text ? text.data : ''));
+  const drawn = texts.map((text) => (isText(text) ? text.data : ''));
   for (const [at, text] of texts.entries()) {
-    if (text instanceof Text) {
+    if (isText(text)) {
       text.data = signs[at]?.dataset.real ?? text.data;
     }
   }
   const real = selection.toString();
   for (const [at, text] of texts.entries()) {
-    if (text instanceof Text) {
+    if (isText(text)) {
       text.data = drawn[at] ?? text.data;
     }
   }

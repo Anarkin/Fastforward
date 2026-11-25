@@ -76,4 +76,27 @@ suite('Copying a Markdown preview', () => {
     selection.removeAllRanges();
     assert.strictEqual(copiedMarkdown(selection, codes, textOf), undefined);
   });
+
+  test('copies a character the prose draws as a sign as the character itself with the code blocks a selection runs over, as copying never puts on the clipboard what is drawn in place of a character', () => {
+    const root = window.document.createElement('div');
+    root.setAttribute('data-signed', '');
+    root.innerHTML =
+      '<p>A bell <span data-real="&#7;">¤</span> rings.</p><pre><code data-block="one"></code></pre>';
+    window.document.body.replaceChildren(root);
+    const selection = window.getSelection();
+    assert.ok(selection);
+    selection.selectAllChildren(root);
+    const shownBefore = selection.toString();
+
+    assert.strictEqual(
+      copiedMarkdown(
+        selection,
+        root.querySelectorAll('pre > code'),
+        () => 'ding();\n',
+      ),
+      `A bell ${String.fromCharCode(7)} rings.\n\nding();`,
+    );
+    assert.strictEqual(selection.toString(), shownBefore);
+    assert.strictEqual(root.querySelector('span')?.textContent, '¤');
+  });
 });

@@ -1,3 +1,4 @@
+import { realText } from '../../../lib/page/signedCopy';
 const blockGap = '\n\n';
 
 const lineBreak = '\n';
@@ -13,7 +14,7 @@ function textBetween(
   setEnd(range);
   selection.removeAllRanges();
   selection.addRange(range);
-  return selection.toString().trim();
+  return realText(selection).trim();
 }
 
 export function copiedMarkdown(
