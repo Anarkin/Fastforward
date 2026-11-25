@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import { page, sharedApp } from './appFixtures';
 import { waitFor } from '../helpers/fixtures';
 import { wheelsByWholeRows } from './scrollProbes';
+import { untilSettled } from './waits';
 import { paneRows } from '../../shell/page/shortcutsList';
 import {
   app as commanderApp,
@@ -130,7 +131,9 @@ suite('App commander', () => {
         mice: document.querySelectorAll('.shortcuts-pane .mouse-icon').length,
       };
     });
-    const atFirst = await marks();
+    const atFirst = await untilSettled(marks, 'the groups in view marked', {
+      accepted: ({ marked, showing }) => marked.join() === showing.join(),
+    });
     await pane.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
