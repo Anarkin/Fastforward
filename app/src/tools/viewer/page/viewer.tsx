@@ -299,7 +299,7 @@ export function Viewer() {
                 disabled={mode !== 'text'}
               />
             </div>
-            <div className="viewer-encoding viewer-tab-size">
+            <div className="viewer-tab-size">
               <MenuButton
                 scrolling={scrolling}
                 title={strings.indentation.title}

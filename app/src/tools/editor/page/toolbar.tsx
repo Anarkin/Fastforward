@@ -195,7 +195,7 @@ export function EditorToolbar({
             </div>
           )}
           {indentShown !== undefined && tabsShown !== undefined && (
-            <div className="viewer-encoding editor-indentation">
+            <div className="editor-indentation">
               <MenuButton
                 scrolling={scrolling}
                 title={strings.indentation.title}

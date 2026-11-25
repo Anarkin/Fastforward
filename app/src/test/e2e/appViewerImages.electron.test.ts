@@ -162,6 +162,7 @@ suite('App commander', () => {
       [
         strings.versions.version,
         strings.encodings.encoding,
+        strings.indentation.title,
         strings.common.language,
         strings.common.wrap,
         strings.viewer.realSize,
