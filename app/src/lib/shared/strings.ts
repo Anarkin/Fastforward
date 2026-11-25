@@ -128,8 +128,6 @@ export const strings = {
     reading: 'Reading…',
     gone: (name: string) => `${name} doesn't exist anymore`,
     fromTo: (from: string, to: string) => `${from} → ${to}`,
-    fileFromTo: (from: string, to: string, root?: string) =>
-      sentence`${namedFile(from, root)} → ${namedFile(to, root)}`,
     folderGone: (folder: string) =>
       sentence`${namedFolder(folder)} doesn't exist anymore`,
     renamed: (from: Sentence | Value, to: Sentence | Value) =>
@@ -1055,7 +1053,6 @@ export const strings = {
     openWithEditor: 'Open with Editor',
     openWithPaint: 'Open with Paint',
     showMoreOptions: '...',
-    showMoreOptionsTitle: 'Show the menu of Windows',
     helperFailed:
       "Couldn't start the helper that reads folders as administrator.",
     helperStopped:

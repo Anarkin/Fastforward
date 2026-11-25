@@ -99,7 +99,7 @@ suite('Diff file header', () => {
     assert.doesNotMatch(collapsibleHeader(false), /twisty/);
   });
 
-  test('names a renamed file by both its paths, shortened as git does, each folder and file a part of a path colored as the commander lists it, with both in full in its tooltip', () => {
+  test('names a renamed file by both its paths, shortened as git does, each folder and file a part of a path colored as the commander lists it, with no tooltip repeating them', () => {
     const html = renderToStaticMarkup(
       <PathLooksContext
         value={{
@@ -126,7 +126,7 @@ suite('Diff file header', () => {
     );
     assert.match(
       html,
-      /<span class="path" data-tip="moved\/to-folder\.txt → elsewhere\/to-folder\.txt" data-tip-said="[^"]*">\{<span class="path-piece"><span class="path-part">moved<\/span><\/span> → <span class="path-piece"><span class="path-part">elsewhere<\/span><\/span>\}\/<span class="path-piece"><span class="path-part colored" style="--file-color:light-dark\(blue, blue\)">to-folder\.txt<\/span><\/span><\/span>/,
+      /<span class="path">\{<span class="path-piece"><span class="path-part">moved<\/span><\/span> → <span class="path-piece"><span class="path-part">elsewhere<\/span><\/span>\}\/<span class="path-piece"><span class="path-part colored" style="--file-color:light-dark\(blue, blue\)">to-folder\.txt<\/span><\/span><\/span>/,
     );
   });
 });

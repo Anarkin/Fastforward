@@ -1,4 +1,3 @@
-import { tip } from '../../../lib/page/tips';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
@@ -44,10 +43,7 @@ export function FileHeader({
           {...(root !== undefined && { root })}
         />
       ) : (
-        <span
-          className="path"
-          {...tip(strings.common.fileFromTo(oldPath, path, root))}
-        >
+        <span className="path">
           <Words boxed={false}>{renamedPath(oldPath, path, root)}</Words>
         </span>
       )}

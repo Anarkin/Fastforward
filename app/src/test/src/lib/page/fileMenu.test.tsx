@@ -238,7 +238,7 @@ suite('File menu', () => {
     );
   });
 
-  test('shows the menu of Windows for what the menu is on, the folder shown by no name, and only it for other items', () => {
+  test('shows the menu of Windows for what the menu is on, the folder shown by no name, and only it for other items, from an item of three dots with no tooltip', () => {
     const chosen = [folderShown(false), docs(false), image, marked].flatMap(
       (target) => {
         const menu = menuOf(target);
@@ -255,10 +255,7 @@ suite('File menu', () => {
     ]);
     const more = menuOf({ kind: 'items', names: ['notes.txt'] }).items.at(-1);
     assert.ok(more !== undefined && !('separator' in more));
-    assert.deepStrictEqual(
-      [more.label, more.title],
-      ['...', commander.showMoreOptionsTitle],
-    );
+    assert.deepStrictEqual([more.label, more.title], ['...', undefined]);
   });
 
   test('leaves the diff disabled where nothing compares files, as outside the commander', () => {

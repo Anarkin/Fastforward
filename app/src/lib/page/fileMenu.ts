@@ -159,7 +159,6 @@ export function fileMenuItems(
     copyItems(target, actions),
     [
       offered(strings.commander.showMoreOptions, onSystemMenu !== undefined, {
-        title: strings.commander.showMoreOptionsTitle,
         ...(onSystemMenu !== undefined && {
           onClick: () => onSystemMenu(namesOf(target)),
         }),
