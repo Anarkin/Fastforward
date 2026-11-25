@@ -14,4 +14,5 @@ export interface FileChange {
   readonly uncounted?: boolean;
   readonly id?: string;
   readonly link?: true;
+  readonly conflict?: true;
 }

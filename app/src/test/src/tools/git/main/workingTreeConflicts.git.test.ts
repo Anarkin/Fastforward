@@ -41,6 +41,19 @@ suite('A conflicted merge', () => {
     );
   });
 
+  test('marks the conflicted file as in conflict, with the unstaged changes and among all of them, as git tells it apart from a file only changed', async () => {
+    const workingTree = await workingTreeFiles(
+      conflicted.gitPath,
+      conflicted.root,
+    );
+    assert.deepStrictEqual(
+      [workingTree.files, workingTree.all?.files ?? []].map((files) =>
+        files.map((file) => [file.path, file.conflict === true]),
+      ),
+      [[['conflict.txt', true]], [['conflict.txt', true]]],
+    );
+  });
+
   test('diffs the conflicted file against our side, alone and with the rest, in as many lines as it counts', async () => {
     for (const base of [undefined, 'HEAD']) {
       const workingTree = await workingTreeFiles(

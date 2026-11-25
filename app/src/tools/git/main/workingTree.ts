@@ -96,6 +96,9 @@ export async function workingTreeFiles(
       };
     }),
   );
+  const conflicted = new Set(
+    changes.filter((file) => file.conflict === true).map((file) => file.path),
+  );
   return {
     ...diff,
     files: [...changes, ...untrackedFiles],
@@ -103,7 +106,12 @@ export async function workingTreeFiles(
     listedUntracked,
     addedInConflict: [...addedInConflict],
     staged,
-    all,
+    all: all && {
+      ...all,
+      files: all.files.map((file) =>
+        conflicted.has(file.path) ? { ...file, conflict: true as const } : file,
+      ),
+    },
   };
 }
 
@@ -251,13 +259,18 @@ async function trackedFiles(
 
 function onePerPath(files: readonly FileChange[]): FileChange[] {
   const byPath = new Map<string, FileChange>();
+  const unmerged = new Set(
+    files.filter((file) => file.status === '?').map((file) => file.path),
+  );
   for (const file of files) {
     const kept = byPath.get(file.path);
     if (kept === undefined || kept.status === '?') {
       byPath.set(file.path, file);
     }
   }
-  return [...byPath.values()];
+  return [...byPath.values()].map((file) =>
+    unmerged.has(file.path) ? { ...file, conflict: true as const } : file,
+  );
 }
 
 export function uncommittedCount({ files, staged = [] }: WorkingTree): number {
