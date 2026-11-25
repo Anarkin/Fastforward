@@ -95,6 +95,10 @@ export type ViewerToHost =
       readonly least: number;
     }
   | {
+      readonly type: 'editTabSizeSource';
+      readonly tab: string;
+    }
+  | {
       readonly type: 'editViewed';
       readonly tab: string;
       readonly at: number;

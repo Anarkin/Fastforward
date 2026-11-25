@@ -1,15 +1,18 @@
 import { indentUnit } from '@codemirror/language';
 import {
+  Facet,
   StateEffect,
   StateField,
+  type EditorState,
   type Extension,
   type Text,
 } from '@codemirror/state';
+import type { FileTabSize } from '../../../lib/shared/tabSize';
 
 const leadPattern = /^[ \t]*/;
 const scannedLines = 10_000;
 
-export function detectedIndent(doc: Text, fallback = '    '): string {
+export function shownIndent(doc: Text): string | undefined {
   let tabbed = 0;
   let spaced = 0;
   let previous = 0;
@@ -39,28 +42,50 @@ export function detectedIndent(doc: Text, fallback = '    '): string {
   const [mostUsed] = [...steps].toSorted(
     ([stepA, countA], [stepB, countB]) => countB - countA || stepA - stepB,
   );
-  return mostUsed === undefined ? fallback : ' '.repeat(mostUsed[0]);
+  return mostUsed === undefined ? undefined : ' '.repeat(mostUsed[0]);
 }
+
+export function detectedIndent(doc: Text, fallback = '    '): string {
+  return shownIndent(doc) ?? fallback;
+}
+
+export interface IndentRules {
+  readonly indent?: string;
+  readonly indentFile?: string;
+  readonly fallbackIndent?: string;
+  readonly tabSize?: FileTabSize;
+}
+
+const indentRules = Facet.define<IndentRules, IndentRules>({
+  combine: (values) => values[0] ?? {},
+});
+
+const linesIndentField = StateField.define<string | undefined>({
+  create: () => undefined,
+  update: (unit) => unit,
+});
+
+export const setIndent = StateEffect.define<string>();
 
 export const indentField = StateField.define<string>({
   create: () => ' '.repeat(4),
-  update: (unit) => unit,
+  update: (unit, transaction) =>
+    transaction.effects.reduce(
+      (set, effect) => (effect.is(setIndent) ? effect.value : set),
+      unit,
+    ),
   provide: (field) => indentUnit.from(field),
 });
 
-export function indentionOf(
-  doc: Text,
-  {
-    indent,
-    fallbackIndent,
-  }: { readonly indent?: string; readonly fallbackIndent?: string },
-): Extension {
-  return indentField.init(() => indent ?? detectedIndent(doc, fallbackIndent));
-}
+const convertedField = StateField.define<boolean>({
+  create: () => false,
+  update: (converted, transaction) =>
+    converted || transaction.effects.some((effect) => effect.is(setIndent)),
+});
 
 export const setTabSize = StateEffect.define<number | undefined>();
 
-export const tabSizeField = StateField.define<number | undefined>({
+const chosenTabSizeField = StateField.define<number | undefined>({
   create: () => undefined,
   update: (size, transaction) =>
     transaction.effects.reduce(
@@ -69,10 +94,40 @@ export const tabSizeField = StateField.define<number | undefined>({
     ),
 });
 
-export function tabSizeFrom({
-  tabSize,
-}: {
-  readonly tabSize?: { readonly size: number };
-}): Extension {
-  return tabSizeField.init(() => tabSize?.size);
+export function drawnTabSize(state: EditorState): number | undefined {
+  return (
+    state.field(chosenTabSizeField, false) ??
+    state.facet(indentRules).tabSize?.size
+  );
+}
+
+export interface IndentShown {
+  readonly indent: string;
+  readonly converted: boolean;
+  readonly lines: string | undefined;
+  readonly rules: IndentRules;
+  readonly chosenTabSize: number | undefined;
+}
+
+export function indentShownOf(state: EditorState): IndentShown {
+  return {
+    indent: state.field(indentField),
+    converted: state.field(convertedField, false) ?? false,
+    lines: state.field(linesIndentField, false),
+    rules: state.facet(indentRules),
+    chosenTabSize: state.field(chosenTabSizeField, false),
+  };
+}
+
+export function indentionOf(doc: Text, rules: IndentRules): Extension {
+  const lines = shownIndent(doc);
+  return [
+    indentRules.of(rules),
+    linesIndentField.init(() => lines),
+    indentField.init(
+      () => rules.indent ?? lines ?? rules.fallbackIndent ?? ' '.repeat(4),
+    ),
+    convertedField,
+    chosenTabSizeField,
+  ];
 }

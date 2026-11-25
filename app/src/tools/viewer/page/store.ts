@@ -234,6 +234,12 @@ export function createViewerStore(
         }));
         changed(tab);
       },
+      editTabSizeSource: () => {
+        const { tab } = get();
+        if (tab !== undefined) {
+          post({ type: 'editTabSizeSource', tab });
+        }
+      },
       chooseVersion: (rev) => {
         const { tab } = get();
         if (tab !== undefined) {

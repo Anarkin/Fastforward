@@ -22,7 +22,7 @@ import { findTicks } from './findTicks';
 import { editorOccurrences } from './occurrences';
 import { commentsOf } from './comments';
 import { editorKeys, type EditorKeyActions } from './commands';
-import { indentField, indentionOf, tabSizeFrom } from './indent';
+import { indentField, indentionOf } from './indent';
 import { savingRulesField, savingRulesOf, sinceSavedField } from './saving';
 import { editorKeymap } from './keymap';
 import {
@@ -136,8 +136,14 @@ export function stateOf(
   const all = [
     extensions,
     endingsFrom(doc, shown),
-    indentionOf(doc, shown),
-    tabSizeFrom(shown),
+    indentionOf(doc, {
+      ...(shown.indent !== undefined && { indent: shown.indent }),
+      ...(shown.indentFile !== undefined && { indentFile: shown.indentFile }),
+      ...(shown.fallbackIndent !== undefined && {
+        fallbackIndent: shown.fallbackIndent,
+      }),
+      ...(shown.tabSize !== undefined && { tabSize: shown.tabSize }),
+    }),
     sinceSavedField,
     savingRulesOf(shown),
   ];

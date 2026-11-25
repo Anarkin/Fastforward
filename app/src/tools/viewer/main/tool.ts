@@ -84,6 +84,7 @@ export class ViewerTool implements Tool<'viewer'> {
       new ViewerFind(this.pages),
       pdfPlaces,
       (page, tab, at) => this.editViewed(page, tab, at),
+      (page, tab) => this.editTabSizeSource(page, tab),
       (page, tab, rev) => this.chooseVersion(page, tab, rev),
       (page, tab) => this.compareVersions(page, tab),
       (page, as, encoding) => this.copyWhole(page, as, encoding),
@@ -365,6 +366,19 @@ export class ViewerTool implements Tool<'viewer'> {
       return;
     }
     await this.access.editViewed(page, viewed.root, at);
+  }
+
+  private async editTabSizeSource(page: Page, tab: string): Promise<void> {
+    const viewed = this.shell
+      .tabs()
+      .find((each) => each.id === tab && each.tool === 'viewer');
+    if (viewed?.root === undefined) {
+      return;
+    }
+    const source = (await this.access.fileTabSize(viewed.root))?.file;
+    if (source !== undefined) {
+      await this.access.editViewed(page, source, { byte: 0 });
+    }
   }
 
   private async copyWhole(

@@ -1,4 +1,4 @@
-import { tabSizeField } from './indent';
+import { drawnTabSize } from './indent';
 import { widthsFor } from '../../../lib/page/textWidths';
 import { clusterBreak } from '../../../lib/page/graphemes';
 import { type Line } from '@codemirror/state';
@@ -63,7 +63,7 @@ export function gridOf(view: EditorSurface): Grid | undefined {
         rowHeight,
         left: textLeft(view),
         columns: view.lineWrapping ? wrapColumnsOf(view) : undefined,
-        widths: cellWidthsOf(view.state.field(tabSizeField, false)),
+        widths: cellWidthsOf(drawnTabSize(view.state)),
       }
     : undefined;
 }

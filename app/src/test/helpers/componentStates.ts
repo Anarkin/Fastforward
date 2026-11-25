@@ -3,6 +3,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the matches PDF.js counts as it searches, anew as the PDF opens, stepped to the match the store keeps',
   'tools/editor/page/view.ts endingsShown':
     'a measure: the line endings of the text, read from its editor state as the view is made and as it changes',
+  'tools/editor/page/view.ts indentShown':
+    'a measure: the indentation of the text and the width of its tabs, read from its editor state as the view is made and as an effect changes them',
   'tools/editor/page/view.ts findCount':
     'a measure: the matches of the find, counted from the editor state as the view is made and as it changes',
   'tools/editor/page/view.ts status':

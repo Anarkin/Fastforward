@@ -1,3 +1,4 @@
+import { indentShownOf, type IndentShown } from './indent';
 import {
   useCallback,
   useEffect,
@@ -52,6 +53,21 @@ import {
 } from './setup';
 import { statusOf } from './status';
 
+function keptIndent(
+  before: IndentShown | undefined,
+  state: EditorState,
+): IndentShown {
+  const now = indentShownOf(state);
+  return before !== undefined &&
+    before.indent === now.indent &&
+    before.converted === now.converted &&
+    before.lines === now.lines &&
+    before.rules === now.rules &&
+    before.chosenTabSize === now.chosenTabSize
+    ? before
+    : now;
+}
+
 export function useEditorView(language: string | undefined) {
   const tab = useEditor((state) => state.tab);
   const edited = useEditor(editedShown);
@@ -79,6 +95,7 @@ export function useEditorView(language: string | undefined) {
   } = useEditorActions();
   const { closeTab } = useShellActions();
   const [endingsShown, setEndingsShown] = useState<EndingsShown | undefined>();
+  const [indentShown, setIndentShown] = useState<IndentShown | undefined>();
   const [status, setStatus] = useState<string>();
   const [findCount, setFindCount] = useState<FindCount>();
   const [findAsk, setFindAsk] = useState<FindAsk>();
@@ -196,6 +213,9 @@ export function useEditorView(language: string | undefined) {
           version += 1;
           setEndingsShown(endingsShownOf(update.state));
         }
+        if (update.transactions.some((each) => each.effects.length > 0)) {
+          setIndentShown((before) => keptIndent(before, update.state));
+        }
         if (update.docChanged || update.selectionSet) {
           keepState(update.state);
           setStatus(statusOf(update.state, table));
@@ -249,6 +269,7 @@ export function useEditorView(language: string | undefined) {
     setStatus(reused ? statusOf(shown.state, table) : undefined);
     setFindCount(reused ? countOf(shown.state) : undefined);
     setEndingsShown(reused ? endingsShownOf(shown.state) : undefined);
+    setIndentShown(reused ? indentShownOf(shown.state) : undefined);
     if (!reused) {
       readEdited(tab);
     }
@@ -316,6 +337,7 @@ export function useEditorView(language: string | undefined) {
       readAgain = undefined;
       keepEditor({ state: shown.state, version, place });
       setEndingsShown(endingsShownOf(shown.state));
+      setIndentShown((before) => keptIndent(before, shown.state));
       setStatus(statusOf(shown.state, table));
       setFindCount(countOf(shown.state));
       focusFirst();
@@ -394,6 +416,7 @@ export function useEditorView(language: string | undefined) {
     host,
     view,
     endingsShown,
+    indentShown,
     status,
     findCount,
     findAsk,

@@ -47,6 +47,7 @@ const toolbar = (enabled: ReadonlySet<string>) =>
     strings.viewer.viewPreview,
     strings.versions.version,
     strings.encodings.encoding,
+    strings.indentation.title,
     strings.common.language,
     strings.common.showWhitespace,
     strings.common.wrap,
@@ -116,6 +117,7 @@ suite('The buttons a file viewed is viewed as', () => {
           new Set([
             ...always,
             strings.encodings.encoding,
+            strings.indentation.title,
             strings.common.language,
             strings.common.showWhitespace,
             strings.common.wrap,

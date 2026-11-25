@@ -327,6 +327,25 @@ suite('Rows painted as cells', () => {
     );
   });
 
+  test('works a row out anew once the tab size it is drawn at changes, as its tabs stop elsewhere, and takes it from the cells kept while it stays', () => {
+    const { frame, cells } = painting();
+    const rows = [rowOf(`a${String.fromCharCode(9)}b`, 0)];
+    const base = shown(rows);
+    paintRows(cells, base, Infinity);
+    const placedFirst = frame.placed;
+    paintRows(cells, base, Infinity);
+    const placedAgain = frame.placed;
+    paintRows(
+      cells,
+      shown(rows, { widths: { ...base.widths, tabSize: 8 } }),
+      Infinity,
+    );
+    assert.deepStrictEqual(
+      [placedAgain - placedFirst, frame.placed - placedAgain],
+      [0, 2],
+    );
+  });
+
   test('marks every stretch of a row that one of several selections takes, as a text edited with several cursors has them, and works the row out anew once one of them goes', () => {
     const { frame, cells } = painting();
     const rows = [rowOf('abcdefgh', 0)];

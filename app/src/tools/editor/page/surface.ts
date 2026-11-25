@@ -1,4 +1,4 @@
-import { tabSizeField } from './indent';
+import { drawnTabSize } from './indent';
 import {
   ChangeSet,
   EditorSelection,
@@ -410,7 +410,7 @@ export class EditorSurface {
     if (widths === undefined || !(rowHeight > 0)) {
       return undefined;
     }
-    const tabSize = this.current.field(tabSizeField, false);
+    const tabSize = drawnTabSize(this.current);
     if (
       this.measured?.char !== widths.char ||
       this.measured.tabSize !== tabSize
@@ -496,8 +496,7 @@ export class EditorSurface {
     const docChanged = transactions.some((each) => each.docChanged);
     const rewrapped =
       startState.facet(linesWrapped) !== state.facet(linesWrapped) ||
-      startState.field(tabSizeField, false) !==
-        state.field(tabSizeField, false);
+      drawnTabSize(startState) !== drawnTabSize(state);
     const rowsBefore = this.rows;
     let relaid = geometryChanged;
     if (rewrapped) {

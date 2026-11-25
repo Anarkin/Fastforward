@@ -1,3 +1,4 @@
+import { tabSizeOf } from '../../../lib/page/tabStops';
 import { markPieces, type FindMark } from './marks';
 import { marksWithin, piecesWithin, type ScreenRow } from './lines';
 import { blankRuns } from '../../../lib/page/rowBreaks';
@@ -94,6 +95,7 @@ interface KeptRow {
   readonly blanks: boolean;
   readonly limit: number;
   readonly left: number;
+  readonly tabSize: number;
   readonly generation: number;
   readonly first: number;
   readonly y: number;
@@ -372,6 +374,7 @@ function keptOf(
     before.breakSelected === breakSelectedOf(look, row, part) &&
     before.blanks === showWhitespace &&
     before.limit === (wrapAt ?? Infinity) &&
+    before.tabSize === tabSizeOf(look.widths) &&
     before.generation === tiles.generation
     ? before
     : undefined;
@@ -422,6 +425,7 @@ function drawnRow(
     blanks: look.showWhitespace,
     limit: drawing.limit,
     left: drawing.left,
+    tabSize: tabSizeOf(look.widths),
     generation: painting.tiles.generation,
     first: look.first,
     y,

@@ -20,6 +20,7 @@ export interface TextDefaults {
   readonly encoding: TextEncoding;
   readonly bom: boolean;
   readonly indent?: string;
+  readonly indentFile?: string;
   readonly fallbackIndent: string;
   readonly tabSize?: FileTabSize;
   readonly charsets: readonly CharsetSource[];
@@ -141,12 +142,19 @@ export async function textDefaultsOf(
       ? charsetOf(settings.charset)
       : { encoding: charset.encoding, bom: charset.bom === true };
   const indent = indentOf(config);
+  const indentFile =
+    indent === undefined
+      ? undefined
+      : indent === '\t'
+        ? config.setIn.indentStyle
+        : (config.setIn.indentSize ?? config.setIn.indentStyle);
   const tabSize = fileTabSizeOf(config);
   return {
     ending,
     encoding,
     bom,
     ...(indent !== undefined && { indent }),
+    ...(indentFile !== undefined && { indentFile }),
     fallbackIndent:
       settings.indentStyle === 'tab' ? '\t' : ' '.repeat(settings.indentSize),
     ...(tabSize !== undefined && { tabSize }),
@@ -161,6 +169,7 @@ export async function textDefaultsOf(
 export type TextRules = Pick<
   TextShown,
   | 'indent'
+  | 'indentFile'
   | 'fallbackIndent'
   | 'tabSize'
   | 'trimTrailingWhitespace'
@@ -173,6 +182,9 @@ export const rulesOf = (defaults: TextDefaults | undefined) =>
     : {
         rules: {
           ...(defaults.indent !== undefined && { indent: defaults.indent }),
+          ...(defaults.indentFile !== undefined && {
+            indentFile: defaults.indentFile,
+          }),
           fallbackIndent: defaults.fallbackIndent,
           ...(defaults.tabSize !== undefined && { tabSize: defaults.tabSize }),
           ...(defaults.trimTrailingWhitespace === true && {

@@ -1318,6 +1318,38 @@ export const strings = {
     readOnlyMark: 'Read-only',
     newFile: 'New file, made once saved',
   },
+  indentation: {
+    title: 'Indentation and tab width',
+    spaces: (count: number) => `Spaces: ${count}`,
+    tabSize: (columns: number) => `Tab Size: ${columns}`,
+    toTabs: 'Convert indentation to tabs',
+    toSpaces: 'Convert indentation to spaces',
+    indentHeading: 'Tab and Enter indent by the first of these that applies:',
+    tabUnit: 'A tab',
+    spacesUnit: (count: number) =>
+      count === 1 ? '1 space' : `${count} spaces`,
+    converted: (unit: string) => `${unit}, as the indentation was converted`,
+    fromEditorConfig: (unit: string, key: string, file: string) =>
+      sentence`${unit}, from ${named(key)} in ${namedFile(file)}`,
+    notInEditorConfig: sentence`No .editorconfig sets ${named('indent_style')} or ${named('indent_size')}`,
+    fromTabbedLines: 'A tab, as most indented lines of the file start with one',
+    fromSpacedLines: (unit: string) =>
+      `${unit}, as the lines of the file are most often indented by`,
+    noIndentedLines: 'The file has no indented lines to go by',
+    fromIndentSettings: (unit: string, key: string) =>
+      sentence`${unit}, from ${named(key)} in the settings`,
+    drawnHeading: 'Tabs are drawn as wide as the first of these that applies:',
+    columns: (count: number) => (count === 1 ? '1 column' : `${count} columns`),
+    chosenWidth: (columns: string) => `${columns}, chosen for this tab`,
+    noChosenWidth: 'No width chosen for this tab',
+    widthFromEditorConfig: (columns: string, key: string, file: string) =>
+      sentence`${columns}, from ${named(key)} in ${namedFile(file)}`,
+    widthNotInEditorConfig: sentence`No .editorconfig sets ${named('tab_width')} or ${named('indent_size')}`,
+    widthFromSettings: (columns: string) =>
+      sentence`${columns}, from ${named('text.tabSize')} in the settings`,
+    drawTabs: (columns: string) => `Draw tabs ${columns} wide`,
+    drawAsAsked: 'Draw tabs as the file and the settings say',
+  },
   pdf: {
     page: (page: number) => `Page ${page}`,
     couldNotOpen: (reason: string) => `Couldn't show the PDF. ${reason}`,

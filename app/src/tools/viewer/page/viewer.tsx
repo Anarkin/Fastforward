@@ -1,3 +1,5 @@
+import { drawnSize, tabSizeItems } from '../../../lib/page/tabSizeMenu';
+import { tabSizeOf } from '../../../lib/page/tabStops';
 import { keysOf } from '../../../lib/shared/keymap';
 import { labelTip } from '../../../lib/page/tips';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -77,7 +79,16 @@ export function Viewer() {
   const showWhitespace = useShell((state) => state.textView.showWhitespace);
   const realSize = useShell((state) => state.imageView.realSize);
   const scrolling = useShell((state) => state.scrolling);
-  const { changeTextView, changeImageView } = useShellActions();
+  const { changeTextView, changeImageView, openSettings } = useShellActions();
+  const { editTabSizeSource } = useViewerActions();
+  const fileTabSize = useViewer((state) =>
+    state.tab === undefined ? undefined : state.fileTabSizes.get(state.tab),
+  );
+  const tabsShown = {
+    ...(choices.tabSize !== undefined && { chosen: choices.tabSize }),
+    ...(fileTabSize !== undefined && { file: fileTabSize }),
+    settings: tabSizeOf(undefined),
+  };
   const { choice: languageChoice, choose: chooseLanguage } = languageChoiceOf(
     file,
     {
@@ -285,6 +296,20 @@ export function Viewer() {
                 label={strings.encodings.short[shown]}
                 filter={strings.common.findEncoding}
                 items={encodingMenu(encoding, shown, setEncoding)}
+                disabled={mode !== 'text'}
+              />
+            </div>
+            <div className="viewer-encoding viewer-tab-size">
+              <MenuButton
+                scrolling={scrolling}
+                title={strings.indentation.title}
+                onChosen={focusBody}
+                label={strings.indentation.tabSize(drawnSize(tabsShown))}
+                items={tabSizeItems(tabsShown, {
+                  file: editTabSizeSource,
+                  settings: openSettings,
+                  choose: (size) => onChoose({ tabSize: size }),
+                })}
                 disabled={mode !== 'text'}
               />
             </div>

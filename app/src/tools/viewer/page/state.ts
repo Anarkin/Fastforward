@@ -13,6 +13,7 @@ export interface ViewerChoices {
   readonly mode?: ViewMode;
   readonly encoding?: EncodingChoice;
   readonly language?: string;
+  readonly tabSize?: number;
 }
 
 export interface ViewerSource {
@@ -62,6 +63,7 @@ export interface ViewerActions {
   readonly flushPdfPlace: () => void;
   readonly choose: (choices: Partial<ViewerChoices>) => void;
   readonly chooseVersion: (rev: string | undefined) => void;
+  readonly editTabSizeSource: () => void;
   readonly compareVersions: () => void;
   readonly selectAll: () => void;
   readonly copyWhole: (as: CopiedAs, encoding: TextEncoding) => void;

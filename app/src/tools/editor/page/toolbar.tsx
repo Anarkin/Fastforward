@@ -27,15 +27,21 @@ import { readMenu, savedName, saveMenu } from './encodings';
 import { useEditor, useEditorActions } from './store';
 import { editedShown } from './state';
 import { Toolbar } from '../../../lib/page/toolbar';
+import { drawnSize, tabSizeItems } from '../../../lib/page/tabSizeMenu';
+import { tabSizeOf } from '../../../lib/page/tabStops';
+import { setIndent, setTabSize, type IndentShown } from './indent';
+import { indentItems, indentLabel, indentationChanges } from './indentation';
 
 export function EditorToolbar({
   view,
   endingsShown,
+  indentShown,
   language,
   onFind,
 }: {
   view: RefObject<EditorSurface | undefined>;
   endingsShown: EndingsShown | undefined;
+  indentShown: IndentShown | undefined;
   language: ReactNode;
   onFind: () => void;
 }) {
@@ -88,6 +94,29 @@ export function EditorToolbar({
       : encodingSourceItems(encodingSources, opening);
   const convert = (ending: LineEnding) =>
     view.current?.dispatch(convertedTo(ending));
+  const tabsShown =
+    indentShown === undefined
+      ? undefined
+      : {
+          ...(indentShown.chosenTabSize !== undefined && {
+            chosen: indentShown.chosenTabSize,
+          }),
+          ...(indentShown.rules.tabSize !== undefined && {
+            file: indentShown.rules.tabSize,
+          }),
+          settings: tabSizeOf(undefined),
+        };
+  const convertIndentation = (to: 'tabs' | 'spaces') => {
+    const current = view.current;
+    if (current === undefined || tabsShown === undefined) {
+      return;
+    }
+    const size = drawnSize(tabsShown);
+    current.dispatch({
+      changes: indentationChanges(current.state.doc, to, size),
+      effects: setIndent.of(to === 'tabs' ? '\t' : ' '.repeat(size)),
+    });
+  };
 
   return (
     <>
@@ -160,6 +189,40 @@ export function EditorToolbar({
                           opening,
                         ),
                       ]),
+                ]}
+                onChosen={() => view.current?.focus()}
+              />
+            </div>
+          )}
+          {indentShown !== undefined && tabsShown !== undefined && (
+            <div className="viewer-encoding editor-indentation">
+              <MenuButton
+                scrolling={scrolling}
+                title={strings.indentation.title}
+                label={indentLabel(indentShown.indent, drawnSize(tabsShown))}
+                items={[
+                  {
+                    label: strings.indentation.toTabs,
+                    ...(readOnly
+                      ? { disabled: true }
+                      : { onClick: () => convertIndentation('tabs') }),
+                  },
+                  {
+                    label: strings.indentation.toSpaces,
+                    ...(readOnly
+                      ? { disabled: true }
+                      : { onClick: () => convertIndentation('spaces') }),
+                  },
+                  { separator: true },
+                  ...indentItems(indentShown, opening),
+                  { separator: true },
+                  ...tabSizeItems(tabsShown, {
+                    ...opening,
+                    choose: (size) =>
+                      view.current?.dispatch({
+                        effects: setTabSize.of(size),
+                      }),
+                  }),
                 ]}
                 onChosen={() => view.current?.focus()}
               />

@@ -22,7 +22,9 @@ const trigger = (label: RegExp) =>
 
 const encodingButtons = () =>
   page
-    .locator('.editor .viewer-encoding .menu-button-trigger')
+    .locator(
+      '.editor .viewer-encoding:not(.editor-indentation) .menu-button-trigger',
+    )
     .evaluateAll((buttons) =>
       buttons.map((button) => [
         button.textContent,

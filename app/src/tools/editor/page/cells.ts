@@ -1,4 +1,4 @@
-import { tabSizeField } from './indent';
+import { drawnTabSize } from './indent';
 import { widthsFor } from '../../../lib/page/textWidths';
 import type { Extension } from '@codemirror/state';
 import {
@@ -249,7 +249,7 @@ class EditorCells implements SurfacePart {
       return;
     }
     this.drawn = drawn;
-    const tabSize = view.state.field(tabSizeField, false);
+    const tabSize = drawnTabSize(view.state);
     if (
       this.widths === undefined ||
       this.widths.char !== char ||

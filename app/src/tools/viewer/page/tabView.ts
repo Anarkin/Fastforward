@@ -22,6 +22,7 @@ const choicesSchema = record({
   mode: optional(oneOf(['text', 'hex', 'preview'])),
   encoding: optional(oneOf(['auto', 'bytes', ...textEncodings])),
   language: optional(text()),
+  tabSize: optional(count({ min: 1, max: 16, integer: true })),
 });
 
 export const viewerViewSchema = record({

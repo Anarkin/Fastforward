@@ -17,6 +17,7 @@ import {
 } from './cellsSeen';
 import { gridLines, gridRuler } from './gridLines';
 import { waitForFocus } from './waits';
+import { editorLinesSeen } from './editorSeen';
 import { writeSettings } from './settingsWritten';
 import {
   opened,
@@ -106,6 +107,16 @@ const barsOf = async () => {
   );
   return lastBars();
 };
+
+const menuOf = async (button: string) => {
+  await page.locator(`${button} .menu-button-trigger`).click();
+  const menu = page.locator(`${button} .menu`);
+  await menu.waitFor();
+  return menu;
+};
+
+const labelOf = (button: string) =>
+  page.locator(`${button} .menu-button-trigger`).textContent();
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -542,6 +553,84 @@ suite('App commander', () => {
       fs.rmSync(path.join(opened, 'wide.tsv'));
       await waitFor(
         async () => !(await rowNames()).includes('wide.tsv'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('tells in a menu of the viewer and of the editor how wide a tab is drawn and where from, draws tabs at a width chosen for the tab, and converts the indentation of the editor to spaces by the tab stops', async () => {
+    const tab = String.fromCharCode(9);
+    fs.writeFileSync(
+      path.join(opened, 'chosen.txt'),
+      ['        |', tab + '|', tab + 'a', tab + 'b'].join(
+        String.fromCharCode(10),
+      ),
+    );
+    try {
+      await select('chosen');
+      await page.keyboard.press('F3');
+      const before = await barsOf();
+      const viewerLabel = await labelOf('.viewer-tab-size');
+      const viewerMenu = await menuOf('.viewer-tab-size');
+      await viewerMenu
+        .locator('.menu-item', { hasText: 'Draw tabs 8 columns wide' })
+        .click();
+      const chosen = await barsOf();
+      await page.keyboard.press('F4');
+      await page.locator('.editor .editor-indentation').waitFor();
+      const editorLabel = await labelOf('.editor-indentation');
+      const editorMenu = await menuOf('.editor-indentation');
+      const rows = (
+        await editorMenu.locator('.menu-item').allTextContents()
+      ).map((row) => row.replace('✓', '').trim());
+      await editorMenu
+        .locator('.menu-item', { hasText: 'Convert indentation to spaces' })
+        .click();
+      await waitFor(
+        async () => (await editorLinesSeen(page))[1]?.text === '    |',
+        'the tab converted to spaces',
+      );
+      await page.keyboard.press('ControlOrMeta+Z');
+      await waitFor(
+        async () => (await editorLinesSeen(page))[1]?.text === tab + '|',
+        'the conversion undone',
+      );
+      assert.deepStrictEqual(
+        {
+          before,
+          viewerLabel,
+          chosen,
+          editorLabel,
+          rows: rows.filter(
+            (row) =>
+              row.startsWith('A tab') ||
+              row.startsWith('No .editorconfig') ||
+              row.includes('text.tabSize'),
+          ),
+        },
+        {
+          before: [-4],
+          viewerLabel: 'Tab Size: 4',
+          chosen: [0],
+          editorLabel: 'Tab Size: 4',
+          rows: [
+            'No .editorconfig sets indent_style or indent_size',
+            'A tab, as most indented lines of the file start with one',
+            'No .editorconfig sets tab_width or indent_size',
+            '4 columns, from text.tabSize in the settings',
+          ],
+        },
+      );
+    } finally {
+      for (const shown of ['.editor', '.viewer']) {
+        if (await page.locator(shown).isVisible()) {
+          await page.keyboard.press('Escape');
+          await page.locator(shown).waitFor({ state: 'detached' });
+        }
+      }
+      fs.rmSync(path.join(opened, 'chosen.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('chosen.txt'),
         'the file to be gone from the list',
       );
     }

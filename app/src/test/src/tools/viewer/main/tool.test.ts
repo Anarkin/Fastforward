@@ -143,6 +143,25 @@ suite('Viewer tool', () => {
     ]);
   });
 
+  test('edits the .editorconfig that sets the tab width of the file a tab views, found again by the main process rather than named by the page, and nothing where none does', async () => {
+    const go = path.join(opened, 'main.go');
+    const notes = path.join(opened, 'plain.txt');
+    fs.writeFileSync(go, 'package main');
+    fs.writeFileSync(notes, 'one');
+    const { tool, page, tabs, send, edited } = viewer();
+    const goTab: Tab = { id: '4', tool: 'viewer', root: go };
+    const notesTab: Tab = { id: '5', tool: 'viewer', root: notes };
+    tabs.push(goTab, notesTab);
+    await tool.show(page, goTab);
+    await send({ type: 'editTabSizeSource', tab: '4' });
+    await tool.show(page, notesTab);
+    await send({ type: 'editTabSizeSource', tab: '5' });
+    await send({ type: 'editTabSizeSource', tab: '4' });
+    assert.deepStrictEqual(edited, [
+      { file: '.editorconfig', at: { byte: 0 } },
+    ]);
+  });
+
   test('refuses to edit a version, saying why, as only the file on disk can be edited', async () => {
     const copy = path.join(opened, 'notes.txt');
     fs.writeFileSync(copy, 'old');

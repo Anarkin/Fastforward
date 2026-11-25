@@ -22,6 +22,10 @@ export class ViewerMessages {
       tab: string,
       at: { readonly byte: number; readonly encoding?: TextEncoding },
     ) => Promise<void>,
+    private readonly editTabSizeSource: (
+      page: Page,
+      tab: string,
+    ) => Promise<void>,
     private readonly chooseVersion: (
       page: Page,
       tab: string,
@@ -55,6 +59,10 @@ export class ViewerMessages {
         return this.pdfPlaces.readPdfPlace(page, message);
       case 'savePdfPlace':
         return this.pdfPlaces.savePdfPlace(page, message);
+      case 'editTabSizeSource':
+        return this.pages.shown.get(page)?.tab === message.tab
+          ? this.editTabSizeSource(page, message.tab)
+          : Promise.resolve();
       case 'editViewed': {
         const { tab, at, encoding } = message;
         if (

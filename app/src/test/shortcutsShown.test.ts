@@ -241,6 +241,7 @@ const withoutShortcut: readonly string[] = [
   'tools/editor/page/toolbar.tsx: <MenuButton endingsTitle(endingsShown)>',
   'tools/editor/page/toolbar.tsx: <MenuButton strings.editor.readEncodingTitle>',
   'tools/editor/page/toolbar.tsx: <MenuButton strings.editor.writeEncodingTitle>',
+  'tools/editor/page/toolbar.tsx: <MenuButton strings.indentation.title>',
   'tools/editor/page/toolbar.tsx: strings.common.showWhitespace',
   'tools/editor/page/toolbar.tsx: strings.common.wrap',
   'tools/git/page/bubbles.tsx: title',
@@ -251,6 +252,7 @@ const withoutShortcut: readonly string[] = [
   'tools/git/page/navBar.tsx: strings.navigation.fetchEvery(autoFetchMinutes)',
   'tools/git/page/navBar.tsx: title',
   'tools/git/page/soloButton.tsx: strings.commits.solo',
+  'tools/viewer/page/viewer.tsx: <MenuButton strings.indentation.title>',
 ];
 
 function argumentsOf(text: string, from: number): string[] {

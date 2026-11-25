@@ -1,5 +1,10 @@
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
-import { plainOf, type Sentence } from '../../../lib/shared/sentences';
+import {
+  set,
+  sourceItems,
+  unset,
+  type Row,
+} from '../../../lib/page/sourceRows';
 import { strings } from '../../../lib/shared/strings';
 import type { EncodingSource, EndingSource } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
@@ -8,36 +13,6 @@ import type { LineEnding } from '../shared/textMarks';
 export interface SourceOpening {
   readonly file: (file: string) => void;
   readonly settings: () => void;
-}
-
-interface Row {
-  readonly sentence: Sentence;
-  readonly set: boolean;
-  readonly onClick?: () => void;
-}
-
-const unset = (sentence: Sentence): Row => ({ sentence, set: false });
-
-const set = (sentence: Sentence, onClick?: () => void): Row => ({
-  sentence,
-  set: true,
-  ...(onClick !== undefined && { onClick }),
-});
-
-function itemsOf(heading: string, rows: readonly Row[]): ContextMenuItem[] {
-  const applied = rows.findIndex((row) => row.set);
-  return [
-    { label: heading, disabled: true },
-    ...rows.map((row, index): ContextMenuItem => ({
-      label: plainOf(row.sentence),
-      sentence: row.sentence,
-      keywords: heading,
-      checked: index === applied,
-      ...(row.set
-        ? row.onClick !== undefined && { onClick: row.onClick }
-        : { disabled: true }),
-    })),
-  ];
 }
 
 const endingName = (ending: LineEnding) => strings.editor.endingNames[ending];
@@ -90,13 +65,13 @@ export function endingSourceItems(
   opening: SourceOpening,
 ): ContextMenuItem[] {
   return [
-    ...itemsOf(strings.editor.newLinesEndIn, [
+    ...sourceItems(strings.editor.newLinesEndIn, [
       lines === undefined
         ? unset(strings.editor.noLineBreak)
         : set(strings.editor.endingOfLines(endingName(lines))),
     ]),
     { separator: true },
-    ...itemsOf(
+    ...sourceItems(
       strings.editor.withoutLineBreak,
       sources.map((source) => endingRow(source, opening)),
     ),
@@ -156,7 +131,7 @@ export function encodingSourceItems(
   sources: readonly EncodingSource[],
   opening: SourceOpening,
 ): ContextMenuItem[] {
-  return itemsOf(
+  return sourceItems(
     sources[0]?.kind === 'editorConfig'
       ? strings.editor.writtenIn
       : strings.editor.readIn,

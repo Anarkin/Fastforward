@@ -160,6 +160,24 @@ suite('What a file edited gets', () => {
       '  ',
     );
     assert.strictEqual((await defaultsOf({})).indent, undefined);
+    assert.deepStrictEqual(
+      [
+        (
+          await defaultsOf({
+            indentStyle: 'space',
+            indentSize: 2,
+            setIn: { indentSize: 'b/.editorconfig' },
+          })
+        ).indentFile,
+        (
+          await defaultsOf({
+            indentStyle: 'tab',
+            setIn: { indentStyle: 'a/.editorconfig' },
+          })
+        ).indentFile,
+      ],
+      ['b/.editorconfig', 'a/.editorconfig'],
+    );
   });
 
   test('draws a tab as wide as tab_width of its .editorconfig says, else as indent_size, as the EditorConfig spec defaults one to the other, else leaves it to the settings', async () => {

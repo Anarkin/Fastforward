@@ -50,6 +50,7 @@ export interface TextShown {
   readonly strayEndings: readonly StrayEnding[];
   readonly keptBytes: readonly KeptBytes[];
   readonly indent?: string;
+  readonly indentFile?: string;
   readonly fallbackIndent?: string;
   readonly tabSize?: FileTabSize;
   readonly trimTrailingWhitespace?: true;

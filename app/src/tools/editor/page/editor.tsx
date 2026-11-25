@@ -49,6 +49,7 @@ export function Editor() {
     host,
     view,
     endingsShown,
+    indentShown,
     status,
     findCount,
     findAsk,
@@ -85,6 +86,7 @@ export function Editor() {
         <EditorToolbar
           view={view}
           endingsShown={endingsShown}
+          indentShown={indentShown}
           language={
             <LanguageButton
               choice={languageChoice}

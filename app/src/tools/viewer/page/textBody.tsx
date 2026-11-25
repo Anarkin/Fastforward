@@ -75,9 +75,13 @@ export function TextBody({
   const [measured, setMeasured] = useState<number>();
   const screen = measured ?? 1;
   const [columns, setColumns] = useState<number>();
-  const tabSize = useViewer((state) =>
+  const chosenTabSize = useViewer(
+    (state) => state.choices.get(viewing.tab)?.tabSize,
+  );
+  const fileTabSize = useViewer((state) =>
     state.fileTabSizes.get(viewing.tab),
   )?.size;
+  const tabSize = chosenTabSize ?? fileTabSize;
   const { font, onFont, table, widths, dotLook } = useCellFont(tabSize);
   const counting =
     widths ?? withTabSize(cellWidthsOf(table ?? plainCells), tabSize);
