@@ -1,3 +1,4 @@
+import { strings } from '../../lib/shared/strings';
 import { plainSearch } from '../../lib/shared/searchOptions';
 import type {
   Bookmark,
@@ -8,7 +9,6 @@ import type {
 } from '../../tools/git/shared/protocol';
 import { emptyTabView } from '../../tools/git/page/shownTab';
 import { ChangesTreeItem } from '../../tools/git/page/changesTree';
-import { WorkingTreeRow } from '../../tools/git/page/commitRow';
 import { CommitRow } from '../../tools/git/page/commitRow';
 import { gitStore, type ShownGit } from './componentFixtures';
 import { LocationsPopup } from '../../tools/git/page/locations';
@@ -138,12 +138,17 @@ export function MessagePanelShown({
 
 export function WorkingTreeRowShown({ count }: { readonly count: number }) {
   return (
-    <WorkingTreeRow
-      count={count}
-      selection={undefined}
-      indent={0}
-      onSelect={noop}
-    />
+    <div
+      className={
+        count === 0 ? 'commit working-tree empty' : 'commit working-tree'
+      }
+    >
+      <div className="commit-line">
+        <span className="subject">
+          {strings.commits.uncommittedChanges(count)}
+        </span>
+      </div>
+    </div>
   );
 }
 

@@ -7,6 +7,7 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitRow } from './commitRows';
 
 interface Area {
   readonly left: number;
@@ -113,7 +114,7 @@ suite('App diff filler', () => {
     );
     app = await launchApp(profile, { scale: 1 });
     page = await app.firstWindow();
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await page.locator('.split-side.filler').first().waitFor();
     await page.keyboard.press('c');
     await page.locator('.columns.commits-hidden').waitFor();

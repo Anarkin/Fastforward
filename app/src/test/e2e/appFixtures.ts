@@ -10,6 +10,7 @@ import { baseSettings, closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { diffLinesSeen, untilDiffLine, type DiffLineSeen } from './diffSeen';
 import { appSaving, markedSettings, writeSettings } from './settingsWritten';
+import { commitRow } from './commitRows';
 
 export let folder: string;
 export let profile: string;
@@ -63,12 +64,12 @@ export function sharedApp(files: Readonly<Record<string, string>>): void {
 }
 
 function waitForSettingsToBeWatched(): Promise<void> {
-  return page.locator('.commit', { hasText: 'second' }).waitFor();
+  return commitRow(page, 'second').waitFor();
 }
 
 async function resetApp(): Promise<void> {
   await resetSettings();
-  await page.locator('.commit', { hasText: 'second' }).waitFor();
+  await commitRow(page, 'second').waitFor();
   for (const [popup, focused] of [
     ['.context-menu', '.context-menu .menu-item'],
     ['.locations-popup', '.locations-popup .search-box-input'],
@@ -87,7 +88,7 @@ async function resetApp(): Promise<void> {
   }
   await page.locator('.virtual-rows.list').focus();
   await page.keyboard.press('Home');
-  await page.locator('.commit.working-tree.selected').waitFor();
+  await commitRow(page, 'uncommitted change', { selected: true }).waitFor();
 }
 
 function userSettings(): unknown {
@@ -193,7 +194,7 @@ export async function diffLineNumbered(number: number): Promise<DiffLineSeen> {
 }
 
 export async function openChangedFile(): Promise<void> {
-  await page.locator('.commit', { hasText: 'second' }).click();
+  await commitRow(page, 'second').click();
   await page.locator('.row.file', { hasText: 'changed.txt' }).click();
   await untilDiffLine(
     page,

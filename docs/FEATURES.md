@@ -57,7 +57,7 @@
 | Run as administrator | Show that the app runs as administrator or root | — | Common | ✅ Yes | A shield beside the app icon of every window, faded in with the + once the opening is done, its tooltip saying that the shells, git and the programs it opens run so too; told by the token of the process on Windows and by its user on macOS and Linux |
 | Platforms | Run on Windows, macOS and Linux | — | Common | ✅ Yes | Windows x64, macOS on Apple silicon, Linux x64 as AppImage and deb |
 | Languages | Show the app in other languages | — | Common | ❌ No | English only; every sentence is in one dictionary |
-| Screen readers | Name every control to assistive technology | — | Common | 🟡 Partial | Tabs, lists and trees are named; menus only by their role, icon buttons by a label of their own, the words of their tooltip |
+| Screen readers | Name every control to assistive technology | — | Common | 🟡 Partial | Tabs, lists and trees are named, but for the commits of git, drawn on a canvas, which name only their list; menus only by their role, icon buttons by a label of their own, the words of their tooltip |
 | AI | Explain, write and fix with AI | — | Advanced | ❌ No | Neither changes and conflicts in git nor errors and commands in the terminal |
 
 ## Common: Text

@@ -6,6 +6,7 @@ import { app, page, repository, sharedApp } from './appFixtures';
 import { waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 import { viewerShows, viewerTexts } from './cellsSeen';
+import { commitRow } from './commitRows';
 
 const focused = () =>
   page.evaluate(() => document.activeElement?.textContent ?? '');
@@ -51,7 +52,7 @@ suite('App', () => {
       await page.locator('.tabs .tab.active .tab-name').textContent(),
       'repo',
     );
-    await page.locator('.commit', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second').waitFor();
     assert.strictEqual(await page.locator('.worktrees').count(), 0);
     const version = await app.evaluate((electron) => electron.app.getVersion());
     assert.strictEqual(
@@ -123,9 +124,7 @@ suite('App', () => {
   });
 
   test('works a menu with the keys, giving the keyboard back when it closes', async () => {
-    await page
-      .locator('.commit', { hasText: 'first' })
-      .click({ button: 'right' });
+    await commitRow(page, 'first').click({ button: 'right' });
     const first = await page
       .locator('.context-menu .menu-item')
       .first()
@@ -142,7 +141,7 @@ suite('App', () => {
   });
 
   test('offers a file of a commit only to view it as the commit has it and to copy its path, viewing a copy of it rather than the file on disk', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page
       .locator('.row.file', { hasText: 'changed.txt' })
       .locator('.path-part')
@@ -176,7 +175,7 @@ suite('App', () => {
     const [first, second] = await repository.resolve('HEAD~1', 'HEAD');
     const short = first?.slice(0, 7);
     const newest = second?.slice(0, 7) ?? '';
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page
       .locator('.row.file', { hasText: 'changed.txt' })
       .locator('.path-part')
@@ -233,7 +232,7 @@ suite('App', () => {
 
   test('opens the version of a file viewed against the one before it in a diff tab on Shift+F3, under the whole path of the file, the version of each side on a button in its header, side by side the old ending and the new starting as far from the line between the sides, which is where the sides meet rather than the middle of the diff with its scrollbar, inline both in the middle with an arrow between them', async () => {
     const [first, second] = await repository.resolve('HEAD~1', 'HEAD');
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await page
       .locator('.row.file', { hasText: 'changed.txt' })
       .locator('.path-part')

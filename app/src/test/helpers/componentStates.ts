@@ -195,6 +195,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the bottom padding of the list, read anew from its style as mounted',
   'tools/git/page/commitList.tsx settling':
     'made once: a timer made once to show the lines of bubbles of the commits off the view once the room of a line has rested',
+  'tools/git/page/commitPointer.ts tipped':
+    'a moment: the target of a tooltip under the pointer, the one element the commit list holds, found anew as the pointer moves',
   'tools/git/page/commitList.tsx relaidOut':
     'a trigger: counts the redraws as the lines of bubbles of commits change',
   'tools/git/page/commitList.tsx places':

@@ -10,6 +10,7 @@ import {
   page as commanderPage,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { commitRow } from './commitRows';
 
 const marks = () =>
   commanderPage.evaluate(() => {
@@ -61,7 +62,7 @@ suite('App', () => {
       await page.keyboard.press('Escape');
       await shortcuts.waitFor({ state: 'detached' });
     };
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await opensOn('Git');
     await page.locator('.row.file').first().click();
     await page.locator('.diff-view .virtual-rows').click();

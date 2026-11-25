@@ -8,6 +8,8 @@ import { MessageBody } from '../../../../../tools/git/page/messagePanel';
 import type { KeptPin } from '../../../../../tools/git/page/state';
 import { commitInfo } from '../../../../helpers/gitValues';
 
+const rowHeight = 36;
+
 async function inList(
   commits: readonly (CommitInfo | undefined)[],
   check: (page: {
@@ -53,8 +55,22 @@ async function inList(
     const { createRoot } = await import('react-dom/client');
     const { document } = dom.window;
     const clicked: string[] = [];
+    let selected = -1;
+    const hits = {
+      current: commits.map((commit, index) => ({
+        index,
+        top: index * rowHeight,
+        height: rowHeight,
+        subjectLeft: 8,
+        subjectWidth: 40,
+        bubbles: [],
+        merge: undefined,
+      })),
+    };
+    const at = (row: number) => ({ clientX: 10, clientY: row * rowHeight + 5 });
     function List() {
       const list = useRef<HTMLDivElement>(null);
+      const spacer = useRef<HTMLDivElement>(null);
       const [pin, setPin] = useState(kept.pin);
       return (
         <>
@@ -68,23 +84,15 @@ async function inList(
               }
             }}
           >
-            {commits.map((commit, index) => (
-              <div
-                key={index}
-                id={`row-${index}`}
-                className="virtual-row"
-                data-index={index}
-              >
-                <div
-                  className={index === 0 ? 'commit working-tree' : 'commit'}
-                  onClick={() => clicked.push(commit?.hash ?? '')}
-                >
-                  <div className="commit-line">
-                    <span className="subject">{commit?.subject}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+            <div
+              ref={spacer}
+              className="virtual-spacer"
+              onClick={(event) =>
+                clicked.push(
+                  commits[Math.floor(event.clientY / rowHeight)]?.hash ?? '',
+                )
+              }
+            />
           </div>
           <MessagePeek
             keptPin={pin}
@@ -93,7 +101,10 @@ async function inList(
               kept.pinned?.(next);
             }}
             list={list}
-            commitAt={(index) => commits[index]}
+            spacer={spacer}
+            hits={hits}
+            selectedRow={() => hits.current[selected]}
+            commitAt={(index) => (index === 0 ? undefined : commits[index])}
             indent={8}
             renderRow={(commit, corner) => (
               <>
@@ -114,9 +125,10 @@ async function inList(
     });
     const list = document.querySelector('.list');
     assert.ok(list);
-    const subjects = [...document.querySelectorAll('.subject')];
-    let pointed = 0;
-    document.elementFromPoint = () => subjects[pointed] ?? null;
+    const spacer = document.querySelector('.virtual-spacer');
+    assert.ok(spacer);
+    list.getBoundingClientRect = () =>
+      dom.window.DOMRect.fromRect({ x: 0, y: 0, width: 400, height: 1000 });
     await check({
       panel: () => document.querySelector('.message-peek'),
       key: (type, key, altKey, repeat = false) =>
@@ -127,9 +139,8 @@ async function inList(
         }),
       point: (row, altKey) =>
         act(async () => {
-          pointed = row;
           list.dispatchEvent(
-            new dom.window.MouseEvent('pointermove', { altKey }),
+            new dom.window.MouseEvent('pointermove', { altKey, ...at(row) }),
           );
         }),
       leave: () =>
@@ -144,8 +155,12 @@ async function inList(
       pinned: () => document.querySelector('.message-peek.pinned'),
       click: (row, altKey) =>
         act(async () => {
-          subjects[row]?.dispatchEvent(
-            new dom.window.MouseEvent('click', { altKey, bubbles: true }),
+          spacer.dispatchEvent(
+            new dom.window.MouseEvent('click', {
+              altKey,
+              bubbles: true,
+              ...at(row),
+            }),
           );
         }),
       pressOn: (target) =>
@@ -160,7 +175,9 @@ async function inList(
         }),
       clicked,
       list,
-      select: (row) => list.setAttribute('aria-activedescendant', `row-${row}`),
+      select: (row) => {
+        selected = row;
+      },
       type: (key, altKey) =>
         act(async () => {
           (document.activeElement ?? document.body).dispatchEvent(

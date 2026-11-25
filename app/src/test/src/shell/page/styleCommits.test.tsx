@@ -1,19 +1,11 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
-import { GraphCell } from '../../../../tools/git/page/graph';
 import { Column } from '../../../../lib/page/column';
 import { cascaded } from '../../../helpers/cascade';
 import { ColumnShown } from '../../../helpers/styleFixtures';
 import { columnTitle, repository } from '../../../helpers/styleMarkup';
-import {
-  noop,
-  buttonsWidth,
-  pixels,
-  looks,
-  bodyVariable,
-  focused,
-} from './stylesheetFixtures';
+import { buttonsWidth, pixels, looks, focused } from './stylesheetFixtures';
 import {
   bubbleLineHeight,
   commitRowHeight,
@@ -28,20 +20,6 @@ import {
   NavButtonsShown,
   WorkingTreeRowShown,
 } from '../../../helpers/styleHistoryFixtures';
-
-function GraphBesideCommit({ selected }: { readonly selected?: string }) {
-  return (
-    <div className="virtual-row">
-      <GraphCell
-        row={{ lane: 0, color: 0, lines: [] }}
-        height={commitRowHeight}
-        line={bubbleLineHeight}
-        onToggleMerge={noop}
-      />
-      <CommitRowShown selected={selected} />
-    </div>
-  );
-}
 
 suite('Style', () => {
   test("keeps the commit column's title clear of its buttons and the gaps between them", () => {
@@ -149,43 +127,29 @@ suite('Style', () => {
     }
   });
 
-  test('grounds the graph of a commit, which stands beside its row rather than in it, in the color the row shows, each color that mixes in transparent made opaque by mixing in the panel instead, so the edge around a dot matches a hovered or selected row', () => {
-    assert.strictEqual(
-      bodyVariable('hover-ground'),
-      bodyVariable('hover-background')?.replace(
-        'transparent',
-        'var(--color-panel-background)',
-      ),
+  test('lays the canvas of the graph over the rows it draws, from the left of the list, taking no pointer, so the rows beneath it are hovered, pressed and dragged as before, its canvas filling it, and a merge it draws pressed through a target of its own in the row, above it', () => {
+    const layer = rendered(
+      <div className="virtual-spacer">
+        <div className="graph-layer">
+          <canvas className="commit-canvas" />
+        </div>
+      </div>,
     );
-    assert.doesNotMatch(
-      bodyVariable('selection-background') ?? '',
-      /transparent/,
-    );
-    const plain = rendered(<GraphBesideCommit />);
-    const graph = withClass(plain, 'graph');
-    looks(graph, { '--graph-ground': 'var(--color-panel-background)' });
-    looks(
-      graph,
-      { '--graph-ground': 'var(--hover-ground)' },
-      { hover: withClass(plain, 'commit') },
-    );
-    looks(withClass(rendered(<GraphBesideCommit selected="a" />), 'graph'), {
-      '--graph-ground': 'var(--selection-background)',
+    looks(withClass(layer, 'graph-layer'), {
+      position: 'sticky',
+      top: '0',
+      left: '0',
+      'z-index': '1',
+      'pointer-events': 'none',
     });
-  });
-
-  test('lets the graph of a row draw past its edges, so its lines can reach over the ends of those of the row above', () => {
-    looks(
-      rendered(
-        <GraphCell
-          row={{ lane: 0, color: 0, lines: [] }}
-          height={commitRowHeight}
-          line={bubbleLineHeight}
-          onToggleMerge={noop}
-        />,
-      ),
-      { overflow: 'visible' },
-    );
+    looks(withClass(layer, 'commit-canvas'), {
+      display: 'block',
+      width: '100%',
+      height: '100%',
+    });
+    looks(withClass(rendered(<span className="commit-tip" />), 'commit-tip'), {
+      position: 'absolute',
+    });
   });
 
   test('draws no focus outline around the commit list, whose selected row shows where the keys go', () => {

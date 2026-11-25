@@ -14,12 +14,10 @@ import {
   crowdedResize,
   drawnRows,
   estimatedRowHeight,
-  fixedRowHeight,
   rowKeyOf,
   rowSizes,
   workingTreeRowHeight,
 } from '../../../../../tools/git/page/commitListRows';
-import { commitOption } from '../../../../../tools/git/page/commitListItems';
 import { commitInfo } from '../../../../helpers/gitValues';
 
 function laidOut(line = bubbleLineHeight, ratio = 1) {
@@ -112,12 +110,6 @@ suite('Commit list rows', () => {
       [0, 1, 2].map((index) => rowKeyOf(history, 0, index)),
       [0, 'b', 2],
     );
-    history.add(0, [commitInfo('a'), commitInfo('b'), commitInfo('c')]);
-    assert.deepStrictEqual(
-      [0, 1, 2].map((index) => fixedRowHeight(history, 0, index, 50, counted)),
-      [undefined, 50, undefined],
-    );
-    assert.strictEqual(fixedRowHeight(history, 0, 1, 50), undefined);
   });
 
   test('tells when a commit with more than one bubble is laid out at another height than its lines take, as its column changed width or it was measured when it had fewer bubbles, and by how much the rows wholly above the view changed, to keep the view where it is', () => {
@@ -157,7 +149,7 @@ suite('Commit list rows', () => {
     assert.strictEqual(rowKeyOf(history, 0, 2), 2);
   });
 
-  test('keys a drawn row by its commit once the page of it loads, though the list laid it out before, telling screen readers which row is selected', () => {
+  test('keys a drawn row by its commit once the page of it loads, though the list laid it out before, so the row drawn is that of its commit', () => {
     const history = new CommitHistory(3);
     history.add(0, [commitInfo('a'), commitInfo('b')]);
     const list = laidOut();
@@ -167,24 +159,10 @@ suite('Commit list rows', () => {
       ['a', 'b', 2],
     );
     history.add(2, [commitInfo('c')]);
-    const drawn = list.drawn();
     assert.deepStrictEqual(
-      drawn.map((row) => row.key),
+      list.drawn().map((row) => row.key),
       ['a', 'b', 'c'],
     );
-    assert.strictEqual(
-      commitOption('commits', drawn[2].key, 2, 3, 'c')['aria-selected'],
-      true,
-    );
-  });
-
-  test("keeps a commit not loaded yet at the height it is estimated at, so the list doesn't move when it loads", () => {
-    const history = new CommitHistory(3);
-    history.add(0, [commitInfo('a')]);
-    assert.strictEqual(fixedRowHeight(history, 1, 0, 30), undefined);
-    assert.strictEqual(fixedRowHeight(history, 1, 1, 30), undefined);
-    assert.strictEqual(fixedRowHeight(history, 1, 2, 30), 30);
-    assert.strictEqual(fixedRowHeight(undefined, 0, 0, 30), 30);
   });
 
   test('lays a commit out at the height drawn once its page loads, though that height was measured in an earlier history', () => {

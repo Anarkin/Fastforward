@@ -12,6 +12,7 @@ import { cellsOf } from './cellsSeen';
 import { diffPlaces, diffSides } from './diffSeen';
 import { editorInPage, mountEditor, type PageEditor } from './editorProbe';
 import { wrapColumnsShown } from './wrappingFixtures';
+import { commitRow } from './commitRows';
 
 const editorLines = [
   `    ${'indented line with some words to wrap around the edge '.repeat(6)}`,
@@ -261,7 +262,7 @@ async function blanksOf({ host, rows, rowAt, places }: LineSeen): Promise<{
 }
 
 async function openLines(): Promise<Locator> {
-  await page.locator('.commit', { hasText: 'first' }).click();
+  await commitRow(page, 'first').click();
   await page.locator('.row.file', { hasText: 'lines.txt' }).click();
   const list = page.locator('.diff-view .virtual-rows');
   await list.waitFor();

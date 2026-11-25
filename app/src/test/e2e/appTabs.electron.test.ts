@@ -9,6 +9,7 @@ import { waitFor } from '../helpers/fixtures';
 import { untilSettled } from './waits';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitRow } from './commitRows';
 
 suite('App with several tabs', () => {
   test('moves a tab dragged past the middle of the next one while it is still dragged, keeping it under the pointer, opening it, and keeps that order once dropped', async () => {
@@ -30,7 +31,7 @@ suite('App with several tabs', () => {
     const app = await launchApp(profile);
     try {
       const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'second' }).waitFor();
+      await commitRow(page, 'second').waitFor();
       const names = () =>
         page.locator('.tabs .tab .tab-name').allTextContents();
       const dragged = page.locator('.tabs .tab', { hasText: 'first' });
@@ -52,7 +53,7 @@ suite('App with several tabs', () => {
       const held = await dragged.boundingBox();
       assert.ok(held);
       assert.ok(Math.abs(held.x - (pointer - grab)) < 1, String(held.x));
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      await commitRow(page, 'first').waitFor();
       await page.mouse.up();
       assert.deepStrictEqual(await names(), ['second', 'first', 'third']);
       await waitFor(() => {

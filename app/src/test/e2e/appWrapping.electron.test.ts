@@ -47,6 +47,7 @@ import {
   reportDataLine,
   reportPage,
 } from './wrappingSamples';
+import { commitRow, commitsSeen } from './commitRows';
 
 const rowsFrom = (first: number, last: number) =>
   Array.from({ length: last - first + 1 }, (_, at) => first + at);
@@ -153,7 +154,7 @@ suite('App', () => {
       'the layout to be saved',
     );
 
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     const unwrapped = tall(await untilDiffLine(page, long, 'the long line'));
     const lineHeight = await drawnCodeRow();
@@ -234,7 +235,7 @@ suite('App', () => {
   });
 
   test('marks where each wrapped row ends right after its text, after punctuation too', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'hyphenated.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const { rows } = await untilDiffLine(
@@ -251,7 +252,7 @@ suite('App', () => {
   });
 
   test('wraps an indented line where VS Code would, after its punctuation, onto rows indented as far as it, as many as the app estimates, never leaving its indentation on a row of its own', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'wrapped.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const { text, rows } = await untilDiffLine(
@@ -347,7 +348,7 @@ suite('App', () => {
   });
 
   test('wraps every line of a diff where the app expects it to, at the breaks the browser finds after hyphens and dashes, at zero-width spaces, soft hyphens and spaces of other widths, around Chinese, emoji and boxes, and at the punctuation of VS Code and tabs, as the viewer wraps lines the same way', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'breaks.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await untilDiffLine(page, wraps, 'a line wrapped onto rows');
@@ -379,7 +380,7 @@ suite('App', () => {
   });
 
   test('marks where each row of a line of over 200 rows ends, where the app expects the browser to break it, as reading where the browser broke it froze the page, drawing the marks near the rows in sight as it scrolls', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'longest.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await untilDiffLine(page, wraps, 'the line wrapped onto rows');
@@ -426,18 +427,16 @@ suite('App', () => {
     const data = report.split('\n')[reportDataLine - 1];
     assert.ok(data.length > 1024 * 1024);
     try {
-      await page.locator('.commit', { hasText: 'second' }).click();
-      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await commitRow(page, 'second').click();
+      await commitRow(page, 'second', { selected: true }).waitFor();
       await clickView('Side by Side')();
       await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
       await page.locator('.diff-view.wrap.side-by-side').waitFor();
       await writeWhenFree(file, report);
-      const changed = page.locator('.commit.working-tree', {
-        hasText: '1 uncommitted change',
-      });
+      const changed = commitRow(page, '1 uncommitted change');
       await changed.waitFor().catch(async (error: unknown) => {
         throw new Error(
-          `${String(error)}: the working tree shows ${JSON.stringify(await page.locator('.commit.working-tree').allTextContents())} while git says ${JSON.stringify(await repository.git('status', '--porcelain'))}`,
+          `${String(error)}: the working tree shows ${JSON.stringify((await commitsSeen(page)).find((row) => row.kind === 'workingTree')?.subject)} while git says ${JSON.stringify(await repository.git('status', '--porcelain'))}`,
         );
       });
       await changed.click();
@@ -584,11 +583,11 @@ suite('App', () => {
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'report.html');
     }
-    await page.locator('.commit.working-tree.empty').waitFor();
+    await commitRow(page, 'No uncommitted changes').waitFor();
   }, 180_000);
 
   test('wraps a line longer than 64 KiB only where the browser breaks it, where the app expects it to, keeping its indentation on the row with its code, as the app expected breaks after punctuation it no longer marks in such a line, its marks drifting from the rows, and the browser broke it right after its indentation', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'minified.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const { rows } = await untilDiffLine(

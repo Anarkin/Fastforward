@@ -16,6 +16,7 @@ import { longLines, firstLongLine } from './wrappingSamples';
 import { defaultSettings, waitFor, writeWhenFree } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitRow } from './commitRows';
 
 const diffRows = '.diff-view > .virtual-rows';
 const diffBarBelow = '.diff-view .scroll-proxy.horizontal';
@@ -43,13 +44,9 @@ suite('App', () => {
       `${longLines.map((line, index) => (index % 10 === 0 ? `changed ${index}` : line)).join('\n')}\n`,
     );
     try {
-      await sharedPage.locator('.commit', { hasText: 'second' }).click();
-      await sharedPage
-        .locator('.commit.selected', { hasText: 'second' })
-        .waitFor();
-      await sharedPage
-        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
-        .click();
+      await commitRow(sharedPage, 'second').click();
+      await commitRow(sharedPage, 'second', { selected: true }).waitFor();
+      await commitRow(sharedPage, '1 uncommitted change').click();
       await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
       await untilDiffLine(
         sharedPage,
@@ -147,18 +144,18 @@ suite('App', () => {
     } finally {
       await sharedRepository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
     }
-    await sharedPage.locator('.commit.working-tree.empty').waitFor();
+    await commitRow(sharedPage, 'No uncommitted changes').waitFor();
   });
 
   test('scrolls the diff on the wheel over its scrollbar as over its lines, rather than the column around it', async () => {
-    await sharedPage.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(sharedPage, 'first').click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
     await firstLineShown();
     await wheelsDiffOverItsBar(sharedPage);
   });
 
   test('keeps the scrollbar of a diff, with the marks on its track between its buttons, against the line its column draws on the right, and the scrollbar under its lines against the line at the bottom, or the status line under it, the two ending at the square between them', async () => {
-    await sharedPage.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(sharedPage, 'first').click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
     await firstLineShown();
     const down = (await barOf(sharedPage, diffRows, 'vertical')).box;
@@ -209,7 +206,7 @@ suite('App', () => {
   });
 
   test('never scrolls the column around the diff, which has its own scrollbar, even when the diff sticks out of it by a few pixels', async () => {
-    await sharedPage.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(sharedPage, 'first').click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
     await firstLineShown();
     const taller = await sharedPage.addStyleTag({
@@ -231,7 +228,7 @@ suite('App', () => {
   });
 
   test('draws the rows of where its scrollbar is dragged to in the frame it scrolls there, rather than once the scroll event of the frame after comes, which left every other frame without new rows', async () => {
-    await sharedPage.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(sharedPage, 'first').click();
     await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
     await firstLineShown();
     await sharedPage.locator(diffRows).evaluate((element) => {
@@ -329,9 +326,14 @@ async function settledTop(list: Locator): Promise<number | undefined> {
 function rowAtTop(list: Locator): Promise<boolean> {
   return list.evaluate((element) => {
     const top = element.getBoundingClientRect().top + element.clientTop;
-    return [...element.querySelectorAll('.virtual-row')].some(
-      (row) => Math.abs(row.getBoundingClientRect().top - top) < 0.5,
-    );
+    const drawn =
+      element.querySelector<HTMLElement>('.graph-layer')?.seenCommits?.() ?? [];
+    return [
+      ...[...element.querySelectorAll('.virtual-row')].map(
+        (row) => row.getBoundingClientRect().top,
+      ),
+      ...drawn.map((row) => row.top),
+    ].some((rowTop) => Math.abs(rowTop - top) < 0.5);
   });
 }
 
@@ -385,7 +387,7 @@ suite('App with lists longer than their columns', () => {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
     await page
       .locator('.column')

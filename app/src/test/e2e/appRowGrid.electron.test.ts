@@ -7,6 +7,7 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitRow } from './commitRows';
 
 const ratios = [1.1, 1.25, 1.5, 1.75];
 
@@ -29,9 +30,15 @@ const gridOf = (page: Page): Promise<Grid> =>
       line:
         parseFloat(getComputedStyle(commits ?? document.body).lineHeight) *
         devicePixelRatio,
-      commits: [
-        ...(commits?.querySelectorAll('.commit-line, .bubble-line') ?? []),
-      ].map(onScreen),
+      commits: (
+        commits?.querySelector<HTMLElement>('.graph-layer')?.seenCommits?.() ??
+        []
+      ).flatMap((row) =>
+        Array.from(
+          { length: Math.round(row.height / row.line) },
+          (_, at) => (row.top + at * row.line - origin) * devicePixelRatio,
+        ),
+      ),
       files: [...(files?.querySelectorAll('.tree-row') ?? [])].map(onScreen),
     };
   });
@@ -73,7 +80,7 @@ suite('App row grid', () => {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await page.locator('.commit', { hasText: 'many' }).click();
+    await commitRow(page, 'many').click();
     await page.locator('.tree-row', { hasText: 'folder0' }).waitFor();
   });
 

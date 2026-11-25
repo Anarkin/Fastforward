@@ -21,6 +21,7 @@ import {
 } from './tabReturns';
 import { waitForCount, waitForFocus } from './waits';
 import { writeSettings } from './settingsWritten';
+import { commitRow } from './commitRows';
 
 const lines = (count: number, line: (index: number) => string) =>
   Array.from({ length: count }, (_, index) => line(index)).join('\n');
@@ -242,7 +243,7 @@ suite('App git tabs shown again', () => {
 
   test('brings back the diff of a file with its find open on the match it was on, the caret in its box, and the diff scrolled down and across', async () => {
     await showTab(page, 0);
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await page
       .locator('.virtual-row .row.file', { hasText: 'long.txt' })
       .click();
@@ -297,9 +298,7 @@ suite('App git tabs shown again', () => {
       .click();
     await filter.focus();
     await page.keyboard.press('ArrowLeft');
-    await page
-      .locator('.commit .subject', { hasText: 'first' })
-      .click({ modifiers: ['Alt'] });
+    await commitRow(page, 'first').click({ modifiers: ['Alt'] });
     const pinned = page.locator('.message-peek.pinned');
     await pinned.waitFor();
     await filter.focus();
@@ -334,7 +333,7 @@ suite('App git tabs shown again', () => {
     await page
       .locator('.worktrees .tab.active', { hasText: 'other' })
       .waitFor();
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await page
       .locator('.virtual-row .row.file', { hasText: 'long.txt' })
       .click();

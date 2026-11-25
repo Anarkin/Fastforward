@@ -14,6 +14,7 @@ import { viewerRows, viewerTexts } from './cellsSeen';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { rounded } from './rounding';
+import { commitRow, commitsSeen } from './commitRows';
 
 const scale = 1.25;
 
@@ -39,6 +40,65 @@ async function pixelsOf(
   );
 }
 
+const graphShown = (page: Page) =>
+  page
+    .locator('.columns > .column')
+    .first()
+    .locator('.virtual-rows')
+    .evaluate((list) => {
+      const layer = list.querySelector<HTMLElement>('.graph-layer');
+      const spacer = layer?.parentElement;
+      const column = list.closest('.column');
+      if (!layer || !spacer || !column) {
+        return [];
+      }
+      const box = spacer.getBoundingClientRect();
+      const shown = list.getBoundingClientRect();
+      const rows = layer.seenCommits?.() ?? [];
+      const probe = document.createElement('div');
+      probe.className = 'commit selected';
+      list.append(probe);
+      const chosen = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return (layer.seenShapes?.() ?? []).flatMap((shape) => {
+        const y = box.top + shape.y + (shape.height ?? 0) / 2;
+        const row = rows.find(
+          (each) => y >= each.top && y < each.top + each.height,
+        );
+        if (!row || y < shown.top + 4 || y > shown.bottom - 4) {
+          return [];
+        }
+        return [
+          {
+            ...shape,
+            x: box.left + shape.x,
+            y,
+            selected: row.selected,
+            ground: row.selected
+              ? chosen
+              : getComputedStyle(column).backgroundColor,
+          },
+        ];
+      });
+    });
+
+function pixelsOfColors(page: Page, css: readonly string[]): Promise<string[]> {
+  return page.evaluate(
+    (colors) =>
+      colors.map((color) => {
+        const canvas = new OffscreenCanvas(1, 1);
+        const context = canvas.getContext('2d');
+        if (!context) {
+          return '';
+        }
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data).join(',');
+      }),
+    css,
+  );
+}
+
 const scaled = (value: number) => Math.round(value * scale);
 
 const topCommit = async (page: Page): Promise<void> => {
@@ -47,8 +107,8 @@ const topCommit = async (page: Page): Promise<void> => {
     .first()
     .locator('.virtual-rows')
     .evaluate((list) => list.scrollTo({ top: 0 }));
-  await page.locator('.commit', { hasText: 'first' }).click();
-  await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+  await commitRow(page, 'first').click();
+  await commitRow(page, 'first', { selected: true }).waitFor();
   await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
 };
 
@@ -183,7 +243,7 @@ suite('App at a scale of 125%', () => {
       scale,
     });
     page = await app.firstWindow();
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
   });
 
@@ -531,120 +591,76 @@ suite('App at a scale of 125%', () => {
       .locator('.columns > .column')
       .first()
       .locator('.virtual-rows');
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     for (let step = 0; step < 45; step++) {
       await page.keyboard.press('ArrowDown');
     }
     await page.waitForTimeout(500);
-    const below = await list.evaluate((element) => {
-      const column = element.closest('.column');
-      const selected = element.querySelector('.commit.selected');
-      if (!column || !selected) {
-        return Number.NaN;
-      }
-      const line = parseFloat(
-        getComputedStyle(column).getPropertyValue('--column-line'),
-      );
-      return (
-        column.getBoundingClientRect().bottom -
-        line -
-        selected.getBoundingClientRect().bottom
-      );
-    });
+    const selected = (await commitsSeen(page)).find((row) => row.selected);
+    const below = await list.evaluate(
+      (element, bottom) => {
+        const column = element.closest('.column');
+        if (!column || bottom === undefined) {
+          return Number.NaN;
+        }
+        const line = parseFloat(
+          getComputedStyle(column).getPropertyValue('--column-line'),
+        );
+        return column.getBoundingClientRect().bottom - line - bottom;
+      },
+      selected && selected.top + selected.height,
+    );
     assert.ok(below >= -0.01, String(below));
   });
 
-  test('rings the dot of a commit in the color its row shows, plain or selected', async () => {
-    const grounds = await page
-      .locator('.columns > .column')
-      .first()
-      .locator('.virtual-rows')
-      .evaluate((list) => {
-        const view = list.ownerDocument.defaultView;
-        const ring = (commit: Element | null | undefined) => {
-          const dot = commit?.previousElementSibling?.querySelector('circle');
-          return dot ? (view?.getComputedStyle(dot).stroke ?? '') : 'no dot';
-        };
-        const selected = list.querySelector('.commit.selected');
-        const plain = [...list.querySelectorAll('.commit:not(.selected)')].find(
-          (commit) =>
-            !commit.matches(':hover') &&
-            commit.previousElementSibling?.querySelector('circle'),
-        );
-        const column = list.closest('.column');
-        return {
-          selected: ring(selected),
-          selectedRow: selected
-            ? getComputedStyle(selected).backgroundColor
-            : '',
-          plain: ring(plain),
-          panel: column ? getComputedStyle(column).backgroundColor : '',
-        };
-      });
+  test('leaves the edge around the dot of a commit in the color its row shows, plain or selected, as the canvas of the graph cuts the dot out of its lines rather than drawing its edge', async () => {
+    await page.mouse.move(2, 2);
+    const dots = (await graphShown(page)).filter(
+      (shape) => shape.kind === 'disc' && (shape.radius ?? 0) >= 2,
+    );
+    const selected = dots.find((dot) => dot.selected);
+    const plain = dots.find((dot) => !dot.selected);
+    assert.ok(selected && plain, JSON.stringify(dots));
+    const edges = await pixelsOf(
+      page,
+      await page.screenshot(),
+      [selected, plain].map((dot): [number, number] => [
+        Math.floor((dot.x + 4) * scale),
+        Math.floor(dot.y * scale),
+      ]),
+    );
     assert.deepStrictEqual(
-      [grounds.selected, grounds.plain],
-      [grounds.selectedRow, grounds.panel],
+      edges,
+      await pixelsOfColors(page, [selected.ground, plain.ground]),
     );
   });
 
   test('draws the lanes of the graph on whole device pixels, with no pixel half in a lane', async () => {
     await page.mouse.move(2, 2);
-    const list = page
-      .locator('.columns > .column')
-      .first()
-      .locator('.virtual-rows');
-    const across = await list.evaluate((element) => {
-      const shown = element.getBoundingClientRect();
-      const row = [...element.querySelectorAll('.virtual-row')].find(
-        (each) =>
-          each.getBoundingClientRect().top > shown.top &&
-          each.getBoundingClientRect().bottom < shown.bottom &&
-          each.querySelector('.commit:not(.selected)') &&
-          each.querySelector('.graph path'),
-      );
-      const graph = row?.querySelector('.graph');
-      const line = graph?.querySelector('path');
-      if (!row || !graph || !line) {
-        return undefined;
-      }
-      const box = graph.getBoundingClientRect();
-      return {
-        left: box.left,
-        top: row.getBoundingClientRect().top + 2,
-        lane: getComputedStyle(line).stroke,
-        ground: getComputedStyle(element).backgroundColor,
-      };
-    });
-    assert.ok(across, 'no row of the graph');
+    const lane = (await graphShown(page)).find(
+      (shape) =>
+        shape.kind === 'rect' && (shape.height ?? 0) >= 6 && !shape.selected,
+    );
+    assert.ok(lane, 'no lane of the graph in sight');
     const shot = await page.screenshot();
-    const start = Math.ceil((across.left + 3) * scale);
+    const middle = Math.floor((lane.x + (lane.width ?? 0) / 2) * scale);
+    const y = Math.floor(lane.y * scale);
+    const [color = ''] = await pixelsOf(page, shot, [[middle, y]]);
     const pixels = await pixelsOf(
       page,
       shot,
       Array.from({ length: 16 }, (_, index): [number, number] => [
-        start + index,
-        Math.round(across.top * scale),
+        middle - 8 + index,
+        y,
       ]),
     );
-    const colors = await page.evaluate(
-      (css) =>
-        css.map((color) => {
-          const canvas = new OffscreenCanvas(1, 1);
-          const context = canvas.getContext('2d');
-          if (!context) {
-            return '';
-          }
-          context.fillStyle = color;
-          context.fillRect(0, 0, 1, 1);
-          return Array.from(context.getImageData(0, 0, 1, 1).data).join(',');
-        }),
-      [across.lane, across.ground],
-    );
+    const [ground = ''] = await pixelsOfColors(page, [lane.ground]);
     assert.deepStrictEqual(
-      pixels.filter((pixel) => !colors.includes(pixel)),
+      pixels.filter((pixel) => pixel !== color && pixel !== ground),
       [],
-      JSON.stringify({ pixels, colors }),
+      JSON.stringify({ pixels, color, ground }),
     );
+    assert.ok(pixels.includes(ground), JSON.stringify({ pixels, ground }));
   });
 
   test('opens the search of the commits over their title with its button where that of the title is and its list where the frame of the column starts, to a device pixel', async () => {

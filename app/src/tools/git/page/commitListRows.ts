@@ -90,20 +90,6 @@ export function drawnRows(
   });
 }
 
-export function fixedRowHeight(
-  history: CommitHistory | undefined,
-  offset: number,
-  index: number,
-  estimated: number,
-  bubbleRows: BubbleRows = noBubbleRows,
-): number | undefined {
-  return index < offset ||
-    (history?.at(index - offset) !== undefined &&
-      !bubbleRows.has(index - offset))
-    ? undefined
-    : estimated;
-}
-
 export function useRowLineHeight(
   list: RefObject<Element | null>,
   ratio: number,

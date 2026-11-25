@@ -19,6 +19,7 @@ import {
 } from './messageHolding';
 import { MessageCorner, MessagePanel } from './messagePanel';
 import type { KeptPin } from './state';
+import { rowAt, type RowHit } from './commitHits';
 
 interface Peek {
   readonly index: number;
@@ -42,64 +43,58 @@ function samePeek(shown: Peek | undefined, next: Peek | undefined): boolean {
   );
 }
 
-function isElement(target: EventTarget | null): target is Element {
-  return target !== null && 'closest' in target;
+interface Rows {
+  readonly list: HTMLElement;
+  readonly spacer: HTMLElement;
+  readonly hits: readonly RowHit[];
 }
 
-function peekAt(list: HTMLElement, x: number, y: number): Peek | undefined {
-  return peekOf(list, list.ownerDocument.elementFromPoint(x, y));
-}
-
-function peekOf(
-  list: HTMLElement,
-  target: EventTarget | null,
+function peekOfRow(
+  rows: Rows | undefined,
+  row: RowHit | undefined,
 ): Peek | undefined {
-  const row = isElement(target)
-    ? target.closest<HTMLElement>('.virtual-row')
-    : null;
-  const commit = row?.querySelector<HTMLElement>('.commit:not(.working-tree)');
-  const subject = commit?.querySelector<HTMLElement>('.subject');
-  if (!row || !commit || !subject || !list.contains(row)) {
+  if (rows === undefined || row === undefined) {
     return undefined;
   }
-  const text = subject.getBoundingClientRect();
-  const room = list.getBoundingClientRect();
+  const origin = rows.spacer.getBoundingClientRect();
+  const room = rows.list.getBoundingClientRect();
   return {
-    index: Number(row.dataset.index),
+    index: row.index,
     anchor: {
-      left: text.left,
-      top: commit.getBoundingClientRect().top,
-      width: text.width,
+      left: origin.left + row.subjectLeft,
+      top: origin.top + row.top,
+      width: row.subjectWidth,
       room: { top: room.top, bottom: room.bottom },
     },
   };
+}
+
+function peekAt(
+  rows: Rows | undefined,
+  x: number,
+  y: number,
+): Peek | undefined {
+  if (rows === undefined) {
+    return undefined;
+  }
+  const origin = rows.spacer.getBoundingClientRect();
+  const room = rows.list.getBoundingClientRect();
+  return x < room.left || x >= room.right || y < room.top || y >= room.bottom
+    ? undefined
+    : peekOfRow(rows, rowAt(rows.hits, y - origin.top));
 }
 
 function withKeys(peek: Peek | undefined): Peek | undefined {
   return peek && { ...peek, byKeys: true };
 }
 
-function selectedPeek(list: HTMLElement): Peek | undefined {
-  const active = list.getAttribute('aria-activedescendant');
-  return active
-    ? peekOf(list, list.ownerDocument.getElementById(active))
-    : undefined;
-}
-
-function rowOf(
-  list: HTMLElement,
-  commitAt: (index: number) => CommitInfo | undefined,
-  hash: string,
-): Element | undefined {
-  return [...list.querySelectorAll<HTMLElement>('.virtual-row')].find(
-    (row) => commitAt(Number(row.dataset.index))?.hash === hash,
-  );
-}
-
 const keptPinWaits = 2000;
 
 export function MessagePeek({
   list,
+  spacer,
+  hits,
+  selectedRow,
   commitAt,
   indent,
   renderRow,
@@ -107,12 +102,19 @@ export function MessagePeek({
   onPin,
 }: {
   list: RefObject<HTMLElement | null>;
+  spacer: RefObject<HTMLElement | null>;
+  hits: { current: readonly RowHit[] };
+  selectedRow: () => RowHit | undefined;
   commitAt: (index: number) => CommitInfo | undefined;
   indent: number;
   renderRow: (commit: CommitInfo, corner: React.ReactNode) => React.ReactNode;
   keptPin?: KeptPin;
   onPin?: (pin: KeptPin | undefined) => void;
 }) {
+  const rowsOf = (): Rows | undefined =>
+    list.current && spacer.current
+      ? { list: list.current, spacer: spacer.current, hits: hits.current }
+      : undefined;
   const holding = useRef<Holding>('none');
   const pointer = useRef<{ readonly x: number; readonly y: number }>(undefined);
   const byKeys = useRef(false);
@@ -153,17 +155,17 @@ export function MessagePeek({
     }
   }, [setPinned]);
   useLayoutEffect(() => {
-    const element = list.current;
+    const rows = rowsOf();
     const hash = restoring ? keptPin?.hash : undefined;
     const row =
-      hash === undefined || !element
+      hash === undefined || !rows
         ? undefined
-        : rowOf(element, commitAt, hash);
-    if (!element || !row) {
+        : rows.hits.find((each) => commitAt(each.index)?.hash === hash);
+    if (!rows || !row) {
       return undefined;
     }
     const frame = requestAnimationFrame(() => {
-      const at = peekOf(element, row);
+      const at = peekOfRow(rows, row);
       const commit = at && commitAt(at.index);
       if (at && commit && commit.hash === hash) {
         setPlaced({ commit, anchor: at.anchor, restored: true });
@@ -188,7 +190,7 @@ export function MessagePeek({
     }
     const at =
       element && element.contains(active ?? null)
-        ? selectedPeek(element)
+        ? peekOfRow(rowsOf(), selectedRow())
         : undefined;
     const commit = at && commitAt(at.index);
     if (!at || !commit) {
@@ -202,10 +204,10 @@ export function MessagePeek({
   });
 
   const pin = useEffectEvent((event: MouseEvent) => {
-    const element = list.current;
+    const rows = rowsOf();
     const at =
-      element && clicked(gitKeymap.pin, event) !== undefined
-        ? peekOf(element, event.target)
+      rows && clicked(gitKeymap.pin, event) !== undefined
+        ? peekAt(rows, event.clientX, event.clientY)
         : undefined;
     const commit = at && commitAt(at.index);
     if (!at || !commit) {
@@ -224,8 +226,8 @@ export function MessagePeek({
         ? undefined
         : byKeys.current &&
             element.contains(element.ownerDocument.activeElement)
-          ? withKeys(selectedPeek(element))
-          : at && peekAt(element, at.x, at.y);
+          ? withKeys(peekOfRow(rowsOf(), selectedRow()))
+          : at && peekAt(rowsOf(), at.x, at.y);
     setPeek((shown) => (samePeek(shown, next) ? shown : next));
   });
 

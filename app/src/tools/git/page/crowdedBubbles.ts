@@ -15,7 +15,7 @@ import { useGit } from './store';
 
 const noCrowded: readonly CrowdedCommit[] = [];
 
-function useCommitSurroundings(): CommitSurroundings {
+export function useCommitSurroundings(): CommitSurroundings {
   const refsByCommit = useGit((state) => state.refsByCommit);
   const stashCommits = useGit((state) => state.stashCommits);
   const bookmarked = useGit((state) => state.bookmarked);

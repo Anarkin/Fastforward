@@ -7,6 +7,7 @@ import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { untilSettled } from './waits';
+import { commitRow } from './commitRows';
 
 const tools = ['commander', 'viewer', 'editor', 'git', 'diff'] as const;
 
@@ -125,10 +126,7 @@ for (const scale of ['1', '1.25', '1.5']) {
     const show = async (tool: Tool) => {
       await page.locator('.tabs .tab').nth(tools.indexOf(tool)).click();
       if (tool === 'git') {
-        await page
-          .locator('.virtual-rows.list .virtual-row', { hasText: 'files' })
-          .first()
-          .waitFor();
+        await commitRow(page, 'files').waitFor();
         await page.locator('.virtual-rows.list').first().focus();
         await page.keyboard.press('h');
         await page.locator('.diff-view .file-header').first().waitFor();

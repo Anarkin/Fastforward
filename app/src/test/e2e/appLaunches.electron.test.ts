@@ -19,6 +19,7 @@ import { waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitRow } from './commitRows';
 
 const syntaxWorkers = (page: Page) =>
   page.workers().filter((worker) => worker.url().endsWith('/syntaxWorker.js'))
@@ -56,7 +57,7 @@ suite('App with a git tab behind a commander tab', () => {
       const git = await launched('git');
       try {
         await git.page.locator('.tabs .tab').nth(1).click();
-        await git.page.locator('.commit', { hasText: 'first' }).waitFor();
+        await commitRow(git.page, 'first').waitFor();
         await waitFor(() => syntaxWorkers(git.page) === 1, 'the syntax worker');
       } finally {
         await closeOrKill(git.app);
@@ -117,7 +118,7 @@ suite('App started from a terminal', () => {
         await popup.waitFor({ state: 'detached' });
       };
       await openWithGit();
-      await page.locator('.commit', { hasText: 'second' }).waitFor();
+      await commitRow(page, 'second').waitFor();
       assert.deepStrictEqual(await names(), ['first', 'second']);
       const electron = await app.evaluate(() => process.execPath);
       const sandbox = process.platform === 'linux' ? ['--no-sandbox'] : [];
@@ -128,7 +129,7 @@ suite('App started from a terminal', () => {
       );
       assert.strictEqual(handedOff.status, 0, String(handedOff.stderr));
       await openWithGit();
-      await page.locator('.commit', { hasText: 'third' }).waitFor();
+      await commitRow(page, 'third').waitFor();
       assert.deepStrictEqual(await names(), ['first', 'second', 'third']);
       assert.match(
         (await page
@@ -158,7 +159,7 @@ suite('App whose page is gone', () => {
     const app = await launchApp(profile);
     try {
       const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      await commitRow(page, 'first').waitFor();
       const killed = await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()
           .toSorted((a, b) => a.id - b.id)[0]
@@ -217,7 +218,7 @@ suite('App whose page is gone', () => {
           }
           const shown: unknown = await Promise.race([
             contents.executeJavaScript(
-              "[...document.querySelectorAll('.commit')].some((row) => row.textContent.includes('first'))",
+              "[...document.querySelectorAll('.graph-layer')].some((layer) => (layer.seenCommits?.() ?? []).some((row) => (row.subject ?? '').includes('first')))",
             ),
             new Promise((resolve) => setTimeout(() => resolve(false), 1000)),
           ]);

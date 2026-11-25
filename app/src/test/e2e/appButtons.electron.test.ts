@@ -8,6 +8,7 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitRow } from './commitRows';
 
 interface ButtonLayout {
   readonly gaps: readonly number[];
@@ -72,7 +73,7 @@ suite('App buttons', () => {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await page.locator('.commit', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second').waitFor();
   });
 
   afterAll(async () => {
@@ -102,7 +103,7 @@ suite('App buttons', () => {
         ),
       'the window zoomed to 125%',
     );
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await untilDiffLine(page, () => true, 'a line of the diff');
     const git = await buttonsOf(page);
     await page.locator('.tabs .tab:has(.tool-commander)').click();

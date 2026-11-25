@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
-  useId,
   useLayoutEffect,
   useMemo,
   useReducer,
@@ -13,11 +12,27 @@ import {
 } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { sidesOf } from '../../../lib/shared/comparisons';
+import { workingTreeHash } from '../shared/protocol';
 import { Column } from '../../../lib/page/column';
 import { ColumnResizer } from './columnResizer';
 import { useOpenMenu } from './menus';
 import { rowLanes, withoutWorkingTreeLink } from './graphLanes';
-import { GraphCell } from './graph';
+import { useCommitPointer } from './commitPointer';
+import type { RowHit } from './commitHits';
+import { CommitCanvas } from './commitCanvas';
+import {
+  keptLooksOf,
+  lookIn,
+  type KeptLooks,
+  type RowLook,
+} from './commitLooks';
+import { BubbleShapes } from './bubbleShapes';
+import {
+  looksOn,
+  shapeKey,
+  type ActionKey,
+  type BubbleLook,
+} from './bubbleLooks';
 import {
   layoutSelectionOf,
   openingOf,
@@ -42,7 +57,6 @@ import { realHeight, scrollCap } from './cappedScroll';
 import { endPaddingToStart, snappedToStart } from '../../../lib/page/rowStarts';
 import { followRows, type RowFollower } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
-import { rowPlace } from '../../../lib/page/rowPlace';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { endCovered, rowRoom } from '../../../lib/page/listRows';
 import {
@@ -66,14 +80,14 @@ import {
   rowSizes,
   rowKeyOf,
   drawnRows,
-  fixedRowHeight,
   crowdedResize,
 } from './commitListRows';
-import { commitOption, commitListbox } from './commitListItems';
+import { selectionClasses } from './commitListItems';
+import { formatDate } from '../../../lib/page/dates';
 import { BubbleLab } from './bubbleLab';
 import { indentOf, rowIndent } from './bubbleLines';
-import { useCrowdedBubbles } from './crowdedBubbles';
-import { CommitRow, ListedCommitRow, WorkingTreeRow } from './commitRow';
+import { useCommitSurroundings, useCrowdedBubbles } from './crowdedBubbles';
+import { CommitRow } from './commitRow';
 import { SoloButton } from './soloButton';
 import { ColumnStatus } from '../../../lib/page/columnStatusLine';
 import { commitsCounted } from './columnStatus';
@@ -90,11 +104,29 @@ const noSelect = () => {};
 
 const openingRows = 20;
 
-function selectionOfRow(
-  hash: string,
-  selection: string | undefined,
-): string | undefined {
-  return sidesOf(selection).includes(hash) ? selection : undefined;
+function keptIn(
+  kept: { current: KeptLooks | undefined },
+  parts: readonly unknown[],
+): KeptLooks {
+  kept.current = keptLooksOf(kept.current, parts);
+  return kept.current;
+}
+
+function bubbleShapesOf(
+  looks: readonly (RowLook | undefined)[],
+): Map<string, BubbleLook> {
+  const shapes = new Map<string, BubbleLook>();
+  for (const look of looks) {
+    if (look?.kind === 'commit') {
+      for (const { look: bubble } of look.bubbles) {
+        const key = shapeKey(bubble);
+        if (!shapes.has(key)) {
+          shapes.set(key, { ...bubble, text: '' });
+        }
+      }
+    }
+  }
+  return shapes;
 }
 
 export function Commits({
@@ -118,7 +150,6 @@ export function Commits({
   );
   const {
     selectCommit: onSelect,
-    compareCommit: onCompare,
     toggleMerge: onToggleMerge,
     scrolled: reportScrolled,
     loadCommits: onLoad,
@@ -140,7 +171,8 @@ export function Commits({
     history?.getVersion ?? noVersion,
   );
   const list = useRef<HTMLDivElement>(null);
-  const listId = useId();
+  const spacer = useRef<HTMLDivElement>(null);
+  const hits = useRef<readonly RowHit[]>([]);
   const hasWorkingTree = workingTree !== undefined;
   const openMenu = useOpenMenu();
   const offset = hasWorkingTree ? 1 : 0;
@@ -188,6 +220,14 @@ export function Commits({
   const totalSize = virtualizer.getTotalSize();
   useLayoutEffect(resized, [resized, totalSize]);
   const scrollSettings = useShell((state) => state.scrolling);
+  const dateFormat = useShell((state) => state.dateFormat);
+  const around = useCommitSurroundings();
+  const pulling = useGit((state) => state.tab.pulling);
+  const pushing = useGit((state) => state.tab.pushing);
+  const pullingBranch = useGit((state) => state.tab.pullingBranch);
+  const pushingBranch = useGit((state) => state.tab.pushingBranch);
+  const pushingTag = useGit((state) => state.tab.pushingTag);
+  const bubbleProbe = useRef<HTMLDivElement>(null);
   const [room, setRoom] = useState(0);
   const capped = totalSize > scrollCap;
   const startOf = (index: number) =>
@@ -430,64 +470,104 @@ export function Commits({
       : row;
   };
 
-  const renderGraph = (index: number, height: number, top: number) => {
-    const graphRow = graphOf(index);
-    return (
-      graphRow && (
-        <GraphCell
-          row={graphRow}
-          height={height}
-          line={line}
-          hash={history?.at(index - offset)?.hash}
-          top={top}
-          scale={scale}
-          onToggleMerge={onToggleMerge}
-        />
-      )
-    );
-  };
-
   const indent = (index: number) => indentOf(rowLanes(graphOf(index)));
 
-  const renderRow = (index: number) => {
+  const lookParts = [
+    history,
+    version,
+    selected,
+    headCommit,
+    around,
+    dateFormat,
+    workingTree,
+    pulling,
+    pushing,
+    pullingBranch,
+    pushingBranch,
+    pushingTag,
+  ];
+  const keptLooks = useRef<KeptLooks>(undefined);
+  const looksKept = keptIn(keptLooks, lookParts);
+
+  const lookOf = (index: number): RowLook | undefined => {
+    const known = looksKept.looks.get(index);
+    if (
+      known?.kind === 'commit' &&
+      known.lines !== bubbleRows.get(index - offset)
+    ) {
+      looksKept.looks.delete(index);
+    }
+    return lookIn(looksKept, index, freshLookOf);
+  };
+
+  const freshLookOf = (index: number): RowLook | undefined => {
     if (hasWorkingTree && index === 0) {
-      return (
-        <WorkingTreeRow
-          count={workingTree}
-          selection={selected}
-          indent={indent(index)}
-          onSelect={onSelect}
-          onCompare={onCompare}
-        />
-      );
+      const sides = selectionClasses(workingTreeHash, selected);
+      return {
+        kind: 'workingTree',
+        text: strings.commits.uncommittedChanges(workingTree),
+        empty: workingTree === 0,
+        selected: sides.includes('selected'),
+        compareFrom: sides.includes('compare-from'),
+      };
     }
-    const position = index - offset;
-    const commit = history?.at(position);
+    const commit = history?.at(index - offset);
     if (!commit) {
-      return (
-        <div
-          className="commit placeholder"
-          style={{ paddingLeft: indent(index) }}
-        >
-          <div className="commit-line">
-            <span className="bar subject-bar" />
-          </div>
-          <div className="commit-line secondary">
-            <span className="bar author-bar" />
-          </div>
-        </div>
-      );
+      return { kind: 'placeholder' };
     }
-    return (
-      <ListedCommitRow
-        commit={commit}
-        selected={selectionOfRow(commit.hash, selected)}
-        indent={indent(index)}
-        onSelect={onSelect}
-        onCompare={onCompare}
-        bubbleLines={bubbleRows.get(index - offset)}
-      />
-    );
+    const sides = selectionClasses(commit.hash, selected);
+    return {
+      kind: 'commit',
+      bubbles: looksOn(commit.hash, around).map((bubble) => {
+        const checkedOut =
+          bubble.kind === 'head' ||
+          (bubble.kind === 'branch' && bubble.text === around.head);
+        const running: ActionKey[] =
+          bubble.kind === 'tag'
+            ? pushingTag.includes(bubble.text)
+              ? ['push']
+              : []
+            : bubble.kind === 'branch'
+              ? [
+                  ...((
+                    checkedOut ? pulling : pullingBranch.includes(bubble.text)
+                  )
+                    ? (['pull'] as const)
+                    : []),
+                  ...((
+                    checkedOut ? pushing : pushingBranch.includes(bubble.text)
+                  )
+                    ? (['push'] as const)
+                    : []),
+                ]
+              : [];
+        return { look: bubble, checkedOut, running };
+      }),
+      lines: bubbleRows.get(index - offset),
+      subject: commit.subject,
+      author: commit.authorName,
+      date: formatDate(commit.commitDate, dateFormat),
+      checkedOut: commit.hash === headCommit,
+      selected: sides.includes('selected'),
+      compareFrom: sides.includes('compare-from'),
+    };
+  };
+
+  const hashOf = (index: number): string | undefined =>
+    index < offset ? workingTreeHash : history?.at(index - offset)?.hash;
+
+  const pointer = useCommitPointer({
+    list,
+    spacer,
+    hits,
+    hashOf,
+    graphOf,
+    stashes,
+  });
+
+  const selectedRow = () => {
+    const hash = sidesOf(selected).at(-1);
+    return hits.current.find((row) => hashOf(row.index) === hash);
   };
 
   return (
@@ -524,27 +604,36 @@ export function Commits({
         ref={list}
         tabIndex={0}
         {...{ [columnFocusAttribute]: '' }}
-        {...commitListbox(listId, rows, selected)}
+        aria-label={strings.commits.list}
         onKeyDown={onKeyDown}
+        onClick={pointer.onClick}
+        onPointerDown={pointer.onPointerDown}
         onContextMenu={(event) => {
-          const target = keyboardMenuTarget(selected, stashes);
-          if (
-            event.target !== event.currentTarget ||
-            !menuFromKeyboard(event) ||
-            !target
-          ) {
+          if (!menuFromKeyboard(event)) {
+            if (!pointer.onContextMenu(event)) {
+              event.preventDefault();
+            }
             return;
           }
-          const box = (
-            event.currentTarget.querySelector('.commit.selected') ??
-            event.currentTarget
-          ).getBoundingClientRect();
+          const target = keyboardMenuTarget(selected, stashes);
+          if (!target) {
+            return;
+          }
+          const bounds = event.currentTarget.getBoundingClientRect();
+          const origin = spacer.current?.getBoundingClientRect();
+          const row = selectedRow();
           openMenu(
             {
               stopPropagation: () => event.stopPropagation(),
               preventDefault: () => event.preventDefault(),
-              clientX: box.left,
-              clientY: box.bottom,
+              clientX:
+                row === undefined || origin === undefined
+                  ? bounds.left
+                  : origin.left + row.subjectLeft,
+              clientY:
+                row === undefined || origin === undefined
+                  ? bounds.bottom
+                  : origin.top + row.top + row.height,
             },
             target,
           );
@@ -552,6 +641,7 @@ export function Commits({
       >
         <div
           className="virtual-spacer"
+          ref={spacer}
           style={{ height: realHeight(totalSize) + endPad }}
         >
           <BubbleLab
@@ -559,30 +649,42 @@ export function Commits({
             onAdvances={setBubbleAdvances}
             onWidth={onBubbleWidth}
           />
-          {rows.map((row) => {
-            const height = fixedRowHeight(
-              history,
-              offset,
-              row.index,
-              row.size,
-              bubbleRows,
-            );
-            return (
-              <div
-                key={row.key}
-                {...commitOption(listId, row.key, row.index, count, selected)}
-                className="virtual-row"
-                data-index={row.index}
-                ref={
-                  height === undefined ? virtualizer.measureElement : undefined
+          <BubbleShapes
+            shapes={bubbleShapesOf(rows.map((row) => lookOf(row.index)))}
+            probe={bubbleProbe}
+          />
+          {pointer.tipped && (
+            <span
+              className="commit-tip"
+              style={{
+                left: pointer.tipped.box.left,
+                top: pointer.tipped.box.top,
+                width: pointer.tipped.box.width,
+                height: pointer.tipped.box.height,
+              }}
+              {...pointer.tipped.said}
+            />
+          )}
+          <CommitCanvas
+            list={list}
+            hits={hits}
+            bubbleProbe={bubbleProbe}
+            lookOf={lookOf}
+            indentOf={indent}
+            shown={rows.map((row) => row.index)}
+            placeOf={(index) => {
+              const measured = virtualizer.measurementsCache[index];
+              return (
+                measured && {
+                  top: measured.start - shift,
+                  height: measured.size,
                 }
-                style={rowPlace(row.start - shift, height)}
-              >
-                {renderGraph(row.index, row.size, row.start)}
-                {renderRow(row.index)}
-              </div>
-            );
-          })}
+              );
+            }}
+            graphOf={graphOf}
+            line={line}
+            scale={scale}
+          />
         </div>
       </div>
       <MessagePeek
@@ -590,6 +692,9 @@ export function Commits({
         keptPin={keptPin}
         onPin={pinMessage}
         list={list}
+        spacer={spacer}
+        hits={hits}
+        selectedRow={selectedRow}
         commitAt={(index) =>
           index < offset ? undefined : history?.at(index - offset)
         }

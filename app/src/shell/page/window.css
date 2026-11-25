@@ -112,11 +112,6 @@ body {
     var(--color-focus) var(--color-focus-hover),
     transparent
   );
-  --hover-ground: color-mix(
-    in srgb,
-    var(--color-focus) var(--color-focus-hover),
-    var(--color-panel-background)
-  );
   --toggle-on-background: color-mix(
     in srgb,
     var(--color-focus) var(--color-focus-selected),

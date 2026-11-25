@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { type CommitInfo, workingTreeHash } from '../shared/protocol';
+import { type CommitInfo } from '../shared/protocol';
 import { CommitBubble, HeadBubble, RefBubble, StashBubble } from './bubbles';
 import { commitMenuTarget, useOpenMenu } from './menus';
 import { detachedHead } from './selectors';
@@ -11,13 +11,7 @@ import { noFilter, type Filter } from '../../../lib/shared/filter';
 import { type Click } from '../../../lib/shared/keymap';
 import { bubblesOn, type Bubble } from './bubbleLooks';
 import { inLines } from './bubbleLines';
-import {
-  noRefs,
-  isCompareClick,
-  commitClass,
-  selectionClasses,
-} from './commitListItems';
-import { strings } from '../../../lib/shared/strings';
+import { noRefs, isCompareClick, commitClass } from './commitListItems';
 
 const noBubbles: ReadonlySet<string> = new Set();
 
@@ -140,41 +134,6 @@ export function CommitRow({
       </div>
       <CommitBubbles hash={commit.hash} lines={bubbleLines} />
       {children}
-    </div>
-  );
-}
-
-export const ListedCommitRow = memo(CommitRow);
-
-export function WorkingTreeRow({
-  count,
-  selection,
-  indent,
-  onSelect,
-  onCompare,
-}: {
-  count: number;
-  selection: string | undefined;
-  indent: number;
-  onSelect: (hash: string | undefined) => void;
-  onCompare?: (hash: string) => void;
-}) {
-  const dirty = count > 0;
-  return (
-    <div
-      style={{ paddingLeft: indent }}
-      className={`commit working-tree ${dirty ? '' : 'empty'} ${selectionClasses(workingTreeHash, selection).join(' ')}`}
-      onClick={(event: Click) =>
-        onCompare && isCompareClick(event)
-          ? onCompare(workingTreeHash)
-          : onSelect(workingTreeHash)
-      }
-    >
-      <div className="commit-line">
-        <span className="subject">
-          {strings.commits.uncommittedChanges(count)}
-        </span>
-      </div>
     </div>
   );
 }

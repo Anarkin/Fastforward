@@ -3,6 +3,7 @@ import { CellFrame, rectBytes, tileBytes } from './cellFrame';
 import { GlyphAtlas } from './glyphAtlas';
 import { GlyphTiles, type CellMetrics } from './glyphTiles';
 import { bufferUsage, isGpuContext, shaderStage } from './gpuDevice';
+import { ShapeLayer, type Shape } from './shapeLayer';
 
 const placed = `
   var out: Placed;
@@ -241,10 +242,13 @@ export class CellSurface {
   private underTiles: Room | undefined;
   private clip = 0;
   private measure: Measured | undefined;
+  private textured:
+    { readonly texture: GPUTexture; readonly group: GPUBindGroup } | undefined;
+  private shapeLayer: ShapeLayer | undefined;
   private ground: Rgba = [0, 0, 0, 1];
 
   constructor(
-    private readonly device: GPUDevice,
+    readonly device: GPUDevice,
     page: Document = document,
   ) {
     this.canvas = page.createElement('canvas');
@@ -317,6 +321,32 @@ export class CellSurface {
     return this.measure.glyphs.tiles;
   }
 
+  texturedBy(texture: GPUTexture): void {
+    if (this.textured?.texture === texture) {
+      return;
+    }
+    this.textured = {
+      texture,
+      group: this.device.createBindGroup({
+        layout: this.drawing.tileGroups,
+        entries: [
+          { binding: 0, resource: { buffer: this.view } },
+          { binding: 1, resource: texture.createView() },
+        ],
+      }),
+    };
+  }
+
+  shaped(shapes: readonly Shape[], origin: number): void {
+    this.shapeLayer ??= new ShapeLayer(this.device);
+    this.shapeLayer.written(
+      shapes,
+      this.canvas.width,
+      this.canvas.height,
+      origin,
+    );
+  }
+
   grounded(ground: Rgba): void {
     this.ground = ground;
     this.canvas.style.background = cssOf(ground);
@@ -335,10 +365,11 @@ export class CellSurface {
 
   draw(): void {
     const { device, frame, canvas, measure, ground, drawing } = this;
-    if (measure === undefined || canvas.width === 0 || canvas.height === 0) {
+    const tileGroup = this.textured?.group ?? measure?.group;
+    if (tileGroup === undefined || canvas.width === 0 || canvas.height === 0) {
       return;
     }
-    measure.glyphs.tiles.flush();
+    measure?.glyphs.tiles.flush();
     device.queue.writeBuffer(
       this.view,
       0,
@@ -384,8 +415,9 @@ export class CellSurface {
       );
       pass.draw(frame.rectCount * cornersOfEach);
     }
+    this.shapeLayer?.encoded(pass);
     if (frame.tileCount > 0) {
-      pass.setBindGroup(0, measure.group);
+      pass.setBindGroup(0, tileGroup);
       pass.setBindGroup(
         1,
         this.filled(this.tileRoom, frame.tiles, frame.tileCount * tileBytes),
@@ -400,7 +432,7 @@ export class CellSurface {
     }
     if (under.tileCount > 0) {
       this.underTiles ??= this.roomOf(firstRoom);
-      pass.setBindGroup(0, measure.group);
+      pass.setBindGroup(0, tileGroup);
       pass.setBindGroup(
         1,
         this.filled(this.underTiles, under.tiles, under.tileCount * tileBytes),
@@ -424,6 +456,7 @@ export class CellSurface {
     this.tileRoom.buffer.destroy();
     this.underRects?.buffer.destroy();
     this.underTiles?.buffer.destroy();
+    this.shapeLayer?.dispose();
     this.view.destroy();
     this.context.unconfigure();
   }

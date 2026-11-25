@@ -16,6 +16,7 @@ import { waitForCount, waitForFocus } from './waits';
 import { wheelsByWholeRows } from './scrollProbes';
 import { locationRows } from '../../tools/git/page/locationKeys';
 import { waitFor } from '../helpers/fixtures';
+import { commitBubble, commitRow } from './commitRows';
 
 async function removeWorktree(worktree: string, branch: string): Promise<void> {
   await repository
@@ -40,34 +41,38 @@ suite('App', () => {
 
   test('focuses the commit list, whose keys start from the checked-out commit', async () => {
     await page.reload();
-    await page.locator('.commit', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second').waitFor();
     await waitForFocus(page.locator('.virtual-rows.list'), 'the commit list');
     await page.keyboard.press('ArrowDown');
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second', { selected: true }).waitFor();
     await page.keyboard.press('End');
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'first', { selected: true }).waitFor();
     await page.keyboard.press('Home');
-    await page.locator('.commit.working-tree.empty.selected').waitFor();
+    await commitRow(page, 'No uncommitted changes', {
+      selected: true,
+    }).waitFor();
     await page.locator('.columns.nothing-selected').waitFor();
   });
 
   test('selects the checked-out commit on H, revealing it, and its first parent on Ctrl+Down, or Cmd+Down on macOS, goes back and forward through the selected commits on Alt+Left and Alt+Right, and says on U that the checked-out branch has no upstream to show', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'first').click();
+    await commitRow(page, 'first', { selected: true }).waitFor();
     await page.keyboard.press('h');
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second', { selected: true }).waitFor();
     await page.keyboard.press('ControlOrMeta+ArrowDown');
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'first', { selected: true }).waitFor();
     await page.keyboard.press('Home');
-    await page.locator('.commit.working-tree.empty.selected').waitFor();
+    await commitRow(page, 'No uncommitted changes', {
+      selected: true,
+    }).waitFor();
     await page.keyboard.press('h');
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-    await page.locator('.commit', { hasText: 'first' }).click();
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'second', { selected: true }).waitFor();
+    await commitRow(page, 'first').click();
+    await commitRow(page, 'first', { selected: true }).waitFor();
     await page.keyboard.press('Alt+ArrowLeft');
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second', { selected: true }).waitFor();
     await page.keyboard.press('Alt+ArrowRight');
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'first', { selected: true }).waitFor();
     await page.keyboard.press('u');
     await page
       .locator('.notice.info', { hasText: 'main has no upstream' })
@@ -174,19 +179,19 @@ suite('App', () => {
     await popup.locator('.commit', { hasText: 'second' }).waitFor();
     await page.keyboard.press('Enter');
     await popup.waitFor({ state: 'detached' });
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second', { selected: true }).waitFor();
     await waitForFocus(list, 'the commit list');
     await page.keyboard.press('ArrowDown');
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'first', { selected: true }).waitFor();
     await page.keyboard.press('ControlOrMeta+F');
     await waitForFocus(field, 'the search field');
     await field.fill('main');
     await popup.locator('.row.result[data-tip="main"]').click();
     await popup.waitFor({ state: 'detached' });
-    await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+    await commitRow(page, 'second', { selected: true }).waitFor();
     await waitForFocus(list, 'the commit list');
     await page.keyboard.press('ArrowDown');
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'first', { selected: true }).waitFor();
   });
 
   test('keeps the search popup open in the worktree switched to with it open, its field keeping the keyboard and the caret, as the search is the git tab one, closed in both once closed in one', async () => {
@@ -201,9 +206,10 @@ suite('App', () => {
         await popup.waitFor({ state: 'detached' });
       }
       await page.keyboard.press('Control+PageUp');
-      await page
-        .locator('.commit .badge.branch.checked-out', { hasText: 'main' })
-        .waitFor();
+      await commitBubble(page, 'main', {
+        kind: 'branch',
+        checkedOut: true,
+      }).waitFor();
       await removeWorktree(worktree, 'other');
       await waitForCount(worktrees, 0, 'worktrees');
     });
@@ -221,11 +227,10 @@ suite('App', () => {
       );
     assert.deepStrictEqual(await typed(), ['second', 4, 4]);
     await page.keyboard.press('Control+PageDown');
-    await page
-      .locator('.virtual-rows.list .commit .badge.branch.checked-out', {
-        hasText: 'other',
-      })
-      .waitFor();
+    await commitBubble(page, 'other', {
+      kind: 'branch',
+      checkedOut: true,
+    }).waitFor();
     assert.strictEqual(await popup.count(), 1);
     await waitForFocus(field, 'the search field');
     assert.deepStrictEqual(await typed(), ['second', 4, 4]);
@@ -242,9 +247,10 @@ suite('App', () => {
     await page
       .locator('.worktrees .tab.active', { hasText: 'other' })
       .waitFor();
-    await page
-      .locator('.commit .badge.branch.checked-out', { hasText: 'other' })
-      .waitFor();
+    await commitBubble(page, 'other', {
+      kind: 'branch',
+      checkedOut: true,
+    }).waitFor();
     assert.strictEqual(await popup.count(), 0);
   });
 
@@ -273,7 +279,7 @@ suite('App', () => {
       })),
     );
     await waitForCount(worktrees, 2, 'worktrees');
-    await page.locator('.commit', { hasText: 'scrolled 39' }).waitFor();
+    await commitRow(page, 'scrolled 39').waitFor();
     const scrolledTo = await list.evaluate(
       (element, top) =>
         new Promise<number>((resolve) => {
@@ -314,7 +320,7 @@ suite('App', () => {
       await page.locator('.pin-pair > .nav-button.running').waitFor();
       await waitForFocus(page.locator('.virtual-rows.list'), 'the commit list');
       await page.keyboard.press('ArrowDown');
-      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await commitRow(page, 'second', { selected: true }).waitFor();
     } finally {
       fs.writeFileSync(stop, '');
       await page
@@ -329,7 +335,7 @@ suite('App', () => {
   test('filters the files on Ctrl+F in them, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
     const files = page.locator('.columns > .column').nth(1);
     const names = () => files.locator('.row.file .path').allTextContents();
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
     await files.locator('[data-column-focus]').first().focus();
     await page.keyboard.press('ControlOrMeta+F');
@@ -350,7 +356,7 @@ suite('App', () => {
         'changed.txt',
       'only the diff of changed.txt',
     );
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await files.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
     assert.strictEqual(await field.inputValue(), 'txt ch');
     await field.focus();
@@ -368,7 +374,7 @@ suite('App', () => {
   });
 
   test('moves between the columns with the arrows and Tab, the keys working in the one active', async () => {
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await page.locator('.row.group', { hasText: 'All Changes' }).click();
     await page
       .locator('.row.group.selected', { hasText: 'All Changes' })
@@ -464,7 +470,7 @@ suite('App', () => {
   test('counts under the files those a commit changed, and those its filter keeps of them while it narrows them', async () => {
     const files = page.locator('.columns > .column').nth(1);
     const status = () => files.locator('.column-status').textContent();
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
     await waitFor(
       async () => (await status()) === '2 files changed',
@@ -490,13 +496,13 @@ suite('App', () => {
   test('counts under the diff the lines added and removed in the file shown, or in every file shown, in monospace', async () => {
     const diff = page.locator('.columns > .column').nth(2);
     const status = () => diff.locator('.column-status.monospace').textContent();
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await page.locator('.row.file', { hasText: 'changed.txt' }).click();
     await waitFor(
       async () => (await status()) === '+1 −1',
       'the lines counted',
     );
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
     await page.locator('.row.group', { hasText: 'All Changes' }).click();
     await page
@@ -509,7 +515,7 @@ suite('App', () => {
   });
 
   test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
-    await page.locator('.commit', { hasText: 'second' }).click();
+    await commitRow(page, 'second').click();
     await page.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
     assert.strictEqual(
       await page.locator('.row.file', { hasText: 'kept.txt' }).count(),

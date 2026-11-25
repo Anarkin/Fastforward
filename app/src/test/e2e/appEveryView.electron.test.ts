@@ -12,6 +12,7 @@ import { diffTexts } from './diffSeen';
 import { untilSettled } from './waits';
 import { strings } from '../../lib/shared/strings';
 import { byteText, hexPairs } from '../../tools/viewer/shared/byteText';
+import { commitRow } from './commitRows';
 
 const escape = String.fromCharCode(0x1b);
 
@@ -407,7 +408,7 @@ suite('App, every view alike', () => {
   test('diffs the files of a commit in the encodings every other tool reads them in, in the git tab too, naming the encoding on the header of each, rather than taking a file of UTF-16 for binary and the bytes of a code page for UTF-8', async () => {
     const inGit = '.repository:not(.compare-view)';
     await page.locator('.tabs [role="tab"]').nth(13).click();
-    await page.locator('.commit', { hasText: 'second' }).first().click();
+    await commitRow(page, 'second').first().click();
     await waitFor(
       async () => (await diffTexts(page, 'added', inGit)).length === 2,
       'the lines added to both files',

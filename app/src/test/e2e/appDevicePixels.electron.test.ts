@@ -11,6 +11,7 @@ import { viewerRows } from './cellsSeen';
 import { waitForFocus } from './waits';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitRow } from './commitRows';
 
 function thinLinesOffPixels(): string[] {
   const ratio = devicePixelRatio;
@@ -158,7 +159,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
     );
     seen[name] = await page.evaluate(thinLinesOffPixels);
   };
-  await page.locator('.commit', { hasText: 'second' }).click();
+  await commitRow(page, 'second').click();
   await untilDiffLine(page, ({ change }) => change === 'added', 'a line added');
   await look('git');
   seen['tab row'] = await page.evaluate(() => {

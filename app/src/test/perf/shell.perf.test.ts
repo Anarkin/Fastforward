@@ -4,6 +4,7 @@ import { suite, test } from 'vitest';
 import { manyFolder } from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { paced } from './perfInput';
+import { commitsDrawn } from '../e2e/commitRows';
 
 suite('Frames of the window and its tabs', () => {
   const { repository, files } = perfData();
@@ -19,7 +20,7 @@ suite('Frames of the window and its tabs', () => {
       },
       settings: { scrolling: { smooth: true } },
     },
-    (page) => page.locator('.commit').nth(30).waitFor(),
+    (page) => commitsDrawn(page),
   );
 
   test('switching between a git and a commander tab with Ctrl+Tab', async () => {
@@ -30,7 +31,7 @@ suite('Frames of the window and its tabs', () => {
       .first()
       .waitFor();
     await page.locator('.tabs [role="tab"]').nth(0).click();
-    await page.locator('.commit').nth(30).waitFor();
+    await commitsDrawn(page);
     const result = await measure(perf(), 'tabs: switch with Ctrl+Tab', () =>
       paced(12, 250, () => page.keyboard.press('Control+Tab')),
     );

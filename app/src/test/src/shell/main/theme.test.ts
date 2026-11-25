@@ -108,6 +108,10 @@ suite('Theme', () => {
       ],
       'components/cells/page/cellColors.ts': ['rgb(${red} ${green} ${blue})'],
       'components/syntax/page/engine.ts': ['#000000', '#ffffff'],
+      'tools/git/page/bubbleCanvas.ts': [
+        'rgba(${red}, ${green}, ${blue}, ${share})',
+      ],
+      'tools/git/page/commitListLooks.ts': ['rgb(${red} ${green} ${blue})'],
       'shell/page/appIcon.tsx': ['#FFFFFF'],
       'shell/page/appIconDrawing.ts': ['#1A73E8', '#D88B00', '#FBBC04'],
       'shell/page/windowButtons.ts': [

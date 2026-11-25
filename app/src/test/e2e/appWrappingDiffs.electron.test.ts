@@ -42,6 +42,7 @@ import {
   longLines,
 } from './wrappingSamples';
 import { writeSettings } from './settingsWritten';
+import { commitRow } from './commitRows';
 
 const spacedLine = `one two three four five ${'x'.repeat(3000)}`;
 
@@ -90,7 +91,7 @@ suite('App', () => {
   });
 
   test('scrolls a wrapped diff to each match found in a line wrapped onto more rows than the view holds, rather than to the middle of the line, as stepping between the matches of such a line left them out of view', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'longest.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await untilDiffLine(page, wraps, 'a line wrapped onto rows');
@@ -113,7 +114,7 @@ suite('App', () => {
   });
 
   test('wraps a line padded with runs of spaces onto as many rows as the app estimates, the same whether whitespace is shown or not, each run hanging at the end of its row rather than broken onto rows of its own', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'padded.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await page.locator('.diff-view.show-whitespace').waitFor();
@@ -143,7 +144,7 @@ suite('App', () => {
   });
 
   test('draws the lines of a diff on the grid of our terminal, an emoji or a Chinese, Japanese or Korean character two columns, an emoji joined from several one too, so text padded for a terminal lines up, each line a row tall when wrapped too, the commits hidden to give its lines of 41 columns room in a small window, as a shrunk emoji made its line two, colored by its syntax, with whitespace shown, and while a match found ends inside a character of several code points', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'grid.js' }).click();
     await page.keyboard.press('c');
     await page.locator('.columns.commits-hidden').waitFor();
@@ -258,7 +259,7 @@ suite('App', () => {
       [true, true, true, true],
     );
 
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const wrapped = await untilDiffLine(
@@ -282,7 +283,7 @@ suite('App', () => {
   });
 
   test('scrolls the two sides of a side by side diff together on the sideways scrollbar below either, both showing how far they are scrolled, and takes the two away once the lines are wrapped', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'long.txt' }).click();
     await page.getByRole('button', { name: 'Side by Side' }).click();
     const bars = '.diff-view .scroll-proxy.horizontal';
@@ -339,7 +340,7 @@ suite('App', () => {
   });
 
   test('paints a dot in each space of a line of thousands of characters not wrapped, read from the pixels of the window, as a gradient as wide as such a line painted none of the few dots it held while its styles said they were there', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'spaced.txt' }).click();
     const line = await untilDiffLine(
       page,

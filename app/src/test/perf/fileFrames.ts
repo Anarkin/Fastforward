@@ -8,6 +8,7 @@ import { barOf, barParts } from '../e2e/scrollbarsShown';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { launchedForPerf, measure } from './perfFixtures';
 import { dragged, heldKey, paced, sleep, wheelNotches } from './perfInput';
+import { commitRow } from '../e2e/commitRows';
 
 const placed = process.env.FASTFORWARD_PERF_WINDOW;
 
@@ -208,7 +209,7 @@ export function framesOfFile(
           test('git commit selected', async () => {
             const { page } = perf();
             await page.locator('.tabs .tab').nth(view.tab).click();
-            const row = page.locator('.commit', { hasText: subject }).first();
+            const row = commitRow(page, subject).first();
             await row.waitFor();
             await sleep(1000);
             await timedOpen(

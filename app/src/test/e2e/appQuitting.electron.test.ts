@@ -8,6 +8,7 @@ import { closeOrKill, launchApp, savedTabs } from './appLaunch';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitBubble, commitRow } from './commitRows';
 
 async function quitWithoutChromium(
   app: ElectronApplication,
@@ -53,7 +54,7 @@ suite('App quitting', () => {
     const app = await launchApp(profile);
     try {
       const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      await commitRow(page, 'first').waitFor();
       await page.getByLabel(strings.navigation.fetch, { exact: true }).click();
       await waitFor(() => fs.existsSync(alive), 'git to fetch');
       await quitWithoutChromium(app, folder);
@@ -102,7 +103,7 @@ suite('App quitting', () => {
     const app = await launchApp(profile);
     try {
       const page = await app.firstWindow();
-      await page.locator('.commit', { hasText: 'first' }).waitFor();
+      await commitRow(page, 'first').waitFor();
       await page
         .getByLabel(
           strings.navigation.fetchEvery(
@@ -151,9 +152,9 @@ suite('App quitting', () => {
     let again: ElectronApplication | undefined;
     try {
       const page = await app.firstWindow();
-      await page
-        .locator('.commit .badge.branch', { hasText: 'other' })
-        .click({ button: 'right' });
+      await commitBubble(page, 'other', { kind: 'branch' }).click({
+        button: 'right',
+      });
       await page
         .locator('.context-menu .menu-item', {
           hasText: strings.commits.checkout,
@@ -176,7 +177,7 @@ suite('App quitting', () => {
       );
       again = await launchApp(profile);
       const shown = await again.firstWindow();
-      await shown.locator('.commit', { hasText: 'second' }).waitFor();
+      await commitRow(shown, 'second').waitFor();
     } finally {
       fs.writeFileSync(stop, '');
       if (again) {

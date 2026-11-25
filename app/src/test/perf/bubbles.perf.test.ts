@@ -6,6 +6,7 @@ import { afterAll, suite, test } from 'vitest';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { launchedForPerf, measure } from './perfFixtures';
 import { wheelNotches } from './perfInput';
+import { commitsDrawn } from '../e2e/commitRows';
 
 const commits = 20_000;
 
@@ -79,7 +80,7 @@ suite('Frames of a commit list crowded with bubbles', () => {
       'bubbles: show the git tab',
       async () => {
         await page.locator('.tabs .tab').nth(1).click();
-        await page.locator('.commit').nth(30).waitFor();
+        await commitsDrawn(page);
       },
       1000,
     );

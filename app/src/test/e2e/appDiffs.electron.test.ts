@@ -24,6 +24,7 @@ import {
   untilDiffLine,
   type DiffLineSeen,
 } from './diffSeen';
+import { commitRow } from './commitRows';
 
 const commented = (answer: number) =>
   `/* the answer\na\nb\nc\n*/\nexport const answer = ${answer};\n`;
@@ -72,7 +73,7 @@ suite('App', () => {
   });
 
   test('colors code away from the page, offers every language for a file selected from a button in line with the others, opening rightwards from the button, as it starts the toolbar, marking what its filter found as tall as the item it is on, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
-    await page.locator('.commit', { hasText: 'first' }).click();
+    await commitRow(page, 'first').click();
     await page.locator('.row.file', { hasText: 'code.ts' }).click();
     await untilDiffLine(
       page,
@@ -209,7 +210,7 @@ suite('App', () => {
       await watching?.evaluate(({ stop }) => stop());
       await repository.git('checkout', '-q', 'HEAD', '--', 'commented.ts');
     }
-    await page.locator('.commit.working-tree.empty').waitFor();
+    await commitRow(page, 'No uncommitted changes').waitFor();
   });
 
   test('finds in the diff on Ctrl+F in the diff, marking a match on the very rows of device pixels of its line, stepping on Enter and clearing on Esc', async () => {
@@ -306,7 +307,7 @@ suite('App', () => {
     await openChangedFile();
     await page.locator('.diff-view .virtual-rows').focus();
     await page.keyboard.press('ControlOrMeta+ArrowDown');
-    await page.locator('.commit.selected', { hasText: 'first' }).waitFor();
+    await commitRow(page, 'first', { selected: true }).waitFor();
     await waitForFocus(page.locator('.diff-view .virtual-rows'), 'the diff');
   });
 
@@ -314,13 +315,11 @@ suite('App', () => {
     const file = path.join(repository.root, 'changed.txt');
     fs.writeFileSync(file, 'one\nstaged\nthree\n');
     try {
-      await page.locator('.commit', { hasText: 'second' }).click();
-      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
+      await commitRow(page, 'second').click();
+      await commitRow(page, 'second', { selected: true }).waitFor();
       await repository.git('add', 'changed.txt');
       fs.writeFileSync(file, 'one\nstaged\nunstaged\n');
-      await page
-        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
-        .click();
+      await commitRow(page, '1 uncommitted change').click();
       await page
         .locator('.row.group.selected', { hasText: 'All Changes' })
         .waitFor();
@@ -335,7 +334,7 @@ suite('App', () => {
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'changed.txt');
     }
-    await page.locator('.commit.working-tree.empty').waitFor();
+    await commitRow(page, 'No uncommitted changes').waitFor();
   });
 
   test('jumps to the first change of a file once selected, and again once shown entire or not, landing where J would', async () => {
@@ -345,11 +344,9 @@ suite('App', () => {
       `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
     );
     try {
-      await page.locator('.commit', { hasText: 'second' }).click();
-      await page.locator('.commit.selected', { hasText: 'second' }).waitFor();
-      await page
-        .locator('.commit.working-tree', { hasText: '1 uncommitted change' })
-        .click();
+      await commitRow(page, 'second').click();
+      await commitRow(page, 'second', { selected: true }).waitFor();
+      await commitRow(page, '1 uncommitted change').click();
       await page.locator('.row.file', { hasText: 'long.txt' }).click();
       await untilDiffLine(page, changedFarDown, 'the line changed far down');
       const row = await drawnCodeRow();
@@ -386,6 +383,6 @@ suite('App', () => {
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
     }
-    await page.locator('.commit.working-tree.empty').waitFor();
+    await commitRow(page, 'No uncommitted changes').waitFor();
   });
 });

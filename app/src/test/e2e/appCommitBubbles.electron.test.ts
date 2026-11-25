@@ -5,8 +5,11 @@ import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { closeOrKill, launchApp } from './appLaunch';
 import { untilSettled } from './waits';
+import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
+import { commitBubble } from './commitRows';
+import type { SeenCommit } from '../../tools/git/page/commitHits';
 
 const crowds: readonly (readonly [number, readonly string[]])[] = [
   [
@@ -79,70 +82,81 @@ async function crowdedProfile(
   return { profile, root: repository.root, hashes };
 }
 
+const drawnRows = (list: Locator): Promise<readonly SeenCommit[]> =>
+  list.evaluate(
+    (element) =>
+      element.querySelector<HTMLElement>('.graph-layer')?.seenCommits?.() ?? [],
+  );
+
+const linesOf = (row: SeenCommit): number =>
+  new Set(row.bubbles.map((bubble) => bubble.top)).size;
+
+const untilLaidOut = (list: Locator, subject?: string, lines = 1) =>
+  waitFor(
+    async () =>
+      (await drawnRows(list)).some(
+        (row) =>
+          row.bubbles.length > 1 &&
+          (subject === undefined || row.subject === subject) &&
+          linesOf(row) >= lines,
+      ),
+    `bubbles laid out on ${lines} lines`,
+  );
+
+const bubbleInset = 6;
+
+const bubbleGap = 4;
+
+const rowPadding = 8;
+
 function brokenLines(list: Locator): Promise<string[]> {
-  return list.evaluate((element) => {
-    const view = element.ownerDocument.defaultView;
-    const line =
-      parseFloat(view?.getComputedStyle(element).lineHeight ?? '') || 0;
-    const problems: string[] = [];
-    for (const row of element.querySelectorAll('.virtual-row')) {
-      const commit = row.querySelector('.commit');
-      const laid = [
-        ...(commit?.querySelectorAll(':scope > .bubble-line.laid-out') ?? []),
-      ];
-      if (commit === null || laid.length === 0) {
-        continue;
-      }
-      const subject = commit.querySelector('.subject')?.textContent ?? '';
-      const height = row.getBoundingClientRect().height;
-      if (Math.round(height / line) !== 2 + laid.length) {
-        problems.push(`${subject}: ${laid.length} lines in ${height}px`);
-      }
-      if (commit.scrollHeight > commit.clientHeight + 1) {
-        problems.push(`${subject}: cut at ${commit.clientHeight}px`);
-      }
-      let before: number | undefined;
-      for (const bubbles of laid) {
-        const box = bubbles.getBoundingClientRect();
-        const style = view?.getComputedStyle(bubbles);
-        const start = box.left + (parseFloat(style?.paddingLeft ?? '') || 0);
-        const room =
-          box.width -
-          (parseFloat(style?.paddingLeft ?? '') || 0) -
-          (parseFloat(style?.paddingRight ?? '') || 0);
-        const edges = [...bubbles.querySelectorAll(':scope > .badge')].map(
-          (badge) => {
-            const shape = badge.getBoundingClientRect();
-            const margins = view?.getComputedStyle(badge);
-            return {
-              from: shape.left - (parseFloat(margins?.marginLeft ?? '') || 0),
-              to: shape.right + (parseFloat(margins?.marginRight ?? '') || 0),
-            };
-          },
-        );
-        const first = edges[0];
-        const last = edges.at(-1);
-        if (first === undefined || last === undefined) {
-          problems.push(`${subject}: an empty line`);
+  return list.evaluate(
+    (element, [inset, gap, padding]) => {
+      const problems: string[] = [];
+      const rows =
+        element.querySelector<HTMLElement>('.graph-layer')?.seenCommits?.() ??
+        [];
+      for (const row of rows) {
+        if (row.bubbles.length < 2) {
           continue;
         }
-        const used = last.to - start;
-        if (edges.length > 1 && used > room + 0.01) {
-          problems.push(`${subject}: ${used} of ${room} used`);
+        const subject = row.subject ?? '';
+        const lines = Map.groupBy(row.bubbles, (bubble) => bubble.top);
+        if (Math.round(row.height / row.line) !== 2 + lines.size) {
+          problems.push(`${subject}: ${lines.size} lines in ${row.height}px`);
         }
-        if (
-          before !== undefined &&
-          before + first.to - first.from <= room - 0.01
-        ) {
-          problems.push(
-            `${subject}: broken before ${first.to - first.from} with ${room - before} left`,
-          );
+        const start = row.subjectLeft;
+        const room = row.left + row.width - padding - start;
+        let before: number | undefined;
+        for (const bubbles of lines.values()) {
+          const edges = bubbles.map((bubble) => ({
+            from: bubble.left + inset,
+            to: bubble.left + bubble.width + gap + inset,
+          }));
+          const first = edges[0];
+          const last = edges.at(-1);
+          if (first === undefined || last === undefined) {
+            continue;
+          }
+          const used = last.to - start;
+          if (edges.length > 1 && used > room + 0.01) {
+            problems.push(`${subject}: ${used} of ${room} used`);
+          }
+          if (
+            before !== undefined &&
+            before + first.to - first.from <= room - 0.01
+          ) {
+            problems.push(
+              `${subject}: broken before ${first.to - first.from} with ${room - before} left`,
+            );
+          }
+          before = used;
         }
-        before = used;
       }
-    }
-    return problems;
-  });
+      return problems;
+    },
+    [bubbleInset, bubbleGap, rowPadding] as const,
+  );
 }
 
 suite('Commit bubbles', () => {
@@ -155,7 +169,7 @@ suite('Commit bubbles', () => {
       try {
         const page = await app.firstWindow();
         const list = page.locator('.virtual-rows.list.commit-rows');
-        await list.locator('.bubble-line.laid-out').first().waitFor();
+        await untilLaidOut(list);
         const copies = await list.locator('.bubble-lab .badge').count();
         assert.ok(copies > 0 && copies < 10, `${copies} copies of bubbles`);
         const resizer = page.locator(
@@ -179,7 +193,9 @@ suite('Commit bubbles', () => {
             const seen = await untilSettled(
               async () => ({
                 problems: await brokenLines(list),
-                lines: await list.locator('.bubble-line.laid-out').count(),
+                lines: (await drawnRows(list))
+                  .filter((row) => row.bubbles.length > 1)
+                  .reduce((sum, row) => sum + linesOf(row), 0),
                 width: await list.evaluate((element) => element.clientWidth),
               }),
               'the bubbles to settle',
@@ -238,7 +254,7 @@ suite('Commit bubbles', () => {
     try {
       const page = await app.firstWindow();
       const list = page.locator('.virtual-rows.list.commit-rows');
-      await list.locator('.bubble-line.laid-out').first().waitFor();
+      await untilLaidOut(list);
       const showAtTop = async (subject: string) => {
         await list.evaluate((element) => {
           element.scrollTop = 0;
@@ -246,17 +262,17 @@ suite('Commit bubbles', () => {
         const shown = await untilSettled(
           () =>
             list.evaluate((element, wanted) => {
-              const row = [...element.querySelectorAll('.virtual-row')].find(
-                (each) =>
-                  each.querySelector('.subject')?.textContent === wanted,
-              );
+              const row = (
+                element
+                  .querySelector<HTMLElement>('.graph-layer')
+                  ?.seenCommits?.() ?? []
+              ).find((each) => each.subject === wanted);
               if (row === undefined) {
                 element.scrollTop += element.clientHeight / 2;
                 return 'not drawn';
               }
               element.scrollTop +=
-                row.getBoundingClientRect().top -
-                element.getBoundingClientRect().top;
+                row.top - element.getBoundingClientRect().top;
               return 'shown';
             }, subject),
           `${subject} at the top`,
@@ -268,11 +284,15 @@ suite('Commit bubbles', () => {
           () =>
             list.evaluate((element) => {
               const top = element.getBoundingClientRect().top;
-              const row = [...element.querySelectorAll('.virtual-row')]
+              const row = (
+                element
+                  .querySelector<HTMLElement>('.graph-layer')
+                  ?.seenCommits?.() ?? []
+              )
                 .map((each) => ({
-                  subject: each.querySelector('.subject')?.textContent,
-                  at: each.getBoundingClientRect().top - top,
-                  bottom: each.getBoundingClientRect().bottom - top,
+                  subject: each.subject,
+                  at: each.top - top,
+                  bottom: each.top + each.height - top,
                 }))
                 .filter((each) => each.bottom > 0.5 / devicePixelRatio)
                 .toSorted((a, b) => a.at - b.at)[0];
@@ -297,15 +317,14 @@ suite('Commit bubbles', () => {
       }
       await page.mouse.up();
       await showAtTop('step 59');
-      const grown = list.locator('.virtual-row', { hasText: 'step 59' });
-      await grown.locator('.badge', { hasText: 'solo' }).waitFor();
+      await commitBubble(page, 'solo').waitFor();
       for (let at = 0; at < 20; at++) {
         fs.writeFileSync(
           path.join(root, '.git', 'refs', 'tags', `grown-${at}`),
           `${hashes[30]}\n`,
         );
       }
-      await grown.locator('.bubble-line.laid-out').nth(1).waitFor();
+      await untilLaidOut(list, 'step 59', 2);
       assert.deepStrictEqual(await brokenLines(list), []);
       await list.evaluate((element) => {
         element.scrollTop = 0;

@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import { hugeFile, reworkSubject } from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { heldKey, touchpadScroll, wheelNotches } from './perfInput';
+import { commitRow, commitsDrawn } from '../e2e/commitRows';
 
 suite('Frames of the git tool', () => {
   const { repository } = perfData();
@@ -14,7 +15,7 @@ suite('Frames of the git tool', () => {
       },
       settings: { scrolling: { smooth: true }, text: { wordWrap: true } },
     },
-    (page) => page.locator('.commit').nth(30).waitFor(),
+    (page) => commitsDrawn(page),
   );
   const commitList = () => perf().page.locator('.virtual-rows.list').first();
   const toTop = async () => {
@@ -51,7 +52,7 @@ suite('Frames of the git tool', () => {
   test('opening the diff of a file of 20,000 lines', async () => {
     const { page } = perf();
     await toTop();
-    await page.locator('.commit', { hasText: reworkSubject }).click();
+    await commitRow(page, reworkSubject).click();
     const file = page.locator('.row.file', { hasText: hugeFile });
     await file.waitFor();
     const result = await measure(
@@ -84,7 +85,7 @@ suite('Frames of the git tool', () => {
     const every = page.locator('.row.group', { hasText: 'All Changes' });
     if ((await every.count()) === 0) {
       await toTop();
-      await page.locator('.commit', { hasText: reworkSubject }).click();
+      await commitRow(page, reworkSubject).click();
     }
     await every.click();
     await page.locator('.diff-view .hunk-divider').first().waitFor();

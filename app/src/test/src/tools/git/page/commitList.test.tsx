@@ -2,17 +2,13 @@ import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import { act } from 'react';
 import { JSDOM } from 'jsdom';
-import {
-  type GraphRow,
-  type ScrollTarget,
-} from '../../../../../tools/git/shared/protocol';
+import { type ScrollTarget } from '../../../../../tools/git/shared/protocol';
 import { CommitHistory } from '../../../../../tools/git/page/commitHistory';
 import { createGitStore, GitStore } from '../../../../../tools/git/page/store';
 import { commitRowHeight } from '../../../../../tools/git/page/commitListRows';
 import { loaded, unchangingMedia } from './commitListFixtures';
 import { Commits } from '../../../../../tools/git/page/commitList';
 import { renderIn } from '../../../../helpers/componentFixtures';
-import { commitInfo } from '../../../../helpers/gitValues';
 
 const longHistory = (prefix: string) =>
   loaded(...Array.from({ length: 1000 }, (_, index) => `${prefix}${index}`));
@@ -217,54 +213,6 @@ suite('Commit list places', () => {
       assert.strictEqual(top(), 56 * commitRowHeight);
       await show('c', longHistory('c'));
       assert.strictEqual(top(), 0);
-    });
-  });
-});
-
-function countedHistory(count: number, reads: Map<string, number>) {
-  const read = (key: string) => reads.set(key, (reads.get(key) ?? 0) + 1);
-  const history = new CommitHistory(count);
-  history.add(
-    0,
-    Array.from({ length: count }, (_, index) => ({
-      ...commitInfo(`c${index}`),
-      get subject() {
-        read(`row c${index}`);
-        return `c${index}`;
-      },
-    })),
-    Array.from({ length: count }, (_, index): GraphRow => ({
-      lane: 0,
-      lines: [{ from: 0, to: 0, color: 0, bottom: true, dashed: true }],
-      get color() {
-        read(`graph c${index}`);
-        return 0;
-      },
-    })),
-  );
-  return history;
-}
-
-suite('Commit list drawing', () => {
-  test('draws a row and its graph again only when what they show changes, not on each frame of a scroll nor for another row selected, also above the checked-out commit, whose graph leaves out the line from the working tree', async () => {
-    const reads = new Map<string, number>();
-    const drawnAgain = (drawn: ReadonlyMap<string, number>) =>
-      [...drawn]
-        .filter(([key, count]) => reads.get(key) !== count)
-        .map(([key]) => key);
-    await scrollingList(async ({ show, scroll, select }) => {
-      await show('a', countedHistory(1000, reads), undefined, 'c500');
-      await scroll(200);
-      const drawn = new Map(reads);
-      assert.ok(drawn.has('row c10') && drawn.has('graph c10'));
-      await scroll(260);
-      assert.deepStrictEqual(drawnAgain(drawn), []);
-      const scrolled = new Map(reads);
-      await select('c12');
-      assert.deepStrictEqual(drawnAgain(scrolled), ['row c12']);
-      const selected = new Map(reads);
-      await select('c14');
-      assert.deepStrictEqual(drawnAgain(selected), ['row c12', 'row c14']);
     });
   });
 });
