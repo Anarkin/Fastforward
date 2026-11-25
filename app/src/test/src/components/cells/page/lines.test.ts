@@ -34,6 +34,26 @@ suite('Rows a line wraps onto', () => {
     assert.ok(rows.every((row) => row.row === line && row.start === 7));
   });
 
+  test('wraps a line indented by a tab as the width of a tab its view draws at, not the settings, hanging its rows as far in as that tab and breaking them where the same line indented by as many spaces breaks', () => {
+    const tab = String.fromCharCode(9);
+    const widths = { char: 1, of: () => 1, tabSize: 8 };
+    const text = 'word '.repeat(12);
+
+    const tabbed = wrappedRows(lineOf(tab + text), 30, widths);
+    const spaced = wrappedRows(lineOf(' '.repeat(8) + text), 30, widths);
+
+    assert.deepStrictEqual(
+      tabbed.map(({ indent }) => indent),
+      spaced.map(({ indent }) => indent),
+    );
+    assert.deepStrictEqual(
+      tabbed.map(({ from, to }) => [from, to]),
+      spaced.map(({ from, to }, row) =>
+        row === 0 ? [from, to - 7] : [from - 7, to - 7],
+      ),
+    );
+  });
+
   test('keeps a line that fits, and every line while nothing wraps, as one row of its whole text, and works a line out once for the columns it was asked for', () => {
     const short = lineOf('fits');
     const long = lineOf('word '.repeat(30));

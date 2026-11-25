@@ -1,5 +1,6 @@
 import type { ColoredSegment } from '../../syntax/page/lineColors';
 import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
+import { tabSizeOf } from '../../../lib/page/tabStops';
 import { columnsOf } from '../../../lib/page/textColumns';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
@@ -72,7 +73,11 @@ const grids = new WeakMap<TextWidths, TextWidths>();
 function onTheGrid(widths: TextWidths): TextWidths {
   let grid = grids.get(widths);
   if (grid === undefined) {
-    grid = { char: widths.char, of: widths.of };
+    grid = {
+      char: widths.char,
+      of: widths.of,
+      ...(widths.tabSize !== undefined && { tabSize: widths.tabSize }),
+    };
     grids.set(widths, grid);
   }
   return grid;
@@ -105,7 +110,7 @@ export function wrappedRows(
   };
   let rows: readonly ScreenRow[] = [whole];
   if (columns !== undefined) {
-    const indent = wrapIndent(text, columns);
+    const indent = wrapIndent(text, columns, tabSizeOf(widths));
     const starts = wrapStarts(
       text,
       columns,
