@@ -1259,10 +1259,11 @@ export const strings = {
     writeLabel: (encoding: string) => `${encoding} (write)`,
     withBom: (encoding: string) => `${encoding} with BOM`,
     shortWithBom: (encoding: string) => `${encoding} BOM`,
-    newLinesEndIn: 'Line ending rules:',
-    withoutLineBreak: 'Line ending rules with no line break yet:',
-    readIn: 'Encoding rules to read in:',
-    writtenIn: 'Encoding rules to write in:',
+    newLinesEndIn: 'Line ending rules (first one applies):',
+    withoutLineBreak:
+      'Line ending rules with no line break yet (first one applies):',
+    readIn: 'Encoding rules to read in (first one applies):',
+    writtenIn: 'Encoding rules to write in (first one applies):',
     endingOfLines: (ending: string) =>
       `${ending}, as most lines of the file end`,
     noLineBreak: 'The file has no line break yet',
@@ -1323,7 +1324,7 @@ export const strings = {
     tabSize: (columns: number) => `Tab Size: ${columns}`,
     toTabs: 'Convert indentation to tabs',
     toSpaces: 'Convert indentation to spaces',
-    indentHeading: 'Indentation rules:',
+    indentHeading: 'Indentation rules (first one applies):',
     tabUnit: 'A tab',
     spacesUnit: (count: number) =>
       count === 1 ? '1 space' : `${count} spaces`,
@@ -1337,7 +1338,7 @@ export const strings = {
     noIndentedLines: 'The file has no indented lines to go by',
     fromIndentSettings: (unit: string, key: string) =>
       sentence`${unit}, from ${named(key)} in the settings`,
-    drawnHeading: 'Tab width rules:',
+    drawnHeading: 'Tab width rules (first one applies):',
     columns: (count: number) => (count === 1 ? '1 column' : `${count} columns`),
     widthFromEditorConfig: (columns: string, key: string, file: string) =>
       sentence`${columns}, from ${named(key)} in ${namedFile(file)}`,

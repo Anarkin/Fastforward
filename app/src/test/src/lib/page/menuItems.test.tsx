@@ -122,25 +122,6 @@ suite('Menu items', () => {
     );
   });
 
-  test('sets an indented item in past the column of its check, so the rules under a heading read as set in under it, their checks where every check stands', () => {
-    const html = renderToStaticMarkup(
-      <MenuItems
-        scrolling={defaultScrolling}
-        items={[
-          { label: 'Rules:', disabled: true },
-          { label: 'A rule', checked: true, disabled: true, indented: true },
-        ]}
-        onClose={() => undefined}
-      />,
-    );
-    assert.deepStrictEqual(
-      [...html.matchAll(/<span class="(menu-check[^"]*)">/g)].map(
-        ([, name]) => name,
-      ),
-      ['menu-check', 'menu-check indented'],
-    );
-  });
-
   test('keys items apart that have the same label', () => {
     const items = renderedBy(MenuItems, {
       scrolling: defaultScrolling,

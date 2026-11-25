@@ -41,7 +41,7 @@ suite('The indentation of the editor', () => {
         ),
       ),
       [
-        '(Indentation rules:)',
+        '(Indentation rules (first one applies):)',
         '(No .editorconfig sets "indent_style" or "indent_size")',
         '✓ 2 spaces, as the lines of the file are most often indented by',
         'A tab, from "tools.editor.indentStyle" in the settings',
@@ -64,7 +64,7 @@ suite('The indentation of the editor', () => {
         ),
       ),
       [
-        '(Indentation rules:)',
+        '(Indentation rules (first one applies):)',
         '✓ A tab, as the indentation was converted',
         '4 spaces, from "indent_size" in "a/.editorconfig"',
         '(The file has no indented lines to go by)',

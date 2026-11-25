@@ -613,7 +613,7 @@ suite('App commander', () => {
           before: [-4],
           viewerLabel: 'Tab Size: 4',
           viewerRows: [
-            'Tab width rules:',
+            'Tab width rules (first one applies):',
             'No .editorconfig sets tab_width or indent_size',
             '4 columns, from text.tabSize in the settings',
           ],

@@ -36,7 +36,7 @@ suite('The tab width menu', () => {
       },
     );
     assert.deepStrictEqual(rowsOf(items), [
-      '(Tab width rules:)',
+      '(Tab width rules (first one applies):)',
       '✓ 8 columns, from "tab_width" in "a/.editorconfig"',
       '4 columns, from "text.tabSize" in the settings',
     ]);
@@ -59,7 +59,7 @@ suite('The tab width menu', () => {
 
   test('checks the settings where no .editorconfig sets a width', () => {
     assert.deepStrictEqual(rowsOf(tabSizeItems({ settings: 4 }, opening)), [
-      '(Tab width rules:)',
+      '(Tab width rules (first one applies):)',
       '(No .editorconfig sets "tab_width" or "indent_size")',
       '✓ 4 columns, from "text.tabSize" in the settings',
     ]);

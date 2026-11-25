@@ -130,11 +130,7 @@ export function MenuItems({
                 }
               }}
             >
-              <span
-                className={
-                  item.indented === true ? 'menu-check indented' : 'menu-check'
-                }
-              >
+              <span className="menu-check">
                 {item.icon === undefined ? (
                   item.checked ? (
                     strings.symbols.checked
