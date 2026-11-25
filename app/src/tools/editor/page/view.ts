@@ -62,8 +62,7 @@ function keptIndent(
     before.indent === now.indent &&
     before.converted === now.converted &&
     before.lines === now.lines &&
-    before.rules === now.rules &&
-    before.chosenTabSize === now.chosenTabSize
+    before.rules === now.rules
     ? before
     : now;
 }

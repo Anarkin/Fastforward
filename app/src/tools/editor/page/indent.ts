@@ -83,22 +83,8 @@ const convertedField = StateField.define<boolean>({
     converted || transaction.effects.some((effect) => effect.is(setIndent)),
 });
 
-export const setTabSize = StateEffect.define<number | undefined>();
-
-const chosenTabSizeField = StateField.define<number | undefined>({
-  create: () => undefined,
-  update: (size, transaction) =>
-    transaction.effects.reduce(
-      (chosen, effect) => (effect.is(setTabSize) ? effect.value : chosen),
-      size,
-    ),
-});
-
 export function drawnTabSize(state: EditorState): number | undefined {
-  return (
-    state.field(chosenTabSizeField, false) ??
-    state.facet(indentRules).tabSize?.size
-  );
+  return state.facet(indentRules).tabSize?.size;
 }
 
 export interface IndentShown {
@@ -106,7 +92,6 @@ export interface IndentShown {
   readonly converted: boolean;
   readonly lines: string | undefined;
   readonly rules: IndentRules;
-  readonly chosenTabSize: number | undefined;
 }
 
 export function indentShownOf(state: EditorState): IndentShown {
@@ -115,7 +100,6 @@ export function indentShownOf(state: EditorState): IndentShown {
     converted: state.field(convertedField, false) ?? false,
     lines: state.field(linesIndentField, false),
     rules: state.facet(indentRules),
-    chosenTabSize: state.field(chosenTabSizeField, false),
   };
 }
 
@@ -128,6 +112,5 @@ export function indentionOf(doc: Text, rules: IndentRules): Extension {
       () => rules.indent ?? lines ?? rules.fallbackIndent ?? ' '.repeat(4),
     ),
     convertedField,
-    chosenTabSizeField,
   ];
 }

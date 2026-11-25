@@ -8,7 +8,6 @@ import {
   indentShownOf,
   indentionOf,
   setIndent,
-  setTabSize,
   shownIndent,
 } from '../../../../../tools/editor/page/indent';
 
@@ -31,7 +30,7 @@ suite('Commands of the editor', () => {
     assert.strictEqual(detectedIndent(doc('a', 'b', '', 'c')), '    ');
   });
 
-  test('draws a tab as wide as the width chosen for its tab, else as its .editorconfig asks, else leaves it to the settings', () => {
+  test('draws a tab as wide as its .editorconfig asks, else leaves it to the settings', () => {
     const asked = EditorState.create({
       extensions: indentionOf(doc('a'), {
         tabSize: { size: 8, key: 'tab_width' },
@@ -40,12 +39,7 @@ suite('Commands of the editor', () => {
     const unasked = EditorState.create({
       extensions: indentionOf(doc('a'), {}),
     });
-    const chosen = asked.update({ effects: setTabSize.of(2) }).state;
-    const unchosen = chosen.update({ effects: setTabSize.of(undefined) }).state;
-    assert.deepStrictEqual(
-      [asked, unasked, chosen, unchosen].map(drawnTabSize),
-      [8, undefined, 2, 8],
-    );
+    assert.deepStrictEqual([asked, unasked].map(drawnTabSize), [8, undefined]);
   });
 
   test('tells the indent unit, where it came from and what the lines of the file showed as it opened, and takes another once the indentation is converted', () => {
@@ -65,14 +59,12 @@ suite('Commands of the editor', () => {
           converted: false,
           lines: '  ',
           rules: { indentFile: 'x/.editorconfig', fallbackIndent: '\t' },
-          chosenTabSize: undefined,
         },
         {
           indent: '\t',
           converted: true,
           lines: '  ',
           rules: { indentFile: 'x/.editorconfig', fallbackIndent: '\t' },
-          chosenTabSize: undefined,
         },
       ],
     );

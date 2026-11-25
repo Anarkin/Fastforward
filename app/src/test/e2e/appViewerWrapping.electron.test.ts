@@ -558,24 +558,25 @@ suite('App commander', () => {
     }
   });
 
-  test('tells in a menu of the viewer and of the editor how wide a tab is drawn and where from, draws tabs at a width chosen for the tab, and converts the indentation of the editor to spaces by the tab stops', async () => {
+  test('tells in a menu of the viewer and of the editor how wide a tab is drawn and where from, and converts the indentation of the editor to spaces by the tab stops', async () => {
     const tab = String.fromCharCode(9);
     fs.writeFileSync(
-      path.join(opened, 'chosen.txt'),
+      path.join(opened, 'tabs.txt'),
       ['        |', tab + '|', tab + 'a', tab + 'b'].join(
         String.fromCharCode(10),
       ),
     );
     try {
-      await select('chosen');
+      await select('tabs');
       await page.keyboard.press('F3');
       const before = await barsOf();
       const viewerLabel = await labelOf('.viewer-tab-size');
       const viewerMenu = await menuOf('.viewer-tab-size');
-      await viewerMenu
-        .locator('.menu-item', { hasText: 'Draw tabs 8 columns wide' })
-        .click();
-      const chosen = await barsOf();
+      const viewerRows = (
+        await viewerMenu.locator('.menu-item').allTextContents()
+      ).map((row) => row.replace('✓', '').trim());
+      await page.keyboard.press('Escape');
+      await viewerMenu.waitFor({ state: 'detached' });
       await page.keyboard.press('F4');
       await page.locator('.editor .editor-indentation').waitFor();
       const editorLabel = await labelOf('.editor-indentation');
@@ -599,7 +600,7 @@ suite('App commander', () => {
         {
           before,
           viewerLabel,
-          chosen,
+          viewerRows,
           editorLabel,
           rows: rows.filter(
             (row) =>
@@ -611,7 +612,11 @@ suite('App commander', () => {
         {
           before: [-4],
           viewerLabel: 'Tab Size: 4',
-          chosen: [0],
+          viewerRows: [
+            'Tabs are drawn as wide as the first of these that applies:',
+            'No .editorconfig sets tab_width or indent_size',
+            '4 columns, from text.tabSize in the settings',
+          ],
           editorLabel: 'Tab Size: 4',
           rows: [
             'No .editorconfig sets indent_style or indent_size',
@@ -628,9 +633,9 @@ suite('App commander', () => {
           await page.locator(shown).waitFor({ state: 'detached' });
         }
       }
-      fs.rmSync(path.join(opened, 'chosen.txt'));
+      fs.rmSync(path.join(opened, 'tabs.txt'));
       await waitFor(
-        async () => !(await rowNames()).includes('chosen.txt'),
+        async () => !(await rowNames()).includes('tabs.txt'),
         'the file to be gone from the list',
       );
     }

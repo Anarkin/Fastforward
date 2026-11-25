@@ -13,7 +13,6 @@ export interface ViewerChoices {
   readonly mode?: ViewMode;
   readonly encoding?: EncodingChoice;
   readonly language?: string;
-  readonly tabSize?: number;
 }
 
 export interface ViewerSource {

@@ -29,7 +29,7 @@ import { editedShown } from './state';
 import { Toolbar } from '../../../lib/page/toolbar';
 import { drawnSize, tabSizeItems } from '../../../lib/page/tabSizeMenu';
 import { tabSizeOf } from '../../../lib/page/tabStops';
-import { setIndent, setTabSize, type IndentShown } from './indent';
+import { setIndent, type IndentShown } from './indent';
 import { indentItems, indentLabel, indentationChanges } from './indentation';
 
 export function EditorToolbar({
@@ -98,9 +98,6 @@ export function EditorToolbar({
     indentShown === undefined
       ? undefined
       : {
-          ...(indentShown.chosenTabSize !== undefined && {
-            chosen: indentShown.chosenTabSize,
-          }),
           ...(indentShown.rules.tabSize !== undefined && {
             file: indentShown.rules.tabSize,
           }),
@@ -216,13 +213,7 @@ export function EditorToolbar({
                   { separator: true },
                   ...indentItems(indentShown, opening),
                   { separator: true },
-                  ...tabSizeItems(tabsShown, {
-                    ...opening,
-                    choose: (size) =>
-                      view.current?.dispatch({
-                        effects: setTabSize.of(size),
-                      }),
-                  }),
+                  ...tabSizeItems(tabsShown, opening),
                 ]}
                 onChosen={() => view.current?.focus()}
               />

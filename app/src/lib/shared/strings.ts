@@ -1340,15 +1340,11 @@ export const strings = {
       sentence`${unit}, from ${named(key)} in the settings`,
     drawnHeading: 'Tabs are drawn as wide as the first of these that applies:',
     columns: (count: number) => (count === 1 ? '1 column' : `${count} columns`),
-    chosenWidth: (columns: string) => `${columns}, chosen for this tab`,
-    noChosenWidth: 'No width chosen for this tab',
     widthFromEditorConfig: (columns: string, key: string, file: string) =>
       sentence`${columns}, from ${named(key)} in ${namedFile(file)}`,
     widthNotInEditorConfig: sentence`No .editorconfig sets ${named('tab_width')} or ${named('indent_size')}`,
     widthFromSettings: (columns: string) =>
       sentence`${columns}, from ${named('text.tabSize')} in the settings`,
-    drawTabs: (columns: string) => `Draw tabs ${columns} wide`,
-    drawAsAsked: 'Draw tabs as the file and the settings say',
   },
   pdf: {
     page: (page: number) => `Page ${page}`,

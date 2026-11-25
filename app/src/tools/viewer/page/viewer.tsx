@@ -85,7 +85,6 @@ export function Viewer() {
     state.tab === undefined ? undefined : state.fileTabSizes.get(state.tab),
   );
   const tabsShown = {
-    ...(choices.tabSize !== undefined && { chosen: choices.tabSize }),
     ...(fileTabSize !== undefined && { file: fileTabSize }),
     settings: tabSizeOf(undefined),
   };
@@ -308,7 +307,6 @@ export function Viewer() {
                 items={tabSizeItems(tabsShown, {
                   file: editTabSizeSource,
                   settings: openSettings,
-                  choose: (size) => onChoose({ tabSize: size }),
                 })}
                 disabled={mode !== 'text'}
               />
