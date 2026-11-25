@@ -66,6 +66,7 @@ export interface RowsLook {
   readonly marksOf: (row: ScreenRow) => readonly FindMark[];
   readonly showWhitespace: boolean;
   readonly widths: TextWidths;
+  readonly widthsOf?: ((row: TextLine) => TextWidths) | undefined;
   readonly first: number;
   readonly selection?: TextSelection | undefined;
   readonly selections?: readonly TextSelection[] | undefined;
@@ -312,6 +313,11 @@ const drawingOn = (
   dot,
 });
 
+export const rowWidthsOf = (
+  { widths, widthsOf }: Pick<RowsLook, 'widths' | 'widthsOf'>,
+  row: TextLine,
+): TextWidths => widthsOf?.(row) ?? widths;
+
 export const rowKey = (row: ScreenRow): string =>
   `${row.row.start}:${row.from}`;
 
@@ -374,7 +380,7 @@ function keptOf(
     before.breakSelected === breakSelectedOf(look, row, part) &&
     before.blanks === showWhitespace &&
     before.limit === (wrapAt ?? Infinity) &&
-    before.tabSize === tabSizeOf(look.widths) &&
+    before.tabSize === tabSizeOf(rowWidthsOf(look, row.row)) &&
     before.generation === tiles.generation
     ? before
     : undefined;
@@ -400,7 +406,9 @@ function drawnRow(
   const withBreak = breakSelectedOf(look, row, part);
   const tints = look.tintsOf?.(row.row);
   drawRow(
-    drawing,
+    look.widthsOf === undefined
+      ? drawing
+      : { ...drawing, widths: rowWidthsOf(look, row.row) },
     row,
     piecesOf(look.segmentsOf, row, marks, tints, selected, from, to),
     column,
@@ -425,7 +433,7 @@ function drawnRow(
     blanks: look.showWhitespace,
     limit: drawing.limit,
     left: drawing.left,
-    tabSize: tabSizeOf(look.widths),
+    tabSize: tabSizeOf(rowWidthsOf(look, row.row)),
     generation: painting.tiles.generation,
     first: look.first,
     y,

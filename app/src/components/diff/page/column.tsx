@@ -66,6 +66,7 @@ export interface DiffProps {
   readonly measures: DiffMeasures;
   readonly measuring: DiffMeasuring;
   readonly tab: DiffTab;
+  readonly tabSizeOfPath?: ((path: string) => number | undefined) | undefined;
 }
 
 export function Diff({
@@ -96,6 +97,7 @@ export function Diff({
   measures,
   measuring,
   tab,
+  tabSizeOfPath,
 }: DiffProps) {
   const parsed = useMemo(() => parsePatch(patch), [patch]);
   const diffFiles = useMemo(
@@ -218,6 +220,7 @@ export function Diff({
         look={look}
         measures={measures}
         measuring={measuring}
+        tabSizeOfPath={tabSizeOfPath}
       />
     </Column>
   );

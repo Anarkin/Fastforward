@@ -1,3 +1,4 @@
+import type { TabSizeOf } from './fileWidths';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   useCallback,
@@ -91,7 +92,9 @@ export function DiffView({
   keptPlace,
   placeNow,
   onPlace,
+  tabSizeOfPath,
 }: {
+  tabSizeOfPath?: ((path: string) => number | undefined) | undefined;
   keptPlace: DiffPlace | undefined;
   placeNow: () => DiffPlace | undefined;
   onPlace: (change: PlaceChange) => void;
@@ -158,6 +161,16 @@ export function DiffView({
     snap,
   } = useDiffText(measures, measuring);
   const keptSideways = keptPlace?.sideways ?? unplaced.sideways;
+  const tabSizeOf = useMemo<TabSizeOf | undefined>(
+    () =>
+      tabSizeOfPath &&
+      ((file) => {
+        const path =
+          whole !== undefined && file === 0 ? whole.path : files[file]?.path;
+        return path === undefined ? undefined : tabSizeOfPath(path);
+      }),
+    [tabSizeOfPath, files, whole],
+  );
   const setSideways = useCallback(
     (scrolled: number) => onPlace({ sideways: scrolled }),
     [onPlace],
@@ -202,6 +215,7 @@ export function DiffView({
     wordWrap && table !== undefined ? cellWidthsOf(table) : undefined,
     shownRow,
     Boolean(error),
+    tabSizeOf,
   );
   const rowsNow = useLaterRows((range) =>
     rowsAround(
@@ -248,8 +262,10 @@ export function DiffView({
   const keys = useMemo(() => lineKeys(rows), [rows]);
   const widest = useMemo(
     () =>
-      wordWrap ? 0 : widestColumns(rows, widths.char > 0 ? widths : undefined),
-    [rows, wordWrap, widths],
+      wordWrap
+        ? 0
+        : widestColumns(rows, widths.char > 0 ? widths : undefined, tabSizeOf),
+    [rows, wordWrap, widths, tabSizeOf],
   );
   const { held, shown, room, scrolledNow, scrollTo, glideTo, measureSideways } =
     useSideways(
@@ -376,6 +392,7 @@ export function DiffView({
     keys,
     wrapping,
     widths,
+    tabSizeOf,
     font: { char: charWidth, family: font, spacing },
     dotLook,
     lineHeight,
@@ -400,6 +417,7 @@ export function DiffView({
       wrapping?.left,
       wrapping?.right,
       widths,
+      tabSizeOf,
       charWidth,
       font,
       spacing,
@@ -434,6 +452,7 @@ export function DiffView({
     rows,
     wordWrap,
     widths,
+    tabSizeOf,
     room: room ?? 0,
     scrolledNow,
     reveal,

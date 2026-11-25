@@ -1,3 +1,4 @@
+import { rowWidths, type TabSizeOf } from './fileWidths';
 import type { FindRange } from './find';
 import type { DiffRow } from './rows';
 import { columnsOf } from '../../../lib/page/textColumns';
@@ -15,6 +16,7 @@ export function textColumn(
 export function widestColumns(
   rows: readonly DiffRow[],
   widths?: TextWidths,
+  tabSizeOf?: TabSizeOf,
 ): number {
   let widest = 0;
   for (const row of rows) {
@@ -26,8 +28,9 @@ export function widestColumns(
           : row.kind === 'split'
             ? [row.left?.line.text ?? '', row.right?.line.text ?? '']
             : [];
+    const rowWidthsShown = widths && rowWidths(widths, tabSizeOf, row);
     for (const text of texts) {
-      widest = Math.max(widest, textColumn(text, text.length, widths));
+      widest = Math.max(widest, textColumn(text, text.length, rowWidthsShown));
     }
   }
   return widest;

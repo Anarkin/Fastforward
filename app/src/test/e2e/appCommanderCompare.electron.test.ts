@@ -13,6 +13,7 @@ import {
   untilDiffLine,
 } from './diffSeen';
 import { waitForFocus } from './waits';
+import { cellsOf } from './cellsSeen';
 import {
   opened,
   page,
@@ -26,6 +27,11 @@ import {
 import { grayPng } from './images';
 
 const compared = '.compare-view';
+
+const bars = async () =>
+  (await cellsOf(page, '.compare-view .diff-cells').glyphs('|')).map(
+    ({ column }) => column,
+  );
 
 const occurrences = () => diffMarked(page, 'occurrence', compared);
 
@@ -166,6 +172,52 @@ suite('App commander', () => {
       const names = await rowNames();
       return !names.includes('before.txt') && !names.includes('after.txt');
     }, 'the files to be gone from the list');
+  });
+
+  test('draws a tab in two files compared as wide as tab_width of the .editorconfig of the file, over the tab size of the settings, as the viewer and the editor draw it', async () => {
+    const tab = String.fromCharCode(9);
+    const config = path.join(opened, '.editorconfig');
+    const names = ['old.tsv', 'new.tsv'];
+    fs.writeFileSync(
+      config,
+      ['[*.tsv]', 'tab_width = 8', ''].join(String.fromCharCode(10)),
+    );
+    for (const [at, name] of names.entries()) {
+      fs.writeFileSync(
+        path.join(opened, name),
+        ['        |', tab + '|', `line ${at}`].join(String.fromCharCode(10)),
+      );
+    }
+    try {
+      for (const name of names) {
+        await select(name.replace('.tsv', ''));
+        await page.keyboard.press('Space');
+      }
+      await waitFor(
+        async () => (await markedNames()).toSorted().join() === 'new,old',
+        'both files to be marked',
+      );
+      await page.keyboard.press('Shift+F3');
+      const sides = page.locator('.compare-view .diff-cells');
+      await waitFor(async () => (await sides.count()) > 0, 'the diff');
+      await waitFor(async () => {
+        const columns = await bars();
+        return columns.length >= 2 && columns.every((column) => column === 8);
+      }, 'the bar after the tab to stand where the bar after eight spaces stands');
+    } finally {
+      if (await page.locator('.compare-view').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
+      }
+      fs.rmSync(config);
+      for (const name of names) {
+        fs.rmSync(path.join(opened, name));
+      }
+      await waitFor(async () => {
+        const shown = await rowNames();
+        return names.every((name) => !shown.includes(name));
+      }, 'the files to be gone from the list');
+    }
   });
 
   test('opens two files compared at their first change, where J lands from the top, though the rows the diff draws as it opens turn out shorter than guessed', async () => {

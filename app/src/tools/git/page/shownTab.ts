@@ -44,6 +44,7 @@ export interface TabView {
   readonly diffs: number;
   readonly refreshes: number;
   readonly fileContent: WholeFile | undefined;
+  readonly tabSizes: Readonly<Record<string, number>>;
   readonly largeFiles: ReadonlyMap<string, DiffFile>;
   readonly texts: ReadonlyMap<string, LoadedText>;
   readonly tree: GitToWebviewOf<'tree'> | undefined;
@@ -99,6 +100,7 @@ export const emptyTabView: TabView = {
   diffs: 0,
   refreshes: 0,
   fileContent: undefined,
+  tabSizes: {},
   largeFiles: new Map(),
   texts: new Map(),
   tree: undefined,
@@ -346,6 +348,12 @@ export function reduceTabView(state: TabView, action: TabAction): TabView {
             },
           }
         : state;
+    case 'tabSizes':
+      return Object.entries(action.sizes).every(
+        ([path, size]) => state.tabSizes[path] === size,
+      )
+        ? state
+        : { ...state, tabSizes: { ...state.tabSizes, ...action.sizes } };
     case 'fileContent':
       if (isLate(state, action.hash, action.path, action.area)) {
         return state;

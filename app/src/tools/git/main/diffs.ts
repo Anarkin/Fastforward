@@ -1,3 +1,4 @@
+import { tabSizesOf } from './tabSizes';
 import {
   compareFiles,
   comparePatch,
@@ -179,6 +180,22 @@ export class Diffs {
       });
     }
     await this.sendDiff(context, hash, refreshing, early);
+    await this.sendTabSizes(
+      context,
+      hash,
+      files.map((file) => file.path),
+    );
+  }
+
+  private async sendTabSizes(
+    context: Context,
+    hash: string,
+    paths: readonly string[],
+  ): Promise<void> {
+    const sizes = await tabSizesOf(context.root, paths).catch(() => ({}));
+    if (Object.keys(sizes).length > 0 && context.tab.hash === hash) {
+      context.post({ type: 'tabSizes', hash, sizes });
+    }
   }
 
   private earlyPatch(
@@ -477,6 +494,7 @@ export class Diffs {
           ...(link ? { link } : {}),
         });
       }
+      await this.sendTabSizes(context, hash, [file]);
       return;
     }
     const { ignoreWhitespace } = this.storage.preferences;

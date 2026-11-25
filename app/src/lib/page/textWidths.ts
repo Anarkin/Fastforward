@@ -122,11 +122,24 @@ export function widthsFor(
     : undefined;
 }
 
+const tabbed = new WeakMap<TextWidths, Map<number, TextWidths>>();
+
 export function withTabSize(
   widths: TextWidths,
   tabSize: number | undefined,
 ): TextWidths {
-  return tabSize === undefined || widths.tabSize === tabSize
-    ? widths
-    : { ...widths, tabSize };
+  if (tabSize === undefined || widths.tabSize === tabSize) {
+    return widths;
+  }
+  let sizes = tabbed.get(widths);
+  if (sizes === undefined) {
+    sizes = new Map();
+    tabbed.set(widths, sizes);
+  }
+  let made = sizes.get(tabSize);
+  if (made === undefined) {
+    made = { ...widths, tabSize };
+    sizes.set(tabSize, made);
+  }
+  return made;
 }

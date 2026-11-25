@@ -35,6 +35,7 @@ import { diffKeymap } from './keymap';
 import { paneLine, paneOf } from './paneLines';
 import { type WrapColumns } from './rowMeasures';
 import type { DiffRow } from './rows';
+import { rowWidths, type TabSizeOf } from './fileWidths';
 import { codePadding, numberWidth } from './textLayout';
 import { bandTint, diffLookOf, lineClass, rowTints } from './tints';
 import type { WordRanges } from './wordDiff';
@@ -55,6 +56,7 @@ export interface CellsShown {
   readonly keys: readonly (readonly string[])[];
   readonly wrapping: WrapColumns | undefined;
   readonly widths: TextWidths;
+  readonly tabSizeOf?: TabSizeOf | undefined;
   readonly font: CellFont;
   readonly dotLook: DotLook | undefined;
   readonly lineHeight: number;
@@ -308,6 +310,11 @@ export class DiffCells {
         : wrapping.right;
   }
 
+  private widthsAt(index: number): TextWidths | undefined {
+    const { shown } = this;
+    return shown && rowWidths(shown.widths, shown.tabSizeOf, shown.rows[index]);
+  }
+
   private partsOf(pane: number, index: number): readonly ScreenRow[] {
     const { shown } = this;
     const lined =
@@ -319,7 +326,7 @@ export class DiffCells {
       : wrappedRows(
           lined.line,
           this.columnsOf(pane),
-          widthsFor(lined.line.text, shown.widths),
+          widthsFor(lined.line.text, this.widthsAt(index)),
         );
   }
 
@@ -539,7 +546,7 @@ export class DiffCells {
                 lined.line.text.length,
                 Math.max(0, Math.floor(first) - 1),
                 Math.floor(first) + inSight,
-                widthsFor(lined.line.text, shown.widths),
+                widthsFor(lined.line.text, this.widthsAt(index)),
               )
             : { from: part.from, to: part.to, column: part.indent },
         );
@@ -574,6 +581,10 @@ export class DiffCells {
       tintsOf: marked.tintsOf,
       showWhitespace: shown.showWhitespace,
       widths: shown.widths,
+      ...(shown.tabSizeOf !== undefined && {
+        widthsOf: (textLine: TextLine) =>
+          this.widthsAt(textLine.start) ?? shown.widths,
+      }),
       first,
       left: text,
       gutter: {

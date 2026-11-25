@@ -4,6 +4,7 @@ import { marksWithin, piecesWithin } from './lines';
 import type { CellFrame } from './cellFrame';
 import {
   rowKey,
+  rowWidthsOf,
   selectedOf,
   type CellPainting,
   type ShownRows,
@@ -152,9 +153,10 @@ export function seenRows(shown: ShownRows, place: SeenPlace): SeenRow[] {
 }
 
 export function seenPlaces(
-  { rows, parts, widths }: ShownRows,
+  shown: ShownRows,
   index: number,
 ): (readonly [at: number, column: number])[] {
+  const { rows, parts } = shown;
   const row = rows[index];
   const part = parts[index];
   return row === undefined
@@ -164,7 +166,7 @@ export function seenPlaces(
         part?.from ?? row.from,
         part?.to ?? row.to,
         part?.column ?? 0,
-        widths,
+        rowWidthsOf(shown, row.row),
       );
 }
 

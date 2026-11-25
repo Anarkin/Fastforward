@@ -1,3 +1,4 @@
+import { rowWidths, type TabSizeOf } from './fileWidths';
 import { widthsFor } from '../../../lib/page/textWidths';
 import type { VirtualItem, Virtualizer } from '@tanstack/react-virtual';
 import {
@@ -119,6 +120,7 @@ export function useRevealFound({
   rows,
   wordWrap,
   widths,
+  tabSizeOf,
   room,
   scrolledNow,
   reveal,
@@ -137,6 +139,7 @@ export function useRevealFound({
   readonly rows: readonly DiffRow[];
   readonly wordWrap: boolean;
   readonly widths: TextWidths;
+  readonly tabSizeOf?: TabSizeOf | undefined;
   readonly room: number;
   readonly scrolledNow: () => number;
   readonly reveal: (scrolled: number) => void;
@@ -177,7 +180,10 @@ export function useRevealFound({
           wrappedRows(
             lined.line,
             pane === 0 ? wrapping?.left : wrapping?.right,
-            widthsFor(lined.line.text, widths),
+            widthsFor(
+              lined.line.text,
+              rowWidths(widths, tabSizeOf, rows[index]),
+            ),
           ),
           found,
           lineHeight,
@@ -203,7 +209,12 @@ export function useRevealFound({
       return;
     }
     const shown = { ...readSideBox(element), scrolled: scrolledNow(), room };
-    const scrolled = foundScroll(rows[index], found, shown, widths);
+    const scrolled = foundScroll(
+      rows[index],
+      found,
+      shown,
+      rowWidths(widths, tabSizeOf, rows[index]),
+    );
     if (scrolled !== undefined && scrolled !== shown.scrolled) {
       reveal(scrolled);
     }
@@ -218,6 +229,7 @@ export function useRevealFound({
     rows,
     wordWrap,
     widths,
+    tabSizeOf,
     room,
     scrolledNow,
     reveal,

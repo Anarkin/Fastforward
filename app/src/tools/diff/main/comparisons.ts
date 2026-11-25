@@ -1,3 +1,4 @@
+import { fileTabSizeOn } from '../../../lib/main/editorConfig';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { TextRequest } from '../../../components/diff/shared/protocol';
@@ -235,6 +236,11 @@ export class Comparisons {
                 gitErrorText(failure),
               );
     }
+    const tabSize = (
+      await fileTabSizeOn(compared.newVersion?.file ?? compared.new).catch(
+        () => undefined,
+      )
+    )?.size;
     if (this.shown.get(page) !== comparing || comparing.version !== version) {
       return;
     }
@@ -257,6 +263,7 @@ export class Comparisons {
         ...(same !== undefined && { same }),
         ...(Object.keys(encodings).length > 0 && { encodings }),
         ...(withBom !== undefined && { withBom }),
+        ...(tabSize !== undefined && { tabSize }),
         ...(error !== undefined && { error }),
       },
     });

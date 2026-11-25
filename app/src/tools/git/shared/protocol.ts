@@ -398,6 +398,11 @@ export type GitToWebview =
       readonly whitespaceOnly?: readonly string[];
     }
   | {
+      readonly type: 'tabSizes';
+      readonly hash: string;
+      readonly sizes: Readonly<Record<string, number>>;
+    }
+  | {
       readonly type: 'fileDiff';
       readonly hash: string;
       readonly path: string;

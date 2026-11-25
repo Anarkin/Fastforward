@@ -1,3 +1,4 @@
+import { rowWidths, type TabSizeOf } from './fileWidths';
 import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
 import { wrappedLines } from '../../../lib/page/wordWrap';
 import { inLines, measureInLines } from '../../../lib/page/lineHeight';
@@ -148,6 +149,7 @@ const spansOfRows = new WeakMap<
   readonly DiffRow[],
   {
     readonly widths: TextWidths | undefined;
+    readonly tabSizeOfFile: TabSizeOf | undefined;
     readonly spans: (readonly TextSpan[] | undefined)[];
   }
 >();
@@ -155,10 +157,15 @@ const spansOfRows = new WeakMap<
 function rowSpans(
   rows: readonly DiffRow[],
   widths: TextWidths | undefined,
+  tabSizeOfFile: TabSizeOf | undefined,
 ): (readonly TextSpan[] | undefined)[] {
   let known = spansOfRows.get(rows);
-  if (!known || known.widths !== widths) {
-    known = { widths, spans: [] };
+  if (
+    !known ||
+    known.widths !== widths ||
+    known.tabSizeOfFile !== tabSizeOfFile
+  ) {
+    known = { widths, tabSizeOfFile, spans: [] };
     spansOfRows.set(rows, known);
   }
   return known.spans;
@@ -177,6 +184,7 @@ interface RowMeasures {
   readonly lineHeight: number;
   readonly ratio: number;
   readonly widths: TextWidths | undefined;
+  readonly tabSizeOfFile: TabSizeOf | undefined;
   readonly near: ShownRow | undefined;
   readonly errorShown: boolean;
 }
@@ -197,6 +205,7 @@ export function rowMeasures(
   widths?: TextWidths,
   near?: ShownRow,
   errorShown = true,
+  tabSizeOfFile?: TabSizeOf,
 ): RowMeasures {
   let measures = measuresOfRows.get(rows);
   if (
@@ -206,6 +215,7 @@ export function rowMeasures(
     measures.lineHeight !== lineHeight ||
     measures.ratio !== ratio ||
     measures.widths !== widths ||
+    measures.tabSizeOfFile !== tabSizeOfFile ||
     measures.near !== near ||
     measures.errorShown !== errorShown
   ) {
@@ -217,6 +227,7 @@ export function rowMeasures(
       widths,
       near,
       errorShown,
+      tabSizeOfFile,
     );
     measuresOfRows.set(rows, measures);
   }
@@ -231,23 +242,25 @@ function measuresOf(
   widths: TextWidths | undefined,
   near: ShownRow | undefined,
   errorShown: boolean,
+  tabSizeOfFile: TabSizeOf | undefined,
 ): RowMeasures {
   const generation = wrapGeneration++;
   const wrapped: number[] = [];
-  const spans = rowSpans(rows, widths);
+  const spans = rowSpans(rows, widths, tabSizeOfFile);
   const wrappedRow = (row: CodeRow, index: number, wrapsAt: WrapColumns) => {
     const exact = wrapped[index];
     if (exact !== undefined) {
       return exact;
     }
-    const spanned = (spans[index] ??= codeSpans(row, widths));
+    const rowWidthsShown = widths && rowWidths(widths, tabSizeOfFile, row);
+    const spanned = (spans[index] ??= codeSpans(row, rowWidthsShown));
     if (onOneLine(spanned, wrapsAt)) {
       return lineHeight;
     }
     wrapped[index] =
       Math.abs(index - (near?.current ?? 0)) > nearRows
         ? guessedLines(spanned, wrapsAt) * lineHeight
-        : wrappedHeight(row, wrapsAt, lineHeight, widths);
+        : wrappedHeight(row, wrapsAt, lineHeight, rowWidthsShown);
     return wrapped[index];
   };
   return {
@@ -273,6 +286,7 @@ function measuresOf(
     lineHeight,
     ratio,
     widths,
+    tabSizeOfFile,
     near,
     errorShown,
   };

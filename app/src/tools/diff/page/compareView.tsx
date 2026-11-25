@@ -112,6 +112,11 @@ export function CompareView({ tab }: { tab: string }) {
         ?.focus({ preventScroll: true });
     }
   }, [shownTab, focusOf]);
+  const comparedTabSize = compare?.tabSize;
+  const tabSizeOfPath = useMemo(
+    () => (comparedTabSize === undefined ? undefined : () => comparedTabSize),
+    [comparedTabSize],
+  );
   return (
     <div className="repository compare-view" ref={view}>
       <div className="columns bars-outside compare-columns">
@@ -143,6 +148,7 @@ export function CompareView({ tab }: { tab: string }) {
           origin={origin}
           findAsked={findAsked}
           filter={undefined}
+          tabSizeOfPath={tabSizeOfPath}
         />
       </div>
     </div>

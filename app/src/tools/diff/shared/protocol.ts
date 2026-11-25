@@ -27,6 +27,7 @@ export interface CompareView {
     readonly new?: TextEncoding;
   };
   readonly withBom?: readonly ComparedSide[];
+  readonly tabSize?: number;
   readonly error?: Sentence;
 }
 

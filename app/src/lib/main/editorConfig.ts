@@ -1,3 +1,4 @@
+import { fs } from './files';
 import type { FileTabSize } from '../shared/tabSize';
 import * as path from 'node:path';
 type LineEnding = 'lf' | 'crlf' | 'cr';
@@ -280,3 +281,8 @@ export function fileTabSizeOf(config: EditorConfig): FileTabSize | undefined {
         }),
       };
 }
+
+export const fileTabSizeOn = (file: string): Promise<FileTabSize | undefined> =>
+  editorConfigOf(file, (config) =>
+    fs.promises.readFile(config, 'utf8').catch(() => undefined),
+  ).then(fileTabSizeOf);

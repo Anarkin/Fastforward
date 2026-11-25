@@ -61,6 +61,11 @@ const RepositoryDiff = memo(function RepositoryDiff() {
   const diffs = useGit((state) => state.tab.diffs);
   const refreshes = useGit((state) => state.tab.refreshes);
   const fileContent = useGit((state) => state.tab.fileContent);
+  const tabSizes = useGit((state) => state.tab.tabSizes);
+  const tabSizeOfPath = useMemo(
+    () => (file: string) => tabSizes[file],
+    [tabSizes],
+  );
   const error = useGit((state) => state.tab.error);
   const filter = useGit(fileFilterOf);
   const languageKey = useGit((state) => languageKeyOf(state.tab));
@@ -121,6 +126,7 @@ const RepositoryDiff = memo(function RepositoryDiff() {
       filter={filter}
       languageKey={languageKey}
       entire={entire}
+      tabSizeOfPath={tabSizeOfPath}
     />
   );
 });

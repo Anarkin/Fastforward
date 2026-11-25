@@ -25,6 +25,24 @@ const charUnder = (
 };
 
 suite('Text under the pointer', () => {
+  test('takes the width of a tab of each row from the widths of its own line, as rows of several files of a diff draw their tabs at the width of each file', () => {
+    const tab = String.fromCharCode(9);
+    const narrow = rowOf(tab + 'a', 0);
+    const wide = rowOf(tab + 'b', 10);
+    const rows = shown([narrow, wide], {
+      widthsOf: (line) => ({
+        char: 1,
+        of: () => 1,
+        tabSize: line === wide.row ? 8 : 2,
+      }),
+    });
+    const at = (column: number, y: number) =>
+      unitUnder(rows, advance, rowHeight, column * advance + 1, y)?.text;
+
+    assert.deepStrictEqual([at(2, 3), at(2, 20), at(8, 20)], ['a', tab, 'b']);
+    assert.deepStrictEqual(charUnder(rows, 8 * advance + 1, 20), [10, 1]);
+  });
+
   test('finds the character drawn where the pointer rests and the box of its cells, and nothing past the end of a row, above the rows or below them, as a tooltip names what is drawn there', () => {
     const rows = shown([rowOf('ab\u200bc', 0), rowOf('ef', 5)]);
 

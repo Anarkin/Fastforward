@@ -1,6 +1,6 @@
 import type { ScreenRow } from './lines';
 import type { TextLine } from './lines';
-import type { ShownRows } from './cellPainting';
+import { rowWidthsOf, type ShownRows } from './cellPainting';
 import { charAtColumn, unitAtColumn } from './columns';
 import {
   lineAt,
@@ -32,12 +32,13 @@ function rowAt(tops: readonly number[], y: number): number {
 }
 
 export function placeUnder(
-  { rows, parts, widths, first, tops, left = 0 }: ShownRows,
+  shown: ShownRows,
   advance: number,
   rowHeight: number,
   x: number,
   y: number,
 ): Under | undefined {
+  const { rows, parts, first, tops, left = 0 } = shown;
   const index = Math.min(
     rows.length - 1,
     Math.max(
@@ -62,7 +63,7 @@ export function placeUnder(
           part?.to ?? row.to,
           part?.column ?? 0,
           (x - left) / advance + first,
-          widths,
+          rowWidthsOf(shown, row.row),
         ),
       ),
     },
@@ -81,12 +82,13 @@ export interface UnitUnder {
 }
 
 export function unitUnder(
-  { rows, parts, widths, first, tops, left = 0 }: ShownRows,
+  shown: ShownRows,
   advance: number,
   rowHeight: number,
   x: number,
   y: number,
 ): UnitUnder | undefined {
+  const { rows, parts, first, tops, left = 0 } = shown;
   if (y < 0) {
     return undefined;
   }
@@ -103,7 +105,7 @@ export function unitUnder(
     part?.to ?? row.to,
     part?.column ?? 0,
     (x - left) / advance + first,
-    widths,
+    rowWidthsOf(shown, row.row),
   );
   return unit === undefined
     ? undefined
