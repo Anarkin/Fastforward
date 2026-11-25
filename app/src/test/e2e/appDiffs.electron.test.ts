@@ -254,17 +254,22 @@ suite('App', () => {
     await waitForFocus(field, 'the find field');
     assert.strictEqual(await diff.locator('.diff-options').count(), 1);
     assert.strictEqual(await diff.locator('.column-actions').count(), 0);
-    const titles = (selector: string) =>
+    const titles = (selector: string, attribute = 'data-tip') =>
       diff
         .locator(selector)
-        .evaluateAll((buttons) =>
-          buttons.map((button) => button.getAttribute('data-tip')),
+        .evaluateAll(
+          (buttons, name) => buttons.map((button) => button.getAttribute(name)),
+          attribute,
         );
     assert.deepStrictEqual(await titles('.floating-search .nav-button'), [
-      'Previous Match',
-      'Next Match',
-      'Close',
+      null,
+      null,
+      null,
     ]);
+    assert.deepStrictEqual(
+      await titles('.floating-search .nav-button', 'aria-label'),
+      ['Previous Match', 'Next Match', 'Close'],
+    );
     assert.deepStrictEqual(await titles('.search-box .search-toggle'), [
       'Match Case',
       'Whole Word',
