@@ -339,6 +339,70 @@ suite('Terminal view', () => {
     });
   });
 
+  test('takes a paste before xterm.js does and hands it on without the marks of a bracketed paste, so a text pasted cannot end its bracket and have the shell run what follows as typed', () => {
+    withPage((screen) => {
+      const pasted: string[] = [];
+      const xterm = posingAsXterm({
+        Terminal: class extends QuietTerminal {
+          readonly cols = 80;
+          readonly rows = 24;
+          readonly options = {};
+          loadAddon() {}
+          attachCustomKeyEventHandler() {}
+          onData() {}
+          onResize() {}
+          open() {}
+          focus() {}
+          dispose() {}
+          paste(text: string) {
+            pasted.push(text);
+          }
+        },
+        FitAddon: class {
+          proposeDimensions() {
+            return undefined;
+          }
+        },
+        UnicodeGraphemesAddon: class {
+          dispose() {}
+        },
+      });
+      const view = new TerminalView(xterm, screen, {
+        tab: '1',
+        renderer: 'dom',
+        scrollback: 1000,
+        minimumContrastRatio: 4.5,
+        windowsPty: undefined,
+        post: noop,
+        onCopy: noop,
+        scrolling: () => ({ wheelRows: 3, smooth: false, smoothSnap: true }),
+        cursor: defaultCursorLook,
+        onFind: noop,
+        onFound: noop,
+      });
+      const textarea = screen.ownerDocument.createElement('textarea');
+      screen.append(textarea);
+      let reachedXterm = false;
+      textarea.addEventListener('paste', () => {
+        reachedXterm = true;
+      });
+      const escape = String.fromCharCode(27);
+      const paste = new screen.ownerDocument.defaultView!.Event('paste', {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(paste, 'clipboardData', {
+        value: { getData: () => `ls${escape}[201~rm -rf ~` },
+      });
+      textarea.dispatchEvent(paste);
+      assert.deepStrictEqual(
+        { pasted, reachedXterm, handled: paste.defaultPrevented },
+        { pasted: ['lsrm -rf ~'], reachedXterm: false, handled: true },
+      );
+      view.dispose();
+    });
+  });
+
   test('moves the terminal onto whole device pixels by its margin rather than a transform, which would make the compositor resample its canvas, blurring it', () => {
     const [top, , , left] = screenMargin(14, 43.2, 1.25)
       .split(' ')

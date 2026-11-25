@@ -72,7 +72,7 @@
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Copy | Copy the selected text | — | Core | ✅ Yes | Mod+C while text is selected, the key reaching the shell otherwise, and Mod+Shift+C |
-| Paste | Paste the clipboard | — | Core | ✅ Yes | Mod+V and Mod+Shift+V |
+| Paste | Paste the clipboard | — | Core | ✅ Yes | Mod+V and Mod+Shift+V, the marks that end or start a bracketed paste left out of the text, so a text pasted cannot end its bracket and have the shell run what follows as typed |
 | Bracketed paste | Let the shell tell what is pasted from what is typed | `CSI ? 2004 h` | Common | ✅ Yes | By `xterm.js` |
 | Paste warnings | Ask before pasting several lines or a lot of text | — | Common | ❌ No |  |
 | Copy on select | Copy what is selected, and paste on a middle click | — | Common | ❌ No |  |

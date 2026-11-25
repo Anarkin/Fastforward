@@ -1,3 +1,4 @@
+import { withoutPasteMarks } from './pasted';
 import type { FitAddon } from '@xterm/addon-fit';
 import type { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
 import type { WebglAddon } from '@xterm/addon-webgl';
@@ -160,6 +161,7 @@ export class TerminalView {
       capture: true,
       passive: false,
     });
+    element.addEventListener('paste', this.pasted, { capture: true });
     const { frame, element: bar } = proxyElements('vertical');
     this.barFrame = frame;
     element.after(frame);
@@ -226,6 +228,16 @@ export class TerminalView {
     this.terminal.scrollLines(by);
   };
 
+  private readonly pasted = (event: ClipboardEvent) => {
+    const text = event.clipboardData?.getData('text/plain');
+    if (text === undefined || text === '') {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.terminal.paste(withoutPasteMarks(text));
+  };
+
   private readonly wheel = (event: WheelEvent) => {
     const lines = wheelLines(
       event,
@@ -283,6 +295,7 @@ export class TerminalView {
     this.observer.disconnect();
     this.scheme.removeEventListener('change', this.followScheme);
     this.element.removeEventListener('wheel', this.wheel, { capture: true });
+    this.element.removeEventListener('paste', this.pasted, { capture: true });
     this.stopWatching();
     removeEventListener('resize', this.snapToPixels);
     this.place.dispose();
