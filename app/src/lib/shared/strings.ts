@@ -534,7 +534,6 @@ ${namedFile(compared)}`,
     remoteBranches: 'Remote branches',
     tags: 'Tags',
     stashes: 'Stashes',
-    bookmarks: 'Bookmarks',
     noCommitStartsWith: (hash: string) =>
       sentence`No commit starts with ${named(hash)}`,
     commitsStartWith: (count: number, hash: string) =>

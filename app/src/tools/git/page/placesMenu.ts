@@ -62,26 +62,25 @@ const group = (
   submenu: items,
 });
 
+const divider: ContextMenuItem = { separator: true };
+
 export function placesMenu(
   { bookmarks, refs, groups, stashes }: Places,
   onJump: (commit: string) => void,
 ): ContextMenuItem[] {
-  return [
-    group(
-      strings.search.bookmarks,
-      bookmarks.map((bookmark) => {
-        const name =
-          bookmark.kind === 'commit' ? shortHash(bookmark.name) : bookmark.name;
-        return leaf(
-          name,
-          bookmark.name,
-          bookmark.kind === 'commit'
-            ? bookmark.name
-            : findRef(refs, bookmark)?.commit,
-          onJump,
-        );
-      }),
+  const bookmarked = bookmarks.map((bookmark) =>
+    leaf(
+      bookmark.kind === 'commit' ? shortHash(bookmark.name) : bookmark.name,
+      bookmark.name,
+      bookmark.kind === 'commit'
+        ? bookmark.name
+        : findRef(refs, bookmark)?.commit,
+      onJump,
     ),
+  );
+  return [
+    ...bookmarked,
+    ...(bookmarked.length > 0 ? [divider] : []),
     ...groups.map((each) => group(each.title, treeItems(each.tree, onJump))),
     group(
       strings.search.stashes,

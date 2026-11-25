@@ -42,24 +42,33 @@ suite('Places menu', () => {
     (commit) => jumped.push(commit),
   );
 
-  test('lists the bookmarks, the local branches, the remote branches, the tags and the stashes, each a submenu with a filter, none of them empty but disabled', () => {
+  test('lists the bookmarks at the top, then a divider and the local branches, the remote branches, the tags and the stashes, each a submenu with a filter, none of them empty but disabled', () => {
     assert.deepStrictEqual(labels(menu), [
-      'Bookmarks',
+      'main',
+      'abcdef1',
+      'gone',
+      '-',
       'Local branches',
       'Remote branches',
       'Tags',
       'Stashes',
     ]);
-    for (const item of menu) {
+    for (const item of menu.slice(4)) {
       assert.ok(!('separator' in item) && item.filtered === true);
     }
     const empty = placesMenu(
       { bookmarks: [], refs: [], groups: indexRefs([]), stashes: [] },
       () => {},
     );
+    assert.deepStrictEqual(labels(empty), [
+      'Local branches',
+      'Remote branches',
+      'Tags',
+      'Stashes',
+    ]);
     assert.deepStrictEqual(
       empty.map((item) => !('separator' in item) && item.disabled),
-      [true, true, true, true, true],
+      [true, true, true, true],
     );
   });
 
@@ -83,19 +92,13 @@ suite('Places menu', () => {
   });
 
   test('goes to the commit of what is picked, a bookmarked branch, a bookmarked commit or a stash, and offers a bookmark whose branch is gone disabled', () => {
-    const bookmarks = named(menu, 'Bookmarks');
-    assert.ok(bookmarks && !('separator' in bookmarks));
-    assert.deepStrictEqual(labels(bookmarks.submenu), [
-      'main',
-      'abcdef1',
-      'gone',
-    ]);
-    for (const item of bookmarks.submenu ?? []) {
+    const bookmarks = menu.slice(0, 3);
+    for (const item of bookmarks) {
       if (!('separator' in item) && item.disabled !== true) {
         item.onClick?.();
       }
     }
-    const gone = named(bookmarks.submenu, 'gone');
+    const gone = named(bookmarks, 'gone');
     assert.ok(gone && !('separator' in gone) && gone.disabled === true);
     const stashes = named(menu, 'Stashes');
     assert.ok(stashes && !('separator' in stashes));

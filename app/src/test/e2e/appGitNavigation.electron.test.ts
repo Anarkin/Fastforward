@@ -135,7 +135,7 @@ suite('App', () => {
     await commitRow(page, 'second').waitFor();
   });
 
-  test('opens on Ctrl+D a menu of the bookmarks, the branches, the remote branches, the tags and the stashes, each a submenu whose filter takes the keys as it opens, the branches nested in folders by their slashes, finding one by its whole name, and selects the commit of the one picked', async () => {
+  test('opens on Ctrl+D a menu of the bookmarks at its top, then the branches, the remote branches, the tags and the stashes, each a submenu whose filter takes the keys as it opens, the branches nested in folders by their slashes, finding one by its whole name, and selects the commit of the one picked', async () => {
     await repository.git('branch', 'topic/menu', 'HEAD~1');
     onTestFinished(async () => {
       await repository.git('branch', '-D', 'topic/menu');
