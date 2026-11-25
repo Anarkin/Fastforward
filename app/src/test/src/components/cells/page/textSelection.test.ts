@@ -122,10 +122,21 @@ suite('Text selected in a file viewed', () => {
     });
     assert.strictEqual(
       selectedText({ anchor: from(0, 1), focus: from(5, 2) }, [
-        windows,
+        { ...windows, ending: '␊' },
         { start: 5, end: 8, text: 'two' },
       ]),
       'ne\r\ntw',
+    );
+  });
+
+  test('copies a line ended by a carriage return alone as it ends, with no line feed after it, as the row it ends holds the carriage return and no line feed follows', () => {
+    assert.strictEqual(
+      selectedText({ anchor: from(0, 0), focus: from(4, 1) }, [
+        { start: 0, end: 2, text: 'a\r' },
+        { start: 2, end: 4, text: 'b\r', ending: '␊' },
+        { start: 4, end: 5, text: 'c' },
+      ]),
+      'a\rb\r\nc',
     );
   });
 

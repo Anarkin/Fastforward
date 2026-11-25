@@ -129,7 +129,9 @@ export function selectedText(
       row.start === first.start ? first.char : 0,
       ends ? last.char : undefined,
     );
-    if (!ends && row.cut !== true) {
+    const endedByReturn =
+      row.ending === undefined && row.text.endsWith(carriageReturn);
+    if (!ends && row.cut !== true && !endedByReturn) {
       text += newline;
     }
   }
