@@ -15,10 +15,7 @@ import {
   DiffOptionsShown,
 } from '../../../helpers/styleDiffFixtures';
 import { MenuButtonShown } from '../../../helpers/styleFixtures';
-import {
-  LocationsPopupShown,
-  NavButtonsShown,
-} from '../../../helpers/styleHistoryFixtures';
+import { NavButtonsShown } from '../../../helpers/styleHistoryFixtures';
 import {
   bodyVariable,
   deviceRounded,
@@ -99,7 +96,6 @@ function barsShown(): MarkupElement[] {
         children: null,
       }),
     ),
-    rendered(<LocationsPopupShown query="" />),
   ];
 }
 
@@ -162,16 +158,6 @@ suite('Style', () => {
       ...ends,
       right: 'var(--bar-edge)',
     });
-    const padding = 'var(--title-above) var(--bar-edge) var(--title-below)';
-    looks(
-      withClass(rendered(<LocationsPopupShown query="" />), 'locations-bar'),
-      {
-        'box-sizing': 'border-box',
-        height: 'calc(var(--title-height) - var(--title-line))',
-        'align-items': 'center',
-        padding,
-      },
-    );
   });
 
   test('stands the buttons of the header of a block whose bars stand outside its frame at its top and at either end of it, no line around them and the space of a bar under them alone, the line of the block starting under its header, a search opened in place of the header as tall as it is, with no line of the header to leave out, as the frame stood around the buttons of the only block of a tab, of the two sides of the commander, which the row selected tells apart, and of the three columns of git, which the blue of the selection tells apart', () => {

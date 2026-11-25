@@ -1,3 +1,4 @@
+import { submenuLift } from '../../../../lib/page/menuControls';
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { SearchBar } from '../../../../lib/page/searchBar';
@@ -223,12 +224,10 @@ suite('Style', () => {
     });
   });
 
-  test('lines the first item of a submenu up with the item that opens it', () => {
+  test('lines the first item of a submenu up with the item that opens it, the page lifting the submenu by its padding', () => {
     const submenu = rendered(<div className="menu submenu" />);
     assert.strictEqual(cascaded(submenu, 'border'), undefined);
-    const padding = cascaded(submenu, 'padding');
-    assert.match(padding ?? '', /^\d+px$/);
-    assert.strictEqual(cascaded(submenu, 'top'), `-${padding}`);
+    assert.strictEqual(cascaded(submenu, 'padding'), `${submenuLift}px`);
   });
 
   test('highlights no disabled menu item on hover, whose text would vanish in the selection color', () => {

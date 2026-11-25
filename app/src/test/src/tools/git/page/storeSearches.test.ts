@@ -2,10 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test, vi } from 'vitest';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { createGitStore } from '../../../../../tools/git/page/store';
-import {
-  fileFilterOf,
-  searchOf,
-} from '../../../../../tools/git/page/selectors';
+import { fileFilterOf } from '../../../../../tools/git/page/selectors';
 import { noop } from '../../../../helpers/fixtures';
 import { at, shown, posting } from './storeFixtures';
 
@@ -44,21 +41,8 @@ suite('Git store', () => {
       ['tag', ['v1', 'v2'], ['v1', 'v2']],
     ]);
     store.getState().receive({ type: 'pulling', running: true });
-    store.getState().searchFor('main');
+    store.getState().filterCommits('main');
     assert.strictEqual(store.getState().refIndex, refIndex);
-  });
-
-  test('keeps the query searched for in each worktree, through another worktree shown', () => {
-    const store = createGitStore(noop);
-    store.getState().receive(shown());
-    store.getState().searchFor('fix');
-    assert.strictEqual(searchOf(store.getState()).query, 'fix');
-    store
-      .getState()
-      .receive({ type: 'worktrees', worktree: '/other', worktrees: [] });
-    assert.strictEqual(searchOf(store.getState()).query, '');
-    store.getState().receive(shown());
-    assert.strictEqual(searchOf(store.getState()).query, 'fix');
   });
 
   test('keeps a filter of the files for each worktree, through another worktree shown, until it is cleared', () => {

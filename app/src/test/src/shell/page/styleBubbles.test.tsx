@@ -52,7 +52,7 @@ suite('Style', () => {
         !bubble.classes.includes('tag') &&
         !bubble.classes.includes('remote-tag'),
     );
-    for (const kind of ['branch', 'remote', 'stash', 'hash', 'missing']) {
+    for (const kind of ['branch', 'remote', 'stash', 'hash']) {
       assert.ok(
         all.some((bubble) => bubble.classes.includes(kind)),
         kind,
@@ -185,7 +185,6 @@ suite('Style', () => {
         border: undefined,
       });
     }
-    assert.ok(all.some((bubble) => bubble.parent?.classes.includes('active')));
     for (const bubble of all) {
       looksAlike(bubble, bubbleLook, hovered);
     }

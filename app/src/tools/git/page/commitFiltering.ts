@@ -8,7 +8,7 @@ import type { CommitInfo } from '../shared/protocol';
 import { filteredHistory, filterLimit } from './commitFilter';
 import type { CommitHistory } from './commitHistory';
 import { useCommitSurroundings } from './crowdedBubbles';
-import { foundCommits, hashQuery, textQuery } from './locationQuery';
+import { foundCommits, hashQuery, textQuery } from './commitQuery';
 import { commitFilterOf } from './selectors';
 import { useGit, useGitActions } from './store';
 

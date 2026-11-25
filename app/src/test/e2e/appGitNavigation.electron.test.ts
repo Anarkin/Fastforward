@@ -13,8 +13,6 @@ import {
 } from './appFixtures';
 import { cellOf, untilDiffLine } from './diffSeen';
 import { waitForCount, waitForFocus } from './waits';
-import { wheelsByWholeRows } from './scrollProbes';
-import { locationRows } from '../../tools/git/page/locationKeys';
 import { waitFor } from '../helpers/fixtures';
 import { commitBubble, commitRow, commitsSeen } from './commitRows';
 
@@ -137,172 +135,38 @@ suite('App', () => {
     await commitRow(page, 'second').waitFor();
   });
 
-  test('opens the commit search on Ctrl+D in the commit list, and closes it on Escape', async () => {
-    const popup = page.locator('.locations-popup');
-    await page.locator('.virtual-rows.list').focus();
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(
-      page.locator('.locations-popup .search-box-input'),
-      'the search field',
-    );
-    await page.keyboard.press('Escape');
-    await popup.waitFor({ state: 'detached' });
-  });
-
-  test('searches the commits in the case of the query while its toggle is pressed, counting what it found in place of a line under its box', async () => {
-    const field = page.locator('.locations-popup .search-box-input');
-    const popup = page.locator('.locations-popup');
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(field, 'the search field');
-    await field.fill('SECOND');
-    await popup.locator('.commit', { hasText: 'second' }).waitFor();
-    await popup.locator('.search-count', { hasText: /^1 of \d+$/ }).waitFor();
-    const matchCase = popup.locator('.search-toggle[data-tip="Match Case"]');
-    await matchCase.click();
-    await popup.locator('.search-count', { hasText: 'No matches' }).waitFor();
-    assert.strictEqual(await popup.locator('.commit').count(), 0);
-    await matchCase.click();
-    await popup.locator('.commit', { hasText: 'second' }).waitFor();
-    await waitForFocus(field, 'the search field');
-    await page.keyboard.press('Escape');
-    await popup.waitFor({ state: 'detached' });
-  });
-
-  test('ends the search popup where its column ends, showing none of its list in the gap below', async () => {
-    const commits = page.locator('.columns > .column').first();
-    const popup = page.locator('.locations-popup');
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(
-      page.locator('.locations-popup .search-box-input'),
-      'the search field',
-    );
-    const [shown, column] = await Promise.all([
-      popup.boundingBox(),
-      commits.boundingBox(),
-    ]);
-    assert.ok(shown && column);
-    assert.ok(
-      Math.abs(shown.y + shown.height - (column.y + column.height)) < 1,
-      `the popup ends at ${shown.y + shown.height}, the column at ${column.y + column.height}`,
-    );
-    await page.keyboard.press('Escape');
-    await popup.waitFor({ state: 'detached' });
-  });
-
-  test('scrolls the search popup on the wheel by whole rows, each notch coming to rest with a row starting at its top, below the folders stuck there too, down and up alike, and at its end too', async () => {
-    const branches = Array.from(
-      { length: 60 },
-      (_, index) => `wheel/${String(index).padStart(2, '0')}`,
-    );
-    await Promise.all(
-      branches.map((branch) => repository.git('branch', branch)),
-    );
+  test('opens on Ctrl+D a menu of the bookmarks, the branches, the remote branches, the tags and the stashes, each a submenu whose filter takes the keys as it opens, the branches nested in folders by their slashes, finding one by its whole name, and selects the commit of the one picked', async () => {
+    await repository.git('branch', 'topic/menu', 'HEAD~1');
     onTestFinished(async () => {
-      await repository.git('branch', '-q', '-D', ...branches);
+      await repository.git('branch', '-D', 'topic/menu');
     });
-    const popup = page.locator('.locations-popup');
+    await commitRow(page, 'second').click();
+    await commitBubble(page, 'topic/menu', { kind: 'branch' }).waitFor();
     await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(popup.locator('.search-box-input'), 'the search field');
-    await page.keyboard.press('Backspace');
-    await popup.locator('.tree-row.folder', { hasText: 'wheel' }).click();
-    await popup.locator('.row', { hasText: '59' }).waitFor();
-    await wheelsByWholeRows(
-      page,
-      popup.locator('.locations-groups'),
-      locationRows,
-    );
-    await page.keyboard.press('Escape');
-    await popup.waitFor({ state: 'detached' });
-  });
-
-  test('gives the keyboard back to the commit list once the search popup closes on Esc or a jump, by key or click', async () => {
-    const list = page.locator('.virtual-rows.list');
-    const field = page.locator('.locations-popup .search-box-input');
-    const popup = page.locator('.locations-popup');
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(field, 'the search field');
-    await page.keyboard.press('Escape');
-    await popup.waitFor({ state: 'detached' });
-    await waitForFocus(list, 'the commit list');
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(field, 'the search field');
-    await field.fill('second');
-    await popup.locator('.commit', { hasText: 'second' }).waitFor();
-    await page.keyboard.press('Enter');
-    await popup.waitFor({ state: 'detached' });
-    await commitRow(page, 'second', { selected: true }).waitFor();
-    await waitForFocus(list, 'the commit list');
-    await page.keyboard.press('ArrowDown');
-    await commitRow(page, 'first', { selected: true }).waitFor();
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(field, 'the search field');
-    await field.fill('main');
-    await popup.locator('.row.result[data-tip="main"]').click();
-    await popup.waitFor({ state: 'detached' });
-    await commitRow(page, 'second', { selected: true }).waitFor();
-    await waitForFocus(list, 'the commit list');
-    await page.keyboard.press('ArrowDown');
-    await commitRow(page, 'first', { selected: true }).waitFor();
-  });
-
-  test('keeps the search popup open in the worktree switched to with it open, its field keeping the keyboard and the caret, as the search is the git tab one, closed in both once closed in one', async () => {
-    const worktree = path.join(folder, 'other');
-    const worktrees = page.locator('.worktrees .tab');
-    const popup = page.locator('.locations-popup');
-    const field = page.locator('.locations-popup .search-box-input');
-    await repository.git('worktree', 'add', '-q', '-b', 'other', worktree);
-    onTestFinished(async () => {
-      if ((await popup.count()) > 0) {
-        await page.keyboard.press('Escape');
-        await popup.waitFor({ state: 'detached' });
-      }
-      await page.keyboard.press('Control+PageUp');
-      await commitBubble(page, 'main', {
-        kind: 'branch',
-        checkedOut: true,
-      }).waitFor();
-      await removeWorktree(worktree, 'other');
-      await waitForCount(worktrees, 0, 'worktrees');
-    });
-    await waitForCount(worktrees, 2, 'worktrees');
-    await page.keyboard.press('ControlOrMeta+D');
-    await waitForFocus(field, 'the search field');
-    await page.keyboard.type('second');
-    await page.keyboard.press('ArrowLeft');
-    await page.keyboard.press('ArrowLeft');
-    const typed = () =>
-      field.evaluate((element) =>
-        element instanceof HTMLInputElement
-          ? [element.value, element.selectionStart, element.selectionEnd]
-          : [],
-      );
-    assert.deepStrictEqual(await typed(), ['second', 4, 4]);
-    await page.keyboard.press('Control+PageDown');
-    await commitBubble(page, 'other', {
-      kind: 'branch',
-      checkedOut: true,
-    }).waitFor();
-    assert.strictEqual(await popup.count(), 1);
-    await waitForFocus(field, 'the search field');
-    assert.deepStrictEqual(await typed(), ['second', 4, 4]);
-    await page.keyboard.press('Control+PageUp');
-    await page.locator('.worktrees .tab.active', { hasText: 'main' }).waitFor();
-    await waitForFocus(field, 'the search field');
-    await waitFor(
-      async () => JSON.stringify(await typed()) === '["second",4,4]',
-      'the caret where it was left',
-    );
-    await page.keyboard.press('Escape');
-    await popup.waitFor({ state: 'detached' });
-    await page.keyboard.press('Control+PageDown');
-    await page
-      .locator('.worktrees .tab.active', { hasText: 'other' })
+    const menu = page.locator('.context-menu');
+    await menu.waitFor();
+    await menu
+      .locator(':scope > .menu-entry > .menu-item', {
+        hasText: 'Local branches',
+      })
+      .hover();
+    const branches = menu.locator('.submenu.filtered-menu');
+    const field = branches.locator('.search-box-input');
+    await waitForFocus(field, 'the filter of the branches');
+    await branches
+      .locator(':scope > .menu-entry > .menu-item', { hasText: 'topic' })
+      .hover();
+    await branches
+      .locator('.submenu .menu-item', { hasText: /^\s*menu\s*$/ })
       .waitFor();
-    await commitBubble(page, 'other', {
-      kind: 'branch',
-      checkedOut: true,
-    }).waitFor();
-    assert.strictEqual(await popup.count(), 0);
+    await field.click();
+    await page.keyboard.type('topic me');
+    await branches
+      .locator(':scope > .menu-entry > .menu-item', { hasText: 'topic/menu' })
+      .waitFor();
+    await page.keyboard.press('Enter');
+    await menu.waitFor({ state: 'detached' });
+    await commitRow(page, 'first', { selected: true }).waitFor();
   });
 
   test('keeps the place a worktree was scrolled to when another is shown right after the scroll, rather than its top', async () => {

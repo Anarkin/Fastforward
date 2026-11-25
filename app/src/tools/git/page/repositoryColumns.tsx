@@ -18,7 +18,6 @@ import {
   languageKeyOf,
   layoutSelectionOf,
   openingOf,
-  searchingOf,
 } from './selectors';
 import { useGit, useGitActions, useGitStore } from './store';
 import { usePrefetchedColors } from '../../../components/diff/page/syntax';
@@ -37,7 +36,6 @@ import {
 } from './activeColumn';
 import { NavButtons } from './navBar';
 import { gitImageRoute } from '../shared/images';
-import { AddressBar } from './addressBar';
 import { focusBack, type KeptFocus } from '../../../lib/page/viewFocus';
 import { useTabFocus } from './tabFocus';
 import { VersionedPaths } from './versionedPaths';
@@ -132,18 +130,15 @@ const RepositoryDiff = memo(function RepositoryDiff() {
 });
 
 const commitNavigation = <NavButtons />;
-const commitSearch = <AddressBar />;
-
 export function RepositoryColumns() {
   const columnWidths = useGit((state) => state.columnWidths);
   const commitsShown = useGit(commitsShownOf);
-  const searching = useGit(searchingOf);
   const activeColumn = useGit(activeColumnOf);
   const layoutSelection = useGit(layoutSelectionOf);
   const diffShown = useGit(diffShownOf);
   const root = useGit((state) => state.tab.root);
   const { activateColumn } = useGitActions();
-  const commitColumnShown = commitsShown || searching;
+  const commitColumnShown = commitsShown;
   const columnsContainer = useRef<HTMLDivElement>(null);
   const columnsTemplate = templateOf(columnWidths, [!commitColumnShown, false]);
   const focusColumn = useCallback(
@@ -265,7 +260,7 @@ export function RepositoryColumns() {
         }
       }}
     >
-      <CommitColumn navigation={commitNavigation} search={commitSearch} />
+      <CommitColumn navigation={commitNavigation} />
       <VersionedPaths>
         <FileColumn />
         <RepositoryDiff />

@@ -1,5 +1,5 @@
 import { shownSelection, showsDiff } from './columnsShown';
-import { noSearch, type Search } from '../../../lib/shared/searchOptions';
+import { type Search } from '../../../lib/shared/searchOptions';
 import {
   noFolders,
   shownFolders,
@@ -9,7 +9,7 @@ import {
 import type { MovedCursor } from './filesCursor';
 import { treeOf, type TabView } from './shownTab';
 import { listsNothing } from './filesSides';
-import type { GitData, GitSource, GitState, KeptLocations } from './state';
+import type { GitData, GitSource, GitState } from './state';
 import type { ColumnName } from './activeColumn';
 
 export function languageKeyOf({
@@ -53,20 +53,6 @@ export function shownFoldersOf(state: GitSource): Folders {
   );
 }
 
-export function locationsOf({
-  tab,
-  locations,
-}: GitSource): KeptLocations | undefined {
-  return tab.root === undefined ? undefined : locations.get(tab.root);
-}
-
-export function locationsScrollOf({
-  tab,
-  locationScrolls,
-}: GitSource): number | undefined {
-  return tab.root === undefined ? undefined : locationScrolls.get(tab.root);
-}
-
 export function fileFoldsOf({
   tab,
   fileFolds,
@@ -85,21 +71,11 @@ export function commitsShownOf({ tab, commitsHidden }: GitSource): boolean {
   return tab.root === undefined || !commitsHidden.has(tab.root);
 }
 
-export function searchingOf({ tab, searching }: GitSource): boolean {
-  return tab.root !== undefined && searching.has(tab.root);
-}
-
 export function activeColumnOf({ tab, activeColumns }: GitSource): ColumnName {
   return (
     (tab.root === undefined ? undefined : activeColumns.get(tab.root)) ??
     'commits'
   );
-}
-
-export function searchOf({ tab, searches }: GitSource): Search {
-  return tab.root === undefined
-    ? noSearch
-    : (searches.get(tab.root) ?? noSearch);
 }
 
 export function commitFilterOf({

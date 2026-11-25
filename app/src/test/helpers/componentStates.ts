@@ -37,8 +37,10 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: typed into an open dropdown, which closes on a tab change as the focus leaves it',
   'lib/page/menuItems.tsx openSubmenu':
     'a moment: the submenu open in a menu, which closes on a tab change as the focus leaves it',
-  'lib/page/menuItems.tsx placement':
-    'a measure: where a submenu fits, measured anew from its box as it opens',
+  'lib/page/menuItems.tsx place':
+    'a measure: where a submenu fits on the window beside its item, measured anew from their boxes as it opens',
+  'lib/page/menuItems.tsx search':
+    'a moment: what is typed into the filter of a submenu, which closing it lets go',
   'lib/page/menuItems.tsx submenuByKey':
     'a moment: whether the submenu of an open menu was opened by key, to focus its first item',
   'lib/page/shownAfter.ts shown':
@@ -165,8 +167,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a trigger: counts the asks to focus the find box; the focus of the tab is kept apart in tabViews',
   'tools/viewer/page/find.ts jump':
     'a trigger: counts the jumps to a match; a viewer shown again keeps its place rather than jumping',
-  'tools/git/page/addressBar.tsx asked':
-    'a trigger: counts the find key presses only to mount the search anew; the search itself is kept per repository',
   'tools/git/page/cappedVirtualizer.ts placed':
     'made once: a function made once to tell the capped scroll where the list was moved to',
   'tools/git/page/cappedVirtualizer.ts redraw':
@@ -260,8 +260,6 @@ export const componentStates: Readonly<Record<string, string>> = {
   'tools/git/page/messagePeek.tsx peek':
     'a moment: the message peeked at, shown only while alt is held over a row',
   'tools/git/page/navBar.tsx now': 'a measure: the clock, read anew every tick',
-  'tools/git/page/popupHeight.ts height':
-    'a measure: the room left for a popup, measured anew from its box and the window',
   'tools/git/page/repositoryColumns.tsx findAsked':
     'a trigger: counts the find key presses, read only as changes; the find itself is kept per scope in diffFinds',
   'tools/git/page/repositoryColumns.tsx viewAsked':

@@ -24,8 +24,6 @@ import {
   textViews,
   views,
   showView,
-  searchCommits,
-  stopSearching,
   type ViewName,
 } from './scrollbarViews';
 import { rounded as roundedApp } from './rounding';
@@ -560,12 +558,9 @@ suite('App scrollbars alike', () => {
       await showPreview(name, tab, vertical);
       seen[name] = await keptInside(vertical);
     }
-    await searchCommits(page);
-    seen['commit search'] = await keptInside('.locations-groups');
-    await stopSearching(page);
     assert.deepStrictEqual(
       seen,
-      alike([...everyView, 'Markdown', 'PDF', 'commit search'], {
+      alike([...everyView, 'Markdown', 'PDF'], {
         wide: size,
         beside: 0,
         within: true,
@@ -638,9 +633,6 @@ suite('App scrollbars alike', () => {
     seen.menu = await barsShown(page);
     await page.keyboard.press('Escape');
     await page.locator('.menu.filtered-menu').waitFor({ state: 'detached' });
-    await searchCommits(page);
-    seen.search = await barsShown(page);
-    await stopSearching(page);
 
     const shown = (state: string) => (seen[state] ?? []).map(({ of }) => of);
     assert.deepStrictEqual(
@@ -657,7 +649,6 @@ suite('App scrollbars alike', () => {
         PDF: shown('PDF').includes('pdf-scroll'),
         shortcuts: shown('shortcuts').includes('shortcuts-pane'),
         menu: shown('menu').includes('menu'),
-        search: shown('search').includes('locations-groups'),
       },
       {
         others: [],
@@ -670,7 +661,6 @@ suite('App scrollbars alike', () => {
         PDF: true,
         shortcuts: true,
         menu: true,
-        search: true,
       },
       JSON.stringify(seen),
     );

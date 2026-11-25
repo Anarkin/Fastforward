@@ -663,35 +663,6 @@ suite('App at a scale of 125%', () => {
     assert.ok(pixels.includes(ground), JSON.stringify({ pixels, ground }));
   });
 
-  test('opens the search of the commits over their title with its button where that of the title is and its list where the frame of the column starts, to a device pixel', async () => {
-    const column = page.locator('.columns > .column').first();
-    const place = () =>
-      column.evaluate((element) => {
-        const ratio = devicePixelRatio;
-        const device = (value: number) => Math.round(value * ratio);
-        const popup = element.querySelector('.locations-popup');
-        const title = element.querySelector('.column-title');
-        const button = (popup ?? title)?.querySelector('.nav-button');
-        const line = popup
-          ? popup.querySelector('.locations-groups')?.getBoundingClientRect()
-              .top
-          : element.getBoundingClientRect().top +
-            parseFloat(getComputedStyle(element, '::after').top);
-        return {
-          button: device(button?.getBoundingClientRect().top ?? Number.NaN),
-          line: device(line ?? Number.NaN),
-        };
-      });
-    const closed = await place();
-    await column.locator('.virtual-rows.list').focus();
-    await page.keyboard.press('ControlOrMeta+D');
-    await column.locator('.locations-popup').waitFor();
-    const opened = await place();
-    await page.keyboard.press('Escape');
-    await column.locator('.locations-popup').waitFor({ state: 'detached' });
-    assert.deepStrictEqual(opened, closed);
-  });
-
   test('wraps a diff to the columns that fit its side, so the mark of each break stands inside it, where the code starts between device pixels too, inline and side by side', async () => {
     await page.locator('.tabs [role="tab"]').nth(1).click();
     const side = page.locator('.commander-pane').nth(1);

@@ -1,3 +1,6 @@
+import { plainSearch } from '../../../../lib/shared/searchOptions';
+import { HighlightWords } from '../../../../lib/page/highlight';
+import { searchFilter } from '../../../../lib/shared/filter';
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { ColumnName } from '../../../../tools/git/page/activeColumn';
@@ -30,7 +33,6 @@ import { renderedBy } from '../../../helpers/componentFixtures';
 import { allWithClass, rendered, withClass } from '../../../helpers/markup';
 import {
   CommitColumn,
-  LocationsPopupShown,
   NavButtonsShown,
 } from '../../../helpers/styleHistoryFixtures';
 import {
@@ -85,7 +87,14 @@ const columnSides = (className: string) =>
 suite('Style', () => {
   test('highlights what a search matched in the search match colors', () => {
     const matches = allWithClass(
-      rendered(<LocationsPopupShown query="m" />),
+      rendered(
+        <span>
+          <HighlightWords
+            text="main and more"
+            filter={searchFilter('m', plainSearch)}
+          />
+        </span>,
+      ),
       'match',
     );
     assert.ok(matches.length > 1);
@@ -94,58 +103,6 @@ suite('Style', () => {
         color: 'var(--color-search-match-foreground)',
         background: 'var(--color-search-match)',
       });
-    }
-  });
-
-  test('draws the find field like the resting search field, edged in the focus color while typing in it', () => {
-    const resting = withClass(
-      rendered(<LocationsPopupShown query="" />),
-      'search-box',
-    );
-    looks(withClass(rendered(<DiffFindShown />), 'search-box'), {
-      background: cascaded(resting, 'background'),
-      border: cascaded(resting, 'border'),
-    });
-    for (const shown of [
-      rendered(<DiffFindShown />),
-      rendered(<DiffFindShown query="a" />),
-    ]) {
-      looks(
-        withClass(shown, 'search-box'),
-        { 'border-color': 'var(--color-focus)' },
-        { focus: withClass(shown, 'search-box-input') },
-      );
-    }
-  });
-
-  test("fills and edges the popup's search box in the border color like the other search fields until it is focused or holds a query, then in the panel's", () => {
-    const popup = rendered(<LocationsPopupShown query="" />);
-    const empty = withClass(popup, 'search-box');
-    looks(empty, {
-      background: 'var(--color-border)',
-      border: '1px solid var(--color-border)',
-    });
-    looks(
-      empty,
-      {
-        background: 'var(--color-panel-background)',
-        'border-color': 'var(--color-focus)',
-      },
-      { focus: withClass(popup, 'search-box-input') },
-    );
-    const searched = withClass(
-      rendered(<LocationsPopupShown query="main" />),
-      'search-box',
-    );
-    for (const states of [{}, hovered]) {
-      looks(
-        searched,
-        {
-          background: 'var(--color-panel-background)',
-          'border-color': 'var(--color-border)',
-        },
-        states,
-      );
     }
   });
 
@@ -263,13 +220,12 @@ suite('Style', () => {
     assert.ok(deviceRounded('bar-space') >= 2);
     for (const field of [
       withClass(rendered(<DiffFindShown />), 'search-box'),
-      withClass(rendered(<LocationsPopupShown query="" />), 'search-box'),
     ]) {
       looks(field, { height: 'var(--search-height)' });
     }
   });
 
-  test('draws the edge of a column over the search popup that covers the column, but under menus and notices', () => {
+  test('draws the edge of a column under menus and notices', () => {
     const edge = layer(
       withClass(
         rendered(
@@ -279,7 +235,6 @@ suite('Style', () => {
       ),
       after,
     );
-    assert.ok(edge > layer(rendered(<LocationsPopupShown query="" />)));
     for (const above of [
       rendered(<ContextMenuShown />),
       rendered(<NoticesShown />),
@@ -408,10 +363,6 @@ suite('Style', () => {
       'font-family': 'var(--monospace-font-family)',
       'font-size': 'var(--monospace-font-size)',
     });
-    looks(
-      withClass(rendered(<LocationsPopupShown query="" />), 'search-box-input'),
-      { 'font-family': undefined, 'font-size': undefined },
-    );
   });
 
   test('writes a status line in the monospace font of the code under which it sits, and in the font of the app under what is written in it', () => {
@@ -474,7 +425,6 @@ suite('Style', () => {
 
   test('mutes the search placeholders like other muted text', () => {
     for (const field of [
-      withClass(rendered(<LocationsPopupShown query="" />), 'search-box-input'),
       withClass(rendered(<DiffFindShown />), 'search-box-input'),
     ]) {
       looks(

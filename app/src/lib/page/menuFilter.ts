@@ -14,3 +14,15 @@ export function filteredItems(
       matchesFilter(filter, item.label, item.keywords, ...(item.details ?? [])),
   );
 }
+
+export function leavesOf(
+  items: readonly ContextMenuItem[],
+): readonly ContextMenuItem[] {
+  return items.flatMap((item) =>
+    'separator' in item
+      ? []
+      : item.submenu === undefined
+        ? [{ ...item, label: item.keywords ?? item.label }]
+        : leavesOf(item.submenu),
+  );
+}

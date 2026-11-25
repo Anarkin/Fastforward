@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { suite, test } from 'vitest';
-import { locationsPopupKey } from '../../../../../tools/git/page/navHistory';
 import {
   HistoryButton,
   NavButtons,
@@ -62,12 +61,6 @@ suite('Navigation bar', () => {
     });
     assert.match(html, /data-tip="Back[^"]*"(?![^>]*disabled)/);
     assert.match(html, /data-tip="Forward[^"]*" disabled=""/);
-  });
-
-  test('opens the search popup anew in another tab, so it searches again there for the same query', () => {
-    assert.notEqual(locationsPopupKey(1, '/a'), locationsPopupKey(1, '/b'));
-    assert.equal(locationsPopupKey(1, '/a'), locationsPopupKey(1, '/a'));
-    assert.notEqual(locationsPopupKey(1, '/a'), locationsPopupKey(2, '/a'));
   });
 
   test('spins the fetch button while fetching', () => {

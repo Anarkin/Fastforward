@@ -72,7 +72,6 @@ async function resetApp(): Promise<void> {
   await commitRow(page, 'second').waitFor();
   for (const [popup, focused] of [
     ['.context-menu', '.context-menu .menu-item'],
-    ['.locations-popup', '.locations-popup .search-box-input'],
     ['.shortcuts-popup', '.shortcuts-popup'],
     ['.column-title .search-bar', '.column-title .search-bar input'],
   ]) {

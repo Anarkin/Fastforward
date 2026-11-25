@@ -224,23 +224,6 @@ suite('App git tabs shown again', () => {
     await field.focus();
   };
 
-  test('brings back the commit search open with what was typed in it and its caret', async () => {
-    await showTab(page, 0);
-    await page.locator('.virtual-rows.list').focus();
-    await page.keyboard.press('ControlOrMeta+D');
-    const field = page.locator('.locations-popup .search-box-input');
-    await waitForFocus(field, 'the commit search');
-    await page.keyboard.type('second');
-    await page
-      .locator('.locations-popup .commit', { hasText: 'second' })
-      .waitFor();
-    await page.keyboard.press('ArrowLeft');
-    await page.keyboard.press('ArrowLeft');
-    await comesBackFromEverywhere('The commit search');
-    await page.keyboard.press('Escape');
-    await page.locator('.locations-popup').waitFor({ state: 'detached' });
-  });
-
   test('brings back the diff of a file with its find open on the match it was on, the caret in its box, and the diff scrolled down and across', async () => {
     await showTab(page, 0);
     await commitRow(page, 'second').click();
@@ -345,18 +328,6 @@ suite('App git tabs shown again', () => {
         .locator('.search-bar input'),
     );
     await comesBackReloaded('A worktree with its diff found in');
-    await page.locator('.virtual-rows.list').focus();
-    await page.keyboard.press('ControlOrMeta+D');
-    const field = page.locator('.locations-popup .search-box-input');
-    await waitForFocus(field, 'the commit search');
-    await page.keyboard.type('second');
-    await page
-      .locator('.locations-popup .commit', { hasText: 'second' })
-      .waitFor();
-    await page.keyboard.press('ArrowLeft');
-    await comesBackReloaded('A worktree searching its commits');
-    await page.keyboard.press('Escape');
-    await page.locator('.locations-popup').waitFor({ state: 'detached' });
   });
 
   test('brings a compare tab back scrolled as it was left with nothing found in it, once another tab was shown and once the settings are saved, as its files compared anew arriving after its view sent it back to its first change, as showing the whole file does', async () => {

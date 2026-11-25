@@ -530,23 +530,15 @@ ${namedFile(compared)}`,
   },
   search: {
     placeholder: 'Search…',
-    locations: 'Locations',
     localBranches: 'Local branches',
     remoteBranches: 'Remote branches',
     tags: 'Tags',
     stashes: 'Stashes',
-    commits: 'Commits',
     bookmarks: 'Bookmarks',
-    lookingUp: (hash: string) => sentence`Looking for commit ${named(hash)}…`,
-    searching: 'Searching commits…',
     noCommitStartsWith: (hash: string) =>
       sentence`No commit starts with ${named(hash)}`,
     commitsStartWith: (count: number, hash: string) =>
       sentence`${String(count)} commits start with ${named(hash)}`,
-    more: (count: number) => `${count} more; type more to narrow it down`,
-    moreCommits: 'More commits match; type more to narrow it down',
-    moreInFolder: (count: number) => `${count} more; type to narrow them down`,
-    none: 'None',
   },
   commits: {
     counted: (count: number) =>

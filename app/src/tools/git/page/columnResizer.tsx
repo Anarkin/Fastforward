@@ -1,12 +1,10 @@
 import { dragColumn } from './columns';
 import { useGit, useGitActions } from './store';
-import { commitsShownOf, searchingOf } from './selectors';
+import { commitsShownOf } from './selectors';
 
 export function ColumnResizer({ index }: { index: number }) {
   const widths = useGit((state) => state.columnWidths);
-  const commitsHidden = useGit(
-    (state) => !commitsShownOf(state) && !searchingOf(state),
-  );
+  const commitsHidden = useGit((state) => !commitsShownOf(state));
   const { resizeColumns, resetColumn } = useGitActions();
   return (
     <div

@@ -5,7 +5,7 @@ import {
   claimsMenuKey,
   nextMenuItem,
   openedSubmenu,
-  submenuPlacement,
+  submenuPlace,
 } from '../../../../lib/page/menuControls';
 import { noop } from '../../../helpers/fixtures';
 import { keyPress } from '../../../helpers/keys';
@@ -40,32 +40,38 @@ suite('Menu keys', () => {
 
 suite('Submenu placement', () => {
   const window = { width: 800, height: 600 };
+  const entry = { left: 300, right: 500, top: 104 };
 
-  test('opens to the right and down from its entry when it fits', () => {
+  test('opens on the window to the right of its entry and down from it when it fits, so no menu that scrolls around it cuts it off', () => {
     assert.deepStrictEqual(
-      submenuPlacement({ top: 100, right: 700, bottom: 500 }, window),
-      { flipped: false, up: 0 },
+      submenuPlace(entry, { width: 200, height: 400 }, window),
+      { left: 500, top: 100, height: 500 },
     );
   });
 
   test('opens to the left when it would run off the right of the window', () => {
     assert.deepStrictEqual(
-      submenuPlacement({ top: 100, right: 801, bottom: 500 }, window),
-      { flipped: true, up: 0 },
+      submenuPlace(entry, { width: 301, height: 400 }, window),
+      { left: 0, top: 100, height: 500 },
+    );
+    assert.deepStrictEqual(
+      submenuPlace(
+        { ...entry, left: 400, right: 600 },
+        { width: 250, height: 400 },
+        window,
+      ),
+      { left: 150, top: 100, height: 500 },
     );
   });
 
-  test('moves up to end at the bottom of the window when it would run off it', () => {
+  test('moves up to end at the bottom of the window when it would run off it, no further than its top, and takes no more height than the window leaves below its top, so a list a filter grows scrolls inside it', () => {
     assert.deepStrictEqual(
-      submenuPlacement({ top: 400, right: 700, bottom: 750 }, window),
-      { flipped: false, up: 150 },
+      submenuPlace({ ...entry, top: 404 }, { width: 200, height: 350 }, window),
+      { left: 500, top: 250, height: 350 },
     );
-  });
-
-  test('moves up no further than the top of the window when taller than it', () => {
     assert.deepStrictEqual(
-      submenuPlacement({ top: 400, right: 700, bottom: 1100 }, window),
-      { flipped: false, up: 400 },
+      submenuPlace({ ...entry, top: 404 }, { width: 200, height: 700 }, window),
+      { left: 500, top: 0, height: 600 },
     );
   });
 });

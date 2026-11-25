@@ -704,7 +704,6 @@ suite('Architecture', () => {
         'shell/page/shortcuts.css',
         'shell/page/text.css',
         'tools/git/page/clone.css',
-        'tools/git/page/locations.css',
         'tools/git/page/messagePeek.css',
         'tools/viewer/page/viewer.css',
       ],

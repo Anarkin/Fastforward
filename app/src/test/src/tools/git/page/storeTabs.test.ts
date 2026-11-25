@@ -8,10 +8,7 @@ import {
   fileFoldsOf,
   folderViewOf,
   languageKeyOf,
-  locationsOf,
   tabScopeOf,
-  searchOf,
-  searchingOf,
   shownFoldersOf,
 } from '../../../../../tools/git/page/selectors';
 import {
@@ -21,7 +18,7 @@ import {
 import { emptyTabView } from '../../../../../tools/git/page/shownTab';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { noop } from '../../../../helpers/fixtures';
-import { at, shown, worktree as worktreeInfo } from './storeFixtures';
+import { at, shown } from './storeFixtures';
 
 const showing = (worktree: string | undefined) => ({
   type: 'worktrees' as const,
@@ -36,61 +33,20 @@ const filesOf = (hash: string) => ({
 });
 
 suite('Git store, for each tab', () => {
-  test('keeps the commit column hidden and the commit search open in the worktree they were left in, through another worktree or tool shown, leaving the other worktrees as they were', () => {
+  test('keeps the commit column hidden in the worktree it was left in, through another worktree or tool shown, leaving the other worktrees as they were', () => {
     const store = createGitStore(noop);
-    const looks = () => [
-      commitsShownOf(store.getState()),
-      searchingOf(store.getState()),
-    ];
+    const looks = () => commitsShownOf(store.getState());
     store.getState().receive(shown());
     store.getState().toggleCommits();
-    store.getState().search(true);
-    assert.deepStrictEqual(looks(), [false, true]);
+    assert.strictEqual(looks(), false);
     store.getState().receive(showing('/other'));
-    assert.deepStrictEqual(looks(), [true, false]);
+    assert.strictEqual(looks(), true);
     store.getState().receive(showing(undefined));
-    assert.deepStrictEqual(looks(), [true, false]);
+    assert.strictEqual(looks(), true);
     store.getState().receive(shown());
-    assert.deepStrictEqual(looks(), [false, true]);
-    store.getState().search(false);
+    assert.strictEqual(looks(), false);
     store.getState().toggleCommits();
-    assert.deepStrictEqual(looks(), [true, false]);
-  });
-
-  test('carries the commit search, open or closed, with what was typed and the keyboard in it, into the worktree switched to within a git tab, as the search belongs to the git tab, and into no other git tab', () => {
-    const store = createGitStore(noop);
-    const state = () => store.getState();
-    const listed = [
-      worktreeInfo('/repo', 'main'),
-      worktreeInfo('/other', 'other'),
-    ];
-    const within = (root: string) => ({
-      type: 'worktrees' as const,
-      worktree: root,
-      worktrees: listed,
-    });
-    const looks = () => [
-      searchingOf(state()),
-      searchOf(state()).query,
-      state().keptFocusOf(tabScopeOf(state().tab.root)),
-    ];
-    const typing = {
-      name: 'commit-search',
-      selection: [4, 4, 'none'],
-    } as const;
-    state().receive(within('/repo'));
-    state().search(true);
-    state().searchFor('second');
-    state().keepFocus(tabScopeOf('/repo'), typing);
-    state().receive(within('/other'));
-    assert.deepStrictEqual(looks(), [true, 'second', typing]);
-    state().search(false);
-    state().keepFocus(tabScopeOf('/other'), { name: 'commits' });
-    state().receive(within('/repo'));
-    assert.deepStrictEqual(looks(), [false, 'second', typing]);
-    state().search(true);
-    state().receive(showing('/elsewhere'));
-    assert.deepStrictEqual(looks().slice(0, 2), [false, '']);
+    assert.strictEqual(looks(), true);
   });
 
   test('keeps the column that has the keyboard in each worktree, the commits in one never shown yet', () => {
@@ -244,26 +200,5 @@ suite('Git store, for each tab', () => {
       [store.getState().tab.commitSearch, store.getState().tab.hashLookup],
       [found, lookup],
     );
-  });
-
-  test('keeps the result highlighted in the commit search of each worktree, the folders opened in it and where it was scrolled, through another worktree shown, until the search closes', () => {
-    const store = createGitStore(noop);
-    const kept = {
-      highlight: { query: 'main', key: 'branch:main' },
-      toggled: new Set(['branch:feat']),
-    };
-    store.getState().receive(shown());
-    store.getState().search(true);
-    store.getState().keepLocations(kept);
-    store.getState().keepLocationsScroll(48);
-    store.getState().receive(showing('/other'));
-    assert.strictEqual(locationsOf(store.getState()), undefined);
-    assert.strictEqual(store.getState().locationsScrollOf(), undefined);
-    store.getState().receive(shown());
-    assert.deepStrictEqual(locationsOf(store.getState()), kept);
-    assert.strictEqual(store.getState().locationsScrollOf(), 48);
-    store.getState().search(false);
-    assert.strictEqual(locationsOf(store.getState()), undefined);
-    assert.strictEqual(store.getState().locationsScrollOf(), undefined);
   });
 });

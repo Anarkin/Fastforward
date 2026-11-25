@@ -26,12 +26,7 @@ import {
   type GitSource,
   type GitState,
 } from './state';
-import {
-  commitsShownOf,
-  detachedHead,
-  folderViewOf,
-  locationsScrollOf,
-} from './selectors';
+import { commitsShownOf, detachedHead, folderViewOf } from './selectors';
 import { diffSlice } from '../../../components/diff/page/slice';
 import { withRecent } from '../../../lib/page/recentPlaces';
 import { withEntry, withKey } from '../../../lib/page/tabKeyed';
@@ -44,16 +39,10 @@ import {
   restoredWorktree,
   tabViewOf,
   targetOf,
-  worktreeScope,
 } from './worktreeViews';
 import { TabWorktrees } from './tabWorktrees';
 import { ViewKeeper } from '../../../lib/page/viewKeeper';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
-import {
-  searchFocusName,
-  withSearchCarried,
-  worktreeSwitched,
-} from './worktreeSearch';
 import { changesShown } from './shownTab';
 import { fileVersions } from './fileVersions';
 import { wholePath } from '../../../lib/page/pathLooks';
@@ -242,32 +231,7 @@ export function createGitStore(
       ...diffSlice(set, get, post),
       receive: (message) => {
         shown(message);
-        const from = get().tab.root;
-        const switched =
-          message.type === 'worktrees' &&
-          worktreeSwitched(from, message) &&
-          from !== undefined &&
-          message.worktree !== undefined
-            ? { from, to: message.worktree }
-            : undefined;
-        if (switched !== undefined && get().searching.has(switched.from)) {
-          const focus = get().focuses.get(worktreeScope(switched.from));
-          if (focus?.name === searchFocusName) {
-            set((state) => ({
-              focuses: withRecent(
-                state.focuses,
-                worktreeScope(switched.to),
-                focus,
-              ),
-            }));
-          }
-        }
-        apply((state) => {
-          const next = received(state, message);
-          return switched === undefined
-            ? next
-            : withSearchCarried(next, switched.from, switched.to);
-        });
+        apply((state) => received(state, message));
         readAhead(message);
       },
       flushKept: () => keeper.flush(),
@@ -389,19 +353,6 @@ export function createGitStore(
         set((state) => ({
           activeColumns: withEntry(state.activeColumns, state.tab.root, column),
         })),
-      searchFor: (query, options) =>
-        set((state) => {
-          const { root } = state.tab;
-          return root === undefined
-            ? state
-            : {
-                searches: new Map(state.searches).set(root, {
-                  query,
-                  options:
-                    options ?? state.searches.get(root)?.options ?? plainSearch,
-                }),
-              };
-        }),
       filterFiles: (filter, options) =>
         set((state) => {
           const { root } = state.tab;
@@ -537,41 +488,6 @@ export function createGitStore(
             commitsShownOf(state),
           ),
         })),
-      search: (open) =>
-        set((state) => {
-          const { root } = state.tab;
-          return {
-            searching: withKey(state.searching, root, open),
-            ...(!open && {
-              locations: withEntry(state.locations, root, undefined),
-              ...(root !== undefined && {
-                locationScrolls: withRecent(
-                  state.locationScrolls,
-                  root,
-                  undefined,
-                ),
-              }),
-            }),
-          };
-        }),
-      keepLocations: (kept) =>
-        set((state) => ({
-          locations: withEntry(state.locations, state.tab.root, kept),
-        })),
-      locationsScrollOf: () => locationsScrollOf(get()),
-      keepLocationsScroll: (offset) =>
-        set((state) => {
-          const { root } = state.tab;
-          return root === undefined
-            ? state
-            : {
-                locationScrolls: withRecent(
-                  state.locationScrolls,
-                  root,
-                  offset,
-                ),
-              };
-        }),
       checkout: (target) => postTab({ type: 'checkout', target }),
       toggleBookmark: (bookmark) =>
         get().changeBookmarks(toggleBookmark(get().bookmarks, bookmark)),

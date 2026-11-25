@@ -18,11 +18,15 @@ import {
   onMenuKeyDown,
   openedSubmenu,
   shownKey,
-  submenuPlacement,
+  submenuPlace,
   useMenuFocus,
 } from './menuControls';
 import type { ContextMenuItem, MenuIcon } from './contextMenuItem';
-import { noFilter, type Filter } from '../shared/filter';
+import { narrows, noFilter, searchFilter, type Filter } from '../shared/filter';
+import { filteredItems, leavesOf } from './menuFilter';
+import { SearchBar } from './searchBar';
+import { letterTyped, pressedAlone } from '../shared/keymap';
+import { noSearch } from '../shared/searchOptions';
 import type { ScrollSettings } from './scrollSettings';
 import { useWholeRows } from './wholeRows';
 
@@ -96,7 +100,14 @@ export function MenuItems({
                 entries.current[index] = button;
               }}
               onMouseMove={(event) => {
-                if (document.activeElement !== event.currentTarget) {
+                const active = document.activeElement;
+                if (
+                  active !== event.currentTarget &&
+                  !(
+                    active !== null &&
+                    event.currentTarget.parentElement?.contains(active)
+                  )
+                ) {
                   event.currentTarget.focus({ preventScroll: true });
                 }
               }}
@@ -187,6 +198,7 @@ export function MenuItems({
             {item.submenu && openSubmenu === index && (
               <Submenu
                 items={item.submenu}
+                filtered={item.filtered === true}
                 scrolling={scrolling}
                 onClose={onClose}
                 focusFirst={submenuByKey}
@@ -205,41 +217,122 @@ export function MenuItems({
 
 function Submenu({
   items,
+  filtered,
   scrolling,
   onClose,
   focusFirst,
   onBack,
 }: {
   items: readonly ContextMenuItem[];
+  filtered: boolean;
   scrolling: ScrollSettings;
   onClose: () => void;
   focusFirst: boolean;
   onBack: () => void;
 }) {
   const element = useRef<HTMLDivElement>(null);
-  useMenuFocus(element, focusFirst);
+  const input = useRef<HTMLInputElement>(null);
+  const [{ query, options }, setSearch] = useState(noSearch);
+  const filter = searchFilter(query, options);
+  const shown = narrows(filter)
+    ? filteredItems(leavesOf(items), filter)
+    : items;
+  useMenuFocus(element, focusFirst, filtered ? input : undefined);
   useWholeRows(element, menuRows, scrolling);
-  const [placement, setPlacement] = useState({ flipped: false, up: 0 });
+  const [place, setPlace] = useState<{
+    left: number;
+    top: number;
+    height: number;
+  }>();
   useLayoutEffect(() => {
-    const box = element.current?.getBoundingClientRect();
-    if (box) {
-      setPlacement(
-        submenuPlacement(box, {
-          width: window.innerWidth,
-          height: window.innerHeight,
-        }),
-      );
+    const menu = element.current;
+    if (!menu) {
+      return undefined;
     }
+    const placed = () => {
+      const box = menu.getBoundingClientRect();
+      const entry = menu.parentElement?.getBoundingClientRect();
+      if (!entry) {
+        return;
+      }
+      const next = submenuPlace(
+        entry,
+        { width: box.width, height: menu.scrollHeight },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      setPlace((before) =>
+        before?.left === next.left &&
+        before.top === next.top &&
+        before.height === next.height
+          ? before
+          : next,
+      );
+    };
+    placed();
+    const observer = new ResizeObserver(placed);
+    observer.observe(menu);
+    return () => observer.disconnect();
   }, []);
   return (
     <div
       ref={element}
-      className={`menu submenu ${placement.flipped ? 'flipped' : ''}`}
-      style={{ marginTop: -placement.up }}
+      className={`menu submenu${filtered ? ' filtered-menu' : ''}`}
+      style={
+        place === undefined
+          ? { opacity: 0 }
+          : { left: place.left, top: place.top, maxHeight: place.height }
+      }
       role="menu"
-      onKeyDown={(event) => onMenuKeyDown(event, onBack)}
+      onKeyDown={(event) => {
+        if (
+          filtered &&
+          event.target !== input.current &&
+          pressedAlone(event) &&
+          letterTyped(event) !== undefined
+        ) {
+          input.current?.focus();
+          event.stopPropagation();
+          return;
+        }
+        onMenuKeyDown(event, onBack);
+      }}
     >
-      <MenuItems items={items} scrolling={scrolling} onClose={onClose} />
+      {filtered && (
+        <SearchBar
+          font="proportional"
+          compact
+          query={query}
+          options={options}
+          found={{
+            current: -1,
+            matches: shown.filter((item) => !('separator' in item)).length,
+          }}
+          placeholder={strings.search.placeholder}
+          input={input}
+          onQuery={(next) => setSearch({ query: next, options })}
+          onOptions={(next) => setSearch({ query, options: next })}
+          onKeyDown={(event) => {
+            const wanted = keyPressed(keymap.menuFilter, event);
+            const first = element.current?.querySelector<HTMLButtonElement>(
+              ':scope > .menu-entry > .menu-item:not(:disabled)',
+            );
+            if (wanted === 'items') {
+              event.preventDefault();
+              first?.focus();
+            } else if (wanted === 'first') {
+              event.preventDefault();
+              first?.click();
+            }
+            event.stopPropagation();
+          }}
+        />
+      )}
+      <MenuItems
+        items={shown}
+        filter={filter}
+        scrolling={scrolling}
+        onClose={onClose}
+      />
     </div>
   );
 }

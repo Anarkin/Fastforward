@@ -197,17 +197,11 @@
 }
 
 .menu.submenu {
-  top: -4px;
-  left: 100%;
+  position: fixed;
   right: auto;
   box-sizing: border-box;
   max-height: 100vh;
   overflow-y: auto;
-}
-
-.menu.submenu.flipped {
-  left: auto;
-  right: 100%;
 }
 
 .menu-item:disabled {

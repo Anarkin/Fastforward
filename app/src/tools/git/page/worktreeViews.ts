@@ -32,7 +32,7 @@ function partsOf(value: string): unknown[] | undefined {
   }
 }
 
-export function worktreeScope(root: string): string {
+function worktreeScope(root: string): string {
   return tabScopeOf(root);
 }
 
@@ -71,14 +71,11 @@ function worktreeViewOf(source: GitSource, root: string): WorktreeView {
   const scope = worktreeScope(root);
   const folders = source.folders.get(root);
   const folds = source.fileFolds.get(root);
-  const locations = source.locations.get(root);
   return {
     commitsHidden: source.commitsHidden.has(root) ? true : undefined,
-    searching: source.searching.has(root) ? true : undefined,
     column: source.activeColumns.get(root),
     filter: source.fileFilters.get(root),
     commitFilter: source.commitFilters.get(root),
-    search: source.searches.get(root),
     folders:
       folders !== undefined &&
       (folders.open.size > 0 || folders.closed.size > 0)
@@ -95,11 +92,6 @@ function worktreeViewOf(source: GitSource, root: string): WorktreeView {
     },
     cursor: source.fileCursors.get(root),
     pin: source.pinnedMessages.get(root),
-    locations: locations && {
-      highlight: locations.highlight,
-      toggled: lastNamed(locations.toggled),
-    },
-    locationsScroll: source.locationScrolls.get(root),
     filesScrolls: lastOf(
       [...source.filesScrolls].filter(([view]) => rootOfView(view) === root),
     ),
@@ -187,18 +179,16 @@ export function restoredWorktree(
       filesScrolls = withRecent(filesScrolls, shown, offset);
     }
   }
-  const { folders, folds, locations } = view;
+  const { folders, folds } = view;
   return {
     commitsHidden: withKey(
       source.commitsHidden,
       root,
       view.commitsHidden === true,
     ),
-    searching: withKey(source.searching, root, view.searching === true),
     activeColumns: withEntry(source.activeColumns, root, view.column),
     fileFilters: withEntry(source.fileFilters, root, view.filter),
     commitFilters: withEntry(source.commitFilters, root, view.commitFilter),
-    searches: withEntry(source.searches, root, view.search),
     folders: withEntry(
       source.folders,
       root,
@@ -219,20 +209,7 @@ export function restoredWorktree(
       view.cursor && { ...view.cursor, from: view.cursor.from },
     ),
     pinnedMessages: withEntry(source.pinnedMessages, root, view.pin),
-    locations: withEntry(
-      source.locations,
-      root,
-      locations && {
-        highlight: locations.highlight,
-        toggled: new Set(locations.toggled),
-      },
-    ),
     foundCommits: withEntry(source.foundCommits, root, undefined),
-    locationScrolls: withRecent(
-      source.locationScrolls,
-      root,
-      view.locationsScroll,
-    ),
     filesScrolls,
     ...restoreScope(source, root, view),
   };
@@ -264,12 +241,10 @@ const keptByRoot = [
   'activeColumns',
   'fileFilters',
   'commitFilters',
-  'searches',
   'folders',
   'fileFolds',
   'fileCursors',
   'pinnedMessages',
-  'locations',
 ] as const satisfies readonly (keyof GitSource)[];
 
 export function changedScopes(next: GitSource, prev: GitSource): string[] {
@@ -278,7 +253,6 @@ export function changedScopes(next: GitSource, prev: GitSource): string[] {
       ...changedMembers(next.commitsHidden, prev.commitsHidden).map(
         worktreeScope,
       ),
-      ...changedMembers(next.searching, prev.searching).map(worktreeScope),
       ...keptByRoot.flatMap((name) =>
         changedKeys(next[name], prev[name]).map(worktreeScope),
       ),
@@ -289,9 +263,6 @@ export function changedScopes(next: GitSource, prev: GitSource): string[] {
       ),
       ...changedKeys(next.filesScrolls, prev.filesScrolls).flatMap(
         (view) => viewScope(view) ?? [],
-      ),
-      ...changedKeys(next.locationScrolls, prev.locationScrolls).map(
-        worktreeScope,
       ),
       ...changedKeys(next.pickedLanguages, prev.pickedLanguages).map((key) =>
         worktreeScope(key),

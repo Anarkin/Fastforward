@@ -170,13 +170,6 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
       ? []
       : [`ends ${end} device pixels down`];
   });
-  await page.locator('.virtual-rows.list').first().focus();
-  await page.keyboard.press('ControlOrMeta+D');
-  await page.locator('.locations-popup .search-box-input').waitFor();
-  await page.keyboard.type('s');
-  await look('commit search');
-  await page.keyboard.press('Escape');
-  await page.locator('.locations-popup').waitFor({ state: 'detached' });
   await page.locator('.tabs .tab').first().hover();
   await page.locator('.card.tip').waitFor();
   await look('tooltip');

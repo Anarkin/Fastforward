@@ -15,7 +15,6 @@ import { rendered, withClass } from '../../../helpers/markup';
 import {
   FileRowShown,
   FolderRowShown,
-  LocationsPopupShown,
 } from '../../../helpers/styleHistoryFixtures';
 
 suite('Style', () => {
@@ -79,11 +78,6 @@ suite('Style', () => {
         'skeleton-row',
       ),
       rendered(<div className="commit placeholder" />),
-      withClass(
-        rendered(<LocationsPopupShown query="abcd" />),
-        'hash-suggestion',
-        'empty',
-      ),
     ]) {
       looks(placeholder, { background: 'none' }, hovered);
     }

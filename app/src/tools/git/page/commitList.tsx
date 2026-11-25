@@ -37,7 +37,6 @@ import {
   activeColumnOf,
   layoutSelectionOf,
   openingOf,
-  searchingOf,
   tabScopeOf,
 } from './selectors';
 import { useGit, useGitActions } from './store';
@@ -62,6 +61,7 @@ import { realHeight, scrollCap } from './cappedScroll';
 import { endPaddingToStart, snappedToStart } from '../../../lib/page/rowStarts';
 import { followRows, type RowFollower } from '../../../lib/page/rowScroll';
 import { useShell } from '../../../shell/page/store';
+import { usePlacesMenu } from './placesMenuShown';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { endCovered, rowRoom } from '../../../lib/page/listRows';
 import {
@@ -134,13 +134,7 @@ function bubbleShapesOf(
   return shapes;
 }
 
-export function Commits({
-  navigation,
-  search,
-}: {
-  navigation?: React.ReactNode;
-  search?: React.ReactNode;
-}) {
+export function Commits({ navigation }: { navigation?: React.ReactNode }) {
   const fullHistory = useGit((state) => state.tab.history);
   const [filterAsked, setFilterAsked] = useState(0);
   const filtering = useCommitFilter(filterAsked);
@@ -154,7 +148,6 @@ export function Commits({
   const stashes = useGit((state) => state.stashCommits);
   const selected = useGit((state) => state.tab.hash);
   const headCommit = useGit((state) => state.tab.repository?.headCommit);
-  const searching = useGit(searchingOf);
   const error = useGit((state) =>
     listError(state.tab.error, layoutSelectionOf(state)),
   );
@@ -185,6 +178,7 @@ export function Commits({
   const spacer = useRef<HTMLDivElement>(null);
   const hits = useRef<readonly RowHit[]>([]);
   const hasWorkingTree = workingTree !== undefined && filtered === undefined;
+  usePlacesMenu(list, findsHere);
   useBinding(
     gitKeymap.find,
     () => {
@@ -419,7 +413,7 @@ export function Commits({
     }
   });
   const takeKeyboard = useEffectEvent(() => {
-    if (!searching && keptFocusOf(tabScopeOf(worktree)) === undefined) {
+    if (keptFocusOf(tabScopeOf(worktree)) === undefined) {
       list.current?.focus({ preventScroll: true });
     }
   });
@@ -624,7 +618,6 @@ export function Commits({
   return (
     <Column
       focusName="commits"
-      overlay={search}
       status={
         <ColumnStatus loading={opening} font="proportional">
           {countedCommits}

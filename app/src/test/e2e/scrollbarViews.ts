@@ -1,5 +1,4 @@
 import type { Page } from 'playwright-core';
-import { waitFor } from '../helpers/fixtures';
 import { untilRowsShown } from './rowsShown';
 import { untilSettled } from './waits';
 import type { Box } from './scrollbarsShown';
@@ -102,25 +101,4 @@ export async function showView(page: Page, name: ViewName): Promise<void> {
     `the ${name} to rest`,
     { quiet: 200 },
   );
-}
-
-export async function searchCommits(page: Page): Promise<void> {
-  await showView(page, 'commit list');
-  await page.locator('.virtual-rows.list').first().focus();
-  await page.keyboard.press('ControlOrMeta+D');
-  await page.locator('.locations-popup .search-box-input').waitFor();
-  await page.keyboard.type('topic');
-  await waitFor(
-    () =>
-      page
-        .locator('.locations-groups')
-        .evaluate((scroller) => scroller.scrollHeight > scroller.clientHeight),
-    'the branches found to outgrow their list',
-  );
-}
-
-export async function stopSearching(page: Page): Promise<void> {
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
-  await page.locator('.locations-popup').waitFor({ state: 'detached' });
 }

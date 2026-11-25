@@ -216,7 +216,6 @@ const newline = String.fromCharCode(10);
 
 const busy: readonly string[] = [
   strings.common.reading,
-  strings.search.searching,
   strings.find.searching,
 ];
 

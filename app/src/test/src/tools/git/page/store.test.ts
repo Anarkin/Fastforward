@@ -6,7 +6,6 @@ import {
   activeColumnOf,
   commitsShownOf,
   detachedHead,
-  searchingOf,
 } from '../../../../../tools/git/page/selectors';
 import { noop } from '../../../../helpers/fixtures';
 import {
@@ -389,21 +388,15 @@ suite('Git store', () => {
     });
   });
 
-  test('hides and shows the commit column, and opens and closes the search over it, on the page alone', () => {
+  test('hides and shows the commit column on the page alone', () => {
     const { posted, store } = posting();
     store.getState().receive(shown());
     posted.length = 0;
     assert.strictEqual(commitsShownOf(store.getState()), true);
     store.getState().toggleCommits();
     assert.strictEqual(commitsShownOf(store.getState()), false);
-    store.getState().search(true);
-    assert.strictEqual(searchingOf(store.getState()), true);
-    store.getState().search(false);
     store.getState().toggleCommits();
-    assert.deepStrictEqual(
-      [commitsShownOf(store.getState()), searchingOf(store.getState())],
-      [true, false],
-    );
+    assert.strictEqual(commitsShownOf(store.getState()), true);
     assert.deepStrictEqual(posted, []);
   });
 

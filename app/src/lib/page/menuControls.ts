@@ -142,16 +142,28 @@ export function shownKey(item: {
   return item.showAccessKey === true ? item.accessKey : undefined;
 }
 
-export function submenuPlacement(
-  box: {
-    readonly top: number;
+export const submenuLift = 4;
+
+export function submenuPlace(
+  entry: {
+    readonly left: number;
     readonly right: number;
-    readonly bottom: number;
+    readonly top: number;
   },
+  size: { readonly width: number; readonly height: number },
   window: { readonly width: number; readonly height: number },
-): { flipped: boolean; up: number } {
+): { left: number; top: number; height: number } {
+  const below = entry.top - submenuLift;
+  const top = Math.max(
+    0,
+    below - Math.max(0, below + size.height - window.height),
+  );
   return {
-    flipped: box.right > window.width,
-    up: Math.max(0, Math.min(box.bottom - window.height, box.top)),
+    left:
+      entry.right + size.width > window.width
+        ? Math.max(0, entry.left - size.width)
+        : entry.right,
+    top,
+    height: window.height - top,
   };
 }

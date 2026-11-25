@@ -37,7 +37,6 @@ import {
   CommitRowShown,
   FileRowShown,
   FolderRowShown,
-  LocationsPopupShown,
   MessagePanelShown,
   NavButtonsShown,
   WorkingTreeRowShown,
@@ -134,9 +133,7 @@ suite('Style', () => {
   });
 
   test('fills the search fields, the search button and the worktree chips alike, and tints them alike when hovered, the edges of the fields included', () => {
-    const fields = [
-      withClass(rendered(<LocationsPopupShown query="" />), 'search-box'),
-    ];
+    const fields = [withClass(rendered(<DiffFindShown />), 'search-box')];
     const chip = allWithClass(
       rendered(
         <WorktreeBarShown
@@ -364,12 +361,6 @@ suite('Style', () => {
     for (const row of [
       rendered(<FileRowShown change={fileChange('src/a.ts')} chosen />),
       rendered(<CommitRowShown selected="a" />),
-      withClass(
-        rendered(<LocationsPopupShown query="m" />),
-        'row',
-        'result',
-        'active',
-      ),
     ]) {
       for (const states of [{}, hovered]) {
         looks(row, { background: 'var(--selection-background)' }, states);
@@ -545,7 +536,6 @@ suite('Style', () => {
     const controls = [
       rendered(<TabBarShown />),
       rendered(<ContextMenuShown />),
-      rendered(<LocationsPopupShown query="" />),
       rendered(<DiffFindShown />),
       rendered(<NoticesShown />),
       rendered(<NavButtonsShown />),
@@ -597,10 +587,9 @@ suite('Style', () => {
     });
   });
 
-  test('dims close buttons, disabled controls and a gone bubble like muted text, keeping its own fade only for the loading placeholder', () => {
+  test('dims close buttons and disabled controls like muted text, keeping its own fade only for the loading placeholder', () => {
     for (const dimmed of [
       withClass(rendered(<NoticesShown />), 'card-close'),
-      withClass(rendered(<LocationsPopupShown query="" />), 'badge', 'missing'),
       allWithClass(rendered(<ContextMenuShown />), 'menu-item').find((item) =>
         item.attributes.has('disabled'),
       ),

@@ -27,15 +27,9 @@ import {
   type DiffActions,
   type DiffSource,
 } from '../../../components/diff/page/slice';
-import type { Highlighted } from './locationHighlight';
 import type { KeptFocus } from '../../../lib/page/viewFocus';
 
 type FoundCommits = Pick<TabView, 'commitSearch' | 'hashLookup'>;
-
-export interface KeptLocations {
-  readonly highlight: Highlighted | undefined;
-  readonly toggled: ReadonlySet<string>;
-}
 
 export interface KeptPin {
   readonly hash: string;
@@ -65,20 +59,16 @@ export interface GitSource extends DiffSource {
   readonly clone: Cloning;
   readonly lastFetch: LastFetch;
   readonly commitsHidden: ReadonlySet<string>;
-  readonly searching: ReadonlySet<string>;
   readonly activeColumns: ReadonlyMap<string, ColumnName>;
   readonly fileFilters: ReadonlyMap<string, Search>;
   readonly commitFilters: ReadonlyMap<string, Search>;
-  readonly searches: ReadonlyMap<string, Search>;
   readonly foundCommits: ReadonlyMap<string, FoundCommits>;
   readonly folders: ReadonlyMap<string, ViewFolders>;
   readonly fileFolds: ReadonlyMap<string, FilterFolds>;
   readonly fileCursors: ReadonlyMap<string, MovedCursor>;
   readonly pinnedMessages: ReadonlyMap<string, KeptPin>;
-  readonly locations: ReadonlyMap<string, KeptLocations>;
   readonly focuses: ReadonlyMap<string, KeptFocus>;
   readonly filesScrolls: ReadonlyMap<string, number>;
-  readonly locationScrolls: ReadonlyMap<string, number>;
 }
 
 export interface GitCollections {
@@ -164,19 +154,14 @@ export interface GitActions extends DiffActions {
     filter: string | undefined,
     options?: SearchOptions,
   ) => void;
-  readonly searchFor: (query: string, options?: SearchOptions) => void;
   readonly toggleFolder: (kind: keyof Folders, folder: string) => void;
   readonly replaceFolders: (folders: Folders) => void;
   readonly foldFilesWhileFiltering: (folds: FilterFolds) => void;
   readonly moveFilesCursor: (cursor: MovedCursor | undefined) => void;
   readonly pinMessage: (pin: KeptPin | undefined) => void;
-  readonly keepLocations: (kept: KeptLocations) => void;
-  readonly locationsScrollOf: () => number | undefined;
-  readonly keepLocationsScroll: (offset: number) => void;
   readonly filesScrollOf: (view: string) => number | undefined;
   readonly keepFilesScroll: (view: string, offset: number) => void;
   readonly toggleCommits: () => void;
-  readonly search: (open: boolean) => void;
   readonly checkout: (target: CheckoutTarget) => void;
   readonly toggleBookmark: (bookmark: Bookmark) => void;
   readonly menuItems: (target: MenuTarget) => ContextMenuItem[];
@@ -201,20 +186,16 @@ export const gitDefaults: GitSource = {
   clone: { view: undefined, form: 0, folder: undefined, target: undefined },
   lastFetch: {},
   commitsHidden: new Set(),
-  searching: new Set(),
   activeColumns: new Map(),
   fileFilters: new Map(),
   commitFilters: new Map(),
-  searches: new Map(),
   foundCommits: new Map(),
   folders: new Map(),
   fileFolds: new Map(),
   fileCursors: new Map(),
   pinnedMessages: new Map(),
-  locations: new Map(),
   focuses: new Map(),
   filesScrolls: new Map(),
-  locationScrolls: new Map(),
 };
 
 export type GitData = GitSource & GitCollections;

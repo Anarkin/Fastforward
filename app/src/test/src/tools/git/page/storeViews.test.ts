@@ -5,15 +5,13 @@ import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type { GitState } from '../../../../../tools/git/page/state';
 import {
   activeColumnOf,
+  commitFilterOf,
   commitsShownOf,
   fileCursorOf,
   fileFilterOf,
   fileFoldsOf,
   folderViewOf,
   languageKeyOf,
-  locationsOf,
-  searchOf,
-  searchingOf,
   shownFoldersOf,
   tabScopeOf,
 } from '../../../../../tools/git/page/selectors';
@@ -72,16 +70,13 @@ const looks = (store: StoreApi<GitState>) => {
   const state = store.getState();
   return {
     commitsShown: commitsShownOf(state),
-    searching: searchingOf(state),
-    search: searchOf(state),
     column: activeColumnOf(state),
+    commitFilter: commitFilterOf(state),
     filter: fileFilterOf(state),
     folders: shownFoldersOf(state),
     folds: fileFoldsOf(state),
     cursor: fileCursorOf(state),
     pin: state.pinnedMessages.get('/repo'),
-    locations: locationsOf(state),
-    locationsScroll: state.locationsScrollOf(),
     filesScroll: state.filesScrollOf(view),
     find: diffFindOf(scope)(state),
     focus: state.keptFocusOf(scope),
@@ -95,8 +90,7 @@ function leftAsWorked(store: StoreApi<GitState>): void {
   state().receive(shown());
   state().receive(filesOf(at));
   state().toggleCommits();
-  state().search(true);
-  state().searchFor('adam', { ...plainSearch, wholeWord: true });
+  state().filterCommits('adam', { ...plainSearch, wholeWord: true });
   state().activateColumn('diff');
   state().filterFiles('src', plainSearch);
   state().toggleFolder('closed', 'src');
@@ -107,11 +101,6 @@ function leftAsWorked(store: StoreApi<GitState>): void {
   });
   state().moveFilesCursor({ key: 'folder:src', from: undefined, view });
   state().pinMessage({ hash: at, byKey: true });
-  state().keepLocations({
-    highlight: { query: 'adam', key: 'branch:main' },
-    toggled: new Set(['branch:feat']),
-  });
-  state().keepLocationsScroll(48);
   state().keepFilesScroll(view, 80);
   state().keepDiffFind(scope, {
     finding: true,
@@ -147,12 +136,18 @@ suite('Git store, keeping the view of each tab', () => {
     assert.deepStrictEqual(keptSent(shell), [
       { tab: '1', view: worktreesOf(['/repo', { commitsHidden: true }]) },
     ]);
-    store.getState().search(true);
+    store.getState().filterCommits('fix');
     store.getState().receive(shown([], '/other', '2'));
     assert.deepStrictEqual(keptSent(shell).slice(1), [
       {
         tab: '1',
-        view: worktreesOf(['/repo', { commitsHidden: true, searching: true }]),
+        view: worktreesOf([
+          '/repo',
+          {
+            commitsHidden: true,
+            commitFilter: { query: 'fix', options: plainSearch },
+          },
+        ]),
       },
     ]);
     vi.advanceTimersByTime(1000);
@@ -166,7 +161,6 @@ suite('Git store, keeping the view of each tab', () => {
     state().receive(filesOf(at));
     const changes = [
       () => state().keepFilesScroll(view, 80),
-      () => state().keepLocationsScroll(48),
       () => state().keepFocus(scope, { name: 'files' }),
       () => state().keepDiffPlace(scope, at, { top: 120 }),
     ];
@@ -175,17 +169,14 @@ suite('Git store, keeping the view of each tab', () => {
       vi.advanceTimersByTime(300);
     }
     const scrolled = { filesScrolls: [[view, 80]] };
-    const located = { ...scrolled, locationsScroll: 48 };
-    const focused = { ...located, focus: { name: 'files' } };
+    const focused = { ...scrolled, focus: { name: 'files' } };
     const placed = {
       ...focused,
       places: [[at, { top: 120, sideways: 0, toggled: [], current: 0 }]],
     };
     assert.deepStrictEqual(
       keptSent(shell).map((sent) => sent.view),
-      [scrolled, located, focused, placed].map((kept) =>
-        worktreesOf(['/repo', kept]),
-      ),
+      [scrolled, focused, placed].map((kept) => worktreesOf(['/repo', kept])),
     );
   });
 
@@ -309,12 +300,10 @@ suite('Git store, keeping the view of each tab', () => {
             '/repo',
             {
               commitsHidden: 'yes',
-              searching: true,
               column: 'nowhere',
-              search: { query: 7, options: plainSearch },
+              commitFilter: { query: 7, options: plainSearch },
               filter: { query: 'src', options: plainSearch },
               folders: { view, open: ['a', 3], closed: [] },
-              locationsScroll: Number.NaN,
               filesScrolls: [
                 [view, 'far'],
                 [view, 80],
@@ -343,24 +332,20 @@ suite('Git store, keeping the view of each tab', () => {
     assert.deepStrictEqual(
       {
         commitsShown: commitsShownOf(state),
-        searching: searchingOf(state),
         column: activeColumnOf(state),
-        search: searchOf(state).query,
+        commitFilter: commitFilterOf(state),
         filter: fileFilterOf(state)?.query,
         folders: shownFoldersOf(state).open,
-        locationsScroll: state.locationsScrollOf(),
         filesScroll: state.filesScrollOf(view),
         place: state.diffPlaceOf(scope, at),
         focus: state.keptFocusOf(scope),
       },
       {
         commitsShown: true,
-        searching: true,
         column: 'commits',
-        search: '',
+        commitFilter: undefined,
         filter: 'src',
         folders: new Set(),
-        locationsScroll: undefined,
         filesScroll: 80,
         place: {
           top: 5,
@@ -374,7 +359,7 @@ suite('Git store, keeping the view of each tab', () => {
     );
   });
 
-  test('keeps at most the last thousand folders and locations toggled of a worktree, so what it keeps stays small', () => {
+  test('keeps at most the last thousand folders toggled of a worktree, so what it keeps stays small', () => {
     const left = posting();
     const state = () => left.store.getState();
     state().receive(shown());
@@ -382,12 +367,6 @@ suite('Git store, keeping the view of each tab', () => {
     for (let index = 0; index < 1500; index++) {
       state().toggleFolder('closed', `folder ${index}`);
     }
-    state().keepLocations({
-      highlight: undefined,
-      toggled: new Set(
-        Array.from({ length: 1500 }, (_, index) => `branch:${index}`),
-      ),
-    });
     state().flushKept();
     const sent = viewOf(left.shell);
     assert.ok(sent !== undefined);
@@ -398,9 +377,6 @@ suite('Git store, keeping the view of each tab', () => {
 
     const folders = shownFoldersOf(back.store.getState());
     assert.strictEqual(folders.open.size + folders.closed.size, 1000);
-    const toggled = locationsOf(back.store.getState())?.toggled;
-    assert.strictEqual(toggled?.size, 1000);
-    assert.ok(toggled.has('branch:1499') && !toggled.has('branch:0'));
   });
 
   test('leaves out the worktrees of a tab shown longest ago until its view fits the bound the shell keeps, and keeps the last folds of a diff, so a tab of many worktrees still comes back as it was left', () => {

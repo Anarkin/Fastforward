@@ -103,28 +103,24 @@ suite('App menu', () => {
     assert.doesNotMatch(html, /data-tip=/);
   });
 
-  test('drops its menu to the right, from the left end of the tab row, opening its submenus beside it rather than over it', () => {
+  test('drops its menu to the right, from the left end of the tab row, opening its submenus on the window, where the page places them beside their item, so no menu that scrolls cuts them off', () => {
     const bar = rendered(
       <nav className="tabs">
         <div className="menu-button">
           <div className="menu">
             <div className="menu submenu" />
-            <div className="menu submenu flipped" />
           </div>
         </div>
       </nav>,
     );
-    const [menu, submenu, flipped] = allWithClass(bar, 'menu');
+    const [menu, submenu] = allWithClass(bar, 'menu');
     assert.deepStrictEqual(
-      [menu, submenu, flipped].map((element) => [
-        cascaded(element, 'left'),
-        cascaded(element, 'right'),
-      ]),
-      [
-        ['0', 'auto'],
-        ['100%', 'auto'],
-        ['auto', '100%'],
-      ],
+      [cascaded(menu, 'left'), cascaded(menu, 'right')],
+      ['0', 'auto'],
+    );
+    assert.deepStrictEqual(
+      [cascaded(submenu, 'position'), cascaded(submenu, 'right')],
+      ['fixed', 'auto'],
     );
   });
 

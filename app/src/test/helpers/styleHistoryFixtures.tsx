@@ -1,18 +1,13 @@
 import { strings } from '../../lib/shared/strings';
-import { plainSearch } from '../../lib/shared/searchOptions';
 import type {
-  Bookmark,
   FileChange,
-  GitToWebviewOf,
   RefInfo,
   WorktreeInfo,
 } from '../../tools/git/shared/protocol';
-import { emptyTabView } from '../../tools/git/page/shownTab';
 import { ChangesTreeItem } from '../../tools/git/page/changesTree';
 import { CommitRow } from '../../tools/git/page/commitRow';
 import { gitStore, type ShownGit } from './componentFixtures';
-import { LocationsPopup } from '../../tools/git/page/locations';
-import { createGitStore, GitStore } from '../../tools/git/page/store';
+import { GitStore } from '../../tools/git/page/store';
 import {
   MessageBody,
   MessageCorner,
@@ -80,10 +75,11 @@ export function CommitRowShown({
   refs = [],
   stash = false,
   detached = false,
+  bookmarked = false,
   head,
   headCommit,
   ...props
-}: RowShown) {
+}: RowShown & { readonly bookmarked?: boolean }) {
   const commit = props.commit ?? commitInfo('a');
   return (
     <GitStore
@@ -96,6 +92,7 @@ export function CommitRowShown({
         stashes: stash
           ? [{ name: 'stash@{0}', commit: commit.hash, message: '' }]
           : [],
+        bookmarks: bookmarked ? [{ kind: 'commit', name: commit.hash }] : [],
       })}
     >
       <CommitRow
@@ -194,59 +191,6 @@ export function FolderRowShown() {
   );
 }
 
-const bookmarks: readonly Bookmark[] = [
-  { kind: 'commit', name: 'abcdef1' },
-  { kind: 'branch', name: 'gone' },
-];
-
-export function LocationsPopupShown({
-  query,
-  commitSearch,
-  head = repository.head,
-}: {
-  readonly query: string;
-  readonly commitSearch?: GitToWebviewOf<'commitSearch'>;
-  readonly head?: string;
-}) {
-  return (
-    <GitStore
-      value={createGitStore(noop, {
-        tab: {
-          ...emptyTabView,
-          root: '/repo',
-          repository: { ...repository, head },
-          commitSearch,
-        },
-        bookmarks,
-        searching: new Set(['/repo']),
-        searches: new Map([['/repo', { query, options: plainSearch }]]),
-      })}
-    >
-      <LocationsPopup anchor={{ current: null }} />
-    </GitStore>
-  );
-}
-
-export function CommitsFoundShown({ query }: { readonly query: string }) {
-  return (
-    <LocationsPopupShown
-      query={query}
-      commitSearch={{
-        type: 'commitSearch',
-        query,
-        options: plainSearch,
-        result: {
-          commits: [
-            commitInfo('a', { subject: `${query} a` }),
-            commitInfo('b', { subject: `${query} b` }),
-          ],
-          capped: false,
-        },
-      }}
-    />
-  );
-}
-
 export function BubbleSources({
   checkedOut,
 }: {
@@ -268,13 +212,7 @@ export function BubbleSources({
         <CommitRowShown refs={repository.refs} detached />
       </GitStore>
       <GitStore value={store()}>
-        <LocationsPopupShown query="" head={checkedOut} />
-      </GitStore>
-      <GitStore value={store()}>
-        <LocationsPopupShown query="m" head={checkedOut} />
-      </GitStore>
-      <GitStore value={store()}>
-        <LocationsPopupShown query="stash" head={checkedOut} />
+        <CommitRowShown bookmarked />
       </GitStore>
     </>
   );
