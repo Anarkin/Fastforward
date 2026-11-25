@@ -145,7 +145,19 @@ function keyMatches(combo: Combo, press: KeyPress): boolean {
     : press.key === (named[combo.key] ?? combo.key);
 }
 
+const fieldShortcuts = new Set(['A', 'C', 'X', 'V', 'Z', 'Y']);
+
+const fieldShortcut = ({ key, mod, ctrl, alt, shift }: Combo) =>
+  mod &&
+  !ctrl &&
+  !alt &&
+  fieldShortcuts.has(key.toUpperCase()) &&
+  (!shift || key.toUpperCase() === 'Z');
+
 function editsField(combo: Combo): boolean {
+  if (fieldShortcut(combo)) {
+    return true;
+  }
   return (
     !combo.ctrl &&
     (caretKeys.has(combo.key) ||

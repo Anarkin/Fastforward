@@ -26,7 +26,56 @@ import { keyPress, noModifiers, withMacKeys } from '../../../helpers/keys';
 const altPress = (key: string, code?: string) =>
   keyPress(key, { altKey: true, ...(code === undefined ? {} : { code }) });
 
+const ctrl = (key: string, shiftKey = false) =>
+  keyPress(key, { ctrlKey: true, shiftKey });
+
 suite('Keymap', () => {
+  test('leaves the shortcuts of a text box to the text box it is typed in, select all, copy, cut, paste, undo and redo, unless a binding asks for them there, as select all of the viewer took Ctrl+A from its find', () => {
+    const everywhere = bind(undefined, 'every key', {
+      'Mod+A': 'a',
+      'Mod+C': 'c',
+      'Mod+X': 'x',
+      'Mod+V': 'v',
+      'Mod+Z': 'z',
+      'Mod+Y': 'y',
+      'Mod+Shift+Z': 'Z',
+      'Mod+B': 'b',
+    });
+    const inFields = bind(
+      undefined,
+      'in fields',
+      { 'Mod+A': 'a' },
+      { fields: true },
+    );
+    assert.deepStrictEqual(
+      [
+        ...['a', 'c', 'x', 'v', 'z', 'y'].map((key) =>
+          pressed(everywhere, ctrl(key), true),
+        ),
+        pressed(everywhere, ctrl('Z', true), true),
+        pressed(everywhere, ctrl('b'), true),
+        pressed(everywhere, ctrl('a'), false),
+        pressed(inFields, ctrl('a'), true),
+        withMacKeys(() =>
+          pressed(everywhere, keyPress('a', { metaKey: true }), true),
+        ),
+      ],
+      [
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        'b',
+        'a',
+        'a',
+        undefined,
+      ],
+    );
+  });
+
   test('takes the plus, minus and asterisk keys of the number pad and of the keyboard alike, whether Shift types them or not, Alt with them, and shows them as their signs', () => {
     const signs = bind(undefined, 'signs', {
       Plus: 'plus',
