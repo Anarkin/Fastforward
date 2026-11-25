@@ -78,7 +78,7 @@
   bottom: calc(var(--line-below, 0px) + var(--scrollbar-size));
 }
 
-.viewer-body:not(.wrapped)::after,
+.viewer-body:has(> .viewer-sideways):not(.wrapped)::after,
 .editor-surface:not(.wrapped)::after,
 .diff-view:not(.wrap)::before {
   content: '';

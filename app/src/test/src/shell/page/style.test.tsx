@@ -230,7 +230,7 @@ suite('Style', () => {
     );
   });
 
-  test('fills the square between the scrollbar beside a text and the one below it as their tracks are, in the viewer, the editor and the diff alike while their lines are not wrapped, inside the lines of their column and rounded with its corner, and draws none once they are wrapped and have no scrollbar below, as the square stood empty, a hole in the corner of the two', () => {
+  test('fills the square between the scrollbar beside a text and the one below it as their tracks are, in the viewer, the editor and the diff alike while their lines are not wrapped, inside the lines of their column and rounded with its corner, and draws none once they are wrapped and have no scrollbar below, as the square stood empty, a hole in the corner of the two, nor in a preview of the viewer or a body of it showing nothing yet, which have no scrollbar below a text, as a Markdown preview scrolled by the browser drew the square inside itself, left of its scrollbar over the text of its first screen', () => {
     const square = {
       content: "''",
       position: 'absolute',
@@ -245,8 +245,12 @@ suite('Style', () => {
     const none = { background: undefined, width: undefined };
     for (const [unwrapped, wrapped, pseudoElement] of [
       [
-        <div key="viewer" className="viewer-body" />,
-        <div key="viewer" className="viewer-body wrapped" />,
+        <div key="viewer" className="viewer-body">
+          <div className="viewer-sideways" />
+        </div>,
+        <div key="viewer" className="viewer-body wrapped">
+          <div className="viewer-sideways" />
+        </div>,
         '::after',
       ],
       [
@@ -262,6 +266,13 @@ suite('Style', () => {
     ] as const) {
       looks(rendered(unwrapped), square, { pseudoElement });
       looks(rendered(wrapped), none, { pseudoElement });
+    }
+    for (const withoutBar of [
+      <div key="preview" className="column-body viewer-body viewer-preview" />,
+      <div key="pdf" className="column-body viewer-body viewer-pdf" />,
+      <div key="nothing" className="column-body viewer-body" />,
+    ]) {
+      looks(rendered(withoutBar), none, { pseudoElement: '::after' });
     }
   });
 
