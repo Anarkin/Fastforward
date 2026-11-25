@@ -68,7 +68,6 @@ const placesOf = () =>
     };
     const header = box('.column-title');
     const start = box('.column-title .column-start');
-    const actions = box('.column-title .column-actions');
     const text = box('.path-text');
     const row = box('.viewer-rows .cell-rows');
     const layoutUnit = 1 / 64;
@@ -78,7 +77,7 @@ const placesOf = () =>
       aboveText: text.bottom <= row.top + layoutUnit,
       fromText: Math.round(text.left - row.left) + 0,
       start: Math.round(start.left - header.left) + 0,
-      actions: Math.round(header.right - actions.right) + 0,
+      actions: viewer.querySelector('.column-title .column-actions') !== null,
     };
   });
 
@@ -159,7 +158,7 @@ suite('App commander', () => {
     );
   });
 
-  test('puts the path of a file viewed on a line of its own under the buttons of its header, starting where the editor starts its path, the empty column of line numbers before its text, the buttons staying at the edges of the header', async () => {
+  test('puts the path of a file viewed on a line of its own under the buttons of its header, starting where the editor starts its path, the empty column of line numbers before its text, its buttons at the start of the header and none at its end, as its search opens on Mod+F', async () => {
     await select('notes');
     await page.keyboard.press('F3');
     await page.locator(viewerRows).first().waitFor();
@@ -169,7 +168,7 @@ suite('App commander', () => {
       aboveText: true,
       fromText: 8 - 56 - 6,
       start: 0,
-      actions: 0,
+      actions: false,
     });
 
     await page.keyboard.press('Escape');

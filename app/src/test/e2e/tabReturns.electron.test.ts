@@ -46,8 +46,11 @@ suite('What a tab shows once settled', () => {
     removeFolder(folder);
   });
 
-  const firstTexts = async () =>
-    (await settledLooks(page)).text.split(newline).slice(0, 2);
+  const firstTexts = async () => {
+    const lines = (await settledLooks(page)).text.split(newline);
+    const pathLine = lines.findIndex((line) => line.endsWith('.env'));
+    return lines.slice(pathLine + 1, pathLine + 3);
+  };
 
   test('reads what the page drew after the last key, though the page stalls right after the key for longer than a tab takes to settle, rather than what it showed before the key, which a stalled page shows unchanged for as long', async () => {
     await page.locator(viewerRows).first().click();
