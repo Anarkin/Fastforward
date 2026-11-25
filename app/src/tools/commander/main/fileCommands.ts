@@ -1,6 +1,5 @@
 import { runFolderCommand } from '../../../lib/main/folderCommands';
 import { isFolderCommand } from '../../../lib/shared/folderCommands';
-import { randomUUID } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
@@ -129,19 +128,7 @@ export class FileCommands {
         .openView(page, path.join(shown.pane.folder, name));
       return;
     }
-    const { viewedCopies } = this.access;
-    const [copy] =
-      (await this.copies.copiesIn(
-        page,
-        shown.pane,
-        [name],
-        viewedCopies === undefined
-          ? undefined
-          : path.join(viewedCopies, randomUUID()),
-      )) ?? [];
-    if (copy !== undefined) {
-      await this.host.shell().openView(page, copy);
-    }
+    await this.copies.viewInArchive(page, shown, name);
   }
 
   async editFile(
@@ -317,11 +304,34 @@ export class FileCommands {
       if (file === undefined) {
         return;
       }
+      if (pane.archive !== undefined) {
+        this.copies.taken(file, pane.folder, name);
+      }
       paths.push(file);
     }
     const [old, changed] = paths;
-    if (old !== undefined && changed !== undefined) {
-      await this.host.shell().openCompare(page, { old, new: changed });
+    if (old === undefined || changed === undefined) {
+      return;
     }
+    const shell = this.host.shell();
+    const comparing = shell
+      .tabs()
+      .find(
+        (open) =>
+          open.tool === 'diff' &&
+          open.compare !== undefined &&
+          open.compare.oldVersion === undefined &&
+          open.compare.newVersion === undefined &&
+          (open.compare.old !== old || open.compare.new !== changed) &&
+          this.copies.sameEntry(open.compare.old, old) &&
+          this.copies.sameEntry(open.compare.new, changed),
+      );
+    if (comparing?.compare !== undefined) {
+      const before = comparing.compare;
+      shell.setCompare(comparing.id, { old, new: changed });
+      this.copies.replaced(before.old, old);
+      this.copies.replaced(before.new, changed);
+    }
+    await shell.openCompare(page, { old, new: changed });
   }
 }

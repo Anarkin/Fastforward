@@ -1,5 +1,4 @@
 import type { FileTabSize } from '../../../lib/shared/tabSize';
-import { sameRoot } from '../../../lib/main/paths';
 import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
@@ -142,16 +141,7 @@ export class ViewerTool implements Tool<'viewer'> {
     file: string,
     start: { readonly byte: number; readonly encoding?: TextEncoding },
   ): Promise<void> {
-    const viewing = this.shell
-      .tabs()
-      .some(
-        (tab) =>
-          tab.tool === 'viewer' &&
-          tab.root !== undefined &&
-          tab.version === undefined &&
-          sameRoot(tab.root, file),
-      );
-    if (!viewing) {
+    if (!this.shell.shows('viewer', file)) {
       this.starts.set(file, start);
     }
     await this.shell.open(page, 'viewer', [file], true);

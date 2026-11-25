@@ -56,6 +56,7 @@ export class ArchiveCopies {
       readonly inner: readonly string[];
     }
   >();
+  private readonly takenEntries = new Map<string, string>();
   private updateAskedIn: Page | undefined;
 
   constructor(
@@ -151,12 +152,77 @@ export class ArchiveCopies {
     }
   }
 
-  private editedCopyOf(folder: string, name: string): string | undefined {
+  private entryOf(folder: string, name: string): string | undefined {
     const inside = this.access.archives?.within(folder);
-    if (inside === undefined) {
+    return inside === undefined
+      ? undefined
+      : [inside.archive.file, ...inside.inner, ...name.split(path.sep)].join(
+          '/',
+        );
+  }
+
+  taken(copy: string, folder: string, name: string): void {
+    const entry = this.entryOf(folder, name);
+    if (entry !== undefined) {
+      this.takenEntries.set(copy, entry);
+    }
+  }
+
+  sameEntry(a: string, b: string): boolean {
+    return (this.takenEntries.get(a) ?? a) === (this.takenEntries.get(b) ?? b);
+  }
+
+  replaced(before: string, now: string): void {
+    if (before === now) {
+      return;
+    }
+    this.takenEntries.delete(before);
+    this.removeCopy(before);
+  }
+
+  async viewInArchive(
+    page: Page,
+    shown: ShownPane,
+    name: string,
+  ): Promise<void> {
+    const { viewedCopies } = this.access;
+    const [copy] =
+      (await this.copiesIn(
+        page,
+        shown.pane,
+        [name],
+        viewedCopies === undefined
+          ? undefined
+          : path.join(viewedCopies, randomUUID()),
+      )) ?? [];
+    if (copy === undefined) {
+      return;
+    }
+    this.taken(copy, shown.pane.folder, name);
+    const shell = this.host.shell();
+    const viewing = shell
+      .tabs()
+      .find(
+        (open) =>
+          open.tool === 'viewer' &&
+          open.version === undefined &&
+          open.root !== undefined &&
+          open.root !== copy &&
+          this.sameEntry(open.root, copy),
+      );
+    if (viewing?.root !== undefined) {
+      const before = viewing.root;
+      shell.setRoot(viewing.id, copy);
+      this.replaced(before, copy);
+    }
+    await shell.openView(page, copy);
+  }
+
+  private editedCopyOf(folder: string, name: string): string | undefined {
+    const wanted = this.entryOf(folder, name);
+    if (wanted === undefined) {
       return undefined;
     }
-    const wanted = [...inside.inner, ...name.split(path.sep)].join('/');
     const editedRoots = this.host
       .shell()
       .tabs()
@@ -165,8 +231,9 @@ export class ArchiveCopies {
       );
     for (const [copy, edited] of this.editedCopies) {
       if (
-        edited.archive.file === inside.archive.file &&
-        [...edited.inner, path.basename(copy)].join('/') === wanted &&
+        [edited.archive.file, ...edited.inner, path.basename(copy)].join(
+          '/',
+        ) === wanted &&
         editedRoots.some((root) => sameRoot(root, copy))
       ) {
         return copy;

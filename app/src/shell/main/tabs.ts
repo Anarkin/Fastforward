@@ -111,6 +111,12 @@ export class Tabs {
     await this.show(page, active);
   }
 
+  shows(tool: ToolId, file: string): boolean {
+    return this.storage.savedTabs.some((tab) =>
+      showsSame(tab, { tool, root: file }),
+    );
+  }
+
   async open(
     page: Page,
     tool: ToolId,

@@ -33,6 +33,7 @@ export interface ShellAccess {
   pages(): readonly Page[];
   current(page: Page): Page | undefined;
   tabs(): readonly Tab[];
+  shows(tool: ToolId, file: string): boolean;
   tabsOf(page: Page): readonly Tab[];
   active(page: Page): Tab | undefined;
   holds(page: Page, tab: string): boolean;
@@ -95,6 +96,7 @@ export const unattachedShell: ShellAccess = {
   pages: () => [],
   current: () => undefined,
   tabs: () => [],
+  shows: () => false,
   tabsOf: () => [],
   active: () => undefined,
   holds: () => false,

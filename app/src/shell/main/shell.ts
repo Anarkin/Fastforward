@@ -160,6 +160,7 @@ export class Shell {
       pages: () => this.pages.all(),
       current: (page) => this.pages.current(page),
       tabs: () => this.storage.savedTabs,
+      shows: (tool, file) => this.tabs.shows(tool, file),
       tabsOf: (page) => this.pages.windowOf(page).tabs,
       active: (page) => this.pages.activeTab(page),
       holds: (page, tab) =>
@@ -178,7 +179,7 @@ export class Shell {
           page,
           'viewer',
           [file],
-          false,
+          true,
           version === undefined ? {} : { version },
         ),
       openEdit: (page, file) => this.tabs.open(page, 'editor', [file], true),
@@ -460,8 +461,7 @@ export class Shell {
         return;
       case 'pathCommand':
         await runPathCommand(page, message, host, this.tools, {
-          view: (at, file, reuse = false) =>
-            this.tabs.open(at, 'viewer', [file], reuse),
+          view: (at, file) => this.tabs.open(at, 'viewer', [file], true),
           edit: (at, file) => this.tabs.open(at, 'editor', [file], true),
           notice: (at, notice) => this.pages.notice(at, notice),
         });

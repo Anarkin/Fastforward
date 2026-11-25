@@ -347,6 +347,56 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('goes to the tab viewing a file already when the menu of a part of a path views it again, as it goes to the tab editing it already, rather than opening another', async () => {
+    const host = new FakeHost();
+    host.facts.set('C:\\notes.txt', {
+      kind: 'file',
+      inRepository: false,
+      gitMissing: false,
+    });
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const run = (command: string) =>
+          view.connection.receive(
+            forged(
+              JSON.stringify({
+                type: 'pathCommand',
+                path: 'C:\\notes.txt',
+                command,
+              }),
+            ),
+          );
+        await run('view');
+        await run('edit');
+        await run('view');
+        await run('edit');
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
+          [
+            ['viewer', 'C:\\notes.txt'],
+            ['editor', 'C:\\notes.txt'],
+          ],
+        );
+        assert.strictEqual(
+          view.page.tabs?.tabs.find((tab) => tab.id === view.page.tabs?.active)
+            ?.tool,
+          'editor',
+        );
+        await run('view');
+        assert.strictEqual(
+          view.page.tabs?.tabs.find((tab) => tab.id === view.page.tabs?.active)
+            ?.tool,
+          'viewer',
+        );
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('follows a link of a document to a file in a viewer tab of its own and to a folder in a commander tab, saying when nothing is there, and follows nothing inside an archive or a forged path', async () => {
     const host = new FakeHost();
     const file: PathFacts = {

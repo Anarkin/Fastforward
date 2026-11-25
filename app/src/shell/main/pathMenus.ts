@@ -9,7 +9,7 @@ import type { ToHost } from '../shared/protocol';
 import type { Notice, Page, Tools } from './toolContract';
 
 export interface PathOpening {
-  view(page: Page, file: string, reuse?: boolean): Promise<void>;
+  view(page: Page, file: string): Promise<void>;
   edit(page: Page, file: string): Promise<void>;
   notice(page: Page, notice: Notice): void;
 }
@@ -52,7 +52,7 @@ async function followLink(
     return tools.commander.open(page, [path]);
   }
   if (facts.kind === 'file') {
-    return opening.view(page, path, true);
+    return opening.view(page, path);
   }
   if (facts.kind === 'missing') {
     opening.notice(page, {

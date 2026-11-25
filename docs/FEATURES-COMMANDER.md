@@ -88,10 +88,10 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| View a file | Show a file without its app | F3 | Common | ✅ Yes | F3 or Open with Viewer in the menu of a file, in a viewer tab of its own; FEATURES-VIEWER says what it does |
+| View a file | Show a file without its app | F3 | Common | ✅ Yes | F3 or Open with Viewer in the menu of a file, in a viewer tab of its own, or the tab viewing it already, in whichever window it is, as F4 goes to the tab editing it; FEATURES-VIEWER says what it does |
 | Quick view | Show the selected file on the other side as it is selected | Ctrl+Q | Common | ❌ No |  |
 | Edit | Edit a file | F4 | Core | ✅ Yes | F4 or Open with Editor in the menu of a file, in an editor tab of its own, drawn as the viewer draws text, inside an archive too, each save putting it back; FEATURES-EDITOR says what it does |
-| Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3 or Open with Diff in the menu of a file or of marked items, the two files marked on a side, or the file selected and the one file marked on the other side, never the cursor the other side does not show, in a diff tab of their own that follows their changes, two images side by side; one file alone, marked or selected, against its versions in git, one inside an archive refused, saying so; a notice says how to pick them when none are; FEATURES-DIFF says what it does |
+| Compare files | Diff two files | — | Common | ✅ Yes | Shift+F3 or Open with Diff in the menu of a file or of marked items, the two files marked on a side, or the file selected and the one file marked on the other side, never the cursor the other side does not show, in a diff tab of their own that follows their changes, or the tab comparing them already, files of an archive taken out anew so it compares the archive as it is now, two images side by side; one file alone, marked or selected, against its versions in git, one inside an archive refused, saying so; a notice says how to pick them when none are; FEATURES-DIFF says what it does |
 
 ## Archives
 

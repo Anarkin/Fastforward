@@ -1,7 +1,6 @@
 import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
-import { sameRoot } from '../../../lib/main/paths';
 import type { Sentence } from '../../../lib/shared/sentences';
 import {
   unattachedShell,
@@ -201,15 +200,7 @@ export class EditorTool implements Tool<'editor'> {
       this.shell.notice(page, { level: 'error', message: refusal });
       return;
     }
-    const edited = this.shell
-      .tabs()
-      .some(
-        (each) =>
-          each.tool === 'editor' &&
-          each.root !== undefined &&
-          sameRoot(each.root, file),
-      );
-    if (!edited) {
+    if (!this.shell.shows('editor', file)) {
       this.editing.startAt(file, at);
     }
     await this.shell.openEdit(page, file);

@@ -132,6 +132,7 @@ export function terminal(
     pages: () => pages,
     current: (shownIn) => shownIn,
     tabs: () => [work, other],
+    shows: () => false,
     tabsOf: () => [work, other],
     active: () => undefined,
     holds: () => true,

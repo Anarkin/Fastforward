@@ -4,9 +4,10 @@ import type {
   ShellAccess,
   Tab,
 } from '../../../../../shell/main/toolContract';
-import type {
-  Compared,
-  FileVersion,
+import {
+  showsSame,
+  type Compared,
+  type FileVersion,
 } from '../../../../../shell/main/savedTabs';
 
 export function fakeShell<P extends Page>(page: P) {
@@ -28,6 +29,8 @@ export function fakeShell<P extends Page>(page: P) {
     pages: () => pages,
     current: (shownIn) => shownIn,
     tabs: () => tabs,
+    shows: (tool, file) =>
+      tabs.some((tab) => showsSame(tab, { tool, root: file })),
     tabsOf: (of) => windows.get(of) ?? tabs,
     active: () => undefined,
     holds: () => true,
@@ -52,11 +55,23 @@ export function fakeShell<P extends Page>(page: P) {
       openedIn.push({ tool: toolOpened, folders: [...folders] });
       return Promise.resolve();
     },
-    setRoot: () => {},
+    setRoot: (id, root) => {
+      const at = tabs.findIndex((each) => each.id === id);
+      const held = tabs[at];
+      if (held !== undefined) {
+        tabs[at] = { ...held, root };
+      }
+    },
     setVersion: (tab, root, version) => {
       versionsSet.push([tab, root, version]);
     },
-    setCompare: () => {},
+    setCompare: (id, compare) => {
+      const at = tabs.findIndex((each) => each.id === id);
+      const held = tabs[at];
+      if (held !== undefined) {
+        tabs[at] = { ...held, compare };
+      }
+    },
     visited: () => {},
     recentFolders: () => 10,
     postTabs: (posted) => {

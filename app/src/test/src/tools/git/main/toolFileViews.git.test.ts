@@ -187,6 +187,34 @@ suite('Git tool viewing files', () => {
     });
   });
 
+  test('goes to the viewer tab showing a version of a file already when that version is viewed again, by its commit whatever names it, as viewing a file on disk goes to its tab, and opens another version in a tab of its own', async () => {
+    const revs = await tempRepository(path.join(folder, 'again'));
+    await revs.commit('one', { 'x.txt': 'one-' });
+    const one = (await revs.git('rev-parse', 'HEAD')).trim();
+    await revs.commit('two', { 'x.txt': 'two-' });
+    const two = (await revs.git('rev-parse', 'HEAD')).trim();
+    await withView(log, [revs.root], async (view) => {
+      for (const rev of [two, 'HEAD', `${two}^`, two]) {
+        await view.connection.receive({ type: 'selectTab', tab: '1' });
+        await view.connection.receive({
+          type: 'viewFile',
+          root: revs.root,
+          path: 'x.txt',
+          rev,
+        });
+      }
+      assert.deepStrictEqual(
+        view.page.tabs?.tabs.flatMap((tab) =>
+          tab.tool === 'viewer' ? [[tab.name, tab.folder]] : [],
+        ),
+        [
+          ['x.txt', one.slice(0, 7)],
+          ['x.txt', two.slice(0, 7)],
+        ],
+      );
+    });
+  });
+
   test('lists the versions of a file a viewer tab shows, and switches the tab to another and to the file on disk, the tab saved with the version it shows', async () => {
     const switching = await tempRepository(path.join(folder, 'switching'));
     await switching.commit('one', { 'y.txt': 'one-' });

@@ -88,6 +88,45 @@ suite('Commander tool in archives', () => {
       );
     });
 
+    test('views a file of an archive a viewer tab shows already in that tab, from a copy taken anew so the tab shows the archive as it is now, removing the copy it showed before, and leaves the tabs of other files of the archive and an editor tab alone', async () => {
+      const { send, viewed, tabs, settled } = await inArchive();
+      const view = (name: string) =>
+        send({ type: 'view', tab: '1', side: 'right', name });
+      await view('top.txt');
+      const [first] = viewed;
+      assert.ok(first !== undefined);
+      tabs.push({ id: '7', tool: 'viewer', root: first });
+      tabs.push({ id: '8', tool: 'editor', root: first });
+
+      await view('top.txt');
+      const second = viewed[1];
+      assert.ok(second !== undefined && second !== first);
+      assert.deepStrictEqual(
+        tabs.map((each) => [each.id, each.root]),
+        [
+          ['7', second],
+          ['8', first],
+        ],
+      );
+      await settled();
+      assert.ok(fs.existsSync(first));
+      assert.strictEqual(
+        fs.readFileSync(second, 'utf8'),
+        'the top.txt of the archive',
+      );
+
+      tabs.splice(1, 1);
+      await view('top.txt');
+      await settled();
+      const third = viewed[2];
+      assert.ok(third !== undefined);
+      assert.deepStrictEqual(
+        tabs.map((each) => each.root),
+        [third],
+      );
+      assert.ok(!fs.existsSync(path.dirname(second)));
+    });
+
     test('opens a file of an archive in the app the system opens it with from a copy marked as opened elsewhere, so it outlives the app until known put back, asking once it is saved whether to put it back, naming the file and its archive by their whole paths, putting it back in the dialog of copies once asked to, asking again once saved again and only while the commander is shown, and from a read-only copy for an archive that cannot be changed', async () => {
       const made = commander({ [root]: [file('a.zip')] });
       made.archived.set(at('a.zip'), [...zipped, archiveItem('inner.zip')]);
@@ -468,6 +507,37 @@ suite('Commander tool in archives', () => {
         'the top.txt of the archive',
       );
       assert.strictEqual(comparing.new, at('notes.txt'));
+    });
+
+    test('compares a file of an archive a diff tab compares already in that tab, from a copy taken anew so the tab compares the archive as it is now, and another pair in a tab of its own', async () => {
+      const { send, compared, tabs } = await inArchive();
+      const compare = (other: string) =>
+        send({
+          type: 'compare',
+          tab: '1',
+          files: [
+            { side: 'right', folder: at('a.zip'), name: 'top.txt' },
+            { side: 'left', folder: root, name: other },
+          ],
+        });
+      await compare('notes.txt');
+      const [first] = compared;
+      assert.ok(first !== undefined);
+      tabs.push({ id: '7', tool: 'diff', compare: first });
+
+      await compare('notes.txt');
+      const second = compared[1];
+      assert.ok(second !== undefined && second.old !== first.old);
+      assert.deepStrictEqual(
+        tabs.map((each) => [each.id, each.compare]),
+        [['7', second]],
+      );
+
+      await compare('other.txt');
+      assert.deepStrictEqual(
+        tabs.map((each) => [each.id, each.compare]),
+        [['7', second]],
+      );
     });
 
     test('says git keeps no earlier version of a file of an archive compared alone, opening nothing', async () => {
