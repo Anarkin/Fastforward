@@ -36,7 +36,12 @@ suite('App tooltips', () => {
   let page: Page;
 
   const tooltip = () => page.locator('.card.tip');
-  const firstTab = () => page.locator('.tabs .tab').first();
+  const wrapButton = () =>
+    page.locator(`.viewer button[data-tip="${strings.common.wrap}"]`);
+  const inViewer = async () => {
+    await page.locator('.tabs [role="tab"]').nth(1).click();
+    await wrapButton().waitFor();
+  };
   const away = () => page.mouse.move(400, 400);
   const about = (elevated?: 'administrator') =>
     app.evaluate(({ BrowserWindow }, elevation) => {
@@ -139,12 +144,13 @@ suite('App tooltips', () => {
   });
 
   test('hides the tooltip once the pointer leaves its button, and at a press, staying hidden over the button pressed until the pointer has left it', async () => {
+    await inViewer();
     await away();
-    await firstTab().hover();
+    await wrapButton().hover();
     await tooltip().waitFor();
     await away();
     await tooltip().waitFor({ state: 'detached' });
-    await firstTab().hover();
+    await wrapButton().hover();
     await tooltip().waitFor();
     await page.mouse.down();
     await tooltip().waitFor({ state: 'detached' });
@@ -153,45 +159,43 @@ suite('App tooltips', () => {
     await onceDrawn(page);
     assert.strictEqual(await tooltip().count(), 0);
     await away();
-    await firstTab().hover();
+    await wrapButton().hover();
     await tooltip().waitFor();
-    await firstTab().click();
+    await wrapButton().click();
     await tooltip().waitFor({ state: 'detached' });
+    await wrapButton().click();
     await away();
   });
 
-  test('names the file of a tab in the tooltip of the tab as every path is drawn, its folders and its name the parts of a path, starting where the tab starts', async () => {
+  test('shows no tooltip over a tab, whose name and the path above its view say what it shows', async () => {
     await away();
     const tab = page.locator('.tabs .tab').nth(1);
     await tab.hover();
-    await tooltip().waitFor();
-    assert.strictEqual(await tooltip().textContent(), viewed);
-    assert.ok((await tooltip().locator('.named-path .path-part').count()) > 1);
-    const starts = await page.evaluate(() => {
-      const card = document.querySelector('.card.tip');
-      const under = document.querySelectorAll('.tabs .tab')[1];
-      return card && under
-        ? Math.abs(
-            card.getBoundingClientRect().left -
-              under.getBoundingClientRect().left,
-          )
-        : undefined;
-    });
-    assert.ok(starts !== undefined && starts <= 1, String(starts));
+    const box = await tab.boundingBox();
+    assert.ok(box);
+    assert.strictEqual(
+      await page.evaluate(
+        ({ x, y }) =>
+          document.elementFromPoint(x, y)?.closest('[data-tip]') ?? null,
+        { x: box.x + box.width / 2, y: box.y + box.height / 2 },
+      ),
+      null,
+    );
   });
 
   test('waits as long as the settings say before it shows a tooltip, showing none for a pointer resting a moment where they say ten seconds, and one at once where they say none', async () => {
     await away();
+    await inViewer();
     await writeSettings(page, profile, never);
-    await page.locator('.commander-pane').first().waitFor();
-    await firstTab().hover();
+    await wrapButton().waitFor();
+    await wrapButton().hover();
     await onceDrawn(page);
     await onceDrawn(page);
     assert.strictEqual(await tooltip().count(), 0);
     await away();
     await writeSettings(page, profile, atOnce);
-    await page.locator('.commander-pane').first().waitFor();
-    await firstTab().hover();
+    await wrapButton().waitFor();
+    await wrapButton().hover();
     await tooltip().waitFor();
   });
 

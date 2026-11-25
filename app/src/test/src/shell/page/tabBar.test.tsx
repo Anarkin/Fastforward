@@ -112,7 +112,7 @@ suite('Tab bar', () => {
     );
   });
 
-  test('names in the tooltip of a tab comparing two files the whole path of each on a line of its own, the old first, as a part both share is kept outside braces in the header of the diff and cut its paths apart, and the one path of a file compared with itself', () => {
+  test('shows no tooltip on a tab, whatever it shows, as its name and the path above its view say what it is', () => {
     const document = new JSDOM(
       renderToStaticMarkup(
         <ShellStore
@@ -129,58 +129,14 @@ suite('Tab bar', () => {
               },
               {
                 id: '2',
-                tool: 'diff',
-                name: 'a.md',
-                compared: { old: 'C:\\Code\\a.md', new: 'C:\\Code\\a.md' },
-              },
-            ],
-            '1',
-            false,
-          )}
-        >
-          <TabBar />
-        </ShellStore>,
-      ),
-    ).window.document;
-    assert.deepStrictEqual(
-      [...document.querySelectorAll('.tabs .tab')].map((tab) => [
-        tab.getAttribute('data-tip'),
-        JSON.parse(tab.getAttribute('data-tip-said') ?? 'null'),
-      ]),
-      [
-        [
-          'C:\\Code\\AGENTS.md\nC:\\Code\\CONTRIBUTING.md',
-          [
-            { name: 'C:\\Code\\AGENTS.md', path: 'file' },
-            '\n',
-            { name: 'C:\\Code\\CONTRIBUTING.md', path: 'file' },
-          ],
-        ],
-        ['C:\\Code\\a.md', [{ name: 'C:\\Code\\a.md', path: 'file' }]],
-      ],
-    );
-  });
-
-  test('names in the tooltip of a commander tab the whole folder of each side on a line of its own, left first, as its name gives only their last names, both though they show one folder, as each side is named for what it shows', () => {
-    const document = new JSDOM(
-      renderToStaticMarkup(
-        <ShellStore
-          value={tabsStore(
-            [
-              {
-                id: '1',
                 tool: 'commander',
                 name: 'src · /',
                 root: '/',
                 sides: { left: '/home/me/src', right: '/' },
               },
-              {
-                id: '2',
-                tool: 'commander',
-                name: 'src · src',
-                root: '/home/me/src',
-                sides: { left: '/home/me/src', right: '/home/me/src' },
-              },
+              { id: '3', tool: 'viewer', name: 'a.md', root: '/home/me/a.md' },
+              { id: '4', tool: 'git', name: 'repo', root: '/home/me/repo' },
+              { id: '5', tool: 'terminal', name: 'me', root: '/home/me' },
             ],
             '1',
             false,
@@ -190,30 +146,11 @@ suite('Tab bar', () => {
         </ShellStore>,
       ),
     ).window.document;
-    assert.deepStrictEqual(
-      [...document.querySelectorAll('.tabs .tab')].map((tab) => [
-        tab.getAttribute('data-tip'),
-        JSON.parse(tab.getAttribute('data-tip-said') ?? 'null'),
-      ]),
-      [
-        [
-          '/home/me/src\n/',
-          [
-            { name: '/home/me/src', path: 'folder' },
-            '\n',
-            { name: '/', path: 'folder' },
-          ],
-        ],
-        [
-          '/home/me/src\n/home/me/src',
-          [
-            { name: '/home/me/src', path: 'folder' },
-            '\n',
-            { name: '/home/me/src', path: 'folder' },
-          ],
-        ],
-      ],
-    );
+    const tabs = [...document.querySelectorAll('.tabs .tab')];
+    assert.strictEqual(tabs.length, 5);
+    for (const tab of tabs) {
+      assert.strictEqual(tab.closest('[data-tip]'), null, tab.textContent);
+    }
   });
 
   test('marks the + button open while its menu is, as the menu button is, telling assistive technology it opens a menu', () => {

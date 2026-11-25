@@ -542,7 +542,7 @@ suite('Commander pane', () => {
     assert.match(
       cell(repository),
       new RegExp(
-        `^<span class="commander-extension cut"><button class="commander-mark" aria-label="${strings.commander.openRepository}" data-tip="${strings.commander.openRepository}" tabindex="-1"><svg class="icon tool-icon tool-git"`,
+        `^<span class="commander-extension cut"><button class="commander-mark" aria-label="${strings.commander.openRepository}"(?! data-tip) tabindex="-1"><svg class="icon tool-icon tool-git"`,
       ),
     );
     assert.match(

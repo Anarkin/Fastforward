@@ -1,4 +1,3 @@
-import { namedFolder } from '../../../lib/shared/sentences';
 import type { ChangeArea } from '../shared/protocol';
 import { noFilter, type Filter } from '../../../lib/shared/filter';
 import { FileRow, FolderRow } from '../../../lib/page/tree';
@@ -41,7 +40,6 @@ export function ChangesTreeItem({
     <FolderRow
       key={key}
       path={row.path}
-      title={[namedFolder(row.path, root)]}
       depth={row.depth}
       open={row.open}
       marks

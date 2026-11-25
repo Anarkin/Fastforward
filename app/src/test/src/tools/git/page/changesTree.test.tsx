@@ -29,6 +29,19 @@ const changesTreeElements = ({
   'row'
 >) => rows.map((row) => ChangesTreeItem({ row, ...options }));
 
+const lastPart = (row: string) =>
+  [...row.matchAll(/<span class="path-part">([^<]*)<\/span>/g)].at(-1)?.[1];
+
+function rowNamed(html: string, name: string, ...classes: string[]): string {
+  const found = html
+    .split(/(?=<div class="row tree-row)/)
+    .filter((row) => lastPart(row) === name)
+    .map((row) => tagWith(row, '', 'row', ...classes));
+  assert.strictEqual(found.length, 1, `${classes.join(' ')} named ${name}`);
+  assert.doesNotMatch(found[0], /data-tip/, name);
+  return found[0];
+}
+
 suite('Changes tree rows', () => {
   test('draws folders and files, a folder no dimmer than a file, marking the selected file', () => {
     const changes = [fileChange('src/a.ts'), fileChange('src/b.ts')];
@@ -44,10 +57,10 @@ suite('Changes tree rows', () => {
         })}
       </>,
     );
-    const src = tagWith(html, 'data-tip="src"', 'row', 'tree-row', 'folder');
+    const src = rowNamed(html, 'src', 'tree-row', 'folder');
     assert.ok(!classesOf(src).has('dimmed'));
-    tagWith(html, 'data-tip="src/b.ts"', 'row', 'file', 'selected');
-    const a = tagWith(html, 'data-tip="src/a.ts"', 'row', 'file');
+    rowNamed(html, 'b.ts', 'file', 'selected');
+    const a = rowNamed(html, 'a.ts', 'file');
     assert.ok(!classesOf(a).has('selected'));
   });
 
@@ -176,8 +189,8 @@ suite('Changes tree rows', () => {
       cursor: folderRowKey('src'),
     });
     const html = renderToStaticMarkup(<>{elements}</>);
-    tagWith(html, 'data-tip="src"', 'row', 'folder', 'selected');
-    const a = tagWith(html, 'data-tip="src/a.ts"', 'row', 'file');
+    rowNamed(html, 'src', 'folder', 'selected');
+    const a = rowNamed(html, 'a.ts', 'file');
     assert.ok(!classesOf(a).has('selected'));
     clickRow(elements[1], FileRow);
     assert.deepStrictEqual(picked, [undefined]);
@@ -202,10 +215,10 @@ suite('Changes tree rows', () => {
     });
     const html = renderToStaticMarkup(<>{elements}</>);
     for (const title of ['src', 'src/lib']) {
-      const row = tagWith(html, `data-tip="${title}"`, 'row', 'folder');
+      const row = rowNamed(html, title.split('/').at(-1) ?? title, 'folder');
       assert.ok(!classesOf(row).has('dimmed'), title);
     }
-    tagWith(html, 'data-tip="docs"', 'row', 'folder', 'dimmed');
+    rowNamed(html, 'docs', 'folder', 'dimmed');
     assert.strictEqual(tagsWith(html, 'path', 'unchanged').length, 2);
     for (const element of elements) {
       if (

@@ -41,7 +41,7 @@ const shown = (items: readonly ContextMenuItem[]) =>
   );
 
 suite('Version menu', () => {
-  test('lists the file on disk, the version the index holds and then each commit that changed the file, by its subject after its short hash and date, set apart as details, the one shown checked and the one that deleted the file disabled', () => {
+  test('lists the file on disk, the version the index holds and then each commit that changed the file, by its subject after its short hash and date, set apart as details, the one shown checked and the one that deleted the file disabled, saying why in its tooltip, the others with no tooltip repeating their subject', () => {
     assert.deepStrictEqual(
       shown(versionMenu(listed, b, 'YYYY-MM-DD', () => {})),
       [
@@ -63,6 +63,19 @@ suite('Version menu', () => {
         ),
       ).slice(0, 1),
       [['aaaaaaa | 2026-11-17 | gone', false, true]],
+    );
+    assert.deepStrictEqual(
+      versionMenu(listed, b, 'YYYY-MM-DD', () => {}).map((item) =>
+        'separator' in item ? '-' : item.title,
+      ),
+      [
+        undefined,
+        undefined,
+        '-',
+        strings.versions.deletedHere,
+        undefined,
+        undefined,
+      ],
     );
   });
 

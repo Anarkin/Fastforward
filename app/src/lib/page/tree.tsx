@@ -1,9 +1,7 @@
-import { namedFile, type Sentence } from '../shared/sentences';
 import { tip } from './tips';
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
 import {
-  changeTitle,
   changeClass,
   changeKind,
   changeMark,
@@ -48,7 +46,6 @@ export function Twisty({ open }: { open: boolean }) {
 
 export function FolderRow({
   path,
-  title,
   depth,
   open,
   marks = false,
@@ -59,7 +56,6 @@ export function FolderRow({
   children,
 }: {
   path: string;
-  title?: Sentence;
   depth: number;
   open: boolean;
   marks?: boolean;
@@ -77,7 +73,6 @@ export function FolderRow({
         paddingLeft: marks ? treeIndent(0) : treeIndent(depth),
         ...style,
       }}
-      {...tip(title)}
       onClick={() => onToggle(path)}
     >
       {marks && (
@@ -117,7 +112,6 @@ export function FileRow({
     <div
       className={`row tree-row file ${marked ? 'selected' : ''}`}
       style={{ paddingLeft: treeIndent(0) }}
-      {...tip(change ? changeTitle(change, root) : [namedFile(path, root)])}
       onClick={() => onSelect(path === selected ? undefined : path)}
     >
       <MarkStrip

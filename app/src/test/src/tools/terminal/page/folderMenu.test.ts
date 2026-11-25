@@ -17,7 +17,7 @@ suite('Terminal folder menu', () => {
     );
   });
 
-  test('offers New and Open..., then the folders by their whole paths, opening each', () => {
+  test('offers New and Open..., then the folders by their whole paths, opening each, with no tooltip repeating a path', () => {
     const done: string[] = [];
     const items = folderMenuItems(['C:\\Code\\app', 'C:\\Code\\site'], {
       onNew: () => done.push('new'),
@@ -31,13 +31,7 @@ suite('Terminal folder menu', () => {
           ? '-'
           : `${item.label} ${plainOf(item.title ?? '')}`,
       ),
-      [
-        'New ',
-        'Open... ',
-        '-',
-        'C:\\Code\\app "C:\\Code\\app"',
-        'C:\\Code\\site "C:\\Code\\site"',
-      ],
+      ['New ', 'Open... ', '-', 'C:\\Code\\app ', 'C:\\Code\\site '],
     );
     for (const item of items) {
       if (!('separator' in item)) {

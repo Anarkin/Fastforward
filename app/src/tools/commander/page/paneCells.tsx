@@ -1,4 +1,4 @@
-import { labelTip, tip } from '../../../lib/page/tips';
+import { labelled, tip } from '../../../lib/page/tips';
 import { useEffect, useId, useRef, useState } from 'react';
 import { iconUrl, type IconSource } from '../shared/icons';
 import { imageType, vectorType } from '../../../lib/shared/images';
@@ -132,7 +132,7 @@ export function ExtensionCell({
       {open !== undefined ? (
         <button
           className="commander-mark"
-          {...labelTip(strings.commander.openRepository)}
+          {...labelled(strings.commander.openRepository)}
           tabIndex={-1}
           onClick={(event) => {
             event.stopPropagation();

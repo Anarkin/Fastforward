@@ -1,9 +1,3 @@
-import type { ToolId } from '../shared/tools';
-import {
-  namedFile,
-  namedFolder,
-  type Sentence,
-} from '../../lib/shared/sentences';
 import { labelled, tip } from '../../lib/page/tips';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type TabInfo } from '../shared/protocol';
@@ -55,22 +49,6 @@ function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
 }
 
 const noTabs: readonly TabInfo[] = [];
-
-const shownAsFile: readonly ToolId[] = ['viewer', 'editor'];
-
-function tabTip({ root, name, tool, compared, sides }: TabInfo): Sentence {
-  if (sides !== undefined) {
-    return strings.common.foldersShown(sides.left, sides.right);
-  }
-  if (compared !== undefined) {
-    return compared.old === compared.new
-      ? [namedFile(compared.new)]
-      : strings.common.filesCompared(compared.old, compared.new);
-  }
-  return root === undefined
-    ? name
-    : [shownAsFile.includes(tool) ? namedFile(root) : namedFolder(root)];
-}
 
 export function TabBar({ menu }: { menu?: React.ReactNode }) {
   const elevated = useShell((state) => state.about?.elevated);
@@ -237,7 +215,6 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
                 role="tab"
                 aria-selected={tab.id === open}
                 className={`tab ${tab.id === open || tab.id === visitor ? 'active' : ''} ${tab.id === drag.dragged || tab.id === visitor ? 'dragging' : ''} ${motion ?? ''}`}
-                {...tip(tabTip(tab))}
                 {...drag.pressing(tab.id)}
                 onClick={() => {
                   rest.cancel();

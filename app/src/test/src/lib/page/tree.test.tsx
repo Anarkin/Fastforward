@@ -72,7 +72,7 @@ suite('File rows', () => {
       assert.match(
         changedRow(status),
         new RegExp(
-          `^<div class="row tree-row file " style="padding-left:8px" data-tip="a\\.ts"[^>]*><span class="change-mark ${kind}" aria-hidden="true" data-tip="${meaning}">${mark}</span><span class="tree-indent" style="width:10px"></span><span class="path path-cut"><span class="path-piece"><span class="path-part">a\\.ts</span></span></span>`,
+          `^<div class="row tree-row file " style="padding-left:8px"><span class="change-mark ${kind}" aria-hidden="true" data-tip="${meaning}">${mark}</span><span class="tree-indent" style="width:10px"></span><span class="path path-cut"><span class="path-piece"><span class="path-part">a\\.ts</span></span></span>`,
         ),
         status,
       );
@@ -101,14 +101,23 @@ suite('File rows', () => {
     );
   });
 
-  test('marks a symbolic link with @ beside the letter of its change, in one mark, and a file in conflict with ! in the color of a conflict, the tooltip of the mark saying what it means and that of the row the path', () => {
+  test('marks a symbolic link with @ beside the letter of its change, in one mark, and a file in conflict with ! in the color of a conflict, the tooltip of the mark saying what it means, the row itself telling nothing, a rename neither, as the diff names both its paths', () => {
     const link = rowOf({ status: 'A', link: true });
     assert.match(
       link,
       /<span class="change-mark added" aria-hidden="true" data-tip="Added symbolic link">A@<\/span>/,
     );
     assert.doesNotMatch(link, /<svg/);
-    tagWith(link, 'data-tip="AGENTS.md"', 'row', 'tree-row');
+    assert.doesNotMatch(tagWith(link, '', 'row', 'tree-row'), /data-tip/);
+    assert.doesNotMatch(
+      tagWith(
+        rowOf({ status: 'R', oldPath: 'README.md' }),
+        '',
+        'row',
+        'tree-row',
+      ),
+      /data-tip/,
+    );
     assert.match(
       rowOf({ status: 'M', conflict: true }),
       /<span class="change-mark conflict" aria-hidden="true" data-tip="In conflict">! <\/span>/,
@@ -157,7 +166,10 @@ suite('File rows', () => {
         onSelect={noop}
       />,
     );
-    tagWith(html, 'data-tip="src/a.ts"', 'row', 'tree-row', 'file');
+    assert.doesNotMatch(
+      tagWith(html, '', 'row', 'tree-row', 'file'),
+      /data-tip/,
+    );
     tagWith(html, '', 'path', 'unchanged');
   });
 

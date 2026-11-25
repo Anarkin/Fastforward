@@ -13,7 +13,7 @@ const ignored: RepositoryMenuActions = {
 };
 
 suite('Repository menu', () => {
-  test('offers Open..., Clone... and Init... first, then lists the recent repositories by their whole paths, drawn as paths', () => {
+  test('offers Open..., Clone... and Init... first, then lists the recent repositories by their whole paths, drawn as paths, with no tooltip repeating a path', () => {
     const asked: string[] = [];
     const items = repositoryMenuItems([{ root: '/code/app', name: 'app' }], {
       onOpen: (root) => asked.push(`open ${root}`),
@@ -25,7 +25,7 @@ suite('Repository menu', () => {
       items.map((item) =>
         'separator' in item
           ? '-'
-          : `${item.label} ${item.path === true ? 'path' : ''}`,
+          : `${item.label} ${item.path === true ? 'path' : ''}${item.title === undefined ? '' : ' tip'}`,
       ),
       ['Open... ', 'Clone... ', 'Init... ', '-', '/code/app path'],
     );

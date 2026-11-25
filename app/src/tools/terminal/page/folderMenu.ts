@@ -1,4 +1,3 @@
-import { namedFolder } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
 import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
 
@@ -20,7 +19,6 @@ export function folderMenuItems(
     ...folders.map((folder) => ({
       label: folder,
       path: true,
-      title: [namedFolder(folder)],
       onClick: () => onOpen(folder),
       onRemove: () => onForget(folder),
       removeTitle: strings.tabs.removeRecent(folder),

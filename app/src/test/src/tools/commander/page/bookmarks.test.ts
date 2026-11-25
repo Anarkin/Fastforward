@@ -23,7 +23,7 @@ const shown = (items: readonly ContextMenuItem[]) =>
   );
 
 suite('Commander bookmarks menu', () => {
-  test('sets each bookmark apart as a name, as it is a folder, and the actions in the words of the menu', () => {
+  test('sets each bookmark apart as a name, as it is a folder, and the actions in the words of the menu, with no tooltip repeating a path', () => {
     const items = bookmarkMenu({
       bookmarks: ['C:\\Code'],
       bookmark: undefined,
@@ -32,8 +32,10 @@ suite('Commander bookmarks menu', () => {
       onGo: noop,
     });
     assert.deepStrictEqual(
-      items.map((item) => ('separator' in item ? '---' : (item.path ?? false))),
-      [false, '---', true],
+      items.map((item) =>
+        'separator' in item ? '---' : [item.path ?? false, item.title],
+      ),
+      [[false, undefined], '---', [true, undefined]],
     );
   });
 

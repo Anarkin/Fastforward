@@ -78,10 +78,7 @@ export function versionMenu(
       checked: shown === rev || (rev === diskRev && shown === undefined),
       ...(gone
         ? { disabled: true, title: strings.versions.deletedHere }
-        : {
-            title: subject,
-            onClick: () => choose(rev === diskRev ? undefined : rev),
-          }),
+        : { onClick: () => choose(rev === diskRev ? undefined : rev) }),
     }),
   );
   return local.length === 0

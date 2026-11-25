@@ -1,11 +1,6 @@
 import type { FileChange } from '../shared/changes';
 import { strings } from '../shared/strings';
-import {
-  namedFile,
-  sentence,
-  type Sentence,
-  type Value,
-} from '../shared/sentences';
+import { sentence, type Sentence, type Value } from '../shared/sentences';
 import type { ChangeKind } from './iconKinds';
 import { wholePath } from './pathLooks';
 
@@ -106,12 +101,6 @@ export function renamedPath(from: string, to: string, root?: string): Sentence {
       ? ''
       : sentence`${kept.slice(0, 1)}${piece(kept.slice(1), 'file', within(root, shared + middle(to)))}`,
   );
-}
-
-export function changeTitle(change: FileChange, root?: string): Sentence {
-  return change.oldPath
-    ? strings.common.fileFromTo(change.oldPath, change.path, root)
-    : [namedFile(change.path, root)];
 }
 
 export function changeMeaning(change: FileChange): Sentence {

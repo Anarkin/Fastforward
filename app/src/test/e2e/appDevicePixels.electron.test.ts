@@ -170,7 +170,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
       ? []
       : [`ends ${end} device pixels down`];
   });
-  await page.locator('.tabs .tab').first().hover();
+  await page.locator('.nav-button[data-tip]:visible').first().hover();
   await page.locator('.card.tip').waitFor();
   await look('tooltip');
   await page.mouse.move(1, 1);

@@ -5,7 +5,6 @@ import {
   changeKind,
   changeMark,
   changeMeaning,
-  changeTitle,
   renamedPath,
 } from '../../../../lib/page/fileStatus';
 import { fileChange as change } from '../../../helpers/gitValues';
@@ -88,10 +87,6 @@ suite('File status', () => {
         'Symbolic link in conflict',
       ],
     );
-    assert.strictEqual(
-      plainOf(changeTitle(change('src/a.ts', { status: 'M' }))),
-      '"src/a.ts"',
-    );
   });
 
   test('shortens a rename to what changed between the folders both paths share, as git does', () => {
@@ -156,20 +151,6 @@ suite('File status', () => {
       ].map(([from, to]) => textOf(renamedPath(from ?? '', to ?? ''))),
       ['C:\\work\\{after.txt → before.txt}', 'C:\\{a → b}\\x.txt'],
     );
-  });
-
-  test('names both paths of a rename in the tooltip of its row, each path as a file of its repository, so a tooltip draws them as every path is drawn', () => {
-    assert.deepStrictEqual(
-      changeTitle(change('new.ts', { status: 'R', oldPath: 'old.ts' }), '/r'),
-      [
-        { name: 'old.ts', path: 'file', root: '/r' },
-        ' → ',
-        { name: 'new.ts', path: 'file', root: '/r' },
-      ],
-    );
-    assert.deepStrictEqual(changeTitle(change('gone.ts', { status: 'D' })), [
-      { name: 'gone.ts', path: 'file' },
-    ]);
   });
 
   test('names a symbolic link as one in the tooltip of its mark, with each status', () => {
