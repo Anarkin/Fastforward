@@ -214,6 +214,7 @@ export function BoardView() {
         onPointerMove={movePan}
         onPointerUp={endPan}
         onPointerCancel={endPan}
+        onLostPointerCapture={endPan}
         onKeyDown={(event) => hold(event, true)}
         onKeyUp={(event) => hold(event, false)}
         onBlur={(event) => {

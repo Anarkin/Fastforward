@@ -261,4 +261,25 @@ suite('App canvas', () => {
     await showTab(page, 1);
     assert.deepStrictEqual(await settledOrigin(), after);
   });
+
+  test('settles a drag on whole cells once its pointer is taken from the canvas without being let go, as when the button comes up outside the window, following it no further', async () => {
+    const before = await settledOrigin();
+    const cell = await cellSize();
+    const { x, y } = await middleOfBoard();
+    await page.mouse.move(x, y);
+    await page.mouse.down({ button: 'middle' });
+    await page.mouse.move(x - 5.4 * cell.width, y, { steps: 4 });
+    await page
+      .locator('.board-body')
+      .evaluate((element: HTMLElement) => element.releasePointerCapture(1));
+    await page.mouse.move(x - 9 * cell.width, y);
+    const after = await settledOrigin(
+      (origin) => origin.column !== before.column,
+    );
+    await page.mouse.up({ button: 'middle' });
+    assert.deepStrictEqual(after, {
+      column: before.column + 5,
+      row: before.row,
+    });
+  });
 });
