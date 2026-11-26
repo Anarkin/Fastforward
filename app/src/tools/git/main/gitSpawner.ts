@@ -1,3 +1,4 @@
+import { codeOf, messageOf } from '../../../lib/shared/errors';
 import { type ChildProcess, spawn } from 'node:child_process';
 import type { ProcessHolder } from './processHold';
 import { stopTree } from './processTree';
@@ -54,23 +55,13 @@ export interface SpawnerPort {
   on(event: 'message', listener: (message: ToSpawner) => void): unknown;
 }
 
-function codeOf(error: unknown): string | number | undefined {
-  const code: unknown =
-    typeof error === 'object' && error !== null
-      ? Reflect.get(error, 'code')
-      : undefined;
-  return typeof code === 'string' || typeof code === 'number'
-    ? code
-    : undefined;
-}
-
 export function serveGitSpawns(port: SpawnerPort, held: ProcessHolder): void {
   const children = new Map<number, ChildProcess>();
   const failed = (id: number, error: unknown) =>
     port.postMessage({
       type: 'error',
       id,
-      message: error instanceof Error ? error.message : String(error),
+      message: messageOf(error),
       ...(codeOf(error) === undefined ? {} : { code: codeOf(error) }),
     });
   const started = (message: Extract<ToSpawner, { type: 'spawn' }>) => {

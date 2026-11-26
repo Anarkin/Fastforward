@@ -1,10 +1,10 @@
+import { codeOf } from '../../../lib/shared/errors';
 import { randomUUID } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import { firstBytes } from '../../../components/encodings/main/encodingDetection';
 import type { EditingAccess } from './editing';
 import { saveFile } from './fileSaving';
 import { bytesVersion } from '../../../lib/main/fileVersions';
-import { codeOf } from '../../../lib/main/reasons';
 import type { Saved } from './fileSaving';
 import type { TextDefaults } from './textDefaults';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';

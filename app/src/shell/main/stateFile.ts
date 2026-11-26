@@ -1,7 +1,8 @@
+import { messageOf } from '../../lib/shared/errors';
 import { fs } from '../../lib/main/files';
 import { isObject } from '../../lib/main/json';
 import { readText } from './readText';
-import { writeAtomically } from '../../lib/main/textFiles';
+import { isHeld, writeAtomically } from '../../lib/main/textFiles';
 import { strings } from '../../lib/shared/strings';
 import type { Sentence } from '../../lib/shared/sentences';
 
@@ -129,24 +130,13 @@ type Reader = (file: string) => string | Error | undefined;
 
 const heldAtStart = { tries: 20, every: 100 };
 
-const heldCodes = new Set(['EBUSY', 'EPERM', 'EACCES']);
-
-function held(text: ReturnType<Reader>): boolean {
-  return (
-    text instanceof Error &&
-    'code' in text &&
-    typeof text.code === 'string' &&
-    heldCodes.has(text.code)
-  );
-}
-
 function readWhileHeld(
   file: string,
   read: Reader,
   { tries, every }: { readonly tries: number; readonly every: number },
 ): ReturnType<Reader> {
   let text = read(file);
-  for (let tried = 1; tried < tries && held(text); tried += 1) {
+  for (let tried = 1; tried < tries && isHeld(text); tried += 1) {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, every);
     text = read(file);
   }
@@ -183,9 +173,7 @@ function readJson(
   } catch (error) {
     return {
       values: {},
-      problem: strings.state.notPutAside(
-        error instanceof Error ? error.message : String(error),
-      ),
+      problem: strings.state.notPutAside(messageOf(error)),
     };
   }
   return { values: {}, problem: strings.state.putAside(copy) };

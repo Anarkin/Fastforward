@@ -1,3 +1,4 @@
+import { hasCode } from '../../../lib/shared/errors';
 import { basename } from 'node:path';
 import type { Notice, Page } from '../../../shell/main/toolContract';
 import { strings } from '../../../lib/shared/strings';
@@ -122,9 +123,6 @@ interface Opened {
   kept?: { readonly version: number; readonly state: string };
   stop: () => void;
 }
-
-const isMissing = (error: unknown) =>
-  error instanceof Error && 'code' in error && error.code === 'ENOENT';
 
 const noWatching = () => {};
 
@@ -272,7 +270,7 @@ export class Editing {
     try {
       bytes = await this.access.readFile(file);
     } catch (error) {
-      if (isMissing(error)) {
+      if (hasCode(error, 'ENOENT')) {
         const defaults = await this.access.textDefaults?.(file, true);
         return {
           text: new EditedText(

@@ -1,3 +1,4 @@
+import { codeOf } from '../../../lib/shared/errors';
 import { randomBytes } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import type { FileHandle, Stats } from '../../../lib/main/files';
@@ -51,10 +52,6 @@ interface Count {
 const none: Count = { files: 0, bytes: 0 };
 
 class Stopped extends Error {}
-
-function codeOf(error: unknown): unknown {
-  return error instanceof Error && 'code' in error ? error.code : undefined;
-}
 
 async function statsOf(file: string): Promise<Stats | undefined> {
   try {

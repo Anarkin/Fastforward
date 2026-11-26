@@ -2,13 +2,13 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   progressOf,
-  reasonOf,
+  runReasonOf,
 } from '../../../../../tools/commander/main/sevenZipOutput';
 
-suite('reasonOf', () => {
+suite('runReasonOf', () => {
   test('joins the errors 7-Zip names, without the file they are about, taking the line after an error naming only the file, or says how 7-Zip ended when it names none', () => {
     assert.strictEqual(
-      reasonOf(
+      runReasonOf(
         {
           code: 2,
           output: '',
@@ -20,7 +20,7 @@ suite('reasonOf', () => {
       'Cannot open the file as [tar] archive',
     );
     assert.strictEqual(
-      reasonOf(
+      runReasonOf(
         {
           code: 2,
           output: '',
@@ -32,7 +32,7 @@ suite('reasonOf', () => {
       'Unexpected end of archive There are data after the end of archive',
     );
     assert.strictEqual(
-      reasonOf(
+      runReasonOf(
         {
           code: 2,
           output:
@@ -44,7 +44,7 @@ suite('reasonOf', () => {
       'Unexpected end of archive',
     );
     assert.strictEqual(
-      reasonOf(
+      runReasonOf(
         {
           code: 2,
           output: '',
@@ -56,7 +56,7 @@ suite('reasonOf', () => {
       'Cannot open encrypted archive. Wrong password?',
     );
     assert.strictEqual(
-      reasonOf(
+      runReasonOf(
         {
           code: 2,
           output: '',
@@ -67,7 +67,7 @@ suite('reasonOf', () => {
       'The parameter is incorrect.',
     );
     assert.strictEqual(
-      reasonOf(
+      runReasonOf(
         {
           code: 2,
           output: '',
@@ -78,11 +78,11 @@ suite('reasonOf', () => {
       'The file is read-only',
     );
     assert.strictEqual(
-      reasonOf({ code: 255, output: '', errors: '' }, 'a.zip'),
+      runReasonOf({ code: 255, output: '', errors: '' }, 'a.zip'),
       '7-Zip ended with code 255.',
     );
     assert.strictEqual(
-      reasonOf({ code: null, output: '', errors: '' }, 'a.zip'),
+      runReasonOf({ code: null, output: '', errors: '' }, 'a.zip'),
       '7-Zip was stopped.',
     );
   });

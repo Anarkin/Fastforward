@@ -1,9 +1,10 @@
+import { codeOf } from '../../../lib/shared/errors';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
 import type { CommanderToHost } from '../shared/protocol';
 import type { Side } from '../shared/sides';
-import { codeOf, reasonOf } from '../../../lib/main/reasons';
+import { reasonOf } from '../../../lib/main/reasons';
 import { nameProblem } from '../shared/names';
 import { type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';

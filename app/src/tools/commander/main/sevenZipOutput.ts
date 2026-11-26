@@ -30,7 +30,7 @@ function listedUnder(lines: readonly string[]): string[] {
   return reasons;
 }
 
-export function reasonOf(run: SevenZipRun, file: string): string {
+export function runReasonOf(run: SevenZipRun, file: string): string {
   const lines = `${run.errors}\n${run.output}`.split(/\r?\n/);
   const reasons = lines.flatMap((line, at) => {
     const found = errorPattern.exec(line.trim());
@@ -58,7 +58,7 @@ export function reasonOf(run: SevenZipRun, file: string): string {
 }
 
 export function refusalOf(run: SevenZipRun, file: string): ArchiveRefusal {
-  const reason = reasonOf(run, file);
+  const reason = runReasonOf(run, file);
   return {
     reason,
     ...(reason === noArchiveSeen && { noArchive: true }),
@@ -125,7 +125,7 @@ export function warningOf(run: SevenZipRun, file: string): string {
     `${run.errors}\n${run.output}`.split(/\r?\n/).map((line) => line.trim()),
   );
   if (warned.length === 0) {
-    return reasonOf(run, file);
+    return runReasonOf(run, file);
   }
   return [
     ...warned.slice(0, warningsShown),

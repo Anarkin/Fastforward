@@ -32,4 +32,17 @@ suite('Unification', () => {
       ['components/cells/page/textPlaces.ts'],
     );
   });
+
+  test('reads the code and the message of an error in one module, shared by the page and the main process, rather than by a copy of codeOf, isMissing or reasonOf in every part that reads one, of which a dozen were', () => {
+    assert.deepStrictEqual(
+      doing(
+        /'code' in \w+|Reflect\.get\(\w+, 'code'\)|instanceof Error \? \w+\.message : String\(/,
+      ),
+      ['lib/shared/errors.ts'],
+    );
+    assert.deepStrictEqual(
+      doing(/\b(?:function|const) (?:codeOf|messageOf|isMissing|reasonOf)\b/),
+      ['lib/main/missing.ts', 'lib/main/reasons.ts', 'lib/shared/errors.ts'],
+    );
+  });
 });

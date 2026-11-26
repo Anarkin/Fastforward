@@ -1,3 +1,4 @@
+import { messageOf } from '../../../lib/shared/errors';
 import { runTransfer, type ClashReply } from './transfer';
 import { runDeletion } from './deletion';
 import type { TransferCommand, TransferEvent } from './transferProtocol';
@@ -45,7 +46,7 @@ export function transferServer(
             post({
               type: 'done',
               stopped: false,
-              error: error instanceof Error ? error.message : String(error),
+              error: messageOf(error),
             }),
         );
         return;

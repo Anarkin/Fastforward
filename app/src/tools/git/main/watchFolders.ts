@@ -1,3 +1,4 @@
+import { codeOf, hasCode } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import type { Dirent } from '../../../lib/main/files';
 import * as path from 'node:path';
@@ -13,12 +14,7 @@ export interface Watcher {
 const exhaustion = new Set(['ENOSPC', 'EMFILE', 'ENFILE']);
 
 function outOfWatches(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    typeof error.code === 'string' &&
-    exhaustion.has(error.code)
-  );
+  return hasCode(error, ...exhaustion);
 }
 
 export interface FolderWatcher {
@@ -100,8 +96,8 @@ export async function watchTree(
   const inFlight = new InFlight();
   const reported = new Set<unknown>();
   const report = (error: unknown, to = onError) => {
-    const code = error instanceof Error && 'code' in error ? error.code : '';
-    const kind = to === onError ? code : `stopped ${String(code)}`;
+    const code = String(codeOf(error) ?? '');
+    const kind = to === onError ? code : `stopped ${code}`;
     if (!isMissing(error) && !reported.has(kind) && !disposed) {
       reported.add(kind);
       to(error);

@@ -1,3 +1,4 @@
+import { messageOf } from '../../lib/shared/errors';
 import { toolSettingProblems } from '../shared/tools';
 import { strings } from '../../lib/shared/strings';
 import type { Sentence } from '../../lib/shared/sentences';
@@ -81,11 +82,7 @@ export class UserSettings {
       parsed = JSON.parse(text);
     } catch (error) {
       this.broken = true;
-      this.issues = [
-        strings.settings.invalid(
-          error instanceof Error ? error.message : String(error),
-        ),
-      ];
+      this.issues = [strings.settings.invalid(messageOf(error))];
       return;
     }
     const { settings, problems } = mergeSettings(this.base, parsed);

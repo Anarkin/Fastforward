@@ -1,3 +1,4 @@
+import { messageOf } from '../../../lib/shared/errors';
 import { buffersOf, Commits, type CommitsParts } from './commits';
 import { CommitsBuilder } from './commitsBuilder';
 import { headsOf } from './heads';
@@ -92,7 +93,7 @@ function join(
     port.postMessage({
       type: 'failed',
       id,
-      message: error instanceof Error ? error.message : String(error),
+      message: messageOf(error),
     });
   }
 }
@@ -112,7 +113,7 @@ async function answer(
     port.postMessage({
       type: 'failed',
       id,
-      message: error instanceof Error ? error.message : String(error),
+      message: messageOf(error),
     });
   }
 }

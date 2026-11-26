@@ -1,3 +1,4 @@
+import { messageOf } from '../lib/shared/errors';
 import { realTimer, type Timer } from '../lib/main/timer';
 import type { Log } from '../shell/main/log';
 import type { Notice } from '../shell/main/toolContract';
@@ -27,9 +28,7 @@ export interface Updater {
 }
 
 function firstLine(error: unknown): string {
-  return (error instanceof Error ? error.message : String(error)).split(
-    '\n',
-  )[0];
+  return messageOf(error).split('\n')[0];
 }
 
 export class Updates {

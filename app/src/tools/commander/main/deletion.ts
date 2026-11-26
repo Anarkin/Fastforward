@@ -1,3 +1,4 @@
+import { codeOf } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import type { TransferProgress } from '../shared/transfers';
@@ -20,9 +21,6 @@ interface Item {
   readonly folder: boolean;
   readonly bytes: number;
 }
-
-const codeOf = (error: unknown): unknown =>
-  error instanceof Error && 'code' in error ? error.code : undefined;
 
 async function itemsUnder(item: string, found: Item[]): Promise<void> {
   const stats = await fs.promises.lstat(item).catch(() => undefined);

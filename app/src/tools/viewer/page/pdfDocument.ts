@@ -1,3 +1,4 @@
+import { messageOf } from '../../../lib/shared/errors';
 import {
   AnnotationEditorType,
   AnnotationMode,
@@ -94,9 +95,7 @@ export function pdfFailure(error: unknown): string {
   if (error instanceof InvalidPDFException) {
     return strings.pdf.invalid;
   }
-  return strings.pdf.couldNotOpen(
-    error instanceof Error ? error.message : String(error),
-  );
+  return strings.pdf.couldNotOpen(messageOf(error));
 }
 
 function shownPlace(viewer: PDFViewer, place: PdfPlace): void {

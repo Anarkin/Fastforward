@@ -1,3 +1,4 @@
+import { codeOf, hasCode } from '../../../lib/shared/errors';
 import { randomBytes } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import type { FileHandle, Stats } from '../../../lib/main/files';
@@ -29,19 +30,14 @@ export class KeptBeside extends Error {
   }
 }
 
-const codeOf = (error: unknown) =>
-  error instanceof Error && 'code' in error ? error.code : undefined;
-
-const isMissing = (error: unknown) => codeOf(error) === 'ENOENT';
-
 const refusesFiles = (error: unknown) =>
-  ['EACCES', 'EPERM', 'EROFS'].includes(String(codeOf(error)));
+  hasCode(error, 'EACCES', 'EPERM', 'EROFS');
 
 async function linkedTarget(file: string): Promise<string> {
   try {
     return await fs.promises.realpath(file);
   } catch (error) {
-    if (!isMissing(error)) {
+    if (!hasCode(error, 'ENOENT')) {
       throw error;
     }
     const link = await fs.promises.readlink(file).catch(() => undefined);
@@ -55,7 +51,7 @@ async function statOf(file: string): Promise<Stats | undefined> {
   try {
     return await fs.promises.stat(file);
   } catch (error) {
-    if (isMissing(error)) {
+    if (hasCode(error, 'ENOENT')) {
       return undefined;
     }
     throw error;

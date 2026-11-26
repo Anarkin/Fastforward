@@ -1,10 +1,7 @@
+import { hasCode } from '../shared/errors';
 import { randomBytes } from 'node:crypto';
 import { fs } from './files';
 import * as path from 'node:path';
-
-function isMissing(error: unknown): boolean {
-  return error instanceof Error && 'code' in error && error.code === 'ENOENT';
-}
 
 const renameRetryDelays = [10, 20, 40, 80, 160, 320, 640];
 
@@ -35,7 +32,7 @@ async function linkedFile(file: string): Promise<string> {
   try {
     return await fs.promises.realpath(file);
   } catch (error) {
-    const link = isMissing(error)
+    const link = hasCode(error, 'ENOENT')
       ? await fs.promises.readlink(file).catch(() => undefined)
       : undefined;
     return link === undefined
@@ -63,12 +60,6 @@ async function renameRetrying(
   await fs.promises.rename(from, to);
 }
 
-function isHeld(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error.code === 'EPERM' ||
-      error.code === 'EACCES' ||
-      error.code === 'EBUSY')
-  );
+export function isHeld(error: unknown): boolean {
+  return hasCode(error, 'EBUSY', 'EPERM', 'EACCES');
 }

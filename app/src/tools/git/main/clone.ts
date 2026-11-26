@@ -1,3 +1,4 @@
+import { hasCode } from '../../../lib/shared/errors';
 import { fsPromises as fs } from '../../../lib/main/files';
 import { randomBytes } from 'node:crypto';
 import * as path from 'node:path';
@@ -57,9 +58,7 @@ export async function cloneTargetProblem(
     const entries = await fs.readdir(target);
     return entries.length === 0 ? undefined : strings.clone.taken(target);
   } catch (error) {
-    return error instanceof Error && 'code' in error && error.code === 'ENOENT'
-      ? undefined
-      : strings.clone.taken(target);
+    return hasCode(error, 'ENOENT') ? undefined : strings.clone.taken(target);
   }
 }
 

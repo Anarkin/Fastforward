@@ -1,3 +1,4 @@
+import { messageOf } from '../../lib/shared/errors';
 import {
   Component,
   useEffect,
@@ -44,9 +45,7 @@ export function Crash({
       <TitleBar title={title} />
       <div className="crash">
         <div className="error-message">
-          {strings.app.crashed(
-            error instanceof Error ? error.message : String(error),
-          )}
+          {strings.app.crashed(messageOf(error))}
         </div>
         <button onClick={onReload}>{strings.app.reload}</button>
       </div>

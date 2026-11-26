@@ -1,3 +1,4 @@
+import { codeOf } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import type { BigIntStats } from '../../../lib/main/files';
 import * as path from 'node:path';
@@ -15,9 +16,6 @@ interface Original {
 
 const lstatOf = (item: string): Promise<BigIntStats | undefined> =>
   fs.promises.lstat(item, { bigint: true }).catch(() => undefined);
-
-const codeOf = (error: unknown): unknown =>
-  error instanceof Error && 'code' in error ? error.code : undefined;
 
 async function originalsOf(item: string, found: Original[]): Promise<void> {
   const stats = await lstatOf(item);

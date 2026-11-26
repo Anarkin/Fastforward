@@ -1,3 +1,4 @@
+import { hasCode } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 
@@ -12,7 +13,7 @@ function running(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    return error instanceof Error && 'code' in error && error.code === 'EPERM';
+    return hasCode(error, 'EPERM');
   }
 }
 

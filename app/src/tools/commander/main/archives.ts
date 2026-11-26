@@ -1,3 +1,4 @@
+import { messageOf } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
@@ -82,10 +83,6 @@ export interface ArchiveAccess {
 }
 
 const tarName = /\.tar$/i;
-
-function reasonOfError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export async function filesUnder(folder: string): Promise<string[]> {
   const found = await fs.promises
@@ -205,7 +202,7 @@ export class Archives implements ArchiveAccess {
       }
       version = await sampledVersion(file, stats);
     } catch (error) {
-      return { kind: 'refused', reason: reasonOfError(error), noArchive: true };
+      return { kind: 'refused', reason: messageOf(error), noArchive: true };
     }
     if (known?.version === version) {
       return { kind: 'opened', archive: known };

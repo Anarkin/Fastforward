@@ -1,3 +1,4 @@
+import { messageOf } from '../../lib/shared/errors';
 import * as path from 'node:path';
 import type { Log } from './log';
 import { strings } from '../../lib/shared/strings';
@@ -49,10 +50,6 @@ function commandNotice(installed: CommandInstall): Notice | undefined {
   }
 }
 
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 export interface CommandOfferHost {
   readonly shellHost: ShellHost;
   readonly storage: Storage;
@@ -95,7 +92,7 @@ export class CommandOffer {
       this.host.log.error(error instanceof Error ? error : String(error));
       this.host.notice(page, {
         level: 'error',
-        message: strings.messages.couldNotInstallCommand(reasonOf(error)),
+        message: strings.messages.couldNotInstallCommand(messageOf(error)),
       });
       return;
     }

@@ -1,3 +1,4 @@
+import { messageOf } from '../../lib/shared/errors';
 import type { Log } from './log';
 import { lookedPaths, type PathLooks } from '../../lib/shared/partLooks';
 import {
@@ -93,10 +94,6 @@ function isMessage(message: unknown): message is ToHost {
     'type' in message &&
     typeof message.type === 'string'
   );
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export class Shell {
@@ -240,7 +237,7 @@ export class Shell {
                 this.log.error(error);
                 this.pages.notice(page, {
                   level: 'error',
-                  message: reasonOf(error),
+                  message: messageOf(error),
                 });
               }),
             )
@@ -255,7 +252,7 @@ export class Shell {
             this.log.error(error);
             this.pages.notice(page, {
               level: 'error',
-              message: reasonOf(error),
+              message: messageOf(error),
             });
           }),
         );

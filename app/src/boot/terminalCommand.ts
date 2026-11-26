@@ -1,3 +1,4 @@
+import { hasCode } from '../lib/shared/errors';
 import { execFile } from 'node:child_process';
 import { fs } from '../lib/main/files';
 import * as path from 'node:path';
@@ -245,11 +246,7 @@ function runsFromMountedImage(script: string): boolean {
 }
 
 function isDenied(error: unknown): boolean {
-  return (
-    error instanceof Error &&
-    'code' in error &&
-    (error.code === 'EACCES' || error.code === 'EPERM')
-  );
+  return hasCode(error, 'EACCES', 'EPERM');
 }
 
 export const commandFiles: CommandFiles = {

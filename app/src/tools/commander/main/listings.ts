@@ -1,3 +1,4 @@
+import { codeOf, messageOf } from '../../../lib/shared/errors';
 import type { TabNames } from './tabName';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
@@ -9,7 +10,7 @@ import { type Side } from '../shared/sides';
 import type { LocalFileSystem } from './fileSystem';
 import { pathParts } from '../../../lib/shared/pathParts';
 import type { ElevatedFileSystem } from './elevated';
-import { codeOf, reasonOf } from '../../../lib/main/reasons';
+import { reasonOf } from '../../../lib/main/reasons';
 import { type Pane, Sides, type Listing } from './sides';
 import { post } from './post';
 import { childToward, parentOf } from './folderPaths';
@@ -45,7 +46,7 @@ class RefusedAsAdministrator extends Error {
   readonly code: unknown;
 
   constructor(refused: unknown) {
-    super(refused instanceof Error ? refused.message : String(refused));
+    super(messageOf(refused));
     this.code = codeOf(refused);
   }
 }

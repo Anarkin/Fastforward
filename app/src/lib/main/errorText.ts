@@ -1,3 +1,4 @@
+import { messageOf } from '../shared/errors';
 export function gitErrorText(error: unknown): string {
   if (typeof error === 'object' && error !== null && 'stderr' in error) {
     const { stderr } = error;
@@ -9,5 +10,5 @@ export function gitErrorText(error: unknown): string {
         .trim();
     }
   }
-  return error instanceof Error ? error.message : String(error);
+  return messageOf(error);
 }

@@ -1,7 +1,7 @@
+import { codeOf } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import type { BigIntStats } from '../../../lib/main/files';
 import { fileIdOf } from './fileIds';
-import { codeOf } from '../../../lib/main/reasons';
 
 async function statOf(file: string): Promise<BigIntStats | undefined> {
   try {

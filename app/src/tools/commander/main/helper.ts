@@ -1,3 +1,4 @@
+import { codeOf, messageOf } from '../../../lib/shared/errors';
 import * as net from 'node:net';
 import * as path from 'node:path';
 import type { FileSystem } from './fileSystem';
@@ -28,13 +29,11 @@ function isRequest(value: unknown): value is Request {
 }
 
 function errorOf(error: unknown): HelperError {
-  const code =
-    error instanceof Error && 'code' in error && typeof error.code === 'string'
-      ? error.code
-      : undefined;
+  const found = codeOf(error);
+  const code = typeof found === 'string' ? found : undefined;
   return {
     ...(code === undefined ? {} : { code }),
-    message: error instanceof Error ? error.message : String(error),
+    message: messageOf(error),
   };
 }
 

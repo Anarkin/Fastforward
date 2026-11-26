@@ -1,3 +1,4 @@
+import { messageOf } from '../../../lib/shared/errors';
 import * as os from 'node:os';
 import { Backlog, flowLimits, type FlowLimits } from './flowControl';
 import { reportFolders, type FolderPlace } from './folders';
@@ -33,10 +34,6 @@ function line(text: string): string {
 
 function cleanScreen(rows: number): string {
   return `\x1b[${rows};1H${'\r\n'.repeat(rows)}\x1b[H`;
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function attempt(act: () => void): void {
@@ -116,7 +113,7 @@ class Session {
       pty = this.spawn(launch, this.columns, this.rows);
     } catch (error) {
       this.take(
-        line(strings.terminal.couldNotStart(launch.file, reasonOf(error))),
+        line(strings.terminal.couldNotStart(launch.file, messageOf(error))),
       );
       this.end();
       return;

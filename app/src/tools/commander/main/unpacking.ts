@@ -1,3 +1,4 @@
+import { messageOf } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { strings } from '../../../lib/shared/strings';
@@ -26,10 +27,6 @@ export interface Unpacking {
 }
 
 type Done = Extract<TransferEvent, { readonly type: 'done' }>;
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export function unpackingFirst(
   {
@@ -143,7 +140,7 @@ export function unpackingFirst(
         if (aborting.signal.aborted) {
           end({ type: 'done', stopped: true });
         } else {
-          warn(strings.commander.movedOutKept(archive.file, reasonOf(error)));
+          warn(strings.commander.movedOutKept(archive.file, messageOf(error)));
           end(done);
         }
       });
@@ -215,7 +212,7 @@ export function unpackingFirst(
             if (aborting.signal.aborted) {
               end({ type: 'done', stopped: true });
             } else {
-              fail(reasonOf(error));
+              fail(messageOf(error));
             }
           });
         } else if (command.type === 'stop') {
