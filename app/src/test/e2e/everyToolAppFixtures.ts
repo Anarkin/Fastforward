@@ -57,6 +57,10 @@ export const shownTabs = (opened: string, repository: string) =>
         },
       },
     },
+    {
+      kind: 'canvas',
+      tab: { tool: 'canvas', root: path.join(opened, 'board.canvas') },
+    },
   ] as const;
 
 export const everyTab = 600_000;
@@ -88,6 +92,22 @@ export function sharedEveryToolApp(): void {
     fs.writeFileSync(
       path.join(opened, 'compared.txt'),
       longText.replaceAll('adam', 'eve'),
+    );
+    fs.writeFileSync(
+      path.join(opened, 'board.canvas'),
+      JSON.stringify({
+        nodes: [
+          {
+            id: 'adam',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 140,
+            height: 72,
+            text: 'adam',
+          },
+        ],
+      }),
     );
     fs.writeFileSync(
       path.join(opened, 'readme.md'),

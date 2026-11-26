@@ -23,9 +23,12 @@ const selectAllIn = async () => {
 suite('App text boxes', () => {
   sharedEveryToolApp();
 
-  test('selects the whole text of the text box typed in on Mod+A, the search of every tool, the filter of the shortcuts and the path of Go To, rather than what the tool around it selects on that key', async () => {
+  test('selects the whole text of the text box typed in on Mod+A, the search of every tool that searches, the filter of the shortcuts and the path of Go To, rather than what the tool around it selects on that key', async () => {
     const seen: Record<string, unknown> = {};
     for (const [index, kind] of kinds.entries()) {
+      if (kind === 'canvas') {
+        continue;
+      }
       await showTab(page, index);
       await settledLooks(page);
       await page.keyboard.press(
