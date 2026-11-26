@@ -77,7 +77,6 @@ suite('Style', () => {
         rendered(<SkeletonRows count={1} className="diff-line" />),
         'skeleton-row',
       ),
-      rendered(<div className="commit placeholder" />),
     ]) {
       looks(placeholder, { background: 'none' }, hovered);
     }

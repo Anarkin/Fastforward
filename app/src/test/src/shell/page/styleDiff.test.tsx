@@ -422,7 +422,8 @@ suite('Style', () => {
       looks(
         withClass(
           diffView(<DiffViewShown />, <InlineLine kind={kind} />),
-          'text-line',
+          'diff-line',
+          kind,
         ),
         tint,
       );

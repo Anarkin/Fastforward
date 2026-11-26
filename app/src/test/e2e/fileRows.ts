@@ -3,61 +3,13 @@ import type { SeenFile } from '../../tools/git/page/fileHits';
 import { waitFor } from '../helpers/fixtures';
 
 export const filesSeen = (page: Page): Promise<SeenFile[]> =>
-  page.evaluate(() => {
-    const layers = [...document.querySelectorAll('.files-layer')];
-    if (layers.length > 0) {
-      return layers.flatMap((layer) =>
-        layer instanceof HTMLElement && layer.checkVisibility()
-          ? [...(layer.seenFiles?.() ?? [])]
-          : [],
-      );
-    }
-    return [
-      ...document.querySelectorAll(
-        '.virtual-row .row.file, .virtual-row .row.folder, .virtual-row .row.group',
-      ),
-    ].map((row, index): SeenFile => {
-      const box = row.getBoundingClientRect();
-      const path = row.querySelector('.path');
-      const pathBox = path?.getBoundingClientRect();
-      const kind = row.classList.contains('group')
-        ? 'header'
-        : row.classList.contains('folder')
-          ? 'folder'
-          : 'file';
-      return {
-        index,
-        key: '',
-        kind,
-        name: path?.textContent ?? '',
-        path: undefined,
-        mark: row.querySelector('.change-mark')?.textContent ?? undefined,
-        selected: row.classList.contains('selected'),
-        dimmed:
-          row.classList.contains('dimmed') ||
-          path?.classList.contains('unchanged') === true,
-        found: [...row.querySelectorAll('.match')].map(
-          (mark) => mark.textContent ?? '',
-        ),
-        open: undefined,
-        pinned: row.closest('.pinned-rows') !== null,
-        left: box.left,
-        top: box.top,
-        width: box.width,
-        height: box.height,
-        nameLeft: pathBox?.left ?? box.left,
-        parts: [...row.querySelectorAll('.path-part')].map((part) => {
-          const partBox = part.getBoundingClientRect();
-          return {
-            text: part.textContent ?? '',
-            left: partBox.left,
-            width: partBox.width,
-            path: '',
-          };
-        }),
-      };
-    });
-  });
+  page.evaluate(() =>
+    [...document.querySelectorAll('.files-layer')].flatMap((layer) =>
+      layer instanceof HTMLElement && layer.checkVisibility()
+        ? [...(layer.seenFiles?.() ?? [])]
+        : [],
+    ),
+  );
 
 interface Wanted {
   readonly kind?: SeenFile['kind'];

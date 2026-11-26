@@ -96,10 +96,3 @@
     )
     var(--frame-right) var(--frame-bottom) var(--frame-left);
 }
-
-.columns:has(> .repository-path) .locations-groups {
-  margin: calc(var(--repository-path-height) + var(--gutter-width))
-    calc(var(--frame-right) + var(--column-line, 0px))
-    calc(var(--frame-bottom) + var(--column-line, 0px)) var(--frame-left);
-  border-top: none;
-}

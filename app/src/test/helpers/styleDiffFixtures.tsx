@@ -89,7 +89,7 @@ export function InlineLine({
 }) {
   return (
     <DiffRow>
-      <div className={`diff-line text-line ${kind}`}>
+      <div className={`diff-line ${kind}`}>
         <span className="number">1</span>
         <span className="number">1</span>
         <span className="split-code">
@@ -124,10 +124,7 @@ export function SplitLine({
     <DiffRow split>
       <div className="split-line">
         {[left, right].map((change, side) => (
-          <div
-            key={side}
-            className={`diff-line text-line split-side ${change}`}
-          >
+          <div key={side} className={`diff-line split-side ${change}`}>
             <span className="number">1</span>
             <span className="split-code">
               {change !== 'filler' && <span className="code">a</span>}

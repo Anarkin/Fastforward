@@ -39,7 +39,7 @@ suite('Style', () => {
       diffView(<DiffViewShown wordWrap />, <InlineLine kind="added" />),
     );
     looks(inline, { width: '100%' });
-    looks(withClass(inline, 'text-line'), {
+    looks(withClass(inline, 'diff-line'), {
       height: 'auto',
       'min-height': 'var(--diff-line-height)',
     });

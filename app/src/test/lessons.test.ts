@@ -362,4 +362,36 @@ suite('Lessons from past mistakes', () => {
       [],
     );
   });
+
+  test('styles no class the app never names, as the rows of the commits, the files and the commander moved onto a canvas and left rules for elements no longer drawn, which no check of the code finds; a class the app builds from a name, as tool-git or syntax-keyword, is named by its stem before the name, and one a library makes, as PDF.js and xterm.js do, is named in its rule alone', () => {
+    const folders = ['boot', 'components', 'lib', 'shell', 'tools'];
+    const fromLibraries = new Set(['textLayer', 'xterm-scrollable-element']);
+    const named = [
+      ...folders.flatMap((folder) => filesIn(folder)).map(textOf),
+      textOf('shell/page/index.html'),
+    ].join('\n');
+    const said = (name: string) =>
+      new RegExp(String.raw`(?<![\w-])${name}(?![\w-])`).test(named) ||
+      named.includes(`${name.slice(0, name.lastIndexOf('-') + 1)}\${`);
+    const styled = folders.flatMap((folder) =>
+      stylesIn(folder).flatMap((file) =>
+        [
+          ...textOf(file)
+            .replaceAll(/\/\*[\s\S]*?\*\//g, '')
+            .replaceAll(/url\([^)]*\)/g, '')
+            .matchAll(/\.(-?[a-zA-Z_][\w-]*)/g),
+        ].map(([, name]) => ({ file, name: name ?? '' })),
+      ),
+    );
+    assert.deepStrictEqual(
+      [
+        ...new Set(
+          styled
+            .filter(({ name }) => !fromLibraries.has(name) && !said(name))
+            .map(({ file, name }) => `${file} .${name}`),
+        ),
+      ],
+      [],
+    );
+  });
 });

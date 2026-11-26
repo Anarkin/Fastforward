@@ -230,7 +230,9 @@ suite('Style', () => {
         </div>
       </div>,
       <div key="viewer" className="viewer-rows">
-        <div className="viewer-row syntax-keyword">{plain}</div>
+        <div className="viewer-row">
+          <span className="syntax-keyword">{plain}</span>
+        </div>
       </div>,
       <div key="editor" className="editor-surface">
         <div className="editor-cells">

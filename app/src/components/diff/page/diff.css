@@ -175,10 +175,6 @@
   box-shadow: inset var(--hairline) 0 var(--color-border);
 }
 
-.diff-line.text-line {
-  position: relative;
-}
-
 .diff-view.wrap .virtual-row.diff-row {
   width: 100%;
 }

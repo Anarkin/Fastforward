@@ -69,9 +69,7 @@
   color: var(--color-change-conflict);
 }
 
-.row .path.unchanged,
-.row.folder.dimmed .twisty,
-.row.folder.dimmed .path {
+.row .path.unchanged {
   opacity: var(--muted-opacity);
 }
 
@@ -135,9 +133,7 @@
   width: 100%;
 }
 
-.skeleton-row:hover,
-.commit.placeholder:hover,
-.hash-suggestion.empty:hover {
+.skeleton-row:hover {
   background: none;
 }
 

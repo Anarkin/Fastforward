@@ -45,14 +45,6 @@
   opacity: var(--muted-opacity);
 }
 
-.subject-bar {
-  width: 70%;
-}
-
-.author-bar {
-  width: 35%;
-}
-
 .graph-layer {
   position: sticky;
   top: 0;
