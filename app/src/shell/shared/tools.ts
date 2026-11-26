@@ -30,6 +30,10 @@ import type {
   DiffToWebview,
 } from '../../tools/diff/shared/protocol';
 import type {
+  CanvasToHost,
+  CanvasToWebview,
+} from '../../tools/canvas/shared/protocol';
+import type {
   ViewerToHost,
   ViewerToWebview,
 } from '../../tools/viewer/shared/protocol';
@@ -48,6 +52,7 @@ export const tools = [
   'git',
   'viewer',
   'editor',
+  'canvas',
   'diff',
 ] as const;
 
@@ -66,6 +71,7 @@ export const toolSections = [
   'viewer',
   'diff',
   'editor',
+  'canvas',
 ] as const;
 
 export type ToolSection = (typeof toolSections)[number];
@@ -76,6 +82,7 @@ export const confirmsClose: Readonly<Record<ToolId, boolean>> = {
   git: false,
   viewer: false,
   editor: false,
+  canvas: false,
   diff: false,
 };
 
@@ -103,6 +110,10 @@ interface ToolMessages {
   readonly editor: {
     readonly toHost: EditorToHost;
     readonly toWebview: EditorToWebview;
+  };
+  readonly canvas: {
+    readonly toHost: CanvasToHost;
+    readonly toWebview: CanvasToWebview;
   };
   readonly diff: {
     readonly toHost: DiffToHost;
@@ -144,6 +155,7 @@ export interface ToolSettings {
   readonly viewer: ImageView;
   readonly diff: DiffSettings;
   readonly editor: EditorSettings;
+  readonly canvas: Readonly<Record<string, never>>;
   readonly git: GitSettings & Themed;
   readonly terminal: TerminalSettings & Themed;
 }

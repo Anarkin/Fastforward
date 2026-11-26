@@ -63,6 +63,7 @@ import { commanderToolOf } from './commanderHost';
 import { viewerToolOf } from './viewerHost';
 import { editorToolOf } from './editorHost';
 import type { EditorTool } from '../tools/editor/main/tool';
+import { CanvasTool } from '../tools/canvas/main/tool';
 import { shellHostOf } from './shellHost';
 import { runsElevated } from './elevated';
 
@@ -377,6 +378,10 @@ async function start(asked: readonly string[]): Promise<void> {
     git: gitTool,
     viewer: viewerTool,
     editor: editorTool,
+    canvas: new CanvasTool({
+      sizeOf: async (file) => (await fs.promises.stat(file)).size,
+      readFile: (file) => fs.promises.readFile(file),
+    }),
     diff: diffTool,
   });
   git.whenFound((found) => {

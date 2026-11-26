@@ -82,6 +82,7 @@ suite('Shortcuts popup', () => {
       'Viewer',
       'Diff',
       'Editor',
+      'Canvas',
       'Paint',
     ]);
     const appIcon = withoutIds(
@@ -173,6 +174,7 @@ suite('Shortcuts popup', () => {
       ['viewer', 1],
       ['diff', 0],
       ['editor', 2],
+      ['canvas', 0],
       ['paint', 0],
     ]);
     assert.deepStrictEqual(counts('ARCHIVE')[2], ['commander', 2]);
@@ -385,11 +387,11 @@ suite('Shortcuts popup', () => {
           [
             ...document.querySelectorAll('.shortcuts-tool .shortcuts-count'),
           ].map((count) => count.textContent),
-          ['0', '0', '2', '1', '1', '0', '2', '0'],
+          ['0', '0', '2', '1', '1', '0', '2', '0', '0'],
         );
         assert.strictEqual(
           document.querySelectorAll('.shortcuts-tool.empty').length,
-          4,
+          5,
         );
         assert.deepStrictEqual(headingsOf(document), ['Viewing and comparing']);
         await press('ArrowDown');

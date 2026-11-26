@@ -11,6 +11,7 @@ export type PathCommand =
   | FolderCommand
   | 'view'
   | 'edit'
+  | 'canvas'
   | 'compare'
   | 'enterArchive'
   | 'systemMenu'

@@ -187,6 +187,7 @@ export const strings = {
     viewer: 'Viewer',
     editor: 'Editor',
     diff: 'Diff',
+    canvas: 'Canvas',
   },
   openWith: {
     title: 'Open With',
@@ -439,6 +440,7 @@ export const strings = {
     viewer: 'Viewer',
     diff: 'Diff',
     editor: 'Editor',
+    canvas: 'Canvas',
     paint: 'Paint',
     everywhere: 'General',
     groups: {
@@ -1047,6 +1049,7 @@ export const strings = {
     openWithViewer: 'Open with Viewer',
     openWithDiff: 'Open with Diff',
     openWithEditor: 'Open with Editor',
+    openWithCanvas: 'Open with Canvas',
     openWithPaint: 'Open with Paint',
     showMoreOptions: '...',
     helperFailed:
@@ -1297,6 +1300,18 @@ export const strings = {
     unsaved: 'Unsaved changes',
     readOnlyMark: 'Read-only',
     newFile: 'New file, made once saved',
+  },
+  canvas: {
+    tooLarge: (file: string) =>
+      sentence`${namedFile(file)} is over 50 MB, too large to draw.`,
+    notJson: (file: string) =>
+      sentence`${namedFile(file)} isn't JSON, so it can't be drawn as a canvas.`,
+    notBoard: (file: string) =>
+      sentence`${namedFile(file)} isn't JSON Canvas, as it holds no object with lists of nodes and edges.`,
+    skipped: (file: string, count: number) =>
+      count === 1
+        ? sentence`One node or edge of ${namedFile(file)} isn't drawn, as it isn't JSON Canvas.`
+        : sentence`${count.toLocaleString()} nodes and edges of ${namedFile(file)} aren't drawn, as they aren't JSON Canvas.`,
   },
   indentation: {
     title: 'Indentation and tab width',

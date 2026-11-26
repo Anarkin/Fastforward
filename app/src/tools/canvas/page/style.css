@@ -1,0 +1,13 @@
+.board-columns {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.board-body {
+  position: relative;
+  overflow: hidden;
+}
+
+.board-error {
+  padding: 8px;
+  color: var(--color-error-foreground);
+}

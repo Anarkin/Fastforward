@@ -9,6 +9,7 @@ import { planArchives } from './planArchives.mts';
 import { planOperations } from './planOperations.mts';
 import { planFolders } from './planFolders.mts';
 import { planThumbnails } from './planThumbnails.mts';
+import { planCanvases } from './planCanvases.mts';
 
 export { limits } from './appFacts.mts';
 
@@ -156,6 +157,7 @@ export function plan({
   planColors(builder);
   planViewing(builder);
   planInvisibles(builder);
+  planCanvases(builder);
   planNames(builder, options);
   planArchives(builder, options);
   planThumbnails(builder, options);
@@ -170,7 +172,7 @@ export function plan({
 export function readme(made: Plan, skipped: readonly string[]): string {
   return `# Playground of files
 
-Made by \`npm run playground:files\` to try the commander and the viewer of **Fastforward** by hand, anew each time it runs. \`--large\` adds the huge files, and \`--churn\` keeps changing the churn folder.
+Made by \`npm run playground:files\` to try the commander, the viewer and the canvas of **Fastforward** by hand, anew each time it runs. \`--large\` adds the huge files, and \`--churn\` keeps changing the churn folder.
 
 | Folder | What it is for |
 |---|---|

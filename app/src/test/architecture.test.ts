@@ -375,6 +375,7 @@ suite('Architecture', () => {
         'lib/page/pathLooks.ts',
         'lib/page/pathMenu.ts',
         'shell/page/store.ts',
+        'tools/canvas/page/store.ts',
         'tools/commander/page/store.ts',
         'tools/diff/page/store.ts',
         'tools/editor/page/store.ts',

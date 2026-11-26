@@ -11,6 +11,7 @@ import {
 } from '../../tools/commander/page/keymap';
 import { viewerGroups, viewerKeymap } from '../../tools/viewer/page/keymap';
 import { editorGroups, editorKeymap } from '../../tools/editor/page/keymap';
+import { canvasGroups, canvasKeymap } from '../../tools/canvas/page/keymap';
 import {
   terminalGroups,
   terminalKeymap,
@@ -82,6 +83,11 @@ export const shortcutEntries: readonly ShortcutEntry[] = [
     id: 'editor',
     title: strings.shortcuts.editor,
     groups: shortcutGroupsOf(editorGroups, titles, editorKeymap),
+  },
+  {
+    id: 'canvas',
+    title: strings.shortcuts.canvas,
+    groups: shortcutGroupsOf(canvasGroups, titles, canvasKeymap),
   },
   {
     id: 'paint',

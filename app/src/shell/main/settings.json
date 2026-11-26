@@ -520,7 +520,8 @@
       "indentSize": 4,
       "files": [{ "extensions": ["bat", "cmd"], "endOfLine": "crlf" }],
       "closeBrackets": false
-    }
+    },
+    "canvas": {}
   },
   "colors": {
     "light": {
@@ -573,7 +574,8 @@
 
       "viewer-icon": "#26a269",
       "diff-icon": "#e5a50a",
-      "editor-icon": "#9141ac"
+      "editor-icon": "#9141ac",
+      "canvas-icon": "#986a44"
     },
     "dark": {
       "foreground": "#ddd",
@@ -625,7 +627,8 @@
 
       "viewer-icon": "#57e389",
       "diff-icon": "#f8e45c",
-      "editor-icon": "#c061cb"
+      "editor-icon": "#c061cb",
+      "canvas-icon": "#b5835a"
     }
   }
 }

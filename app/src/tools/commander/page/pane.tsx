@@ -222,6 +222,7 @@ export function Pane({
         onView: (name) => actions.viewFile(side, name),
         onCompare: actions.compare,
         onEdit: (name) => actions.editFile(side, name),
+        onCanvas: (name) => actions.drawCanvas(side, name),
         onCopy: copyItems,
         onSystemMenu:
           platform === 'win32' && !inArchive

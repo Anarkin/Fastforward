@@ -55,6 +55,7 @@ export function pathMenuItems(
       onEnterArchive: () => acts.command('enterArchive'),
       onView: () => acts.command('view'),
       onEdit: () => acts.command('edit'),
+      onCanvas: () => acts.command('canvas'),
       ...(facts.kind === 'file' &&
         facts.inRepository &&
         !facts.gitMissing && { onCompare: () => acts.command('compare') }),

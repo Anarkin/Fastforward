@@ -60,6 +60,10 @@
 - The code edited is colored by `shiki` in the worker of the colors, with the grammars of the viewer and the diff, rather than by CodeMirror's Lezer grammars, so the three color alike
 - The text edited lives in the main process, as CodeMirror's `Text` with its undo history kept as JSON, as saving the settings reloads every page and a tab moves to another window by its id, so the page can't own it
 
+### Canvas, `canvas`
+
+- A canvas is read as JSON Canvas 1.0, the open format of Obsidian's Canvas, by the main process, which leaves out a node or an edge it can't read rather than refusing the file, so a canvas another app wrote opens with all of it that can be drawn
+
 ### Terminal, `terminal`
 
 - Use `xterm.js` with its WebGL renderer on the page and `node-pty` for the shells, as VS Code does

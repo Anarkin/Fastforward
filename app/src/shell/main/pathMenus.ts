@@ -1,5 +1,6 @@
 import { normalize } from 'node:path';
 import { strings } from '../../lib/shared/strings';
+import { isCanvasFile } from '../../lib/shared/canvasFiles';
 import { isFolderCommand } from '../../lib/shared/folderCommands';
 import { runFolderCommand } from '../../lib/main/folderCommands';
 import { maxLookedPathLength } from '../../lib/shared/partLooks';
@@ -66,7 +67,7 @@ export async function runPathCommand(
   page: Page,
   { path, command, x, y, extended }: Extract<ToHost, { type: 'pathCommand' }>,
   host: PathMenuHost,
-  tools: Pick<Tools, 'terminal' | 'git' | 'commander' | 'diff'>,
+  tools: Pick<Tools, 'terminal' | 'git' | 'commander' | 'diff' | 'canvas'>,
   opening: PathOpening,
 ): Promise<void> {
   if (!isPath(path)) {
@@ -99,6 +100,11 @@ export async function runPathCommand(
       return;
     }
     return opening.edit(page, path);
+  }
+  if (command === 'canvas') {
+    return facts.kind === 'file' && isCanvasFile(path)
+      ? tools.canvas.open(page, [path])
+      : Promise.resolve();
   }
   if (command === 'compare') {
     return facts.kind === 'file'

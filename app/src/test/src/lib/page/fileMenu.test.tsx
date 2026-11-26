@@ -22,6 +22,7 @@ type Chosen =
   | { readonly view: string }
   | { readonly compare: true }
   | { readonly edit: string }
+  | { readonly canvas: string }
   | { readonly system: readonly string[] };
 
 function menuOf(
@@ -30,6 +31,7 @@ function menuOf(
   inArchive = false,
   gitMissing = false,
   compares = true,
+  draws = true,
 ) {
   const chosen: Chosen[] = [];
   const items = fileMenuItems(
@@ -41,6 +43,7 @@ function menuOf(
       onView: (name) => chosen.push({ view: name }),
       ...(compares && { onCompare: () => chosen.push({ compare: true }) }),
       onEdit: (name) => chosen.push({ edit: name }),
+      ...(draws && { onCanvas: (name) => chosen.push({ canvas: name }) }),
       onSystemMenu: windows
         ? (names) => chosen.push({ system: names })
         : undefined,
@@ -103,6 +106,7 @@ suite('File menu', () => {
     commander.openWithViewer,
     commander.openWithDiff,
     commander.openWithEditor,
+    commander.openWithCanvas,
     commander.openWithPaint,
     '-',
     commander.copyPath,
@@ -235,6 +239,33 @@ suite('File menu', () => {
     assert.deepStrictEqual(
       ['photo.png', 'logo.svg', 'notes.txt'].map(editsImage),
       [true, false, false],
+    );
+  });
+
+  test('offers a file named .canvas, in any case, to open with the canvas, but no other file, none inside an archive and none where nothing draws a canvas', () => {
+    const board = { kind: 'file', name: 'Plan.CANVAS', image: false } as const;
+    const menu = menuOf(board, false);
+    assert.deepStrictEqual(offered(menu.items), [
+      commander.openWithSevenZip,
+      commander.openWithViewer,
+      commander.openWithDiff,
+      commander.openWithEditor,
+      commander.openWithCanvas,
+      ...copyOne,
+    ]);
+    menu.choose(commander.openWithCanvas);
+    assert.deepStrictEqual(menu.chosen, [{ canvas: 'Plan.CANVAS' }]);
+    const canvasOffered = (items: readonly ContextMenuItem[]) =>
+      offered(items).includes(commander.openWithCanvas);
+    assert.deepStrictEqual(
+      [
+        menuOf(text).items,
+        menuOf(marked).items,
+        menuOf(docs(false)).items,
+        menuInArchive(board).items,
+        menuOf(board, false, false, false, true, false).items,
+      ].map(canvasOffered),
+      [false, false, false, false, false],
     );
   });
 

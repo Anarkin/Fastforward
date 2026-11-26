@@ -75,6 +75,13 @@ const toolSigns = {
       <path d="M3 7.5h2M10 7.5h3M11.5 6v3" />
     </>
   ),
+  canvas: (
+    <>
+      <rect x="1.5" y="2.5" width="6" height="4" rx="1" />
+      <rect x="8.5" y="10.5" width="6" height="4" rx="1" />
+      <path d="M4.5 6.5v6h4" />
+    </>
+  ),
 };
 
 export function ShieldIcon() {

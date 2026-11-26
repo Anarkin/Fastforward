@@ -8,7 +8,8 @@ export type MenuIcon =
   | 'git'
   | 'viewer'
   | 'diff'
-  | 'editor';
+  | 'editor'
+  | 'canvas';
 
 export type ContextMenuItem =
   | {

@@ -157,6 +157,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the widest line seen, grown anew from the rows and the whole text kept once mounted',
   'tools/commander/page/tool.tsx store':
     'made once: the commander store, made once for the page; it keeps what each commander tab shows through tab changes',
+  'tools/canvas/page/tool.tsx store':
+    'made once: the canvas store, made once for the page; it keeps what each canvas tab shows through tab changes',
   'tools/diff/page/tool.tsx store':
     'made once: the diff store, made once for the page; it keeps what each tab of the diff shows through tab changes',
   'tools/editor/page/tool.tsx store':

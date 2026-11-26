@@ -9,6 +9,7 @@ import { type Side } from '../shared/sides';
 import { nameProblem } from '../shared/names';
 import { type Pane, type ShownPane, type Sides, type Listing } from './sides';
 import { listedIn } from './listedEntries';
+import { isCanvasFile } from '../../../lib/shared/canvasFiles';
 import { parentOf } from './folderPaths';
 import type { ArchiveCopies } from './archiveCopies';
 import type { CommanderAccess } from './access';
@@ -129,6 +130,27 @@ export class FileCommands {
       return;
     }
     await this.copies.viewInArchive(page, shown, name);
+  }
+
+  async drawCanvas(
+    page: Page,
+    shown: ShownPane | undefined,
+    name: unknown,
+  ): Promise<void> {
+    const entry = listedIn(shown?.pane, name);
+    if (
+      shown === undefined ||
+      typeof name !== 'string' ||
+      entry === undefined ||
+      entry.folder ||
+      shown.pane.archive !== undefined ||
+      !isCanvasFile(name)
+    ) {
+      return;
+    }
+    await this.host
+      .shell()
+      .open(page, 'canvas', [path.join(shown.pane.folder, name)], true);
   }
 
   async editFile(

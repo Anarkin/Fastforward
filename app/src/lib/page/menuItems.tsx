@@ -40,6 +40,7 @@ function MenuIconOf({ icon }: { icon: MenuIcon }) {
     case 'viewer':
     case 'diff':
     case 'editor':
+    case 'canvas':
       return <ToolIcon tool={icon} />;
     default:
       return icon satisfies never;

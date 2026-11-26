@@ -79,6 +79,13 @@ export type CommanderToHost =
       readonly name: string;
     }
   | {
+      readonly type: 'drawCanvas';
+      readonly tab: string;
+      readonly side: Side;
+      readonly folder: string;
+      readonly name: string;
+    }
+  | {
       readonly type: 'shellMenu';
       readonly tab: string;
       readonly side: Side;

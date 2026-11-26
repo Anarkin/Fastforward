@@ -215,6 +215,10 @@ export function createCommanderStore(
         onPane(side, (tab, folder) =>
           post({ type: 'editFile', tab, side, folder, name }),
         ),
+      drawCanvas: (side, name) =>
+        onPane(side, (tab, folder) =>
+          post({ type: 'drawCanvas', tab, side, folder, name }),
+        ),
       openRepository: (side, name) =>
         onDisk(side, (tab, folder) =>
           post({ type: 'openRepository', tab, side, folder, name }),

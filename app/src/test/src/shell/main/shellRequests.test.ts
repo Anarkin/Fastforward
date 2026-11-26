@@ -347,6 +347,54 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('draws a file of a canvas of the menu of a part of a path in a canvas tab of its own, or the tab drawing it already, and nothing that is no file of a canvas on disk', async () => {
+    const host = new FakeHost();
+    const file: PathFacts = {
+      kind: 'file',
+      inRepository: false,
+      gitMissing: false,
+    };
+    host.facts.set('C:\\Boards', { ...file, kind: 'folder' });
+    host.facts.set('C:\\a.zip\\b.canvas', { ...file, kind: 'inArchive' });
+    host.facts.set('C:\\notes.txt', file);
+    host.facts.set('C:\\plan.canvas', file);
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const run = (at: string) =>
+          view.connection.receive(
+            forged(
+              JSON.stringify({
+                type: 'pathCommand',
+                path: at,
+                command: 'canvas',
+              }),
+            ),
+          );
+        for (const at of [
+          'C:\\Boards',
+          'C:\\a.zip\\b.canvas',
+          'C:\\notes.txt',
+          'C:\\gone.canvas',
+        ]) {
+          await run(at);
+        }
+        assert.deepStrictEqual(view.page.tabs?.tabs ?? [], []);
+
+        await run('C:\\plan.canvas');
+        await run('C:\\plan.canvas');
+        assert.deepStrictEqual(
+          view.page.tabs?.tabs.map((tab) => [tab.tool, tab.root]),
+          [['canvas', 'C:\\plan.canvas']],
+        );
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('goes to the tab viewing a file already when the menu of a part of a path views it again, as it goes to the tab editing it already, rather than opening another', async () => {
     const host = new FakeHost();
     host.facts.set('C:\\notes.txt', {

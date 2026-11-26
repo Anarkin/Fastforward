@@ -258,6 +258,10 @@
   color: var(--color-editor-icon);
 }
 
+.tool-canvas {
+  color: var(--color-canvas-icon);
+}
+
 .tabs .tab-unsaved {
   flex: none;
   margin-left: -4px;

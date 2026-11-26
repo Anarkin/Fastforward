@@ -4,6 +4,7 @@ import { GitTool } from '../../tools/git/page/tool';
 import { ViewerTool } from '../../tools/viewer/page/tool';
 import { EditorTool } from '../../tools/editor/page/tool';
 import { DiffTool } from '../../tools/diff/page/tool';
+import { CanvasTool } from '../../tools/canvas/page/tool';
 import { activeTabOf } from './selectors';
 import { useShell, useShellActions } from './store';
 
@@ -41,6 +42,11 @@ export function ToolViews() {
         post={channels.editor.post}
         listen={channels.editor.listen}
         views={channels.editor.views}
+      />
+      <CanvasTool
+        active={active === 'canvas'}
+        listen={channels.canvas.listen}
+        views={channels.canvas.views}
       />
       <DiffTool
         active={active === 'diff'}

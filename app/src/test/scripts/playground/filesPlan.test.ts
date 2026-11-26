@@ -19,6 +19,10 @@ import {
 import { maxColoredBytes } from '../../../components/syntax/shared/colorLimit';
 import { languageIds, languageOf } from '../../../lib/page/languages';
 import { defaultSettings } from '../../helpers/fixtures';
+import { boardOf } from '../../../tools/canvas/main/reading';
+import { maxBoardBytes } from '../../../tools/canvas/main/tool';
+import { isCanvasFile } from '../../../lib/shared/canvasFiles';
+import { nodeSides } from '../../../tools/canvas/shared/board';
 
 type Platform = 'win32' | 'darwin' | 'linux';
 
@@ -598,6 +602,76 @@ suite('Playground of files', () => {
       );
       assert.strictEqual(same, one.startsWith('compare/identical-'), one);
     }
+  });
+
+  test('holds canvases in a folder of their own, read as the canvas reads them: every kind of node, every color, every side and end of an edge and an edge to its own node drawn whole, those it leaves something out of, those it refuses, too large, of no JSON or of no canvas, and a canvas named otherwise, which it offers to open as none', () => {
+    const made = planFor('win32');
+    const canvases = made.items.filter(
+      (item) => item.path.startsWith('canvases/') && isCanvasFile(item.path),
+    );
+    const refused = ['not-json', 'not-a-board', 'too-large'].map(
+      (name) => `canvases/${name}.canvas`,
+    );
+    const read = new Map(
+      canvases
+        .filter((item) => !refused.includes(item.path))
+        .map((item) => [item.path, boardOf(contentOf(item).toString())]),
+    );
+    const boardAt = (where: string) => {
+      const found = read.get(where);
+      assert.ok(found?.kind === 'board', where);
+      return found;
+    };
+    assert.deepStrictEqual(
+      [...read].flatMap(([where, board]) =>
+        board.kind === 'board' && board.skipped === 0 ? [] : [where],
+      ),
+      ['canvases/skipped.canvas'],
+    );
+    assert.strictEqual(boardAt('canvases/skipped.canvas').skipped, 3);
+    assert.ok(
+      sizeOf(itemAt(made, 'canvases/too-large.canvas')) > maxBoardBytes,
+    );
+    assert.deepStrictEqual(
+      ['canvases/not-json.canvas', 'canvases/not-a-board.canvas'].map(
+        (where) => boardOf(contentOf(itemAt(made, where)).toString()).kind,
+      ),
+      ['notJson', 'notBoard'],
+    );
+    assert.deepStrictEqual(
+      new Set(
+        boardAt('canvases/tour.canvas').board.nodes.map((node) => node.type),
+      ),
+      new Set(['text', 'file', 'link', 'group']),
+    );
+    assert.deepStrictEqual(
+      boardAt('canvases/colors.canvas')
+        .board.nodes.flatMap((node) => node.color ?? [])
+        .filter((color) => /^[1-6]$/.test(color)),
+      ['1', '2', '3', '4', '5', '6'],
+    );
+    const { edges } = boardAt('canvases/edges.canvas').board;
+    for (const side of nodeSides) {
+      assert.ok(
+        edges.some((each) => each.fromSide === side),
+        side,
+      );
+      assert.ok(
+        edges.some((each) => each.toSide === side),
+        side,
+      );
+    }
+    assert.ok(edges.some((each) => each.fromNode === each.toNode));
+    assert.ok(edges.some((each) => each.fromSide === undefined));
+    assert.ok(edges.some((each) => each.fromEnd === 'arrow'));
+    assert.ok(edges.some((each) => each.toEnd === 'none'));
+    assert.ok(boardAt('canvases/big.canvas').board.nodes.length >= 1000);
+    assert.ok(isCanvasFile('canvases/Shouting.CANVAS'));
+    assert.ok(!isCanvasFile('canvases/tour.json'));
+    assert.strictEqual(
+      contentOf(itemAt(made, 'canvases/tour.json')).toString(),
+      contentOf(itemAt(made, 'canvases/tour.canvas')).toString(),
+    );
   });
 
   test('holds the heavy files the frames are measured over in a folder named perf, both versions of each side by side and paired to compare, on every system', () => {

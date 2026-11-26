@@ -1,5 +1,6 @@
 import { imageType, vectorType } from '../shared/images';
 import { strings } from '../shared/strings';
+import { isCanvasFile } from '../shared/canvasFiles';
 import type { FolderCommand } from '../shared/folderCommands';
 import type { ContextMenuItem } from './contextMenuItem';
 
@@ -20,6 +21,7 @@ export interface FileMenuActions {
   readonly onView: (name: string) => void;
   readonly onCompare?: () => void;
   readonly onEdit: (name: string) => void;
+  readonly onCanvas?: (name: string) => void;
   readonly onCopy: (copied: Copied, names: readonly string[]) => void;
   readonly onSystemMenu: ((names: readonly string[]) => void) | undefined;
 }
@@ -64,7 +66,14 @@ function offered(
 
 function toolItems(
   target: MenuTarget,
-  { onFolder, onEnterArchive, onView, onCompare, onEdit }: FileMenuActions,
+  {
+    onFolder,
+    onEnterArchive,
+    onView,
+    onCompare,
+    onEdit,
+    onCanvas,
+  }: FileMenuActions,
   {
     inArchive = false,
     gitMissing = false,
@@ -126,6 +135,14 @@ function toolItems(
       icon: 'editor',
       onClick: () => onEdit(name),
     }),
+    offered(
+      strings.commander.openWithCanvas,
+      opens && !inArchive && isCanvasFile(name) && onCanvas !== undefined,
+      {
+        icon: 'canvas',
+        ...(onCanvas !== undefined && { onClick: () => onCanvas(name) }),
+      },
+    ),
     offered(
       strings.commander.openWithPaint,
       file?.image === true && onDisk && !inArchive,

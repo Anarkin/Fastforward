@@ -96,6 +96,17 @@ export class CommanderMessages {
           ),
           message.name,
         );
+      case 'drawCanvas':
+        return this.fileCommands.drawCanvas(
+          page,
+          this.sides.namingPane(
+            page,
+            message.tab,
+            message.side,
+            message.folder,
+          ),
+          message.name,
+        );
       case 'shellMenu':
         return this.systemCommands.shellMenu(page, message);
       case 'delete':

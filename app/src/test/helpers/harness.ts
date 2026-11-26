@@ -16,6 +16,7 @@ import { isRepository } from '../../tools/commander/main/repositories';
 import { CommanderTool } from '../../tools/commander/main/tool';
 import { ViewerTool } from '../../tools/viewer/main/tool';
 import { EditorTool } from '../../tools/editor/main/tool';
+import { CanvasTool } from '../../tools/canvas/main/tool';
 import { diffToolOf } from '../../boot/diffHost';
 import type { DiffTool } from '../../tools/diff/main/tool';
 import { TerminalTool } from '../../tools/terminal/main/tool';
@@ -244,6 +245,10 @@ export function newView(
         copySaved: () => undefined,
         viewEdited: () => Promise.resolve(),
         compareHistory: (page, file) => diff.open(page, [file]),
+      }),
+      canvas: new CanvasTool({
+        sizeOf: async (file) => (await fs.promises.stat(file)).size,
+        readFile: (file) => fs.promises.readFile(file),
       }),
     }),
   );

@@ -112,6 +112,22 @@ suite('The menu of a part of a path', () => {
     ]);
   });
 
+  test('offers a file of a canvas on disk to open with the canvas, by its whole path', () => {
+    const menu = menuOf(
+      { path: 'C:\\Boards\\plan.canvas', file: true },
+      facts('file'),
+    );
+    assert.deepStrictEqual(menu.offered, [
+      commander.openWithSevenZip,
+      commander.openWithViewer,
+      commander.openWithEditor,
+      commander.openWithCanvas,
+      commander.copyPath,
+      commander.showMoreOptions,
+    ]);
+    assert.ok(menu.chooseAll().includes('canvas'));
+  });
+
   test('offers a file in a repository to open with the diff, which shows the history of its versions, while git is there', () => {
     const file = { path: 'C:\\Code\\repo\\a.txt', file: true };
     const menu = menuOf(file, facts('file', true));

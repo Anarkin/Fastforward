@@ -193,6 +193,7 @@ export interface CommanderActions {
   readonly step: (side: Side, step: -1 | 1) => void;
   readonly viewFile: (side: Side, name: string) => void;
   readonly editFile: (side: Side, name: string) => void;
+  readonly drawCanvas: (side: Side, name: string) => void;
   readonly openRepository: (side: Side, name: string) => void;
   readonly folderCommand: (
     side: Side,
