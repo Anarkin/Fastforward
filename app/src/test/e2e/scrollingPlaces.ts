@@ -42,7 +42,7 @@ export const views = {
   files: {
     tab: 5,
     pane: '.virtual-rows[role="tree"]',
-    rows: '.virtual-row',
+    rows: '.files-layer',
     vertical: '.virtual-rows[role="tree"]',
     horizontal: undefined,
     across: undefined,
@@ -69,12 +69,28 @@ export interface Place {
 export function placeDown(pane: Element, rows: string): Place {
   const top = pane.getBoundingClientRect().top;
   const header = pane.querySelector('.diff-stuck-header > *, .pinned-rows');
+  const pinned = (
+    pane.querySelector<HTMLElement>('.files-layer')?.seenFiles?.() ?? []
+  ).filter((row) => row.pinned);
   const covered =
-    (header?.getBoundingClientRect().bottom ?? top) -
+    (header?.getBoundingClientRect().bottom ??
+      pinned.reduce(
+        (bottom, row) => Math.max(bottom, row.top + row.height),
+        top,
+      )) -
     top +
     (parseFloat(getComputedStyle(pane).scrollPaddingTop) || 0);
   const boxes = [...pane.querySelectorAll(rows)]
     .flatMap((row) => {
+      const files = row instanceof HTMLElement ? row.seenFiles?.() : undefined;
+      if (files !== undefined) {
+        return files
+          .filter((file) => !file.pinned)
+          .map((file) => ({
+            box: new DOMRect(file.left, file.top, file.width, file.height),
+            text: file.name.slice(0, 24),
+          }));
+      }
       const commits =
         row instanceof HTMLElement ? row.seenCommits?.() : undefined;
       if (commits !== undefined) {

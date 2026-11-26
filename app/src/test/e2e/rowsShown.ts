@@ -25,6 +25,20 @@ export const rowsShown = (page: Page, rows: string): Promise<RowShown[]> =>
           height: commit.height,
         }));
       }
+      const files =
+        element instanceof HTMLElement ? element.seenFiles?.() : undefined;
+      if (files !== undefined) {
+        return files
+          .filter((file) => !file.pinned)
+          .map((file) => ({
+            text: file.name,
+            left: file.left,
+            top: file.top,
+            bottom: file.top + file.height,
+            width: file.width,
+            height: file.height,
+          }));
+      }
       const seen =
         element instanceof HTMLElement ? element.seenRows?.() : undefined;
       const box = element.getBoundingClientRect();
