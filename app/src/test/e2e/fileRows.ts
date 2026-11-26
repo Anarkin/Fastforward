@@ -79,6 +79,7 @@ async function fileSeen(
   page: Page,
   name: string | RegExp,
   wanted: Wanted = {},
+  scrolling = false,
   timeout = 30_000,
 ): Promise<SeenFile> {
   let found: SeenFile | undefined;
@@ -87,7 +88,7 @@ async function fileSeen(
       found = (await filesSeen(page)).filter((row) => fits(row, name, wanted))[
         wanted.at ?? 0
       ];
-      if (found === undefined) {
+      if (found === undefined && scrolling) {
         await page.evaluate(() => {
           const layer = [...document.querySelectorAll('.files-layer')].find(
             (each) => each instanceof HTMLElement && each.checkVisibility(),
@@ -130,7 +131,7 @@ export function fileRow(
     click: async ({
       button = 'left',
     }: { readonly button?: Button } = {}): Promise<void> => {
-      const seen = await fileSeen(page, name, wanted);
+      const seen = await fileSeen(page, name, wanted, true);
       await page.mouse.click(seen.nameLeft + 4, seen.top + seen.height / 2, {
         button,
       });
@@ -139,7 +140,7 @@ export function fileRow(
       at: number,
       { button = 'left' }: { readonly button?: Button } = {},
     ): Promise<void> => {
-      const seen = await fileSeen(page, name, wanted);
+      const seen = await fileSeen(page, name, wanted, true);
       const part = seen.parts.at(at);
       if (part === undefined) {
         throw new Error(`No part ${at} of ${String(name)} drawn`);
