@@ -1,3 +1,4 @@
+import { fadedOf } from '../../../components/cells/page/listLooks';
 import type { ActionKey, BubbleLook } from './bubbleLooks';
 
 interface IconPlace {
@@ -171,28 +172,6 @@ export function bobAt(time: number, reversed: boolean): number {
 
 export function bubbleFontOf(looks: BubbleLooks, scale: number): string {
   return looks.font.replace('SIZE', `${looks.size * scale}px`);
-}
-
-let swatch: OffscreenCanvasRenderingContext2D | null | undefined;
-
-export function fadedOf(color: string, opacity: number): string {
-  swatch ??= new OffscreenCanvas(1, 1).getContext('2d', {
-    willReadFrequently: true,
-  });
-  if (swatch === null) {
-    return color;
-  }
-  swatch.clearRect(0, 0, 1, 1);
-  swatch.fillStyle = color;
-  swatch.fillRect(0, 0, 1, 1);
-  const [red = 0, green = 0, blue = 0, alpha = 255] = swatch.getImageData(
-    0,
-    0,
-    1,
-    1,
-  ).data;
-  const share = (alpha / 255) * opacity;
-  return `rgba(${red}, ${green}, ${blue}, ${share})`;
 }
 
 function tagPath(

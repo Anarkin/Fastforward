@@ -7,28 +7,33 @@ import {
   useSyncExternalStore,
 } from 'react';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
-import { CellSurface } from '../../../components/cells/page/cellSurface';
 import {
-  gpuDevice,
   gpuGeneration,
   watchGpu,
 } from '../../../components/cells/page/gpuDevice';
 import {
-  offsetOf,
-  RunAtlas,
-  runPadding,
-} from '../../../components/cells/page/runAtlas';
+  ListCanvas,
+  type RowRecord,
+  type ShownRow,
+} from '../../../components/cells/page/listCanvas';
+import {
+  ascentOf,
+  ellipsis,
+  fitted,
+  putRun,
+  type Ink,
+  type Range,
+  type RowPaint,
+} from '../../../components/cells/page/runText';
 import type { RowsDrawn } from '../../../lib/page/virtualRows';
 import { PathLooksContext } from '../../../lib/page/pathLooks';
 import { rowParts } from './rowParts';
 import { changeKind, changeMark } from '../../../lib/page/fileStatus';
 import { twistyWidth } from './treeLayout';
 import { filterRanges, type Filter } from '../../../lib/shared/filter';
-import type { FindRange } from '../../../lib/shared/textMatches';
 import { strings } from '../../../lib/shared/strings';
-import { cssOf, over, packed, type Rgba } from './commitListLooks';
-import { fadedOf } from './bubbleCanvas';
-import { ellipsis, fitted } from './canvasText';
+import { over, packed, type Rgba } from './commitListLooks';
+import { fadedOf } from '../../../components/cells/page/listLooks';
 import { darkNow, watchScheme } from './colorScheme';
 import {
   fileListLooksOf,
@@ -44,21 +49,12 @@ declare global {
   }
 }
 
-interface Ink {
-  readonly start: number;
-  readonly end: number;
-  readonly ink: string;
-}
-
-interface FileRecord {
-  readonly sign: string;
-  readonly rects: number[];
-  readonly tiles: number[];
+interface FileRecord extends RowRecord {
   readonly hit: FileHit;
   readonly seen: Omit<SeenFile, 'left' | 'top' | 'width' | 'height' | 'pinned'>;
 }
 
-const noMarks: readonly FindRange[] = [];
+const noMarks: readonly Range[] = [];
 
 const signOf = (
   look: FileRowLook,
@@ -68,36 +64,6 @@ const signOf = (
 ) => JSON.stringify([look, hovering, top, parts]);
 
 const strikeShare = 14;
-
-let measuring: OffscreenCanvasRenderingContext2D | null | undefined;
-
-function ascentOf(font: string): number {
-  measuring ??= new OffscreenCanvas(1, 1).getContext('2d');
-  if (measuring === null) {
-    return 0;
-  }
-  measuring.font = font;
-  return Math.round(measuring.measureText('x').fontBoundingBoxAscent);
-}
-
-interface Kept {
-  readonly key: string;
-  readonly filter: Filter;
-  readonly rows: Map<string, FileRecord>;
-}
-
-function boundariesOf(
-  length: number,
-  inks: readonly Ink[],
-  marks: readonly FindRange[],
-): number[] {
-  const cuts = new Set([0, length]);
-  for (const { start, end } of [...inks, ...marks]) {
-    cuts.add(Math.max(0, Math.min(length, start)));
-    cuts.add(Math.max(0, Math.min(length, end)));
-  }
-  return [...cuts].toSorted((a, b) => a - b);
-}
 
 export function FilesCanvas({
   list,
@@ -122,14 +88,8 @@ export function FilesCanvas({
     [],
   );
   const host = useRef<HTMLDivElement>(null);
-  const surface = useRef<CellSurface>(undefined);
-  const atlas = useRef<RunAtlas>(undefined);
+  const kept = useRef<ListCanvas<FileRecord>>(undefined);
   const read = useRef<{ key: string; looks: FileListLooks }>(undefined);
-  const kept = useRef<Kept>(undefined);
-  const lastDrawn = useRef<
-    | { surface: CellSurface; key: string; rows: readonly FileRecord[] }
-    | undefined
-  >(undefined);
   const hovered = useRef<number | undefined>(undefined);
   const scrolled = useRef<() => void>(() => {});
   const redraw = useRef<() => void>(() => {});
@@ -150,11 +110,9 @@ export function FilesCanvas({
 
   useEffect(
     () => () => {
-      surface.current?.dispose();
-      atlas.current?.dispose();
+      kept.current?.dispose();
+      kept.current = undefined;
       read.current?.looks.dispose();
-      surface.current = undefined;
-      atlas.current = undefined;
       read.current = undefined;
     },
     [],
@@ -197,25 +155,21 @@ export function FilesCanvas({
     const draw = () => {
       const element = host.current;
       const listed = list.current;
-      const device = gpuDevice();
-      if (element === null || listed === null || device === undefined) {
+      if (element === null || listed === null) {
         return;
       }
-      const tileHeight = Math.round(line * scale);
-      if (surface.current?.device !== device) {
-        surface.current?.dispose();
-        atlas.current?.dispose();
-        surface.current = new CellSurface(device);
-        surface.current.canvas.className = 'files-canvas';
-        element.append(surface.current.canvas);
-        atlas.current = undefined;
+      kept.current ??= new ListCanvas<FileRecord>('files-canvas');
+      const canvas = kept.current;
+      const view = canvas.viewOf(
+        element,
+        listed,
+        scale,
+        Math.round(line * scale),
+      );
+      if (view === undefined) {
+        return;
       }
-      if (atlas.current?.tileHeight !== tileHeight) {
-        atlas.current?.dispose();
-        atlas.current = new RunAtlas(device, tileHeight);
-      }
-      const runs = atlas.current;
-      const cells = surface.current;
+      const { cells, runs, width, origin, viewHeight, pixelWidth } = view;
       const lookKey = [dark, scale, line, generation, active].join(' ');
       if (read.current?.key !== lookKey) {
         read.current?.looks.dispose();
@@ -225,25 +179,8 @@ export function FilesCanvas({
         };
       }
       const { looks } = read.current;
-      const spacer = (element.parentElement ?? listed).getBoundingClientRect();
-      const view = listed.getBoundingClientRect();
-      const width = spacer.width;
-      const origin = view.top + listed.clientTop - spacer.top;
-      const viewHeight = Math.min(listed.clientHeight, spacer.height);
-      const rowsKey = [lookKey, width, runs.generation].join(' ');
-      if (kept.current?.key !== rowsKey || kept.current.filter !== filter) {
-        kept.current = { key: rowsKey, filter, rows: new Map() };
-      }
-      const cache = kept.current.rows;
-      const pixelWidth = Math.round(width * scale);
-      const pixelHeight = Math.ceil(viewHeight * scale);
-      element.style.display = '';
-      element.style.width = `${pixelWidth / scale}px`;
-      element.style.height = `${pixelHeight / scale}px`;
-      element.style.marginBottom = `${-pixelHeight / scale}px`;
-      cells.sized(pixelWidth, pixelHeight);
+      const cache = canvas.rowsFor([lookKey, width].join(' '), filter);
       cells.grounded(looks.ground);
-      cells.texturedBy(runs.texture);
       runs.textScale = looks.textScale;
       const fontScale = scale / looks.textScale;
       const fontOf = ({ family, size, weight }: TextFont) =>
@@ -251,17 +188,11 @@ export function FilesCanvas({
       const mono = fontOf(looks.mono);
       const twistyFont = fontOf(looks.proportional);
       const headerFont = fontOf(looks.header);
-      const frame = cells.frame;
-      frame.reset();
-      cells.under.reset();
       const wanted = new Set<string>();
       const strikeSize = looks.mono.size * scale;
       const strikeThickness = Math.max(1, Math.round(strikeSize / strikeShare));
       const strikeRise = Math.round((ascentOf(mono) * looks.textScale) / 3);
-      const strikeOf = (shift: number) => ({
-        top: shift - strikeRise - strikeThickness,
-        thickness: strikeThickness,
-      });
+      const strike = { rise: strikeRise, thickness: strikeThickness };
       const dotHides = source.dotHides();
 
       const partsOf = (look: FileRowLook) =>
@@ -289,71 +220,26 @@ export function FilesCanvas({
             ? over(looks.ground, looks.hover)
             : looks.ground;
         rects.push(0, topPixels, pixelWidth, heightPixels, packed(ground));
+        const paint: RowPaint = { rects, tiles };
+        const runLook = { ...looks, ground };
         const put = (
-          run: string,
+          text: string,
           font: string,
           x: number,
           baseline: number,
           inks: readonly Ink[],
-          marks: readonly FindRange[] = noMarks,
+          marks: readonly Range[] = noMarks,
           struck = false,
-        ) => {
-          const cuts = boundariesOf(run.length, inks, marks);
-          const shift =
-            Math.round((top + baseline) * scale) - Math.round(top * scale);
-          for (let at = 0; at + 1 < cuts.length; at++) {
-            const start = cuts[at] ?? 0;
-            const end = cuts[at + 1] ?? start;
-            if (end <= start) {
-              continue;
-            }
-            const marked = marks.some(
-              (mark) => mark.start <= start && mark.end >= end,
-            );
-            const ink = marked
-              ? looks.markInk
-              : (inks.find((each) => each.start <= start && each.end > start)
-                  ?.ink ?? looks.ink);
-            const pieceGround = marked ? looks.markGround : ground;
-            const piece = run.slice(start, end);
-            const from =
-              x * scale +
-              (start === 0 ? 0 : runs.measure(run.slice(0, start), font));
-            if (marked) {
-              const markLeft = Math.round(from);
-              rects.push(
-                markLeft,
-                Math.round((top + looks.markTop) * scale),
-                Math.round(from + runs.measure(piece, font)) - markLeft,
-                Math.round((top + looks.markTop + looks.markHeight) * scale) -
-                  Math.round((top + looks.markTop) * scale),
-                packed(looks.markGround),
-              );
-            }
-            const tile = runs.tile(
-              piece,
-              {
-                key: `${font}|${ink}|${pieceGround.join(',')}|${shift}|${struck}`,
-                font,
-                ink,
-                ground: cssOf(pieceGround),
-                baseline: shift,
-                ...(struck && { strike: strikeOf(shift) }),
-              },
-              offsetOf(from),
-            );
-            if (tile !== undefined) {
-              tiles.push(
-                Math.floor(from) - runPadding,
-                topPixels,
-                tile.u,
-                tile.v,
-                tile.width,
-                packed(pieceGround),
-              );
-            }
-          }
-        };
+        ) =>
+          putRun(paint, runs, scale, top, runLook, {
+            text,
+            font,
+            x,
+            baseline,
+            inks,
+            marks,
+            ...(struck && { strike }),
+          });
         const rowInk = look.selected ? looks.selectedInk : looks.ink;
         const base = {
           index,
@@ -555,35 +441,6 @@ export function FilesCanvas({
         return recorded;
       };
 
-      const replay = (
-        row: FileRecord,
-        originPixels: number,
-        into: typeof frame,
-      ) => {
-        const { rects, tiles } = row;
-        for (let at = 0; at < rects.length; at += 5) {
-          into.rect(
-            rects[at] ?? 0,
-            (rects[at + 1] ?? 0) - originPixels,
-            rects[at + 2] ?? 0,
-            rects[at + 3] ?? 0,
-            rects[at + 4] ?? 0,
-          );
-        }
-        for (let at = 0; at < tiles.length; at += 6) {
-          into.tile(
-            tiles[at] ?? 0,
-            (tiles[at + 1] ?? 0) - originPixels,
-            tiles[at + 2] ?? 0,
-            tiles[at + 3] ?? 0,
-            tiles[at + 4] ?? 0,
-            tileHeight,
-            tiles[at + 5] ?? 0,
-          );
-        }
-      };
-
-      const originPixels = Math.round(origin * scale);
       const rowHits: FileHit[] = [];
       const seen: SeenFile[] = [];
       const first = Math.max(0, Math.floor(origin / line));
@@ -591,7 +448,7 @@ export function FilesCanvas({
         drawn.count - 1,
         Math.floor((origin + viewHeight) / line),
       );
-      const shown: { row: FileRecord; top: number; pinned: boolean }[] = [];
+      const shown: (ShownRow<FileRecord> & { top: number })[] = [];
       for (let index = first; index <= lastRow; index++) {
         const place = drawn.placeOf(index);
         const row = place && placed(index, place.top, true);
@@ -606,28 +463,35 @@ export function FilesCanvas({
           shown.push({ row, top: at * line, pinned: true });
         }
       });
-      const frameKey = [rowsKey, origin, viewHeight, pixelWidth].join(' ');
-      const before = lastDrawn.current;
-      if (
-        before !== undefined &&
-        before.surface === cells &&
-        before.key === frameKey &&
-        before.rows.length === shown.length &&
-        before.rows.every((row, at) => row === shown[at]?.row)
-      ) {
+      const presented = canvas.present(
+        view,
+        shown,
+        [lookKey, width, origin, viewHeight, pixelWidth].join(' '),
+        () => {
+          if (pinned.length > 0) {
+            const edge = Math.round(pinned.length * line * scale);
+            const hairline = Math.max(1, Math.floor(scale + 1e-6));
+            cells.under.rect(
+              0,
+              edge,
+              pixelWidth,
+              hairline,
+              packed(over(looks.ground, looks.border)),
+            );
+            cells.clipped(0, edge + hairline);
+          } else {
+            cells.clipped(0, 0);
+          }
+        },
+      );
+      if (presented === 'full') {
+        draw();
         return;
       }
-      lastDrawn.current = {
-        surface: cells,
-        key: frameKey,
-        rows: shown.map((each) => each.row),
-      };
+      if (presented === 'same') {
+        return;
+      }
       for (const each of shown) {
-        replay(
-          each.row,
-          each.pinned ? 0 : originPixels,
-          each.pinned ? cells.under : frame,
-        );
         rowHits.push({ ...each.row.hit, top: each.top, pinned: each.pinned });
         seen.push({
           ...each.row.seen,
@@ -638,29 +502,6 @@ export function FilesCanvas({
           pinned: each.pinned,
         });
       }
-      if (pinned.length > 0) {
-        const edge = Math.round(pinned.length * line * scale);
-        const hairline = Math.max(1, Math.floor(scale + 1e-6));
-        cells.under.rect(
-          0,
-          edge,
-          pixelWidth,
-          hairline,
-          packed(over(looks.ground, looks.border)),
-        );
-        cells.clipped(0, edge + hairline);
-      } else {
-        cells.clipped(0, 0);
-      }
-      if (runs.full) {
-        runs.reset();
-        kept.current = undefined;
-        draw();
-        return;
-      }
-      runs.flush();
-      cells.shaped([], 0);
-      cells.draw();
       hits.current = rowHits;
       element.seenFiles = () => {
         const box = listed.getBoundingClientRect();

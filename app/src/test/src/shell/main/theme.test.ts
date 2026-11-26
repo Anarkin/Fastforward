@@ -108,7 +108,7 @@ suite('Theme', () => {
       ],
       'components/cells/page/cellColors.ts': ['rgb(${red} ${green} ${blue})'],
       'components/syntax/page/engine.ts': ['#000000', '#ffffff'],
-      'tools/git/page/bubbleCanvas.ts': [
+      'components/cells/page/listLooks.ts': [
         'rgba(${red}, ${green}, ${blue}, ${share})',
       ],
       'tools/git/page/commitListLooks.ts': ['rgb(${red} ${green} ${blue})'],

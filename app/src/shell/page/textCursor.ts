@@ -10,7 +10,7 @@ import {
 } from '../../lib/page/cursor';
 import { pixelBox, placedBox, type Box } from '../../lib/page/pixelBoxes';
 import { fieldSelection, paintSelection } from './fieldSelection';
-import { scratchRange } from './scratchRange';
+import { scratchRange } from '../../lib/page/scratchRange';
 
 const textCursorClass = 'text-cursor';
 

@@ -1,7 +1,7 @@
 import { matchesIn, maxMatches } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { FindMark } from '../../../components/cells/page/marks';
-import { scratchRange } from '../../../shell/page/scratchRange';
+import { scratchRange } from '../../../lib/page/scratchRange';
 import { codeRows } from './codeCells';
 import type { MatchSpan } from './markdownMarks';
 

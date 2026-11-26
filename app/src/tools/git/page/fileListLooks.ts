@@ -1,12 +1,11 @@
 import { layerOf } from '../../../components/cells/page/cellLook';
 import { strings } from '../../../lib/shared/strings';
 import {
-  over,
   probed,
   shapedSample,
   textScaleOf,
-  type Rgba,
-} from './commitListLooks';
+} from '../../../components/cells/page/listLooks';
+import { over, type Rgba } from './commitListLooks';
 
 const changeKinds = [
   'added',

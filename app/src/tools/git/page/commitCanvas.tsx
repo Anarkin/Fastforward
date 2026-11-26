@@ -48,7 +48,8 @@ import {
   type SeenText,
 } from './commitRecords';
 import type { FindRange } from '../../../lib/shared/textMatches';
-import { ellipsis, fitted, piecesOf } from './canvasText';
+import { piecesOf } from './canvasText';
+import { ellipsis, fitted } from '../../../components/cells/page/runText';
 import { darkNow, watchScheme } from './colorScheme';
 
 export interface GraphPlace {

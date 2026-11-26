@@ -1,7 +1,11 @@
-import { scratchRange } from '../../../shell/page/scratchRange';
 import { layerOf } from '../../../components/cells/page/cellLook';
 import { graphColors } from '../shared/protocol';
-import { fadedOf } from './bubbleCanvas';
+import {
+  fadedOf,
+  probed,
+  shapedSample,
+  textScaleOf,
+} from '../../../components/cells/page/listLooks';
 import { color } from './graphLanes';
 
 export type Rgba = ReturnType<typeof layerOf>;
@@ -46,42 +50,6 @@ export const cssOf = (rgba: Rgba): string => {
   const [red, green, blue] = rgba.map(Math.round);
   return `rgb(${red} ${green} ${blue})`;
 };
-
-export function probed(host: HTMLElement, html: string): HTMLElement {
-  const probe = document.createElement('div');
-  probe.style.position = 'absolute';
-  probe.style.visibility = 'hidden';
-  probe.innerHTML = html;
-  host.append(probe);
-  return probe;
-}
-
-export const shapedSample =
-  'The quick brown fox jumps over the lazy dog, 0123456789 times';
-
-let measuring: OffscreenCanvasRenderingContext2D | null | undefined;
-
-export function textScaleOf(sample: HTMLElement, scale: number): number {
-  measuring ??= new OffscreenCanvas(1, 1).getContext('2d');
-  if (measuring === null || scale === 1) {
-    return 1;
-  }
-  const style = getComputedStyle(sample);
-  const size = parseFloat(style.fontSize);
-  const widthAt = (pixels: number) => {
-    if (measuring === null || measuring === undefined) {
-      return 0;
-    }
-    measuring.font = `${style.fontWeight} ${pixels}px ${style.fontFamily}`;
-    return measuring.measureText(shapedSample).width;
-  };
-  const range = scratchRange();
-  range.selectNodeContents(sample);
-  const laid = range.getBoundingClientRect().width;
-  const asDevice = widthAt(size * scale) / scale;
-  const asCss = widthAt(size);
-  return Math.abs(asCss - laid) < Math.abs(asDevice - laid) ? scale : 1;
-}
 
 export function looksOf(list: HTMLElement, scale: number): Looks {
   const probe = probed(
