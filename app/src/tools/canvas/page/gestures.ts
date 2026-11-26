@@ -1,7 +1,7 @@
 import type { Board } from '../shared/board';
 import type { BoardEdit } from '../shared/protocol';
-import type { Box, Unit } from './grid';
-import { areaBetween, touched, type Hit, type Sides } from './hits';
+import { boxOf, type Box, type Unit } from './grid';
+import { areaBetween, holds, touched, type Hit, type Sides } from './hits';
 import { boxesOf, fileBox, movedBy, resizedBy } from './placing';
 import type { Cell } from './routes';
 
@@ -32,6 +32,24 @@ export interface Preview {
 }
 
 const noBoxes: ReadonlyMap<string, Box> = new Map();
+
+function carried(
+  board: Board,
+  unit: Unit,
+  chosen: readonly string[],
+): ReadonlyMap<string, Box> {
+  const ids = new Set(chosen);
+  const groups = board.nodes.flatMap((node) =>
+    node.type === 'group' && ids.has(node.id) ? [boxOf(node, unit)] : [],
+  );
+  for (const node of board.nodes) {
+    const box = boxOf(node, unit);
+    if (groups.some((group) => holds(group, box))) {
+      ids.add(node.id);
+    }
+  }
+  return boxesOf(board, unit, ids);
+}
 
 export function pressed(
   board: Board,
@@ -78,7 +96,7 @@ export function pressed(
         gesture: {
           kind: 'move',
           from: at,
-          boxes: boxesOf(board, unit, new Set(chosen)),
+          boxes: carried(board, unit, chosen),
         },
       };
     }

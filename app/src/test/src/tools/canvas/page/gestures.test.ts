@@ -83,6 +83,45 @@ suite('Canvas gestures', () => {
     );
   });
 
+  test('moves the nodes a group moved holds whole along with it, as Obsidian moves them, leaving a node only partly inside it where it is', () => {
+    const grouped: Board = {
+      nodes: [
+        {
+          id: 'g',
+          type: 'group',
+          x: 0,
+          y: 0,
+          width: 30 * unit.width,
+          height: 12 * unit.height,
+        },
+        text('a', 1, 1),
+        text('b', 25, 1),
+        text('c', 40, 1),
+      ],
+      edges: [],
+    };
+    const start = pressed(
+      grouped,
+      unit,
+      { kind: 'node', id: 'g' },
+      { column: 5, row: 0 },
+      [],
+      'one',
+    );
+    assert.deepStrictEqual(start.selected, ['g']);
+    assert.ok(start.gesture !== undefined);
+    assert.deepStrictEqual(
+      released(start.gesture, unit, { column: 7, row: 1 }),
+      {
+        kind: 'place',
+        boxes: [
+          { id: 'g', x: 14, y: 18, width: 210, height: 216 },
+          { id: 'a', x: 21, y: 36, width: 70, height: 72 },
+        ],
+      },
+    );
+  });
+
   test('sizes a node by the side or corner pressed', () => {
     const start = pressed(
       board,

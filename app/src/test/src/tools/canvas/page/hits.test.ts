@@ -77,6 +77,36 @@ suite('Canvas hits', () => {
     });
   });
 
+  test('takes a press on the top of a group selected, between its corners, as the group itself, so it is moved by its label, its corners and other sides sizing it', () => {
+    const chosen = new Set(['g']);
+    assert.deepStrictEqual(hitOf(board, unit, { column: 1, row: 0 }, chosen), {
+      kind: 'node',
+      id: 'g',
+    });
+    assert.deepStrictEqual(hitOf(board, unit, { column: 28, row: 0 }, chosen), {
+      kind: 'node',
+      id: 'g',
+    });
+    assert.deepStrictEqual(hitOf(board, unit, { column: 0, row: 0 }, chosen), {
+      kind: 'handle',
+      id: 'g',
+      sides: { left: true, right: false, top: true, bottom: false },
+    });
+    assert.deepStrictEqual(hitOf(board, unit, { column: 29, row: 6 }, chosen), {
+      kind: 'handle',
+      id: 'g',
+      sides: { left: false, right: true, top: false, bottom: false },
+    });
+    assert.deepStrictEqual(
+      hitOf(board, unit, { column: 12, row: 11 }, chosen),
+      {
+        kind: 'handle',
+        id: 'g',
+        sides: { left: false, right: false, top: false, bottom: true },
+      },
+    );
+  });
+
   test('takes a press on a side or a corner of a node selected as a handle to size it, but for a node too small for its inside to be told from its border', () => {
     const selected = new Set(['a', 'tiny']);
     assert.deepStrictEqual(

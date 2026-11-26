@@ -34,6 +34,9 @@ function sidesAt(box: Box, { column, row }: Cell): Sides {
 const onBorder = (sides: Sides): boolean =>
   sides.left || sides.right || sides.top || sides.bottom;
 
+const onTopAlone = (sides: Sides): boolean =>
+  sides.top && !sides.left && !sides.right;
+
 export function hitOf(
   board: Board,
   unit: Unit,
@@ -48,6 +51,7 @@ export function hitOf(
       selected.has(node.id) &&
       inside(box, at) &&
       onBorder(sides) &&
+      !(node.type === 'group' && onTopAlone(sides)) &&
       box.columns >= leastHandled &&
       box.rows >= leastHandled
     ) {
@@ -72,7 +76,7 @@ const meets = (one: Box, other: Box): boolean =>
   one.row < other.row + other.rows &&
   other.row < one.row + one.rows;
 
-const holds = (outer: Box, inner: Box): boolean =>
+export const holds = (outer: Box, inner: Box): boolean =>
   inner.column >= outer.column &&
   inner.row >= outer.row &&
   inner.column + inner.columns <= outer.column + outer.columns &&

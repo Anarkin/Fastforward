@@ -425,4 +425,20 @@ suite('App canvas', () => {
     await shows('the first node selected', { column: 4, row: 1 }, '╔');
     await shows('the second node selected', { column: 10, row: 4 }, '╔');
   });
+
+  test('moves a group dragged by its top, with the node it holds whole', async () => {
+    const corner = await pointAt({ column: 30, row: 0 });
+    await page.mouse.move(corner.x, corner.y);
+    await page.keyboard.press('ControlOrMeta+2');
+    await page.mouse.click(corner.x, corner.y);
+    await shows('the group placed, selected', { column: 30, row: 0 }, '╔');
+    const top = await pointAt({ column: 40, row: 0 });
+    const lower = await pointAt({ column: 40, row: 3 });
+    await page.mouse.move(top.x, top.y);
+    await page.mouse.down();
+    await page.mouse.move(lower.x, lower.y, { steps: 4 });
+    await page.mouse.up();
+    await shows('the group moved', { column: 30, row: 3 }, '╔');
+    await shows('the node it holds moved with it', { column: 30, row: 5 }, '┌');
+  });
 });
