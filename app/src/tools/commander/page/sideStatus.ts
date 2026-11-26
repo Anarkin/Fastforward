@@ -15,11 +15,17 @@ export function selectedPathOf(
   selected: Row | undefined,
   platform: string | undefined,
 ): string | undefined {
-  return pane === undefined ||
+  if (
+    pane === undefined ||
     (pane.flat === undefined && pane.duplicates === undefined) ||
-    goesOn(pane) ||
-    selected?.entry === undefined ||
-    selected.entry.folder
-    ? undefined
-    : pathIn(pane.folder, selected.key, platform);
+    goesOn(pane)
+  ) {
+    return undefined;
+  }
+  if (selected?.entry === undefined || selected.entry.folder) {
+    return pane.flat === undefined || pane.duplicates !== undefined
+      ? undefined
+      : pane.folder;
+  }
+  return pathIn(pane.folder, selected.key, platform);
 }

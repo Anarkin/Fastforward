@@ -95,7 +95,7 @@ suite('Commander side status', () => {
     vi.useRealTimers();
   });
 
-  test('gives the full path of the file selected under a side listed flat once it is read or stopped, in the monospace font, without counting anything, and nothing for .. or a side not flat', () => {
+  test('gives the full path of the file selected under a side listed flat once it is read or stopped, in the monospace font, without counting anything, and the path of the folder listed flat for .. or nothing selected, so the line never comes and goes as the selection moves, and nothing for a side not flat', () => {
     assert.deepStrictEqual(
       status(side('C:\\a', progress(), 'sub\\b.txt')),
       pathLine('C:\\a\\sub\\b.txt'),
@@ -104,8 +104,14 @@ suite('Commander side status', () => {
       status(side('C:\\a', progress({ stopped: true, failed: 3 }), 'a.txt')),
       pathLine('C:\\a\\a.txt'),
     );
-    assert.strictEqual(status(side('C:\\a', progress(), '..')), undefined);
-    assert.strictEqual(status(side('C:\\a', progress())), undefined);
+    assert.deepStrictEqual(
+      status(side('C:\\a', progress(), '..')),
+      pathLine('C:\\a'),
+    );
+    assert.deepStrictEqual(
+      status(side('C:\\a', progress())),
+      pathLine('C:\\a'),
+    );
     assert.strictEqual(status(side('C:\\a', undefined, 'a.txt')), undefined);
   });
 

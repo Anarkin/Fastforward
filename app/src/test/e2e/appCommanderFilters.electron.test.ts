@@ -184,6 +184,12 @@ suite('App commander', () => {
           (await statusShown()) === path.join(opened, 'src', 'main.ts'),
         'the path of the file selected in a folder under the side',
       );
+      await page.keyboard.press('Home');
+      await waitFor(
+        async () => (await statusShown()) === opened,
+        'the path of the folder listed flat while .. is selected',
+      );
+      assert.ok((await selected()).includes('..'));
 
       if (process.platform !== 'linux') {
         fs.writeFileSync(later, '');
