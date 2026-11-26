@@ -1,6 +1,7 @@
 import {
   EditorSelection,
   EditorState,
+  type SelectionRange,
   type Transaction,
 } from '@codemirror/state';
 
@@ -8,6 +9,8 @@ export interface PlainCaret {
   readonly text: string;
   readonly anchor: number;
   readonly head: number;
+  readonly goalColumn?: number | undefined;
+  readonly assoc?: number | undefined;
 }
 
 const lineBreaks = /\r\n|\r|\n/g;
@@ -42,6 +45,11 @@ function positionIn(
   return line.from + Math.min(line.length, offset - (starts[number - 1] ?? 0));
 }
 
+const keptOf = ({ goalColumn, assoc }: SelectionRange) => ({
+  ...(goalColumn !== undefined && { goalColumn }),
+  ...(assoc !== 0 && { assoc }),
+});
+
 export function editedPlainly(
   caret: PlainCaret,
   edit: (state: EditorState) => Transaction | EditorSelection | undefined,
@@ -50,7 +58,15 @@ export function editedPlainly(
   const plain = EditorState.create({ doc: caret.text });
   const at = (offset: number) => positionIn(plain, starts, Math.max(0, offset));
   const state = plain.update({
-    selection: EditorSelection.single(at(caret.anchor), at(caret.head)),
+    selection: EditorSelection.create([
+      EditorSelection.range(
+        at(caret.anchor),
+        at(caret.head),
+        caret.goalColumn,
+        undefined,
+        caret.assoc,
+      ),
+    ]),
   }).state;
   const done = edit(state);
   if (done === undefined) {
@@ -61,6 +77,7 @@ export function editedPlainly(
       text: caret.text,
       anchor: offsetIn(state, starts, done.main.anchor),
       head: offsetIn(state, starts, done.main.head),
+      ...keptOf(done.main),
     };
   }
   let text = '';
@@ -78,5 +95,6 @@ export function editedPlainly(
     text,
     anchor: offsetIn(done.state, after, main.anchor),
     head: offsetIn(done.state, after, main.head),
+    ...keptOf(main),
   };
 }

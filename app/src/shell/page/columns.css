@@ -183,10 +183,7 @@ body.resizing {
 }
 
 .column:has(> .column-status.monospace) {
-  --status-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
+  --status-height: var(--text-row-height);
 }
 
 .column-status {

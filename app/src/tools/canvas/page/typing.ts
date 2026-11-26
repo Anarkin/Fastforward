@@ -3,16 +3,17 @@ import {
   groupDeleted,
   movedSideways,
 } from '../../../components/editing/page/textSteps';
-import { editedPlainly } from '../../../components/editing/page/plainText';
-import type { ScreenRow } from '../../../components/cells/page/lines';
-import type { TextWidths } from '../../../lib/page/textWidths';
-import { offsetAt, placeOf, rowEndOf, rowStartOf } from './nodeText';
+import {
+  editedPlainly,
+  type PlainCaret,
+} from '../../../components/editing/page/plainText';
+import {
+  rowEdgeMoved,
+  rowMoved,
+  type Wrapping,
+} from '../../../components/editing/page/rowSteps';
 
-export interface Caret {
-  readonly text: string;
-  readonly anchor: number;
-  readonly head: number;
-}
+export type Caret = PlainCaret;
 
 export interface Span {
   readonly from: number;
@@ -59,45 +60,21 @@ export const movedAcross = (
     movedSideways(state, word ? 'group' : 'character', forward, selects),
   );
 
-export function movedRows(
+export const movedRows = (
   caret: Caret,
-  rows: readonly ScreenRow[],
-  widths: TextWidths,
-  by: number,
+  wrapping: Wrapping,
+  forward: boolean,
   selects: boolean,
-): Caret {
-  const place = placeOf(rows, caret.head, widths);
-  if (place === undefined) {
-    return caret;
-  }
-  const row = place.row + by;
-  if (row < 0) {
-    return movedTo(caret, 0, selects);
-  }
-  if (row >= rows.length) {
-    return movedTo(caret, caret.text.length, selects);
-  }
-  return movedTo(
-    caret,
-    offsetAt(rows, { row, column: place.column }, widths),
-    selects,
-  );
-}
+): Caret =>
+  editedPlainly(caret, (state) => rowMoved(state, wrapping, forward, selects));
 
-export function movedToRowEdge(
+export const movedToRowEdge = (
   caret: Caret,
-  rows: readonly ScreenRow[],
-  widths: TextWidths,
+  wrapping: Wrapping,
   end: boolean,
   selects: boolean,
-): Caret {
-  const place = placeOf(rows, caret.head, widths);
-  const row = place === undefined ? undefined : rows[place.row];
-  if (row === undefined) {
-    return caret;
-  }
-  return movedTo(caret, end ? rowEndOf(row) : rowStartOf(row), selects);
-}
+): Caret =>
+  editedPlainly(caret, (state) => rowEdgeMoved(state, wrapping, end, selects));
 
 export const allSelected = (caret: Caret): Caret => ({
   text: caret.text,

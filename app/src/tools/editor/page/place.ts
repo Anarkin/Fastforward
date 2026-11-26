@@ -1,4 +1,5 @@
-import { gridOf, placeOf as rowOn } from './grid';
+import { gridOf } from './grid';
+import { placeOf as rowOn } from '../../../components/editing/page/rowSteps';
 import {
   EditorSelection,
   type ChangeDesc,

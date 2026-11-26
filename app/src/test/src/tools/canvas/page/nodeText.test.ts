@@ -4,8 +4,6 @@ import {
   linesOf,
   offsetAt,
   placeOf,
-  rowEndOf,
-  rowStartOf,
   rowsOf,
 } from '../../../../../tools/canvas/page/nodeText';
 
@@ -81,11 +79,5 @@ suite('Canvas node text', () => {
       [0, 1, 2, 2, 3],
     );
     assert.strictEqual(offsetAt(rows, { row: 7, column: 1 }, widths), 5);
-  });
-
-  test('tells where a row starts and where it ends, before the blank a wrapped row hangs', () => {
-    const rows = rowsOf('ab cd ef\ngh', 5, widths);
-    assert.deepStrictEqual(rows.map(rowStartOf), [0, 6, 9]);
-    assert.deepStrictEqual(rows.map(rowEndOf), [5, 8, 11]);
   });
 });

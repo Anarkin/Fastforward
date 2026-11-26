@@ -1,12 +1,72 @@
 import {
   EditorSelection,
+  type EditorState,
+  type Line,
   type SelectionRange,
   type Text,
 } from '@codemirror/state';
-import { placeOf, rowsOf, type Grid } from './grid';
-import { charAt } from '../../../components/cells/page/textPlaces';
+import {
+  wrappedRows,
+  type ScreenRow,
+  type TextLine,
+} from '../../cells/page/lines';
+import { charAt, columnIn, rowHolding } from '../../cells/page/textPlaces';
+import { widthsFor, type TextWidths } from '../../../lib/page/textWidths';
 
-type Wrapping = Pick<Grid, 'columns' | 'widths'>;
+export interface Wrapping {
+  readonly columns: number | undefined;
+  readonly widths: TextWidths | undefined;
+}
+
+export interface GridPlace {
+  readonly line: Line;
+  readonly rows: readonly ScreenRow[];
+  readonly row: number;
+  readonly column: number;
+}
+
+const mostLinesKept = 256;
+
+const linesKept = new Map<number, TextLine>();
+
+function keptLine({ number, text }: Pick<Line, 'number' | 'text'>): TextLine {
+  const known = linesKept.get(number);
+  if (known?.text === text) {
+    return known;
+  }
+  if (linesKept.size >= mostLinesKept) {
+    linesKept.clear();
+  }
+  const line = { start: number, end: number + 1, text };
+  linesKept.set(number, line);
+  return line;
+}
+
+export function rowsOf(
+  { columns, widths }: Wrapping,
+  line: Pick<Line, 'number' | 'text'>,
+): readonly ScreenRow[] {
+  return wrappedRows(keptLine(line), columns, widthsFor(line.text, widths));
+}
+
+export function placeOf(
+  grid: Wrapping,
+  line: Line,
+  pos: number,
+  assoc: number,
+): GridPlace {
+  const rows = rowsOf(grid, line);
+  const char = pos - line.from;
+  const row = rowHolding(rows, char, assoc);
+  const held = rows[row];
+  return {
+    line,
+    rows,
+    row,
+    column:
+      held === undefined ? 0 : columnIn(grid.widths, line.text, held, char),
+  };
+}
 
 const assocOf = (range: SelectionRange) => range.assoc || 1;
 
@@ -111,3 +171,40 @@ export function extended(
     moved.assoc,
   );
 }
+
+export function selectionMoved(
+  state: EditorState,
+  selects: boolean,
+  move: (range: SelectionRange) => SelectionRange,
+): EditorSelection {
+  const { selection } = state;
+  return EditorSelection.create(
+    selection.ranges.map((range) => {
+      const reached = move(range);
+      return selects ? extended(range, reached) : reached;
+    }),
+    selection.mainIndex,
+  );
+}
+
+export const rowMoved = (
+  state: EditorState,
+  wrapping: Wrapping,
+  forward: boolean,
+  selects: boolean,
+): EditorSelection =>
+  selectionMoved(state, selects, (range) =>
+    !selects && !range.empty
+      ? EditorSelection.cursor(forward ? range.to : range.from)
+      : movedRows(state.doc, wrapping, range, forward ? 1 : -1),
+  );
+
+export const rowEdgeMoved = (
+  state: EditorState,
+  wrapping: Wrapping,
+  end: boolean,
+  selects: boolean,
+): EditorSelection =>
+  selectionMoved(state, selects, (range) =>
+    (end ? rowEnd : rowStart)(state.doc, wrapping, range),
+  );

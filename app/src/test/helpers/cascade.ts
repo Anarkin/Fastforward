@@ -333,3 +333,33 @@ export function cascaded(
     .findLast((rule) => rule.declarations.has(property))
     ?.declarations.get(property);
 }
+
+const rootDeclared = (property: string): string | undefined =>
+  rules
+    .filter(({ selectors }) => selectors.includes(':root'))
+    .findLast(({ declarations }) => declarations.has(property))
+    ?.declarations.get(property);
+
+function inheritedOf(
+  element: MarkupElement,
+  property: string,
+): string | undefined {
+  for (let at: MarkupElement | undefined = element; at; at = at.parent) {
+    const own = cascaded(at, property);
+    if (own !== undefined) {
+      return own;
+    }
+  }
+  return rootDeclared(property);
+}
+
+export function resolved(
+  element: MarkupElement,
+  property: string,
+): string | undefined {
+  const value = inheritedOf(element, property);
+  return value?.replaceAll(
+    /var\((--[\w-]+)\)/g,
+    (whole, name: string) => resolved(element, name) ?? whole,
+  );
+}

@@ -45,6 +45,7 @@ export const scrollOf = (place: Place | undefined, area: Box): number =>
 export interface Typed {
   readonly anchor: number;
   readonly head: number;
+  readonly assoc?: number | undefined;
 }
 
 function selectionOf(
@@ -79,7 +80,9 @@ export function paintText(
   }
   const rows = rowsOf(text, area.wrapAt, widths);
   const place =
-    typed === undefined ? undefined : placeOf(rows, typed.head, widths);
+    typed === undefined
+      ? undefined
+      : placeOf(rows, typed.head, widths, typed.assoc);
   const scroll = scrollOf(place, area);
   painter.text({
     owner,
@@ -143,7 +146,9 @@ export function paintLine(
     selection: typed === undefined ? undefined : selectionOf(rows, typed),
   });
   const place =
-    typed === undefined ? undefined : placeOf(rows, typed.head, widths);
+    typed === undefined
+      ? undefined
+      : placeOf(rows, typed.head, widths, typed.assoc);
   if (place !== undefined && place.column <= width) {
     painter.caret({
       start: column,

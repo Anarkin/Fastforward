@@ -49,19 +49,19 @@ function upAndDown(
   if (layout === undefined) {
     return undefined;
   }
-  const { rows, widths } = layout;
+  const wrapping = { columns: layout.area.wrapAt, widths: layout.widths };
   const row = keyPressed(canvasKeymap.cursorRow, event);
   if (row !== undefined) {
-    return movedRows(caret, rows, widths, downOf(row) ? 1 : -1, selectsOf(row));
+    return movedRows(caret, wrapping, downOf(row), selectsOf(row));
   }
   const start = keyPressed(canvasKeymap.rowStart, event);
   if (start !== undefined) {
-    return movedToRowEdge(caret, rows, widths, false, start === 'select');
+    return movedToRowEdge(caret, wrapping, false, start === 'select');
   }
   const last = keyPressed(canvasKeymap.rowEnd, event);
   return last === undefined
     ? undefined
-    : movedToRowEdge(caret, rows, widths, true, last === 'select');
+    : movedToRowEdge(caret, wrapping, true, last === 'select');
 }
 
 function edited(event: KeyEvent, caret: Caret): Caret | undefined {

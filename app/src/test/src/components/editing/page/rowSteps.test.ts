@@ -6,7 +6,6 @@ import {
   type TextWidths,
 } from '../../../../../lib/page/textWidths';
 import { plainCells } from '../../../../../lib/page/cellTable';
-import { placeOf, rowsOf } from '../../../../../tools/editor/page/grid';
 import {
   columnIn,
   rowHolding,
@@ -15,9 +14,11 @@ import {
   cursorsOnLines,
   extended,
   movedRows,
+  placeOf,
   rowEnd,
+  rowsOf,
   rowStart,
-} from '../../../../../tools/editor/page/gridMoves';
+} from '../../../../../components/editing/page/rowSteps';
 
 const wide: TextWidths = {
   char: 1,

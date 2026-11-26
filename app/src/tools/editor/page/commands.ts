@@ -20,7 +20,7 @@ import { keyPressed } from '../../../lib/page/shortcuts';
 import { editorKeymap } from './keymap';
 import { nextOccurrence, occurrenceStepping } from './nextOccurrence';
 import { gridOf } from './grid';
-import { cursorsOnLines } from './gridMoves';
+import { cursorsOnLines } from '../../../components/editing/page/rowSteps';
 
 type Command = SurfaceCommand;
 

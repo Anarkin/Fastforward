@@ -76,10 +76,7 @@
 }
 
 .menu {
-  --menu-item-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
+  --menu-item-height: var(--text-row-height);
 }
 
 .menu-item {

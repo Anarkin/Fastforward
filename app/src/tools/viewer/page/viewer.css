@@ -1,11 +1,7 @@
 .column.viewer {
   --widest-encoding-button: 88px;
   --widest-language-button: 120px;
-  --viewer-row-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
-  --text-advance: round(1ch, var(--device-pixel, 1px));
+  --viewer-row-height: var(--text-row-height);
 }
 
 .viewer-columns {

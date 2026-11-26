@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { cascaded } from '../../../helpers/cascade';
+import { cascaded, resolved } from '../../../helpers/cascade';
 import { diffView } from '../../../helpers/styleMarkup';
 import { compact, looks, noop } from './stylesheetFixtures';
 import { TerminalTool } from '../../../../tools/terminal/page/tool';
@@ -184,21 +184,20 @@ suite('Style', () => {
   });
 
   test('counts a column of a code block in a Markdown preview as one character of its font on whole device pixels, spacing its characters to match, as the viewer does, so its boxes keep the code on its grid, as a column of a fraction of a pixel let a row of boxes drift from it', () => {
-    looks(
-      withClass(
-        rendered(
-          <div className="markdown">
-            <pre>
-              <code className="shown">a</code>
-            </pre>
-          </div>,
-        ),
-        'shown',
+    const code = withClass(
+      rendered(
+        <div className="markdown">
+          <pre>
+            <code className="shown">a</code>
+          </pre>
+        </div>,
       ),
-      {
-        '--text-advance': 'round(1ch, var(--device-pixel, 1px))',
-        'letter-spacing': 'calc(var(--text-advance) - 1ch)',
-      },
+      'shown',
+    );
+    looks(code, { 'letter-spacing': 'calc(var(--text-advance) - 1ch)' });
+    assert.strictEqual(
+      resolved(code, '--text-advance'),
+      'round(1ch, var(--device-pixel, 1px))',
     );
   });
 
@@ -219,8 +218,10 @@ suite('Style', () => {
   });
 
   test('counts a column of the text of a diff as the advance the diff measures for its characters, so what stands on columns of the text stands on those of the diff', () => {
-    looks(withClass(diffView(<DiffViewShown />), 'diff-view'), {
-      '--text-advance': 'var(--diff-advance)',
-    });
+    const view = withClass(diffView(<DiffViewShown />), 'diff-view');
+    assert.strictEqual(
+      resolved(view, '--text-advance'),
+      resolved(view, '--diff-advance'),
+    );
   });
 });

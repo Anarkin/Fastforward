@@ -5,7 +5,10 @@ import {
   type Transaction,
 } from '@codemirror/state';
 import { suite, test } from 'vitest';
-import { editedPlainly } from '../../../../../components/editing/page/plainText';
+import {
+  editedPlainly,
+  type PlainCaret,
+} from '../../../../../components/editing/page/plainText';
 import {
   characterDeleted,
   groupDeleted,
@@ -55,13 +58,16 @@ function editorDid(
   };
 }
 
+const shown = ({ text, anchor, head }: PlainCaret) => ({ text, anchor, head });
+
 suite('A plain text edited as the editor edits', () => {
   test('gives the text, the anchor and the head the editor gives for every step and delete, at every place of a text', () => {
     for (const text of texts) {
       for (let at = 0; at <= text.length; at++) {
         for (const [name, edit] of Object.entries(edits)) {
           const caret = { text, anchor: at, head: at };
-          const plain = editedPlainly(caret, edit);
+          const { text: edited, anchor, head } = editedPlainly(caret, edit);
+          const plain = { text: edited, anchor, head };
           const expected = editorDid(text, at, edit);
           const atCluster =
             EditorState.create({ doc: text }).doc.sliceString(0, at).length ===
@@ -81,7 +87,7 @@ suite('A plain text edited as the editor edits', () => {
   test('keeps a carriage return and a line feed as one line break of the text, deleting them together and keeping every other line break as it was', () => {
     const text = `ab${carriageReturn}${lineFeed}cd${carriageReturn}${lineFeed}ef`;
     assert.deepStrictEqual(
-      editedPlainly({ text, anchor: 4, head: 4 }, edits.backward),
+      shown(editedPlainly({ text, anchor: 4, head: 4 }, edits.backward)),
       {
         text: `abcd${carriageReturn}${lineFeed}ef`,
         anchor: 2,
@@ -89,11 +95,11 @@ suite('A plain text edited as the editor edits', () => {
       },
     );
     assert.deepStrictEqual(
-      editedPlainly({ text, anchor: 6, head: 6 }, edits.right),
+      shown(editedPlainly({ text, anchor: 6, head: 6 }, edits.right)),
       { text, anchor: 8, head: 8 },
     );
     assert.deepStrictEqual(
-      editedPlainly({ text, anchor: 2, head: 2 }, edits.wordForward),
+      shown(editedPlainly({ text, anchor: 2, head: 2 }, edits.wordForward)),
       { text: `abcd${carriageReturn}${lineFeed}ef`, anchor: 2, head: 2 },
     );
   });

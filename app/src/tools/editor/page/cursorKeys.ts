@@ -22,7 +22,13 @@ import { keyPressed } from '../../../lib/page/shortcuts';
 import type { RowFollower } from '../../../lib/page/rowScroll';
 import { editorKeymap } from './keymap';
 import { cellAt, gridOf, type Grid } from './grid';
-import { extended, movedRows, rowStart } from './gridMoves';
+import {
+  extended,
+  movedRows,
+  rowMoved,
+  rowStart,
+  selectionMoved,
+} from '../../../components/editing/page/rowSteps';
 
 type CursorMove = 'up' | 'down' | 'selectUp' | 'selectDown';
 
@@ -41,14 +47,15 @@ function moved(
   if (grid === undefined) {
     return true;
   }
-  const { selection } = view.state;
-  const next = EditorSelection.create(
-    selection.ranges.map((range) => {
-      const reached = move(range, grid);
-      return selects ? extended(range, reached) : reached;
-    }),
-    selection.mainIndex,
+  dispatched(
+    view,
+    selectionMoved(view.state, selects, (range) => move(range, grid)),
   );
+  return true;
+}
+
+function dispatched(view: EditorSurface, next: EditorSelection): void {
+  const { selection } = view.state;
   if (!next.eq(selection, true)) {
     view.dispatch({
       selection: next,
@@ -56,7 +63,6 @@ function moved(
       userEvent: 'select',
     });
   }
-  return true;
 }
 
 const forwards = (move: CursorMove) => move === 'down' || move === 'selectDown';
@@ -66,12 +72,16 @@ const selecting = (move: CursorMove) =>
 
 const byRow =
   (move: CursorMove): Command =>
-  (view) =>
-    moved(view, selecting(move), (range, grid) =>
-      !selecting(move) && !range.empty
-        ? EditorSelection.cursor(forwards(move) ? range.to : range.from)
-        : movedRows(view.state.doc, grid, range, forwards(move) ? 1 : -1),
-    );
+  (view) => {
+    const grid = gridOf(view);
+    if (grid !== undefined) {
+      dispatched(
+        view,
+        rowMoved(view.state, grid, forwards(move), selecting(move)),
+      );
+    }
+    return true;
+  };
 
 const sideways =
   (by: Sideways, move: SidewaysMove): Command =>

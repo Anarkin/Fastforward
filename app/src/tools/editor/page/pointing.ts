@@ -15,7 +15,8 @@ import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
 import { clicked } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
 import { pointerHeld } from './occurrences';
-import { gridOf, rowsOf, type Grid } from './grid';
+import { gridOf, type Grid } from './grid';
+import { rowsOf } from '../../../components/editing/page/rowSteps';
 import { charAt } from '../../../components/cells/page/textPlaces';
 
 const reachMs = 50;

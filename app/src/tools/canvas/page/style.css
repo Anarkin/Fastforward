@@ -61,10 +61,8 @@
   visibility: hidden;
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
-  line-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
+  line-height: var(--text-row-height);
+  letter-spacing: calc(var(--text-advance) - 1ch);
   white-space: pre;
 }
 

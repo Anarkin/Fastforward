@@ -8,7 +8,7 @@ import { surfaceEvents, type EditorSurface } from './surface';
 import type { Binding } from '../../../lib/shared/keymap';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { gridOf } from './grid';
-import { extended, rowEnd } from './gridMoves';
+import { extended, rowEnd } from '../../../components/editing/page/rowSteps';
 
 function moved(
   view: EditorSurface,

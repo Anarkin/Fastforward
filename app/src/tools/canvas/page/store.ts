@@ -232,7 +232,11 @@ export function createCanvasStore(
           return;
         }
         set((state) => ({
-          typings: new Map(state.typings).set(tab, { ...typing, ...caret }),
+          typings: new Map(state.typings).set(tab, {
+            id: typing.id,
+            session: typing.session,
+            ...caret,
+          }),
         }));
         if (caret.text !== typing.text) {
           post({

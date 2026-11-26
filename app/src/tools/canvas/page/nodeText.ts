@@ -30,8 +30,6 @@ export interface CaretCell extends Place {
 
 const lineBreaks = /\r\n|\r|\n/g;
 
-const blank = /\s/;
-
 export function linesOf(text: string): TextLine[] {
   const lines: TextLine[] = [];
   let start = 0;
@@ -127,17 +125,4 @@ export function spanAt(
   const { anchor, focus } =
     whole === 'word' ? wordAt(line, offset - line.start) : lineAt(line);
   return { anchor: line.start + anchor.char, head: line.start + focus.char };
-}
-
-export const rowStartOf = (row: ScreenRow): number => row.row.start + row.from;
-
-export function rowEndOf(row: ScreenRow): number {
-  const { text } = row.row;
-  let to = row.to;
-  if (to < text.length) {
-    while (to > row.from && blank.test(text.charAt(to - 1))) {
-      to--;
-    }
-  }
-  return row.row.start + to;
 }

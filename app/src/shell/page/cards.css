@@ -1,8 +1,5 @@
 .card {
-  --card-line: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
+  --card-line: var(--text-row-height);
   --card-edge: round(down, 2px, var(--device-pixel, 1px));
   box-sizing: border-box;
   max-width: 480px;

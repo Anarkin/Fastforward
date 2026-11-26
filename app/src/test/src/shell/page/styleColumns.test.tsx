@@ -8,7 +8,7 @@ import { columnFocusAttribute } from '../../../../lib/page/columnFocus';
 import { Column } from '../../../../lib/page/column';
 import { StatusLine } from '../../../../lib/page/statusLine';
 import { columnsClass } from '../../../../tools/git/page/columnsShown';
-import { cascaded } from '../../../helpers/cascade';
+import { cascaded, resolved } from '../../../helpers/cascade';
 import {
   Columns,
   ColumnShown,
@@ -402,7 +402,7 @@ suite('Style', () => {
       '--status-height': 'var(--row-line-height)',
     });
     assert.strictEqual(
-      cascaded(withClass(lineOf('monospace'), 'column'), '--status-height')
+      resolved(withClass(lineOf('monospace'), 'column'), '--status-height')
         ?.replaceAll(/\(\s+/g, '(')
         .replaceAll(/\s+\)/g, ')'),
       'round(var(--monospace-font-size) * var(--monospace-line-height), var(--device-pixel, 1px))',

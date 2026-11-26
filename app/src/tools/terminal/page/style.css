@@ -18,11 +18,8 @@
 }
 
 .terminal-panel {
-  --terminal-row-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
-  --terminal-advance: round(1ch, var(--device-pixel, 1px));
+  --terminal-row-height: var(--text-row-height);
+  --terminal-advance: var(--text-advance);
   position: relative;
   overflow: hidden;
   background: var(--color-terminal-background);

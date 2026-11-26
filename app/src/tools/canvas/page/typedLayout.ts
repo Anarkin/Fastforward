@@ -21,7 +21,13 @@ export function typedLayout(
     id,
     text,
     head,
-  }: { readonly id: string; readonly text: string; readonly head: number },
+    assoc,
+  }: {
+    readonly id: string;
+    readonly text: string;
+    readonly head: number;
+    readonly assoc?: number | undefined;
+  },
 ): TypedLayout | undefined {
   const node = board.nodes.find((each) => each.id === id);
   if (node === undefined) {
@@ -33,7 +39,7 @@ export function typedLayout(
   return {
     area,
     rows,
-    scroll: scrollOf(placeOf(rows, head, widths), area),
+    scroll: scrollOf(placeOf(rows, head, widths, assoc), area),
     widths,
   };
 }

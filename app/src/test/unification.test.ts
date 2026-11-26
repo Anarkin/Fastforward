@@ -7,6 +7,11 @@ const codeFiles = sourceFiles.filter((file) => /\.tsx?$/.test(file));
 const doing = (pattern: RegExp): string[] =>
   codeFiles.filter((file) => pattern.test(read(file))).toSorted();
 
+const styling = (pattern: RegExp): string[] =>
+  sourceFiles
+    .filter((file) => file.endsWith('.css') && pattern.test(read(file)))
+    .toSorted();
+
 const numbersDeclared = (): ReadonlyMap<string, readonly string[]> => {
   const declared = new Map<string, string[]>();
   for (const file of codeFiles) {
@@ -109,5 +114,26 @@ suite('Unification', () => {
       'lib/shared/textMatches.ts',
       'tools/viewer/page/markdownRender.ts',
     ]);
+  });
+
+  test('rounds the advance and the row of the monospace font to whole device pixels once, for the whole window, rather than in every view, the canvas having measured its text unrounded and so centered a wide character a tenth of a pixel off the viewer', () => {
+    assert.deepStrictEqual(styling(/round\(1ch/), ['shell/page/window.css']);
+    assert.deepStrictEqual(
+      styling(/var\(--monospace-font-size\) \* var\(--monospace-line-height\)/),
+      ['shell/page/window.css'],
+    );
+    const unsnapped = sourceFiles
+      .filter((file) => file.endsWith('.css'))
+      .flatMap((file) =>
+        [...read(file).matchAll(/([^{}]+)\{([^}]*)\}/g)]
+          .filter(
+            ([, selector = '', body = '']) =>
+              /probe/.test(selector) &&
+              /font-family: var\(--monospace-font-family\)/.test(body) &&
+              !/letter-spacing: calc\(var\(--text-advance\) - 1ch\)/.test(body),
+          )
+          .map(([, selector = '']) => `${file} ${selector.trim()}`),
+      );
+    assert.deepStrictEqual(unsnapped, []);
   });
 });

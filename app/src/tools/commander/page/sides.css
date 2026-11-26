@@ -1,9 +1,6 @@
 .commander {
-  --commander-row-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
-  --commander-advance: round(1ch, var(--device-pixel, 1px));
+  --commander-row-height: var(--text-row-height);
+  --commander-advance: var(--text-advance);
   --commander-gap: calc(2 * var(--commander-advance));
   --commander-check: 12px;
   --commander-check-start: 4px;
@@ -15,7 +12,6 @@
     var(--color-foreground) var(--color-marked-file),
     var(--color-panel-background)
   );
-  --text-advance: var(--commander-advance);
 }
 
 .elevated-mark {

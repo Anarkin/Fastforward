@@ -37,10 +37,7 @@
 }
 
 .columns:has(> .repository-path) {
-  --repository-path-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
+  --repository-path-height: var(--text-row-height);
   --repository-frame-top: calc(
     var(--gutter-width) + var(--button-size) + var(--bar-space)
   );

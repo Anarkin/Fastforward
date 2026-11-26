@@ -29,6 +29,11 @@ a:focus-visible {
 }
 
 :root {
+  --text-advance: round(1ch, var(--device-pixel, 1px));
+  --text-row-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
   --scrollbar-size: round(
     down,
     calc(var(--scrollbar-setting) + var(--device-pixel, 1px) / 64),

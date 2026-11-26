@@ -21,7 +21,6 @@
 }
 
 .editor-surface {
-  --text-advance: round(1ch, var(--device-pixel, 1px));
   position: relative;
   display: flex;
   flex-direction: column;
@@ -35,10 +34,7 @@
   overflow-anchor: none;
   font-family: var(--monospace-font-family);
   font-size: var(--monospace-font-size);
-  line-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
+  line-height: var(--text-row-height);
   letter-spacing: calc(var(--text-advance) - 1ch);
 }
 
@@ -245,10 +241,7 @@ mark.match,
 }
 
 .path-row {
-  --path-row-height: round(
-    var(--monospace-font-size) * var(--monospace-line-height),
-    var(--device-pixel, 1px)
-  );
+  --path-row-height: var(--text-row-height);
   flex: none;
   display: flex;
   height: var(--path-row-height);

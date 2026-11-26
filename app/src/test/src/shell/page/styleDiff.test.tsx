@@ -4,7 +4,7 @@ import { columnsClass } from '../../../../tools/git/page/columnsShown';
 import { ImageDiff } from '../../../../components/diff/page/imagePreview';
 import { Crash } from '../../../../shell/page/errorBoundary';
 import { strings } from '../../../../lib/shared/strings';
-import { cascaded, matchingRules } from '../../../helpers/cascade';
+import { cascaded, matchingRules, resolved } from '../../../helpers/cascade';
 import { Columns } from '../../../helpers/styleFixtures';
 import { diffView, shownRow, shownRows } from '../../../helpers/styleMarkup';
 import {
@@ -245,14 +245,14 @@ suite('Style', () => {
 
   test('makes a line of the diff as tall as the font size of code times the line height, rounded to whole device pixels, so every line is drawn alike and the app places the rows a whole number of lines apart', () => {
     assert.strictEqual(
-      compact(cascaded(diffView(<DiffViewShown />), '--diff-line-height')),
+      compact(resolved(diffView(<DiffViewShown />), '--diff-line-height')),
       'round(var(--monospace-font-size) * var(--monospace-line-height), var(--device-pixel, 1px))',
     );
   });
 
   test('spaces the characters of code a whole number of device pixels apart, the nearest to their width, so each is drawn alike', () => {
     assert.strictEqual(
-      compact(cascaded(diffView(<DiffViewShown />), '--diff-advance')),
+      compact(resolved(diffView(<DiffViewShown />), '--diff-advance')),
       'round(1ch, var(--device-pixel, 1px))',
     );
     for (const view of [

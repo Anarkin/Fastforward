@@ -13,6 +13,7 @@ import {
 const componentDoors: Readonly<Record<string, readonly string[]>> = {
   editing: [
     'components/editing/page/plainText.ts',
+    'components/editing/page/rowSteps.ts',
     'components/editing/page/textSteps.ts',
   ],
   cells: [
