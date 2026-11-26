@@ -4,13 +4,14 @@ export interface PaneImages {
   readonly generation: number;
   readonly get: (url: string | undefined) => HTMLImageElement | undefined;
   readonly failed: (url: string) => boolean;
+  readonly keep: (used: ReadonlySet<string>) => void;
 }
 
 interface Redrawn {
   readonly redraw: () => void;
 }
 
-class ImageCache implements PaneImages {
+export class ImageCache implements PaneImages {
   generation = 0;
   private readonly images = new Map<
     string,
@@ -33,14 +34,14 @@ class ImageCache implements PaneImages {
     image.src = url;
     void image.decode().then(
       () => {
-        if (!this.gone) {
+        if (!this.gone && this.images.get(url) === 'loading') {
           this.images.set(url, image);
           this.generation++;
           this.drawn.redraw();
         }
       },
       () => {
-        if (!this.gone) {
+        if (!this.gone && this.images.get(url) === 'loading') {
           this.images.set(url, 'failed');
           this.generation++;
           this.drawn.redraw();
@@ -52,6 +53,14 @@ class ImageCache implements PaneImages {
 
   failed(url: string): boolean {
     return this.images.get(url) === 'failed';
+  }
+
+  keep(used: ReadonlySet<string>): void {
+    for (const url of this.images.keys()) {
+      if (!url.startsWith('data:') && !used.has(url)) {
+        this.images.delete(url);
+      }
+    }
   }
 
   revive(): void {

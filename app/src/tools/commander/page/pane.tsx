@@ -42,7 +42,7 @@ import { LineSight } from './lineSight';
 import { PaneIcons, pageIconLoads } from './paneIcons';
 import { lineLookOf, type LineLook, type LineState } from './lineLooks';
 import { RowLooks } from './rowLooks';
-import { lineBoxOf, locatedLine, locatedTile } from './linePlaces';
+import { lineBoxOf, locatedLine, locatedTile, tileBoxOf } from './linePlaces';
 import { tileLookOf, type TileLook } from './tileLooks';
 import { tileThumbnailUrl } from './paneTiles';
 import { TileThumbnails } from './tileThumbnails';
@@ -451,25 +451,19 @@ export function Pane({
         const element = list.current;
         if (
           key !== undefined &&
-          !tiled &&
           element !== null &&
           line !== undefined &&
           selectedIndex !== -1
         ) {
-          const box = lineBoxOf(element, selectedIndex, line);
+          const box = tiled
+            ? tileBoxOf(element, selectedIndex, line, tileWidth, across)
+            : lineBoxOf(element, selectedIndex, line);
           openMenu(key, { x: box.left, y: box.bottom });
           return;
         }
-        const row =
-          key === undefined
-            ? null
-            : body.current?.querySelector('.commander-row.selected');
-        const box = (row ?? body.current)?.getBoundingClientRect();
+        const box = body.current?.getBoundingClientRect();
         if (box !== undefined) {
-          openMenu(key, {
-            x: box.left,
-            y: row ? box.bottom : box.top,
-          });
+          openMenu(key, { x: box.left, y: box.top });
         }
       },
       openFilter,
@@ -612,12 +606,7 @@ export function Pane({
               if (rows.length === 0) {
                 return;
               }
-              const rowHeight =
-                (tiled
-                  ? body.current
-                      ?.querySelector('.commander-row')
-                      ?.getBoundingClientRect().height
-                  : line) ?? 1;
+              const rowHeight = line ?? 1;
               const page = Math.max(
                 1,
                 Math.floor((body.current?.clientHeight ?? 0) / rowHeight) - 1,

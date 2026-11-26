@@ -50,7 +50,7 @@ import {
 import type { FindRange } from '../../../lib/shared/textMatches';
 import { piecesOf } from './canvasText';
 import { ellipsis, fitted } from '../../../components/cells/page/runText';
-import { darkNow, watchScheme } from './colorScheme';
+import { darkNow, watchScheme } from '../../../lib/page/colorScheme';
 
 export interface GraphPlace {
   readonly top: number;

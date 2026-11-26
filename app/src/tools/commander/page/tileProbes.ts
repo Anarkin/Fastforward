@@ -5,7 +5,8 @@ import {
 } from '../../../components/cells/page/cellColors';
 import { probed } from '../../../components/cells/page/listLooks';
 import { overCheckAttribute } from './lineCheck';
-import { groundOf, type PaneLooks } from './paneLooks';
+import { groundOf, urlOf, type PaneLooks } from './paneLooks';
+import { outlineOf, type Outline } from './rowOutline';
 
 interface Box {
   readonly left: number;
@@ -27,6 +28,7 @@ interface TileInks {
   readonly counting: string;
   readonly thumbnailOpacity: number;
   readonly check: TileCheck | undefined;
+  readonly outline: Outline | undefined;
 }
 
 export interface TileLooks {
@@ -57,10 +59,7 @@ export interface TileLooks {
 
 const shown = (content: string) => content !== 'none' && content !== 'normal';
 
-const urlOf = (value: string): string | undefined =>
-  /url\(\s*"?([^")]*)"?\s*\)/.exec(value)?.[1];
-
-function outlineOf(name: string, color: string): string | undefined {
+function iconOutlineOf(name: string, color: string): string | undefined {
   const url = urlOf(
     getComputedStyle(document.body).getPropertyValue(`--${name}-outline`),
   );
@@ -121,8 +120,8 @@ export function tileLooksOf(
   };
   const slot = at('[data-slot]');
   const muted = getComputedStyle(slot).color;
-  const folderIcon = outlineOf('folder', muted);
-  const fileIcon = outlineOf('file', muted);
+  const folderIcon = iconOutlineOf('folder', muted);
+  const fileIcon = iconOutlineOf('file', muted);
   const iconProbe = document.createElement('span');
   iconProbe.className = 'icon folder-icon';
   slot.append(iconProbe);
@@ -183,6 +182,7 @@ export function tileLooksOf(
                   : undefined,
               }
             : undefined,
+        outline: outlineOf(style, ground),
       };
       inks.set(key, made);
       return made;

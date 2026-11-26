@@ -19,6 +19,9 @@ import type { LineLook } from './lineLooks';
 import type { CheckLook, PaneLooks } from './paneLooks';
 import type { IconShown } from './paneIcons';
 import type { PaneImages } from './paneImages';
+import { pushOutline } from './rowOutline';
+import { strokeTick } from './checkTick';
+import { laidOut } from '../../../components/cells/page/listCanvas';
 
 export interface LinePointed {
   readonly index: number;
@@ -59,10 +62,6 @@ export interface SeenLine {
 export interface LineRecord extends RowRecord {
   readonly seen: Omit<SeenLine, 'left' | 'top' | 'width' | 'height'>;
 }
-
-const tickPath = 'M4.5 8.2 7 10.7l4.5-5';
-
-const tickBox = 16;
 
 function shownRanges(
   ranges: readonly FindRange[],
@@ -128,6 +127,17 @@ export function lineRecordOf({
       packedOf(filled(ground, looks.border)),
     );
   }
+  pushOutline(
+    paint.rects,
+    inks.outline,
+    {
+      left: 0,
+      top: topPixels,
+      width: Math.round(view.shiftX + view.width * scale),
+      height: heightPixels,
+    },
+    scale,
+  );
 
   const tileAt = (
     left: number,
@@ -348,18 +358,5 @@ function drawCheck(
   if (check.tick === undefined) {
     return;
   }
-  context.save();
-  context.translate(tickAt.left, tickAt.top);
-  context.scale(tickAt.size / tickBox, tickAt.size / tickBox);
-  context.lineWidth = 2;
-  context.lineCap = 'round';
-  context.lineJoin = 'round';
-  context.strokeStyle = cssOf(check.tick);
-  context.stroke(new Path2D(tickPath));
-  context.restore();
+  strokeTick(context, tickAt, check.tick);
 }
-
-const layoutUnits = 64;
-
-const laidOut = (device: number) =>
-  Math.round(device * layoutUnits) / layoutUnits;

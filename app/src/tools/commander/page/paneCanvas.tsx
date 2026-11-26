@@ -26,16 +26,15 @@ import { lineRecordOf, type LineRecord, type SeenLine } from './lineRecords';
 import { useImages } from './paneImages';
 import type { LineSight } from './lineSight';
 import { signOf } from './rowLooks';
-import type { TileLook } from './tileLooks';
 import { tileLooksOf, type TileLooks } from './tileProbes';
 import {
   tileRowRecordOf,
   type SeenTile,
   type ShownTile,
-  type TilePicture,
   type TileRecord,
 } from './tileRecords';
-import { thumbnailKey, type TileThumbnails } from './tileThumbnails';
+import { tilePicturesOf, type TileMode } from './tilePictures';
+import { darkNow, watchScheme } from '../../../lib/page/colorScheme';
 
 declare global {
   interface HTMLElement {
@@ -45,32 +44,11 @@ declare global {
   }
 }
 
-export interface TileMode {
-  readonly across: number;
-  readonly tileWidth: number;
-  readonly thumbnailSize: number;
-  readonly count: number;
-  readonly tileOf: (index: number) => TileLook | undefined;
-  readonly thumbnailOf: (index: number) => string | undefined;
-  readonly thumbnails: TileThumbnails;
-  readonly made: (index: number, made: Blob, pixelRatio: number) => void;
-}
-
 interface SeenInks {
   readonly ground: string;
   readonly ink: string;
   readonly iconOpacity: number;
 }
-
-const darkScheme = '(prefers-color-scheme: dark)';
-
-const watchScheme = (listener: () => void) => {
-  const query = matchMedia(darkScheme);
-  query.addEventListener('change', listener);
-  return () => query.removeEventListener('change', listener);
-};
-
-const darkNow = () => matchMedia(darkScheme).matches;
 
 const isTileRow = (row: LineRecord | TileRecord): row is TileRecord =>
   Array.isArray(row.seen);
@@ -215,100 +193,15 @@ export function PaneCanvas({
             height: looks.height,
           },
         });
-        const thumbnailKeys = new Set<string>();
-        const none: Pick<ShownTile, 'picture' | 'pictureKind'> = {
-          picture: undefined,
-          pictureKind: 'none',
-        };
-        const iconOf = (
-          look: TileLook,
-          index: number,
-        ): Pick<ShownTile, 'picture' | 'pictureKind'> => {
-          const source = sourceOf(index);
-          if (source !== undefined) {
-            urls.add(iconUrl(source));
-            const system = icons.shown(source);
-            if (system !== undefined && system !== 'failed') {
-              return {
-                picture: {
-                  image: system,
-                  key: iconUrl(source),
-                  width: tileLooks.iconSize,
-                  height: tileLooks.iconSize,
-                },
-                pictureKind: 'system',
-              };
-            }
-          }
-          const url = tileLooks.genericOf(look.folder);
-          const image = images.get(url);
-          return image === undefined || url === undefined
-            ? none
-            : {
-                picture: {
-                  image,
-                  key: url,
-                  width: tileLooks.genericSize,
-                  height: tileLooks.genericSize,
-                },
-                pictureKind: 'generic',
-              };
-        };
-        const pictureOf = (
-          look: TileLook,
-          index: number,
-        ): Pick<ShownTile, 'picture' | 'pictureKind'> => {
-          const url = tiles.thumbnailOf(index);
-          if (look.image === 'raster' && url !== undefined) {
-            thumbnailKeys.add(thumbnailKey(url, tiles.thumbnailSize, scale));
-            const thumbnail = tiles.thumbnails.shown(
-              url,
-              tiles.thumbnailSize,
-              scale,
-              (made, pixelRatio) => tiles.made(index, made, pixelRatio),
-            );
-            if (thumbnail === null) {
-              return iconOf(look, index);
-            }
-            if (thumbnail === undefined) {
-              return none;
-            }
-            const image = images.get(thumbnail.url);
-            return image === undefined
-              ? none
-              : {
-                  picture: {
-                    image,
-                    key: thumbnail.url,
-                    width: thumbnail.width,
-                    height: thumbnail.height,
-                  },
-                  pictureKind: 'thumbnail',
-                };
-          }
-          if (look.image === 'vector' && url !== undefined) {
-            if (images.failed(url)) {
-              return iconOf(look, index);
-            }
-            const image = images.get(url);
-            if (image === undefined) {
-              return none;
-            }
-            const fit = Math.min(
-              1,
-              tiles.thumbnailSize / (image.naturalWidth || 1),
-              tiles.thumbnailSize / (image.naturalHeight || 1),
-            );
-            const picture: TilePicture = {
-              image,
-              key: url,
-              width: image.naturalWidth * fit,
-              height: image.naturalHeight * fit,
-            };
-            return { picture, pictureKind: 'thumbnail' };
-          }
-          return iconOf(look, index);
-        };
+        const pictures = tilePicturesOf({
+          tiles,
+          icons,
+          images,
+          sourceOf,
+          tileLooks,
+          scale,
+          iconUrls: urls,
+        });
         const shownTiles: (ShownRow<TileRecord> & { top: number })[] = [];
         const firstRow = Math.max(0, Math.floor(origin / line));
         const lastRow = Math.min(
@@ -326,7 +219,7 @@ export function PaneCanvas({
           for (let index = from; index < to; index++) {
             const look = tiles.tileOf(index);
             if (look !== undefined) {
-              inRow.push({ look, index, ...pictureOf(look, index) });
+              inRow.push({ look, index, ...pictures.of(look, index) });
             }
           }
           const here =
@@ -366,7 +259,8 @@ export function PaneCanvas({
           shownTiles.push({ row, top: place.top - origin, pinned: false });
         }
         icons.keep(urls);
-        tiles.thumbnails.keep(thumbnailKeys);
+        tiles.thumbnails.keep(pictures.thumbnailKeys);
+        images.keep(pictures.decoded);
         const presented = canvas.present(
           view,
           shownTiles,
@@ -396,6 +290,7 @@ export function PaneCanvas({
         return;
       }
       element.seenTiles = undefined;
+      images.keep(new Set());
       const shown: (ShownRow<LineRecord> & { top: number })[] = [];
       const first = Math.max(0, Math.floor(origin / line));
       const last = Math.min(

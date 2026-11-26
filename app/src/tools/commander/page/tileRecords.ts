@@ -1,4 +1,8 @@
-import { cssOf, packedOf } from '../../../components/cells/page/cellColors';
+import {
+  cssOf,
+  filled,
+  packedOf,
+} from '../../../components/cells/page/cellColors';
 import type {
   ListView,
   RowRecord,
@@ -14,6 +18,9 @@ import type { LinePointed } from './lineRecords';
 import type { PaneLooks } from './paneLooks';
 import type { TileCheck, TileLooks } from './tileProbes';
 import type { TileLook } from './tileLooks';
+import { pushOutline } from './rowOutline';
+import { strokeTick } from './checkTick';
+import { laidOut } from '../../../components/cells/page/listCanvas';
 
 export interface TilePicture {
   readonly image: HTMLImageElement | ImageBitmap;
@@ -58,15 +65,6 @@ export interface ShownTile {
   readonly picture: TilePicture | undefined;
   readonly pictureKind: SeenTile['picture'];
 }
-
-const tickPath = 'M4.5 8.2 7 10.7l4.5-5';
-
-const tickBox = 16;
-
-const layoutUnits = 64;
-
-const laidOut = (device: number) =>
-  Math.round(device * layoutUnits) / layoutUnits;
 
 function shownRanges(
   ranges: readonly FindRange[],
@@ -133,6 +131,26 @@ export function tileRowRecordOf({
       widthPixels,
       heightPixels,
       packedOf(ground),
+    );
+    if (look.classes.split(' ').includes('group-start')) {
+      paint.rects.push(
+        leftPixels,
+        topPixels,
+        widthPixels,
+        Math.max(1, Math.round(looks.hairline * scale)),
+        packedOf(filled(ground, looks.border)),
+      );
+    }
+    pushOutline(
+      paint.rects,
+      inks.outline,
+      {
+        left: leftPixels,
+        top: topPixels,
+        width: widthPixels,
+        height: heightPixels,
+      },
+      scale,
     );
     const tileAt = (
       x: number,
@@ -321,13 +339,5 @@ function drawCheck(
   if (check.tick === undefined) {
     return;
   }
-  context.save();
-  context.translate(ring, top);
-  context.scale(size / tickBox, size / tickBox);
-  context.lineWidth = 2;
-  context.lineCap = 'round';
-  context.lineJoin = 'round';
-  context.strokeStyle = cssOf(check.tick);
-  context.stroke(new Path2D(tickPath));
-  context.restore();
+  strokeTick(context, { left: ring, top, size }, check.tick);
 }

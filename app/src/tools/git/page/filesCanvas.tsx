@@ -34,7 +34,7 @@ import { filterRanges, type Filter } from '../../../lib/shared/filter';
 import { strings } from '../../../lib/shared/strings';
 import { over, packed, type Rgba } from './commitListLooks';
 import { fadedOf } from '../../../components/cells/page/listLooks';
-import { darkNow, watchScheme } from './colorScheme';
+import { darkNow, watchScheme } from '../../../lib/page/colorScheme';
 import {
   fileListLooksOf,
   type FileListLooks,

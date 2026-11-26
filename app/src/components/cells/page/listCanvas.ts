@@ -33,7 +33,7 @@ const tileStride = 7;
 
 const layoutUnits = 64;
 
-const inLayoutUnits = (device: number) =>
+export const laidOut = (device: number) =>
   Math.round(device * layoutUnits) / layoutUnits;
 
 function replay(row: RowPaint, originPixels: number, into: CellFrame): void {
@@ -103,7 +103,7 @@ export class ListCanvas<Row extends RowRecord> {
       this.atlas = new RunAtlas(device, tileHeight);
     }
     const spacer = (host.parentElement ?? list).getBoundingClientRect();
-    const across = inLayoutUnits(spacer.left * scale);
+    const across = laidOut(spacer.left * scale);
     const box = list.getBoundingClientRect();
     const width = spacer.width;
     const origin = box.top + list.clientTop - spacer.top;

@@ -25,7 +25,6 @@ export interface LineLook {
   readonly classes: string;
   readonly up: boolean;
   readonly folder: boolean;
-  readonly hidden: boolean;
   readonly name: string;
   readonly extension: string;
   readonly size: string;
@@ -33,7 +32,6 @@ export interface LineLook {
   readonly nameFound: readonly FindRange[];
   readonly extensionFound: readonly FindRange[];
   readonly counting: boolean;
-  readonly unread: number | undefined;
   readonly repository: boolean;
 }
 
@@ -71,7 +69,6 @@ export function lineLookOf(
     ].join(' '),
     up: entry === undefined,
     folder,
-    hidden: entry?.hidden === true,
     name: folder ? `[${row.base}]` : row.base,
     extension: repository ? '' : row.extension,
     size: formatSize(entry?.size),
@@ -85,7 +82,6 @@ export function lineLookOf(
     })),
     extensionFound: repository ? [] : filterRanges(row.extension, filter),
     counting: entry?.counting === true,
-    unread: entry?.unreadFolders,
     repository,
   };
 }

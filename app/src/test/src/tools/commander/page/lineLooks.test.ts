@@ -80,7 +80,6 @@ suite('Commander lines', () => {
       classes: 'row commander-row colored file-color-1 commander-line',
       up: false,
       folder: false,
-      hidden: false,
       name: 'notes',
       extension: 'txt',
       size: '12,288',
@@ -88,7 +87,6 @@ suite('Commander lines', () => {
       nameFound: [],
       extensionFound: [],
       counting: false,
-      unread: undefined,
       repository: false,
     });
     assert.deepStrictEqual(
@@ -133,16 +131,14 @@ suite('Commander lines', () => {
     );
   });
 
-  test('shows the git icon of a repository in place of its extension while git is there, a size still counted dimmed and a note of the folders under it that could not be read', () => {
+  test('shows the git icon of a repository in place of its extension while git is there, and a size still counted dimmed', () => {
     assert.deepStrictEqual(
       [
         look(rowOf('repo')).repository,
         look(rowOf('repo'), {}, { gitMissing: true }).repository,
         look(rowOf('counted')).counting,
-        look(rowOf('unread')).unread,
-        look(rowOf('docs')).unread,
       ],
-      [true, false, true, 2, undefined],
+      [true, false, true],
     );
   });
 

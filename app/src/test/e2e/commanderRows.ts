@@ -43,7 +43,7 @@ export const rowsShown = async (pane: Locator): Promise<ShownRow[]> =>
     extension: line.extension,
     size: line.size,
     date: line.date,
-    drawn: folderOf(line) ? `[${line.name}]` : line.name,
+    drawn: line.drawn,
     classes: line.classes,
   }));
 

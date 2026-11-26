@@ -184,19 +184,28 @@ export const icons = async () =>
       line.icon === 'generic' && line.classes.includes('commander-folder'),
     file: line.icon === 'generic' && !line.classes.includes('commander-folder'),
     loaded: line.icon === 'system',
-    loading: false,
   }));
 
 export const selected = () => selectedText(right());
 export const select = async (name: string | RegExp) => {
-  await clickLine(page, right(), name);
-  await waitFor(
-    async () => {
-      const text = await selected();
-      return typeof name === 'string' ? text.includes(name) : name.test(text);
-    },
-    `${String(name)} to be selected`,
-  );
+  const chosen = async () => {
+    const text = await selected();
+    return typeof name === 'string' ? text.includes(name) : name.test(text);
+  };
+  for (let tries = 0; !(await chosen()); tries++) {
+    await clickLine(page, right(), name);
+    const told = await waitFor(chosen, `${String(name)} to be selected`, 1500)
+      .then(() => true)
+      .catch((error: unknown) => {
+        if (tries >= 4) {
+          throw error;
+        }
+        return false;
+      });
+    if (told) {
+      return;
+    }
+  }
 };
 export const openFolder = async (name: string, folderPath: string) => {
   await select(name);

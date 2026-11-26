@@ -59,6 +59,26 @@ export function lineBoxOf(
   return { left: box.left + list.clientLeft, top, bottom: top + line };
 }
 
+export function tileBoxOf(
+  list: ScrolledList,
+  index: number,
+  height: number,
+  width: number,
+  across: number,
+): { readonly left: number; readonly top: number; readonly bottom: number } {
+  const box = list.getBoundingClientRect();
+  const top =
+    box.top +
+    list.clientTop +
+    Math.floor(index / across) * height -
+    list.scrollTop;
+  return {
+    left: box.left + list.clientLeft + (index % across) * width,
+    top,
+    bottom: top + height,
+  };
+}
+
 export interface Located {
   readonly index: number;
   readonly overCheck: boolean;

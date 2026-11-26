@@ -3,7 +3,6 @@ import { labelled, tip } from '../../../lib/page/tips';
 import { ToolIcon } from '../../../lib/page/icons';
 import { strings } from '../../../lib/shared/strings';
 import type { Located } from './linePlaces';
-import { overCheckAttribute } from './lineCheck';
 import type { LineSight, PointerPlaces } from './lineSight';
 import { paneItemOf, usePaneItem, type PaneItemProps } from './paneItem';
 import { useCommanderActions, useCommanderNow } from './store';
@@ -40,8 +39,6 @@ function PointedLine({
       data-key={row.key}
       draggable={itemEvents.draggable}
       onDragStart={itemEvents.onDragStart}
-      {...(box.overCheck &&
-        row.entry !== undefined && { [overCheckAttribute]: '' })}
       style={{
         left: box.left,
         top: box.top,

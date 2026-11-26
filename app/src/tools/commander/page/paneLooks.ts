@@ -9,6 +9,7 @@ import {
   textScaleOf,
 } from '../../../components/cells/page/listLooks';
 import { checkSize, checkStart, overCheckAttribute } from './lineCheck';
+import { outlineOf, type Outline } from './rowOutline';
 
 interface TextFont {
   readonly family: string;
@@ -35,6 +36,7 @@ interface LineInks {
   readonly counting: string;
   readonly check: CheckLook | undefined;
   readonly icon: string | undefined;
+  readonly outline: Outline | undefined;
 }
 
 export interface PaneLooks {
@@ -59,7 +61,6 @@ export interface PaneLooks {
   readonly markHeight: number;
   readonly hairline: number;
   readonly border: Rgba;
-  readonly focus: Rgba;
   readonly gitMark: ((ink: string) => string) | undefined;
   readonly gitLeft: number;
   readonly gitSize: number;
@@ -108,7 +109,7 @@ function solidBehind(element: Element): Rgba {
   );
 }
 
-const urlOf = (value: string): string | undefined =>
+export const urlOf = (value: string): string | undefined =>
   /url\(\s*"?([^")]*)"?\s*\)/.exec(value)?.[1];
 
 function lineProbe(classes: string): string {
@@ -128,7 +129,7 @@ export function paneLooksOf(
       `<div class="row commander-row commander-line" data-sample><span class="commander-name" data-text></span></div>` +
       `<div class="row commander-row commander-line" data-look><span class="commander-name">a<span data-baseline></span></span><span class="commander-extension"></span><span class="commander-size counting" data-counting>1</span><span class="system-icon" data-system-icon></span></div>` +
       `<div class="row commander-row commander-line" data-git><span class="commander-name"></span><span class="commander-extension"><span class="commander-mark" data-mark></span></span></div>` +
-      `<div class="row commander-row commander-line" data-icon-row><span data-icon></span></div><span data-advance></span><span data-hairline></span><span data-border></span><span data-focus></span>`,
+      `<div class="row commander-row commander-line" data-icon-row><span data-icon></span></div><span data-advance></span><span data-hairline></span><span data-border></span>`,
   );
   probe.style.left = '0';
   probe.style.top = '0';
@@ -153,8 +154,6 @@ export function paneLooksOf(
   const hairline = at('[data-hairline]');
   hairline.style.cssText =
     'display:block;height:var(--hairline);background:var(--color-border)';
-  const focus = at('[data-focus]');
-  focus.style.background = 'var(--color-focus)';
   const icon = at('[data-icon]');
   icon.style.cssText =
     'position:absolute;left:var(--commander-row-start);width:16px;height:16px';
@@ -218,7 +217,6 @@ export function paneLooksOf(
     markHeight: markBox.height,
     hairline: hairline.getBoundingClientRect().height,
     border: parsedColor(getComputedStyle(hairline).backgroundColor),
-    focus: parsedColor(getComputedStyle(focus).backgroundColor),
     gitMark,
     gitLeft: gitBox.left - gitRow.left,
     gitSize: gitBox.width,
@@ -253,6 +251,7 @@ export function paneLooksOf(
             }
           : undefined,
         icon: urlOf(style.getPropertyValue('--row-icon')),
+        outline: outlineOf(style, rowGround),
       };
       inks.set(key, made);
       return made;

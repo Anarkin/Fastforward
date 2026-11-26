@@ -122,13 +122,13 @@ export const componentStates: Readonly<Record<string, string>> = {
   'tools/commander/page/pane.tsx tileThumbnails':
     'made once: the thumbnails the tiles of a side show, held while their tiles are in sight and let go once they leave it',
   'tools/commander/page/pane.tsx icons':
-    'made once: the icons of the files a side draws, asked for once the list rests and kept while the side lives',
+    'made once: the icons of the files a side draws, asked for once the list rests and kept while the side lives, the 5,000 drawn last',
   'tools/commander/page/paneCanvas.tsx scale':
     'a measure: the device pixels of a CSS pixel, followed as the window moves between screens',
   'tools/commander/page/panePointer.tsx shown':
     'a moment: the row under the pointer, which the element over it stands on, found anew as the pointer moves',
   'tools/commander/page/paneImages.ts cache':
-    'made once: the generic icons and the git mark the canvas of a side draws, decoded once and kept while the side lives',
+    'made once: the pictures the canvas of a side draws, decoded once, the generic icons and the git mark kept while the side lives and the thumbnails while their tiles are in sight',
   'tools/commander/page/paneTiles.ts fill':
     'a measure: where thumbnails fill from, set as the list scrolls and asked anew once shown again',
   'tools/commander/page/paneTiles.ts fitting':

@@ -12,7 +12,6 @@ export interface TileLook {
   readonly classes: string;
   readonly up: boolean;
   readonly folder: boolean;
-  readonly hidden: boolean;
   readonly base: string;
   readonly extension: string;
   readonly nameClass: string;
@@ -22,7 +21,6 @@ export interface TileLook {
   readonly baseFound: readonly FindRange[];
   readonly extensionFound: readonly FindRange[];
   readonly counting: boolean;
-  readonly unread: number | undefined;
   readonly image: 'raster' | 'vector' | undefined;
 }
 
@@ -60,7 +58,6 @@ export function tileLookOf(
     ),
     up: entry === undefined,
     folder,
-    hidden: entry?.hidden === true,
     base: row.base,
     extension,
     nameClass: part?.className ?? '',
@@ -86,7 +83,6 @@ export function tileLookOf(
         : [],
     ),
     counting: entry?.counting === true,
-    unread: entry?.unreadFolders,
     image:
       entry === undefined || entry.folder || type === undefined
         ? undefined

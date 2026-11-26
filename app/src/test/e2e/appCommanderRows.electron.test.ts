@@ -129,9 +129,12 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         (await icons()).every(
-          (icon) => !icon.loading && (icon.folder || icon.file || icon.loaded),
+          (icon) =>
+            icon.folder ||
+            icon.loaded ||
+            (process.platform === 'linux' && icon.file),
         ),
-      'every row to have its icon, none still loading',
+      'every row to have its icon, the system icon of every file but on Linux',
     );
     const drawn = await icons();
     assert.deepStrictEqual(

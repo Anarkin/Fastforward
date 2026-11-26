@@ -11,7 +11,6 @@ import {
   rowNamed,
   tileNamed,
 } from './paneFixtures';
-import { overCheckAttribute } from '../../../../../tools/commander/page/lineCheck';
 
 vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) =>
   (await import('./listMock.js')).withListMock(importOriginal),
@@ -98,27 +97,6 @@ suite('Commander clicks on a side', () => {
       click(up, 1, onBox);
       assert.deepStrictEqual(marked(), ['app']);
       assert.strictEqual(selected(), '..');
-    });
-  });
-
-  test('tells a row once the pointer is over its box and once it is past it or has left the row, so the box draws its edge in the color of the text under the pointer, as it did while it was an element of its own, and tells the parent folder nothing, which has no box', async () => {
-    await inPane(async ({ main, point }) => {
-      const docs = rowNamed(main, 'docs');
-      const told = () =>
-        main
-          .querySelector('.commander-pointed')
-          ?.hasAttribute(overCheckAttribute) === true;
-      assert.strictEqual(told(), false);
-      point(docs, 'pointermove', onBox);
-      assert.strictEqual(told(), true);
-      point(docs, 'pointermove', pastBox);
-      assert.strictEqual(told(), false);
-      point(docs, 'pointermove', onBox);
-      point(docs, 'pointerleave');
-      assert.strictEqual(told(), false);
-
-      point(rowNamed(main, '..'), 'pointermove', onBox);
-      assert.strictEqual(told(), false);
     });
   });
 

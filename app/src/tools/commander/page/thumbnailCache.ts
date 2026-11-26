@@ -28,7 +28,7 @@ interface Held {
   release(): void;
 }
 
-const keyOf = (url: string, box: number, pixelRatio: number) =>
+export const thumbnailKey = (url: string, box: number, pixelRatio: number) =>
   `${box} ${pixelRatio} ${url}`;
 
 export class ThumbnailCache {
@@ -44,11 +44,11 @@ export class ThumbnailCache {
   ) {}
 
   peek(url: string, box: number, pixelRatio: number): Thumbnail | undefined {
-    return this.entries.get(keyOf(url, box, pixelRatio))?.settled;
+    return this.entries.get(thumbnailKey(url, box, pixelRatio))?.settled;
   }
 
   hold(url: string, box: number, pixelRatio: number): Held {
-    const key = keyOf(url, box, pixelRatio);
+    const key = thumbnailKey(url, box, pixelRatio);
     const entry =
       this.entries.get(key) ?? this.added(key, url, box, pixelRatio);
     this.entries.delete(key);

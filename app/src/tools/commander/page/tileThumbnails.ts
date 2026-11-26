@@ -1,4 +1,5 @@
 import type { Thumbnail } from './thumbnailCache';
+import { thumbnailKey } from './thumbnailCache';
 
 interface Held {
   readonly loading: Promise<Thumbnail | undefined>;
@@ -75,6 +76,3 @@ export class TileThumbnails {
     this.keep(new Set());
   }
 }
-
-export const thumbnailKey = (url: string, box: number, pixelRatio: number) =>
-  `${box} ${pixelRatio} ${url}`;
