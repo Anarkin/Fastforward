@@ -4,6 +4,7 @@ import { strings } from '../../../lib/shared/strings';
 import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import { canvasViewSchema } from './tabView';
+import { snapped } from './pan';
 import {
   canvasDefaults,
   type CanvasActions,
@@ -40,7 +41,7 @@ export function createCanvasStore(
             origins:
               origin === undefined
                 ? without(state.origins, tab)
-                : new Map(state.origins).set(tab, origin),
+                : new Map(state.origins).set(tab, snapped(origin)),
           }));
         },
         forget: (tab) => {
