@@ -25,6 +25,12 @@ export type BoardEdit =
       readonly kind: 'delete';
       readonly nodes: readonly string[];
       readonly edges: readonly string[];
+    }
+  | {
+      readonly kind: 'text';
+      readonly id: string;
+      readonly text: string;
+      readonly session: number;
     };
 
 export type CanvasToHost =

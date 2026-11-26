@@ -24,6 +24,8 @@ export interface Screen {
   readonly lineKinds: (string | undefined)[];
   readonly arrows: (Way | undefined)[];
   readonly covered: Uint8Array;
+  readonly chosen: Uint8Array;
+  readonly carets: { readonly column: number; readonly row: number }[];
 }
 
 export function emptyScreen({ column, row, columns, rows }: Box): Screen {
@@ -39,6 +41,8 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     lineKinds: Array.from<string | undefined>({ length: cells }),
     arrows: Array.from<Way | undefined>({ length: cells }),
     covered: new Uint8Array(cells),
+    chosen: new Uint8Array(cells),
+    carets: [],
   };
 }
 
@@ -79,6 +83,25 @@ export class Painter {
     screen.lines[at] = 0;
     screen.lineKinds[at] = undefined;
     screen.arrows[at] = undefined;
+    screen.chosen[at] = 0;
+  }
+
+  choose(column: number, row: number): void {
+    const at = this.indexOf(column, row);
+    if (at === undefined) {
+      return;
+    }
+    const { screen } = this;
+    if (screen.glyphs[at] === undefined && screen.lines[at] === 0) {
+      screen.glyphs[at] = ' ';
+    }
+    screen.chosen[at] = 1;
+  }
+
+  caret(column: number, row: number): void {
+    if (this.indexOf(column, row) !== undefined) {
+      this.screen.carets.push({ column, row });
+    }
   }
 
   line(column: number, row: number, bits: number, kind?: string): void {

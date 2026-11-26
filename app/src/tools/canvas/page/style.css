@@ -37,6 +37,10 @@
   cursor: nesw-resize;
 }
 
+.board-body[data-cursor='text'] {
+  cursor: text;
+}
+
 .board-host {
   position: absolute;
   pointer-events: none;

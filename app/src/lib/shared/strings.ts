@@ -291,6 +291,13 @@ export const strings = {
     selectAllNodes: 'Select every node',
     leaveNodes: 'Stop placing a node, or clear the selection',
     saveCanvas: 'Save the canvas',
+    typeInNode:
+      'Type in the text node selected, or in the one double-clicked where it was clicked',
+    stopTyping: 'Stop typing, the node staying selected',
+    newLineInNode: 'Start a new line',
+    cursorTextEnd:
+      'Move the cursor to the start or the end of the text, or select up to it',
+    placeCaret: 'Place the cursor, or select from it',
     wrap: 'Turn line wrapping on or off',
     showWhitespace: 'Show or hide whitespace',
     find: "Search the column you're in",
@@ -479,6 +486,7 @@ export const strings = {
       Kept: 'Kept from the shell',
       Editing: 'Editing',
       Cursors: 'Cursors and selections',
+      Typing: 'Typing in a node',
     },
   },
   keys: {

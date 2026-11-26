@@ -23,6 +23,12 @@ import {
   gpuGeneration,
 } from '../../../components/cells/page/gpuDevice';
 import type { CellTable } from '../../../lib/page/cellTable';
+import {
+  blinkAnimation,
+  drawnCursor,
+  pageCursorLook,
+  paintCursor,
+} from '../../../lib/page/cursor';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import {
   elementWidths,
@@ -31,13 +37,20 @@ import {
   type TextWidths,
 } from '../../../lib/page/textWidths';
 import type { Board } from '../shared/board';
-import { boundsOf, labelKind, lineKind, screenOf } from './boardScreen';
+import {
+  boundsOf,
+  labelKind,
+  lineKind,
+  screenOf,
+  type TypedNode,
+} from './boardScreen';
 import { unitOf, type Box, type Unit } from './grid';
 import { arrowRects, lineRects, strokeOf } from './lineRects';
 import { gridDots } from './gridDots';
 import { signKind } from './nodeText';
 import { originOf, type CellSize, type Origin } from './pan';
 import type { Screen } from './screen';
+import type { ClientBox } from './typingContext';
 import { screenRows } from './seenScreen';
 
 interface SeenBoard {
@@ -97,11 +110,21 @@ export interface Drawn {
   readonly unit: Unit;
   readonly left: number;
   readonly top: number;
+  readonly cellsOf: (cluster: string) => number;
+  readonly caret: ClientBox | undefined;
 }
 
 export interface Shown {
   readonly selected: ReadonlySet<string>;
   readonly marquee?: Box | undefined;
+  readonly typing?: TypedNode | undefined;
+}
+
+interface CellPlace {
+  readonly shift: { readonly x: number; readonly y: number };
+  readonly advance: number;
+  readonly rowHeight: number;
+  readonly ratio: number;
 }
 
 const noneShown: Shown = { selected: new Set() };
@@ -117,6 +140,9 @@ export class BoardSurface {
   private surface: CellSurface | undefined;
   private look: { readonly key: string; readonly look: TextLook } | undefined;
   private readonly computed = new Map<string, string>();
+  private cursor: HTMLElement | undefined;
+  private cursorAt = '';
+  private blinkAgain = false;
 
   constructor(
     private readonly host: HTMLElement,
@@ -233,6 +259,7 @@ export class BoardSurface {
       },
       cellsOf,
       selected: shown.selected,
+      typing: shown.typing,
     });
     cells.frame.reset();
     cells.under.reset();
@@ -278,6 +305,7 @@ export class BoardSurface {
       });
     }
     cells.draw();
+    const caret = this.drawCursor(screen, { shift, advance, rowHeight, ratio });
     host.seenBoard = () => ({
       rows: screenRows(screen),
       column: screen.column,
@@ -295,10 +323,68 @@ export class BoardSurface {
       unit,
       left: box.left + nudge.left,
       top: box.top + nudge.top,
+      cellsOf,
+      caret:
+        caret === undefined
+          ? undefined
+          : {
+              ...caret,
+              left: caret.left + box.left + nudge.left,
+              top: caret.top + box.top + nudge.top,
+            },
     };
   }
 
+  private drawCursor(
+    screen: Screen,
+    { shift, advance, rowHeight, ratio }: CellPlace,
+  ): ClientBox | undefined {
+    const [at] = screen.carets;
+    if (at === undefined) {
+      this.cursor?.remove();
+      this.cursor = undefined;
+      this.cursorAt = '';
+      return undefined;
+    }
+    const across = at.column - screen.column;
+    const down = at.row - screen.row;
+    const under = screen.glyphs[down * screen.columns + across] ?? '';
+    const look = pageCursorLook();
+    const cell = {
+      left: (across * advance - shift.x) / ratio,
+      top: (down * rowHeight - shift.y) / ratio,
+      width: advance / ratio,
+      height: rowHeight / ratio,
+    };
+    const drawn = drawnCursor({
+      cell,
+      text: under.trim(),
+      font: getComputedStyle(this.probe).font,
+      shape: look.style,
+      thickness: look.width,
+      ratio,
+      origin: { left: 0, top: 0 },
+    });
+    if (this.cursor === undefined) {
+      this.cursor = document.createElement('div');
+      this.cursor.className = 'board-cursor';
+      this.host.append(this.cursor);
+    }
+    paintCursor(this.cursor, drawn);
+    const placed = `${at.column},${at.row}`;
+    if (placed !== this.cursorAt) {
+      this.cursorAt = placed;
+      this.blinkAgain = !this.blinkAgain;
+      this.cursor.style.animation = look.blink
+        ? blinkAnimation(this.blinkAgain)
+        : 'none';
+    }
+    return cell;
+  }
+
   dispose(): void {
+    this.cursor?.remove();
+    this.cursor = undefined;
     this.host.seenBoard = undefined;
     this.surface?.dispose();
     this.surface = undefined;
@@ -322,6 +408,7 @@ function drawText(
         continue;
       }
       const kind = screen.kinds[at];
+      const selected = screen.chosen[at] === 1;
       const start = column;
       let text = '';
       while (column < screen.columns) {
@@ -329,14 +416,16 @@ function drawText(
         const each = screen.glyphs[next];
         if (
           each === undefined ||
-          (each !== '' && screen.kinds[next] !== kind)
+          (each !== '' &&
+            (screen.kinds[next] !== kind ||
+              (screen.chosen[next] === 1) !== selected))
         ) {
           break;
         }
         text += each;
         column++;
       }
-      drawPieces(drawing, [{ text, kind }], start, y);
+      drawPieces(drawing, [{ text, kind, selected }], start, y);
     }
   }
 }

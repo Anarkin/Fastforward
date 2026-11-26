@@ -3,6 +3,7 @@ import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
+import type { Board } from '../shared/board';
 import type { CanvasToHost } from '../shared/protocol';
 import { canvasViewSchema } from './tabView';
 import { snapped } from './pan';
@@ -11,7 +12,28 @@ import {
   type CanvasActions,
   type CanvasSource,
   type CanvasState,
+  type Typing,
 } from './state';
+
+interface Kept {
+  readonly id: string;
+  readonly anchor: number;
+  readonly head: number;
+}
+
+function textOf(board: Board | undefined, id: string): string | undefined {
+  const node = board?.nodes.find((each) => each.id === id);
+  return node?.type === 'text' ? node.text : undefined;
+}
+
+function typingIn(
+  text: string,
+  { id, anchor, head }: Kept,
+  session: number,
+): Typing {
+  const within = (at: number) => Math.max(0, Math.min(text.length, at));
+  return { id, text, anchor: within(anchor), head: within(head), session };
+}
 
 const hidden = { tab: undefined, file: undefined };
 
@@ -33,15 +55,59 @@ export function createCanvasStore(
   views: ToolViews = noViews,
 ): StoreApi<CanvasState> {
   return createStore<CanvasState>()((set, get) => {
+    let sessions = Date.now();
+    const kept = new Map<string, Kept>();
+    const typingAfter = (
+      tab: string,
+      board: Board | undefined,
+      made: string | undefined,
+    ): Typing | undefined => {
+      if (made !== undefined) {
+        const text = textOf(board, made);
+        return text === undefined
+          ? undefined
+          : typingIn(
+              text,
+              { id: made, anchor: text.length, head: text.length },
+              ++sessions,
+            );
+      }
+      const waiting = kept.get(tab);
+      if (waiting !== undefined) {
+        kept.delete(tab);
+        const text = textOf(board, waiting.id);
+        return text === undefined
+          ? undefined
+          : typingIn(text, waiting, ++sessions);
+      }
+      const typing = get().typings.get(tab);
+      return typing === undefined || textOf(board, typing.id) === undefined
+        ? undefined
+        : typing;
+    };
     const tabs = new TabLife(
       views,
       canvasViewSchema,
       {
-        viewOf: (tab) => ({
-          origin: get().origins.get(tab),
-          selected: get().selections.get(tab),
-        }),
-        restore: (tab, { origin, selected }) => {
+        viewOf: (tab) => {
+          const typing = get().typings.get(tab) ?? kept.get(tab);
+          return {
+            origin: get().origins.get(tab),
+            selected: get().selections.get(tab),
+            typing:
+              typing === undefined
+                ? undefined
+                : { id: typing.id, anchor: typing.anchor, head: typing.head },
+          };
+        },
+        restore: (tab, { origin, selected, typing }) => {
+          const text =
+            typing === undefined
+              ? undefined
+              : textOf(get().boards.get(tab)?.board, typing.id);
+          if (typing !== undefined && text === undefined) {
+            kept.set(tab, typing);
+          }
           set((state) => ({
             origins:
               origin === undefined
@@ -51,10 +117,19 @@ export function createCanvasStore(
               selected === undefined
                 ? without(state.selections, tab)
                 : new Map(state.selections).set(tab, selected),
+            typings:
+              typing === undefined || text === undefined
+                ? without(state.typings, tab)
+                : new Map(state.typings).set(
+                    tab,
+                    typingIn(text, typing, ++sessions),
+                  ),
           }));
         },
         forget: (tab) => {
+          kept.delete(tab);
           set((state) => ({
+            typings: without(state.typings, tab),
             origins: without(state.origins, tab),
             selections: without(state.selections, tab),
           }));
@@ -83,15 +158,20 @@ export function createCanvasStore(
           case 'board': {
             const { type: _type, tab, made, ...shown } = message;
             const ids = new Set(shown.board?.nodes.map((node) => node.id));
-            const kept = (get().selections.get(tab) ?? []).filter((id) =>
+            const still = (get().selections.get(tab) ?? []).filter((id) =>
               ids.has(id),
             );
+            const typing = typingAfter(tab, shown.board, made);
             set((state) => ({
               boards: new Map(state.boards).set(tab, shown),
               selections: new Map(state.selections).set(
                 tab,
-                made === undefined ? kept : [made],
+                made === undefined ? still : [made],
               ),
+              typings:
+                typing === undefined
+                  ? without(state.typings, tab)
+                  : new Map(state.typings).set(tab, typing),
             }));
             tabs.changed(tab);
             break;
@@ -108,6 +188,7 @@ export function createCanvasStore(
         tabs.changed(tab);
       },
       originOf: (tab) => get().origins.get(tab),
+      typingOf: (tab) => get().typings.get(tab),
       select: (tab, ids) => {
         set((state) => ({
           selections: new Map(state.selections).set(tab, ids),
@@ -116,6 +197,50 @@ export function createCanvasStore(
       },
       selectedOf: (tab) => get().selections.get(tab) ?? [],
       place: (placing) => set({ placing }),
+      startTyping: (tab, id, at) => {
+        const text = textOf(get().boards.get(tab)?.board, id);
+        if (text === undefined) {
+          return;
+        }
+        const offset = at ?? text.length;
+        const typing = typingIn(
+          text,
+          { id, anchor: offset, head: offset },
+          ++sessions,
+        );
+        set((state) => ({
+          typings: new Map(state.typings).set(tab, typing),
+          selections: new Map(state.selections).set(tab, [id]),
+        }));
+        tabs.changed(tab);
+      },
+      typed: (tab, caret) => {
+        const typing = get().typings.get(tab);
+        if (typing === undefined) {
+          return;
+        }
+        set((state) => ({
+          typings: new Map(state.typings).set(tab, { ...typing, ...caret }),
+        }));
+        if (caret.text !== typing.text) {
+          post({
+            type: 'edit',
+            tab,
+            edit: {
+              kind: 'text',
+              id: typing.id,
+              text: caret.text,
+              session: typing.session,
+            },
+          });
+        }
+        tabs.changed(tab);
+      },
+      stopTyping: (tab) => {
+        kept.delete(tab);
+        set((state) => ({ typings: without(state.typings, tab) }));
+        tabs.changed(tab);
+      },
       edit: (tab, edit) => post({ type: 'edit', tab, edit }),
       undo: (tab) => post({ type: 'undo', tab }),
       redo: (tab) => post({ type: 'redo', tab }),

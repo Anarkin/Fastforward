@@ -1,6 +1,13 @@
 import type { Board, BoardEdge, BoardNode } from '../shared/board';
 import { boxOf, type Box, type Unit } from './grid';
-import { textRows, type Glyph } from './nodeText';
+import {
+  laidOut,
+  placeOf,
+  textRows,
+  type Glyph,
+  type Place,
+  type TextRow,
+} from './nodeText';
 import { reversed, routeOf, type Cell, type Route } from './routes';
 import {
   doubleShift,
@@ -37,7 +44,28 @@ export interface Drawn {
   readonly view: Box;
   readonly cellsOf: (cluster: string) => number;
   readonly selected?: ReadonlySet<string>;
+  readonly typing?: TypedNode | undefined;
 }
+
+export interface TypedNode {
+  readonly id: string;
+  readonly text: string;
+  readonly anchor: number;
+  readonly head: number;
+}
+
+export function textAreaOf(box: Box): Box {
+  const padding = box.columns >= 5 ? 1 : 0;
+  return {
+    column: box.column + 1 + padding,
+    row: box.row + 1,
+    columns: box.columns - 2 - 2 * padding,
+    rows: box.rows - 2,
+  };
+}
+
+export const scrollOf = (place: Place | undefined, area: Box): number =>
+  Math.max(0, (place?.row ?? 0) - (area.rows - 1));
 
 const noneSelected: ReadonlySet<string> = new Set();
 
@@ -119,12 +147,73 @@ function contentOf(node: BoardNode): string {
   }
 }
 
+function chooseRow(
+  painter: Painter,
+  row: TextRow,
+  area: Box,
+  y: number,
+  { from, to }: { readonly from: number; readonly to: number },
+): void {
+  const last = area.column + area.columns - 1;
+  let column = area.column;
+  for (const glyph of row.glyphs) {
+    if (glyph.from >= from && glyph.to <= to) {
+      for (let cell = 0; cell < glyph.cells; cell++) {
+        painter.choose(Math.min(last, column + cell), y);
+      }
+    }
+    column += glyph.cells;
+  }
+  const end = row.glyphs.at(-1)?.to ?? row.from;
+  if (
+    to > row.to &&
+    from <= row.to &&
+    (!row.wraps || row.to > end) &&
+    column <= last
+  ) {
+    painter.choose(column, y);
+  }
+}
+
+function paintTyped(
+  painter: Painter,
+  area: Box,
+  typing: TypedNode,
+  cellsOf: (cluster: string) => number,
+): void {
+  if (area.columns <= 0 || area.rows <= 0) {
+    return;
+  }
+  const rows = laidOut(typing.text, area.columns, Infinity, cellsOf);
+  const place = placeOf(rows, typing.head, area.columns);
+  const scroll = scrollOf(place, area);
+  const span = {
+    from: Math.min(typing.anchor, typing.head),
+    to: Math.max(typing.anchor, typing.head),
+  };
+  const last = area.column + area.columns - 1;
+  for (let index = 0; index < area.rows; index++) {
+    const row = rows[scroll + index];
+    if (row === undefined) {
+      break;
+    }
+    written(painter, area.column, area.row + index, row.glyphs, last);
+    if (span.from !== span.to) {
+      chooseRow(painter, row, area, area.row + index, span);
+    }
+  }
+  if (place !== undefined) {
+    painter.caret(area.column + place.column, area.row + place.row - scroll);
+  }
+}
+
 function paintNode(
   painter: Painter,
   node: BoardNode,
   box: Box,
   selected: boolean,
   cellsOf: (cluster: string) => number,
+  typing: TypedNode | undefined,
 ): void {
   const kind = colorKind(node.color);
   const weight = selected ? doubleShift : 0;
@@ -154,17 +243,15 @@ function paintNode(
     }
   }
   border(painter, box, weight, kind);
-  const padding = box.columns >= 5 ? 1 : 0;
-  const first = box.column + 1 + padding;
-  const last = right - 1 - padding;
-  const rows = textRows(
-    contentOf(node),
-    last - first + 1,
-    box.rows - 2,
-    cellsOf,
-  );
+  const area = textAreaOf(box);
+  if (typing?.id === node.id) {
+    paintTyped(painter, area, typing, cellsOf);
+    return;
+  }
+  const last = area.column + area.columns - 1;
+  const rows = textRows(contentOf(node), area.columns, area.rows, cellsOf);
   for (const [index, glyphs] of rows.entries()) {
-    written(painter, first, box.row + 1 + index, glyphs, last);
+    written(painter, area.column, area.row + index, glyphs, last);
   }
 }
 
@@ -273,6 +360,7 @@ export function screenOf({
   view,
   cellsOf,
   selected = noneSelected,
+  typing,
 }: Drawn): Screen {
   const painter = new Painter(emptyScreen(view));
   const boxes = new Map(
@@ -295,7 +383,7 @@ export function screenOf({
   const paint = (node: BoardNode) => {
     const box = boxes.get(node.id);
     if (box !== undefined) {
-      paintNode(painter, node, box, selected.has(node.id), cellsOf);
+      paintNode(painter, node, box, selected.has(node.id), cellsOf, typing);
     }
   };
   for (const node of board.nodes) {

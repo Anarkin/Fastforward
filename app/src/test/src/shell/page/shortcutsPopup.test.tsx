@@ -24,7 +24,7 @@ suite('Shortcuts popup', () => {
         ['viewer', 'Viewer', 4],
         ['diff', 'Diff', 2],
         ['editor', 'Editor', 4],
-        ['canvas', 'Canvas', 2],
+        ['canvas', 'Canvas', 3],
         ['paint', 'Paint', 0],
       ],
     );
@@ -61,7 +61,7 @@ suite('Shortcuts popup', () => {
           'Editor',
           ['Editing', 'Moving around', 'Cursors and selections', 'Searching'],
         ],
-        ['Canvas', ['Editing', 'Moving around']],
+        ['Canvas', ['Editing', 'Typing in a node', 'Moving around']],
         ['Paint', []],
       ],
     );

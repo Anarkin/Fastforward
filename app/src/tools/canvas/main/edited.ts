@@ -83,6 +83,19 @@ function applied(
       raw.edges = keptEdges;
       return true;
     }
+    case 'text': {
+      const node = listIn(raw, 'nodes').find((each) => idOf(each) === edit.id);
+      if (
+        !isObject(node) ||
+        node.type !== 'text' ||
+        typeof node.text !== 'string' ||
+        node.text === edit.text
+      ) {
+        return false;
+      }
+      node.text = edit.text;
+      return true;
+    }
     default:
       return edit satisfies never;
   }
@@ -95,6 +108,7 @@ export class EditedBoard {
   private readonly redone: Json[] = [];
   private at = 0;
   private savedAt: number | undefined = 0;
+  private typing: { readonly id: string; readonly session: number } | undefined;
 
   constructor(text: string) {
     this.layout = layoutOf(text);
@@ -111,10 +125,20 @@ export class EditedBoard {
     edit: BoardEdit,
     newId: () => string,
   ): { readonly made?: string } | undefined {
-    const before = structuredClone(this.raw);
+    const typing =
+      edit.kind === 'text' ? { id: edit.id, session: edit.session } : undefined;
+    const joined =
+      typing !== undefined &&
+      this.typing?.id === typing.id &&
+      this.typing.session === typing.session;
+    const before = joined ? undefined : structuredClone(this.raw);
     const done = applied(this.raw, edit, newId);
     if (done === false) {
       return undefined;
+    }
+    this.typing = typing;
+    if (before === undefined) {
+      return {};
     }
     this.undone.push(before);
     if (this.undone.length > mostUndone) {
@@ -129,6 +153,7 @@ export class EditedBoard {
   }
 
   undo(): boolean {
+    this.typing = undefined;
     const before = this.undone.pop();
     if (before === undefined) {
       return false;
@@ -140,6 +165,7 @@ export class EditedBoard {
   }
 
   redo(): boolean {
+    this.typing = undefined;
     const after = this.redone.pop();
     if (after === undefined) {
       return false;
@@ -159,6 +185,7 @@ export class EditedBoard {
   }
 
   saved(): void {
+    this.typing = undefined;
     this.savedAt = this.at;
   }
 }

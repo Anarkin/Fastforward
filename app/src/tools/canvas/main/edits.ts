@@ -7,6 +7,8 @@ const mostId = 256;
 
 const farthest = 1_000_000_000;
 
+const longestText = 50_000_000;
+
 const isId = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0 && value.length <= mostId;
 
@@ -63,6 +65,16 @@ export function editOf(value: unknown): BoardEdit | undefined {
       return box === undefined || type === undefined
         ? undefined
         : { kind: 'add', node: { type, ...box } };
+    }
+    case 'text': {
+      const { id, text, session } = value;
+      return isId(id) &&
+        typeof text === 'string' &&
+        text.length <= longestText &&
+        typeof session === 'number' &&
+        Number.isSafeInteger(session)
+        ? { kind: 'text', id, text, session }
+        : undefined;
     }
     case 'delete': {
       const nodes = idsOf(value.nodes);

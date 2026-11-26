@@ -2,6 +2,7 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import type { Board } from '../shared/board';
 import type { BoardEdit, CanvasToWebview } from '../shared/protocol';
 import type { Origin } from './pan';
+import type { Caret } from './typing';
 
 export interface BoardShown {
   readonly file: string;
@@ -12,6 +13,11 @@ export interface BoardShown {
 
 export type Placing = 'text' | 'group';
 
+export interface Typing extends Caret {
+  readonly id: string;
+  readonly session: number;
+}
+
 export interface CanvasSource {
   readonly tab: string | undefined;
   readonly file: string | undefined;
@@ -19,15 +25,20 @@ export interface CanvasSource {
   readonly origins: ReadonlyMap<string, Origin>;
   readonly selections: ReadonlyMap<string, readonly string[]>;
   readonly placing: Placing | undefined;
+  readonly typings: ReadonlyMap<string, Typing>;
 }
 
 export interface CanvasActions {
   readonly receive: (message: CanvasToWebview) => void;
   readonly pan: (tab: string, origin: Origin) => void;
   readonly originOf: (tab: string) => Origin | undefined;
+  readonly typingOf: (tab: string) => Typing | undefined;
   readonly select: (tab: string, ids: readonly string[]) => void;
   readonly selectedOf: (tab: string) => readonly string[];
   readonly place: (placing: Placing | undefined) => void;
+  readonly startTyping: (tab: string, id: string, at?: number) => void;
+  readonly typed: (tab: string, caret: Caret) => void;
+  readonly stopTyping: (tab: string) => void;
   readonly edit: (tab: string, edit: BoardEdit) => void;
   readonly undo: (tab: string) => void;
   readonly redo: (tab: string) => void;
@@ -47,6 +58,7 @@ export const canvasDefaults: CanvasSource = {
   origins: new Map(),
   selections: new Map(),
   placing: undefined,
+  typings: new Map(),
 };
 
 export const originShown = (state: CanvasSource): Origin | undefined =>
@@ -54,6 +66,9 @@ export const originShown = (state: CanvasSource): Origin | undefined =>
 
 export const boardShown = (state: CanvasSource): BoardShown | undefined =>
   state.tab === undefined ? undefined : state.boards.get(state.tab);
+
+export const typingShown = (state: CanvasSource): Typing | undefined =>
+  state.tab === undefined ? undefined : state.typings.get(state.tab);
 
 export const selectedShown = (state: CanvasSource): readonly string[] =>
   (state.tab === undefined ? undefined : state.selections.get(state.tab)) ??

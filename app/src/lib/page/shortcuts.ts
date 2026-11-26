@@ -7,7 +7,7 @@ import {
   type KeyPress,
 } from '../shared/keymap';
 
-type KeyEvent = KeyPress & { readonly target: EventTarget | null };
+export type KeyEvent = KeyPress & { readonly target: EventTarget | null };
 
 export function keyPressed<Value>(
   binding: Binding<Value>,

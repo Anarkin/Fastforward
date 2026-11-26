@@ -149,6 +149,45 @@ suite('Canvas edited', () => {
     assert.strictEqual(board.changed(), true);
   });
 
+  test('writes the text typed into a text node, the keystrokes of one typing one change undone at once, and another typing, an undo or a save starting another', () => {
+    const board = new EditedBoard(canvas);
+    const typed = (text: string, session: number, id = 'a') =>
+      board.apply({ kind: 'text', id, text, session }, ids());
+    const textOf = (id: string) => {
+      const read = board.read();
+      assert.ok(read.kind === 'board');
+      const found = read.board.nodes.find((each) => each.id === id);
+      return found?.type === 'text' ? found.text : undefined;
+    };
+    assert.deepStrictEqual(typed('a1', 1), {});
+    assert.deepStrictEqual(typed('a12', 1), {});
+    assert.strictEqual(typed('a12', 1), undefined);
+    typed('b1', 1, 'b');
+    typed('a123', 1);
+    assert.ok(board.undo());
+    assert.strictEqual(textOf('a'), 'a12');
+    assert.ok(board.undo());
+    assert.strictEqual(textOf('b'), 'b');
+    assert.ok(board.undo());
+    assert.strictEqual(textOf('a'), 'a');
+    assert.strictEqual(board.changed(), false);
+    typed('ab', 2);
+    board.saved();
+    typed('abc', 2);
+    assert.strictEqual(board.changed(), true);
+    board.undo();
+    assert.strictEqual(textOf('a'), 'ab');
+    assert.strictEqual(board.changed(), false);
+    typed('abd', 2);
+    typed('abde', 3);
+    board.undo();
+    assert.strictEqual(textOf('a'), 'abd');
+    assert.strictEqual(
+      board.apply({ kind: 'text', id: 'odd', text: 'x', session: 4 }, ids()),
+      undefined,
+    );
+  });
+
   test('takes from the page only edits whole and in bounds, as the page is not trusted', () => {
     assert.deepStrictEqual(
       editOf({
@@ -159,6 +198,10 @@ suite('Canvas edited', () => {
         kind: 'place',
         boxes: [{ id: 'a', x: -7, y: 18, width: 70, height: 54 }],
       },
+    );
+    assert.deepStrictEqual(
+      editOf({ kind: 'text', id: 'a', text: 'Line\r\nnext', session: 7 }),
+      { kind: 'text', id: 'a', text: 'Line\r\nnext', session: 7 },
     );
     for (const forged of [
       {
@@ -177,6 +220,9 @@ suite('Canvas edited', () => {
         node: { type: 'text', x: 2e9, y: 0, width: 70, height: 54 },
       },
       { kind: 'delete', nodes: [3], edges: [] },
+      { kind: 'text', id: 'a', text: 4, session: 1 },
+      { kind: 'text', id: 'a', text: 'x', session: 0.5 },
+      { kind: 'text', id: '', text: 'x', session: 1 },
       { kind: 'rename' },
       'delete',
     ]) {

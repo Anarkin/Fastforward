@@ -357,6 +357,27 @@ suite('App canvas', () => {
     );
   };
 
+  const savedText = (id: string) => {
+    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
+    assert.ok(typeof saved === 'object' && saved !== null && 'nodes' in saved);
+    assert.ok(Array.isArray(saved.nodes));
+    const found: unknown = saved.nodes.find(
+      (node: unknown) =>
+        typeof node === 'object' &&
+        node !== null &&
+        'id' in node &&
+        node.id === id,
+    );
+    return typeof found === 'object' && found !== null && 'text' in found
+      ? found.text
+      : undefined;
+  };
+
+  const cursorShown = (what: string, wanted: boolean) =>
+    untilSettled(() => page.locator('.board-cursor').count(), what, {
+      accepted: (count) => (count === 1) === wanted,
+    });
+
   const panTo = async (wanted: Placed) => {
     const now = await settledOrigin();
     const cell = await cellSize();
@@ -440,5 +461,49 @@ suite('App canvas', () => {
     await page.mouse.up();
     await shows('the group moved', { column: 30, row: 3 }, '╔');
     await shows('the node it holds moved with it', { column: 30, row: 5 }, '┌');
+  });
+
+  test('types into a text node double-clicked where it was clicked, drawing the cursor there, stops on Escape with the node still selected and writes what was typed into its file on Mod+S', async () => {
+    const letter = await pointAt({ column: 14, row: 5 });
+    await page.mouse.dblclick(letter.x, letter.y);
+    await cursorShown('the cursor drawn', true);
+    await page.keyboard.type('X');
+    await holds('the letter typed', 'PlXan', true);
+    await page.keyboard.press('Escape');
+    await cursorShown('the cursor gone', false);
+    await shows('the node still selected', { column: 10, row: 4 }, '╔');
+    const unsaved = page.locator(
+      'nav.tabs [role="tab"][aria-selected="true"] .tab-unsaved',
+    );
+    await unsaved.waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await unsaved.waitFor({ state: 'detached' });
+    assert.strictEqual(savedText('plan'), 'PlXan');
+  });
+
+  test('types at the end of the text node selected on Enter, deletes on Backspace, and takes back a whole typing at once on Mod+Z', async () => {
+    await page.keyboard.press('Enter');
+    await cursorShown('the cursor drawn', true);
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await holds('two letters deleted', 'PlX', true);
+    await holds('the letters gone', 'PlXan', false);
+    await page.keyboard.press('ControlOrMeta+Z');
+    await holds('the typing taken back whole', 'PlXan', true);
+    await cursorShown('the cursor gone', false);
+    await page.keyboard.press('ControlOrMeta+Z');
+    await holds('the typing before it taken back', 'Plan', true);
+  });
+
+  test('types into a text node placed at once', async () => {
+    const spot = await pointAt({ column: 2, row: 12 });
+    await page.mouse.move(spot.x, spot.y);
+    await page.keyboard.press('ControlOrMeta+1');
+    await page.mouse.click(spot.x, spot.y);
+    await cursorShown('the cursor drawn in the node placed', true);
+    await page.keyboard.type('Hello there');
+    await holds('the words typed', 'Hello there', true);
+    await page.keyboard.press('Escape');
+    await cursorShown('the cursor gone', false);
   });
 });
