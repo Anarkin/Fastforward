@@ -178,6 +178,30 @@ suite('App canvas', () => {
     assert.strictEqual(beside, inside, 'the grid a dot of one stroke');
   });
 
+  test('draws a canvas inside the frame of its column, so the line of the frame covers none of the cells at its edges, as it covered the left of the first letter of a canvas moved to its edge', async () => {
+    const placed = await page.evaluate(() => {
+      const column = document.querySelector('.column.board');
+      const canvas = document.querySelector('.board-canvas');
+      if (column === null || canvas === null) {
+        return undefined;
+      }
+      const line = parseFloat(
+        getComputedStyle(column).getPropertyValue('--column-line'),
+      );
+      const frame = column.getBoundingClientRect();
+      const drawn = canvas.getBoundingClientRect();
+      return {
+        left: drawn.left - frame.left - line,
+        right: frame.right - line - drawn.right,
+        bottom: frame.bottom - line - drawn.bottom,
+      };
+    });
+    assert.ok(placed !== undefined);
+    for (const [edge, room] of Object.entries(placed)) {
+      assert.ok(room > -0.01, `${edge} ${room}`);
+    }
+  });
+
   const seenBoard = () =>
     page
       .locator('.board-host')

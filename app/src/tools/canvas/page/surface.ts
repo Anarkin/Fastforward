@@ -75,6 +75,8 @@ const lookKinds = [
 
 const transparent = 0.001;
 
+const withinPixel = 0.01;
+
 function groundOf(element: Element): Rgba {
   for (let at: Element | null = element; at !== null; at = at.parentElement) {
     const color = parsedColor(getComputedStyle(at).backgroundColor);
@@ -172,8 +174,12 @@ export class BoardSurface {
     const { body, host } = this;
     const box = body.getBoundingClientRect();
     const nudge = nudgeOf(box.left, box.top, ratio);
-    const pixelWidth = Math.round(body.clientWidth * ratio);
-    const pixelHeight = Math.round(body.clientHeight * ratio);
+    const pixelWidth =
+      Math.floor(box.right * ratio + withinPixel) -
+      Math.round((box.left + nudge.left) * ratio);
+    const pixelHeight =
+      Math.floor(box.bottom * ratio + withinPixel) -
+      Math.round((box.top + nudge.top) * ratio);
     host.style.left = `${nudge.left}px`;
     host.style.top = `${nudge.top}px`;
     host.style.width = `${pixelWidth / ratio}px`;

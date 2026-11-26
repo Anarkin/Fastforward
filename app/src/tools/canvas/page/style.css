@@ -6,6 +6,7 @@
   position: relative;
   overflow: hidden;
   outline: none;
+  margin: 0 var(--column-line, 0px) var(--column-line, 0px);
 }
 
 .board-body.pan-held {
