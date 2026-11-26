@@ -248,6 +248,11 @@ export function Pane({
   const keptScroll = actions.scrollOf(scrollKey);
   const { tiled, across, shownList, tileTextRow, fillScrolledTo, tileRows } =
     useTiles(body, side, rows, scrollKey);
+  useEffect(() => {
+    if (!tiled) {
+      tileThumbnails.keep(new Set());
+    }
+  }, [tiled, tileThumbnails]);
   const tileWidth = tileWidthOf(thumbnailSize);
   const locate = (
     element: HTMLElement,

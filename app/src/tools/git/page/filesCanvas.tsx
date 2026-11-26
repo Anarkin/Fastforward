@@ -12,7 +12,9 @@ import {
   watchGpu,
 } from '../../../components/cells/page/gpuDevice';
 import {
+  drawnWithRoom,
   ListCanvas,
+  type Presented,
   type RowRecord,
   type ShownRow,
 } from '../../../components/cells/page/listCanvas';
@@ -152,11 +154,11 @@ export function FilesCanvas({
   }, [list, hits]);
 
   useLayoutEffect(() => {
-    const draw = () => {
+    const frame = (): Presented | undefined => {
       const element = host.current;
       const listed = list.current;
       if (element === null || listed === null) {
-        return;
+        return undefined;
       }
       kept.current ??= new ListCanvas<FileRecord>('files-canvas');
       const canvas = kept.current;
@@ -167,7 +169,7 @@ export function FilesCanvas({
         Math.round(line * scale),
       );
       if (view === undefined) {
-        return;
+        return undefined;
       }
       const { cells, runs, width, origin, viewHeight, pixelWidth } = view;
       const lookKey = [dark, scale, line, generation, active].join(' ');
@@ -484,12 +486,8 @@ export function FilesCanvas({
           }
         },
       );
-      if (presented === 'full') {
-        draw();
-        return;
-      }
-      if (presented === 'same') {
-        return;
+      if (presented !== 'drawn') {
+        return presented;
       }
       for (const each of shown) {
         rowHits.push({ ...each.row.hit, top: each.top, pinned: each.pinned });
@@ -525,7 +523,9 @@ export function FilesCanvas({
           }
         });
       }
+      return presented;
     };
+    const draw = () => drawnWithRoom(frame);
     redraw.current = draw;
     scrolled.current = draw;
     draw();

@@ -29,6 +29,12 @@ export interface ShownRow<Row extends RowRecord> {
 
 export type Presented = 'drawn' | 'same' | 'full';
 
+export function drawnWithRoom(frame: () => Presented | undefined): void {
+  if (frame() === 'full') {
+    frame();
+  }
+}
+
 const tileStride = 7;
 
 const layoutUnits = 64;

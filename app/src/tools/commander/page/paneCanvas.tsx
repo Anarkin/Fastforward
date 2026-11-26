@@ -11,7 +11,9 @@ import {
   watchGpu,
 } from '../../../components/cells/page/gpuDevice';
 import {
+  drawnWithRoom,
   ListCanvas,
+  type Presented,
   type ShownRow,
 } from '../../../components/cells/page/listCanvas';
 import type { RowsDrawn } from '../../../lib/page/virtualRows';
@@ -111,7 +113,7 @@ export function PaneCanvas({
   }, [list, sight]);
 
   useLayoutEffect(() => {
-    const draw = () => {
+    const frame = (): Presented | undefined => {
       const element = host.current;
       const listed = list.current;
       const spacer = element?.parentElement;
@@ -121,7 +123,7 @@ export function PaneCanvas({
         spacer === null ||
         spacer === undefined
       ) {
-        return;
+        return undefined;
       }
       kept.current ??= new ListCanvas<LineRecord | TileRecord>(
         'commander-canvas',
@@ -134,7 +136,7 @@ export function PaneCanvas({
         Math.round(line * scale),
       );
       if (view === undefined) {
-        return;
+        return undefined;
       }
       const { cells, width, origin, viewHeight, pixelWidth } = view;
       const looksKey = [dark, scale, line, generation, lookKey, width].join(
@@ -267,12 +269,8 @@ export function PaneCanvas({
           [tilesKey, origin, viewHeight, pixelWidth].join(' '),
           () => cells.clipped(0, 0),
         );
-        if (presented === 'full') {
-          draw();
-          return;
-        }
-        if (presented === 'same') {
-          return;
+        if (presented !== 'drawn') {
+          return presented;
         }
         element.seenTiles = () => {
           const box = listed.getBoundingClientRect();
@@ -287,7 +285,7 @@ export function PaneCanvas({
           );
         };
         element.seenLines = undefined;
-        return;
+        return presented;
       }
       element.seenTiles = undefined;
       images.keep(new Set());
@@ -310,7 +308,7 @@ export function PaneCanvas({
           urls.add(iconKey);
         }
         const here = hover?.index === index ? hover : undefined;
-        const sign = `${signOf(look)} ${place.top} ${here === undefined ? '' : here.overCheck ? 'check' : 'pointed'} ${icon === undefined ? 0 : icon === 'failed' ? 1 : 2}`;
+        const sign = `${signOf(look)} ${place.top} ${here === undefined ? '' : here.overCheck ? 'check' : 'pointed'} ${icon === undefined ? 0 : icon === 'failed' ? 1 : 2} ${iconKey ?? ''}`;
         const before = cache.get(look.key);
         const row =
           before !== undefined && before.sign === sign && !isTileRow(before)
@@ -338,12 +336,8 @@ export function PaneCanvas({
         [looksKey, origin, viewHeight, pixelWidth].join(' '),
         () => cells.clipped(0, 0),
       );
-      if (presented === 'full') {
-        draw();
-        return;
-      }
-      if (presented === 'same') {
-        return;
+      if (presented !== 'drawn') {
+        return presented;
       }
       element.seenLines = () => {
         const box = listed.getBoundingClientRect();
@@ -357,7 +351,9 @@ export function PaneCanvas({
           top: top + each.top,
         }));
       };
+      return presented;
     };
+    const draw = () => drawnWithRoom(frame);
     sight.drawWith(draw);
     draw();
     return () => sight.stopDrawing(draw);
