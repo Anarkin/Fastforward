@@ -9,6 +9,7 @@ import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { launchedForPerf, measure } from './perfFixtures';
 import { dragged, heldKey, paced, sleep, wheelNotches } from './perfInput';
 import { commitRow } from '../e2e/commitRows';
+import { fileRow } from '../e2e/fileRows';
 
 const placed = process.env.FASTFORWARD_PERF_WINDOW;
 
@@ -221,7 +222,7 @@ export function framesOfFile(
 
           test('git file opened', async () => {
             const { page } = perf();
-            const listed = page.locator('.row.file', { hasText: base }).first();
+            const listed = fileRow(page, base, { kind: 'file' }).first();
             await listed.waitFor();
             await sleep(1000);
             await timedOpen(

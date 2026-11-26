@@ -1,9 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { hugeFile, reworkSubject } from './perfData';
+import { hugeFile, reworkSubject, wideSubject } from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { heldKey, touchpadScroll, wheelNotches } from './perfInput';
 import { commitRow, commitsDrawn } from '../e2e/commitRows';
+import { fileRow } from '../e2e/fileRows';
 
 suite('Frames of the git tool', () => {
   const { repository } = perfData();
@@ -53,7 +54,7 @@ suite('Frames of the git tool', () => {
     const { page } = perf();
     await toTop();
     await commitRow(page, reworkSubject).click();
-    const file = page.locator('.row.file', { hasText: hugeFile });
+    const file = fileRow(page, hugeFile, { kind: 'file' });
     await file.waitFor();
     const result = await measure(
       perf(),
@@ -82,7 +83,7 @@ suite('Frames of the git tool', () => {
 
   test('scrolling every change of a commit of 500 hunks, its lines wrapped, with a mouse wheel', async () => {
     const { page } = perf();
-    const every = page.locator('.row.group', { hasText: 'All Changes' });
+    const every = fileRow(page, 'All Changes', { kind: 'header' });
     if ((await every.count()) === 0) {
       await toTop();
       await commitRow(page, reworkSubject).click();
@@ -96,5 +97,39 @@ suite('Frames of the git tool', () => {
     );
     assert.ok(result.frames.updates > 0);
     assert.ok((await diff.evaluate((list) => list.scrollTop)) > from);
+  });
+});
+
+suite('Frames of the files of a commit', () => {
+  const { wide } = perfData();
+  const perf = launchedForPerf(
+    {
+      state: {
+        tabs: [{ id: '1', tool: 'git', root: wide }],
+        activeTab: '1',
+      },
+      settings: { scrolling: { smooth: true } },
+    },
+    async (page) => {
+      await commitsDrawn(page, 1);
+      await commitRow(page, wideSubject).click();
+      await fileRow(page, 'file49.ts', { kind: 'file' }).first().waitFor();
+    },
+  );
+  const fileList = () =>
+    perf().page.locator('.column').nth(1).locator('.virtual-rows').first();
+
+  test('scrolling the files of a commit of 20,000 files with a mouse wheel', async () => {
+    const result = await measure(perf(), 'git: files, wheel', () =>
+      wheelNotches(perf().page, fileList(), 40),
+    );
+    assert.ok(result.frames.updates > 0);
+  });
+
+  test('scrolling the files of a commit with a touchpad', async () => {
+    const result = await measure(perf(), 'git: files, touchpad', () =>
+      touchpadScroll(perf().page, fileList(), 8000, 4000),
+    );
+    assert.ok(result.frames.updates > 0);
   });
 });

@@ -45,7 +45,7 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a moment: whether the submenu of an open menu was opened by key, to focus its first item',
   'lib/page/shownAfter.ts shown':
     'a moment: false until a reading has gone on 500 ms, timed anew as mounted',
-  'lib/page/virtualRows.tsx fixedHeight':
+  'lib/page/virtualRows.tsx measuredHeight':
     'a measure: the height of a row, measured anew from the first row drawn',
   'lib/page/virtualRows.tsx roomHeight':
     'a measure: the height of the list, measured anew by a resize observer once mounted',
@@ -245,12 +245,18 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a trigger: counts the find key presses, read only as changes; the filter itself is kept per repository in commitFilters',
   'tools/git/page/commitFiltering.ts kept':
     'a moment: the commits found last, shown while git looks for those of what was typed since',
+  'tools/git/page/filesCanvas.tsx scale':
+    'a measure: the device pixels of a CSS pixel, followed as the window moves between screens',
   'tools/git/page/filesColumn.tsx filterAsked':
     'a trigger: counts the find key presses, read only as changes; the filter itself is kept per repository in fileFilters',
+  'tools/git/page/filesColumn.tsx line':
+    'a measure: the height of a row of the files, measured by the ruler row of the stylesheet',
   'tools/git/page/filesFilter.ts clicked':
     'a trigger: counts the clicks that open the filter, read only as changes to focus its box',
   'lib/page/lineHeight.ts height':
     'a measure: the line height, read anew from the style of the list in a layout effect',
+  'tools/git/page/filesPointer.tsx tipped':
+    'a moment: the change letter under the pointer, whose tooltip the proxy over it tells',
   'tools/git/page/messagePanel.tsx hidden':
     'a measure: the lines of a message cut off, measured anew from its body',
   'tools/git/page/messagePanel.tsx lifted':

@@ -6,7 +6,7 @@ import { deflateSync } from 'node:zlib';
 import { pathToFileURL } from 'node:url';
 import { pngChunk } from '../e2e/images';
 
-const version = 5;
+const version = 6;
 
 export const perfBuild = path.resolve(
   __dirname,
@@ -18,6 +18,7 @@ export const perfBuild = path.resolve(
 
 export interface PerfData {
   readonly repository: string;
+  readonly wide: string;
   readonly files: string;
   readonly flood: string;
   readonly heavy: string;
@@ -26,6 +27,7 @@ export interface PerfData {
 
 export const hugeFile = 'huge.ts';
 export const reworkSubject = 'Rework the huge file';
+export const wideSubject = 'Add 20,000 files in 400 folders';
 export const manyFolder = 'many';
 export const imagesFolder = 'images';
 export const logFile = 'big.log';
@@ -121,6 +123,27 @@ function makeRepository(root: string): void {
   fs.mkdirSync(root, { recursive: true });
   git(root, ['init', '-q', '-b', 'main']);
   git(root, ['fast-import', '--quiet'], historyStream(40_000));
+  git(root, ['reset', '-q', '--hard', 'main']);
+}
+
+function wideStream(): string {
+  const changes: string[] = [];
+  for (let area = 0; area < 20; area++) {
+    for (let part = 0; part < 20; part++) {
+      for (let file = 0; file < 50; file++) {
+        changes.push(
+          `M 100644 :1 src/area${area}/part${part}/file${file}.ts\n`,
+        );
+      }
+    }
+  }
+  return `blob\nmark :1\n${commitData('export const value = 1;\n')}commit refs/heads/main\nmark :2\n${author(1_600_000_000)}${commitData(wideSubject)}${changes.join('')}`;
+}
+
+function makeWide(root: string): void {
+  fs.mkdirSync(root, { recursive: true });
+  git(root, ['init', '-q', '-b', 'main']);
+  git(root, ['fast-import', '--quiet'], wideStream());
   git(root, ['reset', '-q', '--hard', 'main']);
 }
 
@@ -302,6 +325,7 @@ export async function perfData(
   const versions = await heavyVersions();
   const data = {
     repository: path.join(folder, 'repository'),
+    wide: path.join(folder, 'wide'),
     files: path.join(folder, 'files'),
     flood: path.join(folder, 'flood.mjs'),
     heavy: path.join(folder, 'heavy'),
@@ -315,6 +339,7 @@ export async function perfData(
   if (!fs.existsSync(ready)) {
     fs.rmSync(folder, { recursive: true, force: true });
     makeRepository(data.repository);
+    makeWide(data.wide);
     makeFiles(data.files);
     makeHeavy(data.heavy, versions);
     fs.writeFileSync(ready, '');

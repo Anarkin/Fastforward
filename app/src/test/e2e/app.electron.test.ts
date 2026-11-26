@@ -7,6 +7,7 @@ import { waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 import { viewerShows, viewerTexts } from './cellsSeen';
 import { commitRow } from './commitRows';
+import { fileRow } from './fileRows';
 
 const focused = () =>
   page.evaluate(() => document.activeElement?.textContent ?? '');
@@ -142,11 +143,9 @@ suite('App', () => {
 
   test('offers a file of a commit only to view it as the commit has it and to copy its path, viewing a copy of it rather than the file on disk', async () => {
     await commitRow(page, 'first').click();
-    await page
-      .locator('.row.file', { hasText: 'changed.txt' })
-      .locator('.path-part')
-      .last()
-      .click({ button: 'right' });
+    await fileRow(page, 'changed.txt', { kind: 'file' }).clickPart(-1, {
+      button: 'right',
+    });
     const menu = page.locator('.context-menu.path-menu');
     await menu.waitFor();
     assert.deepStrictEqual(
@@ -176,11 +175,9 @@ suite('App', () => {
     const short = first?.slice(0, 7);
     const newest = second?.slice(0, 7) ?? '';
     await commitRow(page, 'first').click();
-    await page
-      .locator('.row.file', { hasText: 'changed.txt' })
-      .locator('.path-part')
-      .last()
-      .click({ button: 'right' });
+    await fileRow(page, 'changed.txt', { kind: 'file' }).clickPart(-1, {
+      button: 'right',
+    });
     await page
       .locator('.context-menu.path-menu .menu-item', {
         hasText: strings.commander.openWithViewer,
@@ -233,11 +230,9 @@ suite('App', () => {
   test('opens the version of a file viewed against the one before it in a diff tab on Shift+F3, under the whole path of the file, the version of each side on a button in its header, side by side the old ending and the new starting as far from the line between the sides, which is where the sides meet rather than the middle of the diff with its scrollbar, inline both in the middle with an arrow between them', async () => {
     const [first, second] = await repository.resolve('HEAD~1', 'HEAD');
     await commitRow(page, 'second').click();
-    await page
-      .locator('.row.file', { hasText: 'changed.txt' })
-      .locator('.path-part')
-      .last()
-      .click({ button: 'right' });
+    await fileRow(page, 'changed.txt', { kind: 'file' }).clickPart(-1, {
+      button: 'right',
+    });
     await page
       .locator('.context-menu.path-menu .menu-item', {
         hasText: strings.commander.openWithViewer,

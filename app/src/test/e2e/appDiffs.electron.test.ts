@@ -25,6 +25,7 @@ import {
   type DiffLineSeen,
 } from './diffSeen';
 import { commitRow } from './commitRows';
+import { fileRow } from './fileRows';
 
 const commented = (answer: number) =>
   `/* the answer\na\nb\nc\n*/\nexport const answer = ${answer};\n`;
@@ -74,7 +75,7 @@ suite('App', () => {
 
   test('colors code away from the page, offers every language for a file selected from a button in line with the others, opening rightwards from the button, as it starts the toolbar, marking what its filter found as tall as the item it is on, but only Auto and Plain Text for many, leaves code plain on Plain Text until Auto, and colors a file in a language chosen for it until another is selected', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'code.ts' }).click();
+    await fileRow(page, 'code.ts', { kind: 'file' }).click();
     await untilDiffLine(
       page,
       colored('keyword', 'export'),
@@ -128,10 +129,11 @@ suite('App', () => {
     await waitFor(async () => (await keywords()) > 0, 'the code colored');
     assert.strictEqual(await label(), 'TypeScript');
 
-    await page.locator('.row.group', { hasText: 'All Changes' }).click();
-    await page
-      .locator('.row.group.selected', { hasText: 'All Changes' })
-      .waitFor();
+    await fileRow(page, 'All Changes', { kind: 'header' }).click();
+    await fileRow(page, 'All Changes', {
+      kind: 'header',
+      selected: true,
+    }).waitFor();
     assert.strictEqual(await label(), 'Plain Text');
     await waitFor(async () => (await keywords()) === 0, 'the code drawn plain');
     await button.locator('.menu-button-trigger').click();
@@ -143,7 +145,7 @@ suite('App', () => {
     await button.locator('.menu-item', { hasText: /^Auto$/ }).click();
     await waitFor(async () => (await keywords()) > 0, 'the code colored');
     assert.strictEqual(await label(), 'Auto');
-    await page.locator('.row.file', { hasText: 'code.ts' }).click();
+    await fileRow(page, 'code.ts', { kind: 'file' }).click();
     await waitFor(async () => (await label()) === 'TypeScript', 'the language');
   });
 
@@ -153,7 +155,7 @@ suite('App', () => {
     let watching:
       JSHandle<{ uncolored: string[]; stop: () => void }> | undefined;
     try {
-      await page.locator('.row.file', { hasText: 'commented.ts' }).click();
+      await fileRow(page, 'commented.ts', { kind: 'file' }).click();
       await untilDiffLine(
         page,
         colored('comment', '*/'),
@@ -236,7 +238,7 @@ suite('App', () => {
     const added = marks.locator('.scrollbar-mark.added');
     await waitForCount(found, 2, 'match marks');
     await added.first().waitFor();
-    await page.locator('.row.group', { hasText: 'All Changes' }).click();
+    await fileRow(page, 'All Changes', { kind: 'header' }).click();
     await page.locator('.search-count', { hasText: '1 of 2' }).waitFor();
     await marks.waitFor();
     await waitForCount(found, 2, 'match marks');
@@ -320,16 +322,14 @@ suite('App', () => {
       await repository.git('add', 'changed.txt');
       fs.writeFileSync(file, 'one\nstaged\nunstaged\n');
       await commitRow(page, '1 uncommitted change').click();
-      await page
-        .locator('.row.group.selected', { hasText: 'All Changes' })
-        .waitFor();
+      await fileRow(page, 'All Changes', {
+        kind: 'header',
+        selected: true,
+      }).waitFor();
       await addedShown(['staged', 'unstaged']);
-      await page.locator('.row.group', { hasText: /^Staged/ }).click();
+      await fileRow(page, /^Staged/, { kind: 'header' }).click();
       await addedShown(['staged']);
-      await page
-        .locator('.row.file', { hasText: 'changed.txt' })
-        .nth(1)
-        .click();
+      await fileRow(page, 'changed.txt', { kind: 'file' }).nth(1).click();
       await addedShown(['unstaged']);
     } finally {
       await repository.git('checkout', '-q', 'HEAD', '--', 'changed.txt');
@@ -347,7 +347,7 @@ suite('App', () => {
       await commitRow(page, 'second').click();
       await commitRow(page, 'second', { selected: true }).waitFor();
       await commitRow(page, '1 uncommitted change').click();
-      await page.locator('.row.file', { hasText: 'long.txt' }).click();
+      await fileRow(page, 'long.txt', { kind: 'file' }).click();
       await untilDiffLine(page, changedFarDown, 'the line changed far down');
       const row = await drawnCodeRow();
       await waitFor(

@@ -11,6 +11,7 @@ import {
   sharedCommanderApp,
 } from './commanderAppFixtures';
 import { commitRow } from './commitRows';
+import { fileRow } from './fileRows';
 
 const marks = () =>
   commanderPage.evaluate(() => {
@@ -64,7 +65,7 @@ suite('App', () => {
     };
     await commitRow(page, 'first').click();
     await opensOn('Git');
-    await page.locator('.row.file').first().click();
+    await fileRow(page, /./, { kind: 'file' }).click();
     await page.locator('.diff-view .virtual-rows').click();
     await waitFor(
       () =>

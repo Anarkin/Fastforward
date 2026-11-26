@@ -6,6 +6,7 @@ export interface RunStyle {
   readonly ink: string;
   readonly ground: string;
   readonly baseline: number;
+  readonly strike?: { readonly top: number; readonly thickness: number };
 }
 
 export interface RunTile {
@@ -126,6 +127,18 @@ export class RunAtlas {
       stage.scale(this.textScale, this.textScale);
       stage.fillText(text, 0, 0);
       stage.restore();
+    }
+    if (style.strike !== undefined) {
+      const left = x + runPadding + Math.round(offset);
+      stage.fillRect(
+        left,
+        style.strike.top,
+        x +
+          runPadding +
+          Math.round(offset + this.measure(text, style.font)) -
+          left,
+        style.strike.thickness,
+      );
     }
     this.waiting = true;
     const tile = { u: x, v: this.shelfY, width };

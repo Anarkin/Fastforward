@@ -15,6 +15,7 @@ import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { rounded } from './rounding';
 import { commitRow, commitsSeen } from './commitRows';
+import { fileRow } from './fileRows';
 
 const scale = 1.25;
 
@@ -109,7 +110,7 @@ const topCommit = async (page: Page): Promise<void> => {
     .evaluate((list) => list.scrollTo({ top: 0 }));
   await commitRow(page, 'first').click();
   await commitRow(page, 'first', { selected: true }).waitFor();
-  await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
+  await fileRow(page, 'file0.txt', { kind: 'file' }).waitFor();
 };
 
 const partPointedAt = (page: Page) =>
@@ -244,7 +245,7 @@ suite('App at a scale of 125%', () => {
     });
     page = await app.firstWindow();
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
+    await fileRow(page, 'file0.txt', { kind: 'file' }).waitFor();
   });
 
   afterAll(async () => {
@@ -313,14 +314,17 @@ suite('App at a scale of 125%', () => {
     await list.evaluate((element) => {
       element.scrollTop = 0;
     });
-    await page.locator('.row.file', { hasText: 'file0.txt' }).click();
+    await fileRow(page, 'file0.txt', { kind: 'file' }).click();
     for (let step = 0; step < 45; step++) {
       await page.keyboard.press('ArrowDown');
     }
     const below = async () =>
       list.evaluate((element) => {
         const column = element.closest('.column');
-        const selected = element.querySelector('.row.selected');
+        const selected = element
+          .querySelector<HTMLElement>('.files-layer')
+          ?.seenFiles?.()
+          .find((row) => row.selected && !row.pinned);
         if (!column || !selected) {
           return Number.NaN;
         }
@@ -330,7 +334,7 @@ suite('App at a scale of 125%', () => {
         return (
           column.getBoundingClientRect().bottom -
           line -
-          selected.getBoundingClientRect().bottom
+          (selected.top + selected.height)
         );
       });
     await waitFor(async () => !Number.isNaN(await below()), 'a row selected');

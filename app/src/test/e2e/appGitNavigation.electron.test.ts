@@ -15,6 +15,7 @@ import { cellOf, untilDiffLine } from './diffSeen';
 import { waitForCount, waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
 import { commitBubble, commitRow, commitsSeen } from './commitRows';
+import { fileRow, filesSeen } from './fileRows';
 
 async function removeWorktree(worktree: string, branch: string): Promise<void> {
   await repository
@@ -33,6 +34,11 @@ async function removeWorktree(worktree: string, branch: string): Promise<void> {
 
 const active = (column: string) =>
   page.locator(`.columns[data-active-column="${column}"]`).waitFor();
+
+const fileNames = async () =>
+  (await filesSeen(page))
+    .filter((row) => row.kind === 'file')
+    .map((row) => row.name);
 
 suite('App', () => {
   sharedApp({ 'kept.txt': 'kept\n' });
@@ -249,20 +255,19 @@ suite('App', () => {
 
   test('filters the files on Ctrl+F in them, marking what it found and showing the diffs of only those, keeping the search for another commit, closing it on Esc and opening it again on Ctrl+F in the files', async () => {
     const files = page.locator('.columns > .column').nth(1);
-    const names = () => files.locator('.row.file .path').allTextContents();
     await commitRow(page, 'first').click();
-    await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
+    await fileRow(page, 'kept.txt', { kind: 'file' }).waitFor();
     await files.locator('[data-column-focus]').first().focus();
     await page.keyboard.press('ControlOrMeta+F');
     const field = files.locator('.search-box-input');
     await waitForFocus(field, 'the files search');
     await field.fill('txt ch');
     await waitFor(
-      async () => (await names()).join() === 'changed.txt',
+      async () => (await fileNames()).join() === 'changed.txt',
       'only changed.txt listed',
     );
     assert.deepStrictEqual(
-      await files.locator('.tree-row .match').allTextContents(),
+      (await filesSeen(page)).flatMap((row) => row.found),
       ['ch', 'txt'],
     );
     await waitFor(
@@ -272,7 +277,7 @@ suite('App', () => {
       'only the diff of changed.txt',
     );
     await commitRow(page, 'second').click();
-    await files.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
+    await fileRow(page, 'changed.txt', { kind: 'file' }).waitFor();
     assert.strictEqual(await field.inputValue(), 'txt ch');
     await field.focus();
     await page.keyboard.press('Escape');
@@ -290,20 +295,23 @@ suite('App', () => {
 
   test('moves between the columns with the arrows and Tab, the keys working in the one active', async () => {
     await commitRow(page, 'second').click();
-    await page.locator('.row.group', { hasText: 'All Changes' }).click();
-    await page
-      .locator('.row.group.selected', { hasText: 'All Changes' })
-      .waitFor();
+    await fileRow(page, 'All Changes', { kind: 'header' }).click();
+    await fileRow(page, 'All Changes', {
+      kind: 'header',
+      selected: true,
+    }).waitFor();
     await page.locator('.virtual-rows.list').focus();
     await active('commits');
     await page.keyboard.press('ArrowRight');
     await active('files');
     await page.keyboard.press('ArrowDown');
-    const changedFile = page.locator('.row.file.selected', {
-      hasText: 'changed.txt',
+    const changedFile = fileRow(page, 'changed.txt', {
+      kind: 'file',
+      selected: true,
     });
-    const allChanges = page.locator('.row.group.selected', {
-      hasText: 'All Changes',
+    const allChanges = fileRow(page, 'All Changes', {
+      kind: 'header',
+      selected: true,
     });
     await changedFile.waitFor();
     await page.keyboard.press('Home');
@@ -386,7 +394,7 @@ suite('App', () => {
     const files = page.locator('.columns > .column').nth(1);
     const status = () => files.locator('.column-status').textContent();
     await commitRow(page, 'first').click();
-    await files.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
+    await fileRow(page, 'kept.txt', { kind: 'file' }).waitFor();
     await waitFor(
       async () => (await status()) === '2 files changed',
       'the files changed counted',
@@ -412,17 +420,18 @@ suite('App', () => {
     const diff = page.locator('.columns > .column').nth(2);
     const status = () => diff.locator('.column-status.monospace').textContent();
     await commitRow(page, 'second').click();
-    await page.locator('.row.file', { hasText: 'changed.txt' }).click();
+    await fileRow(page, 'changed.txt', { kind: 'file' }).click();
     await waitFor(
       async () => (await status()) === '+1 −1',
       'the lines counted',
     );
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'kept.txt' }).waitFor();
-    await page.locator('.row.group', { hasText: 'All Changes' }).click();
-    await page
-      .locator('.row.group.selected', { hasText: 'All Changes' })
-      .waitFor();
+    await fileRow(page, 'kept.txt', { kind: 'file' }).waitFor();
+    await fileRow(page, 'All Changes', { kind: 'header' }).click();
+    await fileRow(page, 'All Changes', {
+      kind: 'header',
+      selected: true,
+    }).waitFor();
     await waitFor(
       async () => (await status()) === '+4 −0',
       'the lines of every file counted',
@@ -431,15 +440,13 @@ suite('App', () => {
 
   test('shows the unchanged files on the toggle, dimmed, and remembers it', async () => {
     await commitRow(page, 'second').click();
-    await page.locator('.row.file', { hasText: 'changed.txt' }).waitFor();
+    await fileRow(page, 'changed.txt', { kind: 'file' }).waitFor();
     assert.strictEqual(
-      await page.locator('.row.file', { hasText: 'kept.txt' }).count(),
+      await fileRow(page, 'kept.txt', { kind: 'file' }).count(),
       0,
     );
     await page.getByRole('button', { name: 'Show All Files' }).click();
-    await page
-      .locator('.row.file .path.unchanged', { hasText: 'kept.txt' })
-      .waitFor();
+    await fileRow(page, 'kept.txt', { kind: 'file', dimmed: true }).waitFor();
     await waitFor(
       () => savedSetting('git', 'showAllFiles') === true,
       'the setting to be saved',

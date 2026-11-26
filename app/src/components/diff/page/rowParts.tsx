@@ -3,7 +3,7 @@ import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import { CutPathName } from '../../../lib/page/pathName';
 import { SkeletonRows } from '../../../lib/page/skeleton';
-import { Twisty } from '../../../lib/page/tree';
+import { Twisty } from './twisty';
 import { renamedPath } from '../../../lib/page/fileStatus';
 import type { Change } from './rows';
 

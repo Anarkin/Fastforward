@@ -22,6 +22,7 @@ import {
 import { waitForCount, waitForFocus } from './waits';
 import { writeSettings } from './settingsWritten';
 import { commitRow } from './commitRows';
+import { fileRow } from './fileRows';
 
 const lines = (count: number, line: (index: number) => string) =>
   Array.from({ length: count }, (_, index) => line(index)).join('\n');
@@ -227,9 +228,7 @@ suite('App git tabs shown again', () => {
   test('brings back the diff of a file with its find open on the match it was on, the caret in its box, and the diff scrolled down and across', async () => {
     await showTab(page, 0);
     await commitRow(page, 'second').click();
-    await page
-      .locator('.virtual-row .row.file', { hasText: 'long.txt' })
-      .click();
+    await fileRow(page, 'long.txt', { kind: 'file' }).click();
     const diff = page.locator('.diff-view .virtual-rows');
     await addedRowShown(page);
     await diff.focus();
@@ -263,22 +262,14 @@ suite('App git tabs shown again', () => {
   test('brings back the files filtered with folders folded as they were, in the search and out of it, the keyboard where it was, and a message pinned', async () => {
     await showTab(page, 0);
     const files = page.locator('.columns > .column').nth(1);
-    await files
-      .locator('.virtual-row .row.folder', { hasText: 'folder 0' })
-      .click();
-    await files
-      .locator('.virtual-row .row.file', { hasText: 'file 4.txt' })
-      .click();
+    await fileRow(page, 'folder 0', { kind: 'folder' }).click();
+    await fileRow(page, 'file 4.txt', { kind: 'file' }).click();
     await page.keyboard.press('ControlOrMeta+F');
     const filter = files.locator('.search-bar input');
     await waitForFocus(filter, 'the filter of the files');
     await page.keyboard.type('file 1');
-    await files
-      .locator('.virtual-row .row.file', { hasText: 'file 19.txt' })
-      .waitFor();
-    await files
-      .locator('.virtual-row .row.folder', { hasText: 'folder 2' })
-      .click();
+    await fileRow(page, 'file 19.txt', { kind: 'file' }).waitFor();
+    await fileRow(page, 'folder 2', { kind: 'folder' }).click();
     await filter.focus();
     await page.keyboard.press('ArrowLeft');
     await commitRow(page, 'first').click({ modifiers: ['Alt'] });
@@ -317,9 +308,7 @@ suite('App git tabs shown again', () => {
       .locator('.worktrees .tab.active', { hasText: 'other' })
       .waitFor();
     await commitRow(page, 'second').click();
-    await page
-      .locator('.virtual-row .row.file', { hasText: 'long.txt' })
-      .click();
+    await fileRow(page, 'long.txt', { kind: 'file' }).click();
     await findInDiff(
       page.locator('.diff-view .virtual-rows'),
       page

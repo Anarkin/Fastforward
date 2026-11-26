@@ -149,7 +149,7 @@ export function wholePath(root: string | undefined, path: string): string {
   );
 }
 
-const isWhole = (path: string) => /^(?:[a-zA-Z]:|[\\/])/.test(path);
+export const isWhole = (path: string) => /^(?:[a-zA-Z]:|[\\/])/.test(path);
 
 export function usePathParts(
   path: string,

@@ -8,6 +8,7 @@ import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { commitRow } from './commitRows';
+import { fileRow } from './fileRows';
 
 const ratios = [1.1, 1.25, 1.5, 1.75];
 
@@ -22,10 +23,9 @@ interface Grid {
 const gridOf = (page: Page): Promise<Grid> =>
   page.evaluate(() => {
     const commits = document.querySelector('.commit-rows');
-    const files = document.querySelector('.tree-row')?.closest('.virtual-rows');
+    const layer = document.querySelector<HTMLElement>('.files-layer');
+    const files = layer?.closest('.virtual-rows');
     const origin = files?.getBoundingClientRect().top ?? 0;
-    const onScreen = (element: Element) =>
-      (element.getBoundingClientRect().top - origin) * devicePixelRatio;
     return {
       line:
         parseFloat(getComputedStyle(commits ?? document.body).lineHeight) *
@@ -39,7 +39,9 @@ const gridOf = (page: Page): Promise<Grid> =>
           (_, at) => (row.top + at * row.line - origin) * devicePixelRatio,
         ),
       ),
-      files: [...(files?.querySelectorAll('.tree-row') ?? [])].map(onScreen),
+      files: (layer?.seenFiles?.() ?? [])
+        .filter((row) => !row.pinned)
+        .map((row) => (row.top - origin) * devicePixelRatio),
     };
   });
 
@@ -81,7 +83,7 @@ suite('App row grid', () => {
     app = await launchApp(profile);
     page = await app.firstWindow();
     await commitRow(page, 'many').click();
-    await page.locator('.tree-row', { hasText: 'folder0' }).waitFor();
+    await fileRow(page, 'folder0').waitFor();
   });
 
   afterAll(async () => {

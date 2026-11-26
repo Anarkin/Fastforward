@@ -241,6 +241,7 @@ export class CellSurface {
   private underRects: Room | undefined;
   private underTiles: Room | undefined;
   private clip = 0;
+  private clipTop = 0;
   private measure: Measured | undefined;
   private textured:
     { readonly texture: GPUTexture; readonly group: GPUBindGroup } | undefined;
@@ -352,8 +353,9 @@ export class CellSurface {
     this.canvas.style.background = cssOf(ground);
   }
 
-  clipped(left: number): void {
+  clipped(left: number, top = 0): void {
     this.clip = left;
+    this.clipTop = top;
   }
 
   sized(width: number, height: number): void {
@@ -391,7 +393,7 @@ export class CellSurface {
         },
       ],
     });
-    const { under, clip } = this;
+    const { under, clip, clipTop } = this;
     if (under.rectCount > 0) {
       this.underRects ??= this.roomOf(firstRoom);
       pass.setPipeline(drawing.rects);
@@ -402,9 +404,11 @@ export class CellSurface {
       );
       pass.draw(under.rectCount * cornersOfEach);
     }
-    const cut = clip > 0 && clip < canvas.width;
+    const left = clip > 0 && clip < canvas.width ? clip : 0;
+    const top = clipTop > 0 ? Math.min(clipTop, canvas.height) : 0;
+    const cut = left > 0 || top > 0;
     if (cut) {
-      pass.setScissorRect(clip, 0, canvas.width - clip, canvas.height);
+      pass.setScissorRect(left, top, canvas.width - left, canvas.height - top);
     }
     if (frame.rectCount > 0) {
       pass.setPipeline(drawing.rects);

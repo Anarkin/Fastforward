@@ -1,5 +1,4 @@
-import * as assert from 'node:assert';
-import { createElement, isValidElement } from 'react';
+import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { vi } from 'vitest';
 import { createShellStore, ShellStore } from '../../shell/page/store';
@@ -22,22 +21,6 @@ import type {
   StashInfo,
   WorktreeInfo,
 } from '../../tools/git/shared/protocol';
-
-export interface RowProps {
-  className: string;
-  onClick: () => void;
-}
-
-export function clickRow(
-  row: React.ReactElement,
-  Row: (props: never) => React.ReactNode,
-) {
-  assert.strictEqual(row.type, Row);
-  assert.ok(isValidElement<Parameters<typeof Row>[0]>(row));
-  const drawn = Row(row.props);
-  assert.ok(isValidElement<RowProps>(drawn));
-  drawn.props.onClick();
-}
 
 export const rested = () => vi.advanceTimersByTime(preloadDelay);
 

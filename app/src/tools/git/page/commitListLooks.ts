@@ -47,7 +47,7 @@ export const cssOf = (rgba: Rgba): string => {
   return `rgb(${red} ${green} ${blue})`;
 };
 
-function probed(host: HTMLElement, html: string): HTMLElement {
+export function probed(host: HTMLElement, html: string): HTMLElement {
   const probe = document.createElement('div');
   probe.style.position = 'absolute';
   probe.style.visibility = 'hidden';
@@ -56,12 +56,12 @@ function probed(host: HTMLElement, html: string): HTMLElement {
   return probe;
 }
 
-const shapedSample =
+export const shapedSample =
   'The quick brown fox jumps over the lazy dog, 0123456789 times';
 
 let measuring: OffscreenCanvasRenderingContext2D | null | undefined;
 
-function textScaleOf(sample: HTMLElement, scale: number): number {
+export function textScaleOf(sample: HTMLElement, scale: number): number {
   measuring ??= new OffscreenCanvas(1, 1).getContext('2d');
   if (measuring === null || scale === 1) {
     return 1;

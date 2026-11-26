@@ -10,6 +10,7 @@ import { gridLines } from './gridLines';
 import { waitFor, writeOver } from '../helpers/fixtures';
 import { untilSettled } from './waits';
 import { commitRow, commitSeen } from './commitRows';
+import { fileRow } from './fileRows';
 
 const viewFromMenu = async (file: string) => {
   await page
@@ -32,7 +33,7 @@ const viewDiagram = async (
   if (!(await commitSeen(page, name)).selected) {
     await commitRow(page, name).click();
   }
-  await page.locator('.row.file', { hasText: 'diagram.md' }).click();
+  await fileRow(page, 'diagram.md', { kind: 'file' }).click();
   if (by === 'F3') {
     await page
       .locator('.diff-view .file-header', { hasText: 'diagram.md' })
@@ -93,7 +94,7 @@ suite('App', () => {
 
   test('keeps the words of a table of a Markdown document viewed whole, a column of code as wide as its longest word rather than broken between its letters, and aligns its columns as its separator row says', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'table.md' }).click();
+    await fileRow(page, 'table.md', { kind: 'file' }).click();
     await viewFromMenu('table.md');
     try {
       const table = page.locator('.viewer .markdown table');
@@ -116,7 +117,7 @@ suite('App', () => {
 
   test('draws the code blocks of a Markdown document viewed as cells on the grid of our terminal, as the viewer draws text, so code padded for a terminal lines up in the preview too, its tabs stopping on that grid and its spaces dotted while whitespace is shown, on its key here too; a word of the code is selected on a double click and copied, as in a file viewed, and the prose around it selected with the pointer, which drops what was selected in the code', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'grid.md' }).click();
+    await fileRow(page, 'grid.md', { kind: 'file' }).click();
     await viewFromMenu('grid.md');
     try {
       await page.locator('.viewer .markdown pre code').waitFor();
@@ -192,7 +193,7 @@ suite('App', () => {
 
   test('finds in a Markdown document previewed without leaving the preview, in its prose across bold and links and in its code drawn as cells, counting the matches, marking each and the current one, and each on the track of its scrollbar, and stepping through them in the order of the document on Enter', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'found.md' }).click();
+    await fileRow(page, 'found.md', { kind: 'file' }).click();
     await viewFromMenu('found.md');
     try {
       await page.locator(codeCells).waitFor();
@@ -282,7 +283,7 @@ suite('App', () => {
 
   test('finds in the closed details of a Markdown document previewed, opening them to show the match it goes to, as a browser finding in a page does, rather than counting a match it could not show', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'folded.md' }).click();
+    await fileRow(page, 'folded.md', { kind: 'file' }).click();
     await viewFromMenu('folded.md');
     try {
       const details = page.locator('.viewer .markdown details');

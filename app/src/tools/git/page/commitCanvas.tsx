@@ -48,6 +48,8 @@ import {
   type SeenText,
 } from './commitRecords';
 import type { FindRange } from '../../../lib/shared/textMatches';
+import { ellipsis, fitted, piecesOf } from './canvasText';
+import { darkNow, watchScheme } from './colorScheme';
 
 export interface GraphPlace {
   readonly top: number;
@@ -62,64 +64,7 @@ declare global {
   }
 }
 
-const ellipsis = '…';
-
 const noMarks: readonly FindRange[] = [];
-
-interface Piece {
-  readonly text: string;
-  readonly start: number;
-  readonly marked: boolean;
-}
-
-function piecesOf(
-  run: string,
-  marks: readonly FindRange[],
-  shownLength: number,
-): Piece[] {
-  const pieces: Piece[] = [];
-  let at = 0;
-  for (const mark of marks) {
-    const start = Math.max(mark.start, at);
-    const end = Math.min(mark.end, shownLength);
-    if (end <= start) {
-      continue;
-    }
-    if (start > at) {
-      pieces.push({ text: run.slice(at, start), start: at, marked: false });
-    }
-    pieces.push({ text: run.slice(start, end), start, marked: true });
-    at = end;
-  }
-  if (at < run.length) {
-    pieces.push({ text: run.slice(at), start: at, marked: false });
-  }
-  return pieces;
-}
-
-function fitted(
-  atlas: RunAtlas,
-  text: string,
-  font: string,
-  room: number,
-): string {
-  if (atlas.measure(text, font) <= room) {
-    return text;
-  }
-  const characters = Array.from(text);
-  let low = 0;
-  let high = characters.length;
-  while (low < high) {
-    const middle = (low + high + 1) >> 1;
-    const cut = characters.slice(0, middle).join('') + ellipsis;
-    if (atlas.measure(cut, font) <= room) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
-  }
-  return low === 0 ? '' : characters.slice(0, low).join('') + ellipsis;
-}
 
 const rowPadding = 8;
 
@@ -140,16 +85,6 @@ interface Drawn {
   readonly key: string;
   readonly indexes: readonly number[];
 }
-
-const darkScheme = '(prefers-color-scheme: dark)';
-
-function watchScheme(told: () => void): () => void {
-  const scheme = window.matchMedia(darkScheme);
-  scheme.addEventListener('change', told);
-  return () => scheme.removeEventListener('change', told);
-}
-
-const darkNow = () => window.matchMedia(darkScheme).matches;
 
 export function CommitCanvas({
   list,

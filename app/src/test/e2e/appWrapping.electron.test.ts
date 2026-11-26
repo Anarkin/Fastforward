@@ -48,6 +48,7 @@ import {
   reportPage,
 } from './wrappingSamples';
 import { commitRow, commitsSeen } from './commitRows';
+import { fileRow } from './fileRows';
 
 const rowsFrom = (first: number, last: number) =>
   Array.from({ length: last - first + 1 }, (_, at) => first + at);
@@ -155,7 +156,7 @@ suite('App', () => {
     );
 
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await fileRow(page, 'long.txt', { kind: 'file' }).click();
     const unwrapped = tall(await untilDiffLine(page, long, 'the long line'));
     const lineHeight = await drawnCodeRow();
     assert.ok(near(unwrapped, lineHeight), `${unwrapped} is not ${lineHeight}`);
@@ -236,7 +237,7 @@ suite('App', () => {
 
   test('marks where each wrapped row ends right after its text, after punctuation too', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'hyphenated.txt' }).click();
+    await fileRow(page, 'hyphenated.txt', { kind: 'file' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const { rows } = await untilDiffLine(
       page,
@@ -253,7 +254,7 @@ suite('App', () => {
 
   test('wraps an indented line where VS Code would, after its punctuation, onto rows indented as far as it, as many as the app estimates, never leaving its indentation on a row of its own', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'wrapped.txt' }).click();
+    await fileRow(page, 'wrapped.txt', { kind: 'file' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const { text, rows } = await untilDiffLine(
       page,
@@ -349,7 +350,7 @@ suite('App', () => {
 
   test('wraps every line of a diff where the app expects it to, at the breaks the browser finds after hyphens and dashes, at zero-width spaces, soft hyphens and spaces of other widths, around Chinese, emoji and boxes, and at the punctuation of VS Code and tabs, as the viewer wraps lines the same way', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'breaks.txt' }).click();
+    await fileRow(page, 'breaks.txt', { kind: 'file' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await untilDiffLine(page, wraps, 'a line wrapped onto rows');
     const wrapping = await wrappingInPage();
@@ -381,7 +382,7 @@ suite('App', () => {
 
   test('marks where each row of a line of over 200 rows ends, where the app expects the browser to break it, as reading where the browser broke it froze the page, drawing the marks near the rows in sight as it scrolls', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'longest.txt' }).click();
+    await fileRow(page, 'longest.txt', { kind: 'file' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     await untilDiffLine(page, wraps, 'the line wrapped onto rows');
     const starts = wrapStarts(longestLine, await columnsShown());
@@ -440,7 +441,7 @@ suite('App', () => {
         );
       });
       await changed.click();
-      await page.locator('.row.file', { hasText: 'report.html' }).click();
+      await fileRow(page, 'report.html', { kind: 'file' }).click();
       await page.locator('.diff-view.wrap.side-by-side').waitFor();
       const list = page.locator('.diff-view .virtual-rows');
       await untilDiffLine(page, ({ side }) => side === 1, 'the second side');
@@ -588,7 +589,7 @@ suite('App', () => {
 
   test('wraps a line longer than 64 KiB only where the browser breaks it, where the app expects it to, keeping its indentation on the row with its code, as the app expected breaks after punctuation it no longer marks in such a line, its marks drifting from the rows, and the browser broke it right after its indentation', async () => {
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'minified.txt' }).click();
+    await fileRow(page, 'minified.txt', { kind: 'file' }).click();
     await page.getByRole('button', { name: 'Wrap Long Lines' }).click();
     const { rows } = await untilDiffLine(
       page,

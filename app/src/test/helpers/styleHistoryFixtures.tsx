@@ -4,7 +4,6 @@ import type {
   RefInfo,
   WorktreeInfo,
 } from '../../tools/git/shared/protocol';
-import { ChangesTreeItem } from '../../tools/git/page/changesTree';
 import { CommitRow } from '../../tools/git/page/commitRow';
 import { gitStore, type ShownGit } from './componentFixtures';
 import { GitStore } from '../../tools/git/page/store';
@@ -14,7 +13,9 @@ import {
   MessagePanel,
 } from '../../tools/git/page/messagePanel';
 import { NavButtons } from '../../tools/git/page/navBar';
-import { FileRow } from '../../lib/page/tree';
+import { Twisty } from '../../components/diff/page/twisty';
+import { treeIndent, twistyWidth } from '../../tools/git/page/treeLayout';
+import { changeClass, changeKind, changeMark } from '../../lib/page/fileStatus';
 import { WorktreeBar } from '../../tools/git/page/worktreeBar';
 import { commitInfo } from './gitValues';
 import { repository } from './styleMarkup';
@@ -157,37 +158,50 @@ export function FileRowShown({
   readonly chosen?: boolean;
 }) {
   return (
-    <FileRow
-      path="src/a.ts"
-      name="a.ts"
-      depth={1}
-      change={change}
-      selected={undefined}
-      marked={chosen}
-      onSelect={noop}
-    />
+    <div
+      className={`row tree-row file ${chosen ? 'selected' : ''}`}
+      style={{ paddingLeft: treeIndent(0) }}
+    >
+      <span
+        className={
+          change === undefined
+            ? 'change-mark'
+            : `change-mark ${changeKind(change)}`
+        }
+        aria-hidden="true"
+      >
+        {changeMark(change)}
+      </span>
+      <span
+        className="tree-indent"
+        style={{ width: treeIndent(1) - treeIndent(0) + twistyWidth }}
+      />
+      <span className={`${changeClass(change)} path-cut`}>
+        <span className="path-piece">
+          <span className="path-part">a.ts</span>
+        </span>
+      </span>
+    </div>
   );
 }
 
 export function FolderRowShown() {
   return (
-    <ChangesTreeItem
-      row={{
-        kind: 'folder',
-        name: 'src',
-        path: 'src',
-        depth: 0,
-        open: true,
-        changed: true,
-      }}
-      {...{
-        showsAll: false,
-        onToggle: noop,
-        selected: undefined,
-        onSelect: noop,
-        cursor: undefined,
-      }}
-    />
+    <div
+      className="row tree-row folder "
+      style={{ paddingLeft: treeIndent(0) }}
+    >
+      <span className="change-mark" aria-hidden="true">
+        {changeMark(undefined)}
+      </span>
+      <span className="tree-indent" style={{ width: 0 }} />
+      <Twisty open />
+      <span className="path path-cut">
+        <span className="path-piece">
+          <span className="path-part">src</span>
+        </span>
+      </span>
+    </div>
   );
 }
 

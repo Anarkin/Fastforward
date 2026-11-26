@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { ChangesTreeItem } from '../../../../../tools/git/page/changesTree';
 import { JSDOM } from 'jsdom';
 import { act, isValidElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -29,13 +28,9 @@ import {
 import type { VisibleRows } from '../../../../../lib/page/listMoves';
 import type { Folders } from '../../../../../tools/git/page/viewFolders';
 import { revealAgain, type ListedRows } from '../../../../../lib/page/listRows';
-import { FileRow } from '../../../../../lib/page/tree';
-import {
-  clickRow,
-  renderIn,
-  type RowProps,
-  renderedBy,
-} from '../../../../helpers/componentFixtures';
+import type { RowsDrawn } from '../../../../../lib/page/virtualRows';
+import type { FileRowLook } from '../../../../../tools/git/page/fileRowLooks';
+import { renderIn, renderedBy } from '../../../../helpers/componentFixtures';
 import { noop } from '../../../../helpers/fixtures';
 import { fileChange as change } from '../../../../helpers/gitValues';
 import { keyPress } from '../../../../helpers/keys';
@@ -133,11 +128,20 @@ function picking(picked: (string | undefined)[]) {
 
 function listOf(column: React.ReactNode) {
   assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
-  const list = column.props.children[1];
+  const list = column.props.children.find(
+    (child) =>
+      isValidElement<{ rows?: ListedRows }>(child) &&
+      child.props.rows !== undefined,
+  );
   assert.ok(
     isValidElement<{
       rows: ListedRows;
-      renderRow: (index: number) => React.ReactElement<RowProps>;
+      renderCanvas: (drawn: RowsDrawn) => React.ReactElement<{
+        children: readonly React.ReactElement<{
+          lookOf?: (index: number) => FileRowLook | undefined;
+          onRow?: (index: number) => void;
+        }>[];
+      }>;
       selectedKey: string | undefined;
       revealWith: readonly unknown[];
       onKeyDown: (
@@ -146,24 +150,23 @@ function listOf(column: React.ReactNode) {
       ) => void;
     }>(list),
   );
-  const { rows, renderRow, selectedKey, revealWith, onKeyDown } = list.props;
+  const { rows, renderCanvas, selectedKey, revealWith, onKeyDown } = list.props;
+  const pointer = renderCanvas({
+    count: rows.count,
+    placeOf: () => undefined,
+    pinnedAt: () => [],
+  }).props.children.find((child) => child.props.onRow !== undefined);
+  const lookOf = pointer?.props.lookOf;
+  const onRow = pointer?.props.onRow;
+  assert.ok(lookOf && onRow);
   return {
     keys: Array.from({ length: rows.count }, (_, index) => rows.keyOf(index)),
-    rows: Array.from(
-      { length: rows.count },
-      (_, index): React.ReactElement<RowProps> => {
-        const row = renderRow(index);
-        if (row.type !== ChangesTreeItem) {
-          return row;
-        }
-        assert.ok(
-          isValidElement<React.ComponentProps<typeof ChangesTreeItem>>(row),
-        );
-        const inner = ChangesTreeItem(row.props);
-        assert.ok(isValidElement<RowProps>(inner));
-        return inner;
-      },
-    ),
+    rows: Array.from({ length: rows.count }, (_, index) => {
+      const look = lookOf(index);
+      assert.ok(look);
+      return look;
+    }),
+    click: onRow,
     selectedKey,
     revealWith,
     press: (key: string) =>
@@ -270,7 +273,7 @@ function noChangesShown(
     filesStore({ showAll, files, loading, tree: ['kept.ts'] }),
   );
   assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
-  return renderToStaticMarkup(<>{column.props.children[2]}</>);
+  return renderToStaticMarkup(<>{column.props.children.at(-1)}</>);
 }
 
 function statusShown(shown: Shown): string | null | undefined {
@@ -364,7 +367,7 @@ suite('Files column', () => {
 
   test('shows All Changes above the staged and unstaged changes of the working tree, which it shows in sections, with a file in both', () => {
     const picked: [string | undefined, string | undefined][] = [];
-    const { keys, rows, selectedKey } = changesRows(
+    const { keys, rows, click, selectedKey } = changesRows(
       {
         files: [change('a.ts')],
         staged: [change('a.ts'), change('b.ts')],
@@ -385,16 +388,16 @@ suite('Files column', () => {
       'unstaged:file:a.ts',
     ]);
     assert.strictEqual(selectedKey, 'unstaged:changes');
-    const header = (index: number) =>
-      renderToStaticMarkup(rows[index])
-        .replace(/<[^>]*>/g, ' ')
-        .trim();
+    const header = (index: number) => {
+      const look = rows[index];
+      return look?.kind === 'header' ? look.text : undefined;
+    };
     assert.strictEqual(header(0), 'All Changes');
     assert.strictEqual(header(1), 'Staged');
     assert.strictEqual(header(4), 'Unstaged');
-    rows[0].props.onClick();
-    rows[1].props.onClick();
-    clickRow(rows[5], FileRow);
+    click(0);
+    click(1);
+    click(5);
     assert.deepStrictEqual(picked, [
       [undefined, undefined],
       [undefined, 'staged'],
@@ -414,36 +417,34 @@ suite('Files column', () => {
 
   test('deselects the selected file on a click, and selects another', () => {
     const picked: (string | undefined)[] = [];
-    const { keys, rows, selectedKey } = changesRows(
+    const { keys, click, selectedKey } = changesRows(
       { files: [change('a.ts'), change('b.ts')], selected: 'a.ts' },
       picking(picked),
     );
     assert.strictEqual(selectedKey, 'file:a.ts');
     assert.deepStrictEqual(keys, ['changes', 'file:a.ts', 'file:b.ts']);
-    clickRow(rows[1], FileRow);
-    clickRow(rows[2], FileRow);
+    click(1);
+    click(2);
     assert.deepStrictEqual(picked, [undefined, 'b.ts']);
   });
 
   test('selects all changes with their header, marked while no file is, leaving them be when they are', () => {
     const picked: (string | undefined)[] = [];
-    const [header] = changesRows(
-      { files: [change('a.ts')] },
-      picking(picked),
-    ).rows;
-    assert.match(header.props.className, /\bselected\b/);
+    const marked = changesRows({ files: [change('a.ts')] }, picking(picked));
+    const [header] = marked.rows;
+    assert.ok(header?.selected);
     assert.strictEqual(
-      renderToStaticMarkup(header),
-      `<div class="${header.props.className}"><span class="path">All Changes</span></div>`,
+      header.kind === 'header' ? header.text : undefined,
+      'All Changes',
     );
-    header.props.onClick();
+    marked.click(0);
     assert.strictEqual(picked.length, 0);
-    const [unmarked] = changesRows(
+    const unmarked = changesRows(
       { files: [change('a.ts')], selected: 'a.ts' },
       picking(picked),
-    ).rows;
-    assert.doesNotMatch(unmarked.props.className, /\bselected\b/);
-    unmarked.props.onClick();
+    );
+    assert.strictEqual(unmarked.rows[0]?.selected, false);
+    unmarked.click(0);
     assert.deepStrictEqual(picked, [undefined]);
   });
 
@@ -476,7 +477,7 @@ suite('Files column', () => {
       'file:z.ts',
     ]);
     assert.strictEqual(collapsed.selectedKey, 'folder:src');
-    assert.match(collapsed.rows[1].props.className, /\bselected\b/);
+    assert.ok(collapsed.rows[1]?.selected);
     collapsed.press('ArrowDown');
     assert.deepStrictEqual(picked, ['z.ts']);
   });
@@ -567,10 +568,10 @@ suite('Files search', () => {
     await drawing(async (draw, drawn) => {
       await draw({ filter: 'view', files: found });
       const opened = listOf(drawn()).keys;
-      const [, folder] = listOf(drawn()).rows;
-      assert.ok(isValidElement<{ onToggle: (path: string) => void }>(folder));
+      const shown = listOf(drawn());
+      assert.strictEqual(shown.rows[1]?.kind, 'folder');
       await act(async () => {
-        folder.props.onToggle('src');
+        shown.click(1);
       });
       assert.deepStrictEqual(listOf(drawn()).keys, ['changes', 'folder:src']);
       await draw({ filter: 'view', files: found, hash: otherCommit });
@@ -582,7 +583,7 @@ suite('Files search', () => {
     const column = filesOf(filesStore({ filter: 'zzz', files: found }));
     assert.ok(isValidElement<{ children: React.ReactNode[] }>(column));
     assert.strictEqual(
-      renderToStaticMarkup(<>{column.props.children[2]}</>),
+      renderToStaticMarkup(<>{column.props.children.at(-1)}</>),
       '<div class="row empty">No files match</div>',
     );
   });

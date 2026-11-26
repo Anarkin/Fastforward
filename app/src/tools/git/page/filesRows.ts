@@ -7,7 +7,7 @@ import {
   type VisibleRows,
 } from '../../../lib/page/listMoves';
 import type { ListedRows, TreeItem } from '../../../lib/page/listRows';
-import { fileRowKey } from '../../../lib/page/treeLayout';
+import { fileRowKey } from './treeLayout';
 import {
   ancestorRows,
   areaKey,

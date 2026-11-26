@@ -61,6 +61,14 @@ const noValues: readonly unknown[] = [];
 
 const keyReveals = 100;
 
+export interface RowsDrawn {
+  readonly count: number;
+  readonly placeOf: (
+    index: number,
+  ) => { readonly top: number; readonly height: number } | undefined;
+  readonly pinnedAt: (offset: number) => readonly number[];
+}
+
 export function VirtualRows({
   rows,
   renderRow,
@@ -81,6 +89,9 @@ export function VirtualRows({
   overscan = 20,
   recycled = false,
   scrolling,
+  fixedRowHeight,
+  renderCanvas,
+  listRef,
 }: {
   rows: ListedRows;
   renderRow: (index: number) => React.ReactNode;
@@ -101,10 +112,23 @@ export function VirtualRows({
   overscan?: number;
   recycled?: boolean;
   scrolling: ScrollSettings;
+  fixedRowHeight?: number | undefined;
+  renderCanvas?: (drawn: RowsDrawn) => React.ReactNode;
+  listRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const list = useRef<HTMLDivElement>(null);
+  const setList = useCallback(
+    (element: HTMLDivElement | null) => {
+      list.current = element;
+      if (listRef) {
+        listRef.current = element;
+      }
+    },
+    [listRef],
+  );
   const listId = useId();
-  const [fixedHeight, setFixedHeight] = useState<number>();
+  const [measuredHeight, setFixedHeight] = useState<number>();
+  const fixedHeight = fixedRowHeight ?? measuredHeight;
   const { observeOffset, offsetSeen } = useSeenOffsets<HTMLDivElement>();
   const follower = useRef<RowFollower>(undefined);
   const slotsOf = useRowSlots();
@@ -286,10 +310,12 @@ export function VirtualRows({
   return (
     <div
       className="virtual-rows"
-      ref={list}
+      ref={setList}
       role={treeItemOf ? 'tree' : 'listbox'}
       aria-label={label}
-      aria-activedescendant={activeDescendant(listId, selectedKey, drawn)}
+      aria-activedescendant={
+        renderCanvas ? undefined : activeDescendant(listId, selectedKey, drawn)
+      }
       onScroll={
         onScrolled &&
         ((event: React.UIEvent<HTMLElement>) => {
@@ -327,14 +353,23 @@ export function VirtualRows({
         className="virtual-spacer"
         style={{ height: virtualizer.getTotalSize() + padding }}
       >
-        {pinned.length > 0 && (
+        {renderCanvas?.({
+          count: rows.count,
+          placeOf: (index) => {
+            const row = virtualizer.measurementsCache[index];
+            return row && { top: row.start, height: row.end - row.start };
+          },
+          pinnedAt: (offset) =>
+            pinnedRows(virtualizer.measurementsCache, offset, ancestorsOf),
+        })}
+        {!renderCanvas && pinned.length > 0 && (
           <div className="pinned-rows">
             {pinned.map((index) => (
               <div key={rows.keyOf(index)}>{renderRow(index)}</div>
             ))}
           </div>
         )}
-        {drawn.map((item) => (
+        {(renderCanvas ? [] : drawn).map((item) => (
           <div
             key={slots?.get(item.key) ?? item.key}
             {...itemProps(item.index, item.key)}

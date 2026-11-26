@@ -17,6 +17,7 @@ import { defaultSettings, waitFor, writeWhenFree } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { commitRow } from './commitRows';
+import { fileRow, filesSeen } from './fileRows';
 
 const diffRows = '.diff-view > .virtual-rows';
 const diffBarBelow = '.diff-view .scroll-proxy.horizontal';
@@ -47,7 +48,7 @@ suite('App', () => {
       await commitRow(sharedPage, 'second').click();
       await commitRow(sharedPage, 'second', { selected: true }).waitFor();
       await commitRow(sharedPage, '1 uncommitted change').click();
-      await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
+      await fileRow(sharedPage, 'long.txt', { kind: 'file' }).click();
       await untilDiffLine(
         sharedPage,
         ({ change }) => change === 'added',
@@ -149,14 +150,14 @@ suite('App', () => {
 
   test('scrolls the diff on the wheel over its scrollbar as over its lines, rather than the column around it', async () => {
     await commitRow(sharedPage, 'first').click();
-    await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
+    await fileRow(sharedPage, 'long.txt', { kind: 'file' }).click();
     await firstLineShown();
     await wheelsDiffOverItsBar(sharedPage);
   });
 
   test('keeps the scrollbar of a diff, with the marks on its track between its buttons, against the line its column draws on the right, and the scrollbar under its lines against the line at the bottom, or the status line under it, the two ending at the square between them', async () => {
     await commitRow(sharedPage, 'first').click();
-    await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
+    await fileRow(sharedPage, 'long.txt', { kind: 'file' }).click();
     await firstLineShown();
     const down = (await barOf(sharedPage, diffRows, 'vertical')).box;
     const across = (await barOf(sharedPage, diffBarBelow, 'horizontal')).box;
@@ -207,7 +208,7 @@ suite('App', () => {
 
   test('never scrolls the column around the diff, which has its own scrollbar, even when the diff sticks out of it by a few pixels', async () => {
     await commitRow(sharedPage, 'first').click();
-    await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
+    await fileRow(sharedPage, 'long.txt', { kind: 'file' }).click();
     await firstLineShown();
     const taller = await sharedPage.addStyleTag({
       content: '.diff-view { margin-bottom: 4px; }',
@@ -229,7 +230,7 @@ suite('App', () => {
 
   test('draws the rows of where its scrollbar is dragged to in the frame it scrolls there, rather than once the scroll event of the frame after comes, which left every other frame without new rows', async () => {
     await commitRow(sharedPage, 'first').click();
-    await sharedPage.locator('.row.file', { hasText: 'long.txt' }).click();
+    await fileRow(sharedPage, 'long.txt', { kind: 'file' }).click();
     await firstLineShown();
     await sharedPage.locator(diffRows).evaluate((element) => {
       element.scrollTop = 0;
@@ -328,19 +329,54 @@ function rowAtTop(list: Locator): Promise<boolean> {
     const top = element.getBoundingClientRect().top + element.clientTop;
     const drawn =
       element.querySelector<HTMLElement>('.graph-layer')?.seenCommits?.() ?? [];
+    const files =
+      element.querySelector<HTMLElement>('.files-layer')?.seenFiles?.() ?? [];
     return [
       ...[...element.querySelectorAll('.virtual-row')].map(
         (row) => row.getBoundingClientRect().top,
       ),
       ...drawn.map((row) => row.top),
+      ...files.filter((row) => !row.pinned).map((row) => row.top),
     ].some((rowTop) => Math.abs(rowTop - top) < 0.5);
   });
+}
+
+interface Band {
+  readonly boundingBox: () => Promise<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>;
+}
+
+function pinnedFolders(page: Page) {
+  const boundingBox = async () => {
+    const pinned = (await filesSeen(page)).filter((row) => row.pinned);
+    const first = pinned[0];
+    return first === undefined
+      ? null
+      : {
+          x: first.left,
+          y: first.top,
+          width: first.width,
+          height: pinned.reduce((sum, row) => sum + row.height, 0),
+        };
+  };
+  return {
+    boundingBox,
+    hover: async () => {
+      const box = await boundingBox();
+      assert.ok(box, 'no folders pinned');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    },
+  };
 }
 
 async function scrollsOnWheelOver(
   page: Page,
   list: Locator,
-  band: Locator,
+  band: Band,
 ): Promise<void> {
   await list.evaluate((element) => {
     element.scrollTop = 200;
@@ -388,7 +424,7 @@ suite('App with lists longer than their columns', () => {
     app = await launchApp(profile);
     page = await app.firstWindow();
     await commitRow(page, 'first').click();
-    await page.locator('.row.file', { hasText: 'file0.txt' }).waitFor();
+    await fileRow(page, 'file0.txt', { kind: 'file' }).waitFor();
     await page
       .locator('.column')
       .nth(1)
@@ -396,7 +432,7 @@ suite('App with lists longer than their columns', () => {
       .evaluate((element) => {
         element.scrollTop = element.scrollHeight;
       });
-    await page.locator('.row.file', { hasText: 'long.txt' }).click();
+    await fileRow(page, 'long.txt', { kind: 'file' }).click();
     await untilDiffLine(
       page,
       ({ text }) => text === firstLongLine,
@@ -411,7 +447,7 @@ suite('App with lists longer than their columns', () => {
 
   test('scrolls on the wheel over the folders pinned atop the files and the file header stuck atop the diff, which stays in place sideways, the scrollbar of the files beside the folders pinned rather than under them, taking the presses of a pointer that came over them', async () => {
     const files = page.locator(fileRows);
-    const pinned = page.locator('.pinned-rows');
+    const pinned = pinnedFolders(page);
     await scrollsOnWheelOver(page, files, pinned);
     await pinned.hover();
     const cover = page.locator('.scrollbar-cover.vertical.shown');

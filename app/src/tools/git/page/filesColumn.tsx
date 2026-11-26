@@ -1,5 +1,5 @@
 import { labelTip } from '../../../lib/page/tips';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { type ChangeArea } from '../shared/protocol';
 import {
   areaKey,
@@ -20,7 +20,11 @@ import {
   steppedFileRow,
   treeRowOf,
 } from './filesRows';
-import { ChangesTreeItem } from './changesTree';
+import { FilesCanvas } from './filesCanvas';
+import { fileRowLook } from './fileRowLooks';
+import type { FileHit } from './fileHits';
+import { FilesPointer } from './filesPointer';
+import { RowRuler } from './rowRuler';
 import { Column } from '../../../lib/page/column';
 import { ColumnResizer } from './columnResizer';
 import { narrows, searchFilter } from '../../../lib/shared/filter';
@@ -37,7 +41,7 @@ import { gitKeymap } from './keymap';
 import { strings } from '../../../lib/shared/strings';
 import { listMoveOf, type VisibleRows } from '../../../lib/page/listMoves';
 import { keyPressed, useBinding } from '../../../lib/page/shortcuts';
-import { fileRowKey } from '../../../lib/page/treeLayout';
+import { fileRowKey } from './treeLayout';
 import { VirtualRows } from '../../../lib/page/virtualRows';
 import { useShell } from '../../../shell/page/store';
 import {
@@ -57,7 +61,7 @@ import {
   toggled,
   foldersOn,
 } from './filesSides';
-import { filesTitle, noChangesText, headerTitle } from './filesTitles';
+import { filesTitle, noChangesText } from './filesTitles';
 import { filesCursor, filesReveal } from './filesCursor';
 import { FileFilterField } from './filesFilterField';
 import { noneClosed, useFilesFilter } from './filesFilter';
@@ -66,6 +70,8 @@ import { filesCounted } from './columnStatus';
 import { Toolbar } from '../../../lib/page/toolbar';
 
 const settlingPaths = 20_000;
+
+const defaultLine = 18;
 
 export function Files() {
   const hash = useGit((state) => state.tab.hash);
@@ -108,6 +114,9 @@ export function Files() {
     filtersHere,
   );
   const scrolling = useShell((state) => state.scrolling);
+  const list = useRef<HTMLDivElement>(null);
+  const hits = useRef<readonly FileHit[]>([]);
+  const [line, setLine] = useState(defaultLine);
   const skeleton = useSkeleton(loading);
   const allPaths = showAll ? tree : undefined;
   const shownFilter = useSettled(
@@ -279,35 +288,30 @@ export function Files() {
       </button>
     </Toolbar>
   );
-  const header = (side: ChangeArea | undefined) => {
-    const key = areaKey(side, changesKey);
-    return (
-      <div
-        key={key}
-        className={`row group ${cursor === key ? 'selected' : ''}`}
-        onClick={() => select(undefined, side)}
-      >
-        <span className="path">{headerTitle(side)}</span>
-      </div>
-    );
+  const lookOf = (index: number) => {
+    const row = rows[index];
+    return row && fileRowLook(row, { cursor, showsAll: showAll, root });
   };
-  const rowOptions = (side: ChangeArea | undefined) => ({
-    area: side,
-    root,
-    showsAll: showAll,
-    onToggle: (folder: string, changed: boolean) => {
+  const onRow = (index: number) => {
+    const row = rows[index];
+    const treeRow = treeRowOf(row);
+    if (row === undefined) {
+      return;
+    }
+    if (treeRow === undefined) {
+      select(undefined, row.area);
+    } else if (treeRow.kind === 'folder') {
       setMoved({
-        key: areaKey(side, folderRowKey(folder)),
+        key: areaKey(row.area, folderRowKey(treeRow.path)),
         from: selectedKey,
         view,
       });
-      toggle(side, folder, changed);
-    },
-    selected: side === selection.area ? selected : undefined,
-    onSelect: (path: string | undefined) => select(path, side),
-    cursor,
-    filter: words,
-  });
+      toggle(row.area, treeRow.path, treeRow.changed);
+    } else {
+      const shown = row.area === selection.area ? selected : undefined;
+      select(treeRow.path === shown ? undefined : treeRow.path, row.area);
+    }
+  };
   const treeAwaited = showAll && tree === undefined;
   const keptScroll = treeAwaited ? undefined : filesScrollOf(view);
   const nothingFound =
@@ -345,6 +349,7 @@ export function Files() {
         )
       }
     >
+      <RowRuler onLine={setLine} />
       {skeleton && <SkeletonRows count={6} />}
       <VirtualRows
         key={root}
@@ -362,15 +367,28 @@ tree`
         scrolling={scrolling}
         wholeRows
         rows={listed}
-        renderRow={(index) => {
-          const row = rows[index];
-          const treeRow = treeRowOf(row);
-          return treeRow ? (
-            <ChangesTreeItem row={treeRow} {...rowOptions(row.area)} />
-          ) : (
-            header(row.area)
-          );
-        }}
+        listRef={list}
+        fixedRowHeight={line}
+        renderRow={() => null}
+        renderCanvas={(drawn) => (
+          <>
+            <FilesPointer
+              list={list}
+              hits={hits}
+              lookOf={lookOf}
+              onRow={onRow}
+            />
+            <FilesCanvas
+              list={list}
+              drawn={drawn}
+              lookOf={lookOf}
+              filter={words}
+              hits={hits}
+              line={line}
+              active={filtersHere}
+            />
+          </>
+        )}
         ancestorsOf={(index) => filesAncestors(rows, index)}
         treeItemOf={(index) => filesTreeItem(rows, index)}
         label={title}

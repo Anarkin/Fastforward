@@ -11,6 +11,7 @@ import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { diffLinesSeen, untilDiffLine, type DiffLineSeen } from './diffSeen';
 import { appSaving, markedSettings, writeSettings } from './settingsWritten';
 import { commitRow } from './commitRows';
+import { fileRow } from './fileRows';
 
 export let folder: string;
 export let profile: string;
@@ -194,7 +195,7 @@ export async function diffLineNumbered(number: number): Promise<DiffLineSeen> {
 
 export async function openChangedFile(): Promise<void> {
   await commitRow(page, 'second').click();
-  await page.locator('.row.file', { hasText: 'changed.txt' }).click();
+  await fileRow(page, 'changed.txt', { kind: 'file' }).click();
   await untilDiffLine(
     page,
     ({ change, text }) => change === 'added' && text.includes('2'),
