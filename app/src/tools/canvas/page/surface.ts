@@ -35,6 +35,7 @@ import { boundsOf, labelKind, lineKind, screenOf } from './boardScreen';
 import { unitOf, type Unit } from './grid';
 import { arrowRects, lineRects, strokeOf } from './lineRects';
 import { signKind } from './nodeText';
+import { originOf, type CellSize, type Origin } from './pan';
 import type { Screen } from './screen';
 import { screenRows } from './seenScreen';
 
@@ -42,6 +43,8 @@ interface SeenBoard {
   readonly rows: readonly string[];
   readonly column: number;
   readonly row: number;
+  readonly origin: Origin;
+  readonly shift: { readonly x: number; readonly y: number };
   readonly advance: number;
   readonly rowHeight: number;
   readonly stroke: number;
@@ -76,6 +79,12 @@ function groundOf(element: Element): Rgba {
     }
   }
   return [0, 0, 0, 1];
+}
+
+export interface Drawn {
+  readonly origin: Origin;
+  readonly cell: CellSize;
+  readonly view: CellSize;
 }
 
 interface Measured {
@@ -136,10 +145,14 @@ export class BoardSurface {
     return color;
   }
 
-  draw(board: Board, table: CellTable): void {
+  draw(
+    board: Board,
+    table: CellTable,
+    panned: Origin | undefined,
+  ): Drawn | undefined {
     const device = gpuDevice();
     if (device === undefined) {
-      return;
+      return undefined;
     }
     if (this.surface?.device !== device) {
       this.surface?.dispose();
@@ -150,7 +163,7 @@ export class BoardSurface {
     const ratio = devicePixelRatio;
     const measured = this.measured(table, ratio);
     if (measured === undefined) {
-      return;
+      return undefined;
     }
     const { body, host } = this;
     const box = body.getBoundingClientRect();
@@ -179,15 +192,20 @@ export class BoardSurface {
     const { widths, unit } = measured;
     const cellsOf = (cluster: string) =>
       Math.max(1, Math.round(widths.of(cluster) / widths.char));
-    const bounds = boundsOf(board, unit);
+    const origin = panned ?? originOf(boundsOf(board, unit));
+    const across = Math.round(origin.column * advance);
+    const down = Math.round(origin.row * rowHeight);
+    const column = Math.floor(across / advance);
+    const row = Math.floor(down / rowHeight);
+    const shift = { x: across - column * advance, y: down - row * rowHeight };
     const screen = screenOf({
       board,
       unit,
       view: {
-        column: (bounds?.column ?? 0) - 2,
-        row: (bounds?.row ?? 0) - 1,
-        columns: Math.ceil(pixelWidth / advance),
-        rows: Math.ceil(pixelHeight / rowHeight),
+        column,
+        row,
+        columns: Math.ceil((pixelWidth + shift.x) / advance),
+        rows: Math.ceil((pixelHeight + shift.y) / rowHeight),
       },
       cellsOf,
     });
@@ -206,21 +224,34 @@ export class BoardSurface {
       widths,
       blanks: false,
       first: 0,
-      left: 0,
+      left: -shift.x,
       limit: screen.columns,
       dot: dotBoxOf(undefined, ratio, rowHeight),
     };
-    drawText(drawing, screen, rowHeight);
-    drawLines(cells, screen, { advance, rowHeight, ratio, kinds, ground });
+    drawText(drawing, screen, rowHeight, shift.y);
+    drawLines(cells, screen, shift, {
+      advance,
+      rowHeight,
+      ratio,
+      kinds,
+      ground,
+    });
     cells.draw();
     host.seenBoard = () => ({
       rows: screenRows(screen),
       column: screen.column,
       row: screen.row,
+      origin,
+      shift,
       advance,
       rowHeight,
       stroke: strokeOf(ratio),
     });
+    return {
+      origin,
+      cell: { width: advance / ratio, height: rowHeight / ratio },
+      view: { width: body.clientWidth, height: body.clientHeight },
+    };
   }
 
   dispose(): void {
@@ -230,9 +261,14 @@ export class BoardSurface {
   }
 }
 
-function drawText(drawing: TextDrawing, screen: Screen, rowHeight: number) {
+function drawText(
+  drawing: TextDrawing,
+  screen: Screen,
+  rowHeight: number,
+  above: number,
+) {
   for (let row = 0; row < screen.rows; row++) {
-    const y = row * rowHeight;
+    const y = row * rowHeight - above;
     let column = 0;
     while (column < screen.columns) {
       const at = row * screen.columns + column;
@@ -272,6 +308,7 @@ interface LineLook {
 function drawLines(
   cells: CellSurface,
   screen: Screen,
+  shift: { readonly x: number; readonly y: number },
   { advance, rowHeight, ratio, kinds, ground }: LineLook,
 ): void {
   const stroke = strokeOf(ratio);
@@ -294,8 +331,8 @@ function drawLines(
         continue;
       }
       const area = {
-        x: column * advance,
-        y: row * rowHeight,
+        x: column * advance - shift.x,
+        y: row * rowHeight - shift.y,
         width: advance,
         height: rowHeight,
       };

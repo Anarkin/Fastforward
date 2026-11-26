@@ -5,6 +5,15 @@
 .board-body {
   position: relative;
   overflow: hidden;
+  outline: none;
+}
+
+.board-body.pan-held {
+  cursor: grab;
+}
+
+.board-body.panning {
+  cursor: grabbing;
 }
 
 .board-host {

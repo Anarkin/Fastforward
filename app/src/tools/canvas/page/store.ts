@@ -13,6 +13,18 @@ import {
 
 const hidden = { tab: undefined, file: undefined };
 
+function without<T>(
+  map: ReadonlyMap<string, T>,
+  tab: string,
+): ReadonlyMap<string, T> {
+  if (!map.has(tab)) {
+    return map;
+  }
+  const next = new Map(map);
+  next.delete(tab);
+  return next;
+}
+
 export function createCanvasStore(
   initial: Partial<CanvasSource> = {},
   views: ToolViews = noViews,
@@ -21,7 +33,20 @@ export function createCanvasStore(
     const tabs = new TabLife(
       views,
       canvasViewSchema,
-      { viewOf: () => ({}), restore: () => {}, forget: () => {} },
+      {
+        viewOf: (tab) => ({ origin: get().origins.get(tab) }),
+        restore: (tab, { origin }) => {
+          set((state) => ({
+            origins:
+              origin === undefined
+                ? without(state.origins, tab)
+                : new Map(state.origins).set(tab, origin),
+          }));
+        },
+        forget: (tab) => {
+          set((state) => ({ origins: without(state.origins, tab) }));
+        },
+      },
       () => get().tab,
     );
     const actions: CanvasActions = {
@@ -54,6 +79,11 @@ export function createCanvasStore(
           tabs.settled(leaving, get().tab);
         }
       },
+      pan: (tab, origin) => {
+        set((state) => ({ origins: new Map(state.origins).set(tab, origin) }));
+        tabs.changed(tab);
+      },
+      originOf: (tab) => get().origins.get(tab),
       keepTabs: () => tabs.flush(),
       releaseTab: (tab) => tabs.release(tab, get().tab),
     };
@@ -75,4 +105,8 @@ function useCanvasStore(): StoreApi<CanvasState> {
 
 export function useCanvas<T>(select: (state: CanvasState) => T): T {
   return useStore(useCanvasStore(), select);
+}
+
+export function useCanvasActions(): CanvasActions {
+  return useCanvasStore().getState();
 }

@@ -60,6 +60,7 @@ const buttons: Readonly<Record<string, number>> = {
   Click: 0,
   Drag: 0,
   MiddleClick: 1,
+  MiddleDrag: 1,
   RightClick: 2,
   BackButton: 3,
   ForwardButton: 4,

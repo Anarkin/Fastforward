@@ -1,3 +1,5 @@
-import { record } from '../../../lib/shared/schema';
+import { count, optional, record } from '../../../lib/shared/schema';
 
-export const canvasViewSchema = record({});
+export const canvasViewSchema = record({
+  origin: optional(record({ column: count(), row: count() })),
+});

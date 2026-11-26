@@ -296,6 +296,15 @@ suite('Shortcuts popup', () => {
         view('editor/Searching', { atStart: true, atEnd: true }),
         1,
       ),
+      'canvas/Moving around',
+    );
+    assert.strictEqual(
+      steppedGroup(
+        all,
+        'canvas',
+        view('canvas/Moving around', { atStart: true, atEnd: true }),
+        1,
+      ),
       undefined,
     );
     assert.strictEqual(

@@ -6,7 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { showTab } from './tabReturns';
-import { onceDrawn, untilSettled } from './waits';
+import { onceDrawn, untilSettled, waitForFocus } from './waits';
 
 async function pixelsOf(
   page: Page,
@@ -48,6 +48,16 @@ const cellOfFont = (page: Page) =>
     probe.remove();
     return cell;
   });
+
+interface Placed {
+  readonly column: number;
+  readonly row: number;
+}
+
+const whole = (origin: Placed | undefined): origin is Placed =>
+  origin !== undefined &&
+  Number.isInteger(origin.column) &&
+  Number.isInteger(origin.row);
 
 suite('App canvas', () => {
   let folder: string;
@@ -162,5 +172,93 @@ suite('App canvas', () => {
       [inside, corner, inside],
       'the top border one stroke tall, from the corner on',
     );
+  });
+
+  const seenBoard = () =>
+    page
+      .locator('.board-host')
+      .evaluate((element: HTMLElement) => element.seenBoard?.());
+
+  const settledOrigin = async (
+    moved: (origin: Placed) => boolean = () => true,
+  ): Promise<Placed> => {
+    const seen = await untilSettled(
+      seenBoard,
+      'the canvas settled on whole cells from its top left',
+      {
+        accepted: (drawn) =>
+          whole(drawn?.origin) &&
+          drawn.shift.x === 0 &&
+          drawn.shift.y === 0 &&
+          moved(drawn.origin),
+      },
+    );
+    assert.ok(whole(seen?.origin));
+    return seen.origin;
+  };
+
+  const cellSize = async () => {
+    const seen = await seenBoard();
+    const ratio = await page.evaluate(() => devicePixelRatio);
+    assert.ok(seen !== undefined);
+    return { width: seen.advance / ratio, height: seen.rowHeight / ratio };
+  };
+
+  const middleOfBoard = async () => {
+    const box = await page.locator('.board-body').boundingBox();
+    assert.ok(box !== null);
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+
+  test('moves around a canvas by the wheel, down the rows of a notch and settling on whole cells', async () => {
+    const before = await settledOrigin();
+    const { x, y } = await middleOfBoard();
+    await page.mouse.move(x, y);
+    await page.mouse.wheel(0, 100);
+    const after = await settledOrigin((origin) => origin.row > before.row);
+    assert.strictEqual(after.column, before.column);
+  });
+
+  test('moves around a canvas dragged by the middle button, a cell for every cell of the way, settling on whole cells once let go', async () => {
+    const before = await settledOrigin();
+    const cell = await cellSize();
+    const { x, y } = await middleOfBoard();
+    await page.mouse.move(x, y);
+    await page.mouse.down({ button: 'middle' });
+    await page.mouse.move(x - 10.4 * cell.width, y - 3.3 * cell.height, {
+      steps: 6,
+    });
+    await page.mouse.up({ button: 'middle' });
+    const after = await settledOrigin(
+      (origin) => origin.column !== before.column,
+    );
+    assert.deepStrictEqual(after, {
+      column: before.column + 10,
+      row: before.row + 3,
+    });
+  });
+
+  test('moves around a canvas dragged while Space is held, and comes back where it was moved to once its tab is shown again', async () => {
+    const before = await settledOrigin();
+    const cell = await cellSize();
+    const { x, y } = await middleOfBoard();
+    await page.mouse.click(x, y);
+    await waitForFocus(page.locator('.board-body'), 'the canvas');
+    await page.keyboard.down('Space');
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 4 * cell.width, y + 2 * cell.height, {
+      steps: 4,
+    });
+    await page.mouse.up();
+    await page.keyboard.up('Space');
+    const after = await settledOrigin((origin) => origin.row !== before.row);
+    assert.deepStrictEqual(after, {
+      column: before.column - 4,
+      row: before.row - 2,
+    });
+    await showTab(page, 0);
+    await showTab(page, 1);
+    assert.deepStrictEqual(await settledOrigin(), after);
   });
 });
