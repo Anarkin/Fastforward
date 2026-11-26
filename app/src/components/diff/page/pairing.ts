@@ -1,5 +1,5 @@
 import type { ChangeBlock } from './changeBlocks';
-import { tokenSteps } from './tokenSteps';
+import { tokenSteps, wordTokens as wordPattern } from './tokenSteps';
 
 export const similarEnough = 0.5;
 
@@ -19,9 +19,6 @@ export function pairingBudget(): PairingBudget {
 }
 
 export type LinePair = readonly [number | undefined, number | undefined];
-
-const wordPattern =
-  /[\p{L}\p{M}\p{N}_\u200c\u200d]+|\p{RI}{2}|[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*(?:\u200d[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*)*/gu;
 
 interface Words {
   readonly counts: ReadonlyMap<string, number>;

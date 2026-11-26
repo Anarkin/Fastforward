@@ -102,7 +102,7 @@ export function seenCells(
   return cells;
 }
 
-export function shownUnder(text: string): string {
+function shownUnder(text: string): string {
   if (text === '\t') {
     return '';
   }

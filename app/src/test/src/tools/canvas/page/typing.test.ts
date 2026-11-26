@@ -26,9 +26,12 @@ suite('Canvas typing', () => {
     assert.deepStrictEqual(inserted(at('abcd', 3, 1), '-'), at('a-d', 2));
   });
 
-  test('deletes a character with its accents and a wide character whole, a line break with its carriage return, or the text selected', () => {
+  test('deletes as the editor deletes: an accent alone before the caret, a character with its accents after it, a wide character whole, a line break with its carriage return, or the text selected', () => {
     const accented = 'aéb';
-    assert.deepStrictEqual(deleted(at(accented, 3), false, false), at('ab', 1));
+    assert.deepStrictEqual(
+      deleted(at(accented, 3), false, false),
+      at('aeb', 2),
+    );
     assert.deepStrictEqual(deleted(at(accented, 1), true, false), at('ab', 1));
     assert.deepStrictEqual(deleted(at('a\r\nb', 3), false, false), at('ab', 1));
     assert.deepStrictEqual(deleted(at('a😀b', 1), true, false), at('ab', 1));

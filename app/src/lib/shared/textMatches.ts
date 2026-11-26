@@ -13,6 +13,13 @@ const wordBefore = new RegExp(`${wordCharacter}$`, 'u');
 const wordAfter = new RegExp(`^${wordCharacter}`, 'u');
 const wordRun = new RegExp(`${wordCharacter}+`, 'gu');
 
+const blank = /^\s+$/u;
+
+export type CharacterKind = 'word' | 'space' | 'other';
+
+export const characterKind = (cluster: string): CharacterKind =>
+  blank.test(cluster) ? 'space' : wordAfter.test(cluster) ? 'word' : 'other';
+
 let compiled:
   | {
       readonly query: string;

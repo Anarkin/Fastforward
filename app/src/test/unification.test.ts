@@ -86,4 +86,28 @@ suite('Unification', () => {
       'tools/editor/shared/textMarks.ts',
     ]);
   });
+
+  test('steps and deletes through a text by characters and by words in one component, which the editor and the canvas both type through, the canvas having stepped by words of its own that left out the accents and stopped at a line break the editor steps over', () => {
+    assert.deepStrictEqual(
+      doing(
+        /\bfunction (?:characterDeleted|groupDeleted|movedSideways|wordStep)\b/,
+      ),
+      ['components/editing/page/textSteps.ts'],
+    );
+    assert.deepStrictEqual(doing(/\bclusterBreak\(/), [
+      'components/cells/page/textPlaces.ts',
+      'components/editing/page/textSteps.ts',
+      'lib/page/graphemes.ts',
+      'shell/page/textCursor.ts',
+    ]);
+    assert.deepStrictEqual(doing(/charCategorizer/), []);
+  });
+
+  test('tells a letter, a mark, a digit or an underscore of a word by one class, which the steps, the finds, the occurrences and the diff all take theirs from, and the anchors of a Markdown heading by the class GitHub takes', () => {
+    assert.deepStrictEqual(doing(/\\p\{L\}/), [
+      'components/diff/page/tokenSteps.ts',
+      'lib/shared/textMatches.ts',
+      'tools/viewer/page/markdownRender.ts',
+    ]);
+  });
 });

@@ -11,6 +11,10 @@ import {
 } from './helpers/sourceGraph';
 
 const componentDoors: Readonly<Record<string, readonly string[]>> = {
+  editing: [
+    'components/editing/page/plainText.ts',
+    'components/editing/page/textSteps.ts',
+  ],
   cells: [
     'components/cells/page/cellColors.ts',
     'components/cells/page/cellFont.ts',

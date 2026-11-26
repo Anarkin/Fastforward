@@ -14,7 +14,10 @@ import {
   type EditorSurface,
   type SurfaceCommand,
 } from './surface';
-import { movedSideways, type Sideways } from './typing';
+import {
+  movedSideways,
+  type Sideways,
+} from '../../../components/editing/page/textSteps';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import type { RowFollower } from '../../../lib/page/rowScroll';
 import { editorKeymap } from './keymap';

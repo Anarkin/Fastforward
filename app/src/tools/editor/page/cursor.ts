@@ -1,4 +1,3 @@
-import { clusterBreak } from '../../../lib/page/graphemes';
 import { type Extension, type SelectionRange } from '@codemirror/state';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
 import {
@@ -10,7 +9,7 @@ import {
 } from '../../../lib/page/cursor';
 import type { Box } from '../../../lib/page/pixelBoxes';
 import { cellAt, gridOf, type Grid } from './grid';
-import { shownUnder } from '../../../components/cells/page/textPlaces';
+import { underAt } from '../../../components/cells/page/textPlaces';
 import { layerOrigin } from './rows';
 import {
   surfacePlugin,
@@ -34,13 +33,9 @@ function cursorCell(
   const { head } = range;
   const line = view.state.doc.lineAt(head);
   const char = head - line.from;
-  const text =
-    char >= line.length
-      ? ''
-      : line.text.slice(char, clusterBreak(line.text, char, true));
   return {
     cell: cellAt(view, grid, head, range.assoc || 1),
-    text: shownUnder(text),
+    text: underAt(line.text, char),
     font,
   };
 }

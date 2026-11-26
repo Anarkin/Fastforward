@@ -24,13 +24,11 @@ import {
   type SurfacePart,
   type SurfaceUpdate,
 } from './surface';
+import { bracketsClose, typed, type TextChange } from './typing';
 import {
-  bracketsClose,
   characterDeleted,
   groupDeleted,
-  typed,
-  type TextChange,
-} from './typing';
+} from '../../../components/editing/page/textSteps';
 
 const around = 10_000;
 

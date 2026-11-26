@@ -1,4 +1,9 @@
-import { clusterBreak } from '../../../lib/page/graphemes';
+import {
+  characterDeleted,
+  groupDeleted,
+  movedSideways,
+} from '../../../components/editing/page/textSteps';
+import { editedPlainly } from '../../../components/editing/page/plainText';
 import type { ScreenRow } from '../../../components/cells/page/lines';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { offsetAt, placeOf, rowEndOf, rowStartOf } from './nodeText';
@@ -19,44 +24,6 @@ export const spanOf = ({ anchor, head }: Caret): Span => ({
   to: Math.max(anchor, head),
 });
 
-const lineBreak = /[\r\n]/;
-
-const blank = /^\s+$/u;
-
-const wordCharacter = /[\p{L}\p{N}_]/u;
-
-type Category = 'word' | 'space' | 'other';
-
-function categoryOf(cluster: string): Category {
-  if (blank.test(cluster)) {
-    return 'space';
-  }
-  return wordCharacter.test(cluster) ? 'word' : 'other';
-}
-
-function wordStep(text: string, at: number, forward: boolean): number {
-  let pos = at;
-  let category: Category | undefined;
-  while (forward ? pos < text.length : pos > 0) {
-    const next = clusterBreak(text, pos, forward);
-    const over = text.slice(Math.min(pos, next), Math.max(pos, next));
-    if (lineBreak.test(over)) {
-      return pos === at ? next : pos;
-    }
-    const reached = categoryOf(over);
-    if (category === undefined || category === 'space') {
-      category = reached;
-    } else if (reached !== category) {
-      return pos;
-    }
-    pos = next;
-  }
-  return pos;
-}
-
-const stepOf = (text: string, at: number, forward: boolean, word: boolean) =>
-  word ? wordStep(text, at, forward) : clusterBreak(text, at, forward);
-
 const within = (caret: Caret, at: number) =>
   Math.max(0, Math.min(caret.text.length, at));
 
@@ -72,36 +39,25 @@ function replaced(caret: Caret, { from, to }: Span, text: string): Caret {
 export const inserted = (caret: Caret, text: string): Caret =>
   replaced(caret, spanOf(caret), text);
 
-export function deleted(caret: Caret, forward: boolean, word: boolean): Caret {
-  const span = spanOf(caret);
-  if (span.from !== span.to) {
-    return replaced(caret, span, '');
-  }
-  const to = stepOf(caret.text, caret.head, forward, word);
-  return replaced(
-    caret,
-    { from: Math.min(caret.head, to), to: Math.max(caret.head, to) },
-    '',
+export const deleted = (caret: Caret, forward: boolean, word: boolean): Caret =>
+  editedPlainly(caret, (state) =>
+    (word ? groupDeleted : characterDeleted)(state, forward),
   );
-}
 
 export function movedTo(caret: Caret, head: number, selects: boolean): Caret {
   const at = within(caret, head);
   return { text: caret.text, anchor: selects ? caret.anchor : at, head: at };
 }
 
-export function movedAcross(
+export const movedAcross = (
   caret: Caret,
   forward: boolean,
   word: boolean,
   selects: boolean,
-): Caret {
-  const span = spanOf(caret);
-  if (!selects && !word && span.from !== span.to) {
-    return movedTo(caret, forward ? span.to : span.from, false);
-  }
-  return movedTo(caret, stepOf(caret.text, caret.head, forward, word), selects);
-}
+): Caret =>
+  editedPlainly(caret, (state) =>
+    movedSideways(state, word ? 'group' : 'character', forward, selects),
+  );
 
 export function movedRows(
   caret: Caret,

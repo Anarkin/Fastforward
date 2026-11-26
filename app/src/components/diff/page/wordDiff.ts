@@ -7,12 +7,9 @@ import {
 import { type FindRange } from './find';
 import { keyedLine } from './lines';
 import { changePairs } from './pairing';
-import { tokenSteps } from './tokenSteps';
+import { spacedTokens as tokenPattern, tokenSteps } from './tokenSteps';
 
 const maxTokens = 1_000_000;
-
-const tokenPattern =
-  /[\p{L}\p{M}\p{N}_\u200c\u200d]+|\s+|\p{RI}{2}|[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*(?:\u200d[^\p{L}\p{M}\p{N}_\s][\p{M}\p{EMod}\u{e0020}-\u{e007f}]*)*/gu;
 
 export function tokenize(text: string): string[] {
   return text.match(tokenPattern) ?? [];
