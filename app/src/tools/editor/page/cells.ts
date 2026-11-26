@@ -187,7 +187,7 @@ class EditorCells implements SurfacePart {
     const { view, host } = this;
     const device = gpuDevice();
     const char = view.contentDOM.isConnected ? textAdvance(view) : 0;
-    if (device === undefined || !(char > 0)) {
+    if (device === undefined || !(char > 0) || view.awaiting) {
       this.left();
       return;
     }

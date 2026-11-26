@@ -269,12 +269,14 @@ export function useEditorView(language: string | undefined) {
     setEndingsShown(reused ? endingsShownOf(shown.state) : undefined);
     setIndentShown(reused ? indentShownOf(shown.state) : undefined);
     if (!reused) {
+      shown.awaiting = true;
       readEdited(tab);
     }
     const stop = listenEditor((message) => {
       if (message.tab !== tab || message.type !== 'editedText') {
         return;
       }
+      shown.awaiting = false;
       const head = shown.state.selection.main.head;
       version = message.shown.version;
       const keptState =

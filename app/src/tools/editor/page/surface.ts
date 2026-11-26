@@ -140,6 +140,7 @@ export class EditorSurface {
   readonly dom: HTMLElement;
   readonly scrollDOM: HTMLElement;
   readonly contentDOM: HTMLElement;
+  awaiting = false;
   private current: EditorState;
   private plugged: readonly SurfacePlugin<SurfacePart>[] = [];
   private made = new Map<SurfacePlugin<SurfacePart>, SurfacePart>();
