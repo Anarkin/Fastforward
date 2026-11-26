@@ -458,6 +458,7 @@ suite('Architecture', () => {
               'components.test.ts',
               'lessons.test.ts',
               'shortcutsShown.test.ts',
+              'unification.test.ts',
               'setup.ts',
               'unitSetup.ts',
             ].includes(file)

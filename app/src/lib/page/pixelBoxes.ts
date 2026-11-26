@@ -12,10 +12,12 @@ export interface Edges {
   readonly left: number;
 }
 
-const layoutUnits = 64;
+export const layoutUnits = 64;
 
-const snapped = (device: number) =>
-  Math.round(Math.round(device * layoutUnits) / layoutUnits);
+export const laidOut = (device: number): number =>
+  Math.round(device * layoutUnits) / layoutUnits;
+
+const snapped = (device: number) => Math.round(laidOut(device));
 
 export function pixelBox(box: Box, ratio: number): Box {
   const left = snapped(box.left * ratio);

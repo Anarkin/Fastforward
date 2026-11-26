@@ -1,3 +1,4 @@
+import { laidOut } from '../../../lib/page/pixelBoxes';
 import { textureUsage } from './gpuDevice';
 
 export interface RunStyle {
@@ -22,10 +23,8 @@ const mostMeasured = 20_000;
 
 export const runPadding = 2;
 
-const layoutUnits = 64;
-
 export function offsetOf(x: number): number {
-  return Math.round((x - Math.floor(x)) * layoutUnits) / layoutUnits;
+  return laidOut(x - Math.floor(x));
 }
 
 export class RunAtlas {

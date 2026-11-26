@@ -104,7 +104,7 @@ function lineAt(starts: readonly number[], position: number): number {
   return low;
 }
 
-function charAt(line: string, bytes: number): number | undefined {
+function charAtBytes(line: string, bytes: number): number | undefined {
   let counted = 0;
   let chars = 0;
   for (const char of line) {
@@ -161,7 +161,7 @@ export function rowSegments(
   const bytes = row.start - (colored.lineStarts[index] ?? 0);
   const from = colored.unitLines[index]
     ? bytes / colored.unit
-    : charAt(line, bytes);
+    : charAtBytes(line, bytes);
   return from === undefined || !Number.isInteger(from)
     ? undefined
     : lineSegments(colored, index, from, row.text);

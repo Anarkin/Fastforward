@@ -20,7 +20,7 @@ import type { TileCheck, TileLooks } from './tileProbes';
 import type { TileLook } from './tileLooks';
 import { pushOutline } from './rowOutline';
 import { strokeTick } from './checkTick';
-import { laidOut } from '../../../components/cells/page/listCanvas';
+import { laidOut } from '../../../lib/page/pixelBoxes';
 
 export interface TilePicture {
   readonly image: HTMLImageElement | ImageBitmap;

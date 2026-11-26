@@ -21,7 +21,7 @@ import type { IconShown } from './paneIcons';
 import type { PaneImages } from './paneImages';
 import { pushOutline } from './rowOutline';
 import { strokeTick } from './checkTick';
-import { laidOut } from '../../../components/cells/page/listCanvas';
+import { laidOut } from '../../../lib/page/pixelBoxes';
 
 export interface LinePointed {
   readonly index: number;

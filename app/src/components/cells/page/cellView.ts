@@ -1,3 +1,4 @@
+import { laidOut } from '../../../lib/page/pixelBoxes';
 import type { ScreenRow } from './lines';
 import type { DotLook } from '../../../lib/page/dotLook';
 import { cellMetricsOf, type CellFont } from './cellLook';
@@ -36,12 +37,7 @@ const restingBudget = 50;
 
 const scrollingWithin = 100;
 
-const layoutUnits = 64;
-
 const onPixel = 1e-6;
-
-const inLayoutUnits = (device: number) =>
-  Math.round(device * layoutUnits) / layoutUnits;
 
 const pools = new WeakMap<GPUDevice, Pool<CellSurface>>();
 
@@ -138,8 +134,8 @@ export interface Nudge {
 }
 
 export function nudgeOf(left: number, top: number, ratio: number): Nudge {
-  const across = inLayoutUnits(left * ratio);
-  const down = inLayoutUnits(top * ratio);
+  const across = laidOut(left * ratio);
+  const down = laidOut(top * ratio);
   return {
     shift: across - Math.round(across),
     left: (Math.round(across) - across) / ratio,

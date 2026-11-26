@@ -1,3 +1,4 @@
+import { laidOut } from '../../../lib/page/pixelBoxes';
 import type { CellFrame } from './cellFrame';
 import { CellSurface } from './cellSurface';
 import { gpuDevice } from './gpuDevice';
@@ -36,11 +37,6 @@ export function drawnWithRoom(frame: () => Presented | undefined): void {
 }
 
 const tileStride = 7;
-
-const layoutUnits = 64;
-
-export const laidOut = (device: number) =>
-  Math.round(device * layoutUnits) / layoutUnits;
 
 function replay(row: RowPaint, originPixels: number, into: CellFrame): void {
   const { rects, tiles } = row;

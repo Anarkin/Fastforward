@@ -1,3 +1,4 @@
+import { layoutUnits } from '../../../lib/page/pixelBoxes';
 import { drawnTabSize } from './indent';
 import { widthsFor } from '../../../lib/page/textWidths';
 import type { Extension } from '@codemirror/state';
@@ -61,8 +62,6 @@ import { scrolledAcross, textAdvance, textStart, wrapColumnsOf } from './rows';
 const rowClass = 'editor-row';
 
 const mostCanvas = 8192;
-
-const layoutUnits = 64;
 
 const noRowsAhead: readonly never[] = [];
 

@@ -1,3 +1,4 @@
+import { layoutUnits } from '../../../lib/page/pixelBoxes';
 import {
   useEffect,
   useLayoutEffect,
@@ -78,8 +79,6 @@ const bubbleInset = 6;
 const bubbleGap = 4;
 
 const mergeReach = 8;
-
-const layoutUnits = 64;
 
 interface Drawn {
   readonly surface: CellSurface;
