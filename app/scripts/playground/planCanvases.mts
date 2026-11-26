@@ -71,6 +71,17 @@ const edge = (
 
 const written = (board: Json) => JSON.stringify(board, null, '\t');
 
+const objectsALine = (items: readonly Json[]) =>
+  items.length === 0
+    ? '[]'
+    : `[\n${items.map((item) => `\t\t${JSON.stringify(item)}`).join(',\n')}\n\t]`;
+
+const asObsidianWrites = (board: {
+  readonly nodes: readonly Json[];
+  readonly edges: readonly Json[];
+}) =>
+  `{\n\t"nodes":${objectsALine(board.nodes)},\n\t"edges":${objectsALine(board.edges)}\n}`;
+
 const sides = (fromSide: string, toSide: string) => ({ fromSide, toSide });
 
 function hexIds(count: number): string[] {
@@ -520,7 +531,7 @@ const smallBoard = {
 export function planCanvases({ items, file, section }: PlanBuilder): void {
   section(
     'canvases',
-    `Canvases of JSON Canvas to open with Open with Canvas in the menu of a file, their places and sizes in cells of the default font, ${defaultCell.width} by ${defaultCell.height} pixels: tour.canvas holds every kind of node and edge, colors.canvas every color, edges.canvas edges from and to every side with every end, to themselves and around nodes, groups.canvas groups in groups and nodes over each other, text.canvas text of every kind and nodes smaller than their borders, off-grid.canvas places and sizes off the grid of cells, as other apps write them, obsidian.canvas a canvas as Obsidian writes it, big.canvas ${bigBoard.nodes.length.toLocaleString('en-US')} nodes to move around in, extra-fields.canvas fields JSON Canvas lacks, to keep as saved, and read-only.canvas a file to save over; empty.canvas, blank.canvas, bom.canvas and Shouting.CANVAS open empty or small, skipped.canvas leaves out what it can't draw, not-json.canvas, not-a-board.canvas and too-large.canvas say why they draw nothing, and tour.json is no canvas by its name.`,
+    `Canvases of JSON Canvas to open with Open with Canvas in the menu of a file, their places and sizes in cells of the default font, ${defaultCell.width} by ${defaultCell.height} pixels: tour.canvas holds every kind of node and edge, colors.canvas every color, edges.canvas edges from and to every side with every end, to themselves and around nodes, groups.canvas groups in groups and nodes over each other, text.canvas text of every kind and nodes smaller than their borders, off-grid.canvas places and sizes off the grid of cells, as other apps write them, obsidian.canvas a canvas as Obsidian writes it, a tab an indent and an object a line, big.canvas ${bigBoard.nodes.length.toLocaleString('en-US')} nodes to move around in, extra-fields.canvas fields JSON Canvas lacks, to keep as saved, and read-only.canvas a file to save over; empty.canvas, blank.canvas, bom.canvas and Shouting.CANVAS open empty or small, skipped.canvas leaves out what it can't draw, not-json.canvas, not-a-board.canvas and too-large.canvas say why they draw nothing, and tour.json is no canvas by its name.`,
   );
   file('canvases/tour.canvas', written(tourBoard));
   file('canvases/colors.canvas', written(colorsBoard));
@@ -528,7 +539,7 @@ export function planCanvases({ items, file, section }: PlanBuilder): void {
   file('canvases/groups.canvas', written(groupsBoard));
   file('canvases/text.canvas', written(textBoard));
   file('canvases/off-grid.canvas', written(offGridBoard));
-  file('canvases/obsidian.canvas', written(obsidianBoard));
+  file('canvases/obsidian.canvas', asObsidianWrites(obsidianBoard));
   file('canvases/big.canvas', written(bigBoard));
   file('canvases/extra-fields.canvas', written(extraFieldsBoard));
   file('canvases/read-only.canvas', written(smallBoard), { readOnly: true });

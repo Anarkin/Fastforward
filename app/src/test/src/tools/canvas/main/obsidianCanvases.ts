@@ -1,0 +1,288 @@
+type Json = Readonly<Record<string, unknown>>;
+
+function asObsidianWrites(
+  nodes: readonly Json[],
+  edges: readonly Json[],
+): string {
+  const list = (items: readonly Json[]) =>
+    items.length === 0
+      ? '[]'
+      : `[\n${items.map((item) => `\t\t${JSON.stringify(item)}`).join(',\n')}\n\t]`;
+  return `{\n\t"nodes":${list(nodes)},\n\t"edges":${list(edges)}\n}`;
+}
+
+const sampleLike = asObsidianWrites(
+  [
+    {
+      id: '3f0a6c2be1d94a57',
+      type: 'group',
+      x: -300,
+      y: -460,
+      width: 610,
+      height: 200,
+      label: 'Board',
+    },
+    {
+      id: '9c1e7b44d02fa8e3',
+      type: 'file',
+      file: 'readme.md',
+      x: -280,
+      y: -200,
+      width: 570,
+      height: 560,
+      color: '6',
+    },
+    {
+      id: '5b8d2e90a7c4f163',
+      type: 'file',
+      file: 'assets/logo.svg',
+      x: -280,
+      y: -440,
+      width: 217,
+      height: 80,
+    },
+    {
+      id: 'e47a0d3c9b61f285',
+      type: 'text',
+      text: 'Read on:\n\n- [Notes](notes/index.md)\n- [Spec](spec/1.0.md)\n- [Site](https://example.com)',
+      x: 40,
+      y: -440,
+      width: 250,
+      height: 160,
+    },
+    {
+      id: '1d6f93a0c58be742',
+      type: 'file',
+      file: 'spec/1.0.md',
+      x: 360,
+      y: -400,
+      width: 400,
+      height: 400,
+    },
+  ],
+  [
+    {
+      id: 'a2c4e6f8091b3d5f',
+      fromNode: '5b8d2e90a7c4f163',
+      fromSide: 'right',
+      toNode: 'e47a0d3c9b61f285',
+      toSide: 'left',
+    },
+  ],
+);
+
+export const everyAttribute = asObsidianWrites(
+  [
+    {
+      id: '0a1b2c3d4e5f6071',
+      type: 'group',
+      x: -620,
+      y: -400,
+      width: 1240,
+      height: 860,
+      label: 'Every attribute',
+      background: 'assets/cork.png',
+      backgroundStyle: 'repeat',
+    },
+    {
+      id: '1b2c3d4e5f607182',
+      type: 'group',
+      x: -600,
+      y: 480,
+      width: 400,
+      height: 200,
+      background: 'assets/sky.jpg',
+      backgroundStyle: 'cover',
+    },
+    {
+      id: '2c3d4e5f60718293',
+      type: 'group',
+      x: -180,
+      y: 480,
+      width: 400,
+      height: 200,
+      backgroundStyle: 'ratio',
+    },
+    {
+      id: '3d4e5f60718293a4',
+      type: 'text',
+      text: '# Heading\n\nA **note** with a [[wiki link]] and a tag #idea.',
+      x: -580,
+      y: -360,
+      width: 400,
+      height: 400,
+      color: '1',
+    },
+    {
+      id: '4e5f60718293a4b5',
+      type: 'text',
+      text: '',
+      x: -140,
+      y: -360,
+      width: 250,
+      height: 60,
+      color: '2',
+    },
+    {
+      id: '5f60718293a4b5c6',
+      type: 'file',
+      file: 'Notes/Plan.md',
+      subpath: '#Steps',
+      x: 160,
+      y: -360,
+      width: 400,
+      height: 400,
+      color: '3',
+    },
+    {
+      id: '60718293a4b5c6d7',
+      type: 'file',
+      file: 'Notes/Plan.md',
+      subpath: '#^3f1c2a',
+      x: -580,
+      y: 80,
+      width: 400,
+      height: 120,
+      color: '4',
+    },
+    {
+      id: '718293a4b5c6d7e8',
+      type: 'file',
+      file: 'Attachments/photo.png',
+      x: -140,
+      y: 80,
+      width: 400,
+      height: 300,
+      color: '5',
+    },
+    {
+      id: '8293a4b5c6d7e8f9',
+      type: 'file',
+      file: 'Attachments/paper.pdf',
+      x: 300,
+      y: 80,
+      width: 300,
+      height: 380,
+      color: '6',
+    },
+    {
+      id: '93a4b5c6d7e8f90a',
+      type: 'link',
+      url: 'https://jsoncanvas.org/spec/1.0/',
+      x: -140,
+      y: -240,
+      width: 250,
+      height: 120,
+      color: '#FF0000',
+    },
+  ],
+  [
+    {
+      id: 'aa00000000000001',
+      fromNode: '3d4e5f60718293a4',
+      fromSide: 'right',
+      toNode: '4e5f60718293a4b5',
+      toSide: 'left',
+    },
+    {
+      id: 'aa00000000000002',
+      fromNode: '4e5f60718293a4b5',
+      fromSide: 'bottom',
+      fromEnd: 'arrow',
+      toNode: '93a4b5c6d7e8f90a',
+      toSide: 'top',
+      toEnd: 'arrow',
+    },
+    {
+      id: 'aa00000000000003',
+      fromNode: '93a4b5c6d7e8f90a',
+      fromSide: 'right',
+      toNode: '5f60718293a4b5c6',
+      toSide: 'left',
+      toEnd: 'none',
+      label: 'plans',
+    },
+    {
+      id: 'aa00000000000004',
+      fromNode: '5f60718293a4b5c6',
+      fromSide: 'bottom',
+      fromEnd: 'none',
+      toNode: '8293a4b5c6d7e8f9',
+      toSide: 'top',
+      color: '4',
+    },
+    {
+      id: 'aa00000000000005',
+      fromNode: '60718293a4b5c6d7',
+      toNode: '718293a4b5c6d7e8',
+      color: '#00ff88',
+    },
+    {
+      id: 'aa00000000000006',
+      fromNode: '718293a4b5c6d7e8',
+      fromSide: 'left',
+      toNode: '718293a4b5c6d7e8',
+      toSide: 'top',
+    },
+  ],
+);
+
+export const unicodeAndPlaces = asObsidianWrites(
+  [
+    {
+      id: 'b0b1b2b3b4b5b6b7',
+      type: 'text',
+      text: '日本語 😀 👩‍👩‍👧 עברית العربية\tTabs\n\nLine two',
+      x: -1250,
+      y: -980,
+      width: 400,
+      height: 160,
+    },
+    {
+      id: 'c0c1c2c3c4c5c6c7',
+      type: 'text',
+      text: 'Far away',
+      x: 48000,
+      y: 31000,
+      width: 250,
+      height: 60,
+    },
+    {
+      id: 'd0d1d2d3d4d5d6d7',
+      type: 'text',
+      text: 'Small',
+      x: 0,
+      y: 0,
+      width: 20,
+      height: 20,
+    },
+    {
+      id: 'e0e1e2e3e4e5e6e7',
+      type: 'group',
+      x: -1300,
+      y: -1020,
+      width: 1400,
+      height: 1100,
+      label: 'A group listed after what it holds',
+    },
+  ],
+  [
+    {
+      id: 'f0f1f2f3f4f5f6f7',
+      fromNode: 'b0b1b2b3b4b5b6b7',
+      fromSide: 'right',
+      toNode: 'c0c1c2c3c4c5c6c7',
+      toSide: 'left',
+      label: '→ far',
+    },
+  ],
+);
+
+const emptyAsObsidianWrites = asObsidianWrites([], []);
+
+export const obsidianCanvases: Readonly<Record<string, string>> = {
+  sampleLike,
+  everyAttribute,
+  unicodeAndPlaces,
+  empty: emptyAsObsidianWrites,
+};

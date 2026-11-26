@@ -1,5 +1,6 @@
 import { isObject, type Json } from '../../../lib/main/json';
 import {
+  backgroundStyles,
   edgeEnds,
   nodeSides,
   type Board,
@@ -40,9 +41,7 @@ function placedOf(value: Json) {
     isNumber(x) &&
     isNumber(y) &&
     isNumber(width) &&
-    isNumber(height) &&
-    width > 0 &&
-    height > 0
+    isNumber(height)
     ? { id, x, y, width, height, ...(typeof color === 'string' && { color }) }
     : undefined;
 }
@@ -55,7 +54,7 @@ function nodeOf(value: unknown): BoardNode | undefined {
   if (placed === undefined) {
     return undefined;
   }
-  const { text, file, subpath, url, label } = value;
+  const { text, file, subpath, url, label, background } = value;
   switch (value.type) {
     case 'text':
       return typeof text === 'string'
@@ -74,12 +73,16 @@ function nodeOf(value: unknown): BoardNode | undefined {
       return typeof url === 'string'
         ? { ...placed, type: 'link', url }
         : undefined;
-    case 'group':
+    case 'group': {
+      const backgroundStyle = oneOf(backgroundStyles, value.backgroundStyle);
       return {
         ...placed,
         type: 'group',
         ...(typeof label === 'string' && { label }),
+        ...(typeof background === 'string' && { background }),
+        ...(backgroundStyle !== undefined && { backgroundStyle }),
       };
+    }
     default:
       return undefined;
   }

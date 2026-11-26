@@ -17,6 +17,7 @@ suite('Canvas reading', () => {
           height: 400,
           label: 'Plan',
           background: 'cork.png',
+          backgroundStyle: 'repeat',
         },
         {
           id: 't',
@@ -76,6 +77,8 @@ suite('Canvas reading', () => {
             width: 600,
             height: 400,
             label: 'Plan',
+            background: 'cork.png',
+            backgroundStyle: 'repeat',
           },
           {
             id: 't',
@@ -152,7 +155,7 @@ suite('Canvas reading', () => {
     }
   });
 
-  test('skips a node without an id, a place, a size above zero or what its kind holds, or of a kind JSON Canvas lacks, one whose id an earlier node has, and an edge to a node not drawn, counting them', () => {
+  test('skips a node without an id, a place and size in numbers or what its kind holds, or of a kind JSON Canvas lacks, one whose id an earlier node has, and an edge to a node not drawn, counting them, but keeps a node of no width, as JSON Canvas asks for whole numbers alone', () => {
     const read = boardOf(
       JSON.stringify({
         nodes: [
@@ -194,10 +197,24 @@ suite('Canvas reading', () => {
     assert.deepStrictEqual(read, {
       kind: 'board',
       board: {
-        nodes: [{ id: 'a', type: 'text', ...placed, text: 'kept' }],
-        edges: [{ id: 'x', fromNode: 'a', toNode: 'a' }],
+        nodes: [
+          { id: 'a', type: 'text', ...placed, text: 'kept' },
+          {
+            id: 'b',
+            type: 'text',
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 60,
+            text: 'flat',
+          },
+        ],
+        edges: [
+          { id: 'x', fromNode: 'a', toNode: 'a' },
+          { id: 'y', fromNode: 'a', toNode: 'b' },
+        ],
       },
-      skipped: 12,
+      skipped: 10,
     });
   });
 

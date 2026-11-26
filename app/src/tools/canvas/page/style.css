@@ -7,7 +7,60 @@
   overflow: hidden;
 }
 
+.board-host {
+  position: absolute;
+  pointer-events: none;
+}
+
+.board-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.board-probe-row {
+  position: absolute;
+  visibility: hidden;
+  font-family: var(--monospace-font-family);
+  font-size: var(--monospace-font-size);
+  line-height: round(
+    var(--monospace-font-size) * var(--monospace-line-height),
+    var(--device-pixel, 1px)
+  );
+  white-space: pre;
+}
+
+.board-line,
+.board-sign {
+  color: var(--muted-foreground);
+}
+
+.board-color-1 {
+  color: var(--color-git-graph-red);
+}
+
+.board-color-2 {
+  color: var(--color-git-graph-orange);
+}
+
+.board-color-3 {
+  color: var(--color-git-graph-yellow);
+}
+
+.board-color-4 {
+  color: var(--color-git-graph-green);
+}
+
+.board-color-5 {
+  color: var(--color-git-graph-cyan);
+}
+
+.board-color-6 {
+  color: var(--color-git-graph-purple);
+}
+
 .board-error {
+  position: relative;
   padding: 8px;
   color: var(--color-error-foreground);
 }

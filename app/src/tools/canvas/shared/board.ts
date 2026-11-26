@@ -1,8 +1,10 @@
 export const nodeSides = ['top', 'right', 'bottom', 'left'] as const;
 
-type NodeSide = (typeof nodeSides)[number];
+export type NodeSide = (typeof nodeSides)[number];
 
 export const edgeEnds = ['none', 'arrow'] as const;
+
+export const backgroundStyles = ['cover', 'ratio', 'repeat'] as const;
 
 type EdgeEnd = (typeof edgeEnds)[number];
 
@@ -23,7 +25,12 @@ export type BoardNode =
       readonly subpath?: string;
     })
   | (Placed & { readonly type: 'link'; readonly url: string })
-  | (Placed & { readonly type: 'group'; readonly label?: string });
+  | (Placed & {
+      readonly type: 'group';
+      readonly label?: string;
+      readonly background?: string;
+      readonly backgroundStyle?: (typeof backgroundStyles)[number];
+    });
 
 export interface BoardEdge {
   readonly id: string;
