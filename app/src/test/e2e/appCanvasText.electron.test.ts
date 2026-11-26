@@ -13,6 +13,7 @@ import {
   mostUnlike,
   unlikeCells,
   unlikeShare,
+  unlikeWhere,
   type Box,
   type Seen,
 } from './inkAlike';
@@ -204,7 +205,7 @@ suite('App canvas text', () => {
         cellsApart: [],
         pixelsAlike: true,
       },
-      `${unlikeShare(viewed, drawn)} of the ink unlike, the text starting ${viewed.phase} and ${drawn.phase} of a device pixel in`,
+      `${unlikeShare(viewed, drawn)} of the ink unlike, the text starting ${viewed.phase} and ${drawn.phase} of a device pixel in, most unlike in the cells ${unlikeWhere(viewed, drawn, comparedColumns, lines.length)}`,
     );
     await page.keyboard.press('Escape');
   });

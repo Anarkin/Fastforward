@@ -161,3 +161,29 @@ export function unlikeCells(
       : [];
   });
 }
+
+export function unlikeWhere(
+  one: Seen,
+  other: Seen,
+  columns: number,
+  rows: number,
+): string {
+  const height = one.brightness.length / one.width;
+  const counts = new Map<string, number>();
+  for (let at = 0; at < one.brightness.length; at++) {
+    if (
+      Math.abs((one.brightness[at] ?? 0) - (other.brightness[at] ?? 0)) >
+      edgeLevels
+    ) {
+      const x = at % one.width;
+      const y = Math.floor(at / one.width);
+      const cell = `${Math.floor((y * rows) / height)}:${Math.floor((x * columns) / one.width)}`;
+      counts.set(cell, (counts.get(cell) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .toSorted((a, b) => b[1] - a[1])
+    .slice(0, 12)
+    .map(([cell, count]) => `${cell}×${count}`)
+    .join(' ');
+}
