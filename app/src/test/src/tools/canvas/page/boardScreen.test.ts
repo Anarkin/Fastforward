@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { beforeAll, suite, test } from 'vitest';
 import {
   boundsOf,
   colorKind,
@@ -8,7 +8,10 @@ import {
 import { screenRows } from '../../../../../tools/canvas/page/seenScreen';
 import { boardOf } from '../../../../../tools/canvas/main/reading';
 import { boxOf } from '../../../../../tools/canvas/page/grid';
-import { obsidianCanvases } from '../main/obsidianCanvases';
+import {
+  obsidianCanvasesLoaded,
+  type ObsidianCanvases,
+} from '../../../../helpers/playgroundCanvases';
 import type {
   Board,
   BoardEdge,
@@ -62,6 +65,12 @@ const edge = (more: Partial<BoardEdge> = {}): BoardEdge => ({
 });
 
 suite('Canvas screen', () => {
+  let corpus: ObsidianCanvases;
+
+  beforeAll(async () => {
+    corpus = await obsidianCanvasesLoaded();
+  });
+
   test('draws nodes as boxes of box-drawing characters with their text inside, and an edge from a side of one as a line that leaves it from a joint, turns once and points at the top of the other, as the sketch of the canvas has it', () => {
     assert.deepStrictEqual(
       screenText({
@@ -272,7 +281,7 @@ suite('Canvas screen', () => {
   });
 
   test('draws every node of a canvas as Obsidian writes it where its box starts, its sides from its corner, whatever its place', () => {
-    for (const [name, written] of Object.entries(obsidianCanvases)) {
+    for (const [name, written] of Object.entries(corpus.obsidianCanvases)) {
       const read = boardOf(written);
       assert.ok(read.kind === 'board', name);
       for (const node of read.board.nodes) {
@@ -296,7 +305,7 @@ suite('Canvas screen', () => {
   });
 
   test('draws an edge without ends with none at its start and an arrow at its end, as JSON Canvas defaults them', () => {
-    const read = boardOf(obsidianCanvases.sampleLike ?? '');
+    const read = boardOf(corpus.obsidianCanvases['sample-like'] ?? '');
     assert.ok(read.kind === 'board');
     const shown = screenOf({
       board: read.board,

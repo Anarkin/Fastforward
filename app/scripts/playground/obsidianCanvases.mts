@@ -1,6 +1,6 @@
 type Json = Readonly<Record<string, unknown>>;
 
-function asObsidianWrites(
+export function asObsidianWrites(
   nodes: readonly Json[],
   edges: readonly Json[],
 ): string {
@@ -281,8 +281,8 @@ export const unicodeAndPlaces = asObsidianWrites(
 const emptyAsObsidianWrites = asObsidianWrites([], []);
 
 export const obsidianCanvases: Readonly<Record<string, string>> = {
-  sampleLike,
-  everyAttribute,
-  unicodeAndPlaces,
+  'sample-like': sampleLike,
+  'every-attribute': everyAttribute,
+  'unicode-and-places': unicodeAndPlaces,
   empty: emptyAsObsidianWrites,
 };

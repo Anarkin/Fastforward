@@ -1,11 +1,10 @@
 import * as assert from 'node:assert';
-import { suite, test } from 'vitest';
+import { beforeAll, suite, test } from 'vitest';
 import { boardOf } from '../../../../../tools/canvas/main/reading';
 import {
-  everyAttribute,
-  obsidianCanvases,
-  unicodeAndPlaces,
-} from './obsidianCanvases';
+  obsidianCanvasesLoaded,
+  type ObsidianCanvases,
+} from '../../../../helpers/playgroundCanvases';
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null;
@@ -27,8 +26,14 @@ const read = (text: string) => {
 };
 
 suite('JSON Canvas 1.0', () => {
+  let corpus: ObsidianCanvases;
+
+  beforeAll(async () => {
+    corpus = await obsidianCanvasesLoaded();
+  });
+
   test('reads every node and edge of a canvas as Obsidian writes it, a tab an indent and an object a line, leaving out none', () => {
-    for (const [name, text] of Object.entries(obsidianCanvases)) {
+    for (const [name, text] of Object.entries(corpus.obsidianCanvases)) {
       const { board, skipped } = read(text);
       assert.strictEqual(skipped, 0, name);
       assert.deepStrictEqual(
@@ -45,14 +50,14 @@ suite('JSON Canvas 1.0', () => {
   });
 
   test('keeps every attribute JSON Canvas defines as written: the place, size and color of every node, the text of a text, the file and subpath of a file, the url of a link, the label and background of a group, and the sides, ends, color and label of an edge', () => {
-    const { board } = read(everyAttribute);
-    const written: unknown = JSON.parse(everyAttribute);
+    const { board } = read(corpus.everyAttribute);
+    const written: unknown = JSON.parse(corpus.everyAttribute);
     assert.deepStrictEqual(board, written);
   });
 
   test('keeps the nodes in the order of the file, the first lowest, a group listed after the nodes it holds too', () => {
     assert.deepStrictEqual(
-      read(unicodeAndPlaces).board.nodes.map((node) => node.type),
+      read(corpus.unicodeAndPlaces).board.nodes.map((node) => node.type),
       ['text', 'text', 'text', 'group'],
     );
   });
@@ -71,7 +76,8 @@ suite('JSON Canvas 1.0', () => {
   });
 
   test('leaves the ends of an edge unset where the file leaves them, for the canvas to draw none at its start and an arrow at its end as JSON Canvas defaults them', () => {
-    const [edge] = read(obsidianCanvases.sampleLike ?? '').board.edges;
+    const [edge] = read(corpus.obsidianCanvases['sample-like'] ?? '').board
+      .edges;
     assert.strictEqual(edge?.fromEnd, undefined);
     assert.strictEqual(edge?.toEnd, undefined);
   });
