@@ -8,6 +8,7 @@ import {
 import { isImageView, isTextView } from '../shared/views';
 import type { DragEvent, Visit } from './dragEvents';
 import { InFlight } from '../../lib/main/inFlight';
+import { gpuAnswers } from './gpuAnswers';
 import type {
   AboutInfo,
   ToHost,
@@ -52,6 +53,7 @@ export interface ShellHost extends PathMenuHost {
   checkForUpdates(): void;
   installUpdate(): void;
   quit(): void;
+  quitWithoutGpu(): void;
   updateStatus(): UpdateStatus;
   about(): AboutInfo;
   copyText(text: string): void;
@@ -109,6 +111,14 @@ export class Shell {
   private readonly tabs: Tabs;
   private readonly views: TabViews;
   private readonly viewSaver: ViewSaver;
+  private readonly gpu = gpuAnswers({
+    none: () => this.host.quitWithoutGpu(),
+    lost: () =>
+      this.pages.notice(undefined, {
+        level: 'error',
+        message: strings.common.gpuLost,
+      }),
+  });
 
   constructor(
     private readonly log: Log,
@@ -404,6 +414,11 @@ export class Shell {
         return;
       case 'installTerminalCommand':
         await this.command.install(page);
+        return;
+      case 'gpu':
+        if (typeof message.drawing === 'boolean') {
+          this.gpu(message.drawing);
+        }
         return;
       case 'checkForUpdates':
         host.checkForUpdates();

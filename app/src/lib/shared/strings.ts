@@ -114,8 +114,8 @@ export const strings = {
     explorerMenuEntry: `Open in ${brand}`,
   },
   common: {
-    noGpu:
-      'Text is drawn by the GPU, and this computer lets Fastforward use none.',
+    noGpu: `${brand} draws with the GPU, and this computer lets it use none.`,
+    gpuLost: `${brand} lost the GPU it draws with. Restart it to draw again.`,
     close: 'Close',
     showWhitespace: 'Show Whitespace',
     wrap: 'Wrap Long Lines',

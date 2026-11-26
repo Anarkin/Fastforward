@@ -548,6 +548,48 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('says at the start that the app has no GPU to draw with and quits, once, but tells of a GPU lost for good after one drew in a notice saying to restart, quitting nothing, as files edited and copies may be left unsaved', async () => {
+    const host = new FakeHost();
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await view.connection.receive(
+          forged('{ "type": "gpu", "drawing": "no" }'),
+        );
+        assert.deepStrictEqual(host.opened, []);
+        await view.connection.receive({ type: 'gpu', drawing: false });
+        await view.connection.receive({ type: 'gpu', drawing: false });
+        assert.deepStrictEqual(host.opened, ['no GPU']);
+      },
+      true,
+      host,
+      noGit,
+    );
+    const later = new FakeHost();
+    await withView(
+      log,
+      [],
+      async (view) => {
+        await view.connection.receive({ type: 'ready' });
+        for (const drawing of [true, false, false, true, false]) {
+          await view.connection.receive({ type: 'gpu', drawing });
+        }
+        assert.deepStrictEqual(later.opened, []);
+        assert.deepStrictEqual(
+          view.page.messages.filter((message) => message.type === 'notice'),
+          [
+            { type: 'notice', level: 'error', message: strings.common.gpuLost },
+            { type: 'notice', level: 'error', message: strings.common.gpuLost },
+          ],
+        );
+      },
+      true,
+      later,
+      noGit,
+    );
+  });
+
   test('logs what the page sends at its level, marked as from the webview', async () => {
     const recording = recordingLog();
     await withView(

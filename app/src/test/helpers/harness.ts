@@ -312,6 +312,7 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   installUpdate: true,
   quit: true,
   installTerminalCommand: true,
+  gpu: true,
   log: true,
   tool: true,
 };

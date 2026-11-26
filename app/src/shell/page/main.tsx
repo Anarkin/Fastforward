@@ -14,6 +14,12 @@ import { showGenericIcons } from './genericIcons';
 import { installTextCursors } from './textCursor';
 import { installTextHeights } from './textHeights';
 import { copyReal } from '../../lib/page/signedCopy';
+import { reportGpu } from './gpuReport';
+import {
+  gpuDevice,
+  gpuRefused,
+  watchGpu,
+} from '../../components/cells/page/gpuDevice';
 
 declare global {
   interface Window {
@@ -56,6 +62,10 @@ window.addEventListener('unhandledrejection', (event) =>
   post({ type: 'log', level: 'error', message: errorText(event.reason) }),
 );
 
+reportGpu(
+  { device: gpuDevice, refused: gpuRefused, watch: watchGpu },
+  (drawing) => post({ type: 'gpu', drawing }),
+);
 installScrollbars();
 watchScrollEnds(document);
 watchDevicePixels(() => undefined);

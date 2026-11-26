@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { strings } from '../../../../../lib/shared/strings';
 import { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { suite, test } from 'vitest';
@@ -185,30 +184,6 @@ async function viewing(
 }
 
 suite('Text of a viewed file', () => {
-  test('says that text is drawn by the GPU where the page has no WebGPU, as nothing else draws the text of a file, and says nothing of it while the GPU has yet to answer', async () => {
-    const gpu = Object.getOwnPropertyDescriptor(navigator, 'gpu');
-    assert.ok(gpu);
-    await viewing(async ({ show, answerAll, error }) => {
-      await show('1');
-      await answerAll(evenLines);
-      const asked = error();
-      Object.defineProperty(navigator, 'gpu', {
-        configurable: true,
-        value: undefined,
-      });
-      try {
-        await show('2');
-
-        assert.deepStrictEqual(
-          [asked, error()],
-          [undefined, strings.common.noGpu],
-        );
-      } finally {
-        Object.defineProperty(navigator, 'gpu', gpu);
-      }
-    });
-  });
-
   test('ends at the last screen of a file rewritten at the same size, as the place of the last screen was kept from before', async () => {
     const longEnd = fileOf([
       ...Array.from({ length: 500 }, () => 10),

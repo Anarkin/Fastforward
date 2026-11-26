@@ -65,7 +65,7 @@ suite('GPU the cells are drawn with', () => {
     assert.strictEqual(gpu.generation(), 3);
   });
 
-  test('says the GPU is refused in a page without WebGPU, and once the page gives no adapter or fails to give a device, telling whoever watches, so a file viewed says why none of its text is drawn', async () => {
+  test('says the GPU is refused in a page without WebGPU, and once the page gives no adapter or fails to give a device, telling whoever watches, so the app can say at its start that it has none to draw with', async () => {
     const without = gpuOf<FakeDevice>({});
     const noAdapter = gpuOf<FakeDevice>({
       gpu: { requestAdapter: () => Promise.resolve(null) },

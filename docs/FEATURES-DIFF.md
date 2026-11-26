@@ -65,7 +65,7 @@
 | --- | --- | --- | --- | --- | --- |
 | Binary files | Say a file is binary instead of showing a patch | — | Core | ✅ Yes | On its header when both sides are binary, on the line of its side when added or deleted, as what holds for the whole file is said once on its header, renamed or copied without changes, its mode changed or unchanged too, and what holds for one side on that side, where its code starts: an empty file, a symbolic link and its target, no newline at its end |
 | Image diff | Show the two sides of an image | — | Common | ✅ Yes | Binary images side by side, inline too, the side an image lacks hatched, with the size in a tooltip; an SVG diffs as text, and is drawn in a viewer tab; no swipe or onion skin |
-| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for; the code is drawn as cells by the GPU with WebGPU, as a file viewed is, a canvas for each side holding the rows in sight and half a screen or more around them, however many rows each line wraps onto, so long lines of prose scroll as code does; the diff saying so where a computer lets the app use no GPU |
+| Large diffs | Stay responsive on huge changes | — | Common | ✅ Yes | Large files load when asked for; the code is drawn as cells by the GPU with WebGPU, as a file viewed is, a canvas for each side holding the rows in sight and half a screen or more around them, however many rows each line wraps onto, so long lines of prose scroll as code does |
 
 ## Changing
 

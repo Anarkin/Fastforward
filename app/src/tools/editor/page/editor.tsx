@@ -1,5 +1,5 @@
 import { tip } from '../../../lib/page/tips';
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFocusKeeper } from '../../../lib/page/viewFocus';
 import { strings } from '../../../lib/shared/strings';
 import { useShell, useShellActions } from '../../../shell/page/store';
@@ -20,7 +20,6 @@ import { useEditorFinding } from './finding';
 import { EditorFindBar } from './findBar';
 import { EditorToolbar } from './toolbar';
 import { EditorAsks } from './asks';
-import { gpuRefused, watchGpu } from '../../../components/cells/page/gpuDevice';
 
 export function Editor() {
   useEffect(startColorer, []);
@@ -67,8 +66,7 @@ export function Editor() {
     }
   });
 
-  const refused = useSyncExternalStore(watchGpu, gpuRefused);
-  const said = edited?.error ?? (refused ? strings.common.noGpu : undefined);
+  const said = edited?.error;
 
   const mark = edited?.readOnly
     ? strings.editor.readOnlyMark

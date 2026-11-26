@@ -90,6 +90,10 @@ export class FakeHost implements ShellHost, GitHost {
     this.opened.push('quit');
   }
 
+  quitWithoutGpu(): void {
+    this.opened.push('no GPU');
+  }
+
   openWindow(window: string, near: string | undefined): void {
     this.opened.push(`open window ${window} near ${near ?? 'none'}`);
   }

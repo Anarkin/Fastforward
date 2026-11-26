@@ -1,7 +1,8 @@
 import { fs } from '../lib/main/files';
 import { appFs } from '../lib/main/appFiles';
 import * as path from 'node:path';
-import { app, clipboard } from 'electron';
+import { app, clipboard, dialog } from 'electron';
+import { brand, strings } from '../lib/shared/strings';
 import type { ShellHost } from '../shell/main/shell';
 import type { UserSettings } from '../shell/main/userSettings';
 import type { Sentence } from '../lib/shared/sentences';
@@ -91,6 +92,10 @@ export function shellHostOf({
       }
     },
     quit: () => quitGuard.confirmed(),
+    quitWithoutGpu: () => {
+      dialog.showErrorBox(brand, strings.common.noGpu);
+      app.exit(1);
+    },
     updateStatus: () => updates.status,
     about: () => ({
       version: app.getVersion(),

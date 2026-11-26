@@ -1,12 +1,6 @@
 import { occurrencesOf } from '../../../components/cells/page/marks';
 import type { ScreenRow } from '../../../components/cells/page/lines';
-import {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { ScrollBody } from './scrollBody';
 import type { Viewing } from './viewing';
@@ -22,8 +16,6 @@ import { useKeptSelection } from './tabSelection';
 import type { ViewerTabView } from './tabParts';
 import { textEnds, textThumb } from './textScroll';
 import { CellRows } from './cellRows';
-import { gpuRefused, watchGpu } from '../../../components/cells/page/gpuDevice';
-import { strings } from '../../../lib/shared/strings';
 import { useTextRows } from './textRows';
 import { steppedColumn, useSideways } from './textSideways';
 import { segmentsFrom } from './textColors';
@@ -86,7 +78,6 @@ export function TextBody({
   const highlightOccurrences = useShell(
     (state) => state.textView.highlightOccurrences,
   );
-  const refused = useSyncExternalStore(watchGpu, gpuRefused);
   const [copy, setCopy] = useState<string>();
   const { kept: keptSelection, onKept } = useKeptSelection(
     viewing.tab,
@@ -210,7 +201,7 @@ export function TextBody({
       onFont={onFont}
       move={move}
       jump={jump}
-      error={viewing.error ?? (refused ? strings.common.noGpu : undefined)}
+      error={viewing.error}
       width={width}
       wrapped={!whole}
       onSideways={onAcross}

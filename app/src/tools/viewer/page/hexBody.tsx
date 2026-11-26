@@ -7,7 +7,6 @@ import {
   useMemo,
   useState,
   useEffectEvent,
-  useSyncExternalStore,
 } from 'react';
 import { RowRequests } from './rowRequests';
 import type { ViewerFind } from './find';
@@ -15,11 +14,9 @@ import { byteMarks, hexLineMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
 import { CellRows } from './cellRows';
 import { useCellFont } from '../../../components/cells/page/cellFont';
-import { gpuRefused, watchGpu } from '../../../components/cells/page/gpuDevice';
 import type { RowAhead } from '../../../components/cells/page/glyphWarmth';
 import { byteText } from '../shared/byteText';
 import { wholeFile } from './wholeFile';
-import { strings } from '../../../lib/shared/strings';
 
 const rowsAboveMatch = 2;
 import { ScrollBody } from './scrollBody';
@@ -85,7 +82,6 @@ export function ByteBody({
   } = useViewerActions();
   const { tab, version } = viewing;
   const allAsked = useViewer((state) => state.allAsked);
-  const refused = useSyncExternalStore(watchGpu, gpuRefused);
   const size = viewing.size ?? 0;
   const all = useMemo(() => wholeFile(size), [size]);
   const [screen, setScreen] = useState(1);
@@ -372,7 +368,7 @@ export function ByteBody({
       onFont={onFont}
       move={move}
       jump={jump}
-      error={viewing.error ?? (refused ? strings.common.noGpu : undefined)}
+      error={viewing.error}
       keptLeft={keptLeft}
       settled={bytes !== undefined}
       onLeft={onLeft}

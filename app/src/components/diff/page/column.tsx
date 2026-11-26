@@ -1,15 +1,7 @@
-import {
-  useEffect,
-  useEffectEvent,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import type { FileChange } from '../../../lib/shared/changes';
 import type { LeftOut, TextRequest } from '../shared/protocol';
 import { Column } from '../../../lib/page/column';
-import { gpuRefused, watchGpu } from '../../cells/page/gpuDevice';
 import { parsePatch, type DiffFile } from './diff';
 import type { LoadedText } from './sideTexts';
 import { unsearchedFiles } from './find';
@@ -21,7 +13,6 @@ import {
   wholeViewedSource,
   type ViewedSource,
 } from './viewedSource';
-import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { Words } from '../../../lib/page/name';
 import type { WholeFile } from './rows';
@@ -113,16 +104,14 @@ export function Diff({
     () => linesCounted(diffFiles, files),
     [diffFiles, files],
   );
-  const refused = useSyncExternalStore(watchGpu, gpuRefused);
-  const said = error ?? (refused ? strings.common.noGpu : undefined);
   const errorRow = useMemo(
     () =>
-      said ? (
+      error ? (
         <div className="error-message">
-          <Words>{said}</Words>
+          <Words>{error}</Words>
         </div>
       ) : undefined,
-    [said],
+    [error],
   );
 
   const viewShown = useEffectEvent(() => {
