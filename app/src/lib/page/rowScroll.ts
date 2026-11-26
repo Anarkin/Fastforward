@@ -7,9 +7,7 @@ import {
   setWheeled,
   type HeldScroller,
 } from './scrollbarLinks';
-import { notchesOf, wheelTurn } from './wheelTurns';
-
-const onRow = 0.01;
+import { notchesOf, onRow, wheelTurn } from './wheelTurns';
 
 export function snappedTop(top: number, row: number, max: number): number {
   if (row <= 0) {

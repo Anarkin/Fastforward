@@ -3,7 +3,7 @@ import type {
   ToThumbnailWorker,
 } from './thumbnailMessages';
 
-export const workerCount = 4;
+import { workerCount } from '../shared/workers';
 
 export interface WorkerLike {
   postMessage(message: ToThumbnailWorker): void;

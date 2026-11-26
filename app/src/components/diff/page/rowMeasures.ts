@@ -1,3 +1,4 @@
+import { tabCode } from '../../../lib/shared/characterCodes';
 import { rowWidths, type TabSizeOf } from './fileWidths';
 import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
 import { wrappedLines } from '../../../lib/page/wordWrap';
@@ -73,8 +74,6 @@ interface TextSpan {
 }
 
 const noSpan: TextSpan = { columns: 0, plain: true };
-
-const tabCode = 9;
 
 const lastAscii = 0x7f;
 

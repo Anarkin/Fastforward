@@ -1,4 +1,4 @@
-import { type PixelBox } from './iconPixels';
+import { iconGrid, type PixelBox } from './iconPixels';
 
 export interface FloppyDrawing {
   readonly size: number;
@@ -11,13 +11,8 @@ export interface FloppyDrawing {
   readonly lines: readonly [PixelBox, PixelBox, PixelBox];
 }
 
-const designedSpan = 14;
-
 export function floppyDrawing(size: number): FloppyDrawing {
-  const margin = Math.max(1, Math.round(size / 16));
-  const span = size - 2 * margin;
-  const unit = (units: number) => Math.round((span * units) / designedSpan);
-  const thin = Math.max(1, Math.floor(span / 12));
+  const { margin, span, unit, thin } = iconGrid(size);
   const corner = unit(3);
   const sideRim = unit(2);
   const labelHeight = Math.max(unit(7), 3 * thin + 4);

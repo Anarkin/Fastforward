@@ -1,7 +1,6 @@
+import { onPixel } from '../../../lib/page/pixelBoxes';
 import type { EditorSurface } from './surface';
 import { boxColumns } from '../../../lib/page/wrapBox';
-
-const onPixel = 1e-6;
 
 export function textAdvance(view: EditorSurface): number {
   const pixel = 1 / devicePixelRatio;

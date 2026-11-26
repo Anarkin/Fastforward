@@ -3,11 +3,10 @@ import type {
   RowsLook,
 } from '../../../components/cells/page/cellPainting';
 import type { IdleJob } from '../../../components/cells/page/idleWork';
+import { mostFilled } from '../../../components/cells/page/glyphWarmth';
 import { drawPieces } from '../../../components/cells/page/textCells';
 import { nonAscii } from '../../../lib/page/graphemes';
 import { rowSegments, type ColoredText } from './textColors';
-
-const mostFilled = 0.5;
 
 const linesAStep = 2000;
 

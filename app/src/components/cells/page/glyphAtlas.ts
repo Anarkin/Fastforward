@@ -7,7 +7,7 @@ import {
   type GlyphStyle,
 } from './glyphTiles';
 
-const mostTextureSize = 4096;
+export const mostTextureSize = 4096;
 
 export class GlyphAtlas implements GlyphPainter {
   readonly size: number;

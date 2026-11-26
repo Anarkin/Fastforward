@@ -1,4 +1,9 @@
-import { notchesOf } from '../../../lib/page/wheelTurns';
+import {
+  byPixels,
+  notchesOf,
+  pageMode,
+  wheelPixels,
+} from '../../../lib/page/wheelTurns';
 import type { Box } from './grid';
 
 export interface Origin {
@@ -48,10 +53,6 @@ export function snapped({ column, row }: Origin): Origin {
   return { column: Math.round(column), row: Math.round(row) };
 }
 
-const lineMode = 1;
-
-const pageMode = 2;
-
 export interface WheelMove {
   readonly by: Origin;
   readonly notched: boolean;
@@ -73,13 +74,14 @@ function axisMove(
   if (notches !== undefined) {
     return { cells: notches * perNotch, notched: true };
   }
-  if (deltaMode === lineMode) {
-    return { cells: delta, notched: true };
-  }
-  if (deltaMode === pageMode) {
-    return { cells: Math.round((delta * view) / cell), notched: true };
-  }
-  return { cells: delta / cell, notched: false };
+  const cells =
+    wheelPixels(delta, deltaMode, { row: cell, step: cell, page: view }) / cell;
+  return byPixels(deltaMode)
+    ? { cells, notched: false }
+    : {
+        cells: deltaMode === pageMode ? Math.round(cells) : cells,
+        notched: true,
+      };
 }
 
 export function wheelMove(

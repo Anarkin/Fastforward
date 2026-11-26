@@ -1,5 +1,6 @@
 import type { Size } from '../../../lib/page/imageSizes';
-import { workerCount, workers } from './thumbnailWorkers';
+import { workers } from './thumbnailWorkers';
+import { workerCount } from '../shared/workers';
 
 export interface Thumbnail extends Size {
   readonly url: string;

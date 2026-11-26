@@ -1,3 +1,4 @@
+import { tabCode } from '../shared/characterCodes';
 import {
   asciiBreakAt,
   clusterBoundaries,
@@ -20,8 +21,6 @@ kindOf(' \t', blankKind);
 kindOf('})]?|/&.,;', breaksAfter);
 kindOf('([{+', breaksBefore);
 const fullWidthColumns = 2;
-const tabCode = 9;
-
 function kindAt(text: string, at: number): number {
   const code = text.charCodeAt(at);
   return code < kinds.length ? (kinds[code] ?? 0) : 0;

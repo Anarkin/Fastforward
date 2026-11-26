@@ -1,11 +1,10 @@
+import { onPixel } from './pixelBoxes';
 export interface DotLook {
   readonly advance: number;
   readonly dot: number;
   readonly start: number;
   readonly pixel: number;
 }
-
-const onPixel = 1e-6;
 
 const roundedTo = (value: number, step: number) =>
   Math.round(value / step + onPixel) * step;

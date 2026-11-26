@@ -1,10 +1,9 @@
+import { tabCode } from '../../../lib/shared/characterCodes';
 import { graphemes, type Units } from '../../../lib/page/graphemes';
-import { onceAText } from './onceAText';
+import { onceAText } from '../../../lib/page/onceAText';
 import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { joins } from './joined';
-
-const tab = 9;
 
 const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
 
@@ -24,7 +23,7 @@ function stepsOf(text: string, widths: TextWidths | undefined): Step {
   const size = tabSizeOf(widths);
   return (at, column) => {
     const code = text.charCodeAt(at);
-    if (code === tab) {
+    if (code === tabCode) {
       return { next: at + 1, column: tabStop(column, size) };
     }
     if (

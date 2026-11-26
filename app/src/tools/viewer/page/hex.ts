@@ -16,7 +16,7 @@ import { byteText, isPrintable } from '../shared/byteText';
 
 export const hexRowBytes = 16;
 
-const groupBytes = 8;
+export const groupBytes = 8;
 
 export function byteTipAt(
   data: ArrayLike<number>,
@@ -198,9 +198,9 @@ export function bytesToAsk(
   };
 }
 
-const hexPair = 2;
+export const hexPair = 2;
 
-const hexStep = 3;
+export const hexStep = 3;
 
 const mostSought = 200;
 

@@ -1,3 +1,4 @@
+import { mostTextureSize } from './glyphAtlas';
 import { laidOut } from '../../../lib/page/pixelBoxes';
 import { textureUsage } from './gpuDevice';
 
@@ -16,8 +17,6 @@ export interface RunTile {
   readonly v: number;
   readonly width: number;
 }
-
-const mostTextureSize = 4096;
 
 const mostMeasured = 20_000;
 

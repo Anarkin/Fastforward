@@ -31,7 +31,7 @@ import {
 import type { ViewerFind } from './find';
 import { useViewer, useViewerActions } from './store';
 
-const rowsAboveMatch = 2;
+export const rowsAboveMatch = 2;
 
 interface Place {
   readonly index: number;

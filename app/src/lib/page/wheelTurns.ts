@@ -1,6 +1,7 @@
-const onRow = 0.01;
+export const onRow = 0.01;
+const pixelMode = 0;
 const lineMode = 1;
-const pageMode = 2;
+export const pageMode = 2;
 const notch = 120;
 
 export interface Wheel {
@@ -25,6 +26,20 @@ export function notchesOf({
     : undefined;
 }
 
+export const byPixels = (deltaMode: number): boolean => deltaMode === pixelMode;
+
+export function wheelPixels(
+  delta: number,
+  deltaMode: number,
+  { row, step, page }: Omit<WheelSizes, 'perNotch'>,
+): number {
+  return deltaMode === lineMode
+    ? delta * step
+    : deltaMode === pageMode
+      ? ((delta * page) / row) * step
+      : delta;
+}
+
 export function wheelTurn(
   pending: number,
   wheel: Wheel,
@@ -34,14 +49,8 @@ export function wheelTurn(
   if (notches !== undefined) {
     return { rows: notches * perNotch, pending: 0 };
   }
-  const { deltaY, deltaMode } = wheel;
-  const pixels =
-    deltaMode === lineMode
-      ? deltaY * step
-      : deltaMode === pageMode
-        ? ((deltaY * page) / row) * step
-        : deltaY;
-  const total = pending + pixels;
+  const total =
+    pending + wheelPixels(wheel.deltaY, wheel.deltaMode, { row, step, page });
   const rows = Math.trunc(total / step + (total > 0 ? onRow : -onRow));
   const left = total - rows * step;
   return { rows, pending: Math.abs(left) < onRow ? 0 : left };

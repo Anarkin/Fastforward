@@ -14,6 +14,8 @@ export interface Edges {
 
 export const layoutUnits = 64;
 
+export const onPixel = 1e-6;
+
 export const laidOut = (device: number): number =>
   Math.round(device * layoutUnits) / layoutUnits;
 

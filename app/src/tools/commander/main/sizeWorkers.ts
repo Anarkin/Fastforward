@@ -1,12 +1,6 @@
-import * as path from 'node:path';
-import { appFs } from '../../../lib/main/appFiles';
-import { Worker } from 'node:worker_threads';
+import { workerPool } from './workerPool';
 import { strings } from '../../../lib/shared/strings';
 import type { SizeWalk, SizeWalked, SizeWalker } from './sizeWalk';
-
-const workerFile = 'sizeWorker.js';
-const workerCount = 4;
-const idleMillis = 30_000;
 
 const nothingWalked: SizeWalked = {
   bytes: 0,
@@ -15,110 +9,35 @@ const nothingWalked: SizeWalked = {
   rest: [],
 };
 
-interface Task {
-  readonly walk: SizeWalk;
-  readonly signal: AbortSignal;
-  readonly resolve: (walked: SizeWalked) => void;
-  readonly reject: (error: Error) => void;
-}
-
-interface Thread {
-  readonly worker: Worker;
-  task: Task | undefined;
-}
-
 export function sizeWorkers(
   folder: string,
   koffi: string | undefined,
 ): (SizeWalker & { close(): void }) | undefined {
-  const file = path.join(folder, workerFile);
-  if (!appFs.existsSync(file)) {
+  const pool = workerPool<SizeWalk, SizeWalked>(folder, 'sizeWorker.js', {
+    koffi,
+  });
+  if (pool === undefined) {
     return undefined;
   }
-  let code: string | undefined;
-  const threads: Thread[] = [];
-  const queue: Task[] = [];
-  let resting: NodeJS.Timeout | undefined;
-  let closed = false;
-
-  const rest = () => {
-    clearTimeout(resting);
-    if (queue.length > 0 || threads.some((thread) => thread.task)) {
-      return;
-    }
-    resting = setTimeout(() => {
-      for (const thread of threads.splice(0)) {
-        void thread.worker.terminate();
-      }
-    }, idleMillis);
-    resting.unref();
-  };
-
-  const spawn = (): Thread => {
-    code ??= appFs.readFileSync(file, 'utf8');
-    const worker = new Worker(code, { eval: true, workerData: { koffi } });
-    worker.unref();
-    const thread: Thread = { worker, task: undefined };
-    worker.on('message', (walked: SizeWalked) => {
-      const { task } = thread;
-      thread.task = undefined;
-      task?.resolve(walked);
-      next();
-    });
-    const lost = () => {
-      const at = threads.indexOf(thread);
-      if (at !== -1) {
-        threads.splice(at, 1);
-      }
-      const { task } = thread;
-      thread.task = undefined;
-      task?.reject(new Error(strings.errors.sizeWorkerStopped));
-      next();
-    };
-    worker.on('error', lost);
-    worker.on('exit', lost);
-    threads.push(thread);
-    return thread;
-  };
-
-  const next = () => {
-    for (let task = queue.shift(); task !== undefined; task = queue.shift()) {
-      if (task.signal.aborted) {
-        task.resolve(nothingWalked);
-        continue;
-      }
-      const thread =
-        threads.find((each) => each.task === undefined) ??
-        (threads.length < workerCount && !closed ? spawn() : undefined);
-      if (thread === undefined) {
-        queue.unshift(task);
-        break;
-      }
-      thread.task = task;
-      thread.worker.postMessage(task.walk);
-    }
-    rest();
-  };
-
   return {
     walk: (walk, signal) =>
       new Promise((resolve, reject) => {
-        if (closed) {
-          reject(new Error(strings.errors.sizeWorkersClosed));
-          return;
-        }
-        queue.push({ walk, signal, resolve, reject });
-        next();
+        pool.run({
+          asked: walk,
+          signal,
+          answered: resolve,
+          unanswered: (why) =>
+            why === 'aborted'
+              ? resolve(nothingWalked)
+              : reject(
+                  new Error(
+                    why === 'lost'
+                      ? strings.errors.sizeWorkerStopped
+                      : strings.errors.sizeWorkersClosed,
+                  ),
+                ),
+        });
       }),
-    close: () => {
-      closed = true;
-      clearTimeout(resting);
-      for (const task of queue.splice(0)) {
-        task.reject(new Error(strings.errors.sizeWorkersClosed));
-      }
-      for (const thread of threads.splice(0)) {
-        void thread.worker.terminate();
-      }
-    },
+    close: pool.close,
   };
 }

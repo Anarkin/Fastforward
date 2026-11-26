@@ -1,3 +1,4 @@
+import { onPixel } from '../../../lib/page/pixelBoxes';
 import { drawnTabSize } from './indent';
 import {
   ChangeSet,
@@ -105,7 +106,7 @@ export const revealers =
     (view: EditorSurface, range: SelectionRange, how: Revealing) => boolean
   >();
 
-const cursorMargin = 5;
+export const cursorMargin = 5;
 
 export type SurfaceCommand = (view: EditorSurface) => boolean;
 
@@ -127,8 +128,6 @@ interface Metrics {
   readonly columns: number | undefined;
   readonly ratio: number;
 }
-
-const onPixel = 1e-6;
 
 const surfaceClass = 'editor-surface';
 

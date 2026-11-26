@@ -1,4 +1,4 @@
-import type { PixelBox } from './iconPixels';
+import { iconGrid, type PixelBox } from './iconPixels';
 
 export interface PromptDrawing {
   readonly size: number;
@@ -9,15 +9,10 @@ export interface PromptDrawing {
   readonly underscore: PixelBox;
 }
 
-const designedSpan = 14;
-
 const oddNear = (length: number) => 2 * Math.round((length - 1) / 2) + 1;
 
 export function promptDrawing(size: number): PromptDrawing {
-  const margin = Math.max(1, Math.round(size / 16));
-  const span = size - 2 * margin;
-  const unit = (units: number) => Math.round((span * units) / designedSpan);
-  const thin = Math.max(1, Math.floor(span / 12));
+  const { margin, span, unit, thin } = iconGrid(size);
   const chevronHeight = oddNear(span / 2);
   const bottom = size - margin;
   const roughTop = margin + unit(1);

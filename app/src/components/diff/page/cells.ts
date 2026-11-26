@@ -1,3 +1,4 @@
+import { mostCanvas } from '../../cells/page/cellView';
 import { widthsFor } from '../../../lib/page/textWidths';
 import type { CellFont } from '../../cells/page/cellLook';
 import type {
@@ -90,8 +91,6 @@ const looks: CellLooks = {
   lookOf: diffLookOf,
   pressedAs: (press) => clicked(diffKeymap.selectText, press),
 };
-
-const mostCanvas = 8192;
 
 const noMarks: readonly FindMark[] = [];
 

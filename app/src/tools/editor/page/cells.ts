@@ -1,3 +1,4 @@
+import { mostCanvas } from '../../../components/cells/page/cellView';
 import { layoutUnits } from '../../../lib/page/pixelBoxes';
 import { drawnTabSize } from './indent';
 import { widthsFor } from '../../../lib/page/textWidths';
@@ -60,8 +61,6 @@ import { DrawnLines } from './drawnLines';
 import { scrolledAcross, textAdvance, textStart, wrapColumnsOf } from './rows';
 
 const rowClass = 'editor-row';
-
-const mostCanvas = 8192;
 
 const noRowsAhead: readonly never[] = [];
 

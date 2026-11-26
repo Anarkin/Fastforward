@@ -1,3 +1,8 @@
+import {
+  lastPrintable,
+  spaceCode,
+  tabCode,
+} from '../../../lib/shared/characterCodes';
 import { blankSignOf } from './blankSigns';
 import { invisibleParts } from '../../../lib/page/invisibles';
 import { graphemes, nonAscii, type Units } from '../../../lib/page/graphemes';
@@ -9,9 +14,6 @@ import type { CellFrame } from './cellFrame';
 import { notDrawn, type GlyphStyle, type GlyphTiles } from './glyphTiles';
 import { joins, standsAlone } from './joined';
 
-const space = 32;
-const tab = 9;
-const lastPrintable = 126;
 const signs = 'signs';
 
 type Mark = 'match' | 'current' | 'occurrence' | undefined;
@@ -363,14 +365,14 @@ function drawText(
   let clusters: Units | undefined;
   for (let at = 0; at < text.length;) {
     const code = text.charCodeAt(at);
-    if (code === space) {
+    if (code === spaceCode) {
       if (blanks && column <= limit) {
         drawDot(drawing, column, y, under, mark, selected);
       }
       column++;
       at++;
     } else if (
-      code > space &&
+      code > spaceCode &&
       code <= lastPrintable &&
       !joins(text.charCodeAt(at + 1))
     ) {
@@ -384,7 +386,7 @@ function drawText(
       );
       column++;
       at++;
-    } else if (code === tab) {
+    } else if (code === tabCode) {
       if (blanks) {
         drawSign(
           drawing,

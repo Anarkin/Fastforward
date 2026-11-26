@@ -1,15 +1,10 @@
+import { groupBytes, hexPair, hexStep } from './hex';
 import type { ByteRange, TextRow } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { matchesIn } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { FindMark } from '../../../components/cells/page/marks';
 import { bytesOf } from './encodedBytes';
-
-const groupBytes = 8;
-
-const hexPair = 2;
-
-const hexStep = 3;
 
 function firstEndingAfter(matches: readonly ByteRange[], byte: number): number {
   let low = 0;

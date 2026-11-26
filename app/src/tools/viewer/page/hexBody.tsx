@@ -1,3 +1,4 @@
+import { rowsAboveMatch } from './textRows';
 import { useKeptSelection } from './tabSelection';
 import type { FindMark } from '../../../components/cells/page/marks';
 import type { ScreenRow, TextLine } from '../../../components/cells/page/lines';
@@ -18,7 +19,6 @@ import type { RowAhead } from '../../../components/cells/page/glyphWarmth';
 import { byteText } from '../shared/byteText';
 import { wholeFile } from './wholeFile';
 
-const rowsAboveMatch = 2;
 import { ScrollBody } from './scrollBody';
 import { rowEnds } from './scrollThumbs';
 import {

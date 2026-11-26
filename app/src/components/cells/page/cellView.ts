@@ -1,3 +1,4 @@
+import { onPixel } from '../../../lib/page/pixelBoxes';
 import { laidOut } from '../../../lib/page/pixelBoxes';
 import type { ScreenRow } from './lines';
 import type { DotLook } from '../../../lib/page/dotLook';
@@ -37,7 +38,7 @@ const restingBudget = 50;
 
 const scrollingWithin = 100;
 
-const onPixel = 1e-6;
+export const mostCanvas = 8192;
 
 const pools = new WeakMap<GPUDevice, Pool<CellSurface>>();
 

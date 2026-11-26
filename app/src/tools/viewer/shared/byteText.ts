@@ -1,8 +1,7 @@
+import { lastPrintable } from '../../../lib/shared/characterCodes';
 import { strings } from '../../../lib/shared/strings';
 
 const firstPrintable = 0x20;
-const lastPrintable = 0x7e;
-
 export const isPrintable = (byte: number): boolean =>
   byte >= firstPrintable && byte <= lastPrintable;
 

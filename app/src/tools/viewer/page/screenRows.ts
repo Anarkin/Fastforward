@@ -6,58 +6,35 @@ import type { ScreenRow } from '../../../components/cells/page/lines';
 import { bytesOf } from './encodedBytes';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type TextWidths } from '../../../lib/page/textWidths';
+import { onceAText } from '../../../lib/page/onceAText';
 
 interface Wrapping {
-  readonly columns: number;
-  readonly encoding: TextEncoding;
-  readonly widths: TextWidths | undefined;
-  readonly continued: boolean;
-  readonly cut: boolean;
   readonly indent: number;
   readonly starts: readonly number[];
   readonly breaks: readonly RowBreak[];
   readonly sizes: readonly number[];
 }
 
-const mostCharacters = 1_000_000;
-
-const wrappings = new Map<string, Wrapping[]>();
-
-let characters = 0;
-
-function wrappingOf(
-  { text, cut }: TextRow,
-  columns: number,
-  encoding: TextEncoding,
-  continued: boolean,
-  widths: TextWidths | undefined,
-): Wrapping {
-  const ways = wrappings.get(text) ?? [];
-  let found = ways.find(
-    (one) =>
-      one.columns === columns &&
-      one.encoding === encoding &&
-      one.widths === widths &&
-      one.continued === continued &&
-      one.cut === (cut === true),
-  );
-  if (found === undefined) {
+const wrappingWays = onceAText(
+  (
+    text: string,
+    columns: number,
+    encoding: TextEncoding,
+    continued: boolean,
+    widths: TextWidths | undefined,
+    cut: boolean,
+  ): Wrapping => {
     const indent = continued ? 0 : wrapIndent(text, columns);
     const starts = wrapStarts(text, columns, indent, widths);
-    found = {
-      columns,
-      encoding,
-      widths,
-      continued,
-      cut: cut === true,
+    return {
       indent,
       starts,
       breaks:
-        starts.length === 1 && cut !== true
+        starts.length === 1 && !cut
           ? []
           : rowBreaksAt(
               text,
-              cut === true ? [...starts, text.length] : starts,
+              cut ? [...starts, text.length] : starts,
               columns,
               widths && ((part: string) => columnsOf(part, widths)),
               indent,
@@ -66,20 +43,17 @@ function wrappingOf(
         .slice(0, -1)
         .map((from, part) => bytesOf(text, from, starts[part + 1], encoding)),
     };
-    ways.push(found);
-    characters += text.length;
-  }
-  wrappings.delete(text);
-  wrappings.set(text, ways);
-  for (const [oldest, old] of wrappings) {
-    if (characters <= mostCharacters || oldest === text) {
-      break;
-    }
-    wrappings.delete(oldest);
-    characters -= oldest.length * old.length;
-  }
-  return found;
-}
+  },
+);
+
+const wrappingOf = (
+  { text, cut }: TextRow,
+  columns: number,
+  encoding: TextEncoding,
+  continued: boolean,
+  widths: TextWidths | undefined,
+): Wrapping =>
+  wrappingWays(text, columns, encoding, continued, widths, cut === true);
 
 const unwrapped = { indent: 0, starts: [0], breaks: [], sizes: [] };
 

@@ -1,7 +1,7 @@
-const space = 32;
+import { spaceCode } from '../../../lib/shared/characterCodes';
 
 const alone = (code: number) =>
-  code < space ||
+  code < spaceCode ||
   (code >= 0x7f && code < 0x300) ||
   (code >= 0x4e00 && code <= 0x9fff) ||
   (code >= 0x3041 && code <= 0x3096) ||

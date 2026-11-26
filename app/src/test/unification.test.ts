@@ -7,7 +7,28 @@ const codeFiles = sourceFiles.filter((file) => /\.tsx?$/.test(file));
 const doing = (pattern: RegExp): string[] =>
   codeFiles.filter((file) => pattern.test(read(file))).toSorted();
 
+const numbersDeclared = (): ReadonlyMap<string, readonly string[]> => {
+  const declared = new Map<string, string[]>();
+  for (const file of codeFiles) {
+    for (const [, name, value] of read(file).matchAll(
+      /^(?:export )?const (\w+) = ([\d_.e-]+);$/gm,
+    )) {
+      const key = `${name} = ${value}`;
+      declared.set(key, [...(declared.get(key) ?? []), file]);
+    }
+  }
+  return new Map([...declared].filter(([, files]) => files.length > 1));
+};
+
 suite('Unification', () => {
+  test('declares a number once, in the part it belongs to, rather than the same name with the same value in parts that must agree on it, the version of the saved view of each tool being its own and the numbers of the pointing of the editor going with it once it points as the views do', () => {
+    assert.deepStrictEqual([...numbersDeclared().keys()].toSorted(), [
+      'mostRowsAStep = 5',
+      'reachMs = 50',
+      'viewVersion = 1',
+    ]);
+  });
+
   test('defines the unit Chromium lays out in, a 64th of a pixel, once, beside the rounding to it, rather than in every part that rounds to it', () => {
     assert.deepStrictEqual(doing(/\blayoutUnits\s*=\s*64\b/), [
       'lib/page/pixelBoxes.ts',

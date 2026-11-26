@@ -1,3 +1,4 @@
+import { lastPrintable } from '../../../lib/shared/characterCodes';
 import type { ScreenRow } from './lines';
 import {
   prepareRow,
@@ -10,9 +11,7 @@ import type { IdleJob } from './idleWork';
 
 const firstPrintable = 33;
 
-const lastPrintable = 126;
-
-const mostFilled = 0.5;
+export const mostFilled = 0.5;
 
 export function asciiJob(
   tiles: GlyphTiles,

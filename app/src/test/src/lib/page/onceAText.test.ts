@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { onceAText } from '../../../../../components/cells/page/onceAText';
+import { onceAText } from '../../../../lib/page/onceAText';
 
 suite('What is worked out of a text, kept', () => {
   test('works out what a text gives once for each way it is asked for, however often it is asked again, as the rows of a file come back at each step of a scrollbar dragged', () => {

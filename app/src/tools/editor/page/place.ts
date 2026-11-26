@@ -7,7 +7,7 @@ import {
   type Text,
 } from '@codemirror/state';
 import type { CellTable } from '../../../lib/page/cellTable';
-import { EditorSurface, revealed } from './surface';
+import { cursorMargin, EditorSurface, revealed } from './surface';
 
 export interface EditorPlace {
   readonly from: number;
@@ -64,8 +64,6 @@ function scrolledTo(
     from <= line.from ? 0 : rowOn(grid, line, Math.min(from, line.to), 1).row;
   return view.lineBlockAt(line.from).top + row * grid.rowHeight + offset;
 }
-
-const cursorMargin = 5;
 
 export function backTo(
   doc: Text,
