@@ -53,6 +53,7 @@ export interface SeenLine {
   readonly checkSize: number;
   readonly gitLeft: number | undefined;
   readonly gitSize: number;
+  readonly git: 'drawn' | 'none';
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -146,7 +147,7 @@ export function lineRecordOf({
     draw: (context: OffscreenCanvasRenderingContext2D) => void,
   ) => {
     const tile = runs.painted(`${key}|${groundCss}`, width, groundCss, draw);
-    if (tile !== undefined) {
+    if (tile !== undefined && width > 0) {
       paint.tiles.push(
         left,
         topPixels,
@@ -157,6 +158,7 @@ export function lineRecordOf({
         packedOf(ground),
       );
     }
+    return tile !== undefined && width > 0;
   };
   const middle = (size: number) => Math.round((heightPixels - size) / 2);
 
@@ -279,16 +281,29 @@ export function lineRecordOf({
   put('date', look.date, looks.date, inks.ink, [], false);
 
   const gitPixels = Math.round(looks.gitSize * scale);
+  let git: SeenLine['git'] = 'none';
+  const gitAt = laidOut(looks.gitLeft * scale) + view.shiftX;
+  const gitFrom = Math.floor(gitAt);
+  const gitPart = gitAt - gitFrom;
   if (look.repository && pointed === undefined) {
     const mark = images.get(looks.gitMark?.(inks.ink));
-    if (mark !== undefined) {
+    if (
+      mark !== undefined &&
       tileAt(
-        Math.round(looks.gitLeft * scale),
-        gitPixels,
-        `git|${inks.ink}|${gitPixels}|${heightPixels}`,
+        gitFrom,
+        gitPixels + 1,
+        `git|${inks.ink}|${gitPixels}|${heightPixels}|${gitPart}`,
         (context) =>
-          context.drawImage(mark, 0, middle(gitPixels), gitPixels, gitPixels),
-      );
+          context.drawImage(
+            mark,
+            gitPart,
+            middle(gitPixels),
+            gitPixels,
+            gitPixels,
+          ),
+      )
+    ) {
+      git = 'drawn';
     }
   }
 
@@ -329,6 +344,7 @@ export function lineRecordOf({
       checkSize: looks.checkSize,
       gitLeft: look.repository ? looks.gitLeft : undefined,
       gitSize: looks.gitSize,
+      git,
     },
   };
 }

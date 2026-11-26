@@ -173,8 +173,9 @@ export function paneLooksOf(
   const ground = solidBehind(host);
   const looked = at('[data-look]');
   const mark2 = at('[data-mark]');
-  if (gitIcon !== null) {
-    mark2.append(gitIcon.cloneNode(true));
+  const gitShape = gitIcon?.querySelector('svg');
+  if (gitShape !== null && gitShape !== undefined) {
+    mark2.append(gitShape.cloneNode(true));
   }
   const gitBox = mark2.getBoundingClientRect();
   const gitRow = at('[data-git]').getBoundingClientRect();

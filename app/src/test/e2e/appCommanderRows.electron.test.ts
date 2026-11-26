@@ -153,10 +153,13 @@ suite('App commander', () => {
     const made = path.join(folder, 'made-repository');
     execFileSync('git', ['init', '--quiet', made]);
     fs.renameSync(made, path.join(opened, 'repo'));
+    await page.mouse.move(0, 0);
     await waitFor(
-      async () => (await lineOf(right(), 'repo')).gitLeft !== undefined,
-      'the git icon of the repository',
+      async () => (await lineOf(right(), 'repo')).git === 'drawn',
+      'the git icon of the repository drawn',
     );
+    assert.ok((await lineOf(right(), 'repo')).gitSize >= 12);
+    assert.strictEqual((await lineOf(right(), 'src')).git, 'none');
     assert.strictEqual((await lineOf(right(), 'src')).gitLeft, undefined);
     await hoverLine(page, right(), 'repo');
     assert.strictEqual(await surroundOf(), 'none');
