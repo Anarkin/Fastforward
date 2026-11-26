@@ -7,6 +7,7 @@ import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
 import { bundledLanguagesInfo } from 'shiki/langs';
 import { onceMade } from '../../../lib/page/onceMade';
 import { forgetCached } from './cache';
+import { onigWasm } from './onigWasm';
 import { theme } from './engine';
 
 const registered = new Map<string, LanguageRegistration>();
@@ -42,7 +43,7 @@ function embeddersOf(loaded: ReadonlySet<string>): Set<string> {
 const highlighterMade = onceMade(() =>
   createHighlighterCore({
     themes: [theme],
-    engine: createOnigurumaEngine(import('shiki/wasm')),
+    engine: createOnigurumaEngine(onigWasm()),
   }),
 );
 export let ready: HighlighterCore | undefined;

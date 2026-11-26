@@ -363,6 +363,22 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
+  test('loads the Oniguruma engine of the colors from onig.wasm, a file of its own the build copies beside the page, rather than from shiki/wasm, which bundles it as a script of base64 that Windows Defender took for an obfuscated trojan and deleted, leaving no code colored', () => {
+    assert.deepStrictEqual(
+      ['boot', 'components', 'lib', 'shell', 'tools'].flatMap((folder) =>
+        filesWith(folder, /['"]shiki\/wasm['"]|wasm-inlined/),
+      ),
+      [],
+    );
+    assert.match(
+      fs.readFileSync(
+        path.join(sources, '..', 'scripts', 'esbuild.mts'),
+        'utf8',
+      ),
+      /onig\.wasm/,
+    );
+  });
+
   test('styles no class the app never names, as the rows of the commits, the files and the commander moved onto a canvas and left rules for elements no longer drawn, which no check of the code finds; a class the app builds from a name, as tool-git or syntax-keyword, is named by its stem before the name, and one a library makes, as PDF.js and xterm.js do, is named in its rule alone', () => {
     const folders = ['boot', 'components', 'lib', 'shell', 'tools'];
     const fromLibraries = new Set(['textLayer', 'xterm-scrollable-element']);

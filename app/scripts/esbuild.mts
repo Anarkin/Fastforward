@@ -74,6 +74,7 @@ fs.copyFileSync('src/shell/page/index.html', `${outdir}/index.html`);
 fs.copyFileSync('build/icon.ico', `${outdir}/icon.ico`);
 fs.copyFileSync('build/icons/256x256.png', `${outdir}/icon.png`);
 fs.copyFileSync('src/shell/main/settings.json', `${outdir}/settings.json`);
+fs.copyFileSync('node_modules/shiki/dist/onig.wasm', `${outdir}/onig.wasm`);
 for (const folder of ['cmaps', 'standard_fonts', 'iccs', 'wasm']) {
   fs.cpSync(`node_modules/pdfjs-dist/${folder}`, `${outdir}/pdfjs/${folder}`, {
     recursive: true,

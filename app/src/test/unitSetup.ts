@@ -7,6 +7,10 @@ import {
 
 vi.resetModules();
 
+vi.mock('../components/syntax/page/onigWasm', () => ({
+  onigWasm: () => import('shiki/wasm'),
+}));
+
 beforeAll(async () => {
   await loadPageLibrariesAsInTheApp();
   letGoOfThePointer();

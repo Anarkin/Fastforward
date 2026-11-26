@@ -147,7 +147,7 @@ suite('Release build', { timeout: 30_000 }, () => {
     );
   });
 
-  test('loads the grammars, the WebAssembly of the Oniguruma engine, markdown-it, DOMPurify, Mermaid, xterm.js and PDF.js only once a file, preview or terminal needs them', async () => {
+  test('loads the grammars, markdown-it, DOMPurify, Mermaid, xterm.js and PDF.js only once a file, preview or terminal needs them, and bundles the WebAssembly of the Oniguruma engine nowhere, as the worker of the colors fetches it as onig.wasm, a file of its own', async () => {
     const { outputs } = (await releaseBuild('webviewOptions')).metafile;
     const loaded = new Set<string>();
     const load = (output: string) => {
@@ -164,7 +164,6 @@ suite('Release build', { timeout: 30_000 }, () => {
     load('dist/webview.js');
     const lazy = [
       '@shikijs/langs/',
-      '@shikijs/engine-oniguruma/dist/wasm',
       'markdown-it/',
       'dompurify/',
       'mermaid/',
@@ -184,6 +183,14 @@ suite('Release build', { timeout: 30_000 }, () => {
       );
     assert.deepStrictEqual(bundled(Object.keys(outputs)), lazy);
     assert.deepStrictEqual(bundled(loaded), []);
+    assert.deepStrictEqual(
+      Object.keys(outputs).filter((file) =>
+        Object.keys(outputs[file].inputs).some((input) =>
+          input.includes('engine-oniguruma/dist/wasm'),
+        ),
+      ),
+      [],
+    );
   });
 
   test('keeps the styles of PDF.js out of the stylesheet of the page, in a sheet of their own a PDF shown loads, as every element the app draws was matched against their 370 nested rules, which took more than half of the time a screen of the diff took to restyle', async () => {
