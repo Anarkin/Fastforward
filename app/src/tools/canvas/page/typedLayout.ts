@@ -4,7 +4,7 @@ import type { Board } from '../shared/board';
 import { boxOf, type Unit } from './grid';
 import { offsetAt, placeOf, rowsOf } from './nodeText';
 import type { Cell } from './routes';
-import { scrollOf, textAreaOf, type TextArea } from './textBlocks';
+import { labelAreaOf, scrollOf, textAreaOf, type TextArea } from './textBlocks';
 
 export interface TypedLayout {
   readonly area: TextArea;
@@ -27,7 +27,8 @@ export function typedLayout(
   if (node === undefined) {
     return undefined;
   }
-  const area = textAreaOf(boxOf(node, unit));
+  const box = boxOf(node, unit);
+  const area = node.type === 'group' ? labelAreaOf(box) : textAreaOf(box);
   const rows = rowsOf(text, area.wrapAt, widths);
   return {
     area,

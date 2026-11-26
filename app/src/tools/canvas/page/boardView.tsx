@@ -37,6 +37,7 @@ import { useTypingContext } from './typingContext';
 import { typingKeyed } from './typingKeys';
 import { inserted, movedTo, selectedText } from './typing';
 import { markAt } from './wiring';
+import { boxOf } from './grid';
 import { nextEnds } from './arrows';
 
 interface Panning {
@@ -249,7 +250,9 @@ export function BoardView() {
   const [only] = selected.length === 1 ? selected : [];
   const typeable =
     only !== undefined &&
-    board?.nodes.find((node) => node.id === only)?.type === 'text';
+    ['text', 'group'].includes(
+      board?.nodes.find((node) => node.id === only)?.type ?? '',
+    );
 
   const startPlacing = (kind: Placing) => {
     const known = drawn.current;
@@ -584,7 +587,9 @@ export function BoardView() {
       hit.kind === 'node'
         ? board.nodes.find((each) => each.id === hit.id)
         : undefined;
-    if (node?.type !== 'text') {
+    const onLabel =
+      node?.type === 'group' && at.row === boxOf(node, known.unit).row;
+    if (node === undefined || (node.type !== 'text' && !onLabel)) {
       return;
     }
     const now = typingOf(tab);
@@ -592,7 +597,13 @@ export function BoardView() {
     if (whole === 'line' && current === undefined) {
       return;
     }
-    const text = current?.text ?? node.text;
+    const text =
+      current?.text ??
+      (node.type === 'group'
+        ? (node.label ?? '')
+        : node.type === 'text'
+          ? node.text
+          : '');
     const layout = typedLayout(board, known.unit, known.widths, {
       id: node.id,
       text,
@@ -617,7 +628,9 @@ export function BoardView() {
         known === undefined || board === undefined
           ? undefined
           : typedLayout(board, known.unit, known.widths, now);
-      const done = typingKeyed(event.nativeEvent, now, layout);
+      const oneLine =
+        board?.nodes.find((node) => node.id === now.id)?.type === 'group';
+      const done = typingKeyed(event.nativeEvent, now, layout, oneLine);
       if (done !== undefined) {
         event.preventDefault();
         if (done.kind === 'stop') {
@@ -649,7 +662,10 @@ export function BoardView() {
 
   const pasted = (event: React.ClipboardEvent<HTMLDivElement>) => {
     const now = tab === undefined ? undefined : typingOf(tab);
-    const text = event.clipboardData.getData('text/plain');
+    const pastedText = event.clipboardData.getData('text/plain');
+    const oneLine =
+      board?.nodes.find((node) => node.id === now?.id)?.type === 'group';
+    const text = oneLine ? pastedText.replaceAll(/[\r\n]+/g, ' ') : pastedText;
     if (tab === undefined || now === undefined || text === '') {
       return;
     }

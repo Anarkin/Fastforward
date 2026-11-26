@@ -23,6 +23,9 @@ interface Kept {
 
 function textOf(board: Board | undefined, id: string): string | undefined {
   const node = board?.nodes.find((each) => each.id === id);
+  if (node?.type === 'group') {
+    return node.label ?? '';
+  }
   return node?.type === 'text' ? node.text : undefined;
 }
 
@@ -63,7 +66,10 @@ export function createCanvasStore(
       made: string | undefined,
     ): Typing | undefined => {
       if (made !== undefined) {
-        const text = textOf(board, made);
+        const text =
+          board?.nodes.find((each) => each.id === made)?.type === 'text'
+            ? textOf(board, made)
+            : undefined;
         return text === undefined
           ? undefined
           : typingIn(

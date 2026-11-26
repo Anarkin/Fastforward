@@ -254,6 +254,30 @@ suite('Canvas edited', () => {
     );
   });
 
+  test('writes the label typed into a group, one it had or one it had none of, as the text of a text node is written', () => {
+    const box = { x: 0, y: 0, width: 140, height: 90 };
+    const board = new EditedBoard(
+      JSON.stringify({
+        nodes: [
+          { id: 'g', type: 'group', label: 'Plan', ...box },
+          { id: 'h', type: 'group', ...box },
+        ],
+      }),
+    );
+    board.apply({ kind: 'text', id: 'g', text: 'Plans', session: 1 }, ids());
+    board.apply({ kind: 'text', id: 'h', text: 'Ideas', session: 2 }, ids());
+    const labels = () => {
+      const read = board.read();
+      assert.ok(read.kind === 'board');
+      return read.board.nodes.map((each) =>
+        each.type === 'group' ? each.label : undefined,
+      );
+    };
+    assert.deepStrictEqual(labels(), ['Plans', 'Ideas']);
+    board.undo();
+    assert.deepStrictEqual(labels(), ['Plans', undefined]);
+  });
+
   test('takes from the page only edits whole and in bounds, as the page is not trusted', () => {
     assert.deepStrictEqual(
       editOf({

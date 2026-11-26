@@ -58,6 +58,13 @@ const moved = (
 };
 
 suite('Canvas typing keys', () => {
+  test('stops typing a text of one line, as the label of a group, on Enter rather than breaking its line', () => {
+    assert.deepStrictEqual(
+      typingKeyed(keyPress('Enter', { target }), at(2), undefined, true),
+      { kind: 'stop' },
+    );
+  });
+
   test('stops typing on Escape, and leaves the characters typed to the text context of the browser', () => {
     assert.deepStrictEqual(keyed('Escape', at(0)), { kind: 'stop' });
     assert.strictEqual(keyed('x', at(0)), undefined);

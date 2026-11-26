@@ -2,6 +2,7 @@ import type { Board, BoardEdge, BoardNode } from '../shared/board';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { boxOf, type Box, type Unit } from './grid';
 import {
+  labelAreaOf,
   lineWidthOf,
   paintLine,
   paintText,
@@ -132,16 +133,20 @@ function paintNode(
   const kind = colorKind(node.color);
   const weight = selected ? doubleShift : 0;
   const right = box.column + box.columns - 1;
+  const typed = typing?.id === node.id ? typing : undefined;
   if (node.type === 'group') {
     border(painter, box, weight, kind);
-    if (node.label !== undefined) {
+    const label = typed?.text ?? node.label;
+    if (label !== undefined) {
+      const area = labelAreaOf(box);
       paintLine(painter, {
-        column: box.column + 3,
-        row: box.row,
-        text: node.label,
-        room: box.columns - 6,
+        column: area.column,
+        row: area.row,
+        text: label,
+        room: area.room,
         kind,
         widths,
+        typed,
       });
     }
     return;
@@ -160,7 +165,6 @@ function paintNode(
     }
   }
   border(painter, box, weight, kind);
-  const typed = typing?.id === node.id ? typing : undefined;
   paintText(painter, {
     owner,
     area: textAreaOf(box),

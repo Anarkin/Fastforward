@@ -9,7 +9,7 @@ import type { Painter, Screen, TextBlock } from './screen';
 
 export interface TextArea extends Box {
   readonly room: number;
-  readonly wrapAt: number;
+  readonly wrapAt: number | undefined;
 }
 
 const breakColumns = 2;
@@ -24,6 +24,18 @@ export function textAreaOf(box: Box): TextArea {
     rows: box.rows - 2,
     room,
     wrapAt: Math.max(1, room - breakColumns),
+  };
+}
+
+export function labelAreaOf(box: Box): TextArea {
+  const room = box.columns - 6;
+  return {
+    column: box.column + 3,
+    row: box.row,
+    columns: Math.max(0, room),
+    rows: 1,
+    room,
+    wrapAt: undefined,
   };
 }
 
@@ -98,6 +110,7 @@ export function paintLine(
     room,
     kind,
     widths,
+    typed,
   }: {
     readonly column: number;
     readonly row: number;
@@ -105,12 +118,14 @@ export function paintLine(
     readonly room: number;
     readonly kind: string | undefined;
     readonly widths: TextWidths;
+    readonly typed?: Typed | undefined;
   },
 ): void {
   const [line] = linesOf(text);
   if (line === undefined || room < 0) {
     return;
   }
+  const rows = rowsOf(line.text, undefined, widths);
   const width = Math.min(room, Math.ceil(columnsOf(line.text, widths)));
   const owner = painter.nextOwner();
   for (let at = column - 1; at <= column + width; at++) {
@@ -121,11 +136,23 @@ export function paintLine(
     owner,
     column,
     row,
-    rows: rowsOf(line.text, undefined, widths),
+    rows,
     wrapAt: undefined,
     room: width,
     kind,
+    selection: typed === undefined ? undefined : selectionOf(rows, typed),
   });
+  const place =
+    typed === undefined ? undefined : placeOf(rows, typed.head, widths);
+  if (place !== undefined && place.column <= width) {
+    painter.caret({
+      start: column,
+      column: column + place.column,
+      row,
+      cells: place.cells,
+      under: place.under,
+    });
+  }
 }
 
 export function lineWidthOf(text: string, widths: TextWidths): number {

@@ -85,8 +85,12 @@ export function typingKeyed(
   event: KeyEvent,
   caret: Caret,
   layout: TypedLayout | undefined,
+  oneLine = false,
 ): Keyed | undefined {
-  if (keyPressed(canvasKeymap.stopTyping, event) !== undefined) {
+  if (
+    keyPressed(canvasKeymap.stopTyping, event) !== undefined ||
+    (oneLine && keyPressed(canvasKeymap.newLine, event) !== undefined)
+  ) {
     return { kind: 'stop' };
   }
   const next =

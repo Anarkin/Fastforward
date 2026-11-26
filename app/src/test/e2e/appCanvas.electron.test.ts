@@ -583,4 +583,22 @@ suite('App canvas', () => {
       },
     );
   });
+
+  test('names a group selected on Enter, typing its label into its top border, ends it on Enter and writes the label into its file', async () => {
+    const top = await pointAt({ column: 40, row: 3 });
+    await page.mouse.click(top.x, top.y);
+    await shows('the group selected', { column: 30, row: 3 }, '╔');
+    await page.keyboard.press('Enter');
+    await cursorShown('the cursor in the label', true);
+    await page.keyboard.type('Ideas');
+    await page.keyboard.press('Enter');
+    await cursorShown('the cursor gone', false);
+    await holds('the label drawn', 'Ideas', true);
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () => Promise.resolve(fs.readFileSync(board, 'utf8')),
+      'the label saved',
+      { accepted: (text) => text.includes('"label":"Ideas"') },
+    );
+  });
 });

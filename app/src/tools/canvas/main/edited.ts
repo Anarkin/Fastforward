@@ -125,15 +125,18 @@ function applied(
     }
     case 'text': {
       const node = listIn(raw, 'nodes').find((each) => idOf(each) === edit.id);
-      if (
-        !isObject(node) ||
-        node.type !== 'text' ||
-        typeof node.text !== 'string' ||
-        node.text === edit.text
-      ) {
+      const key =
+        isObject(node) && node.type === 'group'
+          ? 'label'
+          : isObject(node) &&
+              node.type === 'text' &&
+              typeof node.text === 'string'
+            ? 'text'
+            : undefined;
+      if (!isObject(node) || key === undefined || node[key] === edit.text) {
         return false;
       }
-      node.text = edit.text;
+      node[key] = edit.text;
       return true;
     }
     default:
