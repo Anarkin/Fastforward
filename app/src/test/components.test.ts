@@ -41,6 +41,7 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/encodings/main/encodingDetection.ts',
     'components/encodings/main/textCodings.ts',
     'components/encodings/page/encodings.ts',
+    'components/encodings/shared/byteOrderMarks.ts',
     'components/encodings/shared/textEncodings.ts',
   ],
   diff: [

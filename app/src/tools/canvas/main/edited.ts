@@ -1,11 +1,10 @@
+import { withoutMark } from '../../../components/encodings/shared/byteOrderMarks';
 import { isObject, type Json } from '../../../lib/main/json';
 import type { BoardEdit } from '../shared/protocol';
 import { layoutOf, written, type Layout } from './layout';
 import { boardFrom, type BoardRead } from './reading';
 
 const mostUndone = 500;
-
-const byteOrderMark = '﻿';
 
 const idOf = (item: unknown): string | undefined =>
   isObject(item) && typeof item.id === 'string' ? item.id : undefined;
@@ -155,7 +154,7 @@ export class EditedBoard {
 
   constructor(text: string) {
     this.layout = layoutOf(text);
-    const json = text.startsWith(byteOrderMark) ? text.slice(1) : text;
+    const json = withoutMark(text);
     const parsed: unknown = json.trim() === '' ? {} : JSON.parse(json);
     this.raw = isObject(parsed) ? parsed : {};
   }

@@ -1,3 +1,4 @@
+import { markCharacter } from '../../../components/encodings/shared/byteOrderMarks';
 import type { Json } from '../../../lib/main/json';
 
 export interface Layout {
@@ -8,8 +9,6 @@ export interface Layout {
   readonly bom: boolean;
 }
 
-const byteOrderMark = '﻿';
-
 const objectStartingALine = /^[ \t]*\{"/m;
 
 const keyWithoutSpace = /^[ \t]+"(?:[^"\\]|\\.)*":[^ ]/m;
@@ -17,7 +16,7 @@ const keyWithoutSpace = /^[ \t]+"(?:[^"\\]|\\.)*":[^ ]/m;
 const firstIndent = /^([ \t]+)\S/m;
 
 export function layoutOf(text: string): Layout {
-  const bom = text.startsWith(byteOrderMark);
+  const bom = text.startsWith(markCharacter);
   const json = bom ? text.slice(1) : text;
   const ending = json.includes('\r\n') ? '\r\n' : '\n';
   const body = json.trimEnd();
@@ -62,5 +61,5 @@ export function written(raw: Json, layout: Layout): string {
         ? JSON.stringify(raw, null, layout.indent)
         : JSON.stringify(raw);
   const ended = body.replaceAll('\n', layout.ending);
-  return `${layout.bom ? byteOrderMark : ''}${ended}${layout.finalEnding ? layout.ending : ''}`;
+  return `${layout.bom ? markCharacter : ''}${ended}${layout.finalEnding ? layout.ending : ''}`;
 }

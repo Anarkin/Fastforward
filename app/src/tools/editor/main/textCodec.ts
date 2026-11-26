@@ -1,3 +1,7 @@
+import {
+  markBytesOf,
+  startsWithMark,
+} from '../../../components/encodings/shared/byteOrderMarks';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
   keptPlaceholder,
@@ -34,12 +38,6 @@ export type EncodedText =
   | { readonly bytes: Uint8Array }
   | { readonly unencodable: readonly Unencodable[] };
 
-const byteOrderMarks: Partial<Record<TextEncoding, readonly number[]>> = {
-  'utf-8': [0xef, 0xbb, 0xbf],
-  'utf-16le': [0xff, 0xfe],
-  'utf-16be': [0xfe, 0xff],
-};
-
 const endingTexts: Readonly<Record<LineEnding, string>> = {
   lf: '\n',
   crlf: '\r\n',
@@ -49,13 +47,6 @@ const endingTexts: Readonly<Record<LineEnding, string>> = {
 interface Raw {
   readonly text: string;
   readonly kept: readonly KeptBytes[];
-}
-
-function startsWith(bytes: Uint8Array, prefix: readonly number[]): boolean {
-  return (
-    bytes.length >= prefix.length &&
-    prefix.every((byte, index) => bytes[index] === byte)
-  );
 }
 
 const isContinuation = (byte: number | undefined) =>
@@ -228,9 +219,11 @@ export function decodedText(
   bytes: Uint8Array,
   encoding: TextEncoding,
 ): DecodedText {
-  const mark = byteOrderMarks[encoding];
-  const bom = mark !== undefined && startsWith(bytes, mark);
-  const raw = rawText(bytes.subarray(bom ? (mark?.length ?? 0) : 0), encoding);
+  const bom = startsWithMark(bytes, encoding);
+  const raw = rawText(
+    bytes.subarray(bom ? (markBytesOf(encoding)?.length ?? 0) : 0),
+    encoding,
+  );
   const endings = { lf: 0, crlf: 0, cr: 0 };
   const breaks: StrayEnding[] = [];
   const parts: string[] = [];
@@ -362,7 +355,7 @@ export function encodedText({
   const special = new Set(marked);
   const chunks: (readonly number[] | Uint8Array)[] = [];
   const unencodable: Unencodable[] = [];
-  const mark = bom ? byteOrderMarks[encoding] : undefined;
+  const mark = bom ? markBytesOf(encoding) : undefined;
   if (mark !== undefined) {
     chunks.push(mark);
   }

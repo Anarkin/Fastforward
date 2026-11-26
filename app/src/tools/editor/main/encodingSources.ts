@@ -1,7 +1,7 @@
+import { byteOrderMarkOf } from '../../../components/encodings/shared/byteOrderMarks';
 import type { EncodingSource } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
-  byteOrderMarkOf,
   isUtf8,
   utf16Order,
 } from '../../../components/encodings/main/encodingDetection';

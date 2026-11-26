@@ -1,3 +1,4 @@
+import { markCharacter } from '../../../components/encodings/shared/byteOrderMarks';
 import type { TextRow } from '../shared/protocol';
 import { brokenLines } from '../../../lib/page/textLines';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
@@ -10,17 +11,15 @@ import {
   type CodePart,
 } from '../../../components/syntax/page/parts';
 
-const byteOrderMark = '﻿';
-
 export interface WholeText {
   readonly text: string;
   readonly marked: boolean;
 }
 
 export function wholeText(text: string): WholeText {
-  const marked = text.startsWith(byteOrderMark);
+  const marked = text.startsWith(markCharacter);
   return {
-    text: marked ? text.slice(byteOrderMark.length) : text,
+    text: marked ? text.slice(markCharacter.length) : text,
     marked,
   };
 }
@@ -49,7 +48,7 @@ export function coloredText(
   const lines = broken.map((line) => line.text);
   const lineStarts: number[] = [];
   const unitLines: boolean[] = [];
-  let at = marked ? wholeBytes(byteOrderMark, encoding) : 0;
+  let at = marked ? wholeBytes(markCharacter, encoding) : 0;
   for (const { text: line, fed } of broken) {
     const bytes = wholeBytes(line, encoding);
     lineStarts.push(at);
@@ -126,15 +125,15 @@ function markedRowSegments(
   colored: ColoredText,
   row: TextRow,
 ): CodeSegment[] | undefined {
-  const marked = row.text.startsWith(byteOrderMark);
+  const marked = row.text.startsWith(markCharacter);
   const segments = lineSegments(
     colored,
     0,
     0,
-    marked ? row.text.slice(byteOrderMark.length) : row.text,
+    marked ? row.text.slice(markCharacter.length) : row.text,
   );
   return marked && segments !== undefined
-    ? [{ text: byteOrderMark }, ...segments]
+    ? [{ text: markCharacter }, ...segments]
     : segments;
 }
 

@@ -1,3 +1,4 @@
+import { withoutMark } from '../../../components/encodings/shared/byteOrderMarks';
 import { fs } from '../../../lib/main/files';
 import { codingOf } from '../../../components/encodings/main/textCodings';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
@@ -18,8 +19,6 @@ export type WholeCopy =
     };
 
 const megabyte = 1024 * 1024;
-
-const byteOrderMark = '﻿';
 
 export async function wholeCopy(
   file: string,
@@ -46,6 +45,6 @@ export async function wholeCopy(
   const text = codingOf(encoding).decode(bytes);
   return {
     kind: 'copied',
-    text: text.startsWith(byteOrderMark) ? text.slice(1) : text,
+    text: withoutMark(text),
   };
 }

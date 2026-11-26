@@ -1,3 +1,4 @@
+import { byteOrderMarkOf } from '../../../components/encodings/shared/byteOrderMarks';
 import type { FileTabSize } from '../../../lib/shared/tabSize';
 import { fs } from '../../../lib/main/files';
 import { strings } from '../../../lib/shared/strings';
@@ -17,7 +18,6 @@ import { sampledVersion } from '../../../lib/main/fileVersions';
 import { readBudgetBytes, rowsBefore, rowsFrom, rowStartAt } from './textRows';
 import { codingOf } from '../../../components/encodings/main/textCodings';
 import {
-  byteOrderMarkOf,
   firstBytes,
   isUtf8,
   looksBinary,

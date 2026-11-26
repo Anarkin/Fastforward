@@ -45,4 +45,13 @@ suite('Unification', () => {
       ['lib/main/missing.ts', 'lib/main/reasons.ts', 'lib/shared/errors.ts'],
     );
   });
+
+  test('writes the byte order marks of the encodings, their bytes and their character, in one module of the encodings, which every part that reads, writes or strips one uses, rather than in the ten copies the editor, the viewer, the canvas and the settings had', () => {
+    assert.deepStrictEqual(
+      doing(
+        /0xef,\s*0xbb|0xff,\s*0xfe\]|0xfe,\s*0xff\]|0xfe_ff|\\uFEFF|\uFEFF/i,
+      ),
+      ['components/encodings/shared/byteOrderMarks.ts'],
+    );
+  });
 });

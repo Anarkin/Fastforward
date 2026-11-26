@@ -1,3 +1,4 @@
+import { withoutMark } from '../../../components/encodings/shared/byteOrderMarks';
 import { isObject, type Json } from '../../../lib/main/json';
 import {
   backgroundStyles,
@@ -12,8 +13,6 @@ export type BoardRead =
   | { readonly kind: 'board'; readonly board: Board; readonly skipped: number }
   | { readonly kind: 'notJson' }
   | { readonly kind: 'notBoard' };
-
-const byteOrderMark = '﻿';
 
 const emptyBoard: Board = { nodes: [], edges: [] };
 
@@ -140,7 +139,7 @@ function firstOfEachId<T extends { readonly id: string }>(
 }
 
 export function boardOf(text: string): BoardRead {
-  const json = text.startsWith(byteOrderMark) ? text.slice(1) : text;
+  const json = withoutMark(text);
   if (json.trim() === '') {
     return { kind: 'board', board: emptyBoard, skipped: 0 };
   }

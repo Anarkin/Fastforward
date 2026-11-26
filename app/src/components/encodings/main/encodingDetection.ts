@@ -1,21 +1,13 @@
+import {
+  byteOrderMarkOf,
+  markBytesOf,
+  startsWithMark,
+} from '../shared/byteOrderMarks';
 import type { TextEncoding } from '../shared/textEncodings';
 import { codingOf, continuation, high } from './textCodings';
 import { readingFile } from '../../../lib/main/fileBlocks';
 
 const binaryCheckBytes = 8000;
-
-const byteOrderMarks: readonly (readonly [TextEncoding, readonly number[]])[] =
-  [
-    ['utf-8', [0xef, 0xbb, 0xbf]],
-    ['utf-16le', [0xff, 0xfe]],
-    ['utf-16be', [0xfe, 0xff]],
-  ];
-
-export function byteOrderMarkOf(bytes: Buffer): TextEncoding | undefined {
-  return byteOrderMarks.find(([, mark]) =>
-    mark.every((byte, index) => bytes[index] === byte),
-  )?.[0];
-}
 
 const lastBackspace = 0x08;
 const firstShiftOut = 0x0e;
@@ -153,10 +145,11 @@ export function decodedText(
   if (encoding === undefined) {
     return undefined;
   }
-  const mark = byteOrderMarks.find(([marked]) => marked === encoding)?.[1];
-  const bom = mark !== undefined && byteOrderMarkOf(bytes) === encoding;
+  const bom = startsWithMark(bytes, encoding);
   return {
-    text: codingOf(encoding).decode(bytes.subarray(bom ? mark.length : 0)),
+    text: codingOf(encoding).decode(
+      bytes.subarray(bom ? (markBytesOf(encoding)?.length ?? 0) : 0),
+    ),
     encoding,
     bom,
   };

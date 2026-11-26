@@ -1,3 +1,7 @@
+import {
+  markBytesOf,
+  startsWithMark,
+} from '../../../components/encodings/shared/byteOrderMarks';
 import { wholeLineBytes, type TextRow } from '../shared/protocol';
 import { blockBytes, type ReadBytes } from '../../../lib/main/fileBlocks';
 import {
@@ -397,8 +401,6 @@ async function lineEndsBy(
   return false;
 }
 
-const utf8Mark = Buffer.from([0xef, 0xbb, 0xbf]);
-
 function openingMarked(rows: TextRow[], first: number): TextRow[] {
   const [opening, ...rest] = rows;
   return first > 0 && opening?.start === first
@@ -410,8 +412,9 @@ async function textStartOf(
   read: ReadBytes,
   coding: TextCoding,
 ): Promise<number> {
-  return coding === utf8 && (await read(0, utf8Mark.length)).equals(utf8Mark)
-    ? utf8Mark.length
+  const mark = markBytesOf('utf-8') ?? [];
+  return coding === utf8 && startsWithMark(await read(0, mark.length), 'utf-8')
+    ? mark.length
     : 0;
 }
 

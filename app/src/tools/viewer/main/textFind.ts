@@ -1,3 +1,8 @@
+import {
+  markBytesOf,
+  startsWithMark,
+  markCharacter,
+} from '../../../components/encodings/shared/byteOrderMarks';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
   codingOf,
@@ -50,18 +55,13 @@ function sequenceLength(bytes: Uint8Array, at: number): number {
   return length;
 }
 
-const byteOrderMark = 0xfe_ff;
-
-const utf8Mark = [0xef, 0xbb, 0xbf];
-
 function utf8Offsets(
   text: string,
   bytes: Uint8Array,
 ): (index: number) => number {
   const marked =
-    text.codePointAt(0) !== byteOrderMark &&
-    utf8Mark.every((byte, index) => bytes[index] === byte);
-  const skipped = marked ? utf8Mark.length : 0;
+    !text.startsWith(markCharacter) && startsWithMark(bytes, 'utf-8');
+  const skipped = marked ? (markBytesOf('utf-8')?.length ?? 0) : 0;
   let lastIndex = 0;
   let lastByte = skipped;
   return (index) => {
@@ -77,11 +77,6 @@ function utf8Offsets(
   };
 }
 
-const utf16Marks = {
-  'utf-16le': [0xff, 0xfe],
-  'utf-16be': [0xfe, 0xff],
-} as const;
-
 function byteOffsets(
   text: string,
   bytes: Uint8Array,
@@ -89,8 +84,7 @@ function byteOffsets(
 ): (index: number) => number {
   if (encoding === 'utf-16le' || encoding === 'utf-16be') {
     const skipped =
-      text.codePointAt(0) !== byteOrderMark &&
-      utf16Marks[encoding].every((byte, index) => bytes[index] === byte)
+      !text.startsWith(markCharacter) && startsWithMark(bytes, encoding)
         ? 2
         : 0;
     return (index) => skipped + index * 2;
