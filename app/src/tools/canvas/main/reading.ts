@@ -145,14 +145,15 @@ export function boardOf(text: string): BoardRead {
     return { kind: 'board', board: emptyBoard, skipped: 0 };
   }
   const read = parsed(json);
-  if (read === undefined) {
-    return { kind: 'notJson' };
-  }
-  if (!isObject(read.value)) {
+  return read === undefined ? { kind: 'notJson' } : boardFrom(read.value);
+}
+
+export function boardFrom(value: unknown): BoardRead {
+  if (!isObject(value)) {
     return { kind: 'notBoard' };
   }
-  const listedNodes = listOf(read.value.nodes);
-  const listedEdges = listOf(read.value.edges);
+  const listedNodes = listOf(value.nodes);
+  const listedEdges = listOf(value.edges);
   if (listedNodes === undefined || listedEdges === undefined) {
     return { kind: 'notBoard' };
   }

@@ -1306,6 +1306,10 @@ export const strings = {
     newFile: 'New file, made once saved',
   },
   canvas: {
+    couldNotSave: (file: string, reason: Sentence) =>
+      sentence`Couldn't save ${namedFile(file)}. ${reason}`,
+    readOnly: (file: string) =>
+      sentence`${namedFile(file)} is read-only, so it isn't saved.`,
     tooLarge: (file: string) =>
       sentence`${namedFile(file)} is over 50 MB, too large to draw.`,
     notJson: (file: string) =>

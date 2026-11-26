@@ -23,11 +23,26 @@ class CanvasPage implements Page {
 
 const file = '/boards/plan.canvas';
 
+class ReadOnly extends Error {}
+
 function canvas(
   files: Record<string, string>,
   sizes: Record<string, number> = {},
+  readOnly: readonly string[] = [],
 ) {
+  const saved: [string, string][] = [];
   const tool = new CanvasTool({
+    saveFile: (name, bytes) => {
+      if (readOnly.includes(name)) {
+        return Promise.reject(new ReadOnly(name));
+      }
+      const text = new TextDecoder().decode(bytes);
+      saved.push([name, text]);
+      files[name] = text;
+      return Promise.resolve();
+    },
+    readOnly: (error) => error instanceof ReadOnly,
+    newId: () => 'made',
     sizeOf: (name) =>
       name in files
         ? Promise.resolve(sizes[name] ?? files[name]?.length ?? 0)
@@ -42,7 +57,7 @@ function canvas(
   const page = new CanvasPage();
   const shell = fakeShell(page);
   tool.attach(shell.shell);
-  return { tool, page, ...shell };
+  return { tool, page, saved, ...shell };
 }
 
 const tab: Tab = { id: '7', tool: 'canvas', root: file };
@@ -55,6 +70,12 @@ const node = {
   width: 70,
   height: 36,
   text: 'Idea',
+};
+
+const board = (page: CanvasPage) => {
+  const last = page.messages.findLast((each) => each.type === 'board');
+  assert.ok(last?.type === 'board');
+  return last;
 };
 
 suite('Canvas tool', () => {
@@ -144,5 +165,115 @@ suite('Canvas tool', () => {
       new Map([['7', { name: 'plan.canvas' }]]),
     );
     assert.strictEqual(tool.folderOf(tab), '/boards');
+  });
+
+  test('applies the edits the page sends to the canvas it holds, marking the tab unsaved, and takes back and does again each by undo and redo', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }, null, '	') };
+    const { tool, page, tabsPosted } = canvas(files);
+    await tool.show(page, tab);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, x: 14 }] },
+    });
+    assert.deepStrictEqual(
+      [board(page).board?.nodes[0]?.x, board(page).changed],
+      [14, true],
+    );
+    assert.deepStrictEqual(tool.names([tab]).get('7'), {
+      name: 'plan.canvas',
+      unsaved: true,
+    });
+    assert.strictEqual(tabsPosted.length, 1);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: {
+        kind: 'add',
+        node: { type: 'text', x: 0, y: 72, width: 70, height: 54 },
+      },
+    });
+    assert.strictEqual(board(page).made, 'made');
+    await tool.receive(page, { type: 'undo', tab: '7' });
+    await tool.receive(page, { type: 'undo', tab: '7' });
+    assert.deepStrictEqual(
+      [board(page).board?.nodes.map((each) => each.x), board(page).changed],
+      [[0], undefined],
+    );
+    assert.strictEqual(tool.unsaved(tab), false);
+    await tool.receive(page, { type: 'redo', tab: '7' });
+    assert.strictEqual(board(page).board?.nodes[0]?.x, 14);
+  });
+
+  test('keeps the edits not saved while its tab is away, reading the file anew only once nothing is unsaved', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page } = canvas(files);
+    await tool.show(page, tab);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, x: 14 }] },
+    });
+    files[file] = JSON.stringify({ nodes: [{ ...node, x: 700 }] });
+    await tool.show(page, tab);
+    assert.strictEqual(board(page).board?.nodes[0]?.x, 14);
+    await tool.receive(page, { type: 'undo', tab: '7' });
+    await tool.show(page, tab);
+    assert.strictEqual(board(page).board?.nodes[0]?.x, 700);
+  });
+
+  test('saves the canvas in the layout of its file, the tab no longer unsaved, and a save asked for with nothing to save writes nothing', async () => {
+    const written = JSON.stringify({ nodes: [node], edges: [] }, null, 2);
+    const files = { [file]: written };
+    const { tool, page, saved } = canvas(files);
+    await tool.show(page, tab);
+    await tool.receive(page, { type: 'save', tab: '7' });
+    assert.deepStrictEqual(saved, []);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, y: 18 }] },
+    });
+    assert.strictEqual(await tool.saveUnsaved(page, tab), true);
+    assert.deepStrictEqual(saved, [
+      [
+        file,
+        JSON.stringify({ nodes: [{ ...node, y: 18 }], edges: [] }, null, 2),
+      ],
+    ]);
+    assert.strictEqual(tool.unsaved(tab), false);
+    assert.strictEqual(board(page).changed, undefined);
+  });
+
+  test('says why it saves no canvas that is read-only, keeping its edits unsaved', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page, notices } = canvas(files, {}, [file]);
+    await tool.show(page, tab);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'delete', nodes: ['a'], edges: [] },
+    });
+    assert.strictEqual(await tool.saveUnsaved(page, tab), false);
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.canvas.readOnly(file) },
+    ]);
+    assert.strictEqual(tool.unsaved(tab), true);
+  });
+
+  test('takes no edit that is not whole, as the page is not trusted', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page } = canvas(files);
+    await tool.show(page, tab);
+    const before = page.messages.length;
+    await tool.receive(
+      page,
+      JSON.parse(
+        '{"type":"edit","tab":"7","edit":{"kind":"place","boxes":[{"id":"a","x":"1","y":0,"width":70,"height":36}]}}',
+      ),
+    );
+    await tool.receive(page, JSON.parse('{"type":"edit","tab":9,"edit":{}}'));
+    assert.strictEqual(page.messages.length, before);
+    assert.strictEqual(tool.unsaved(tab), false);
   });
 });

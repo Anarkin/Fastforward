@@ -249,6 +249,7 @@ export function newView(
       canvas: new CanvasTool({
         sizeOf: async (file) => (await fs.promises.stat(file)).size,
         readFile: (file) => fs.promises.readFile(file),
+        saveFile: (file, bytes) => fs.promises.writeFile(file, bytes),
       }),
     }),
   );
