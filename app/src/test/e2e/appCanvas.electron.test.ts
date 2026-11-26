@@ -378,6 +378,23 @@ suite('App canvas', () => {
       accepted: (count) => (count === 1) === wanted,
     });
 
+  const savedEdges = () => {
+    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
+    assert.ok(typeof saved === 'object' && saved !== null && 'edges' in saved);
+    assert.ok(Array.isArray(saved.edges));
+    return saved.edges.flatMap((edge: unknown) =>
+      typeof edge === 'object' &&
+      edge !== null &&
+      'fromNode' in edge &&
+      'fromSide' in edge &&
+      'toSide' in edge
+        ? [
+            `${String(edge.fromNode)} ${String(edge.fromSide)} ${String(edge.toSide)}`,
+          ]
+        : [],
+    );
+  };
+
   const panTo = async (wanted: Placed) => {
     const now = await settledOrigin();
     const cell = await cellSize();
@@ -505,5 +522,30 @@ suite('App canvas', () => {
     await holds('the words typed', 'Hello there', true);
     await page.keyboard.press('Escape');
     await cursorShown('the cursor gone', false);
+  });
+
+  test('marks the middle of each side of the node under the pointer, joins it to another node by an edge dragged from a mark, the side nearest the pointer, selected and saved, and deletes an edge clicked on Delete', async () => {
+    const plan = await pointAt({ column: 14, row: 5 });
+    await page.mouse.move(plan.x, plan.y);
+    await shows('the mark below the node', { column: 14, row: 7 }, '●');
+    const mark = await pointAt({ column: 14, row: 7 });
+    const target = await pointAt({ column: 15, row: 13 });
+    await page.mouse.move(mark.x, mark.y);
+    await page.mouse.down();
+    await page.mouse.move(target.x, target.y, { steps: 5 });
+    await page.mouse.up();
+    await shows('the edge drawn selected', { column: 14, row: 8 }, '║');
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(() => Promise.resolve(savedEdges()), 'the edge saved', {
+      accepted: (edges) => edges.includes('plan bottom top'),
+    });
+    const empty = await pointAt({ column: 40, row: 20 });
+    await page.mouse.click(empty.x, empty.y);
+    await shows('the edge no longer selected', { column: 14, row: 8 }, '│');
+    const line = await pointAt({ column: 14, row: 8 });
+    await page.mouse.click(line.x, line.y);
+    await shows('the edge selected by a click', { column: 14, row: 8 }, '║');
+    await page.keyboard.press('Delete');
+    await shows('the edge deleted', { column: 14, row: 8 }, ' ');
   });
 });

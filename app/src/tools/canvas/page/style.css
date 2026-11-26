@@ -41,6 +41,10 @@
   cursor: text;
 }
 
+.board-body[data-cursor='connect'] {
+  cursor: crosshair;
+}
+
 .board-host {
   position: absolute;
   pointer-events: none;
@@ -69,7 +73,8 @@
   color: var(--muted-foreground);
 }
 
-.board-marquee {
+.board-marquee,
+.board-mark {
   color: var(--color-focus);
 }
 

@@ -41,6 +41,7 @@ import {
   boundsOf,
   labelKind,
   lineKind,
+  markKind,
   screenOf,
   type TypedNode,
 } from './boardScreen';
@@ -49,6 +50,7 @@ import { arrowRects, lineRects, strokeOf } from './lineRects';
 import { gridDots } from './gridDots';
 import { signKind } from './nodeText';
 import { originOf, type CellSize, type Origin } from './pan';
+import type { Cell } from './routes';
 import type { Screen } from './screen';
 import type { ClientBox } from './typingContext';
 import { screenRows } from './seenScreen';
@@ -85,6 +87,7 @@ const lookKinds = [
   [marqueeKind, 'board-marquee'],
   [lineKind, 'board-line'],
   [labelKind, 'board-label'],
+  [markKind, 'board-mark'],
   [signKind, 'board-sign'],
   ...colorKinds,
 ] as const;
@@ -112,12 +115,14 @@ export interface Drawn {
   readonly top: number;
   readonly cellsOf: (cluster: string) => number;
   readonly caret: ClientBox | undefined;
+  readonly edgeAt: (cell: Cell) => string | undefined;
 }
 
 export interface Shown {
   readonly selected: ReadonlySet<string>;
   readonly marquee?: Box | undefined;
   readonly typing?: TypedNode | undefined;
+  readonly marks?: readonly Cell[];
 }
 
 interface CellPlace {
@@ -260,6 +265,7 @@ export class BoardSurface {
       cellsOf,
       selected: shown.selected,
       typing: shown.typing,
+      marks: shown.marks,
     });
     cells.frame.reset();
     cells.under.reset();
@@ -324,6 +330,16 @@ export class BoardSurface {
       left: box.left + nudge.left,
       top: box.top + nudge.top,
       cellsOf,
+      edgeAt: (cell) => {
+        const inColumns = cell.column - screen.column;
+        const inRows = cell.row - screen.row;
+        return inColumns < 0 ||
+          inRows < 0 ||
+          inColumns >= screen.columns ||
+          inRows >= screen.rows
+          ? undefined
+          : screen.edges[inRows * screen.columns + inColumns];
+      },
       caret:
         caret === undefined
           ? undefined

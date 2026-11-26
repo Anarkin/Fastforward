@@ -283,7 +283,10 @@ export const strings = {
     panCanvasHeld: 'Hold to move around the canvas by dragging it',
     placeTextNode: 'Place a text node, which follows the pointer until a click',
     placeGroupNode: 'Place a group, which follows the pointer until a click',
-    selectNodes: 'Select a node, or add it to the selection or take it out',
+    selectNodes:
+      'Select a node or an edge, or add it to the selection or take it out',
+    connectNodes:
+      'Join two nodes by an edge, dragged from the mark beside a side of one to the other',
     selectArea: 'Select the nodes a box drawn over the empty canvas touches',
     moveNodes: 'Move the nodes selected, a cell at a time',
     resizeNode: 'Size a node selected by a side or a corner, a cell at a time',

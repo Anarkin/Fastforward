@@ -1,5 +1,5 @@
 import type { Sentence } from '../../../lib/shared/sentences';
-import type { Board } from './board';
+import type { Board, NodeSide } from './board';
 
 export const viewVersion = 1;
 
@@ -25,6 +25,13 @@ export type BoardEdit =
       readonly kind: 'delete';
       readonly nodes: readonly string[];
       readonly edges: readonly string[];
+    }
+  | {
+      readonly kind: 'connect';
+      readonly fromNode: string;
+      readonly fromSide: NodeSide;
+      readonly toNode: string;
+      readonly toSide: NodeSide;
     }
   | {
       readonly kind: 'text';

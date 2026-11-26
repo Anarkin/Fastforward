@@ -114,6 +114,66 @@ suite('Canvas screen', () => {
     );
   });
 
+  test('draws the selected edge in double lines, and tells which edge each of its cells draws, its label too, for a click to select it', () => {
+    const board: Board = {
+      nodes: [
+        text('idea', 0, 0, 8, 3, 'Idea'),
+        text('plan', 14, 0, 8, 3, 'Plan'),
+      ],
+      edges: [
+        edge({ fromSide: 'right', toSide: 'left', toEnd: 'none', label: 'x' }),
+      ],
+    };
+    const view = { column: 0, row: 0, columns: 24, rows: 3 };
+    assert.deepStrictEqual(screenText(board, view, ['e']), [
+      '┌──────┐      ┌──────┐',
+      '│ Idea ╠══ x ═╣ Plan │',
+      '└──────┘      └──────┘',
+    ]);
+    const screen = screenOf({ board, unit, view, cellsOf: narrow });
+    assert.deepStrictEqual(
+      Array.from(
+        { length: 24 },
+        (_, column) => screen.edges[24 + column] ?? '.',
+      ).join(''),
+      '........eeeeee..........',
+    );
+  });
+
+  test('draws the marks of the sides of a node where it is asked to, over a line but under the arrow of an edge arriving there', () => {
+    assert.deepStrictEqual(
+      screenOf({
+        board: { nodes: [text('idea', 0, 0, 8, 3, 'Idea')], edges: [] },
+        unit,
+        view: { column: 0, row: 0, columns: 10, rows: 3 },
+        cellsOf: narrow,
+        marks: [{ column: 8, row: 1 }],
+      }).glyphs[18],
+      '●',
+    );
+
+    const arriving = screenOf({
+      board: {
+        nodes: [
+          text('idea', 0, 0, 8, 3, 'Idea'),
+          text('plan', 14, 0, 8, 3, 'Plan'),
+        ],
+        edges: [edge({ fromSide: 'right', toSide: 'left' })],
+      },
+      unit,
+      view: { column: 0, row: 0, columns: 24, rows: 3 },
+      cellsOf: narrow,
+      marks: [
+        { column: 8, row: 1 },
+        { column: 13, row: 1 },
+      ],
+    });
+    assert.deepStrictEqual(
+      [arriving.glyphs[24 + 8], arriving.arrows[24 + 13]],
+      ['●', 'right'],
+    );
+  });
+
   test('draws an arrow at either end an edge asks for one, and a joint at an end without', () => {
     assert.deepStrictEqual(
       screenText(

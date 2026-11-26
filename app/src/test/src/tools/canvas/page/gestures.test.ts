@@ -68,7 +68,7 @@ suite('Canvas gestures', () => {
       ],
     );
     assert.deepStrictEqual(
-      released(start.gesture, unit, { column: 5, row: 1 }),
+      released(start.gesture, board, unit, { column: 5, row: 1 }),
       {
         kind: 'place',
         boxes: [
@@ -78,7 +78,7 @@ suite('Canvas gestures', () => {
       },
     );
     assert.strictEqual(
-      released(start.gesture, unit, { column: 2, row: 2 }),
+      released(start.gesture, board, unit, { column: 2, row: 2 }),
       undefined,
     );
   });
@@ -111,7 +111,7 @@ suite('Canvas gestures', () => {
     assert.deepStrictEqual(start.selected, ['g']);
     assert.ok(start.gesture !== undefined);
     assert.deepStrictEqual(
-      released(start.gesture, unit, { column: 7, row: 1 }),
+      released(start.gesture, grouped, unit, { column: 7, row: 1 }),
       {
         kind: 'place',
         boxes: [
@@ -137,7 +137,7 @@ suite('Canvas gestures', () => {
     );
     assert.ok(start.gesture !== undefined);
     assert.deepStrictEqual(
-      released(start.gesture, unit, { column: 14, row: 5 }),
+      released(start.gesture, board, unit, { column: 14, row: 5 }),
       {
         kind: 'place',
         boxes: [{ id: 'a', x: 0, y: 0, width: 105, height: 108 }],
@@ -181,8 +181,67 @@ suite('Canvas gestures', () => {
       ['c', 'a'],
     );
     assert.strictEqual(
-      released(adding.gesture, unit, { column: 1, row: 1 }),
+      released(adding.gesture, board, unit, { column: 1, row: 1 }),
       undefined,
+    );
+  });
+
+  test('draws an edge from the mark of a side to the pointer, to the side of the node under it nearest the pointer, joining them once let go there, and nothing once let go over no other node', () => {
+    const start = pressed(
+      board,
+      unit,
+      { kind: 'mark', id: 'a', side: 'right' },
+      { column: 10, row: 1 },
+      ['c'],
+      'one',
+    );
+    assert.deepStrictEqual(start.selected, ['c']);
+    assert.ok(start.gesture !== undefined);
+    assert.deepStrictEqual(
+      dragging(start.gesture, board, unit, { column: 15, row: 6 }).preview.wire,
+      {
+        fromNode: 'a',
+        fromSide: 'right',
+        to: { at: { column: 15, row: 6 } },
+      },
+    );
+    assert.deepStrictEqual(
+      dragging(start.gesture, board, unit, { column: 21, row: 1 }).preview.wire
+        ?.to,
+      { node: 'b', side: 'left' },
+    );
+    assert.deepStrictEqual(
+      released(start.gesture, board, unit, { column: 21, row: 1 }),
+      {
+        kind: 'connect',
+        fromNode: 'a',
+        fromSide: 'right',
+        toNode: 'b',
+        toSide: 'left',
+      },
+    );
+    assert.strictEqual(
+      released(start.gesture, board, unit, { column: 15, row: 6 }),
+      undefined,
+    );
+    assert.strictEqual(
+      released(start.gesture, board, unit, { column: 5, row: 2 }),
+      undefined,
+    );
+  });
+
+  test('selects an edge clicked, adds it with Shift and takes it out or puts it in with Mod, moving nothing', () => {
+    const hit = { kind: 'edge', id: 'ab' } as const;
+    const at = { column: 15, row: 1 };
+    assert.deepStrictEqual(pressed(board, unit, hit, at, ['a'], 'one'), {
+      selected: ['ab'],
+    });
+    assert.deepStrictEqual(pressed(board, unit, hit, at, ['a'], 'add'), {
+      selected: ['a', 'ab'],
+    });
+    assert.deepStrictEqual(
+      pressed(board, unit, hit, at, ['a', 'ab'], 'toggle'),
+      { selected: ['a'] },
     );
   });
 });

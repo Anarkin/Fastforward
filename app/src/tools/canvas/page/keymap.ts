@@ -21,6 +21,7 @@ export const canvasKeymap = {
     'Mod+Drag': 'add',
   } as const),
   move: bind('Editing', strings.actions.moveNodes, { Drag: true }),
+  connect: bind('Editing', strings.actions.connectNodes, { Drag: true }),
   resize: bind('Editing', strings.actions.resizeNode, { Drag: true }),
   delete: bind('Editing', strings.actions.deleteNodes, {
     Delete: true,

@@ -83,6 +83,21 @@ function applied(
       raw.edges = keptEdges;
       return true;
     }
+    case 'connect': {
+      const nodes = listIn(raw, 'nodes');
+      const there = (id: string) => nodes.some((each) => idOf(each) === id);
+      if (
+        edit.fromNode === edit.toNode ||
+        !there(edit.fromNode) ||
+        !there(edit.toNode)
+      ) {
+        return false;
+      }
+      const id = newId();
+      const { fromNode, fromSide, toNode, toSide } = edit;
+      listIn(raw, 'edges').push({ id, fromNode, fromSide, toNode, toSide });
+      return id;
+    }
     case 'text': {
       const node = listIn(raw, 'nodes').find((each) => idOf(each) === edit.id);
       if (

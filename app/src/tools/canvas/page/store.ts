@@ -157,7 +157,10 @@ export function createCanvasStore(
           }
           case 'board': {
             const { type: _type, tab, made, ...shown } = message;
-            const ids = new Set(shown.board?.nodes.map((node) => node.id));
+            const ids = new Set([
+              ...(shown.board?.nodes.map((node) => node.id) ?? []),
+              ...(shown.board?.edges.map((edge) => edge.id) ?? []),
+            ]);
             const still = (get().selections.get(tab) ?? []).filter((id) =>
               ids.has(id),
             );

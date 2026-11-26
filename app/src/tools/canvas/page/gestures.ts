@@ -1,9 +1,10 @@
-import type { Board } from '../shared/board';
+import type { Board, NodeSide } from '../shared/board';
 import type { BoardEdit } from '../shared/protocol';
 import { boxOf, type Box, type Unit } from './grid';
 import { areaBetween, holds, touched, type Hit, type Sides } from './hits';
 import { boxesOf, fileBox, movedBy, resizedBy } from './placing';
 import type { Cell } from './routes';
+import { hoveredAt, nearestSide } from './wiring';
 
 export type Gesture =
   | {
@@ -22,13 +23,27 @@ export type Gesture =
       readonly kind: 'area';
       readonly from: Cell;
       readonly kept: readonly string[];
+    }
+  | {
+      readonly kind: 'connect';
+      readonly from: Cell;
+      readonly id: string;
+      readonly side: NodeSide;
     };
+
+export interface Wire {
+  readonly fromNode: string;
+  readonly fromSide: NodeSide;
+  readonly to:
+    { readonly node: string; readonly side: NodeSide } | { readonly at: Cell };
+}
 
 export type Way = 'one' | 'toggle' | 'add';
 
 export interface Preview {
   readonly boxes: ReadonlyMap<string, Box>;
   readonly area?: Box;
+  readonly wire?: Wire;
 }
 
 const noBoxes: ReadonlyMap<string, Box> = new Map();
@@ -75,6 +90,13 @@ export function pressed(
             },
           };
     }
+    case 'mark':
+      return {
+        selected,
+        gesture: { kind: 'connect', from: at, id: hit.id, side: hit.side },
+      };
+    case 'edge':
+      return { selected: chosenWith(selected, hit.id, way) };
     case 'node': {
       if (way === 'toggle') {
         return {
@@ -109,6 +131,37 @@ export function pressed(
   }
 }
 
+function chosenWith(
+  selected: readonly string[],
+  id: string,
+  way: Way,
+): readonly string[] {
+  if (way === 'one') {
+    return [id];
+  }
+  if (selected.includes(id)) {
+    return way === 'toggle' ? selected.filter((each) => each !== id) : selected;
+  }
+  return [...selected, id];
+}
+
+function wireTo(
+  gesture: Extract<Gesture, { readonly kind: 'connect' }>,
+  board: Board,
+  unit: Unit,
+  at: Cell,
+): Wire {
+  const target = hoveredAt(board, unit, at);
+  return {
+    fromNode: gesture.id,
+    fromSide: gesture.side,
+    to:
+      target === undefined || target.id === gesture.id
+        ? { at }
+        : { node: target.id, side: nearestSide(target.box, at, unit) },
+  };
+}
+
 function boxesAt(gesture: Gesture, at: Cell): ReadonlyMap<string, Box> {
   const columns = at.column - gesture.from.column;
   const rows = at.row - gesture.from.row;
@@ -125,6 +178,7 @@ function boxesAt(gesture: Gesture, at: Cell): ReadonlyMap<string, Box> {
         [gesture.id, resizedBy(gesture.box, gesture.sides, columns, rows)],
       ]);
     case 'area':
+    case 'connect':
       return noBoxes;
     default:
       return gesture satisfies never;
@@ -137,6 +191,11 @@ export function dragging(
   unit: Unit,
   at: Cell,
 ): { readonly preview: Preview; readonly selected?: readonly string[] } {
+  if (gesture.kind === 'connect') {
+    return {
+      preview: { boxes: noBoxes, wire: wireTo(gesture, board, unit, at) },
+    };
+  }
   if (gesture.kind !== 'area') {
     return { preview: { boxes: boxesAt(gesture, at) } };
   }
@@ -150,9 +209,22 @@ export function dragging(
 
 export function released(
   gesture: Gesture,
+  board: Board,
   unit: Unit,
   at: Cell,
 ): BoardEdit | undefined {
+  if (gesture.kind === 'connect') {
+    const { fromNode, fromSide, to } = wireTo(gesture, board, unit, at);
+    return 'node' in to
+      ? {
+          kind: 'connect',
+          fromNode,
+          fromSide,
+          toNode: to.node,
+          toSide: to.side,
+        }
+      : undefined;
+  }
   if (
     gesture.kind === 'area' ||
     (at.column === gesture.from.column && at.row === gesture.from.row)

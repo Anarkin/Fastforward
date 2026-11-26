@@ -1,4 +1,5 @@
-import type { Board, BoardNode } from '../shared/board';
+import type { Board, BoardEdge, BoardNode } from '../shared/board';
+import type { Wire } from './gestures';
 import type { NodeBox } from '../shared/protocol';
 import { boxOf, type Box, type Unit } from './grid';
 import type { Sides } from './hits';
@@ -69,6 +70,7 @@ export function previewed(
   unit: Unit,
   boxes: ReadonlyMap<string, Box>,
   ghost?: { readonly type: 'text' | 'group'; readonly box: Box },
+  wire?: Wire,
 ): Board {
   const nodes = board.nodes.map((node): BoardNode => {
     const box = boxes.get(node.id);
@@ -84,7 +86,22 @@ export function previewed(
         : { ...placed, type: 'text', text: '' },
     );
   }
-  return { nodes, edges: board.edges };
+  if (wire === undefined) {
+    return { nodes, edges: board.edges };
+  }
+  const { fromNode, fromSide, to } = wire;
+  const edge: BoardEdge =
+    'node' in to
+      ? { id: ghostId, fromNode, fromSide, toNode: to.node, toSide: to.side }
+      : { id: ghostId, fromNode, fromSide, toNode: ghostId };
+  if ('at' in to) {
+    nodes.push({
+      ...fileBox(ghostId, { ...to.at, columns: 1, rows: 1 }, unit),
+      type: 'text',
+      text: '',
+    });
+  }
+  return { nodes, edges: [...board.edges, edge] };
 }
 
 export function boxesOf(

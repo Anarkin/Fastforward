@@ -104,6 +104,32 @@ suite('Canvas edited', () => {
     ]);
   });
 
+  test('connects two nodes by an edge from a side of one to a side of the other, under an id of its own, as Obsidian writes an edge, and never a node to itself or to one not there', () => {
+    const board = new EditedBoard(canvas);
+    const connect = (fromNode: string, toNode: string) =>
+      board.apply(
+        {
+          kind: 'connect',
+          fromNode,
+          fromSide: 'right',
+          toNode,
+          toSide: 'top',
+        },
+        ids(),
+      );
+    assert.deepStrictEqual(connect('a', 'b'), { made: 'new1' });
+    assert.strictEqual(connect('a', 'a'), undefined);
+    assert.strictEqual(connect('a', 'gone'), undefined);
+    assert.deepStrictEqual(JSON.parse(board.text()).edges.at(-1), {
+      id: 'new1',
+      fromNode: 'a',
+      fromSide: 'right',
+      toNode: 'b',
+      toSide: 'top',
+    });
+    assert.deepStrictEqual(idsOf(board).edges, ['ab', 'ba', 'new1']);
+  });
+
   test('deletes the nodes and edges asked for, and every edge to a node deleted', () => {
     const board = new EditedBoard(canvas);
     board.apply({ kind: 'delete', nodes: ['a'], edges: [] }, ids());
@@ -221,6 +247,14 @@ suite('Canvas edited', () => {
       },
       { kind: 'delete', nodes: [3], edges: [] },
       { kind: 'text', id: 'a', text: 4, session: 1 },
+      {
+        kind: 'connect',
+        fromNode: 'a',
+        fromSide: 'middle',
+        toNode: 'b',
+        toSide: 'top',
+      },
+      { kind: 'connect', fromNode: 'a', fromSide: 'left', toNode: 'b' },
       { kind: 'text', id: 'a', text: 'x', session: 0.5 },
       { kind: 'text', id: '', text: 'x', session: 1 },
       { kind: 'rename' },

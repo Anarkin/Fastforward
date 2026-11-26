@@ -50,6 +50,9 @@ function anchorOf(box: Box, side: NodeSide): Cell {
   }
 }
 
+export const stubOf = (box: Box, side: NodeSide): Cell =>
+  moved(anchorOf(box, side), normalOf(side));
+
 const centerOf = (box: Box) => ({
   column: box.column + box.columns / 2,
   row: box.row + box.rows / 2,

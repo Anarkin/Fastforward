@@ -22,6 +22,10 @@ export const lineKind = 'line';
 
 export const labelKind = 'label';
 
+export const markKind = 'mark';
+
+const mark = '●';
+
 const tinyNode = '□';
 
 const presets = /^[1-6]$/;
@@ -45,6 +49,7 @@ export interface Drawn {
   readonly cellsOf: (cluster: string) => number;
   readonly selected?: ReadonlySet<string>;
   readonly typing?: TypedNode | undefined;
+  readonly marks?: readonly Cell[];
 }
 
 export interface TypedNode {
@@ -262,8 +267,13 @@ interface Routed {
   readonly to: Box;
 }
 
-function paintRoute(painter: Painter, { edge, route }: Routed): void {
+function paintRoute(
+  painter: Painter,
+  { edge, route }: Routed,
+  selected: boolean,
+): void {
   const kind = colorKind(edge.color);
+  const weight = selected ? doubleShift : 0;
   const { cells } = route;
   for (const [at, cell] of cells.entries()) {
     const before = cells[at - 1];
@@ -271,10 +281,12 @@ function paintRoute(painter: Painter, { edge, route }: Routed): void {
     painter.line(
       cell.column,
       cell.row,
-      (before === undefined ? 0 : bitOf(cell, before)) |
-        (after === undefined ? 0 : bitOf(cell, after)),
+      ((before === undefined ? 0 : bitOf(cell, before)) |
+        (after === undefined ? 0 : bitOf(cell, after))) <<
+        weight,
       kind,
     );
+    painter.edge(cell.column, cell.row, edge.id);
   }
 }
 
@@ -283,12 +295,18 @@ const anchored = (cell: Cell, toward: Cell): Cell => ({
   row: cell.row + toward.row,
 });
 
+interface End {
+  readonly stub: Cell;
+  readonly inward: Cell;
+  readonly arrow: boolean;
+  readonly kind: string | undefined;
+  readonly id: string;
+  readonly weight: number;
+}
+
 function paintEnd(
   painter: Painter,
-  stub: Cell,
-  inward: Cell,
-  arrow: boolean,
-  kind: string | undefined,
+  { stub, inward, arrow, kind, id, weight }: End,
 ): void {
   const joint = anchored(stub, inward);
   const way = wayOf(stub, joint);
@@ -297,13 +315,15 @@ function paintEnd(
   }
   if (arrow) {
     painter.arrow(stub.column, stub.row, way, kind);
+    painter.edge(stub.column, stub.row, id);
     return;
   }
-  painter.line(stub.column, stub.row, wayBits[way], kind);
+  painter.line(stub.column, stub.row, wayBits[way] << weight, kind);
+  painter.edge(stub.column, stub.row, id);
   if (painter.linesAt(joint.column, joint.row) !== 0) {
     const at = painter.indexOf(joint.column, joint.row);
     const kept = at === undefined ? undefined : painter.screen.lineKinds[at];
-    painter.line(joint.column, joint.row, bitOf(joint, stub), kept);
+    painter.line(joint.column, joint.row, bitOf(joint, stub) << weight, kept);
   }
 }
 
@@ -318,22 +338,28 @@ const inwardOf = (route: Route, end: 'from' | 'to'): Cell => {
   return reversed(outward);
 };
 
-function paintEnds(painter: Painter, { edge, route }: Routed): void {
-  const kind = colorKind(edge.color);
-  paintEnd(
-    painter,
-    route.from,
-    inwardOf(route, 'from'),
-    edge.fromEnd === 'arrow',
-    kind,
-  );
-  paintEnd(
-    painter,
-    route.to,
-    inwardOf(route, 'to'),
-    (edge.toEnd ?? 'arrow') === 'arrow',
-    kind,
-  );
+function paintEnds(
+  painter: Painter,
+  { edge, route }: Routed,
+  selected: boolean,
+): void {
+  const shared = {
+    kind: colorKind(edge.color),
+    id: edge.id,
+    weight: selected ? doubleShift : 0,
+  };
+  paintEnd(painter, {
+    ...shared,
+    stub: route.from,
+    inward: inwardOf(route, 'from'),
+    arrow: edge.fromEnd === 'arrow',
+  });
+  paintEnd(painter, {
+    ...shared,
+    stub: route.to,
+    inward: inwardOf(route, 'to'),
+    arrow: (edge.toEnd ?? 'arrow') === 'arrow',
+  });
 }
 
 function paintLabel(
@@ -352,6 +378,9 @@ function paintLabel(
   const width = glyphs.reduce((cells, glyph) => cells + glyph.cells, 0);
   const start = middle.column - Math.floor(width / 2);
   written(painter, start, middle.row, glyphs, start + width - 1, labelKind);
+  for (let column = start; column < start + width; column++) {
+    painter.edge(column, middle.row, edge.id);
+  }
 }
 
 export function screenOf({
@@ -361,6 +390,7 @@ export function screenOf({
   cellsOf,
   selected = noneSelected,
   typing,
+  marks = [],
 }: Drawn): Screen {
   const painter = new Painter(emptyScreen(view));
   const boxes = new Map(
@@ -392,7 +422,7 @@ export function screenOf({
     }
   }
   for (const each of routed) {
-    paintRoute(painter, each);
+    paintRoute(painter, each, selected.has(each.edge.id));
   }
   for (const node of board.nodes) {
     if (node.type !== 'group') {
@@ -400,8 +430,14 @@ export function screenOf({
     }
   }
   for (const each of routed) {
-    paintEnds(painter, each);
+    paintEnds(painter, each, selected.has(each.edge.id));
     paintLabel(painter, each, cellsOf);
+  }
+  for (const cell of marks) {
+    const at = painter.indexOf(cell.column, cell.row);
+    if (at !== undefined && painter.screen.arrows[at] === undefined) {
+      painter.glyph(cell.column, cell.row, mark, 1, markKind);
+    }
   }
   return painter.screen;
 }
