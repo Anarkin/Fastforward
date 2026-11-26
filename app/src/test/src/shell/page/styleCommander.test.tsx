@@ -85,17 +85,14 @@ function lineRow(className: string, overBox = false): MarkupElement {
 
 const before = { pseudoElement: '::before' };
 
-function lineBox(row: MarkupElement, pointed?: MarkupElement) {
-  const box = { ...before, ...(pointed ? { hover: pointed } : {}) };
+function lineBox(row: MarkupElement) {
+  const box = before;
   const edge = cascaded(row, 'border-color', box);
   return {
     box: cascaded(row, 'content', box),
     edge: edge ?? cascaded(row, 'border', box)?.replace(/^1px solid /, ''),
     filled: cascaded(row, 'background', box),
-    check: cascaded(row, 'content', {
-      ...after,
-      ...(pointed ? { hover: pointed } : {}),
-    }),
+    check: cascaded(row, 'content', after),
   };
 }
 
@@ -119,10 +116,12 @@ function pathColors(pathTitle: React.ReactElement): (string | undefined)[] {
 
 const parts = (className: string, pointed = false) => {
   const item = withClass(
-    rendered(<CommanderItem className={className} />),
+    rendered(
+      <CommanderItem className={`${className}${pointed ? ' pointed' : ''}`} />,
+    ),
     'commander-row',
   );
-  const states: States = pointed ? { hover: item } : {};
+  const states: States = {};
   const box = withClass(item, 'check-box');
   return {
     box: cascaded(withClass(item, 'commander-check'), 'visibility', states),
@@ -145,14 +144,14 @@ const filled = (
   const row = withClass(
     rendered(
       <CommanderItem
-        className={`${layout} ${className}`}
+        className={`${layout} ${className}${pointed ? ' pointed' : ''}`}
         paneClassName={inactive ? 'commander-pane inactive' : ''}
       />,
     ),
     'commander-row',
   );
   assert.ok(row);
-  return cascaded(row, 'background', pointed ? { hover: row } : {});
+  return cascaded(row, 'background');
 };
 
 suite('Style', () => {
@@ -351,7 +350,6 @@ suite('Style', () => {
       compact(cascaded(commander, '--commander-row-start')),
       'calc(var(--commander-check-start) + var(--commander-check) + 6px)',
     );
-    const row = lineRow('');
     const place = {
       position: 'absolute',
       top: 'calc((var(--commander-row-height) - var(--commander-check)) / 2)',
@@ -360,7 +358,7 @@ suite('Style', () => {
       width: 'var(--commander-check)',
       height: 'var(--commander-check)',
     };
-    looks(row, place, { hover: row, pseudoElement: '::before' });
+    looks(lineRow('pointed'), place, before);
     looks(lineRow('marked'), place, before);
     looks(
       lineRow('marked'),
@@ -392,15 +390,13 @@ suite('Style', () => {
       filled: undefined,
       check: undefined,
     });
-    const pointed = lineRow('');
-    assert.deepStrictEqual(lineBox(pointed, pointed), {
+    assert.deepStrictEqual(lineBox(lineRow('pointed')), {
       box: "''",
       edge: 'var(--muted-foreground)',
       filled: undefined,
       check: undefined,
     });
-    const over = lineRow('', true);
-    assert.deepStrictEqual(lineBox(over, over), {
+    assert.deepStrictEqual(lineBox(lineRow('pointed', true)), {
       box: "''",
       edge: 'var(--color-foreground)',
       filled: undefined,
@@ -412,8 +408,7 @@ suite('Style', () => {
       filled: 'var(--color-foreground)',
       check: "''",
     });
-    const up = lineRow('up');
-    assert.deepStrictEqual(lineBox(up, up), {
+    assert.deepStrictEqual(lineBox(lineRow('up pointed')), {
       box: undefined,
       edge: undefined,
       filled: undefined,
@@ -478,9 +473,9 @@ suite('Style', () => {
         property,
       );
     }
-    const row = lineRow('');
+    const row = lineRow('pointed');
     assert.strictEqual(
-      cascaded(row, 'border', { hover: row, pseudoElement: '::before' }),
+      cascaded(row, 'border', before),
       ['border-width', 'border-style', 'border-color']
         .map((property) => cascaded(checkBox(false), property))
         .join(' '),
@@ -488,7 +483,7 @@ suite('Style', () => {
     looks(
       row,
       { 'border-radius': cascaded(checkBox(false), 'border-radius') },
-      { hover: row, pseudoElement: '::before' },
+      before,
     );
     looks(
       lineRow('marked'),
