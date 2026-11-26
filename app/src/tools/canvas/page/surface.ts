@@ -32,7 +32,7 @@ import {
 } from '../../../lib/page/textWidths';
 import type { Board } from '../shared/board';
 import { boundsOf, labelKind, lineKind, screenOf } from './boardScreen';
-import { unitOf, type Unit } from './grid';
+import { unitOf, type Box, type Unit } from './grid';
 import { arrowRects, lineRects, strokeOf } from './lineRects';
 import { gridDots } from './gridDots';
 import { signKind } from './nodeText';
@@ -65,8 +65,11 @@ const colorKinds = [1, 2, 3, 4, 5, 6].map(
 
 const gridKind = 'grid';
 
+const marqueeKind = 'marquee';
+
 const lookKinds = [
   [gridKind, 'board-grid'],
+  [marqueeKind, 'board-marquee'],
   [lineKind, 'board-line'],
   [labelKind, 'board-label'],
   [signKind, 'board-sign'],
@@ -91,7 +94,17 @@ export interface Drawn {
   readonly origin: Origin;
   readonly cell: CellSize;
   readonly view: CellSize;
+  readonly unit: Unit;
+  readonly left: number;
+  readonly top: number;
 }
+
+export interface Shown {
+  readonly selected: ReadonlySet<string>;
+  readonly marquee?: Box | undefined;
+}
+
+const noneShown: Shown = { selected: new Set() };
 
 interface Measured {
   readonly key: string;
@@ -155,6 +168,7 @@ export class BoardSurface {
     board: Board,
     table: CellTable,
     panned: Origin | undefined,
+    shown: Shown = noneShown,
   ): Drawn | undefined {
     const device = gpuDevice();
     if (device === undefined) {
@@ -218,6 +232,7 @@ export class BoardSurface {
         rows: Math.ceil((pixelHeight + shift.y) / rowHeight),
       },
       cellsOf,
+      selected: shown.selected,
     });
     cells.frame.reset();
     cells.under.reset();
@@ -253,6 +268,15 @@ export class BoardSurface {
       kinds,
       ground,
     });
+    if (shown.marquee !== undefined) {
+      drawMarquee(cells, screen, shift, shown.marquee, {
+        advance,
+        rowHeight,
+        ratio,
+        kinds,
+        ground,
+      });
+    }
     cells.draw();
     host.seenBoard = () => ({
       rows: screenRows(screen),
@@ -268,6 +292,9 @@ export class BoardSurface {
       origin,
       cell: { width: advance / ratio, height: rowHeight / ratio },
       view: { width: body.clientWidth, height: body.clientHeight },
+      unit,
+      left: box.left + nudge.left,
+      top: box.top + nudge.top,
     };
   }
 
@@ -343,6 +370,27 @@ function drawDots(
       color,
     );
   }
+}
+
+function drawMarquee(
+  cells: CellSurface,
+  screen: Screen,
+  shift: { readonly x: number; readonly y: number },
+  area: Box,
+  { advance, rowHeight, ratio, kinds, ground }: LineLook,
+): void {
+  const color = packedOf(
+    over(ground, parsedColor(kinds.get(marqueeKind) ?? '')),
+  );
+  const stroke = strokeOf(ratio);
+  const left = (area.column - screen.column) * advance - shift.x;
+  const top = (area.row - screen.row) * rowHeight - shift.y;
+  const width = area.columns * advance;
+  const height = area.rows * rowHeight;
+  cells.frame.rect(left, top, width, stroke, color);
+  cells.frame.rect(left, top + height - stroke, width, stroke, color);
+  cells.frame.rect(left, top, stroke, height, color);
+  cells.frame.rect(left + width - stroke, top, stroke, height, color);
 }
 
 function drawLines(

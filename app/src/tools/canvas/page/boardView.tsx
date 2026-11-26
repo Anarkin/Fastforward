@@ -1,17 +1,27 @@
 import { useEffectEvent, useLayoutEffect, useRef } from 'react';
 import { watchGpu } from '../../../components/cells/page/gpuDevice';
-import { useCellTable } from '../../../lib/page/cellTable';
+import { useCellTable, type CellTable } from '../../../lib/page/cellTable';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { Words } from '../../../lib/page/name';
 import { PathTitle } from '../../../lib/page/pathTitle';
-import { keyPressed } from '../../../lib/page/shortcuts';
+import { keyPressed, useBinding } from '../../../lib/page/shortcuts';
 import { clicked, wheeled } from '../../../lib/shared/keymap';
 import { useShell } from '../../../shell/page/store';
+import type { Board } from '../shared/board';
+import { dragged, wheelMove, type Origin, type Point } from './pan';
+import {
+  dragging,
+  pressed,
+  released,
+  type Gesture,
+  type Preview,
+} from './gestures';
+import { hitOf, type Sides } from './hits';
 import { canvasKeymap } from './keymap';
-import { dragged, wheelMove } from './pan';
-import type { Origin, Point } from './pan';
 import { Panner } from './panner';
-import { boardShown, originShown } from './state';
+import { fileBox, ghostId, placedSizes, previewed } from './placing';
+import type { Cell } from './routes';
+import { boardShown, originShown, selectedShown, type Placing } from './state';
 import { useCanvas, useCanvasActions } from './store';
 import { BoardSurface, probeRowClass, type Drawn } from './surface';
 
@@ -21,14 +31,77 @@ interface Panning {
   readonly start: Origin;
 }
 
+interface Pressing {
+  readonly pointer: number;
+  readonly gesture: Gesture;
+}
+
+interface Painted {
+  readonly board: Board;
+  readonly table: CellTable;
+  readonly origin: Origin | undefined;
+  readonly selected: readonly string[];
+  readonly placing: Placing | undefined;
+  readonly preview: Preview | undefined;
+  readonly ghostAt: Cell | undefined;
+  readonly unit: Drawn['unit'] | undefined;
+}
+
+const noBoxes = new Map();
+
+function paint(
+  surface: BoardSurface | undefined,
+  { board, table, origin, selected, placing, preview, ghostAt, unit }: Painted,
+): Drawn | undefined {
+  const ghost =
+    placing === undefined || ghostAt === undefined
+      ? undefined
+      : { type: placing, box: { ...ghostAt, ...placedSizes[placing] } };
+  const shown =
+    unit !== undefined && (preview !== undefined || ghost !== undefined)
+      ? previewed(board, unit, preview?.boxes ?? noBoxes, ghost)
+      : board;
+  return surface?.draw(shown, table, origin, {
+    selected: new Set(ghost === undefined ? selected : [...selected, ghostId]),
+    marquee: preview?.area,
+  });
+}
+
+function cellAt(
+  event: { readonly clientX: number; readonly clientY: number },
+  known: Drawn,
+): Cell {
+  return {
+    column: Math.floor(
+      known.origin.column + (event.clientX - known.left) / known.cell.width,
+    ),
+    row: Math.floor(
+      known.origin.row + (event.clientY - known.top) / known.cell.height,
+    ),
+  };
+}
+
+function cursorOf(sides: Sides): string {
+  if ((sides.left && sides.top) || (sides.right && sides.bottom)) {
+    return 'nwse';
+  }
+  if ((sides.right && sides.top) || (sides.left && sides.bottom)) {
+    return 'nesw';
+  }
+  return sides.left || sides.right ? 'ew' : 'ns';
+}
+
 export function BoardView() {
   const tab = useCanvas((state) => state.tab);
   const file = useCanvas((state) => state.file);
   const error = useCanvas((state) => boardShown(state)?.error);
   const board = useCanvas((state) => boardShown(state)?.board);
   const origin = useCanvas(originShown);
+  const selected = useCanvas(selectedShown);
+  const placing = useCanvas((state) => state.placing);
   const scrolling = useShell((state) => state.scrolling);
-  const { pan, originOf } = useCanvasActions();
+  const { pan, originOf, select, place, edit, undo, redo, save } =
+    useCanvasActions();
   const table = useCellTable();
   const body = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -37,7 +110,12 @@ export function BoardView() {
   const drawn = useRef<Drawn>(undefined);
   const panning = useRef<Panning>(undefined);
   const panner = useRef<Panner>(undefined);
+  const pressing = useRef<Pressing>(undefined);
+  const preview = useRef<Preview>(undefined);
+  const ghostAt = useRef<Cell>(undefined);
+  const lastAt = useRef<Cell>(undefined);
   const held = useRef(false);
+  const paintedBoard = useRef<Board>(undefined);
 
   const panned = useEffectEvent((to: Origin) => {
     if (tab !== undefined) {
@@ -65,11 +143,22 @@ export function BoardView() {
     };
   }, []);
 
-  const redraw = useEffectEvent(() => {
+  const repaint = () => {
     if (board !== undefined && table !== undefined) {
-      drawn.current = surface.current?.draw(board, table, origin);
+      drawn.current = paint(surface.current, {
+        board,
+        table,
+        origin,
+        selected,
+        placing,
+        preview: preview.current,
+        ghostAt: ghostAt.current,
+        unit: drawn.current?.unit,
+      });
     }
-  });
+  };
+
+  const redraw = useEffectEvent(() => repaint());
 
   useLayoutEffect(() => {
     const element = body.current;
@@ -103,10 +192,29 @@ export function BoardView() {
   }, []);
 
   useLayoutEffect(() => {
-    if (board !== undefined && table !== undefined) {
-      drawn.current = surface.current?.draw(board, table, origin);
+    if (placing === undefined) {
+      ghostAt.current = undefined;
     }
-  }, [board, table, origin]);
+  }, [placing]);
+
+  useLayoutEffect(() => {
+    if (paintedBoard.current !== board) {
+      paintedBoard.current = board;
+      preview.current = undefined;
+    }
+    if (board !== undefined && table !== undefined) {
+      drawn.current = paint(surface.current, {
+        board,
+        table,
+        origin,
+        selected,
+        placing,
+        preview: preview.current,
+        ghostAt: ghostAt.current,
+        unit: drawn.current?.unit,
+      });
+    }
+  }, [board, table, origin, selected, placing]);
 
   const onWheel = useEffectEvent((event: WheelEvent) => {
     const across = wheeled(canvasKeymap.panAcross, event) !== undefined;
@@ -142,13 +250,70 @@ export function BoardView() {
     return () => element.removeEventListener('wheel', onWheel);
   }, []);
 
-  const startPan = (event: React.PointerEvent<HTMLDivElement>) => {
+  const shownTab = tab !== undefined && board !== undefined;
+
+  const startPlacing = (kind: Placing) => {
+    const known = drawn.current;
+    ghostAt.current =
+      lastAt.current ??
+      (known === undefined
+        ? undefined
+        : {
+            column: Math.floor(
+              known.origin.column + known.view.width / known.cell.width / 3,
+            ),
+            row: Math.floor(
+              known.origin.row + known.view.height / known.cell.height / 3,
+            ),
+          });
+    place(kind);
+  };
+
+  useBinding(canvasKeymap.placeText, () => startPlacing('text'), shownTab);
+  useBinding(canvasKeymap.placeGroup, () => startPlacing('group'), shownTab);
+  useBinding(
+    canvasKeymap.delete,
+    () => {
+      if (tab !== undefined) {
+        edit(tab, { kind: 'delete', nodes: selected, edges: [] });
+      }
+    },
+    shownTab && selected.length > 0,
+  );
+  useBinding(
+    canvasKeymap.selectAll,
+    () => {
+      if (tab !== undefined && board !== undefined) {
+        select(
+          tab,
+          board.nodes.map((node) => node.id),
+        );
+      }
+    },
+    shownTab,
+  );
+  useBinding(
+    canvasKeymap.leave,
+    () => {
+      if (placing !== undefined) {
+        place(undefined);
+      } else if (tab !== undefined) {
+        select(tab, []);
+      }
+    },
+    shownTab && (placing !== undefined || selected.length > 0),
+  );
+  useBinding(canvasKeymap.undo, () => tab !== undefined && undo(tab), shownTab);
+  useBinding(canvasKeymap.redo, () => tab !== undefined && redo(tab), shownTab);
+  useBinding(canvasKeymap.save, () => tab !== undefined && save(tab), shownTab);
+
+  const startPan = (event: React.PointerEvent<HTMLDivElement>): boolean => {
     const known = drawn.current;
     const grabs =
       clicked(canvasKeymap.pan, event) !== undefined ||
       (held.current && clicked(canvasKeymap.panHeldDrag, event) !== undefined);
     if (known === undefined || !grabs) {
-      return;
+      return false;
     }
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -158,17 +323,55 @@ export function BoardView() {
       from: { x: event.clientX, y: event.clientY },
       start: (tab === undefined ? undefined : originOf(tab)) ?? known.origin,
     };
+    return true;
   };
 
-  const movePan = (event: React.PointerEvent<HTMLDivElement>) => {
-    const moving = panning.current;
+  const press = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.currentTarget.focus({ preventScroll: true });
+    if (startPan(event)) {
+      return;
+    }
     const known = drawn.current;
+    const way = clicked(canvasKeymap.select, event);
     if (
+      known === undefined ||
       tab === undefined ||
-      moving?.pointer !== event.pointerId ||
-      known === undefined
+      board === undefined ||
+      way === undefined
     ) {
       return;
+    }
+    const at = cellAt(event, known);
+    if (placing !== undefined) {
+      const { id: _id, ...box } = fileBox(
+        ghostId,
+        { ...at, ...placedSizes[placing] },
+        known.unit,
+      );
+      edit(tab, { kind: 'add', node: { type: placing, ...box } });
+      place(undefined);
+      return;
+    }
+    const chosen = pressed(
+      board,
+      known.unit,
+      hitOf(board, known.unit, at, new Set(selected)),
+      at,
+      selected,
+      way,
+    );
+    select(tab, chosen.selected);
+    if (chosen.gesture !== undefined) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      pressing.current = { pointer: event.pointerId, gesture: chosen.gesture };
+    }
+  };
+
+  const movePan = (event: React.PointerEvent<HTMLDivElement>): boolean => {
+    const moving = panning.current;
+    const known = drawn.current;
+    if (moving?.pointer !== event.pointerId || known === undefined) {
+      return false;
     }
     panner.current?.holdAt(
       dragged(
@@ -178,15 +381,71 @@ export function BoardView() {
         known.cell,
       ),
     );
+    return true;
   };
 
-  const endPan = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (panning.current?.pointer !== event.pointerId) {
+  const move = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (movePan(event)) {
       return;
+    }
+    const known = drawn.current;
+    if (known === undefined || board === undefined || tab === undefined) {
+      return;
+    }
+    const at = cellAt(event, known);
+    lastAt.current = at;
+    if (placing !== undefined) {
+      ghostAt.current = at;
+      repaint();
+      return;
+    }
+    const going = pressing.current;
+    if (going?.pointer === event.pointerId) {
+      const shownNow = dragging(going.gesture, board, known.unit, at);
+      preview.current = shownNow.preview;
+      if (shownNow.selected !== undefined) {
+        select(tab, shownNow.selected);
+      }
+      repaint();
+      return;
+    }
+    const hit = hitOf(board, known.unit, at, new Set(selected));
+    const cursor = hit.kind === 'handle' ? cursorOf(hit.sides) : '';
+    if (event.currentTarget.dataset.cursor !== cursor) {
+      event.currentTarget.dataset.cursor = cursor;
+    }
+  };
+
+  const endPan = (event: React.PointerEvent<HTMLDivElement>): boolean => {
+    if (panning.current?.pointer !== event.pointerId) {
+      return false;
     }
     panning.current = undefined;
     event.currentTarget.classList.remove('panning');
     panner.current?.letGo();
+    return true;
+  };
+
+  const letGo = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (endPan(event)) {
+      return;
+    }
+    const going = pressing.current;
+    const known = drawn.current;
+    if (going?.pointer !== event.pointerId) {
+      return;
+    }
+    pressing.current = undefined;
+    const placed =
+      known === undefined
+        ? undefined
+        : released(going.gesture, known.unit, cellAt(event, known));
+    if (placed !== undefined && tab !== undefined) {
+      edit(tab, placed);
+      return;
+    }
+    preview.current = undefined;
+    repaint();
   };
 
   const hold = (event: React.KeyboardEvent<HTMLDivElement>, down: boolean) => {
@@ -204,17 +463,14 @@ export function BoardView() {
         {file !== undefined && <PathTitle path={file} file />}
       </div>
       <div
-        className="column-body board-body"
+        className={`column-body board-body ${placing === undefined ? '' : 'placing'}`}
         ref={body}
         tabIndex={0}
-        onPointerDown={(event) => {
-          event.currentTarget.focus({ preventScroll: true });
-          startPan(event);
-        }}
-        onPointerMove={movePan}
-        onPointerUp={endPan}
-        onPointerCancel={endPan}
-        onLostPointerCapture={endPan}
+        onPointerDown={press}
+        onPointerMove={move}
+        onPointerUp={letGo}
+        onPointerCancel={letGo}
+        onLostPointerCapture={letGo}
         onKeyDown={(event) => hold(event, true)}
         onKeyUp={(event) => hold(event, false)}
         onBlur={(event) => {

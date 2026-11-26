@@ -45,6 +45,7 @@ export function ToolViews() {
       />
       <CanvasTool
         active={active === 'canvas'}
+        post={channels.canvas.post}
         listen={channels.canvas.listen}
         views={channels.canvas.views}
       />

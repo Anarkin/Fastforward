@@ -7,7 +7,7 @@ import { createCanvasStore } from '../../../../../tools/canvas/page/store';
 function keepingViews() {
   const kept: ToHost[] = [];
   const page = pageViews((message) => kept.push(message));
-  const store = createCanvasStore({}, page.views);
+  const store = createCanvasStore(() => {}, {}, page.views);
   page.views.onRelease(store.getState().releaseTab);
   return {
     store,

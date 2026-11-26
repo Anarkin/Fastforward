@@ -3,6 +3,7 @@ import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
 import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
+import type { CanvasToHost } from '../shared/protocol';
 import { canvasViewSchema } from './tabView';
 import { snapped } from './pan';
 import {
@@ -27,6 +28,7 @@ function without<T>(
 }
 
 export function createCanvasStore(
+  post: (message: CanvasToHost) => void,
   initial: Partial<CanvasSource> = {},
   views: ToolViews = noViews,
 ): StoreApi<CanvasState> {
@@ -35,17 +37,27 @@ export function createCanvasStore(
       views,
       canvasViewSchema,
       {
-        viewOf: (tab) => ({ origin: get().origins.get(tab) }),
-        restore: (tab, { origin }) => {
+        viewOf: (tab) => ({
+          origin: get().origins.get(tab),
+          selected: get().selections.get(tab),
+        }),
+        restore: (tab, { origin, selected }) => {
           set((state) => ({
             origins:
               origin === undefined
                 ? without(state.origins, tab)
                 : new Map(state.origins).set(tab, snapped(origin)),
+            selections:
+              selected === undefined
+                ? without(state.selections, tab)
+                : new Map(state.selections).set(tab, selected),
           }));
         },
         forget: (tab) => {
-          set((state) => ({ origins: without(state.origins, tab) }));
+          set((state) => ({
+            origins: without(state.origins, tab),
+            selections: without(state.selections, tab),
+          }));
         },
       },
       () => get().tab,
@@ -59,7 +71,7 @@ export function createCanvasStore(
             set({ tab: message.tab, file: message.file });
             break;
           case 'hide':
-            set(hidden);
+            set({ ...hidden, placing: undefined });
             break;
           case 'closed': {
             const boards = new Map(get().boards);
@@ -69,8 +81,19 @@ export function createCanvasStore(
             break;
           }
           case 'board': {
-            const { type: _type, tab, ...shown } = message;
-            set((state) => ({ boards: new Map(state.boards).set(tab, shown) }));
+            const { type: _type, tab, made, ...shown } = message;
+            const ids = new Set(shown.board?.nodes.map((node) => node.id));
+            const kept = (get().selections.get(tab) ?? []).filter((id) =>
+              ids.has(id),
+            );
+            set((state) => ({
+              boards: new Map(state.boards).set(tab, shown),
+              selections: new Map(state.selections).set(
+                tab,
+                made === undefined ? kept : [made],
+              ),
+            }));
+            tabs.changed(tab);
             break;
           }
           default:
@@ -85,6 +108,18 @@ export function createCanvasStore(
         tabs.changed(tab);
       },
       originOf: (tab) => get().origins.get(tab),
+      select: (tab, ids) => {
+        set((state) => ({
+          selections: new Map(state.selections).set(tab, ids),
+        }));
+        tabs.changed(tab);
+      },
+      selectedOf: (tab) => get().selections.get(tab) ?? [],
+      place: (placing) => set({ placing }),
+      edit: (tab, edit) => post({ type: 'edit', tab, edit }),
+      undo: (tab) => post({ type: 'undo', tab }),
+      redo: (tab) => post({ type: 'redo', tab }),
+      save: (tab) => post({ type: 'save', tab }),
       keepTabs: () => tabs.flush(),
       releaseTab: (tab) => tabs.release(tab, get().tab),
     };

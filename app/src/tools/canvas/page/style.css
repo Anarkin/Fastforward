@@ -17,6 +17,26 @@
   cursor: grabbing;
 }
 
+.board-body.placing {
+  cursor: copy;
+}
+
+.board-body[data-cursor='ew'] {
+  cursor: ew-resize;
+}
+
+.board-body[data-cursor='ns'] {
+  cursor: ns-resize;
+}
+
+.board-body[data-cursor='nwse'] {
+  cursor: nwse-resize;
+}
+
+.board-body[data-cursor='nesw'] {
+  cursor: nesw-resize;
+}
+
 .board-host {
   position: absolute;
   pointer-events: none;
@@ -43,6 +63,10 @@
 .board-line,
 .board-sign {
   color: var(--muted-foreground);
+}
+
+.board-marquee {
+  color: var(--color-focus);
 }
 
 .board-grid {

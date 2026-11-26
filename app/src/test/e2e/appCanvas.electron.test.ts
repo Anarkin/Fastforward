@@ -310,4 +310,119 @@ suite('App canvas', () => {
       row: before.row,
     });
   });
+
+  const pointAt = async (cell: Placed) => {
+    const seen = await seenBoard();
+    const box = await page.locator('.board-host').boundingBox();
+    const ratio = await page.evaluate(() => devicePixelRatio);
+    assert.ok(seen !== undefined && box !== null);
+    return {
+      x:
+        box.x +
+        (cell.column - seen.origin.column + 0.5) * (seen.advance / ratio),
+      y: box.y + (cell.row - seen.origin.row + 0.5) * (seen.rowHeight / ratio),
+    };
+  };
+
+  const drawnAt = async (cell: Placed) => {
+    const seen = await seenBoard();
+    const row = seen?.rows[cell.row - (seen?.row ?? 0)] ?? '';
+    return row.charAt(cell.column - (seen?.column ?? 0)) || ' ';
+  };
+
+  const shows = (what: string, cell: Placed, drawn: string) =>
+    untilSettled(() => drawnAt(cell), what, {
+      accepted: (seen) => seen === drawn,
+    });
+
+  const holds = (what: string, text: string, wanted: boolean) =>
+    untilSettled(
+      async () => (await seenBoard())?.rows.some((row) => row.includes(text)),
+      what,
+      { accepted: (seen) => seen === wanted },
+    );
+
+  const savedNodes = () => {
+    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
+    assert.ok(typeof saved === 'object' && saved !== null && 'nodes' in saved);
+    assert.ok(Array.isArray(saved.nodes));
+    return saved.nodes.flatMap((node: unknown) =>
+      typeof node === 'object' &&
+      node !== null &&
+      'id' in node &&
+      'x' in node &&
+      'y' in node
+        ? [{ id: node.id, x: node.x, y: node.y }]
+        : [],
+    );
+  };
+
+  const panTo = async (wanted: Placed) => {
+    const now = await settledOrigin();
+    const cell = await cellSize();
+    const { x, y } = await middleOfBoard();
+    await page.mouse.move(x, y);
+    await page.mouse.down({ button: 'middle' });
+    await page.mouse.move(
+      x + (now.column - wanted.column) * cell.width,
+      y + (now.row - wanted.row) * cell.height,
+      { steps: 4 },
+    );
+    await page.mouse.up({ button: 'middle' });
+    await settledOrigin(
+      (origin) => origin.column === wanted.column && origin.row === wanted.row,
+    );
+  };
+
+  test('selects a node clicked, drawing it in double lines, moves it dragged a cell at a time with its tab marked unsaved, and writes where it went into its file on Mod+S', async () => {
+    await panTo({ column: -2, row: -1 });
+    const unit = await cellOfFont(page);
+    const inside = await pointAt({ column: 3, row: 1 });
+    await page.mouse.click(inside.x, inside.y);
+    await shows('the node selected', { column: 0, row: 0 }, '╔');
+    const from = await pointAt({ column: 3, row: 1 });
+    const to = await pointAt({ column: 7, row: 2 });
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 5 });
+    await page.mouse.up();
+    await shows('the node moved', { column: 4, row: 1 }, '╔');
+    const unsaved = page.locator(
+      'nav.tabs [role="tab"][aria-selected="true"] .tab-unsaved',
+    );
+    await unsaved.waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await unsaved.waitFor({ state: 'detached' });
+    assert.deepStrictEqual(
+      savedNodes().find((node) => node.id === 'idea'),
+      { id: 'idea', x: 4 * unit.width, y: unit.height },
+    );
+  });
+
+  test('places a text node where the pointer is on Mod+1 and a click, selected, and deletes the nodes selected on Delete with their edges, bringing them back on Mod+Z', async () => {
+    const spot = await pointAt({ column: 30, row: 2 });
+    await page.mouse.move(spot.x, spot.y);
+    await page.keyboard.press('ControlOrMeta+1');
+    await page.mouse.click(spot.x, spot.y);
+    await shows('the node placed, selected', { column: 30, row: 2 }, '╔');
+    const idea = await pointAt({ column: 7, row: 2 });
+    await page.mouse.click(idea.x, idea.y);
+    await shows('the node selected', { column: 4, row: 1 }, '╔');
+    await page.keyboard.press('Delete');
+    await holds('the node deleted', 'Idea', false);
+    assert.strictEqual(await drawnAt({ column: 14, row: 2 }), ' ');
+    await page.keyboard.press('ControlOrMeta+Z');
+    await holds('the node back', 'Idea', true);
+  });
+
+  test('selects the nodes a box drawn over the empty canvas touches', async () => {
+    const corner = await pointAt({ column: -1, row: -1 });
+    const across = await pointAt({ column: 12, row: 5 });
+    await page.mouse.move(corner.x, corner.y);
+    await page.mouse.down();
+    await page.mouse.move(across.x, across.y, { steps: 5 });
+    await page.mouse.up();
+    await shows('the first node selected', { column: 4, row: 1 }, '╔');
+    await shows('the second node selected', { column: 10, row: 4 }, '╔');
+  });
 });

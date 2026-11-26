@@ -2,20 +2,22 @@ import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import './style.css';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
-import type { CanvasToWebview } from '../shared/protocol';
+import type { CanvasToHost, CanvasToWebview } from '../shared/protocol';
 import { BoardView } from './boardView';
 import { CanvasStore, createCanvasStore } from './store';
 
 export function CanvasTool({
   active,
+  post,
   listen,
   views = noViews,
 }: {
   active: boolean;
+  post: (message: CanvasToHost) => void;
   listen: (handler: (message: CanvasToWebview) => void) => () => void;
   views?: ToolViews;
 }) {
-  const [store] = useState(() => createCanvasStore({}, views));
+  const [store] = useState(() => createCanvasStore(post, {}, views));
   const tab = useStore(store, (state) => state.tab);
 
   useEffect(() => listen(store.getState().receive), [listen, store]);
