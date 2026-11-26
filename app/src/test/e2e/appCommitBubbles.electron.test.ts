@@ -268,14 +268,19 @@ suite('Commit bubbles', () => {
                   ?.seenCommits?.() ?? []
               ).find((each) => each.subject === wanted);
               if (row === undefined) {
+                const before = element.scrollTop;
                 element.scrollTop += element.clientHeight / 2;
-                return 'not drawn';
+                if (element.scrollTop === before) {
+                  element.scrollTop = 0;
+                }
+                return `not drawn at ${Math.round(before)}`;
               }
               element.scrollTop +=
                 row.top - element.getBoundingClientRect().top;
               return 'shown';
             }, subject),
           `${subject} at the top`,
+          { accepted: (seen) => seen === 'shown' },
         );
         assert.strictEqual(shown, 'shown', subject);
       };
