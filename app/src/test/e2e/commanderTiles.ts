@@ -1,6 +1,7 @@
 import type { Locator, Page } from 'playwright-core';
 import type { SeenTile } from '../../tools/commander/page/tileRecords';
 import { waitFor } from '../helpers/fixtures';
+import { untilSettled } from './waits';
 
 export const tilesShown = (pane: Locator): Promise<SeenTile[]> =>
   pane.evaluate((side) => {
@@ -48,8 +49,19 @@ export async function clickTile(
   pane: Locator,
   name?: string,
 ): Promise<void> {
-  const tile =
-    name === undefined ? (await tilesShown(pane))[0] : await tileOf(pane, name);
+  if (name !== undefined) {
+    await tileOf(pane, name);
+  }
+  const tile = await untilSettled(
+    async () => {
+      const tiles = await tilesShown(pane);
+      return name === undefined
+        ? tiles[0]
+        : tiles.find((each) => each.name === name);
+    },
+    `the tile of ${name ?? 'the first file'} at rest`,
+    { quiet: 150, accepted: (found) => found !== undefined },
+  );
   if (tile === undefined) {
     throw new Error('No tile to click');
   }

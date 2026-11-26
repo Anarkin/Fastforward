@@ -1,6 +1,7 @@
 import type { Locator, Page } from 'playwright-core';
 import type { SeenLine } from '../../tools/commander/page/lineRecords';
 import { waitFor } from '../helpers/fixtures';
+import { untilSettled } from './waits';
 
 export interface ShownRow {
   readonly name: string;
@@ -51,6 +52,9 @@ export const fileName = ({ name, extension }: ShownRow): string =>
 
 export type LineMatch = string | RegExp | { readonly key: string };
 
+const nameOf = (match: LineMatch) =>
+  JSON.stringify(match instanceof RegExp ? String(match) : match);
+
 const matches = (line: SeenLine, match: LineMatch) =>
   typeof match === 'string'
     ? lineText(line).includes(match)
@@ -68,12 +72,10 @@ export async function lineOf(
       found = (await linesShown(pane)).find((line) => matches(line, match));
       return found !== undefined;
     },
-    `a line of ${JSON.stringify(match instanceof RegExp ? String(match) : match)} drawn`,
+    `a line of ${nameOf(match)} drawn`,
   );
   if (found === undefined) {
-    throw new Error(
-      `No line of ${JSON.stringify(match instanceof RegExp ? String(match) : match)}`,
-    );
+    throw new Error(`No line of ${nameOf(match)}`);
   }
   return found;
 }
@@ -102,6 +104,22 @@ export const selectedText = async (pane: Locator): Promise<string> => {
   return line === undefined ? '' : lineText(line);
 };
 
+const settledLineOf = async (
+  pane: Locator,
+  match: LineMatch,
+): Promise<SeenLine> => {
+  await lineOf(pane, match);
+  const settled = await untilSettled(
+    async () => (await linesShown(pane)).find((line) => matches(line, match)),
+    `the line of ${nameOf(match)} at rest`,
+    { quiet: 150, accepted: (line) => line !== undefined },
+  );
+  if (settled === undefined) {
+    throw new Error(`No line of ${nameOf(match)} at rest`);
+  }
+  return settled;
+};
+
 const pointOf = (
   line: SeenLine,
   at: Pressing['at'] = { x: line.nameLeft + 8 },
@@ -116,7 +134,7 @@ export async function hoverLine(
   match: LineMatch,
   at?: Pressing['at'],
 ): Promise<void> {
-  const { x, y } = pointOf(await lineOf(pane, match), at);
+  const { x, y } = pointOf(await settledLineOf(pane, match), at);
   await page.mouse.move(x, y);
 }
 

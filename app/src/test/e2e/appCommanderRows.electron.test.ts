@@ -189,7 +189,7 @@ suite('App commander', () => {
   });
 
   test('shows the spaces of a name as they are, two in a row or one first, so names differing only in their spaces look apart', async () => {
-    const names = ['spaced one', 'spaced  two', ' spaced first'];
+    const names = ['spaced 1', 'spaced  2', ' spaced 3'];
     for (const name of names) {
       fs.writeFileSync(path.join(opened, `${name}.txt`), '');
     }
