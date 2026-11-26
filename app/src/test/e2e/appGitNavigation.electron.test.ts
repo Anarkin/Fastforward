@@ -495,8 +495,14 @@ suite('App', () => {
 
   test('draws the selected commit in the selection color of a column without the keyboard once the keyboard leaves the commit list, as every other column draws its own', async () => {
     await commitRow(page, 'second').click();
-    const focused = await selectedCommitColor();
-    assert.ok(drawnAlike(focused), JSON.stringify(focused));
+    let focused = await selectedCommitColor();
+    await waitFor(
+      async () => {
+        focused = await selectedCommitColor();
+        return drawnAlike(focused);
+      },
+      `the commit drawn with the keyboard, ${JSON.stringify(focused)}`,
+    );
     await fileRow(page, 'changed.txt', { kind: 'file' }).click();
     await fileRow(page, 'changed.txt', {
       kind: 'file',
