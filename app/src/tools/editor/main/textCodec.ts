@@ -4,6 +4,7 @@ import {
 } from '../../../components/encodings/shared/byteOrderMarks';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import {
+  endingTexts,
   keptPlaceholder,
   type KeptBytes,
   type LineEnding,
@@ -37,12 +38,6 @@ interface Unencodable {
 export type EncodedText =
   | { readonly bytes: Uint8Array }
   | { readonly unencodable: readonly Unencodable[] };
-
-const endingTexts: Readonly<Record<LineEnding, string>> = {
-  lf: '\n',
-  crlf: '\r\n',
-  cr: '\r',
-};
 
 interface Raw {
   readonly text: string;

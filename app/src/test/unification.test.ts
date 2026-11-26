@@ -54,4 +54,15 @@ suite('Unification', () => {
       ['components/encodings/shared/byteOrderMarks.ts'],
     );
   });
+
+  test('signs a line ending by one function of the cells, and keeps the text of each line ending in one table of the editor, the editor having signed its line endings by a table of its own and its clipboard and its codec each written them out', () => {
+    assert.deepStrictEqual(doing(/symbols\.carriageReturn/), [
+      'components/cells/page/blankSigns.ts',
+      'components/cells/page/textPlaces.ts',
+      'tools/viewer/page/hex.ts',
+    ]);
+    assert.deepStrictEqual(doing(/crlf: ['`]\\r/), [
+      'tools/editor/shared/textMarks.ts',
+    ]);
+  });
 });

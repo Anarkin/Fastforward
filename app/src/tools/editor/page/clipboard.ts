@@ -5,7 +5,7 @@ import {
   type Transaction,
 } from '@codemirror/state';
 import { endingAfter, endingsField } from './endings';
-import type { LineEnding } from '../shared/textMarks';
+import { endingTexts } from '../shared/textMarks';
 
 interface Span {
   readonly from: number;
@@ -18,24 +18,18 @@ export interface Copied {
   readonly linewise: boolean;
 }
 
-const breaks: Readonly<Record<LineEnding, string>> = {
-  lf: '\n',
-  crlf: '\r\n',
-  cr: '\r',
-};
-
 const lastBreak = /(?:\r\n|\r|\n)$/;
 
 function breakAfter(state: EditorState, lineEnd: number): string {
   const endings = state.field(endingsField, false);
   return endings === undefined
     ? state.lineBreak
-    : breaks[endingAfter(endings, lineEnd)];
+    : endingTexts[endingAfter(endings, lineEnd)];
 }
 
 function mainBreak(state: EditorState): string {
   const endings = state.field(endingsField, false);
-  return endings === undefined ? state.lineBreak : breaks[endings.ending];
+  return endings === undefined ? state.lineBreak : endingTexts[endings.ending];
 }
 
 function textBetween(state: EditorState, from: number, to: number): string {

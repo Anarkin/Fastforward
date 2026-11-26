@@ -7,6 +7,12 @@ import {
 
 export type LineEnding = 'lf' | 'crlf' | 'cr';
 
+export const endingTexts: Readonly<Record<LineEnding, string>> = {
+  lf: '\n',
+  crlf: '\r\n',
+  cr: '\r',
+};
+
 export interface StrayEnding {
   readonly at: number;
   readonly ending: LineEnding;
