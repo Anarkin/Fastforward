@@ -98,6 +98,31 @@ function applied(
       listIn(raw, 'edges').push({ id, fromNode, fromSide, toNode, toSide });
       return id;
     }
+    case 'ends': {
+      const chosen = new Set(edit.edges);
+      let changed = false;
+      for (const edge of listIn(raw, 'edges')) {
+        if (!isObject(edge) || !chosen.has(idOf(edge) ?? '')) {
+          continue;
+        }
+        for (const [key, value, unsaid] of [
+          ['fromEnd', edit.fromEnd, 'none'],
+          ['toEnd', edit.toEnd, 'arrow'],
+        ] as const) {
+          const now = edge[key] ?? unsaid;
+          if (now === value) {
+            continue;
+          }
+          changed = true;
+          if (value === unsaid) {
+            delete edge[key];
+          } else {
+            edge[key] = value;
+          }
+        }
+      }
+      return changed;
+    }
     case 'text': {
       const node = listIn(raw, 'nodes').find((each) => idOf(each) === edit.id);
       if (

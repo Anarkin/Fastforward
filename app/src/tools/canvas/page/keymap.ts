@@ -22,6 +22,7 @@ export const canvasKeymap = {
   } as const),
   move: bind('Editing', strings.actions.moveNodes, { Drag: true }),
   connect: bind('Editing', strings.actions.connectNodes, { Drag: true }),
+  point: bind('Editing', strings.actions.pointEdges, { A: true }),
   resize: bind('Editing', strings.actions.resizeNode, { Drag: true }),
   delete: bind('Editing', strings.actions.deleteNodes, {
     Delete: true,

@@ -1,5 +1,5 @@
 import { isObject } from '../../../lib/main/json';
-import { nodeSides } from '../shared/board';
+import { edgeEnds, nodeSides } from '../shared/board';
 import { addedKinds, type BoardEdit, type NodeBox } from '../shared/protocol';
 
 const mostItems = 100_000;
@@ -77,6 +77,14 @@ export function editOf(value: unknown): BoardEdit | undefined {
         toSide !== undefined
         ? { kind: 'connect', fromNode, fromSide, toNode, toSide }
         : undefined;
+    }
+    case 'ends': {
+      const edges = idsOf(value.edges);
+      const fromEnd = edgeEnds.find((end) => end === value.fromEnd);
+      const toEnd = edgeEnds.find((end) => end === value.toEnd);
+      return edges === undefined || fromEnd === undefined || toEnd === undefined
+        ? undefined
+        : { kind: 'ends', edges, fromEnd, toEnd };
     }
     case 'text': {
       const { id, text, session } = value;

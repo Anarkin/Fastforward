@@ -6,7 +6,7 @@ export const edgeEnds = ['none', 'arrow'] as const;
 
 export const backgroundStyles = ['cover', 'ratio', 'repeat'] as const;
 
-type EdgeEnd = (typeof edgeEnds)[number];
+export type EdgeEnd = (typeof edgeEnds)[number];
 
 interface Placed {
   readonly id: string;

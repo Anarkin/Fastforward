@@ -560,4 +560,27 @@ suite('App canvas', () => {
     await page.keyboard.press('Delete');
     await shows('the edge deleted', { column: 14, row: 8 }, ' ');
   });
+
+  test('selects an edge clicked at its end, where a drag from the mark there would draw a new one, and points it back on A, writing the arrow at its start and none at its end into its file', async () => {
+    const arrow = await pointAt({ column: 14, row: 3 });
+    await page.mouse.move(arrow.x, arrow.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    await shows('the edge selected', { column: 14, row: 3 }, '▼');
+    await holds('the edge drawn in double lines', '║', true);
+    await page.keyboard.press('a');
+    const away = await pointAt({ column: 40, row: 20 });
+    await page.mouse.move(away.x, away.y);
+    await shows('the arrow gone from its end', { column: 14, row: 3 }, '║');
+    await shows('an arrow at its start', { column: 14, row: 2 }, '◀');
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () => Promise.resolve(fs.readFileSync(board, 'utf8')),
+      'the arrows saved',
+      {
+        accepted: (text) =>
+          text.includes('"fromEnd":"arrow"') && text.includes('"toEnd":"none"'),
+      },
+    );
+  });
 });

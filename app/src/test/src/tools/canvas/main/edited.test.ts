@@ -104,6 +104,46 @@ suite('Canvas edited', () => {
     ]);
   });
 
+  test('points the edges asked for one way, the other way, both ways or neither, writing an end only where it differs from what JSON Canvas takes it to be without one, as Obsidian writes it', () => {
+    const board = new EditedBoard(canvas);
+    const ends = (fromEnd: 'none' | 'arrow', toEnd: 'none' | 'arrow') =>
+      board.apply({ kind: 'ends', edges: ['ab', 'ba'], fromEnd, toEnd }, ids());
+    const written = () => {
+      const parsed: unknown = JSON.parse(board.text());
+      assert.ok(
+        typeof parsed === 'object' &&
+          parsed !== null &&
+          'edges' in parsed &&
+          Array.isArray(parsed.edges),
+      );
+      return parsed.edges.map((edge: unknown) =>
+        ['id', 'fromEnd', 'toEnd'].map((key) =>
+          typeof edge === 'object' && edge !== null
+            ? Reflect.get(edge, key)
+            : undefined,
+        ),
+      );
+    };
+    assert.deepStrictEqual(ends('arrow', 'none'), {});
+    assert.deepStrictEqual(written(), [
+      ['ab', 'arrow', 'none'],
+      ['ba', 'arrow', 'none'],
+    ]);
+    ends('arrow', 'arrow');
+    assert.deepStrictEqual(written(), [
+      ['ab', 'arrow', undefined],
+      ['ba', 'arrow', undefined],
+    ]);
+    ends('none', 'arrow');
+    assert.deepStrictEqual(written(), [
+      ['ab', undefined, undefined],
+      ['ba', undefined, undefined],
+    ]);
+    assert.strictEqual(ends('none', 'arrow'), undefined);
+    assert.ok(board.undo());
+    assert.deepStrictEqual(written()[0], ['ab', 'arrow', undefined]);
+  });
+
   test('connects two nodes by an edge from a side of one to a side of the other, under an id of its own, as Obsidian writes an edge, and never a node to itself or to one not there', () => {
     const board = new EditedBoard(canvas);
     const connect = (fromNode: string, toNode: string) =>
@@ -255,6 +295,8 @@ suite('Canvas edited', () => {
         toSide: 'top',
       },
       { kind: 'connect', fromNode: 'a', fromSide: 'left', toNode: 'b' },
+      { kind: 'ends', edges: ['ab'], fromEnd: 'arrow', toEnd: 'both' },
+      { kind: 'ends', edges: 'ab', fromEnd: 'arrow', toEnd: 'none' },
       { kind: 'text', id: 'a', text: 'x', session: 0.5 },
       { kind: 'text', id: '', text: 'x', session: 1 },
       { kind: 'rename' },

@@ -1,6 +1,6 @@
 import { useEffectEvent, useLayoutEffect, useRef } from 'react';
 import { watchGpu } from '../../../components/cells/page/gpuDevice';
-import { useCellTable, type CellTable } from '../../../lib/page/cellTable';
+import { useCellTable } from '../../../lib/page/cellTable';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { Words } from '../../../lib/page/name';
 import { PathTitle } from '../../../lib/page/pathTitle';
@@ -9,17 +9,11 @@ import { clicked, wheeled } from '../../../lib/shared/keymap';
 import { useShell } from '../../../shell/page/store';
 import type { Board } from '../shared/board';
 import { dragged, wheelMove, type Origin, type Point } from './pan';
-import {
-  dragging,
-  pressed,
-  released,
-  type Gesture,
-  type Preview,
-} from './gestures';
-import { hitOf, type Hit, type Sides } from './hits';
+import { dragging, pressed, released, type Preview } from './gestures';
+import { hitOf, type Hit } from './hits';
 import { canvasKeymap } from './keymap';
 import { Panner } from './panner';
-import { fileBox, ghostId, placedSizes, previewed } from './placing';
+import { fileBox, ghostId, placedSizes } from './placing';
 import type { Cell } from './routes';
 import {
   boardShown,
@@ -27,120 +21,28 @@ import {
   selectedShown,
   typingShown,
   type Placing,
-  type Typing,
 } from './state';
 import { useCanvas, useCanvasActions } from './store';
 import { BoardSurface, probeRowClass, type Drawn } from './surface';
+import {
+  cellAt,
+  cursorOf,
+  hoverFrom,
+  paint,
+  type Pressing,
+} from './boardPaint';
 import { offsetIn, typedLayout } from './typedLayout';
 import { spanAt } from './nodeText';
 import { useTypingContext } from './typingContext';
 import { typingKeyed } from './typingKeys';
 import { inserted, movedTo, selectedText } from './typing';
 import { markAt } from './wiring';
+import { nextEnds } from './arrows';
 
 interface Panning {
   readonly pointer: number;
   readonly from: Point;
   readonly start: Origin;
-}
-
-interface Pressing {
-  readonly pointer: number;
-  readonly gesture: Gesture;
-}
-
-interface Painted {
-  readonly board: Board;
-  readonly table: CellTable;
-  readonly origin: Origin | undefined;
-  readonly selected: readonly string[];
-  readonly placing: Placing | undefined;
-  readonly preview: Preview | undefined;
-  readonly ghostAt: Cell | undefined;
-  readonly unit: Drawn['unit'] | undefined;
-  readonly typing: Typing | undefined;
-  readonly hover: Cell | undefined;
-  readonly whitespace: boolean;
-}
-
-const noBoxes = new Map();
-
-function paint(
-  surface: BoardSurface | undefined,
-  {
-    board,
-    table,
-    origin,
-    selected,
-    placing,
-    preview,
-    ghostAt,
-    unit,
-    typing,
-    hover,
-    whitespace,
-  }: Painted,
-): Drawn | undefined {
-  const ghost =
-    placing === undefined || ghostAt === undefined
-      ? undefined
-      : { type: placing, box: { ...ghostAt, ...placedSizes[placing] } };
-  const wire = preview?.wire;
-  const shown =
-    unit !== undefined && (preview !== undefined || ghost !== undefined)
-      ? previewed(board, unit, preview?.boxes ?? noBoxes, ghost, wire)
-      : board;
-  const mark =
-    unit === undefined || hover === undefined
-      ? undefined
-      : markAt(board, unit, hover);
-  return surface?.draw(shown, table, origin, {
-    selected: new Set(
-      ghost === undefined && wire === undefined
-        ? selected
-        : [...selected, ghostId],
-    ),
-    marquee: preview?.area,
-    typing,
-    whitespace,
-    marks: mark === undefined ? [] : [mark.cell],
-  });
-}
-
-const hoverFrom = (
-  placing: Placing | undefined,
-  typing: Typing | undefined,
-  pressing: Pressing | undefined,
-  at: Cell | undefined,
-): Cell | undefined =>
-  placing === undefined &&
-  typing === undefined &&
-  (pressing === undefined || pressing.gesture.kind === 'connect')
-    ? at
-    : undefined;
-
-function cellAt(
-  event: { readonly clientX: number; readonly clientY: number },
-  known: Drawn,
-): Cell {
-  return {
-    column: Math.floor(
-      known.origin.column + (event.clientX - known.left) / known.cell.width,
-    ),
-    row: Math.floor(
-      known.origin.row + (event.clientY - known.top) / known.cell.height,
-    ),
-  };
-}
-
-function cursorOf(sides: Sides): string {
-  if ((sides.left && sides.top) || (sides.right && sides.bottom)) {
-    return 'nwse';
-  }
-  if ((sides.right && sides.top) || (sides.left && sides.bottom)) {
-    return 'nesw';
-  }
-  return sides.left || sides.right ? 'ew' : 'ns';
 }
 
 export function BoardView() {
@@ -405,6 +307,22 @@ export function BoardView() {
     },
     calm && (placing !== undefined || selected.length > 0),
   );
+  const selectedEdges =
+    board?.edges.filter((edge) => selected.includes(edge.id)) ?? [];
+  useBinding(
+    canvasKeymap.point,
+    () => {
+      const [first] = selectedEdges;
+      if (tab !== undefined && first !== undefined) {
+        edit(tab, {
+          kind: 'ends',
+          edges: selectedEdges.map((edge) => edge.id),
+          ...nextEnds(first),
+        });
+      }
+    },
+    calm && selectedEdges.length > 0,
+  );
   useBinding(
     canvasKeymap.typeIn,
     () => {
@@ -613,10 +531,24 @@ export function BoardView() {
       return;
     }
     pressing.current = undefined;
+    const at = known === undefined ? undefined : cellAt(event, known);
+    const stayed =
+      at !== undefined &&
+      at.column === going.gesture.from.column &&
+      at.row === going.gesture.from.row;
+    const edge =
+      going.gesture.kind === 'connect' && stayed && at !== undefined
+        ? known?.edgeAt(at)
+        : undefined;
+    if (edge !== undefined && tab !== undefined) {
+      preview.current = undefined;
+      select(tab, [edge]);
+      return;
+    }
     const placed =
-      known === undefined || board === undefined
+      known === undefined || board === undefined || at === undefined
         ? undefined
-        : released(going.gesture, board, known.unit, cellAt(event, known));
+        : released(going.gesture, board, known.unit, at);
     if (
       placed?.kind !== 'connect' &&
       placed !== undefined &&

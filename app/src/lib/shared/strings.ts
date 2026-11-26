@@ -285,6 +285,8 @@ export const strings = {
     placeGroupNode: 'Place a group, which follows the pointer until a click',
     selectNodes:
       'Select a node or an edge, or add it to the selection or take it out',
+    pointEdges:
+      'Point the edges selected the other way, both ways, neither way or back',
     connectNodes:
       'Join two nodes by an edge, dragged from the mark beside a side of one to the other',
     selectArea: 'Select the nodes a box drawn over the empty canvas touches',
