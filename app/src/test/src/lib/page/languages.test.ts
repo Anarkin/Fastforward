@@ -54,4 +54,9 @@ suite('Syntax', () => {
       assert.strictEqual(languageOf(file), undefined, file);
     }
   });
+
+  test('colors a file of JSON Canvas as the JSON it is, as Obsidian names it .canvas', () => {
+    assert.strictEqual(languageOf('C:\\boards\\plan.canvas'), 'json');
+    assert.strictEqual(languageOf('Shouting.CANVAS'), 'json');
+  });
 });

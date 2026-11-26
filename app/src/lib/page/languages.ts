@@ -17,6 +17,7 @@ const extensionLanguages: Record<string, string> = {
   axaml: 'xml',
   resx: 'xml',
   svg: 'xml',
+  canvas: 'json',
   csx: 'csharp',
   cshtml: 'razor',
   fsx: 'fsharp',
