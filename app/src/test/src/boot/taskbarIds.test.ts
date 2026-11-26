@@ -68,7 +68,7 @@ suite('Taskbar IDs', () => {
     assert.deepStrictEqual(ids(true, ['3', '1'], given), ['ff', 'ff.window.2']);
   });
 
-  test('starts Fastforward from a button of any window pinned, with its icon and name, rather than the program alone, the app of a development build named after the program', () => {
+  test('starts Fastforward from a button of any window pinned, with its icon and name, rather than the program alone, the app of a development build named after the program; an installed app shows the icon of its program, as the taskbar reads no file inside the asar the page is in and drew the button of each window but the first blank, and a development build the icon file beside its page, as its program is Electron', () => {
     const app = {
       icon: 'C:\\Fastforward\\dist\\icon.ico',
       program: 'C:\\Program Files\\Fastforward\\Fastforward.exe',
@@ -77,17 +77,27 @@ suite('Taskbar IDs', () => {
     };
     assert.deepStrictEqual(taskbarDetails('ff.window.2', app), {
       appId: 'ff.window.2',
-      appIconPath: 'C:\\Fastforward\\dist\\icon.ico',
+      appIconPath: 'C:\\Program Files\\Fastforward\\Fastforward.exe',
+      appIconIndex: 0,
       relaunchCommand: '"C:\\Program Files\\Fastforward\\Fastforward.exe"',
       relaunchDisplayName: 'Fastforward',
     });
-    assert.strictEqual(
-      taskbarDetails('ff', {
-        ...app,
-        program: 'C:\\app\\electron.exe',
-        appPath: 'C:\\app',
-      }).relaunchCommand,
-      '"C:\\app\\electron.exe" "C:\\app"',
+    const development = taskbarDetails('ff', {
+      ...app,
+      program: 'C:\\app\\electron.exe',
+      appPath: 'C:\\app',
+    });
+    assert.deepStrictEqual(
+      [
+        development.relaunchCommand,
+        development.appIconPath,
+        development.appIconIndex,
+      ],
+      [
+        '"C:\\app\\electron.exe" "C:\\app"',
+        'C:\\Fastforward\\dist\\icon.ico',
+        0,
+      ],
     );
   });
 });

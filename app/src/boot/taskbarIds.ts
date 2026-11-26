@@ -6,6 +6,7 @@ export const taskbarBase = (development: boolean): string =>
 export interface TaskbarDetails {
   readonly appId: string;
   readonly appIconPath: string;
+  readonly appIconIndex: number;
   readonly relaunchCommand: string;
   readonly relaunchDisplayName: string;
 }
@@ -26,7 +27,8 @@ export function taskbarDetails(
 ): TaskbarDetails {
   return {
     appId: id,
-    appIconPath: icon,
+    appIconPath: appPath === undefined ? program : icon,
+    appIconIndex: 0,
     relaunchCommand: [program, ...(appPath === undefined ? [] : [appPath])]
       .map((part) => `"${part}"`)
       .join(' '),
