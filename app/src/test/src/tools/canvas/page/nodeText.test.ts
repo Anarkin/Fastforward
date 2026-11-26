@@ -1,84 +1,91 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
-  laidOut,
+  linesOf,
   offsetAt,
   placeOf,
   rowEndOf,
-  textRows,
+  rowStartOf,
+  rowsOf,
 } from '../../../../../tools/canvas/page/nodeText';
 
-const rowsOf = (text: string, columns: number, most = 9) =>
-  textRows(text, columns, most, () => 1).map((row) =>
-    row.map((glyph) => glyph.text).join(''),
+const wide = /[一-鿿]|\p{Extended_Pictographic}/u;
+
+const widths = {
+  char: 1,
+  of: (cluster: string) => (wide.test(cluster) ? 2 : 1),
+};
+
+const rowTexts = (text: string, wrapAt?: number) =>
+  rowsOf(text, wrapAt, widths).map(({ row, from, to }) =>
+    row.text.slice(from, to),
   );
 
-const wideOf = (cluster: string) => (cluster === '中' ? 2 : 1);
-
 suite('Canvas node text', () => {
-  test('lets a blank at the end of a full row hang, starting the next row with the word after it, as a word ran into the next one', () => {
-    assert.deepStrictEqual(rowsOf('ab cd ef', 5), ['ab cd', 'ef']);
-    assert.deepStrictEqual(rowsOf('text far longer than its node', 15), [
-      'text far longer',
-      'than its node',
-    ]);
-  });
-
-  test('keeps the blanks a line starts with, and drops those a wrapped row would start with', () => {
-    assert.deepStrictEqual(rowsOf('  ab cd    ef', 5), ['  ab', 'cd', 'ef']);
-  });
-
-  test('breaks a word longer than the row where the row ends', () => {
-    assert.deepStrictEqual(rowsOf('abcdefg h', 3), ['abc', 'def', 'g h']);
-  });
-
-  test('tells the stretch of the text each row covers, the blanks a wrapped row hangs or drops and the line break left to no row', () => {
-    const rows = laidOut('ab cd   ef\r\ngh', 5, 9, () => 1);
+  test('cuts a text into its lines at every kind of line break, each knowing where it starts in the text and ending in the signs the views draw for its break', () => {
     assert.deepStrictEqual(
-      rows.map(({ from, to, wraps }) => [from, to, wraps]),
+      linesOf('ab\r\ncd\ne\rf').map(({ start, end, text, ending }) => [
+        start,
+        end,
+        text,
+        ending,
+      ]),
       [
-        [0, 8, true],
-        [8, 10, false],
-        [12, 14, false],
-      ],
-    );
-    assert.deepStrictEqual(
-      rows[0]?.glyphs.map(({ from, to }) => [from, to]),
-      [
-        [0, 1],
-        [1, 2],
-        [2, 3],
-        [3, 4],
-        [4, 5],
+        [0, 4, 'ab', '\u240d\u240a'],
+        [4, 7, 'cd', '\u240a'],
+        [7, 9, 'e', '\u240d'],
+        [9, 10, 'f', undefined],
       ],
     );
   });
 
-  test('places a caret on the cell before the character after it, on the next row where a wrapped row ends, past the blanks it hangs and after a wide character, a tab or a sign', () => {
-    const rows = laidOut('ab cd   ef\ngh', 5, 9, () => 1);
-    assert.deepStrictEqual(placeOf(rows, 0, 5), { row: 0, column: 0 });
-    assert.deepStrictEqual(placeOf(rows, 5, 5), { row: 0, column: 5 });
-    assert.deepStrictEqual(placeOf(rows, 7, 5), { row: 0, column: 5 });
-    assert.deepStrictEqual(placeOf(rows, 8, 5), { row: 1, column: 0 });
-    assert.deepStrictEqual(placeOf(rows, 10, 5), { row: 1, column: 2 });
-    assert.deepStrictEqual(placeOf(rows, 11, 5), { row: 2, column: 0 });
-    const wide = laidOut('a中\tb​c', 20, 9, wideOf);
+  test('wraps each line as the views wrap a text, a row of a line starting after the blank the row before it hangs', () => {
+    assert.deepStrictEqual(rowTexts('ab cd ef\ngh', 5), ['ab cd ', 'ef', 'gh']);
+    assert.deepStrictEqual(rowTexts('ab cd ef', 4), ['ab ', 'cd ', 'ef']);
+    assert.deepStrictEqual(rowTexts('ab cd ef'), ['ab cd ef']);
+  });
+
+  test('places the caret on the column before the character after it, at the start of the next row where a wrapped row ends, on a blank hanging at the end of a row, a tab too, and tells the cells of the character under it and what is drawn there', () => {
+    const rows = rowsOf('ab cd\n中\u0001\tx', 3, widths);
+    assert.deepStrictEqual(placeOf(rows, 0, widths), {
+      row: 0,
+      column: 0,
+      cells: 1,
+      under: 'a',
+    });
+    assert.deepStrictEqual(placeOf(rows, 3, widths), {
+      row: 1,
+      column: 0,
+      cells: 1,
+      under: 'c',
+    });
+    assert.deepStrictEqual(placeOf(rows, 6, widths), {
+      row: 2,
+      column: 0,
+      cells: 2,
+      under: '中',
+    });
+    assert.deepStrictEqual(placeOf(rows, 7, widths)?.under, '¤');
     assert.deepStrictEqual(
-      [0, 1, 2, 3, 4, 5, 6].map((offset) => placeOf(wide, offset, 20)?.column),
-      [0, 1, 3, 4, 5, 6, 7],
+      [placeOf(rows, 8, widths)?.column, placeOf(rows, 9, widths)?.column],
+      [3, 0],
     );
   });
 
-  test('takes a cell pressed for the place before the character in it, after the second half of a wide one, and the end of the row past its text, before the blank a wrapped row hangs', () => {
-    const rows = laidOut('ab cd   ef\ngh', 5, 9, () => 1);
-    assert.strictEqual(offsetAt(rows, { row: 0, column: 1 }), 1);
-    assert.strictEqual(offsetAt(rows, { row: 0, column: 9 }), 7);
-    assert.strictEqual(offsetAt(rows, { row: 1, column: 9 }), 10);
-    assert.strictEqual(offsetAt(rows, { row: 2, column: 1 }), 12);
-    assert.strictEqual(offsetAt(rows, { row: 7, column: 0 }), 11);
-    const wide = laidOut('a中b', 20, 9, wideOf);
-    assert.strictEqual(offsetAt(wide, { row: 0, column: 1 }), 1);
-    assert.strictEqual(offsetAt(wide, { row: 0, column: 2 }), 2);
-    assert.deepStrictEqual(rows.map(rowEndOf), [5, 10, 13]);
+  test('takes a cell pressed for the place before the character in it, after a wide one pressed on its second half, and the end of the row or text past it', () => {
+    const rows = rowsOf('a中b\nlast', undefined, widths);
+    assert.deepStrictEqual(
+      [0, 1, 2, 3, 9].map((column) =>
+        offsetAt(rows, { row: 0, column }, widths),
+      ),
+      [0, 1, 2, 2, 3],
+    );
+    assert.strictEqual(offsetAt(rows, { row: 7, column: 1 }, widths), 5);
+  });
+
+  test('tells where a row starts and where it ends, before the blank a wrapped row hangs', () => {
+    const rows = rowsOf('ab cd ef\ngh', 5, widths);
+    assert.deepStrictEqual(rows.map(rowStartOf), [0, 6, 9]);
+    assert.deepStrictEqual(rows.map(rowEndOf), [5, 8, 11]);
   });
 });

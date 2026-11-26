@@ -33,6 +33,8 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/cells/page/lines.ts',
     'components/cells/page/marks.ts',
     'components/cells/page/textCells.ts',
+    'components/cells/page/textPlaces.ts',
+    'components/cells/page/textSelection.ts',
   ],
   encodings: [
     'components/encodings/main/codePages.ts',

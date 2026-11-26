@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
@@ -17,6 +16,13 @@ import {
   seenRows,
   seenSelected,
 } from './cellsSeen';
+import {
+  inkSeen,
+  leastInk,
+  mostUnlike,
+  unlikeShare,
+  type Seen,
+} from './inkAlike';
 import { writeSettings } from './settingsWritten';
 import { untilSettled, waitForFocus } from './waits';
 
@@ -42,83 +48,14 @@ const longLines = Array.from(
   (_, line) => `const total = compute(total, value${line}); // line ${line}`,
 );
 
-const edgeLevels = 16;
-
-const mostUnlike = 0.01;
-
-const leastInk = 2000;
-
-const halfUp = 0.01;
-
 const comparedRows = 14;
 
 const comparedWidth = 560;
-
-interface Seen {
-  readonly brightness: Float32Array;
-  readonly inked: number;
-  readonly hash: string;
-}
-
-interface Box {
-  readonly left: number;
-  readonly top: number;
-  readonly width: number;
-  readonly height: number;
-}
 
 interface From {
   readonly left: number;
   readonly top: number;
   readonly row: number;
-}
-
-function blurredBrightness(
-  pixels: Buffer,
-  width: number,
-  box: Box,
-): Float32Array {
-  const plain = new Float32Array(box.width * box.height);
-  for (let y = 0; y < box.height; y++) {
-    for (let x = 0; x < box.width; x++) {
-      const at = ((box.top + y) * width + box.left + x) * 4;
-      plain[y * box.width + x] =
-        (pixels[at] + pixels[at + 1] + pixels[at + 2]) / 3;
-    }
-  }
-  const blurred = new Float32Array(plain.length);
-  for (let y = 0; y < box.height; y++) {
-    for (let x = 1; x < box.width - 1; x++) {
-      const at = y * box.width + x;
-      blurred[at] = (plain[at - 1] + plain[at] + plain[at + 1]) / 3;
-    }
-  }
-  return blurred;
-}
-
-function groundOf(brightness: Float32Array): number {
-  const counts = new Map<number, number>();
-  for (const value of brightness) {
-    const level = Math.round(value);
-    counts.set(level, (counts.get(level) ?? 0) + 1);
-  }
-  return [...counts].toSorted((one, other) => other[1] - one[1])[0]?.[0] ?? 0;
-}
-
-function inkedIn(brightness: Float32Array): number {
-  const ground = groundOf(brightness);
-  return brightness.filter((value) => Math.abs(value - ground) > edgeLevels)
-    .length;
-}
-
-function unlikeShare(one: Seen, other: Seen): number {
-  let unlike = 0;
-  for (let at = 0; at < one.brightness.length; at++) {
-    if (Math.abs(one.brightness[at] - other.brightness[at]) > edgeLevels) {
-      unlike++;
-    }
-  }
-  return unlike / Math.max(1, one.inked);
 }
 
 suite('App viewer drawn as cells', () => {
@@ -171,36 +108,13 @@ suite('App viewer drawn as cells', () => {
     };
   };
 
-  const shot = async (from: From): Promise<Seen> => {
-    const png = await page.screenshot();
-    const taken = await app.evaluate(({ nativeImage }, encoded) => {
-      const image = nativeImage.createFromBuffer(
-        Buffer.from(encoded, 'base64'),
-      );
-      return {
-        width: image.getSize().width,
-        pixels: image.toBitmap().toString('base64'),
-      };
-    }, png.toString('base64'));
-    const ratio = taken.width / (await page.evaluate(() => innerWidth));
-    const brightness = blurredBrightness(
-      Buffer.from(taken.pixels, 'base64'),
-      taken.width,
-      {
-        left: Math.round(from.left * ratio + halfUp),
-        top: Math.round(from.top * ratio + halfUp),
-        width: Math.round(comparedWidth * ratio),
-        height: Math.round(comparedRows * from.row * ratio),
-      },
-    );
-    return {
-      brightness,
-      inked: inkedIn(brightness),
-      hash: createHash('sha1')
-        .update(Buffer.from(brightness.buffer))
-        .digest('hex'),
-    };
-  };
+  const shot = (from: From): Promise<Seen> =>
+    inkSeen(app, page, {
+      left: from.left,
+      top: from.top,
+      width: comparedWidth,
+      height: comparedRows * from.row,
+    });
 
   const settled = async (
     from: () => Promise<From>,

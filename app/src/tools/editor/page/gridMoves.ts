@@ -3,7 +3,8 @@ import {
   type SelectionRange,
   type Text,
 } from '@codemirror/state';
-import { charAt, placeOf, rowsOf, type Grid } from './grid';
+import { placeOf, rowsOf, type Grid } from './grid';
+import { charAt } from '../../../components/cells/page/textPlaces';
 
 type Wrapping = Pick<Grid, 'columns' | 'widths'>;
 
@@ -37,7 +38,7 @@ export function movedRows(
   if (target === undefined) {
     return EditorSelection.cursor(doc.length, 1, undefined, goal);
   }
-  const char = charAt(grid, line.text, target, goal);
+  const char = charAt(grid.widths, line.text, target, goal);
   return EditorSelection.cursor(
     line.from + char,
     char === target.to && row < rows.length - 1 ? -1 : 1,

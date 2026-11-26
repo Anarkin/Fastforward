@@ -55,7 +55,7 @@ suite('Canvas store typing', () => {
   test('types into a text node where asked, selecting it, and posts a change of its text under the number of the typing, but no move of the caret', () => {
     const { store, posted } = opened();
     store.getState().receive(shown('7', 'Plan'));
-    store.getState().startTyping('7', 'note', 2);
+    store.getState().startTyping('7', 'note', { anchor: 2, head: 2 });
     const typing = store.getState().typingOf('7');
     assert.deepStrictEqual(
       typing && { text: typing.text, anchor: typing.anchor, head: typing.head },
@@ -100,7 +100,7 @@ suite('Canvas store typing', () => {
   test('brings typing back where it was in a tab moved to another window, once its board comes', () => {
     const left = opened();
     left.store.getState().receive(shown('7', 'Plan'));
-    left.store.getState().startTyping('7', 'note', 1);
+    left.store.getState().startTyping('7', 'note', { anchor: 1, head: 1 });
     left.store
       .getState()
       .receive({ type: 'show', tab: '8', file: '/b.canvas' });

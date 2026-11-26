@@ -1,3 +1,5 @@
+import type { ScreenRow } from '../../../components/cells/page/lines';
+import type { TextSelection } from '../../../components/cells/page/textSelection';
 import type { Box } from './grid';
 
 export type Way = 'up' | 'right' | 'down' | 'left';
@@ -13,6 +15,25 @@ export const doubleShift = 4;
 
 export const lightBits = 0x0f;
 
+export interface TextBlock {
+  readonly owner: number;
+  readonly column: number;
+  readonly row: number;
+  readonly rows: readonly ScreenRow[];
+  readonly wrapAt: number | undefined;
+  readonly room: number;
+  readonly kind?: string | undefined;
+  readonly selection?: TextSelection | undefined;
+}
+
+export interface Caret {
+  readonly start: number;
+  readonly column: number;
+  readonly row: number;
+  readonly cells: number;
+  readonly under: string;
+}
+
 export interface Screen {
   readonly column: number;
   readonly row: number;
@@ -24,9 +45,11 @@ export interface Screen {
   readonly lineKinds: (string | undefined)[];
   readonly arrows: (Way | undefined)[];
   readonly covered: Uint8Array;
-  readonly chosen: Uint8Array;
   readonly edges: (string | undefined)[];
-  readonly carets: { readonly column: number; readonly row: number }[];
+  readonly owners: Int32Array;
+  readonly seen: (string | undefined)[];
+  readonly texts: TextBlock[];
+  readonly carets: Caret[];
 }
 
 export function emptyScreen({ column, row, columns, rows }: Box): Screen {
@@ -42,14 +65,33 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     lineKinds: Array.from<string | undefined>({ length: cells }),
     arrows: Array.from<Way | undefined>({ length: cells }),
     covered: new Uint8Array(cells),
-    chosen: new Uint8Array(cells),
     edges: Array.from<string | undefined>({ length: cells }),
+    owners: new Int32Array(cells).fill(-1),
+    seen: Array.from<string | undefined>({ length: cells }),
+    texts: [],
     carets: [],
   };
 }
 
 export class Painter {
+  private owned = 0;
+
   constructor(readonly screen: Screen) {}
+
+  nextOwner(): number {
+    return this.owned++;
+  }
+
+  claim(column: number, row: number, owner: number): void {
+    const at = this.indexOf(column, row);
+    if (at !== undefined) {
+      this.screen.owners[at] = owner;
+    }
+  }
+
+  text(block: TextBlock): void {
+    this.screen.texts.push(block);
+  }
 
   indexOf(column: number, row: number): number | undefined {
     const across = column - this.screen.column;
@@ -85,8 +127,9 @@ export class Painter {
     screen.lines[at] = 0;
     screen.lineKinds[at] = undefined;
     screen.arrows[at] = undefined;
-    screen.chosen[at] = 0;
     screen.edges[at] = undefined;
+    screen.owners[at] = -1;
+    screen.seen[at] = undefined;
   }
 
   edge(column: number, row: number, id: string): void {
@@ -96,21 +139,9 @@ export class Painter {
     }
   }
 
-  choose(column: number, row: number): void {
-    const at = this.indexOf(column, row);
-    if (at === undefined) {
-      return;
-    }
-    const { screen } = this;
-    if (screen.glyphs[at] === undefined && screen.lines[at] === 0) {
-      screen.glyphs[at] = ' ';
-    }
-    screen.chosen[at] = 1;
-  }
-
-  caret(column: number, row: number): void {
-    if (this.indexOf(column, row) !== undefined) {
-      this.screen.carets.push({ column, row });
+  caret(caret: Caret): void {
+    if (this.indexOf(caret.column, caret.row) !== undefined) {
+      this.screen.carets.push(caret);
     }
   }
 

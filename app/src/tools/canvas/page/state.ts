@@ -36,7 +36,11 @@ export interface CanvasActions {
   readonly select: (tab: string, ids: readonly string[]) => void;
   readonly selectedOf: (tab: string) => readonly string[];
   readonly place: (placing: Placing | undefined) => void;
-  readonly startTyping: (tab: string, id: string, at?: number) => void;
+  readonly startTyping: (
+    tab: string,
+    id: string,
+    span?: { readonly anchor: number; readonly head: number },
+  ) => void;
   readonly typed: (tab: string, caret: Caret) => void;
   readonly stopTyping: (tab: string) => void;
   readonly edit: (tab: string, edit: BoardEdit) => void;

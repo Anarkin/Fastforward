@@ -9,10 +9,8 @@ import {
   type DrawnCursor,
 } from '../../../lib/page/cursor';
 import type { Box } from '../../../lib/page/pixelBoxes';
-import { invisibleParts } from '../../../lib/page/invisibles';
-import { strings } from '../../../lib/shared/strings';
-import { blankSignOf } from '../../../lib/page/blankSigns';
 import { cellAt, gridOf, type Grid } from './grid';
+import { shownUnder } from '../../../components/cells/page/textPlaces';
 import { layerOrigin } from './rows';
 import {
   surfacePlugin,
@@ -25,20 +23,6 @@ interface CursorCell {
   readonly cell: Box;
   readonly text: string;
   readonly font: string;
-}
-
-function shownUnder(text: string): string {
-  if (text === '\t') {
-    return '';
-  }
-  const parts = invisibleParts(text);
-  return parts === undefined
-    ? (blankSignOf(text, false) ?? text)
-    : parts
-        .map(({ text: part, hidden }) =>
-          hidden ? strings.symbols.invisible : part,
-        )
-        .join('');
 }
 
 function cursorCell(

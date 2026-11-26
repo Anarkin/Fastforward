@@ -68,8 +68,7 @@
   white-space: pre;
 }
 
-.board-line,
-.board-sign {
+.board-line {
   color: var(--muted-foreground);
 }
 

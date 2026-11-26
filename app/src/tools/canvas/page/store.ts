@@ -200,15 +200,18 @@ export function createCanvasStore(
       },
       selectedOf: (tab) => get().selections.get(tab) ?? [],
       place: (placing) => set({ placing }),
-      startTyping: (tab, id, at) => {
+      startTyping: (tab, id, span) => {
         const text = textOf(get().boards.get(tab)?.board, id);
         if (text === undefined) {
           return;
         }
-        const offset = at ?? text.length;
         const typing = typingIn(
           text,
-          { id, anchor: offset, head: offset },
+          {
+            id,
+            anchor: span?.anchor ?? text.length,
+            head: span?.head ?? text.length,
+          },
           ++sessions,
         );
         set((state) => ({

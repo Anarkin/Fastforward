@@ -1,13 +1,13 @@
 import type { Board, BoardEdge, BoardNode } from '../shared/board';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import { boxOf, type Box, type Unit } from './grid';
 import {
-  laidOut,
-  placeOf,
-  textRows,
-  type Glyph,
-  type Place,
-  type TextRow,
-} from './nodeText';
+  lineWidthOf,
+  paintLine,
+  paintText,
+  seeTexts,
+  textAreaOf,
+} from './textBlocks';
 import { reversed, routeOf, type Cell, type Route } from './routes';
 import {
   doubleShift,
@@ -46,7 +46,7 @@ export interface Drawn {
   readonly board: Board;
   readonly unit: Unit;
   readonly view: Box;
-  readonly cellsOf: (cluster: string) => number;
+  readonly widths: TextWidths;
   readonly selected?: ReadonlySet<string>;
   readonly typing?: TypedNode | undefined;
   readonly marks?: readonly Cell[];
@@ -58,19 +58,6 @@ export interface TypedNode {
   readonly anchor: number;
   readonly head: number;
 }
-
-export function textAreaOf(box: Box): Box {
-  const padding = box.columns >= 5 ? 1 : 0;
-  return {
-    column: box.column + 1 + padding,
-    row: box.row + 1,
-    columns: box.columns - 2 - 2 * padding,
-    rows: box.rows - 2,
-  };
-}
-
-export const scrollOf = (place: Place | undefined, area: Box): number =>
-  Math.max(0, (place?.row ?? 0) - (area.rows - 1));
 
 const noneSelected: ReadonlySet<string> = new Set();
 
@@ -119,24 +106,6 @@ function border(
   }
 }
 
-function written(
-  painter: Painter,
-  column: number,
-  row: number,
-  glyphs: readonly Glyph[],
-  until: number,
-  kind?: string,
-): void {
-  let at = column;
-  for (const glyph of glyphs) {
-    if (at + glyph.cells - 1 > until) {
-      return;
-    }
-    painter.glyph(at, row, glyph.text, glyph.cells, glyph.kind ?? kind);
-    at += glyph.cells;
-  }
-}
-
 function contentOf(node: BoardNode): string {
   switch (node.type) {
     case 'text':
@@ -152,72 +121,12 @@ function contentOf(node: BoardNode): string {
   }
 }
 
-function chooseRow(
-  painter: Painter,
-  row: TextRow,
-  area: Box,
-  y: number,
-  { from, to }: { readonly from: number; readonly to: number },
-): void {
-  const last = area.column + area.columns - 1;
-  let column = area.column;
-  for (const glyph of row.glyphs) {
-    if (glyph.from >= from && glyph.to <= to) {
-      for (let cell = 0; cell < glyph.cells; cell++) {
-        painter.choose(Math.min(last, column + cell), y);
-      }
-    }
-    column += glyph.cells;
-  }
-  const end = row.glyphs.at(-1)?.to ?? row.from;
-  if (
-    to > row.to &&
-    from <= row.to &&
-    (!row.wraps || row.to > end) &&
-    column <= last
-  ) {
-    painter.choose(column, y);
-  }
-}
-
-function paintTyped(
-  painter: Painter,
-  area: Box,
-  typing: TypedNode,
-  cellsOf: (cluster: string) => number,
-): void {
-  if (area.columns <= 0 || area.rows <= 0) {
-    return;
-  }
-  const rows = laidOut(typing.text, area.columns, Infinity, cellsOf);
-  const place = placeOf(rows, typing.head, area.columns);
-  const scroll = scrollOf(place, area);
-  const span = {
-    from: Math.min(typing.anchor, typing.head),
-    to: Math.max(typing.anchor, typing.head),
-  };
-  const last = area.column + area.columns - 1;
-  for (let index = 0; index < area.rows; index++) {
-    const row = rows[scroll + index];
-    if (row === undefined) {
-      break;
-    }
-    written(painter, area.column, area.row + index, row.glyphs, last);
-    if (span.from !== span.to) {
-      chooseRow(painter, row, area, area.row + index, span);
-    }
-  }
-  if (place !== undefined) {
-    painter.caret(area.column + place.column, area.row + place.row - scroll);
-  }
-}
-
 function paintNode(
   painter: Painter,
   node: BoardNode,
   box: Box,
   selected: boolean,
-  cellsOf: (cluster: string) => number,
+  widths: TextWidths,
   typing: TypedNode | undefined,
 ): void {
   const kind = colorKind(node.color);
@@ -225,17 +134,19 @@ function paintNode(
   const right = box.column + box.columns - 1;
   if (node.type === 'group') {
     border(painter, box, weight, kind);
-    const [label] = textRows(
-      ` ${contentOf(node)} `,
-      box.columns - 4,
-      1,
-      cellsOf,
-    );
-    if (node.label !== undefined && label !== undefined) {
-      written(painter, box.column + 2, box.row, label, right - 2, kind);
+    if (node.label !== undefined) {
+      paintLine(painter, {
+        column: box.column + 3,
+        row: box.row,
+        text: node.label,
+        room: box.columns - 6,
+        kind,
+        widths,
+      });
     }
     return;
   }
+  const owner = painter.nextOwner();
   const { screen } = painter;
   const top = Math.max(box.row, screen.row);
   const bottom = Math.min(box.row + box.rows, screen.row + screen.rows);
@@ -245,19 +156,18 @@ function paintNode(
     for (let column = left; column <= end; column++) {
       painter.clear(column, row);
       painter.cover(column, row);
+      painter.claim(column, row, owner);
     }
   }
   border(painter, box, weight, kind);
-  const area = textAreaOf(box);
-  if (typing?.id === node.id) {
-    paintTyped(painter, area, typing, cellsOf);
-    return;
-  }
-  const last = area.column + area.columns - 1;
-  const rows = textRows(contentOf(node), area.columns, area.rows, cellsOf);
-  for (const [index, glyphs] of rows.entries()) {
-    written(painter, area.column, area.row + index, glyphs, last);
-  }
+  const typed = typing?.id === node.id ? typing : undefined;
+  paintText(painter, {
+    owner,
+    area: textAreaOf(box),
+    text: typed?.text ?? contentOf(node),
+    widths,
+    typed,
+  });
 }
 
 interface Routed {
@@ -365,19 +275,25 @@ function paintEnds(
 function paintLabel(
   painter: Painter,
   { edge, route }: Routed,
-  cellsOf: (cluster: string) => number,
+  widths: TextWidths,
 ): void {
   if (edge.label === undefined || edge.label === '') {
     return;
   }
   const middle = route.cells[Math.floor(route.cells.length / 2)];
-  const [glyphs] = textRows(` ${edge.label} `, Infinity, 1, cellsOf);
-  if (middle === undefined || glyphs === undefined) {
+  if (middle === undefined) {
     return;
   }
-  const width = glyphs.reduce((cells, glyph) => cells + glyph.cells, 0);
+  const width = lineWidthOf(edge.label, widths) + 2;
   const start = middle.column - Math.floor(width / 2);
-  written(painter, start, middle.row, glyphs, start + width - 1, labelKind);
+  paintLine(painter, {
+    column: start + 1,
+    row: middle.row,
+    text: edge.label,
+    room: width - 2,
+    kind: labelKind,
+    widths,
+  });
   for (let column = start; column < start + width; column++) {
     painter.edge(column, middle.row, edge.id);
   }
@@ -387,7 +303,7 @@ export function screenOf({
   board,
   unit,
   view,
-  cellsOf,
+  widths,
   selected = noneSelected,
   typing,
   marks = [],
@@ -413,7 +329,7 @@ export function screenOf({
   const paint = (node: BoardNode) => {
     const box = boxes.get(node.id);
     if (box !== undefined) {
-      paintNode(painter, node, box, selected.has(node.id), cellsOf, typing);
+      paintNode(painter, node, box, selected.has(node.id), widths, typing);
     }
   };
   for (const node of board.nodes) {
@@ -431,7 +347,7 @@ export function screenOf({
   }
   for (const each of routed) {
     paintEnds(painter, each, selected.has(each.edge.id));
-    paintLabel(painter, each, cellsOf);
+    paintLabel(painter, each, widths);
   }
   for (const cell of marks) {
     const at = painter.indexOf(cell.column, cell.row);
@@ -439,6 +355,7 @@ export function screenOf({
       painter.glyph(cell.column, cell.row, mark, 1, markKind);
     }
   }
+  seeTexts(painter.screen, widths);
   return painter.screen;
 }
 

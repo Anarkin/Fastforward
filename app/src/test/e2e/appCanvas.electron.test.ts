@@ -480,11 +480,16 @@ suite('App canvas', () => {
     await shows('the node it holds moved with it', { column: 30, row: 5 }, '┌');
   });
 
-  test('types into a text node double-clicked where it was clicked, drawing the cursor there, stops on Escape with the node still selected and writes what was typed into its file on Mod+S', async () => {
+  test('types into a text node double-clicked, the word under the pointer selected as every view selects it, and leaves the page itself nothing selected on a second double click, stops on Escape with the node still selected and writes what was typed into its file on Mod+S', async () => {
     const letter = await pointAt({ column: 14, row: 5 });
     await page.mouse.dblclick(letter.x, letter.y);
     await cursorShown('the cursor drawn', true);
-    await page.keyboard.type('X');
+    await page.mouse.dblclick(letter.x, letter.y);
+    assert.strictEqual(await page.evaluate(() => String(getSelection())), '');
+    await page.keyboard.type('Pl');
+    await holds('the word typed over', 'Pl', true);
+    await holds('the word replaced', 'Plan', false);
+    await page.keyboard.type('Xan');
     await holds('the letter typed', 'PlXan', true);
     await page.keyboard.press('Escape');
     await cursorShown('the cursor gone', false);
@@ -524,11 +529,18 @@ suite('App canvas', () => {
     await cursorShown('the cursor gone', false);
   });
 
-  test('marks the middle of each side of the node under the pointer, joins it to another node by an edge dragged from a mark, the side nearest the pointer, selected and saved, and deletes an edge clicked on Delete', async () => {
+  test('shows the mark beside the middle of a side of a node only while the pointer is in its cell, joins it to another node by an edge dragged from that mark, the side nearest the pointer, selected and saved, and deletes an edge clicked on Delete', async () => {
     const plan = await pointAt({ column: 14, row: 5 });
     await page.mouse.move(plan.x, plan.y);
-    await shows('the mark below the node', { column: 14, row: 7 }, '●');
+    await shows(
+      'no mark while the pointer is over the node',
+      { column: 14, row: 7 },
+      ' ',
+    );
     const mark = await pointAt({ column: 14, row: 7 });
+    await page.mouse.move(mark.x, mark.y);
+    await shows('the mark under the pointer', { column: 14, row: 7 }, '●');
+    assert.strictEqual(await drawnAt({ column: 9, row: 5 }), ' ');
     const target = await pointAt({ column: 15, row: 13 });
     await page.mouse.move(mark.x, mark.y);
     await page.mouse.down();

@@ -6,12 +6,11 @@ import {
   type TextWidths,
 } from '../../../../../lib/page/textWidths';
 import { plainCells } from '../../../../../lib/page/cellTable';
+import { placeOf, rowsOf } from '../../../../../tools/editor/page/grid';
 import {
   columnIn,
-  placeOf,
   rowHolding,
-  rowsOf,
-} from '../../../../../tools/editor/page/grid';
+} from '../../../../../components/cells/page/textPlaces';
 import {
   cursorsOnLines,
   extended,
@@ -61,7 +60,7 @@ suite('The grid the text edited stands on', () => {
     );
     const mixed = docOf('a中b').line(1);
     assert.strictEqual(
-      columnIn(grid, mixed.text, rowsOf(grid, mixed)[0] ?? rows[0], 2),
+      columnIn(grid.widths, mixed.text, rowsOf(grid, mixed)[0] ?? rows[0], 2),
       3,
     );
   });

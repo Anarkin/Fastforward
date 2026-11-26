@@ -1,9 +1,7 @@
 import { drawnTabSize } from './indent';
 import { widthsFor } from '../../../lib/page/textWidths';
-import { clusterBreak } from '../../../lib/page/graphemes';
 import { type Line } from '@codemirror/state';
 import type { EditorSurface } from './surface';
-import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
 import {
   wrappedRows,
   type ScreenRow,
@@ -12,6 +10,11 @@ import {
 import { cellsOf } from '../../../lib/page/cellTable';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
+import {
+  cellsAt,
+  columnIn,
+  rowHolding,
+} from '../../../components/cells/page/textPlaces';
 import { textAdvance, textLeft, wrapColumnsOf } from './rows';
 
 export interface Grid {
@@ -92,37 +95,6 @@ export function rowsOf(
   return wrappedRows(keptLine(line), columns, widthsFor(line.text, widths));
 }
 
-export function rowHolding(
-  rows: readonly ScreenRow[],
-  char: number,
-  assoc: number,
-): number {
-  let found = 0;
-  for (const [index, row] of rows.entries()) {
-    if (char > row.from || (char === row.from && (assoc >= 0 || index === 0))) {
-      found = index;
-    }
-  }
-  return found;
-}
-
-export function columnIn(
-  { widths }: Pick<Grid, 'widths'>,
-  text: string,
-  row: ScreenRow,
-  char: number,
-): number {
-  return (
-    row.indent +
-    columnAt(
-      text,
-      Math.min(char, text.length),
-      row.from,
-      widthsFor(text, widths),
-    )
-  );
-}
-
 export function placeOf(
   grid: Pick<Grid, 'columns' | 'widths'>,
   line: Line,
@@ -137,24 +109,9 @@ export function placeOf(
     line,
     rows,
     row,
-    column: held === undefined ? 0 : columnIn(grid, line.text, held, char),
+    column:
+      held === undefined ? 0 : columnIn(grid.widths, line.text, held, char),
   };
-}
-
-export function charAt(
-  { widths }: Pick<Grid, 'widths'>,
-  text: string,
-  row: ScreenRow,
-  column: number,
-): number {
-  return charAtColumn(
-    text,
-    row.from,
-    row.to,
-    row.indent,
-    column,
-    widthsFor(text, widths),
-  );
 }
 
 export function cellAt(
@@ -167,14 +124,8 @@ export function cellAt(
   const { rows, row, column } = placeOf(grid, line, pos, assoc);
   const held = rows[row];
   const char = pos - line.from;
-  const next =
-    held === undefined || char >= held.to
-      ? char
-      : clusterBreak(line.text, char, true);
   const wide =
-    held === undefined || next <= char
-      ? 1
-      : Math.max(1, columnIn(grid, line.text, held, next) - column);
+    held === undefined ? 1 : cellsAt(grid.widths, line.text, held, char);
   const kept =
     grid.columns === undefined ? column : Math.min(column, grid.columns);
   return {

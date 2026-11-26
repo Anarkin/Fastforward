@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { laidOut } from '../../../../../tools/canvas/page/nodeText';
+import { rowsOf } from '../../../../../tools/canvas/page/nodeText';
 import {
   allSelected,
   deleted,
@@ -11,6 +11,8 @@ import {
   selectedText,
   type Caret,
 } from '../../../../../tools/canvas/page/typing';
+
+const widths = { char: 1, of: () => 1 };
 
 const at = (text: string, head: number, anchor = head): Caret => ({
   text,
@@ -81,35 +83,35 @@ suite('Canvas typing', () => {
     );
   });
 
-  test('moves the caret up and down the rows the text wraps onto, keeping its column, to either end past the first and the last, and to the ends of its row', () => {
-    const text = 'ab cd ef\ngh';
-    const rows = laidOut(text, 5, Infinity, () => 1);
+  test('moves the caret up and down the rows the text wraps onto as every view wraps it, keeping its column, to either end past the first and the last, and to the ends of its row, before the blank a wrapped row hangs', () => {
+    const text = 'ab cd ef' + String.fromCharCode(10) + 'gh';
+    const rows = rowsOf(text, 4, widths);
     assert.deepStrictEqual(
-      movedRows(at(text, 1), rows, 5, 1, false),
-      at(text, 7),
+      movedRows(at(text, 1), rows, widths, 1, false),
+      at(text, 4),
     );
     assert.deepStrictEqual(
-      movedRows(at(text, 7), rows, 5, 1, true),
-      at(text, 10, 7),
+      movedRows(at(text, 4), rows, widths, 1, true),
+      at(text, 7, 4),
     );
     assert.deepStrictEqual(
-      movedRows(at(text, 1), rows, 5, -1, false),
+      movedRows(at(text, 1), rows, widths, -1, false),
       at(text, 0),
     );
     assert.deepStrictEqual(
-      movedRows(at(text, 10), rows, 5, 1, false),
+      movedRows(at(text, 10), rows, widths, 1, false),
       at(text, 11),
     );
     assert.deepStrictEqual(
-      movedToRowEdge(at(text, 1), rows, 5, true, false),
-      at(text, 5),
+      movedToRowEdge(at(text, 1), rows, widths, true, false),
+      at(text, 2),
     );
     assert.deepStrictEqual(
-      movedToRowEdge(at(text, 7), rows, 5, false, true),
-      at(text, 6, 7),
+      movedToRowEdge(at(text, 4), rows, widths, false, true),
+      at(text, 3, 4),
     );
     assert.deepStrictEqual(
-      movedToRowEdge(at(text, 9), rows, 5, true, false),
+      movedToRowEdge(at(text, 10), rows, widths, true, false),
       at(text, 11),
     );
   });

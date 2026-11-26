@@ -23,7 +23,7 @@ const shown = (nodes: readonly BoardNode[]) =>
     board: { nodes, edges: [] },
     unit,
     view: { column: 0, row: 0, columns: 8, rows: 5 },
-    cellsOf: () => 1,
+    widths: { char: 1, of: () => 1 },
   });
 
 suite('Canvas grid dots', () => {

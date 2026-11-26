@@ -1,4 +1,4 @@
-import { blankSignOf } from '../../../lib/page/blankSigns';
+import { blankSignOf } from './blankSigns';
 import { invisibleParts } from '../../../lib/page/invisibles';
 import { characterTip } from '../../../lib/page/tips';
 import { characterTipText } from './characterNames';

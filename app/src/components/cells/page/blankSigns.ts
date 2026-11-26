@@ -1,4 +1,4 @@
-import { strings } from '../shared/strings';
+import { strings } from '../../../lib/shared/strings';
 
 const blank = /^[\p{Zs}\u2800]$/u;
 

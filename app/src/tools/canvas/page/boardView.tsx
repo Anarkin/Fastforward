@@ -32,10 +32,11 @@ import {
 import { useCanvas, useCanvasActions } from './store';
 import { BoardSurface, probeRowClass, type Drawn } from './surface';
 import { offsetIn, typedLayout } from './typedLayout';
+import { spanAt } from './nodeText';
 import { useTypingContext } from './typingContext';
 import { typingKeyed } from './typingKeys';
 import { inserted, movedTo, selectedText } from './typing';
-import { hoveredAt, markAt, marksOf } from './wiring';
+import { markAt } from './wiring';
 
 interface Panning {
   readonly pointer: number;
@@ -59,6 +60,7 @@ interface Painted {
   readonly unit: Drawn['unit'] | undefined;
   readonly typing: Typing | undefined;
   readonly hover: Cell | undefined;
+  readonly whitespace: boolean;
 }
 
 const noBoxes = new Map();
@@ -76,6 +78,7 @@ function paint(
     unit,
     typing,
     hover,
+    whitespace,
   }: Painted,
 ): Drawn | undefined {
   const ghost =
@@ -87,10 +90,10 @@ function paint(
     unit !== undefined && (preview !== undefined || ghost !== undefined)
       ? previewed(board, unit, preview?.boxes ?? noBoxes, ghost, wire)
       : board;
-  const hovered =
+  const mark =
     unit === undefined || hover === undefined
       ? undefined
-      : hoveredAt(board, unit, hover);
+      : markAt(board, unit, hover);
   return surface?.draw(shown, table, origin, {
     selected: new Set(
       ghost === undefined && wire === undefined
@@ -99,10 +102,8 @@ function paint(
     ),
     marquee: preview?.area,
     typing,
-    marks:
-      hovered === undefined
-        ? []
-        : marksOf(hovered.id, hovered.box).map(({ cell }) => cell),
+    whitespace,
+    marks: mark === undefined ? [] : [mark.cell],
   });
 }
 
@@ -152,6 +153,7 @@ export function BoardView() {
   const placing = useCanvas((state) => state.placing);
   const typing = useCanvas(typingShown);
   const scrolling = useShell((state) => state.scrolling);
+  const whitespace = useShell((state) => state.textView.showWhitespace);
   const {
     pan,
     originOf,
@@ -178,7 +180,7 @@ export function BoardView() {
   const preview = useRef<Preview>(undefined);
   const ghostAt = useRef<Cell>(undefined);
   const lastAt = useRef<Cell>(undefined);
-  const hoveredId = useRef<string>(undefined);
+  const markedAt = useRef<string>(undefined);
   const held = useRef(false);
   const choosing = useRef<number>(undefined);
   const paintedBoard = useRef<Board>(undefined);
@@ -228,6 +230,7 @@ export function BoardView() {
         unit: drawn.current?.unit,
         typing,
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
+        whitespace,
       });
       placeContext(drawn.current?.caret, element.getBoundingClientRect());
     }
@@ -290,10 +293,20 @@ export function BoardView() {
         unit: drawn.current?.unit,
         typing,
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
+        whitespace,
       });
       placeContext(drawn.current?.caret, element.getBoundingClientRect());
     }
-  }, [board, table, origin, selected, placing, typing, placeContext]);
+  }, [
+    board,
+    table,
+    origin,
+    selected,
+    placing,
+    typing,
+    whitespace,
+    placeContext,
+  ]);
 
   const onWheel = useEffectEvent((event: WheelEvent) => {
     const across = wheeled(canvasKeymap.panAcross, event) !== undefined;
@@ -471,7 +484,7 @@ export function BoardView() {
     const now = typingOf(tab);
     if (now !== undefined) {
       const caretWay = clicked(canvasKeymap.placeCaret, event);
-      const layout = typedLayout(board, known.unit, known.cellsOf, now);
+      const layout = typedLayout(board, known.unit, known.widths, now);
       if (
         hit.kind === 'node' &&
         hit.id === now.id &&
@@ -527,7 +540,7 @@ export function BoardView() {
       const layout =
         now === undefined
           ? undefined
-          : typedLayout(board, known.unit, known.cellsOf, now);
+          : typedLayout(board, known.unit, known.widths, now);
       if (now !== undefined && layout !== undefined) {
         typed(tab, movedTo(now, offsetIn(layout, at), true));
       }
@@ -548,9 +561,10 @@ export function BoardView() {
       repaint();
       return;
     }
-    const hovered = hoveredAt(board, known.unit, at)?.id;
-    if (hovered !== hoveredId.current) {
-      hoveredId.current = hovered;
+    const mark = markAt(board, known.unit, at);
+    const marked = mark === undefined ? undefined : `${mark.id}:${mark.side}`;
+    if (marked !== markedAt.current) {
+      markedAt.current = marked;
       repaint();
     }
     const hit = hitAt(board, known, at);
@@ -569,8 +583,8 @@ export function BoardView() {
 
   const left = () => {
     lastAt.current = undefined;
-    if (hoveredId.current !== undefined && pressing.current === undefined) {
-      hoveredId.current = undefined;
+    if (markedAt.current !== undefined && pressing.current === undefined) {
+      markedAt.current = undefined;
       repaint();
     }
   };
@@ -618,14 +632,16 @@ export function BoardView() {
     }
   };
 
-  const doubleClicked = (event: React.MouseEvent<HTMLDivElement>) => {
+  const chosenWhole = (
+    event: React.MouseEvent<HTMLDivElement>,
+    whole: 'word' | 'line',
+  ) => {
     const known = drawn.current;
     if (
       known === undefined ||
       tab === undefined ||
       board === undefined ||
       placing !== undefined ||
-      typingOf(tab) !== undefined ||
       clicked(canvasKeymap.select, event) !== 'one'
     ) {
       return;
@@ -639,16 +655,26 @@ export function BoardView() {
     if (node?.type !== 'text') {
       return;
     }
-    const layout = typedLayout(board, known.unit, known.cellsOf, {
+    const now = typingOf(tab);
+    const current = now?.id === node.id ? now : undefined;
+    if (whole === 'line' && current === undefined) {
+      return;
+    }
+    const text = current?.text ?? node.text;
+    const layout = typedLayout(board, known.unit, known.widths, {
       id: node.id,
-      text: node.text,
-      head: 0,
+      text,
+      head: current?.head ?? 0,
     });
-    startTyping(
-      tab,
-      node.id,
-      layout === undefined ? undefined : offsetIn(layout, at),
-    );
+    const span =
+      layout === undefined
+        ? undefined
+        : spanAt(layout.rows, offsetIn(layout, at), whole);
+    if (current === undefined) {
+      startTyping(tab, node.id, span);
+    } else if (span !== undefined) {
+      typed(tab, { text, ...span });
+    }
   };
 
   const keyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -658,7 +684,7 @@ export function BoardView() {
       const layout =
         known === undefined || board === undefined
           ? undefined
-          : typedLayout(board, known.unit, known.cellsOf, now);
+          : typedLayout(board, known.unit, known.widths, now);
       const done = typingKeyed(event.nativeEvent, now, layout);
       if (done !== undefined) {
         event.preventDefault();
@@ -723,7 +749,13 @@ export function BoardView() {
         onPointerCancel={letGo}
         onLostPointerCapture={letGo}
         onPointerLeave={left}
-        onDoubleClick={doubleClicked}
+        onMouseDown={(event) => {
+          event.preventDefault();
+          if (event.detail >= 3) {
+            chosenWhole(event, 'line');
+          }
+        }}
+        onDoubleClick={(event) => chosenWhole(event, 'word')}
         onKeyDown={keyDown}
         onCopy={(event) => copied(event, false)}
         onCut={(event) => copied(event, true)}

@@ -386,6 +386,39 @@ function keptOf(
     : undefined;
 }
 
+export function drawScreenRow(
+  drawing: TextDrawing,
+  look: RowsLook,
+  row: ScreenRow,
+  part: RowPart | undefined,
+  y: number,
+  marks: readonly FindMark[] = look.marksOf(row),
+): void {
+  const from = part?.from ?? row.from;
+  const to = part?.to ?? row.to;
+  const tints = look.tintsOf?.(row.row);
+  drawRow(
+    look.widthsOf === undefined
+      ? drawing
+      : { ...drawing, widths: rowWidthsOf(look, row.row) },
+    row,
+    piecesOf(
+      look.segmentsOf,
+      row,
+      marks,
+      tints,
+      selectedOf(look, row, part),
+      from,
+      to,
+    ),
+    part?.column ?? 0,
+    y,
+    breakSelectedOf(look, row, part),
+    tints,
+    to >= row.row.text.length,
+  );
+}
+
 function drawnRow(
   painting: CellPainting,
   drawing: TextDrawing,
@@ -405,18 +438,7 @@ function drawnRow(
   const selected = selectedOf(look, row, part);
   const withBreak = breakSelectedOf(look, row, part);
   const tints = look.tintsOf?.(row.row);
-  drawRow(
-    look.widthsOf === undefined
-      ? drawing
-      : { ...drawing, widths: rowWidthsOf(look, row.row) },
-    row,
-    piecesOf(look.segmentsOf, row, marks, tints, selected, from, to),
-    column,
-    y,
-    withBreak,
-    tints,
-    to >= row.row.text.length,
-  );
+  drawScreenRow(drawing, look, row, part, y, marks);
   if (frame.missing !== missing) {
     return false;
   }

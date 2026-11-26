@@ -29,6 +29,7 @@ import {
   pageCursorLook,
   paintCursor,
 } from '../../../lib/page/cursor';
+import { fontDotLook } from '../../../lib/page/dotLook';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import {
   elementWidths,
@@ -48,7 +49,7 @@ import {
 import { unitOf, type Box, type Unit } from './grid';
 import { arrowRects, lineRects, strokeOf } from './lineRects';
 import { gridDots } from './gridDots';
-import { signKind } from './nodeText';
+import { drawTexts } from './drawnTexts';
 import { originOf, type CellSize, type Origin } from './pan';
 import type { Cell } from './routes';
 import type { Screen } from './screen';
@@ -88,7 +89,6 @@ const lookKinds = [
   [lineKind, 'board-line'],
   [labelKind, 'board-label'],
   [markKind, 'board-mark'],
-  [signKind, 'board-sign'],
   ...colorKinds,
 ] as const;
 
@@ -113,7 +113,7 @@ export interface Drawn {
   readonly unit: Unit;
   readonly left: number;
   readonly top: number;
-  readonly cellsOf: (cluster: string) => number;
+  readonly widths: TextWidths;
   readonly caret: ClientBox | undefined;
   readonly edgeAt: (cell: Cell) => string | undefined;
 }
@@ -123,6 +123,7 @@ export interface Shown {
   readonly marquee?: Box | undefined;
   readonly typing?: TypedNode | undefined;
   readonly marks?: readonly Cell[];
+  readonly whitespace?: boolean;
 }
 
 interface CellPlace {
@@ -245,8 +246,6 @@ export class BoardSurface {
     const tiles = cells.measured(measured.key, metrics);
     const { advance, rowHeight } = metrics;
     const { widths, unit } = measured;
-    const cellsOf = (cluster: string) =>
-      Math.max(1, Math.round(widths.of(cluster) / widths.char));
     const origin = panned ?? originOf(boundsOf(board, unit));
     const across = Math.round(origin.column * advance);
     const down = Math.round(origin.row * rowHeight);
@@ -262,7 +261,7 @@ export class BoardSurface {
         columns: Math.ceil((pixelWidth + shift.x) / advance),
         rows: Math.ceil((pixelHeight + shift.y) / rowHeight),
       },
-      cellsOf,
+      widths,
       selected: shown.selected,
       typing: shown.typing,
       marks: shown.marks,
@@ -270,7 +269,11 @@ export class BoardSurface {
     cells.frame.reset();
     cells.under.reset();
     const kinds = new Map(look.kinds);
-    for (const kind of [...screen.kinds, ...screen.lineKinds]) {
+    for (const kind of [
+      ...screen.kinds,
+      ...screen.lineKinds,
+      ...screen.texts.map((block) => block.kind),
+    ]) {
       if (kind?.startsWith('#') === true && !kinds.has(kind)) {
         kinds.set(kind, this.computedColor(kind));
       }
@@ -280,13 +283,18 @@ export class BoardSurface {
       frame: cells.frame,
       palette: paletteOf({ ...look, kinds }),
       widths,
-      blanks: false,
+      blanks: shown.whitespace === true,
       first: 0,
       left: -shift.x,
       limit: screen.columns,
-      dot: dotBoxOf(undefined, ratio, rowHeight),
+      dot: dotBoxOf(
+        fontDotLook(measured.font.family, widths.char, 1 / ratio),
+        ratio,
+        rowHeight,
+      ),
     };
     drawText(drawing, screen, rowHeight, shift.y);
+    drawTexts(screen, drawing, rowHeight, shift.y);
     drawDots(cells, screen, shift, {
       advance,
       rowHeight,
@@ -329,7 +337,7 @@ export class BoardSurface {
       unit,
       left: box.left + nudge.left,
       top: box.top + nudge.top,
-      cellsOf,
+      widths,
       edgeAt: (cell) => {
         const inColumns = cell.column - screen.column;
         const inRows = cell.row - screen.row;
@@ -362,19 +370,18 @@ export class BoardSurface {
       this.cursorAt = '';
       return undefined;
     }
-    const across = at.column - screen.column;
     const down = at.row - screen.row;
-    const under = screen.glyphs[down * screen.columns + across] ?? '';
     const look = pageCursorLook();
+    const start = Math.round((at.start - screen.column) * advance - shift.x);
     const cell = {
-      left: (across * advance - shift.x) / ratio,
+      left: (start + Math.round((at.column - at.start) * advance)) / ratio,
       top: (down * rowHeight - shift.y) / ratio,
-      width: advance / ratio,
+      width: (at.cells * advance) / ratio,
       height: rowHeight / ratio,
     };
     const drawn = drawnCursor({
       cell,
-      text: under.trim(),
+      text: at.under,
       font: getComputedStyle(this.probe).font,
       shape: look.style,
       thickness: look.width,
@@ -387,7 +394,7 @@ export class BoardSurface {
       this.host.append(this.cursor);
     }
     paintCursor(this.cursor, drawn);
-    const placed = `${at.column},${at.row}`;
+    const placed = `${at.column},${at.row},${at.cells}`;
     if (placed !== this.cursorAt) {
       this.cursorAt = placed;
       this.blinkAgain = !this.blinkAgain;
@@ -424,7 +431,6 @@ function drawText(
         continue;
       }
       const kind = screen.kinds[at];
-      const selected = screen.chosen[at] === 1;
       const start = column;
       let text = '';
       while (column < screen.columns) {
@@ -432,16 +438,14 @@ function drawText(
         const each = screen.glyphs[next];
         if (
           each === undefined ||
-          (each !== '' &&
-            (screen.kinds[next] !== kind ||
-              (screen.chosen[next] === 1) !== selected))
+          (each !== '' && screen.kinds[next] !== kind)
         ) {
           break;
         }
         text += each;
         column++;
       }
-      drawPieces(drawing, [{ text, kind, selected }], start, y);
+      drawPieces(drawing, [{ text, kind }], start, y);
     }
   }
 }

@@ -8,6 +8,8 @@ import type { Board } from '../../../../../tools/canvas/shared/board';
 
 const unit = { width: 7, height: 18 };
 
+const widths = { char: 1, of: () => 1 };
+
 const board: Board = {
   nodes: [
     {
@@ -23,39 +25,41 @@ const board: Board = {
   edges: [],
 };
 
+const typed = (head: number) =>
+  typedLayout(board, unit, widths, {
+    id: 'note',
+    text: 'ab cd ef gh ij',
+    head,
+  });
+
 suite('Canvas typed layout', () => {
-  test('lays the text typed out in the node, inside its border and padding, scrolled so the row of the caret is the last shown once it is below them', () => {
-    const typed = (head: number) =>
-      typedLayout(board, unit, () => 1, {
-        id: 'note',
-        text: 'ab cd ef gh ij',
-        head,
-      });
+  test('lays the text typed out in the node, inside its border and padding, wrapped as every view wraps a text with a column for a blank hanging at the end of a row and one for the mark of its break, scrolled so the row of the caret is the last shown once it is below them', () => {
     assert.deepStrictEqual(typed(0)?.area, {
       column: 4,
       row: 2,
       columns: 5,
       rows: 2,
+      room: 6,
+      wrapAt: 4,
     });
-    assert.strictEqual(typed(0)?.rows.length, 3);
+    assert.deepStrictEqual(
+      typed(0)?.rows.map(({ row, from, to }) => row.text.slice(from, to)),
+      ['ab ', 'cd ', 'ef ', 'gh ', 'ij'],
+    );
     assert.strictEqual(typed(4)?.scroll, 0);
-    assert.strictEqual(typed(14)?.scroll, 1);
+    assert.strictEqual(typed(14)?.scroll, 3);
     assert.strictEqual(
-      typedLayout(board, unit, () => 1, { id: 'gone', text: '', head: 0 }),
+      typedLayout(board, unit, widths, { id: 'gone', text: '', head: 0 }),
       undefined,
     );
   });
 
   test('takes a cell pressed in the node for the place in the text under it, the rows above and below it for the first and the last', () => {
-    const layout = typedLayout(board, unit, () => 1, {
-      id: 'note',
-      text: 'ab cd ef gh ij',
-      head: 14,
-    });
+    const layout = typed(14);
     assert.ok(layout !== undefined);
-    assert.strictEqual(offsetIn(layout, { column: 5, row: 2 }), 7);
+    assert.strictEqual(offsetIn(layout, { column: 5, row: 2 }), 10);
     assert.strictEqual(offsetIn(layout, { column: 4, row: 3 }), 12);
-    assert.strictEqual(offsetIn(layout, { column: 2, row: 0 }), 0);
+    assert.strictEqual(offsetIn(layout, { column: 2, row: 0 }), 3);
     assert.strictEqual(offsetIn(layout, { column: 20, row: 9 }), 14);
   });
 });

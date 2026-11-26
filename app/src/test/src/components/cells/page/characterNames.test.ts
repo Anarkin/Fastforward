@@ -4,7 +4,7 @@ import {
   byteTipText,
   characterLines,
 } from '../../../../../components/cells/page/characterNames';
-import { blankSignOf } from '../../../../../lib/page/blankSigns';
+import { blankSignOf } from '../../../../../components/cells/page/blankSigns';
 import { invisibleParts } from '../../../../../lib/page/invisibles';
 
 const drawnAsSign = (character: string): boolean =>

@@ -15,7 +15,8 @@ import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
 import { clicked } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
 import { pointerHeld } from './occurrences';
-import { charAt, gridOf, rowsOf, type Grid } from './grid';
+import { gridOf, rowsOf, type Grid } from './grid';
+import { charAt } from '../../../components/cells/page/textPlaces';
 
 const reachMs = 50;
 
@@ -55,7 +56,8 @@ function pointedAt(
   );
   const row = rows[index];
   const column = Math.max(0, (x - grid.left) / grid.advance);
-  const char = row === undefined ? 0 : charAt(grid, line.text, row, column);
+  const char =
+    row === undefined ? 0 : charAt(grid.widths, line.text, row, column);
   return {
     pos: line.from + char,
     assoc:

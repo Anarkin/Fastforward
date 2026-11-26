@@ -24,7 +24,7 @@ import {
   type FakePainter,
 } from './cellFixtures';
 import { strings } from '../../../../../lib/shared/strings';
-import { blankSignOf } from '../../../../../lib/page/blankSigns';
+import { blankSignOf } from '../../../../../components/cells/page/blankSigns';
 import { invisibleParts } from '../../../../../lib/page/invisibles';
 
 const dot = { size: 2, left: 2, top: 7, hairline: 1, gap: 2 };

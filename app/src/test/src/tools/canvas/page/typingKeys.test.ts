@@ -38,7 +38,12 @@ const keyed = (
   typingKeyed(
     keyPress(key, { target, ...modifiers }),
     caret,
-    typedLayout(board, unit, () => 1, { id: 'note', ...caret }),
+    typedLayout(
+      board,
+      unit,
+      { char: 1, of: () => 1 },
+      { id: 'note', ...caret },
+    ),
   );
 
 const moved = (
@@ -88,9 +93,9 @@ suite('Canvas typing keys', () => {
       moved('ArrowRight', at(0), { ctrlKey: true }),
       [2, 2],
     );
-    assert.deepStrictEqual(moved('ArrowDown', at(1)), [7, 7]);
-    assert.deepStrictEqual(moved('ArrowUp', at(7), { shiftKey: true }), [7, 1]);
-    assert.deepStrictEqual(moved('End', at(1)), [5, 5]);
+    assert.deepStrictEqual(moved('ArrowDown', at(1)), [4, 4]);
+    assert.deepStrictEqual(moved('ArrowUp', at(7), { shiftKey: true }), [7, 4]);
+    assert.deepStrictEqual(moved('End', at(1)), [2, 2]);
     assert.deepStrictEqual(moved('Home', at(7)), [6, 6]);
     assert.deepStrictEqual(moved('End', at(1), { ctrlKey: true }), [8, 8]);
     assert.deepStrictEqual(moved('a', at(3), { ctrlKey: true }), [0, 8]);

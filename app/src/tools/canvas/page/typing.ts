@@ -1,5 +1,7 @@
 import { clusterBreak } from '../../../lib/page/graphemes';
-import { offsetAt, placeOf, rowEndOf, type TextRow } from './nodeText';
+import type { ScreenRow } from '../../../components/cells/page/lines';
+import type { TextWidths } from '../../../lib/page/textWidths';
+import { offsetAt, placeOf, rowEndOf, rowStartOf } from './nodeText';
 
 export interface Caret {
   readonly text: string;
@@ -103,12 +105,12 @@ export function movedAcross(
 
 export function movedRows(
   caret: Caret,
-  rows: readonly TextRow[],
-  columns: number,
+  rows: readonly ScreenRow[],
+  widths: TextWidths,
   by: number,
   selects: boolean,
 ): Caret {
-  const place = placeOf(rows, caret.head, columns);
+  const place = placeOf(rows, caret.head, widths);
   if (place === undefined) {
     return caret;
   }
@@ -119,22 +121,26 @@ export function movedRows(
   if (row >= rows.length) {
     return movedTo(caret, caret.text.length, selects);
   }
-  return movedTo(caret, offsetAt(rows, { row, column: place.column }), selects);
+  return movedTo(
+    caret,
+    offsetAt(rows, { row, column: place.column }, widths),
+    selects,
+  );
 }
 
 export function movedToRowEdge(
   caret: Caret,
-  rows: readonly TextRow[],
-  columns: number,
+  rows: readonly ScreenRow[],
+  widths: TextWidths,
   end: boolean,
   selects: boolean,
 ): Caret {
-  const place = placeOf(rows, caret.head, columns);
+  const place = placeOf(rows, caret.head, widths);
   const row = place === undefined ? undefined : rows[place.row];
   if (row === undefined) {
     return caret;
   }
-  return movedTo(caret, end ? rowEndOf(row) : row.from, selects);
+  return movedTo(caret, end ? rowEndOf(row) : rowStartOf(row), selects);
 }
 
 export const allSelected = (caret: Caret): Caret => ({

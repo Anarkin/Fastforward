@@ -51,7 +51,7 @@ function screenText(
       board: { nodes: [], edges: [], ...board },
       unit,
       view,
-      cellsOf: narrow,
+      widths: { char: 1, of: narrow },
       selected: new Set(selected),
     }),
   );
@@ -108,7 +108,7 @@ suite('Canvas screen', () => {
       ),
       [
         '╔══════╗      ┌──────┐',
-        '║ Idea ╠──────┤ Plan │',
+        '║ Ide⏎ ╠──────┤ Pla⏎ │',
         '╚══════╝      └──────┘',
       ],
     );
@@ -127,10 +127,15 @@ suite('Canvas screen', () => {
     const view = { column: 0, row: 0, columns: 24, rows: 3 };
     assert.deepStrictEqual(screenText(board, view, ['e']), [
       '┌──────┐      ┌──────┐',
-      '│ Idea ╠══ x ═╣ Plan │',
+      '│ Ide⏎ ╠══ x ═╣ Pla⏎ │',
       '└──────┘      └──────┘',
     ]);
-    const screen = screenOf({ board, unit, view, cellsOf: narrow });
+    const screen = screenOf({
+      board,
+      unit,
+      view,
+      widths: { char: 1, of: narrow },
+    });
     assert.deepStrictEqual(
       Array.from(
         { length: 24 },
@@ -146,7 +151,7 @@ suite('Canvas screen', () => {
         board: { nodes: [text('idea', 0, 0, 8, 3, 'Idea')], edges: [] },
         unit,
         view: { column: 0, row: 0, columns: 10, rows: 3 },
-        cellsOf: narrow,
+        widths: { char: 1, of: narrow },
         marks: [{ column: 8, row: 1 }],
       }).glyphs[18],
       '●',
@@ -162,7 +167,7 @@ suite('Canvas screen', () => {
       },
       unit,
       view: { column: 0, row: 0, columns: 24, rows: 3 },
-      cellsOf: narrow,
+      widths: { char: 1, of: narrow },
       marks: [
         { column: 8, row: 1 },
         { column: 13, row: 1 },
@@ -230,7 +235,7 @@ suite('Canvas screen', () => {
       },
       unit,
       view: { column: 0, row: 0, columns: 4, rows: 3 },
-      cellsOf: narrow,
+      widths: { char: 1, of: narrow },
     });
     assert.strictEqual(shown.lineKinds[0], '#ff7800');
   });
@@ -257,7 +262,7 @@ suite('Canvas screen', () => {
       [
         '┌─ Plan ───────────┐',
         '│ ┌──────┐         │',
-        '│ │ Idea │         │',
+        '│ │ Ide⏎ │         │',
         '│ └──────┘         │',
         '│                  │',
         '└──────────────────┘',
@@ -265,7 +270,7 @@ suite('Canvas screen', () => {
     );
   });
 
-  test('wraps the text of a node at its words within its border, wide characters two cells, a character that shows nothing as ¤, and cuts what its node has no room for', () => {
+  test('wraps the text of a node at its words within its border as every view wraps a text, leaving a column for the blank hanging at the end of a row and one for the mark of its break, wide characters two cells, a character that shows nothing as ¤, a tab to its stop, and cuts what its node has no room for', () => {
     assert.deepStrictEqual(
       screenText(
         {
@@ -277,9 +282,9 @@ suite('Canvas screen', () => {
       ),
       [
         '┌──────────┐',
-        '│ one two  │',
-        '│ three    │',
-        '│ four     │',
+        '│ one two ⏎│',
+        '│ three ⏎  │',
+        '│ four ⏎   │',
         '└──────────┘',
       ],
     );
@@ -288,7 +293,7 @@ suite('Canvas screen', () => {
         { nodes: [text('a', 0, 0, 12, 4, '日本語​x\tend')] },
         { column: 0, row: 0, columns: 14, rows: 4 },
       ),
-      ['┌──────────┐', '│ 日本語¤x │', '│ end      │', '└──────────┘'],
+      ['┌──────────┐', '│ 日本語 ⏎  │', '│ ¤x  end  │', '└──────────┘'],
     );
   });
 
@@ -335,7 +340,7 @@ suite('Canvas screen', () => {
       board: { nodes: [text('a', 0, 0, 4, 3, '', { color: '3' })], edges: [] },
       unit,
       view: { column: 0, row: 0, columns: 4, rows: 3 },
-      cellsOf: narrow,
+      widths: { char: 1, of: narrow },
     });
     assert.strictEqual(shown.lineKinds[0], 'color-3');
   });
@@ -354,7 +359,7 @@ suite('Canvas screen', () => {
             columns: Math.min(box.columns, 40),
             rows: Math.min(box.rows, 20),
           },
-          cellsOf: narrow,
+          widths: { char: 1, of: narrow },
         });
         assert.ok(
           (shown.lines[0] ?? 0) !== 0 || shown.glyphs[0] === '□',
@@ -371,7 +376,7 @@ suite('Canvas screen', () => {
       board: read.board,
       unit,
       view: { column: -45, row: -26, columns: 90, rows: 12 },
-      cellsOf: narrow,
+      widths: { char: 1, of: narrow },
     });
     assert.deepStrictEqual(
       shown.arrows.filter((way) => way !== undefined),

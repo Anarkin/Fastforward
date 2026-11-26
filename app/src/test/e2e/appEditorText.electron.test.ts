@@ -5,7 +5,7 @@ import type { SeenRow } from '../../components/cells/page/seen';
 import { diffLineNumbered, page, sharedApp } from './appFixtures';
 import { gridLines } from './gridLines';
 import { waitFor } from '../helpers/fixtures';
-import { blankSignOf } from '../../lib/page/blankSigns';
+import { blankSignOf } from '../../components/cells/page/blankSigns';
 import { strings } from '../../lib/shared/strings';
 import { wrapIndent, wrapStarts } from '../../lib/page/wordWrap';
 import { cellsOf } from './cellsSeen';

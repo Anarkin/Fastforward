@@ -1,19 +1,22 @@
+import type { ScreenRow } from '../../../components/cells/page/lines';
+import type { TextWidths } from '../../../lib/page/textWidths';
 import type { Board } from '../shared/board';
-import { scrollOf, textAreaOf } from './boardScreen';
-import { boxOf, type Box, type Unit } from './grid';
-import { laidOut, offsetAt, placeOf, type TextRow } from './nodeText';
+import { boxOf, type Unit } from './grid';
+import { offsetAt, placeOf, rowsOf } from './nodeText';
 import type { Cell } from './routes';
+import { scrollOf, textAreaOf, type TextArea } from './textBlocks';
 
 export interface TypedLayout {
-  readonly area: Box;
-  readonly rows: readonly TextRow[];
+  readonly area: TextArea;
+  readonly rows: readonly ScreenRow[];
   readonly scroll: number;
+  readonly widths: TextWidths;
 }
 
 export function typedLayout(
   board: Board,
   unit: Unit,
-  cellsOf: (cluster: string) => number,
+  widths: TextWidths,
   {
     id,
     text,
@@ -25,20 +28,22 @@ export function typedLayout(
     return undefined;
   }
   const area = textAreaOf(boxOf(node, unit));
-  const rows = laidOut(text, area.columns, Infinity, cellsOf);
+  const rows = rowsOf(text, area.wrapAt, widths);
   return {
     area,
     rows,
-    scroll: scrollOf(placeOf(rows, head, area.columns), area),
+    scroll: scrollOf(placeOf(rows, head, widths), area),
+    widths,
   };
 }
 
 export function offsetIn(
-  { area, rows, scroll }: TypedLayout,
+  { area, rows, scroll, widths }: TypedLayout,
   at: Cell,
 ): number {
-  return offsetAt(rows, {
-    row: at.row - area.row + scroll,
-    column: Math.max(0, at.column - area.column),
-  });
+  return offsetAt(
+    rows,
+    { row: at.row - area.row + scroll, column: at.column - area.column },
+    widths,
+  );
 }

@@ -16,7 +16,7 @@ export function screenRows(screen: Screen): string[] {
     let line = '';
     for (let column = 0; column < screen.columns; column++) {
       const at = row * screen.columns + column;
-      const glyph = screen.glyphs[at];
+      const glyph = screen.seen[at] ?? screen.glyphs[at];
       const arrow = screen.arrows[at];
       const bits = screen.lines[at] ?? 0;
       const double = (bits >> doubleShift) & lightBits;

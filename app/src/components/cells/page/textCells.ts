@@ -1,4 +1,4 @@
-import { blankSignOf } from '../../../lib/page/blankSigns';
+import { blankSignOf } from './blankSigns';
 import { invisibleParts } from '../../../lib/page/invisibles';
 import { graphemes, nonAscii, type Units } from '../../../lib/page/graphemes';
 import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
