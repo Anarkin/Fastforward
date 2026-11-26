@@ -1,5 +1,9 @@
 import { drawnTabSize } from './indent';
-import { widthsFor } from '../../../lib/page/textWidths';
+import {
+  cellWidthsOf,
+  widthsFor,
+  withTabSize,
+} from '../../../lib/page/textWidths';
 import { type Line } from '@codemirror/state';
 import type { EditorSurface } from './surface';
 import {
@@ -7,7 +11,7 @@ import {
   type ScreenRow,
   type TextLine,
 } from '../../../components/cells/page/lines';
-import { cellsOf } from '../../../lib/page/cellTable';
+import { currentCellTable } from '../../../lib/page/cellTable';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import {
@@ -39,21 +43,6 @@ export interface GridPlace {
   readonly column: number;
 }
 
-const cellWidths = new Map<number | undefined, TextWidths>();
-
-function cellWidthsOf(tabSize: number | undefined): TextWidths {
-  let widths = cellWidths.get(tabSize);
-  if (widths === undefined) {
-    widths = {
-      char: 1,
-      of: (cluster) => cellsOf(cluster),
-      ...(tabSize !== undefined && { tabSize }),
-    };
-    cellWidths.set(tabSize, widths);
-  }
-  return widths;
-}
-
 export function gridOf(view: EditorSurface): Grid | undefined {
   if (!view.contentDOM.isConnected) {
     return undefined;
@@ -66,7 +55,10 @@ export function gridOf(view: EditorSurface): Grid | undefined {
         rowHeight,
         left: textLeft(view),
         columns: view.lineWrapping ? wrapColumnsOf(view) : undefined,
-        widths: cellWidthsOf(drawnTabSize(view.state)),
+        widths: withTabSize(
+          cellWidthsOf(currentCellTable()),
+          drawnTabSize(view.state),
+        ),
       }
     : undefined;
 }

@@ -99,9 +99,11 @@ export function useCellTable(): CellTable | undefined {
   return table;
 }
 
+export const currentCellTable = (): CellTable => loadedTable ?? plainCells;
+
 export function cellsOf(
   cluster: string,
-  table: CellTable = loadedTable ?? plainCells,
+  table: CellTable = currentCellTable(),
 ): number {
   return table(cluster);
 }

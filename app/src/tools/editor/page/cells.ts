@@ -43,6 +43,7 @@ import { fontDotLook } from '../../../lib/page/dotLook';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
 import {
   elementWidths,
+  withTabSize,
   fontOf,
   spacingOf,
   type TextWidths,
@@ -257,9 +258,7 @@ class EditorCells implements SurfacePart {
     ) {
       const measured = elementWidths(view.contentDOM, this.table);
       this.widths =
-        measured === undefined || tabSize === undefined
-          ? measured
-          : { ...measured, tabSize };
+        measured === undefined ? undefined : withTabSize(measured, tabSize);
     }
     const { widths } = this;
     if (widths === undefined) {
