@@ -149,16 +149,16 @@
 
 .commander-mark {
   display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
   color: inherit;
   background: none;
   border: none;
-  border-radius: 50%;
 }
 
 .commander-mark:hover {
   background: var(--hover-background);
-  box-shadow: 0 0 0 3px var(--hover-background);
 }
 
 .commander-mark .icon {

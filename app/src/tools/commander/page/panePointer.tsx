@@ -52,9 +52,9 @@ function PointedLine({
           className={`commander-mark ${markClass}`}
           style={{
             left: places.gitLeft,
-            top: (box.height - places.gitSize) / 2,
+            top: 0,
             width: places.gitSize,
-            height: places.gitSize,
+            height: box.height,
           }}
           {...labelled(strings.commander.openRepository)}
           tabIndex={-1}

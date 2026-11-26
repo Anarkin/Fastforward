@@ -29,10 +29,20 @@ import {
 const markOf = () =>
   right().locator('.commander-pointed .commander-mark .tool-git');
 
-const surroundOf = () =>
+const fillOf = () =>
   right()
     .locator('.commander-pointed .commander-mark')
-    .evaluate((element) => getComputedStyle(element).boxShadow);
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      return {
+        filled: style.backgroundColor !== 'rgba(0, 0, 0, 0)',
+        ring: style.boxShadow,
+        corner: style.borderTopLeftRadius,
+        width: box.width,
+        height: box.height,
+      };
+    });
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -149,7 +159,7 @@ suite('App commander', () => {
     }
   });
 
-  test('marks a folder that is a repository with the git icon in its Ext column, and no other, opening it in a git tab on a click of the icon', async () => {
+  test('marks a folder that is a repository with the git icon in its Ext column, and no other, filled under the pointer as a rectangle as wide as the icon and as tall as the line, opening it in a git tab on a click of the icon', async () => {
     const made = path.join(folder, 'made-repository');
     execFileSync('git', ['init', '--quiet', made]);
     fs.renameSync(made, path.join(opened, 'repo'));
@@ -162,14 +172,24 @@ suite('App commander', () => {
     assert.strictEqual((await lineOf(right(), 'src')).git, 'none');
     assert.strictEqual((await lineOf(right(), 'src')).gitLeft, undefined);
     await hoverLine(page, right(), 'repo');
-    assert.strictEqual(await surroundOf(), 'none');
+    assert.strictEqual((await fillOf()).filled, false);
     const repo = await lineOf(right(), 'repo');
     await hoverLine(page, right(), 'repo', {
       x: (repo.gitLeft ?? 0) + repo.gitSize / 2,
     });
     await waitFor(
-      async () => (await surroundOf()) !== 'none',
-      'the git icon to be ringed under the pointer',
+      async () => (await fillOf()).filled,
+      'the git icon to be filled under the pointer',
+    );
+    const fill = await fillOf();
+    assert.deepStrictEqual(
+      {
+        ring: fill.ring,
+        corner: fill.corner,
+        width: Math.abs(fill.width - repo.gitSize) < 0.01,
+        height: Math.abs(fill.height - repo.height) < 0.01,
+      },
+      { ring: 'none', corner: '0px', width: true, height: true },
     );
     assert.strictEqual(await colorOf(markOf()), repo.ink);
     const gitTab = page.locator('.tabs .tab.active', { hasText: 'repo' });
