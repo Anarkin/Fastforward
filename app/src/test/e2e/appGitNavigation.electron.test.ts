@@ -14,7 +14,7 @@ import {
 import { cellOf, untilDiffLine } from './diffSeen';
 import { waitForCount, waitForFocus } from './waits';
 import { waitFor } from '../helpers/fixtures';
-import { commitBubble, commitRow, commitsSeen } from './commitRows';
+import { commitBubble, commitRow, commitSeen, commitsSeen } from './commitRows';
 import { fileRow, filesSeen } from './fileRows';
 
 async function removeWorktree(worktree: string, branch: string): Promise<void> {
@@ -39,6 +39,61 @@ const fileNames = async () =>
   (await filesSeen(page))
     .filter((row) => row.kind === 'file')
     .map((row) => row.name);
+
+const selectedCommitColor = async () => {
+  const row = await commitSeen(page, 'second', { selected: true });
+  const shot = await app.evaluate(async ({ BrowserWindow, screen }) => {
+    const window = BrowserWindow.getAllWindows().toSorted(
+      (a, b) => a.id - b.id,
+    )[0];
+    if (window === undefined) {
+      throw new Error('The app has no window.');
+    }
+    const scale = screen.getDisplayMatching(window.getBounds()).scaleFactor;
+    const image = await window.webContents.capturePage();
+    return {
+      scale,
+      width: image.getSize(scale).width,
+      pixels: image.toBitmap({ scaleFactor: scale }).toString('base64'),
+    };
+  });
+  const pixels = Buffer.from(shot.pixels, 'base64');
+  const x = Math.round((row.left + 2) * shot.scale);
+  const y = Math.round((row.top + row.height - 2) * shot.scale);
+  const at = (y * shot.width + x) * 4;
+  const drawn = [pixels[at], pixels[at + 1], pixels[at + 2]];
+  const expected = await page.evaluate(() => {
+    const list = document.querySelector('.commit-rows');
+    const probe = document.createElement('div');
+    probe.className = 'commit selected';
+    list?.append(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    const swatch = document.createElement('canvas').getContext('2d');
+    if (swatch === null) {
+      return [];
+    }
+    swatch.fillStyle = color;
+    swatch.fillRect(0, 0, 1, 1);
+    return Array.from(swatch.getImageData(0, 0, 1, 1).data.slice(0, 3));
+  });
+  return { drawn, expected };
+};
+const nearColor = (a: readonly number[], b: readonly number[]) =>
+  a.every((value, channel) => Math.abs(value - (b[channel] ?? 0)) <= 2);
+
+const drawnAlike = ({
+  drawn,
+  expected,
+}: {
+  drawn: number[];
+  expected: number[];
+}) => {
+  const [red = 0, green = 0, blue = 0] = expected;
+  return (
+    nearColor(drawn, [red, green, blue]) || nearColor(drawn, [blue, green, red])
+  );
+};
 
 suite('App', () => {
   sharedApp({ 'kept.txt': 'kept\n' });
@@ -435,6 +490,27 @@ suite('App', () => {
     await waitFor(
       async () => (await status()) === '+4 −0',
       'the lines of every file counted',
+    );
+  });
+
+  test('draws the selected commit in the selection color of a column without the keyboard once the keyboard leaves the commit list, as every other column draws its own', async () => {
+    await commitRow(page, 'second').click();
+    const focused = await selectedCommitColor();
+    assert.ok(drawnAlike(focused), JSON.stringify(focused));
+    await fileRow(page, 'changed.txt', { kind: 'file' }).click();
+    await fileRow(page, 'changed.txt', {
+      kind: 'file',
+      selected: true,
+    }).waitFor();
+    let resting = await selectedCommitColor();
+    await waitFor(
+      async () => {
+        resting = await selectedCommitColor();
+        return (
+          drawnAlike(resting) && !nearColor(resting.expected, focused.expected)
+        );
+      },
+      `the commit drawn at rest, ${JSON.stringify(resting)} against ${JSON.stringify(focused)}`,
     );
   });
 

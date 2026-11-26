@@ -759,6 +759,7 @@ export function Commits({ navigation }: { navigation?: React.ReactNode }) {
             graphOf={graphOf}
             line={line}
             scale={scale}
+            active={findsHere}
           />
         </div>
       </div>

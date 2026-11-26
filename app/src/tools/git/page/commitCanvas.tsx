@@ -97,6 +97,7 @@ export function CommitCanvas({
   indentOf,
   line,
   scale,
+  active,
 }: {
   list: React.RefObject<HTMLElement | null>;
   hits: { current: readonly RowHit[] };
@@ -108,6 +109,7 @@ export function CommitCanvas({
   indentOf: (index: number) => number;
   line: number;
   scale: number;
+  active: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const surface = useRef<CellSurface>(undefined);
@@ -226,7 +228,7 @@ export function CommitCanvas({
       const origin = view.top + listed.clientTop - spacer.top;
       const viewHeight = listed.clientHeight;
       const end = origin + viewHeight;
-      const lookKey = [dark, scale, line, generation].join(' ');
+      const lookKey = [dark, scale, line, generation, active].join(' ');
       if (read.current?.key !== lookKey) {
         read.current = { key: lookKey, looks: looksOf(listed, scale) };
       }
