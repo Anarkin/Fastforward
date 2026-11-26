@@ -3,6 +3,8 @@ import { EditorSelection, EditorState } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import { statusOf } from '../../../../../tools/editor/page/status';
 import { plainCells } from '../../../../../lib/page/cellTable';
+import { indentionOf } from '../../../../../tools/editor/page/indent';
+import { Text } from '@codemirror/state';
 
 const stateOf = (doc: string, selection: EditorSelection) =>
   EditorState.create({
@@ -17,6 +19,18 @@ suite('Editor status', () => {
       statusOf(stateOf('one\nlet a;\n', EditorSelection.single(7)), plainCells),
       'Col 4',
     );
+  });
+
+  test('counts a tab to the stop the file sets, as the editor draws it, rather than to the stop of the settings', () => {
+    const doc = String.fromCharCode(9) + 'x';
+    const state = EditorState.create({
+      doc,
+      selection: EditorSelection.single(2),
+      extensions: indentionOf(Text.of([doc]), {
+        tabSize: { size: 2, key: 'tab_width' },
+      }),
+    });
+    assert.strictEqual(statusOf(state, plainCells), 'Col 4');
   });
 
   test('adds the characters selected, as they are seen, on every line of the selection', () => {

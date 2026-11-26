@@ -1,12 +1,10 @@
 import type { EditorState } from '@codemirror/state';
 import { strings } from '../../../lib/shared/strings';
-import { cellWidthsOf } from '../../../lib/page/textWidths';
+import { cellWidthsOf, withTabSize } from '../../../lib/page/textWidths';
+import { graphemes } from '../../../lib/page/graphemes';
+import { drawnTabSize } from './indent';
 import { columnsOf } from '../../../lib/page/textColumns';
 import { type CellTable } from '../../../lib/page/cellTable';
-
-const graphemes = new Intl.Segmenter(undefined, {
-  granularity: 'grapheme',
-});
 
 const countedCharacters = 1_000_000;
 
@@ -20,7 +18,10 @@ export function statusOf(state: EditorState, table: CellTable): string {
   const { main, ranges } = state.selection;
   const line = state.doc.lineAt(main.head);
   const column =
-    columnsOf(line.text, cellWidthsOf(table))(main.head - line.from) + 1;
+    columnsOf(
+      line.text,
+      withTabSize(cellWidthsOf(table), drawnTabSize(state)),
+    )(main.head - line.from) + 1;
   const characters = ranges.reduce(
     (count, range) =>
       count + charactersIn(state.sliceDoc(range.from, range.to)),
