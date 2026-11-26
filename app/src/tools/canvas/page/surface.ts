@@ -34,6 +34,7 @@ import type { Board } from '../shared/board';
 import { boundsOf, labelKind, lineKind, screenOf } from './boardScreen';
 import { unitOf, type Unit } from './grid';
 import { arrowRects, lineRects, strokeOf } from './lineRects';
+import { gridDots } from './gridDots';
 import { signKind } from './nodeText';
 import { originOf, type CellSize, type Origin } from './pan';
 import type { Screen } from './screen';
@@ -62,7 +63,10 @@ const colorKinds = [1, 2, 3, 4, 5, 6].map(
   (preset) => [`color-${preset}`, `board-color-${preset}`] as const,
 );
 
+const gridKind = 'grid';
+
 const lookKinds = [
+  [gridKind, 'board-grid'],
   [lineKind, 'board-line'],
   [labelKind, 'board-label'],
   [signKind, 'board-sign'],
@@ -229,6 +233,13 @@ export class BoardSurface {
       dot: dotBoxOf(undefined, ratio, rowHeight),
     };
     drawText(drawing, screen, rowHeight, shift.y);
+    drawDots(cells, screen, shift, {
+      advance,
+      rowHeight,
+      ratio,
+      kinds,
+      ground,
+    });
     drawLines(cells, screen, shift, {
       advance,
       rowHeight,
@@ -303,6 +314,29 @@ interface LineLook {
   readonly ratio: number;
   readonly kinds: ReadonlyMap<string, string>;
   readonly ground: Rgba;
+}
+
+function drawDots(
+  cells: CellSurface,
+  screen: Screen,
+  shift: { readonly x: number; readonly y: number },
+  { advance, rowHeight, ratio, kinds, ground }: LineLook,
+): void {
+  const css = kinds.get(gridKind);
+  if (css === undefined) {
+    return;
+  }
+  const color = packedOf(over(ground, parsedColor(css)));
+  const stroke = strokeOf(ratio);
+  for (const { column, row } of gridDots(screen)) {
+    cells.frame.rect(
+      column * advance - shift.x,
+      row * rowHeight - shift.y,
+      stroke,
+      stroke,
+      color,
+    );
+  }
 }
 
 function drawLines(

@@ -23,6 +23,7 @@ export interface Screen {
   readonly lines: Uint8Array;
   readonly lineKinds: (string | undefined)[];
   readonly arrows: (Way | undefined)[];
+  readonly covered: Uint8Array;
 }
 
 export function emptyScreen({ column, row, columns, rows }: Box): Screen {
@@ -37,6 +38,7 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     lines: new Uint8Array(cells),
     lineKinds: Array.from<string | undefined>({ length: cells }),
     arrows: Array.from<Way | undefined>({ length: cells }),
+    covered: new Uint8Array(cells),
   };
 }
 
@@ -52,6 +54,13 @@ export class Painter {
       down < this.screen.rows
       ? down * this.screen.columns + across
       : undefined;
+  }
+
+  cover(column: number, row: number): void {
+    const at = this.indexOf(column, row);
+    if (at !== undefined) {
+      this.screen.covered[at] = 1;
+    }
   }
 
   linesAt(column: number, row: number): number {

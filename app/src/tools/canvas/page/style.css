@@ -44,6 +44,10 @@
   color: var(--muted-foreground);
 }
 
+.board-grid {
+  color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+}
+
 .board-color-1 {
   color: var(--color-git-graph-red);
 }

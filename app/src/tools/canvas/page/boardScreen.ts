@@ -142,9 +142,15 @@ function paintNode(
     }
     return;
   }
-  for (let row = box.row; row < box.row + box.rows; row++) {
-    for (let column = box.column; column <= right; column++) {
+  const { screen } = painter;
+  const top = Math.max(box.row, screen.row);
+  const bottom = Math.min(box.row + box.rows, screen.row + screen.rows);
+  const left = Math.max(box.column, screen.column);
+  const end = Math.min(right, screen.column + screen.columns - 1);
+  for (let row = top; row < bottom; row++) {
+    for (let column = left; column <= end; column++) {
       painter.clear(column, row);
+      painter.cover(column, row);
     }
   }
   border(painter, box, weight, kind);

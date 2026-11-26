@@ -91,7 +91,7 @@ suite('App canvas', () => {
     removeFolder(folder);
   });
 
-  test('draws the nodes of a canvas as boxes of box-drawing characters on the cells of the monospace font, an edge leaving one from a joint and pointing at the top of the other, every line one stroke of whole device pixels', async () => {
+  test('draws the nodes of a canvas as boxes of box-drawing characters on the cells of the monospace font over a grid of dots where the cells meet, an edge leaving one from a joint and pointing at the top of the other, every line and dot one stroke of whole device pixels', async () => {
     await page.locator('.commander-pane').first().waitFor();
     const unit = await cellOfFont(page);
     const at = (
@@ -155,7 +155,7 @@ suite('App canvas', () => {
     const top = Math.round(placed.top * placed.ratio);
     const x = left + 2 * advance + Math.floor((advance - stroke) / 2);
     const y = top + rowHeight + Math.floor((rowHeight - stroke) / 2);
-    const [corner, above, along, below, inside] = await pixelsOf(
+    const [corner, above, along, below, inside, dot, beside] = await pixelsOf(
       page,
       await page.screenshot(),
       [
@@ -164,6 +164,8 @@ suite('App canvas', () => {
         [x + advance, y + stroke - 1],
         [x + advance, y + stroke],
         [x + 7 * advance, y + rowHeight],
+        [left + advance, top + rowHeight],
+        [left + advance + 1, top + rowHeight + 1],
       ],
     );
     assert.notStrictEqual(corner, inside, 'the corner drawn');
@@ -172,6 +174,8 @@ suite('App canvas', () => {
       [inside, corner, inside],
       'the top border one stroke tall, from the corner on',
     );
+    assert.notStrictEqual(dot, inside, 'a dot of the grid where cells meet');
+    assert.strictEqual(beside, inside, 'the grid a dot of one stroke');
   });
 
   const seenBoard = () =>
