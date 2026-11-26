@@ -13,6 +13,8 @@ import {
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { pointedLine, selectedText } from './commanderRows';
+import { tilesCount } from './commanderTiles';
 
 const draggedFiles = () =>
   app.evaluate((): string[][] => Reflect.get(globalThis, 'dragged'));
@@ -31,17 +33,30 @@ const drop = (onto: string | undefined, made: boolean) =>
         }
       }
       const side = document.querySelectorAll('.commander-pane')[1];
+      const layer = side.querySelector('.commander-layer');
+      const seen =
+        dropOnto === undefined || !(layer instanceof HTMLElement)
+          ? undefined
+          : (layer.seenLines?.() ?? layer.seenTiles?.())?.find(
+              (each) => each.key === dropOnto,
+            );
       const element =
         dropOnto === undefined
           ? side.querySelector('.column-body')
-          : side.querySelector(`[data-drop="${dropOnto}"]`);
+          : side.querySelector('.virtual-rows');
       const box = element?.getBoundingClientRect();
       const init = {
         dataTransfer: data,
         bubbles: true,
         cancelable: true,
-        clientX: (box?.left ?? 0) + 20,
-        clientY: (box?.top ?? 0) + 5,
+        clientX:
+          seen === undefined
+            ? (box?.left ?? 0) + 20
+            : seen.left + seen.width / 2,
+        clientY:
+          seen === undefined
+            ? (box?.bottom ?? 0) - 5
+            : seen.top + seen.height / 2,
       };
       element?.dispatchEvent(new DragEvent('dragover', init));
       element?.dispatchEvent(new DragEvent('drop', init));
@@ -86,16 +101,14 @@ suite('App commander', () => {
     await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Space');
 
-    await right()
-      .locator('.commander-row', { hasText: 'two' })
-      .dispatchEvent('dragstart');
+    await (await pointedLine(page, right(), 'two')).dispatchEvent('dragstart');
     await waitFor(
       async () => (await draggedFiles()).length === 1,
       'the marked files to be dragged',
     );
-    await right()
-      .locator('.commander-row', { hasText: 'three' })
-      .dispatchEvent('dragstart');
+    await (
+      await pointedLine(page, right(), 'three')
+    ).dispatchEvent('dragstart');
     await waitFor(
       async () => (await draggedFiles()).length === 2,
       'the file dragged to be dragged alone',
@@ -105,10 +118,7 @@ suite('App commander', () => {
       [path.join(dragging, 'one.txt'), path.join(dragging, 'two.txt')],
       [path.join(dragging, 'three.txt')],
     ]);
-    assert.match(
-      (await right().locator('.commander-row.selected').textContent()) ?? '',
-      /^three/,
-    );
+    assert.match(await selectedText(right()), /^three/);
     await app.evaluate(({ BrowserWindow }) => {
       const [window] = BrowserWindow.getAllWindows().toSorted(
         (a, b) => a.id - b.id,
@@ -122,7 +132,7 @@ suite('App commander', () => {
     );
   });
 
-  test('copies or moves files dropped on a side as the menu it shows at the pointer says, into the folder dropped on or that of the side, taking only files of the system, never one the page makes', async () => {
+  test('copies or moves files dropped on a side as the menu it shows at the pointer says, into the folder dropped on, its line or its tile, or that of the side, taking only files of the system, never one the page makes', async () => {
     const from = path.join(opened, 'dropfrom');
     const into = path.join(opened, 'dropinto');
     fs.mkdirSync(from);
@@ -164,6 +174,26 @@ suite('App commander', () => {
     );
     await page.locator('.transfer-popup').waitFor({ state: 'detached' });
     assert.deepStrictEqual(fs.readdirSync(from).toSorted(), ['x.txt', 'y.txt']);
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('ControlOrMeta+2');
+    await waitFor(async () => (await tilesCount(right())) > 0, 'the tiles');
+    await drop('inner', false);
+    const onTile = page.locator('.context-menu .menu-item', {
+      hasText: strings.commander.dropCopy,
+    });
+    await onTile.waitFor();
+    assert.strictEqual(
+      await onTile.getAttribute('data-tip'),
+      `Copy 2 items to "${path.join(into, 'inner')}"`,
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.context-menu').waitFor({ state: 'detached' });
+    await right().locator('.virtual-rows').focus();
+    await page.keyboard.press('ControlOrMeta+1');
+    await waitFor(
+      async () => (await tilesCount(right())) === 0,
+      'the details again',
+    );
     await drop(undefined, false);
     await choose(strings.commander.dropMove, `Move 2 items to "${into}"`);
     await waitFor(

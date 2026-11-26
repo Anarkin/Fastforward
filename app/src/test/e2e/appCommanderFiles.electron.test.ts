@@ -14,7 +14,7 @@ import {
   select,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { fileName, rowsShown } from './commanderRows';
+import { fileName, rowsShown, selectedText } from './commanderRows';
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -241,10 +241,7 @@ suite('App commander', () => {
       'the folder to be made',
     );
     await waitFor(
-      async () =>
-        (
-          await right().locator('.commander-row.selected').textContent()
-        )?.includes('new folder') === true,
+      async () => (await selectedText(right())).includes('new folder'),
       'the new folder to be selected',
     );
     await page.keyboard.press('Backspace');

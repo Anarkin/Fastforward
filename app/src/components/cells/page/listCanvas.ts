@@ -19,6 +19,7 @@ export interface ListView {
   readonly pixelWidth: number;
   readonly pixelHeight: number;
   readonly originPixels: number;
+  readonly shiftX: number;
 }
 
 export interface ShownRow<Row extends RowRecord> {
@@ -29,6 +30,11 @@ export interface ShownRow<Row extends RowRecord> {
 export type Presented = 'drawn' | 'same' | 'full';
 
 const tileStride = 7;
+
+const layoutUnits = 64;
+
+const inLayoutUnits = (device: number) =>
+  Math.round(device * layoutUnits) / layoutUnits;
 
 function replay(row: RowPaint, originPixels: number, into: CellFrame): void {
   const { rects, tiles } = row;
@@ -97,6 +103,7 @@ export class ListCanvas<Row extends RowRecord> {
       this.atlas = new RunAtlas(device, tileHeight);
     }
     const spacer = (host.parentElement ?? list).getBoundingClientRect();
+    const across = inLayoutUnits(spacer.left * scale);
     const box = list.getBoundingClientRect();
     const width = spacer.width;
     const origin = box.top + list.clientTop - spacer.top;
@@ -120,6 +127,7 @@ export class ListCanvas<Row extends RowRecord> {
       pixelWidth,
       pixelHeight,
       originPixels: Math.round(origin * scale),
+      shiftX: across - Math.round(across),
     };
   }
 

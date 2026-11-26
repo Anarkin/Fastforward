@@ -87,7 +87,7 @@ const fittingFrom =
   Math.max(...Object.values(views).map((view) => view.tab)) + 1;
 
 const rowUnder = (name: ViewName, fitting: boolean) =>
-  fitting ? (name === 'thumbnails' ? 0 : 1) : 5;
+  name === 'thumbnails' ? (fitting ? 0 : 1) : fitting ? 1 : 5;
 
 const alike = <T>(names: readonly ViewName[], value: T) =>
   Object.fromEntries(names.map((name) => [name, value]));
@@ -133,12 +133,19 @@ suite('App scrolling alike', () => {
     }
     await page.locator(pane).first().waitFor();
     if (name === 'thumbnails') {
-      const tiles = page.locator(`${pane} .commander-tile`);
-      if ((await tiles.count()) === 0) {
+      const tiles = () =>
+        page
+          .locator('.commander-pane:not(.inactive) .commander-layer')
+          .evaluate((layer) =>
+            layer instanceof HTMLElement
+              ? (layer.seenTiles?.().length ?? 0)
+              : 0,
+          );
+      if ((await tiles()) === 0) {
         await page.locator(pane).first().focus();
         await page.keyboard.press('ControlOrMeta+2');
       }
-      await tiles.first().waitFor();
+      await waitFor(async () => (await tiles()) > 0, 'the tiles');
     }
     await untilRowsShown(page, `${pane} ${rows}`, rowUnder(name, fitting) + 1);
     await page

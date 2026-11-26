@@ -2,7 +2,7 @@ export const views = {
   commander: {
     tab: 0,
     pane: '.commander-pane:not(.inactive) .virtual-rows',
-    rows: '.virtual-row',
+    rows: '.commander-layer',
     vertical: '.commander-pane:not(.inactive) .virtual-rows',
     horizontal: undefined,
     across: undefined,
@@ -50,7 +50,7 @@ export const views = {
   thumbnails: {
     tab: 6,
     pane: '.commander-pane:not(.inactive) .virtual-rows',
-    rows: '.virtual-row',
+    rows: '.commander-layer',
     vertical: '.commander-pane:not(.inactive) .virtual-rows',
     horizontal: undefined,
     across: undefined,
@@ -90,6 +90,22 @@ export function placeDown(pane: Element, rows: string): Place {
             box: new DOMRect(file.left, file.top, file.width, file.height),
             text: file.name.slice(0, 24),
           }));
+      }
+      const tiles = row instanceof HTMLElement ? row.seenTiles?.() : undefined;
+      if (tiles !== undefined) {
+        return tiles
+          .filter((tile, at) => tiles[at - 1]?.top !== tile.top)
+          .map((tile) => ({
+            box: new DOMRect(tile.left, tile.top, tile.width, tile.height),
+            text: tile.key.slice(0, 24),
+          }));
+      }
+      const lines = row instanceof HTMLElement ? row.seenLines?.() : undefined;
+      if (lines !== undefined) {
+        return lines.map((line) => ({
+          box: new DOMRect(line.left, line.top, line.width, line.height),
+          text: line.key.slice(0, 24),
+        }));
       }
       const commits =
         row instanceof HTMLElement ? row.seenCommits?.() : undefined;

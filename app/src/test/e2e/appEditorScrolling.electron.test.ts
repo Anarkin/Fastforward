@@ -25,6 +25,7 @@ import { editorLinesSeen, editorSelected } from './editorSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { onceDrawn, untilSettled } from './waits';
 import { writeSettings } from './settingsWritten';
+import { clickLine, untilLines } from './commanderRows';
 
 const shortLines = (count: number, name: string) =>
   Array.from({ length: count }, (_, at) => `${name} ${at + 1}`);
@@ -179,7 +180,7 @@ suite('App editor, long lines and places shown again', () => {
     waitFor(async () => (await editorLinesSeen(page))[0]?.text === text, text);
   const edit = async (name: string) => {
     await tabs().first().click();
-    await right().locator('.commander-row', { hasText: name }).first().click();
+    await clickLine(page, right(), name);
     await page.keyboard.press('F4');
     await content().waitFor();
     await waitFor(
@@ -222,7 +223,7 @@ suite('App editor, long lines and places shown again', () => {
     );
     const left = JSON.stringify(await topRow());
     await tabs().first().click();
-    await right().locator('.commander-row').first().waitFor();
+    await untilLines(right());
     await page.evaluate(recordTopRows, 120);
     await tabs().nth(editorTab).click();
     await content().waitFor();
@@ -260,7 +261,7 @@ suite('App editor, long lines and places shown again', () => {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await right().locator('.commander-row').first().waitFor();
+    await untilLines(right());
   });
 
   afterAll(async () => {

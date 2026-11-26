@@ -12,6 +12,10 @@ import {
 } from '../../../../../tools/commander/page/store';
 import { renderIn } from '../../../../helpers/componentFixtures';
 import { noop } from '../../../../helpers/fixtures';
+import {
+  tileColumns,
+  tileWidthOf,
+} from '../../../../../tools/commander/page/tiles';
 
 const filled = vi.hoisted((): unknown[] => []);
 const starts = vi.hoisted((): (number | false)[] => []);
@@ -203,6 +207,96 @@ suite('Commander thumbnails', () => {
         starts.filter((start) => start !== false).at(-1),
         0,
         'the tab never scrolled filled from its top',
+      );
+      await act(async () => root.unmount());
+    } finally {
+      Object.assign(globalThis, saved);
+    }
+  });
+
+  test('fills the thumbnails of a tab scrolled down from the row of tiles it shows, as tall as a tile is laid out', async () => {
+    const dom = new JSDOM('<!doctype html><main></main>');
+    Object.defineProperty(dom.window.HTMLElement.prototype, 'clientWidth', {
+      configurable: true,
+      get: () => 2000,
+    });
+    dom.window.matchMedia = () =>
+      Object.assign(new dom.window.EventTarget(), {
+        matches: false,
+        media: '',
+        onchange: null,
+        addListener: noop,
+        removeListener: noop,
+      });
+    const tileHeight = 250;
+    dom.window.HTMLElement.prototype.getBoundingClientRect = function (
+      this: HTMLElement,
+    ) {
+      return this.classList.contains('commander-ruler')
+        ? new dom.window.DOMRect(0, 0, 200, tileHeight)
+        : new dom.window.DOMRect(0, 0, 0, 0);
+    };
+    const globals = {
+      window: dom.window,
+      document: dom.window.document,
+      HTMLElement: dom.window.HTMLElement,
+      Node: dom.window.Node,
+      ResizeObserver: class {
+        observe(): void {}
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+      matchMedia: dom.window.matchMedia,
+      requestAnimationFrame: (step: (time: number) => void) =>
+        setTimeout(() => step(performance.now()), 0),
+      cancelAnimationFrame: (frame: ReturnType<typeof setTimeout>) =>
+        clearTimeout(frame),
+      IS_REACT_ACT_ENVIRONMENT: true,
+    };
+    const saved = Object.fromEntries(
+      Object.keys(globals).map((name) => [name, Reflect.get(globalThis, name)]),
+    );
+    Object.assign(globalThis, globals);
+    try {
+      const { createRoot } = await import('react-dom/client');
+      const main = dom.window.document.querySelector('main');
+      assert.ok(main);
+      const root = createRoot(main);
+      const names = Array.from(
+        { length: 300 },
+        (_, index) => `${1000 + index}.png`,
+      );
+      const store = createCommanderStore(noop, {
+        view: {
+          ...emptyView,
+          tab: '1',
+          active: 'left',
+          layouts: { left: 'thumbnails', right: 'details' },
+          panes: { left: imagesPane(names), right: undefined },
+        },
+      });
+      store.getState().keepScroll('1 left /pictures thumbnails', 1000);
+      starts.length = 0;
+      await act(async () => {
+        renderIn(
+          root,
+          <CommanderStore value={store}>
+            <Pane
+              side="left"
+              driveTrigger={null}
+              bookmarkTrigger={null}
+              resizer={null}
+            />
+          </CommanderStore>,
+        );
+      });
+      const across = tileColumns(
+        2000,
+        tileWidthOf(store.getState().view.thumbnailSize),
+      );
+      assert.strictEqual(
+        starts.filter((start) => start !== false).at(-1),
+        Math.floor(1000 / tileHeight) * across,
       );
       await act(async () => root.unmount());
     } finally {

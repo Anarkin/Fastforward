@@ -22,6 +22,7 @@ import {
 import { writeSettings } from './settingsWritten';
 import { untilSettled } from './waits';
 import { strings } from '../../lib/shared/strings';
+import { linesCount } from './commanderRows';
 
 const status = () => page.locator('.editor .column-status-text').textContent();
 
@@ -119,9 +120,7 @@ suite('App editor', () => {
     fs.writeFileSync(path.join(opened, 'keys.ts'), 'let a = 1;\nlet b = 2;\n');
     await backToCommander();
     await waitFor(
-      async () =>
-        (await right().locator('.commander-row', { hasText: 'keys' }).count()) >
-        0,
+      async () => (await linesCount(right(), 'keys')) > 0,
       'the file listed',
     );
     await edit('keys.ts');
@@ -176,9 +175,7 @@ suite('App editor', () => {
     fs.writeFileSync(path.join(opened, 'find.txt'), 'one two one\nthree one\n');
     await backToCommander();
     await waitFor(
-      async () =>
-        (await right().locator('.commander-row', { hasText: 'find' }).count()) >
-        0,
+      async () => (await linesCount(right(), 'find')) > 0,
       'the file listed',
     );
     await edit('find.txt');
@@ -236,10 +233,7 @@ suite('App editor', () => {
     fs.writeFileSync(path.join(opened, 'needles.txt'), `${lines.join('\n')}\n`);
     await backToCommander();
     await waitFor(
-      async () =>
-        (await right()
-          .locator('.commander-row', { hasText: 'needles' })
-          .count()) > 0,
+      async () => (await linesCount(right(), 'needles')) > 0,
       'the file listed',
     );
     await edit('needles.txt');

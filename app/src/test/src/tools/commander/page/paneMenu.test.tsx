@@ -12,30 +12,9 @@ import {
   type PathMenuAsk,
 } from '../../../../../lib/page/pathMenu';
 
-vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
-  const { createElement, Fragment } = await import('react');
-  const { columnFocusAttribute } =
-    await import('../../../../../lib/page/columnFocus.js');
-  return {
-    ...(await importOriginal<
-      typeof import('../../../../../lib/page/virtualRows')
-    >()),
-    VirtualRows: ({
-      rows,
-      renderRow,
-    }: {
-      rows: { readonly count: number };
-      renderRow: (index: number) => React.ReactNode;
-    }) =>
-      createElement(
-        'div',
-        { [columnFocusAttribute]: '', tabIndex: 0 },
-        Array.from({ length: rows.count }, (_, index) =>
-          createElement(Fragment, { key: index }, renderRow(index)),
-        ),
-      ),
-  };
-});
+vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) =>
+  (await import('./listMock.js')).withListMock(importOriginal),
+);
 
 const inPane = (
   run: Parameters<typeof inSide>[1],
@@ -182,7 +161,7 @@ suite('Commander menu on a side', () => {
 
   test('opens the menu of the folder shown on a right click on .. or on the empty space, asking for its commands without naming a folder', async () => {
     await inPane(async ({ main, rightClick, menu, choose, posted }) => {
-      rightClick(main.querySelector('.commander-row'));
+      rightClick(rowNamed(main, '..'));
       assert.deepStrictEqual(menu(), shownFolderMenu);
       choose(strings.commander.openWithTerminal);
 
@@ -267,9 +246,11 @@ suite('Commander menu on a side', () => {
   });
 
   test('hides the git icon of a repository and the git items of the menus while the main process says git is missing, and shows them again once it says git is found', async () => {
-    await inPane(async ({ main, rightClick, menu, receive }) => {
-      const mark = () =>
-        rowNamed(main, 'app')?.querySelector('.commander-mark');
+    await inPane(async ({ main, rightClick, menu, receive, point }) => {
+      const mark = () => {
+        point(rowNamed(main, 'app'), 'pointermove');
+        return main.querySelector('.commander-pointed .commander-mark');
+      };
       const gitItems = () =>
         menu().filter((label) =>
           [
@@ -293,11 +274,6 @@ suite('Commander menu on a side', () => {
       assert.deepStrictEqual(shownGit(), withGit);
       receive(settings(true));
       assert.deepStrictEqual(shownGit(), [false, [], []]);
-      assert.strictEqual(
-        rowNamed(main, 'app')?.querySelector('.commander-extension')
-          ?.textContent,
-        '',
-      );
       receive(settings(false));
       assert.deepStrictEqual(shownGit(), withGit);
     });

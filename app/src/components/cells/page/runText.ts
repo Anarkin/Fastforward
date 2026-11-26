@@ -41,6 +41,7 @@ export interface Run {
   readonly inks: readonly Ink[];
   readonly marks?: readonly Range[];
   readonly strike?: Strike;
+  readonly spacing?: number;
 }
 
 const noMarks: readonly Range[] = [];
@@ -64,7 +65,7 @@ export function putRun(
   scale: number,
   top: number,
   look: RunLook,
-  { text, font, x, baseline, inks, marks = noMarks, strike }: Run,
+  { text, font, x, baseline, inks, marks = noMarks, strike, spacing = 0 }: Run,
 ): void {
   const cuts = boundariesOf(text.length, inks, marks);
   const topPixels = Math.round(top * scale);
@@ -83,14 +84,15 @@ export function putRun(
     const ground = marked ? look.markGround : look.ground;
     const piece = text.slice(start, end);
     const from =
-      x * scale + (start === 0 ? 0 : runs.measure(text.slice(0, start), font));
+      x * scale +
+      (start === 0 ? 0 : runs.measure(text.slice(0, start), font, spacing));
     if (marked) {
       const markLeft = Math.round(from);
       const markTop = Math.round((top + look.markTop) * scale);
       paint.rects.push(
         markLeft,
         markTop,
-        Math.round(from + runs.measure(piece, font)) - markLeft,
+        Math.round(from + runs.measure(piece, font, spacing)) - markLeft,
         Math.round((top + look.markTop + look.markHeight) * scale) - markTop,
         packedOf(look.markGround),
       );
@@ -98,11 +100,12 @@ export function putRun(
     const tile = runs.tile(
       piece,
       {
-        key: `${font}|${ink}|${ground.join(',')}|${shift}|${strike !== undefined}`,
+        key: `${font}|${ink}|${ground.join(',')}|${shift}|${strike !== undefined}${spacing === 0 ? '' : `|${spacing}`}`,
         font,
         ink,
         ground: cssOf(ground),
         baseline: shift,
+        ...(spacing !== 0 && { spacing }),
         ...(strike !== undefined && {
           strike: {
             top: shift - strike.rise - strike.thickness,
@@ -131,8 +134,9 @@ export function fitted(
   text: string,
   font: string,
   room: number,
+  spacing = 0,
 ): string {
-  if (atlas.measure(text, font) <= room) {
+  if (atlas.measure(text, font, spacing) <= room) {
     return text;
   }
   const characters = Array.from(text);
@@ -141,7 +145,7 @@ export function fitted(
   while (low < high) {
     const middle = (low + high + 1) >> 1;
     const cut = characters.slice(0, middle).join('') + ellipsis;
-    if (atlas.measure(cut, font) <= room) {
+    if (atlas.measure(cut, font, spacing) <= room) {
       low = middle;
     } else {
       high = middle - 1;

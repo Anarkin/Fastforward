@@ -200,22 +200,52 @@
   overflow: clip;
 }
 
-.row.commander-line.plain {
-  display: block;
-  padding-left: calc(
-    var(--commander-row-start) + 16px + var(--commander-advance)
-  );
-  overflow: visible;
-  white-space: pre;
-  tab-size: calc(var(--commander-name-width, 0px) + var(--commander-gap));
-}
-
 .commander-ruler {
   position: absolute;
   left: -9999px;
   width: 4000px;
   visibility: hidden;
   pointer-events: none;
+}
+
+.row.commander-tile.commander-ruler {
+  position: absolute;
+}
+
+.commander-layer {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.commander-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.commander-probe {
+  position: absolute;
+  visibility: hidden;
+}
+
+.commander-pointed {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.commander-pointed > .commander-mark,
+.commander-pointed > .commander-pointed-size {
+  position: absolute;
+}
+
+.commander-pointed-size {
+  top: 0;
+  bottom: 0;
 }
 
 .row.commander-line.generic-file {
@@ -319,12 +349,16 @@
   box-shadow: inset 0 var(--hairline) 0 var(--color-border);
 }
 
-.commander-pane.inactive .row.selected:not(:hover) {
+.commander-pane.inactive .row.selected:not(:hover):not(.pointed) {
   background: none;
 }
 
 .row.commander-tile {
   position: relative;
+}
+
+.row.commander-tile.pointed:not(.selected):not(.marked) {
+  background: var(--hover-background);
 }
 
 .commander-check {
@@ -342,7 +376,8 @@
   height: 100%;
 }
 
-.commander-check:hover .check-box {
+.commander-check:hover .check-box,
+.row.commander-tile.pointed[data-over-check] .check-box {
   border-color: var(--color-foreground);
 }
 
@@ -361,6 +396,7 @@
 }
 
 .row.commander-row:hover .commander-check,
+.row.commander-row.pointed .commander-check,
 .row.commander-row.marked .commander-check {
   visibility: visible;
 }
@@ -378,7 +414,8 @@
   background: var(--marked-background);
 }
 
-.row.commander-row.marked:hover {
+.row.commander-row.marked:hover,
+.row.commander-row.marked.pointed {
   background:
     linear-gradient(var(--hover-background), var(--hover-background)),
     var(--marked-background);
@@ -390,7 +427,8 @@
     var(--marked-background);
 }
 
-.commander-pane.inactive .row.commander-row.marked.selected:not(:hover) {
+.commander-pane.inactive
+  .row.commander-row.marked.selected:not(:hover):not(.pointed) {
   background: var(--marked-background);
 }
 
@@ -398,7 +436,8 @@
   background: var(--line-icon);
 }
 
-.row.commander-row.commander-line:hover {
+.row.commander-row.commander-line:hover,
+.row.commander-row.commander-line.pointed {
   background: var(--line-icon), var(--hover-background);
 }
 
@@ -407,7 +446,7 @@
 }
 
 .commander-pane.inactive
-  .row.commander-row.commander-line.selected:not(:hover) {
+  .row.commander-row.commander-line.selected:not(:hover):not(.pointed) {
   background: var(--line-icon);
 }
 
@@ -415,7 +454,8 @@
   background: var(--line-icon), var(--marked-background);
 }
 
-.row.commander-row.commander-line.marked:hover {
+.row.commander-row.commander-line.marked:hover,
+.row.commander-row.commander-line.marked.pointed {
   background:
     var(--line-icon),
     linear-gradient(var(--hover-background), var(--hover-background)),
@@ -430,11 +470,12 @@
 }
 
 .commander-pane.inactive
-  .row.commander-row.commander-line.marked.selected:not(:hover) {
+  .row.commander-row.commander-line.marked.selected:not(:hover):not(.pointed) {
   background: var(--line-icon), var(--marked-background);
 }
 
 .row.commander-line:not(.up):hover::before,
+.row.commander-line:not(.up).pointed::before,
 .row.commander-line.marked::before,
 .row.commander-line.marked::after {
   content: '';
@@ -447,12 +488,14 @@
 }
 
 .row.commander-line:not(.up):hover::before,
+.row.commander-line:not(.up).pointed::before,
 .row.commander-line.marked::before {
   border: 1px solid var(--muted-foreground);
   border-radius: var(--radius);
 }
 
-.row.commander-line[data-over-check]:not(.up):hover::before {
+.row.commander-line[data-over-check]:not(.up):hover::before,
+.row.commander-line[data-over-check]:not(.up).pointed::before {
   border-color: var(--color-foreground);
 }
 

@@ -4,16 +4,8 @@ import { PathTitle } from '../../../../lib/page/pathTitle';
 import { cascaded, type States } from '../../../helpers/cascade';
 import { defaultSettings } from '../../../helpers/fixtures';
 import { PathTitleShown } from '../../../helpers/styleFixtures';
-import {
-  css,
-  bodyVariable,
-  compact,
-  looks,
-  after,
-  noop,
-} from './stylesheetFixtures';
+import { css, bodyVariable, compact, looks, after } from './stylesheetFixtures';
 import { createElement } from 'react';
-import { MarkBox } from '../../../../tools/commander/page/paneCells';
 import {
   checkSize,
   checkStart,
@@ -36,7 +28,9 @@ function CommanderItem({
   return (
     <div className={`commander ${paneClassName}`}>
       <div className={`row commander-row ${className}`}>
-        <MarkBox onToggle={noop} />
+        <span className="commander-check">
+          <span className="check-box" />
+        </span>
       </div>
     </div>
   );
@@ -203,32 +197,13 @@ suite('Style', () => {
     assert.strictEqual(defaultSettings().tools.commander.columns.date, 16);
   });
 
-  test('starts the one text of a row drawn without cells where the name of a row with cells starts, a character after the icon, and stops its tab where the extensions start, the width of the names and a gap from there, so the two kinds of rows stand in the same columns; and neither kind is a box its own things are placed in or one that scrolls, which had the browser keep a layer for every row, 0.7 ms of each step of a folder of 20,000 files dragged by its scrollbar', () => {
-    const plain = rendered(
-      <div className="row commander-row commander-line plain" />,
-    );
-    looks(plain, {
-      display: 'block',
-      'padding-left':
-        'calc( var(--commander-row-start) + 16px + var(--commander-advance) )',
-      'white-space': 'pre',
-      'tab-size':
-        'calc(var(--commander-name-width, 0px) + var(--commander-gap))',
-      overflow: 'visible',
-      position: undefined,
-    });
+  test('lays the hidden row the canvas reads the places of the columns from out as a row of cells, and the ruler a row is measured by beside it out of sight', () => {
     for (const icon of ['', 'generic-file', 'generic-folder']) {
       looks(
         rendered(
           <div className={`row commander-row commander-line ${icon}`} />,
         ),
         { display: 'grid', overflow: 'clip', position: undefined },
-      );
-      looks(
-        rendered(
-          <div className={`row commander-row commander-line ${icon} plain`} />,
-        ),
-        { display: 'block' },
       );
     }
     looks(rendered(<div className="row commander-line commander-ruler" />), {

@@ -39,6 +39,32 @@ export const rowsShown = (page: Page, rows: string): Promise<RowShown[]> =>
             height: file.height,
           }));
       }
+      const tiles =
+        element instanceof HTMLElement ? element.seenTiles?.() : undefined;
+      if (tiles !== undefined) {
+        return tiles
+          .filter((tile, at) => tiles[at - 1]?.top !== tile.top)
+          .map((tile) => ({
+            text: tile.key,
+            left: tile.left,
+            top: tile.top,
+            bottom: tile.top + tile.height,
+            width: tile.width,
+            height: tile.height,
+          }));
+      }
+      const lines =
+        element instanceof HTMLElement ? element.seenLines?.() : undefined;
+      if (lines !== undefined) {
+        return lines.map((line) => ({
+          text: line.key,
+          left: line.left,
+          top: line.top,
+          bottom: line.top + line.height,
+          width: line.width,
+          height: line.height,
+        }));
+      }
       const seen =
         element instanceof HTMLElement ? element.seenRows?.() : undefined;
       const box = element.getBoundingClientRect();

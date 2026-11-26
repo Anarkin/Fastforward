@@ -10,6 +10,7 @@ import {
 } from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { heldKey, sleep, wheelNotches } from './perfInput';
+import { clickLine, lineOf, selectedText } from '../e2e/commanderRows';
 
 function stem(file: string): string {
   return file.slice(0, file.lastIndexOf('.'));
@@ -25,45 +26,36 @@ function commanderWith(smooth: boolean) {
       },
       settings: { scrolling: { smooth }, text: { wordWrap: true } },
     },
-    (page) =>
-      page
-        .locator('.commander-pane')
-        .nth(1)
-        .locator('.commander-row', { hasText: manyFolder })
-        .waitFor(),
+    async (page) => {
+      await lineOf(page.locator('.commander-pane').nth(1), manyFolder);
+    },
   );
   const page = () => perf().page;
   const right = () => page().locator('.commander-pane').nth(1);
-  const row = (name: string) =>
-    right().locator('.commander-row', { hasText: name }).first();
   const select = async (name: string) => {
-    await row(name).click();
+    await clickLine(page(), right(), name);
     await waitFor(
-      async () =>
-        (
-          await right().locator('.commander-row.selected').textContent()
-        )?.includes(name) === true,
+      async () => (await selectedText(right())).includes(name),
       `${name} to be selected`,
     );
   };
   const openFolder = async (name: string, inside: string) => {
     await select(name);
     await page().keyboard.press('Enter');
-    await row(inside).waitFor();
+    await lineOf(right(), inside);
   };
   const backUp = async () => {
     await page().keyboard.press('Backspace');
-    await row(manyFolder).waitFor();
+    await lineOf(right(), manyFolder);
   };
-  return { perf, page, right, row, select, openFolder, backUp };
+  return { perf, page, right, select, openFolder, backUp };
 }
 
 const viewerRows =
   '.viewer :is(.viewer-row:not(.viewer-probe), .cell-rows[data-rows]:has(canvas))';
 
 suite('Frames of the commander, the viewer and the editor', () => {
-  const { perf, page, right, row, select, openFolder, backUp } =
-    commanderWith(true);
+  const { perf, page, right, select, openFolder, backUp } = commanderWith(true);
 
   test('scrolling a folder of 20,000 files with a mouse wheel', async () => {
     await openFolder(manyFolder, 'file-');
@@ -94,7 +86,7 @@ suite('Frames of the commander, the viewer and the editor', () => {
     );
     assert.ok(result.frames.updates > 0);
     await page().keyboard.press('Control+B');
-    await row(manyFolder).waitFor();
+    await lineOf(right(), manyFolder);
   });
 
   test('scrolling the thumbnails of 1,000 images with a mouse wheel as they are made', async () => {

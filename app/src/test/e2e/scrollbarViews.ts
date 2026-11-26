@@ -6,7 +6,7 @@ import type { Box } from './scrollbarsShown';
 export const views = {
   commander: {
     tab: 0,
-    rows: '.commander-pane:not(.inactive) .virtual-row',
+    rows: '.commander-pane:not(.inactive) .commander-layer',
     vertical: '.commander-pane:not(.inactive) .virtual-rows',
     horizontal: undefined,
     marks: undefined,

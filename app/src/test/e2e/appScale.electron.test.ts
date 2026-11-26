@@ -16,6 +16,7 @@ import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { rounded } from './rounding';
 import { commitRow, commitsSeen } from './commitRows';
 import { fileRow } from './fileRows';
+import { clickLine } from './commanderRows';
 
 const scale = 1.25;
 
@@ -530,7 +531,7 @@ suite('App at a scale of 125%', () => {
   test('runs the scrollbars of a file viewed at its end over every pixel up to the lines of its column, the thumb of the one beside it up to the line on the right and the thumb of the one below it up to the bottom line, and over none the lines fill', async () => {
     await page.locator('.tabs [role="tab"]').nth(1).click();
     const side = page.locator('.commander-pane').nth(1);
-    await side.locator('.commander-row', { hasText: 'long' }).click();
+    await clickLine(page, side, 'long');
     await page.keyboard.press('F3');
     await page.locator(viewerRows).first().waitFor();
     try {
@@ -569,7 +570,7 @@ suite('App at a scale of 125%', () => {
   test('keeps the scroller standing in for the scrollbar of a file viewed as wide as the scrollbar setting while the browser draws its bar a whole number of device pixels narrower, as one no wider than its bar dropped 47 frames of a drag of its thumb at 125% rather than 39', async () => {
     await page.locator('.tabs [role="tab"]').nth(1).click();
     const side = page.locator('.commander-pane').nth(1);
-    await side.locator('.commander-row', { hasText: 'long' }).click();
+    await clickLine(page, side, 'long');
     await page.keyboard.press('F3');
     await page.locator(viewerRows).first().waitFor();
     try {
@@ -670,7 +671,7 @@ suite('App at a scale of 125%', () => {
   test('wraps a diff to the columns that fit its side, so the mark of each break stands inside it, where the code starts between device pixels too, inline and side by side', async () => {
     await page.locator('.tabs [role="tab"]').nth(1).click();
     const side = page.locator('.commander-pane').nth(1);
-    await side.locator('.commander-row', { hasText: 'apart' }).click();
+    await clickLine(page, side, 'apart');
     await page.keyboard.press('Insert');
     await page.keyboard.press('Insert');
     await page.keyboard.press('Shift+F3');

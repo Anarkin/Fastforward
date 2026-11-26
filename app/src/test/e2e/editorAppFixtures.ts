@@ -8,7 +8,7 @@ import type { SeenRow } from '../../components/cells/page/seen';
 import { viewerTexts } from './cellsSeen';
 import { editorLinesSeen, editorRowPoint, editorRowsSeen } from './editorSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
-import { fileName, rowsShown } from './commanderRows';
+import { fileName, linesShown, rowsShown, untilLines } from './commanderRows';
 
 let folder: string;
 export let opened: string;
@@ -23,12 +23,10 @@ export const editedText = async (shown: Page = page) =>
   (await editorLinesSeen(shown)).map(({ text }) => text).join('\n');
 const rowIndexOf = async (name: string) =>
   (await rowsShown(right())).findIndex((row) => fileName(row) === name);
-const selectedIndex = () =>
-  right()
-    .locator('.commander-row')
-    .evaluateAll((rows) =>
-      rows.findIndex((row) => row.classList.contains('selected')),
-    );
+const selectedIndex = async () =>
+  (await linesShown(right())).findIndex((line) =>
+    line.classes.includes('selected'),
+  );
 export const select = async (name: string) => {
   await waitFor(async () => (await rowIndexOf(name)) !== -1, `${name} listed`);
   await right().locator('.virtual-rows').focus();
@@ -47,7 +45,7 @@ export const select = async (name: string) => {
 };
 export const backToCommander = async () => {
   await page.locator('.tabs [role="tab"]').first().click();
-  await right().locator('.commander-row').first().waitFor();
+  await untilLines(right());
 };
 export const written = (name: string, text: string | Buffer) =>
   fs.writeFileSync(path.join(opened, name), text);
@@ -245,7 +243,7 @@ export function sharedEditorApp(): void {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await right().locator('.commander-row').first().waitFor();
+    await untilLines(right());
   });
 
   beforeEach(async () => {

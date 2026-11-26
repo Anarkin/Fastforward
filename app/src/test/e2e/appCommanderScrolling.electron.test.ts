@@ -5,6 +5,7 @@ import { suite, test } from 'vitest';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { untilSettled } from './waits';
 import { scrollPlaces } from './scrollProbes';
+import { tilesCount } from './commanderTiles';
 import { barOf, barParts, drawnBarWidth } from './scrollbarsShown';
 import {
   opened,
@@ -30,7 +31,7 @@ const sideBar = async () => {
   const side = await right().evaluate((pane) => {
     const header = pane.querySelector('.commander-header');
     const rows = pane.querySelector('.virtual-rows');
-    const row = pane.querySelector('.commander-row');
+    const row = pane.querySelector('.commander-layer');
     if (header === null || rows === null || row === null) {
       return undefined;
     }
@@ -66,6 +67,18 @@ const sideBar = async () => {
   };
 };
 
+const tileSizes = () =>
+  right().evaluate((side) => ({
+    top: side.querySelector('.virtual-rows')?.scrollTop ?? 0,
+    tile:
+      side.querySelector('.commander-ruler')?.getBoundingClientRect().height ??
+      0,
+    text:
+      side
+        .querySelector('.commander-ruler .commander-tile-name')
+        ?.getBoundingClientRect().height ?? 0,
+  }));
+
 suite('App commander', () => {
   sharedCommanderApp();
 
@@ -85,8 +98,10 @@ suite('App commander', () => {
     const offRow = () =>
       list.evaluate((element) => {
         const row =
-          element.querySelector('.commander-row')?.getBoundingClientRect()
-            .height ?? 1;
+          element
+            .closest('.commander-pane')
+            ?.querySelector('.commander-ruler')
+            ?.getBoundingClientRect().height ?? 1;
         const rows = element.scrollTop / row;
         return {
           top: element.scrollTop,
@@ -100,8 +115,10 @@ suite('App commander', () => {
     );
     const oneRow = await list.evaluate(
       (element) =>
-        element.querySelector('.commander-row')?.getBoundingClientRect()
-          .height ?? 0,
+        element
+          .closest('.commander-pane')
+          ?.querySelector('.commander-ruler')
+          ?.getBoundingClientRect().height ?? 0,
     );
     assert.ok(
       Math.abs(
@@ -159,8 +176,10 @@ suite('App commander', () => {
     assert.ok(thumb, 'the scrollbar of the list has no thumb');
     await list.evaluate((element) => {
       const row =
-        element.querySelector('.commander-row')?.getBoundingClientRect()
-          .height ?? 1;
+        element
+          .closest('.commander-pane')
+          ?.querySelector('.commander-ruler')
+          ?.getBoundingClientRect().height ?? 1;
       const offs: number[] = [];
       Reflect.set(window, 'dragOffs', offs);
       const record = () => {
@@ -294,21 +313,11 @@ suite('App commander', () => {
     await page.keyboard.press('ControlOrMeta+2');
     const list = right().locator('.virtual-rows');
     await waitFor(
-      async () => (await right().locator('.commander-tile').count()) > 0,
+      async () => (await tilesCount(right())) > 0,
       'the thumbnails',
     );
-    const sizes = () =>
-      list.evaluate((element) => ({
-        top: element.scrollTop,
-        tile:
-          element.querySelector('.virtual-row')?.getBoundingClientRect()
-            .height ?? 0,
-        text:
-          element.querySelector('.commander-tile-name')?.getBoundingClientRect()
-            .height ?? 0,
-      }));
-    const { tile, text } = await sizes();
-    assert.ok(tile > text * 2 && text > 0, JSON.stringify(await sizes()));
+    const { tile, text } = await tileSizes();
+    assert.ok(tile > text * 2 && text > 0, JSON.stringify(await tileSizes()));
 
     await list.hover();
     const notched = await scrollPlaces(page, list, () =>
@@ -339,7 +348,7 @@ suite('App commander', () => {
 
     await page.keyboard.press('ControlOrMeta+1');
     await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
+      async () => (await tilesCount(right())) === 0,
       'the details again',
     );
     await page.keyboard.press('Backspace');

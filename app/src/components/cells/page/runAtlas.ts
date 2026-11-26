@@ -6,6 +6,7 @@ export interface RunStyle {
   readonly ink: string;
   readonly ground: string;
   readonly baseline: number;
+  readonly spacing?: number;
   readonly strike?: { readonly top: number; readonly thickness: number };
 }
 
@@ -42,7 +43,9 @@ export class RunAtlas {
   private shelfY = 0;
   private waiting = false;
   private font = '';
+  private spacing = 0;
   private measuredFont = '';
+  private measuredSpacing = 0;
 
   constructor(
     private readonly device: GPUDevice,
@@ -68,8 +71,8 @@ export class RunAtlas {
     });
   }
 
-  measure(text: string, font: string): number {
-    const key = `${font}\u0000${text}`;
+  measure(text: string, font: string, spacing = 0): number {
+    const key = `${font}\u0000${spacing}\u0000${text}`;
     const known = this.widths.get(key);
     if (known !== undefined) {
       return known * this.textScale;
@@ -77,6 +80,10 @@ export class RunAtlas {
     if (this.measuredFont !== font) {
       this.measuring.font = font;
       this.measuredFont = font;
+    }
+    if (this.measuredSpacing !== spacing) {
+      this.measuring.letterSpacing = `${spacing}px`;
+      this.measuredSpacing = spacing;
     }
     const width = this.measuring.measureText(text).width;
     if (this.widths.size >= mostMeasured) {
@@ -95,8 +102,10 @@ export class RunAtlas {
     if (this.full) {
       return undefined;
     }
+    const spacing = style.spacing ?? 0;
     const width =
-      Math.ceil(this.measure(text, style.font) + offset) + 2 * runPadding;
+      Math.ceil(this.measure(text, style.font, spacing) + offset) +
+      2 * runPadding;
     if (width > this.size) {
       return undefined;
     }
@@ -118,6 +127,10 @@ export class RunAtlas {
       stage.font = style.font;
       this.font = style.font;
     }
+    if (this.spacing !== spacing) {
+      stage.letterSpacing = `${spacing}px`;
+      this.spacing = spacing;
+    }
     stage.fillStyle = style.ink;
     if (this.textScale === 1) {
       stage.fillText(text, x + runPadding + offset, style.baseline);
@@ -135,7 +148,7 @@ export class RunAtlas {
         style.strike.top,
         x +
           runPadding +
-          Math.round(offset + this.measure(text, style.font)) -
+          Math.round(offset + this.measure(text, style.font, spacing)) -
           left,
         style.strike.thickness,
       );
@@ -181,6 +194,7 @@ export class RunAtlas {
     paint(stage);
     stage.restore();
     this.font = '';
+    this.spacing = Number.NaN;
     this.waiting = true;
     const tile = { u: x, v: this.shelfY, width };
     this.tiles.set(key, tile);

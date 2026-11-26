@@ -15,6 +15,17 @@ import {
 } from './commanderAppFixtures';
 import { grayPng, withOrientation } from './images';
 import { untilSettled } from './waits';
+import { linesCount, linesShown } from './commanderRows';
+import {
+  clickTile,
+  selectedTile,
+  tileNamed,
+  tileNames,
+  tileOf,
+  tilesAcross,
+  tilesCount,
+  tilesShown,
+} from './commanderTiles';
 
 const storedThumbnails = (profileFolder: string): number => {
   const stored = path.join(profileFolder, 'Thumbnails');
@@ -23,115 +34,94 @@ const storedThumbnails = (profileFolder: string): number => {
     : 0;
 };
 
-const thumbnailed = () =>
-  right()
+const thumbnailed = async () => {
+  const shown = await right()
     .locator('.virtual-rows')
     .evaluate((list) => {
-      const shown = list.getBoundingClientRect();
-      return [...list.querySelectorAll('.commander-tile')]
-        .filter((tile) => tile.querySelector('img.thumbnail-image'))
-        .map((tile) => {
-          const box = tile.getBoundingClientRect();
-          return {
-            name: tile.querySelector('.commander-tile-name')?.textContent,
-            inView: box.bottom > shown.top && box.top < shown.bottom,
-          };
-        });
+      const box = list.getBoundingClientRect();
+      return { top: box.top, bottom: box.bottom };
     });
+  return (await tilesShown(right()))
+    .filter((tile) => tile.picture === 'thumbnail')
+    .map((tile) => ({
+      name: tile.name,
+      inView: tile.top + tile.height > shown.top && tile.top < shown.bottom,
+    }));
+};
 
-const shownThumbnailOf = (name: string) =>
-  right()
-    .locator('.commander-tile', { hasText: name })
-    .locator('img.thumbnail-image')
-    .evaluate((image: HTMLImageElement) =>
-      image.complete ? image.naturalWidth : 0,
-    )
-    .catch(() => 0);
+const shownThumbnailOf = async (name: string) => {
+  const tile = await tileNamed(right(), name);
+  return tile?.picture === 'thumbnail' ? tile.picturePixels : 0;
+};
 
-const thumbnailLookOf = (name: string) =>
-  right()
-    .locator('.commander-tile', { hasText: name })
-    .locator('img.thumbnail-image')
-    .evaluate((image: HTMLImageElement) => {
-      if (!image.complete || image.naturalWidth === 0) {
-        return undefined;
-      }
-      const { naturalWidth: width, naturalHeight: height } = image;
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d');
-      context?.drawImage(image, 0, 0);
-      const light = (x: number, y: number) =>
-        context?.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[0] ?? 0;
-      const box = image.getBoundingClientRect();
-      return {
-        width: Math.round(box.width),
-        height: Math.round(box.height),
-        left: light(width / 4, height / 2),
-        right: light((3 * width) / 4, height / 2),
-        top: light(width / 2, height / 4),
-        bottom: light(width / 2, (3 * height) / 4),
-      };
-    })
-    .catch(() => undefined);
+const thumbnailLookOf = async (name: string) => {
+  const tile = await tileNamed(right(), name);
+  if (tile?.picture !== 'thumbnail' || tile.pictureUrl === undefined) {
+    return undefined;
+  }
+  const lights = await page.evaluate(async (url) => {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const { naturalWidth: width, naturalHeight: height } = image;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    context?.drawImage(image, 0, 0);
+    const light = (x: number, y: number) =>
+      context?.getImageData(Math.floor(x), Math.floor(y), 1, 1).data[0] ?? 0;
+    return {
+      left: light(width / 4, height / 2),
+      right: light((3 * width) / 4, height / 2),
+      top: light(width / 2, height / 4),
+      bottom: light(width / 2, (3 * height) / 4),
+    };
+  }, tile.pictureUrl);
+  return {
+    width: Math.round(tile.pictureWidth),
+    height: Math.round(tile.pictureHeight),
+    ...lights,
+  };
+};
 
-const tileNames = () =>
-  right().locator('.commander-tile .commander-tile-name').allTextContents();
-
-const selectedTile = async () =>
-  (await right()
-    .locator('.commander-tile.selected .commander-tile-name')
-    .textContent()) ?? '';
-
-const across = () =>
-  right()
-    .locator('.commander-tile')
-    .evaluateAll((elements) => {
-      const tops = elements.map(
-        (element) => element.getBoundingClientRect().top,
-      );
-      return tops.filter((top) => top === tops[0]).length;
-    });
+const tileCount = () => tilesCount(right());
 
 const layoutShown = async () =>
   (await right().locator('.commander-header').count()) > 0
     ? 'details'
-    : (await right().locator('.commander-tile').count()) > 0
+    : (await tileCount()) > 0
       ? 'thumbnails'
       : undefined;
 
-const thumbnailOf = (name: string) =>
-  right()
-    .locator('.commander-tile', { hasText: name })
-    .locator('img.thumbnail-image')
-    .evaluate((image: HTMLImageElement) => ({
-      width: Math.round(image.getBoundingClientRect().width),
-      height: Math.round(image.getBoundingClientRect().height),
-      pixels: image.naturalWidth,
-      ratio: devicePixelRatio,
-      complete: image.complete && image.naturalWidth > 0,
-    }))
-    .catch(() => undefined);
-
-const place = () =>
-  right()
-    .locator('.virtual-rows')
-    .evaluate((list) => {
-      const top = list.getBoundingClientRect().top;
-      const first = [...list.querySelectorAll('.commander-tile')].find(
-        (tile) => tile.getBoundingClientRect().top >= top - 1,
-      );
-      return {
-        scrollTop: Math.round(list.scrollTop),
-        first: first?.querySelector('.commander-tile-name')?.textContent,
+const thumbnailOf = async (name: string) => {
+  const tile = await tileNamed(right(), name);
+  return tile === undefined || tile.picture !== 'thumbnail'
+    ? undefined
+    : {
+        width: Math.round(tile.pictureWidth),
+        height: Math.round(tile.pictureHeight),
+        pixels: tile.picturePixels,
+        ratio: await page.evaluate(() => devicePixelRatio),
+        complete: tile.picturePixels > 0,
       };
-    });
+};
 
-const selectedName = () =>
-  right()
-    .locator('.commander-tile.selected .commander-tile-name')
-    .textContent();
+const place = async () => {
+  const list = await right()
+    .locator('.virtual-rows')
+    .evaluate((element) => ({
+      top: element.getBoundingClientRect().top,
+      scrollTop: Math.round(element.scrollTop),
+    }));
+  return {
+    scrollTop: list.scrollTop,
+    first: (await tilesShown(right())).find((tile) => tile.top >= list.top - 1)
+      ?.name,
+  };
+};
+
+const selectedName = () => selectedTile(right());
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -152,70 +142,64 @@ suite('App commander', () => {
     assert.strictEqual(await layoutShown(), 'details');
     await page.keyboard.press('ControlOrMeta+2');
     await waitFor(
-      async () => (await tileNames()).length === 8,
+      async () => (await tileNames(right())).length === 8,
       'a tile for each file and the parent folder',
     );
     assert.strictEqual(await layoutShown(), 'thumbnails');
-    assert.strictEqual(
-      await right().locator('.commander-row.commander-line').count(),
-      0,
-    );
+    assert.deepStrictEqual(await linesShown(right()), []);
     assert.strictEqual(await right().locator('.commander-header').count(), 0);
     assert.strictEqual(await right().locator('.commander-path').count(), 1);
-    const third = right().locator('.commander-tile', { hasText: 't3.txt' });
-    assert.strictEqual(
-      await third.locator('.commander-tile-size').textContent(),
-      '3',
+    const third = await tileOf(right(), 't3.txt');
+    assert.strictEqual(third.size, '3');
+    assert.match(third.date, /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/);
+    await waitFor(
+      async () =>
+        ['system', 'generic'].includes(
+          (await tileNamed(right(), 't3.txt'))?.picture ?? '',
+        ),
+      'the icon of the file',
     );
-    assert.match(
-      (await third.locator('.commander-tile-date').textContent()) ?? '',
-      /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/,
-    );
-    await third.locator('.commander-thumbnail .commander-icon').waitFor();
 
-    const names = await tileNames();
-    const columns = await across();
+    const names = await tileNames(right());
+    const columns = await tilesAcross(right());
     assert.ok(columns > 1 && columns < 8, String(columns));
     await page.keyboard.press('Home');
     await waitFor(
-      async () => (await selectedTile()) === names[0],
+      async () => (await selectedTile(right())) === names[0],
       'the first tile, the keys going to the tiles once chosen from the menu',
     );
     await page.keyboard.press('ArrowRight');
     await waitFor(
-      async () => (await selectedTile()) === names[1],
+      async () => (await selectedTile(right())) === names[1],
       'the tile on the right',
     );
     await page.keyboard.press('ArrowDown');
     await waitFor(
-      async () => (await selectedTile()) === names[1 + columns],
+      async () => (await selectedTile(right())) === names[1 + columns],
       'the tile below',
     );
     await page.keyboard.press('ArrowLeft');
     await waitFor(
-      async () => (await selectedTile()) === names[columns],
+      async () => (await selectedTile(right())) === names[columns],
       'the tile on the left',
     );
     await page.keyboard.press('ArrowUp');
     await waitFor(
-      async () => (await selectedTile()) === names[0],
+      async () => (await selectedTile(right())) === names[0],
       'the tile above',
     );
     await page.keyboard.press('End');
     await waitFor(
-      async () => (await selectedTile()) === names.at(-1),
+      async () => (await selectedTile(right())) === names.at(-1),
       'the last tile',
     );
 
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     assert.ok((await rowNames()).includes('t7.txt'));
     await page.keyboard.press('ControlOrMeta+2');
     await waitFor(
-      async () => (await tileNames()).length === 8,
+      async () => (await tileNames(right())).length === 8,
       'the thumbnails again',
     );
 
@@ -229,25 +213,24 @@ suite('App commander', () => {
     );
     await waitFor(
       async () =>
-        (await layoutShown()) === 'details' &&
-        (await right().locator('.commander-row').count()) > 0,
+        (await layoutShown()) === 'details' && (await linesCount(right())) > 0,
       'the other tab showing details',
     );
-    assert.strictEqual(await right().locator('.commander-tile').count(), 0);
+    assert.strictEqual(await tileCount(), 0);
     await page.keyboard.press('ControlOrMeta+W');
     await waitFor(
       async () => (await page.locator('.tabs [role="tab"]').count()) === 1,
       'the other tab closed',
     );
     await waitFor(
-      async () => (await tileNames()).length === 8,
+      async () => (await tileNames(right())).length === 8,
       'the thumbnails of the first tab again',
     );
     assert.strictEqual(await layoutShown(), 'thumbnails');
-    await right().locator('.commander-tile').first().click();
+    await clickTile(page, right());
     await page.keyboard.press('ControlOrMeta+1');
     await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
+      async () => (await tileCount()) === 0,
       'the details once more',
     );
 
@@ -320,15 +303,16 @@ suite('App commander', () => {
       { width: logo?.width, height: logo?.height },
       { width: 144, height: 72 },
     );
-    const notes = right().locator('.commander-tile', { hasText: 'notes.txt' });
-    await notes.locator('.commander-icon').waitFor();
-    assert.strictEqual(await notes.locator('img.thumbnail-image').count(), 0);
+    await waitFor(
+      async () =>
+        ['system', 'generic'].includes(
+          (await tileNamed(right(), 'notes.txt'))?.picture ?? '',
+        ),
+      'the icon of the text file, and no thumbnail',
+    );
 
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     await page.keyboard.press('Backspace');
     await waitFor(
       async () => (await rowNames()).includes('notes.txt'),
@@ -373,10 +357,7 @@ suite('App commander', () => {
     );
 
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     await page.keyboard.press('Backspace');
     await waitFor(
       async () => (await rowNames()).includes('notes.txt'),
@@ -404,7 +385,7 @@ suite('App commander', () => {
       'the files of the folder',
     );
     await page.keyboard.press('ControlOrMeta+2');
-    await right().locator('.commander-tile').first().waitFor();
+    await waitFor(async () => (await tileCount()) > 0, 'the tiles');
     await page.keyboard.press('End');
     await page.keyboard.press('ArrowUp');
     const before = await untilSettled(
@@ -432,10 +413,7 @@ suite('App commander', () => {
     );
 
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     await page.keyboard.press('Backspace');
     await waitFor(
       async () => (await rowNames()).includes('notes.txt'),
@@ -482,7 +460,7 @@ suite('App commander', () => {
     fs.renameSync(junk, wide);
     await page.reload();
     await waitFor(
-      async () => (await right().locator('.commander-tile').count()) > 0,
+      async () => (await tileCount()) > 0,
       'the files of the folder, as thumbnails still once the page starts again, as its tab keeps its layout',
     );
     await waitFor(
@@ -491,10 +469,7 @@ suite('App commander', () => {
     );
 
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     await page.keyboard.press('Backspace');
     await waitFor(
       async () => (await rowNames()).includes('notes.txt'),
@@ -566,10 +541,7 @@ suite('App commander', () => {
     );
 
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     await page.keyboard.press('Backspace');
     await waitFor(
       async () => (await rowNames()).includes('notes.txt'),
@@ -604,10 +576,7 @@ suite('App commander', () => {
     );
 
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     await page.keyboard.press('Backspace');
     await waitFor(
       async () => (await rowNames()).includes('notes.txt'),
@@ -641,10 +610,7 @@ suite('App commander', () => {
       'the background filling to be under way',
     );
     await page.keyboard.press('ControlOrMeta+1');
-    await waitFor(
-      async () => (await right().locator('.commander-tile').count()) === 0,
-      'the details again',
-    );
+    await waitFor(async () => (await tileCount()) === 0, 'the details again');
     await new Promise((resolve) => setTimeout(resolve, 300));
     const whenStopped = storedThumbnails(profile);
     await new Promise((resolve) => setTimeout(resolve, 1500));

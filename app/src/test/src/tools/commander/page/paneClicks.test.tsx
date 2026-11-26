@@ -13,30 +13,9 @@ import {
 } from './paneFixtures';
 import { overCheckAttribute } from '../../../../../tools/commander/page/lineCheck';
 
-vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
-  const { createElement, Fragment } = await import('react');
-  const { columnFocusAttribute } =
-    await import('../../../../../lib/page/columnFocus.js');
-  return {
-    ...(await importOriginal<
-      typeof import('../../../../../lib/page/virtualRows')
-    >()),
-    VirtualRows: ({
-      rows,
-      renderRow,
-    }: {
-      rows: { readonly count: number };
-      renderRow: (index: number) => React.ReactNode;
-    }) =>
-      createElement(
-        'div',
-        { [columnFocusAttribute]: '', tabIndex: 0 },
-        Array.from({ length: rows.count }, (_, index) =>
-          createElement(Fragment, { key: index }, renderRow(index)),
-        ),
-      ),
-  };
-});
+vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) =>
+  (await import('./listMock.js')).withListMock(importOriginal),
+);
 
 const inPane = (
   run: Parameters<typeof inSide>[1],
@@ -83,10 +62,7 @@ suite('Commander clicks on a side', () => {
     await inPane(async ({ main, point, selected }) => {
       point(tileNamed(main, 'docs'), 'pointerdown');
       assert.strictEqual(selected(), 'docs');
-      point(
-        tileNamed(main, 'app')?.querySelector('.commander-check') ?? null,
-        'pointerdown',
-      );
+      point(boxOf(tileNamed(main, 'app')), 'pointerdown');
       assert.strictEqual(selected(), 'docs');
     }, 'thumbnails');
   });
@@ -95,15 +71,11 @@ suite('Commander clicks on a side', () => {
     await inPane(async ({ main, click, posted, selected, marked }) => {
       const up = rowNamed(main, '..');
       assert.deepStrictEqual(
-        ['..', 'docs', 'app'].map((name) => {
-          const row = rowNamed(main, name);
-          return [row?.classList.contains('up'), boxOf(row)];
-        }),
         [
-          [true, null],
-          [false, null],
-          [false, null],
+          main.querySelector('.commander-row'),
+          main.querySelector('.commander-check'),
         ],
+        [null, null],
       );
 
       click(rowNamed(main, 'docs'), 1, onBox);
@@ -132,38 +104,22 @@ suite('Commander clicks on a side', () => {
   test('tells a row once the pointer is over its box and once it is past it or has left the row, so the box draws its edge in the color of the text under the pointer, as it did while it was an element of its own, and tells the parent folder nothing, which has no box', async () => {
     await inPane(async ({ main, point }) => {
       const docs = rowNamed(main, 'docs');
-      const told = () => docs?.hasAttribute(overCheckAttribute);
+      const told = () =>
+        main
+          .querySelector('.commander-pointed')
+          ?.hasAttribute(overCheckAttribute) === true;
       assert.strictEqual(told(), false);
       point(docs, 'pointermove', onBox);
       assert.strictEqual(told(), true);
       point(docs, 'pointermove', pastBox);
       assert.strictEqual(told(), false);
       point(docs, 'pointermove', onBox);
-      point(docs, 'pointerout', { relatedTarget: main });
+      point(docs, 'pointerleave');
       assert.strictEqual(told(), false);
 
-      const up = rowNamed(main, '..');
-      point(up, 'pointermove', onBox);
-      assert.strictEqual(up?.hasAttribute(overCheckAttribute), false);
+      point(rowNamed(main, '..'), 'pointermove', onBox);
+      assert.strictEqual(told(), false);
     });
-  });
-
-  test('draws the name of a thumbnail as the part of a path, as every name of the app is drawn, its base cut short before its extension', async () => {
-    await inPane(async ({ main }) => {
-      const part = tileNamed(main, 'notes')?.querySelector(
-        '.commander-tile-name > .path-part',
-      );
-      assert.deepStrictEqual(
-        [...(part?.children ?? [])].map((piece) => [
-          piece.className,
-          piece.textContent,
-        ]),
-        [
-          ['commander-tile-base', 'notes'],
-          ['commander-tile-extension', '.txt'],
-        ],
-      );
-    }, 'thumbnails');
   });
 
   test('marks a thumbnail on a click on its box and unmarks it on the next, leaving the selection where it was, the parent folder having no box', async () => {

@@ -2,7 +2,6 @@ import * as assert from 'node:assert';
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { Locator } from 'playwright-core';
 import { suite, test } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { waitForFocus } from './waits';
@@ -12,38 +11,28 @@ import {
   page,
   colorOf,
   hiding,
+  hidingLine,
   right,
   rowNames,
   icons,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { rowsShown } from './commanderRows';
+import {
+  clickLine,
+  hoverLine,
+  lineOf,
+  linesShown,
+  rowsShown,
+  selectedLine,
+} from './commanderRows';
 
-const rowOf = (name: string) =>
-  right().locator('.commander-row', { hasText: name });
+const markOf = () =>
+  right().locator('.commander-pointed .commander-mark .tool-git');
 
-const markOf = (name: string) =>
+const surroundOf = () =>
   right()
-    .locator('.commander-row', { hasText: name })
-    .locator('.commander-extension .commander-mark .tool-git');
-
-const clipsOf = (name: string) =>
-  right()
-    .locator('.commander-row', { hasText: name })
-    .evaluate((element) => ({
-      row: `${getComputedStyle(element).overflowX}${element.classList.contains('plain') ? ', one text' : ''}`,
-      ...Object.fromEntries(
-        ['name', 'extension', 'size', 'date'].map((cell) => {
-          const found = element.querySelector(`.commander-${cell}`);
-          return [
-            cell,
-            found === null
-              ? 'missing'
-              : `${getComputedStyle(found).overflowX}${found.scrollWidth > found.clientWidth ? ', too long' : ''}`,
-          ];
-        }),
-      ),
-    }));
+    .locator('.commander-pointed .commander-mark')
+    .evaluate((element) => getComputedStyle(element).boxShadow);
 
 suite('App commander', () => {
   sharedCommanderApp();
@@ -80,8 +69,13 @@ suite('App commander', () => {
         ),
       ) / 100;
     assert.ok(share > 0.3 && share < 0.8, String(share));
-    const dimmed = async (element: Locator) => {
-      const { before, after } = await hiding(element);
+    const dimmed = async (
+      looked: Promise<{
+        readonly before: { readonly color: number[]; readonly icon?: number };
+        readonly after: { readonly color: number[]; readonly icon?: number };
+      }>,
+    ) => {
+      const { before, after } = await looked;
       assert.ok(
         after.color
           .slice(0, 3)
@@ -98,22 +92,21 @@ suite('App commander', () => {
       return { before, after };
     };
 
-    const colored = await dimmed(rowOf('notes'));
-    const plain = await dimmed(rowOf('big'));
+    const colored = await dimmed(hidingLine('notes'));
+    const plain = await dimmed(hidingLine('big'));
     assert.notDeepStrictEqual(colored.before.color, plain.before.color);
     for (const { before, after } of [colored, plain]) {
       assert.strictEqual(before.icon, 1);
       assert.ok(Math.abs((after.icon ?? 0) - share) < 0.01, String(after.icon));
     }
-    await dimmed(right().locator('.path-title .path-part').first());
+    await dimmed(hiding(right().locator('.path-title .path-part').first()));
   });
 
   test('counts the size of a folder it marks on Space in the threads that count sizes, showing it in its Size column', async () => {
     const counted = path.join(opened, 'src', 'counted.bin');
     fs.writeFileSync(counted, Buffer.alloc(1000));
     try {
-      const source = right().locator('.commander-row', { hasText: 'src' });
-      await source.click();
+      await clickLine(page, right(), 'src');
       await page.keyboard.press(' ');
       await waitFor(
         async () =>
@@ -121,11 +114,10 @@ suite('App commander', () => {
             ?.size === '1,000',
         'the size of src',
       );
-      await source.click();
+      await clickLine(page, right(), 'src');
       await page.keyboard.press(' ');
       await waitFor(
-        async () =>
-          !((await source.getAttribute('class')) ?? '').includes('marked'),
+        async () => !(await lineOf(right(), 'src')).classes.includes('marked'),
         'src to be unmarked',
       );
     } finally {
@@ -158,29 +150,29 @@ suite('App commander', () => {
     const made = path.join(folder, 'made-repository');
     execFileSync('git', ['init', '--quiet', made]);
     fs.renameSync(made, path.join(opened, 'repo'));
-    await markOf('repo').waitFor();
-    assert.strictEqual(await markOf('src').count(), 0);
-    const repoRow = right().locator('.commander-row', { hasText: 'repo' });
-    const surroundOf = () =>
-      repoRow
-        .locator('.commander-mark')
-        .evaluate((element) => getComputedStyle(element).boxShadow);
-    await page.mouse.move(0, 0);
-    assert.strictEqual(await surroundOf(), 'none');
-    await repoRow.locator('.commander-mark').hover();
-    assert.strictEqual(
-      await colorOf(markOf('repo')),
-      await colorOf(repoRow.locator('.commander-name')),
+    await waitFor(
+      async () => (await lineOf(right(), 'repo')).gitLeft !== undefined,
+      'the git icon of the repository',
     );
-    assert.notStrictEqual(await surroundOf(), 'none');
-
+    assert.strictEqual((await lineOf(right(), 'src')).gitLeft, undefined);
+    await hoverLine(page, right(), 'repo');
+    assert.strictEqual(await surroundOf(), 'none');
+    const repo = await lineOf(right(), 'repo');
+    await hoverLine(page, right(), 'repo', {
+      x: (repo.gitLeft ?? 0) + repo.gitSize / 2,
+    });
+    await waitFor(
+      async () => (await surroundOf()) !== 'none',
+      'the git icon to be ringed under the pointer',
+    );
+    assert.strictEqual(await colorOf(markOf()), repo.ink);
     const gitTab = page.locator('.tabs .tab.active', { hasText: 'repo' });
     const backToCommander = async () => {
       await page.keyboard.press('ControlOrMeta+W');
       await gitTab.waitFor({ state: 'detached' });
       await page.locator('.tabs .tab.active:has(.tool-commander)').waitFor();
     };
-    await markOf('repo').click();
+    await markOf().click();
     await gitTab.locator('.tool-git').waitFor();
     await backToCommander();
 
@@ -206,40 +198,10 @@ suite('App commander', () => {
         const shown = await rowNames();
         return names.every((name) => shown.includes(`${name}.txt`));
       }, 'the files to be listed');
-      const drawn = await right()
-        .locator('.commander-row')
-        .evaluateAll((rows) =>
-          rows.flatMap((row) => {
-            const cell = row.querySelector('.commander-name');
-            const written =
-              cell?.firstChild ??
-              [...row.childNodes].find(
-                (node) => node.nodeType === Node.TEXT_NODE,
-              );
-            const whole = written?.textContent ?? '';
-            const tab = whole.indexOf(String.fromCharCode(9));
-            const text =
-              cell === null && tab !== -1 ? whole.slice(0, tab) : whole;
-            if (written === undefined || !text.includes('spaced')) {
-              return [];
-            }
-            const range = document.createRange();
-            range.setStart(written, 0);
-            range.setEnd(written, text.length);
-            return [[text, range.getBoundingClientRect().width] as const];
-          }),
-        );
-      const advance =
-        (drawn.find(([text]) => text === 'spaced one')?.[1] ?? 0) /
-        'spaced one'.length;
-      assert.deepStrictEqual(
-        drawn
-          .map(([text, width]) => [text, Math.round(width / advance)] as const)
-          .toSorted(([a], [b]) => a.localeCompare(b)),
-        names
-          .map((name) => [name, name.length] as const)
-          .toSorted(([a], [b]) => a.localeCompare(b)),
-      );
+      const drawn = (await linesShown(right()))
+        .map((line) => line.drawn)
+        .filter((text) => text.includes('spaced'));
+      assert.deepStrictEqual(drawn.toSorted(), names.toSorted());
     } finally {
       for (const name of names) {
         fs.rmSync(path.join(opened, `${name}.txt`));
@@ -258,18 +220,10 @@ suite('App commander', () => {
     );
     fs.writeFileSync(file, '');
     try {
-      const cell = right()
-        .locator('.commander-row', { hasText: 'installer' })
-        .locator('.commander-extension');
-      await cell.waitFor();
-      assert.deepStrictEqual(
-        await cell.evaluate((element) => ({
-          clipped: element.scrollWidth > element.clientWidth,
-          ellipsis:
-            getComputedStyle(element).textOverflow === 'ellipsis' &&
-            getComputedStyle(element).display === 'block',
-        })),
-        { clipped: true, ellipsis: true },
+      await waitFor(
+        async () =>
+          (await lineOf(right(), 'installer')).cut.includes('extension'),
+        'the extension cut short',
       );
     } finally {
       fs.rmSync(file);
@@ -277,34 +231,6 @@ suite('App commander', () => {
     await waitFor(
       async () =>
         !(await rowNames()).some((name) => name.includes('installer')),
-      'the file to be gone from the list',
-    );
-  });
-
-  test('clips a row only where its text may not fit: nothing of a row drawn as one text, which is drawn so only while it fits, and of a row drawn with cells the name, which takes the room left, but not an extension, a size or a date that fits its column, as a clip for every cell of every row had each frame of a scroll paint a thousand of them', async () => {
-    const celled = path.join(opened, 'cellé.txt');
-    fs.writeFileSync(celled, '');
-    try {
-      await right().locator('.commander-row', { hasText: 'cellé' }).waitFor();
-      assert.deepStrictEqual(await clipsOf('notes'), {
-        row: 'visible, one text',
-        name: 'missing',
-        extension: 'missing',
-        size: 'missing',
-        date: 'missing',
-      });
-      assert.deepStrictEqual(await clipsOf('cellé'), {
-        row: 'clip',
-        name: 'hidden',
-        extension: 'visible',
-        size: 'visible',
-        date: 'visible',
-      });
-    } finally {
-      fs.rmSync(celled);
-    }
-    await waitFor(
-      async () => !(await rowNames()).includes('cellé.txt'),
       'the file to be gone from the list',
     );
   });
@@ -318,23 +244,13 @@ suite('App commander', () => {
       async () => (await rowNames()).includes('seam4.txt'),
       'the files to be listed',
     );
-    const gaps = await right()
-      .locator('.virtual-row')
-      .evaluateAll((rows) =>
-        rows
-          .map((row) => row.getBoundingClientRect())
-          .toSorted((one, other) => one.top - other.top)
-          .slice(1)
-          .map((box, index, boxes) => {
-            const above =
-              index === 0
-                ? rows
-                    .map((row) => row.getBoundingClientRect())
-                    .toSorted((one, other) => one.top - other.top)[0]
-                : boxes[index - 1];
-            return above === undefined ? 0 : box.top - above.bottom;
-          }),
-      );
+    const lines = (await linesShown(right())).toSorted(
+      (one, other) => one.top - other.top,
+    );
+    const gaps = lines.slice(1).map((line, index) => {
+      const above = lines[index];
+      return above === undefined ? 0 : line.top - (above.top + above.height);
+    });
     assert.ok(gaps.length > 2);
     assert.ok(
       gaps.every((gap) => Math.abs(gap) < 0.01),
@@ -351,22 +267,27 @@ suite('App commander', () => {
 
   test('marks the selected row of the active side only', async () => {
     const left = page.locator('.commander-pane').nth(0);
-    const transparent = 'rgba(0, 0, 0, 0)';
     const backgrounds = () =>
       Promise.all(
-        [left, right()].map((pane) =>
-          pane
-            .locator('.commander-row.selected')
-            .evaluate((row) => getComputedStyle(row).backgroundColor),
-        ),
+        [left, right()].map(async (pane) => {
+          const lines = await linesShown(pane);
+          const plain = lines.find(
+            (line) =>
+              !line.classes.includes('selected') &&
+              !line.classes.includes('marked'),
+          );
+          return [(await selectedLine(pane))?.ground, plain?.ground] as const;
+        }),
       );
     const marked = async (expected: readonly [boolean, boolean]) => {
       let seen: string[] = [];
       try {
         await waitFor(async () => {
-          seen = await backgrounds();
-          return seen.every(
-            (color, index) => (color !== transparent) === expected[index],
+          const shown = await backgrounds();
+          seen = shown.map(([selected, plain]) => `${selected} over ${plain}`);
+          return shown.every(
+            ([selected, plain], index) =>
+              (selected !== plain) === expected[index],
           );
         }, 'the selected rows');
       } catch {
@@ -386,17 +307,12 @@ suite('App commander', () => {
   });
 
   test('draws rows as the diff draws lines, in the monospace font and its line height', async () => {
-    const row = await right()
-      .locator('.commander-row')
-      .first()
-      .evaluate((element) => {
-        const style = getComputedStyle(element);
-        return {
-          family: style.fontFamily,
-          height: element.getBoundingClientRect().height,
-          lineHeight: style.lineHeight,
-        };
-      });
+    const [line] = await linesShown(right());
+    assert.ok(line);
+    const lineHeight = await right()
+      .locator('.commander-ruler')
+      .evaluate((element) => getComputedStyle(element).lineHeight);
+    const row = { family: line.family, height: line.height, lineHeight };
     assert.match(row.family, /JetBrains Mono/);
     assert.ok(
       Math.abs(row.height - parseFloat(row.lineHeight)) < 0.01,

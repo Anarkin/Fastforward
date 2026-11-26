@@ -7,6 +7,8 @@ import { manyFolder, tableFile } from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { barOf, barParts } from '../e2e/scrollbarsShown';
 import { dragged, sleep } from './perfInput';
+import { linesCount } from '../e2e/commanderRows';
+import { waitFor } from '../helpers/fixtures';
 
 const views = [
   {
@@ -83,12 +85,11 @@ for (const smooth of [true, false]) {
         settings: { scrolling: { smooth }, text: { wordWrap: false } },
       },
       (page) =>
-        page
-          .locator('.commander-pane')
-          .nth(1)
-          .locator('.commander-row')
-          .nth(5)
-          .waitFor(),
+        waitFor(
+          async () =>
+            (await linesCount(page.locator('.commander-pane').nth(1))) > 5,
+          'the rows of the side',
+        ),
     );
     const mode = `smooth ${smooth ? 'on' : 'off'}`;
 

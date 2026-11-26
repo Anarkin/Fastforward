@@ -14,8 +14,13 @@ export const shownState = () =>
             ? (host.seenRows?.() ?? []).slice(0, 6).map(({ text }) => text)
             : [],
       ),
-      selected: [...document.querySelectorAll('.commander-row.selected')].map(
-        (row) => row.textContent,
+      selected: [...document.querySelectorAll('.commander-layer')].flatMap(
+        (layer) =>
+          layer instanceof HTMLElement
+            ? (layer.seenLines?.() ?? [])
+                .filter((line) => line.classes.includes('selected'))
+                .map((line) => line.key)
+            : [],
       ),
       focused: document.activeElement?.className ?? null,
     });

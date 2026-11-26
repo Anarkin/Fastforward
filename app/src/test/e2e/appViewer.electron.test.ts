@@ -16,6 +16,7 @@ import {
 } from './commanderAppFixtures';
 import { cellPoint, seenSelected, viewerRows, viewerShows } from './cellsSeen';
 import { firstViewerRow, rowTexts } from './viewerAppFixtures';
+import { selectedText } from './commanderRows';
 
 const firstRowText = () => rowTexts().then((texts) => texts[0]);
 
@@ -144,16 +145,10 @@ suite('App commander', () => {
         .count(),
       0,
     );
-    assert.match(
-      (await right().locator('.commander-row.selected').textContent()) ?? '',
-      /^notes/,
-    );
+    assert.match(await selectedText(right()), /^notes/);
     await page.keyboard.press('ArrowUp');
     await waitFor(
-      async () =>
-        !(
-          (await right().locator('.commander-row.selected').textContent()) ?? ''
-        ).startsWith('notes'),
+      async () => !(await selectedText(right())).startsWith('notes'),
       'the keys to move the selection again',
     );
   });

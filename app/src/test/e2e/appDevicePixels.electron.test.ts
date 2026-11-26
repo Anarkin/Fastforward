@@ -12,6 +12,7 @@ import { waitForFocus } from './waits';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { commitRow } from './commitRows';
+import { clickLine } from './commanderRows';
 
 function thinLinesOffPixels(): string[] {
   const ratio = devicePixelRatio;
@@ -177,7 +178,7 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
   await page.locator('.card.tip').waitFor({ state: 'detached' });
   await page.locator('.tabs [role="tab"]').nth(1).click();
   const right = page.locator('.commander-pane').nth(1);
-  await right.locator('.commander-row', { hasText: 'changed' }).click();
+  await clickLine(page, right, 'changed');
   await look('commander');
   await page.keyboard.press('F7');
   await page.locator('.prompt-input').waitFor();

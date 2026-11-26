@@ -20,6 +20,7 @@ import { waitFor } from '../helpers/fixtures';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { commitRow } from './commitRows';
+import { clickLine, lineOf } from './commanderRows';
 
 const syntaxWorkers = (page: Page) =>
   page.workers().filter((worker) => worker.url().endsWith('/syntaxWorker.js'))
@@ -45,11 +46,9 @@ suite('App with a git tab behind a commander tab', () => {
       );
       const app = await launchApp(profile);
       const page = await app.firstWindow();
-      const notes = page
-        .locator('.commander-pane')
-        .nth(1)
-        .locator('.commander-row', { hasText: 'notes' });
-      await notes.waitFor();
+      const side = page.locator('.commander-pane').nth(1);
+      await lineOf(side, 'notes');
+      const notes = { click: () => clickLine(page, side, 'notes') };
       assert.strictEqual(syntaxWorkers(page), 0);
       return { app, page, notes };
     };
@@ -293,12 +292,9 @@ suite('App without git', () => {
       await page.keyboard.press('Enter');
       await popup.waitFor({ state: 'detached' });
       const right = page.locator('.commander-pane').nth(1);
-      await right.locator('.commander-row', { hasText: 'notes' }).click();
+      await clickLine(page, right, 'notes');
       await page.keyboard.press('Backspace');
-      const repositoryRow = right.locator('.commander-row', {
-        hasText: 'repository',
-      });
-      await repositoryRow.click({ button: 'right' });
+      await clickLine(page, right, 'repository', { button: 'right' });
       const menu = page.locator('.context-menu');
       await menu.waitFor();
       const items = await menu
@@ -316,8 +312,8 @@ suite('App without git', () => {
         [],
       );
       assert.strictEqual(
-        await repositoryRow.locator('.commander-mark').count(),
-        0,
+        (await lineOf(right, 'repository')).gitLeft,
+        undefined,
       );
       await waitFor(
         () =>

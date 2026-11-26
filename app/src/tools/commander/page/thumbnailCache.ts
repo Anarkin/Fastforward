@@ -28,7 +28,7 @@ interface Held {
   release(): void;
 }
 
-export const keyOf = (url: string, box: number, pixelRatio: number) =>
+const keyOf = (url: string, box: number, pixelRatio: number) =>
   `${box} ${pixelRatio} ${url}`;
 
 export class ThumbnailCache {

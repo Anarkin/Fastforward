@@ -5,6 +5,7 @@ import { manyFolder } from './perfData';
 import { launchedForPerf, measure, perfData } from './perfFixtures';
 import { paced } from './perfInput';
 import { commitsDrawn } from '../e2e/commitRows';
+import { lineOf } from '../e2e/commanderRows';
 
 suite('Frames of the window and its tabs', () => {
   const { repository, files } = perfData();
@@ -26,10 +27,7 @@ suite('Frames of the window and its tabs', () => {
   test('switching between a git and a commander tab with Ctrl+Tab', async () => {
     const { page } = perf();
     await page.locator('.tabs [role="tab"]').nth(1).click();
-    await page
-      .locator('.commander-row', { hasText: manyFolder })
-      .first()
-      .waitFor();
+    await lineOf(page.locator('.commander-pane').nth(1), manyFolder);
     await page.locator('.tabs [role="tab"]').nth(0).click();
     await commitsDrawn(page);
     const result = await measure(perf(), 'tabs: switch with Ctrl+Tab', () =>

@@ -6,6 +6,7 @@ import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { viewerShows } from './cellsSeen';
 import { storedZip } from '../helpers/zips';
+import { clickLine } from './commanderRows';
 import {
   opened,
   page,
@@ -28,9 +29,7 @@ suite('App commander', () => {
         ['top.txt', 'the top of the zip'],
       ]),
     );
-    const zipRow = right().locator('.commander-row', { hasText: 'packed' });
-    await zipRow.waitFor();
-    await zipRow.click({ button: 'right' });
+    await clickLine(page, right(), 'packed', { button: 'right' });
     await page
       .locator('.context-menu .menu-item', {
         hasText: strings.commander.openWithSevenZip,

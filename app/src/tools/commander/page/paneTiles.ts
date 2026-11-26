@@ -94,8 +94,12 @@ export function useTiles(
   }, [body, tileWidth]);
   const across = fitting ?? 1;
   const tiled = layout === 'thumbnails';
+  const ruler = () =>
+    body.current?.parentElement?.querySelector(
+      '.commander-tile.commander-ruler',
+    );
   const tileTextRow = () =>
-    body.current?.querySelector('.commander-tile-name')?.getBoundingClientRect()
+    ruler()?.querySelector('.commander-tile-name')?.getBoundingClientRect()
       .height || estimatedRowHeight;
   const shownList = tiled
     ? fitting !== undefined
@@ -110,9 +114,7 @@ export function useTiles(
   const fillTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => () => clearTimeout(fillTimer.current), []);
   const fillAt = (offset: number) => {
-    const height =
-      body.current?.querySelector('.virtual-row')?.getBoundingClientRect()
-        .height ?? 0;
+    const height = ruler()?.getBoundingClientRect().height ?? 0;
     if (offset === 0 || height > 0) {
       setFill({
         key: scrollKey,

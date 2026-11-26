@@ -20,6 +20,7 @@ import {
   textOnClipboard,
 } from './commanderAppFixtures';
 import { rounded } from './rounding';
+import { clickLine } from './commanderRows';
 
 const focusIn = (selector: string) =>
   page.evaluate(
@@ -352,11 +353,9 @@ suite('App commander', () => {
         postMessage(shown(), 0x100, 0x1b, 0);
         await waitFor(() => shown() === null, closing);
       };
-      const menuRow = right().locator('.commander-row', {
-        hasText: /^menu\s*txt/,
-      });
+      const menuRow = /^menu\s*txt/;
       try {
-        await menuRow.click({ button: 'right' });
+        await clickLine(page, right(), menuRow, { button: 'right' });
         await appMenu.waitFor();
         assert.match(await selected(), /menu/);
         assert.deepStrictEqual(await appMenuItems(), [
@@ -380,10 +379,7 @@ suite('App commander', () => {
         await choosing;
         await appMenu.waitFor({ state: 'detached' });
 
-        await right()
-          .locator('.commander-row')
-          .first()
-          .click({ button: 'right' });
+        await clickLine(page, right(), /^/, { button: 'right' });
         await appMenu.waitFor();
         assert.strictEqual(
           (await appMenuItems()).at(0),
@@ -392,7 +388,7 @@ suite('App commander', () => {
         await page.keyboard.press('Escape');
         await appMenu.waitFor({ state: 'detached' });
 
-        const clicking = menuRow.click({
+        const clicking = clickLine(page, right(), menuRow, {
           button: 'right',
           modifiers: ['Shift'],
         });

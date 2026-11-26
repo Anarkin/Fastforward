@@ -4,7 +4,13 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
-import { fileName, rowsShown } from './commanderRows';
+import {
+  clickLine,
+  fileName,
+  linesShown,
+  rowsShown,
+  selectedLine,
+} from './commanderRows';
 import {
   opened,
   page,
@@ -31,15 +37,7 @@ const twins = {
 
 const rowNames = async () => (await rowsShown(right())).map(fileName);
 
-const selectedName = async () => {
-  const names = await rowNames();
-  const at = await right()
-    .locator('.commander-row')
-    .evaluateAll((rows) =>
-      rows.findIndex((row) => row.classList.contains('selected')),
-    );
-  return names[at];
-};
+const selectedName = async () => (await selectedLine(right()))?.key;
 
 const madeFolder = async (name: string) => {
   const made = path.join(opened, name);
@@ -165,15 +163,20 @@ suite(
       });
 
       for (const name of ['default.bar', 'wincmd.ini']) {
-        const at = (await rowNames()).indexOf(name);
-        await right()
-          .locator('.commander-row')
-          .nth(at)
-          .click({ modifiers: ['ControlOrMeta'] });
+        await clickLine(
+          page,
+          right(),
+          { key: name },
+          {
+            modifiers: ['ControlOrMeta'],
+          },
+        );
       }
       await waitFor(
         async () =>
-          (await right().locator('.commander-row.marked').count()) === 2,
+          (await linesShown(right())).filter((line) =>
+            line.classes.includes('marked'),
+          ).length === 2,
         'two files to be marked',
       );
       await select('default.br2');
@@ -216,11 +219,14 @@ suite(
       assert.deepStrictEqual(await contentsOf(folder), left);
 
       for (const name of ['wcx_ftp.ini', 'wincmd.key']) {
-        const at = (await rowNames()).indexOf(name);
-        await right()
-          .locator('.commander-row')
-          .nth(at)
-          .click({ modifiers: ['ControlOrMeta'] });
+        await clickLine(
+          page,
+          right(),
+          { key: name },
+          {
+            modifiers: ['ControlOrMeta'],
+          },
+        );
       }
       await select('wincmd.ini');
       await page.keyboard.press('Shift+Delete');

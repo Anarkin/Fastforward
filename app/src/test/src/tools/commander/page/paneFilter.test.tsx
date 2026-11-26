@@ -5,37 +5,9 @@ import { Pane } from '../../../../../tools/commander/page/pane';
 import { inSide } from './paneFixtures';
 import { clicked, typed } from '../../../../helpers/mounted';
 
-vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
-  const { createElement, Fragment } = await import('react');
-  return {
-    ...(await importOriginal<
-      typeof import('../../../../../lib/page/virtualRows')
-    >()),
-    VirtualRows: ({
-      rows,
-      renderRow,
-      onKeyDown,
-    }: {
-      rows: { readonly count: number };
-      renderRow: (index: number) => React.ReactNode;
-      onKeyDown?: (
-        event: React.KeyboardEvent,
-        visible: { readonly first: number; readonly last: number },
-      ) => void;
-    }) =>
-      createElement(
-        'div',
-        {
-          tabIndex: 0,
-          onKeyDown: (event: React.KeyboardEvent) =>
-            onKeyDown?.(event, { first: 0, last: rows.count - 1 }),
-        },
-        Array.from({ length: rows.count }, (_, index) =>
-          createElement(Fragment, { key: index }, renderRow(index)),
-        ),
-      ),
-  };
-});
+vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) =>
+  (await import('./listMock.js')).withListMock(importOriginal),
+);
 
 suite('The filter of a side', () => {
   test('floats the filter over the list once Alt and a letter start it, filtering with the search bar, counting the selected item of those kept, stepping among them around and around, and narrowing by its toggles', async () => {

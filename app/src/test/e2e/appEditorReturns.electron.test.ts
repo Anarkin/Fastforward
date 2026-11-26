@@ -7,6 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { editorLinesSeen, editorRowPoint } from './editorSeen';
+import { linesShown } from './commanderRows';
 import {
   comesBackFromEach,
   scrolledAround,
@@ -233,11 +234,10 @@ suite('App editor tabs shown again', () => {
     const left = await settledLooks(page);
     await showTab(page, commanderTab);
     await settledLooks(page);
-    const listed = () =>
-      page
-        .locator('.commander-pane .commander-line', { hasText: 'other' })
-        .first()
-        .textContent();
+    const listed = async () =>
+      (await linesShown(page.locator('.commander-pane').nth(1))).find(
+        (line) => line.name === 'other',
+      )?.size;
     const before = await listed();
     fs.appendFileSync(
       path.join(folder, 'opened', 'other.txt'),

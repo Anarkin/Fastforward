@@ -15,6 +15,7 @@ import {
   savedBookmarks,
   sharedCommanderApp,
 } from './commanderAppFixtures';
+import { clickLine, hoverLine, selectedText } from './commanderRows';
 
 const folderShown = async () =>
   (await right().locator('.column-name').textContent()) ?? '';
@@ -41,7 +42,7 @@ suite('App commander', () => {
   sharedCommanderApp();
 
   test('opens a folder with Enter and goes back up with Backspace, selecting the folder it came from', async () => {
-    await right().locator('.commander-row', { hasText: 'src' }).click();
+    await clickLine(page, right(), 'src');
     await page.keyboard.press('Enter');
     await waitFor(
       async () => (await rowNames()).join() === '..,main.ts',
@@ -49,21 +50,18 @@ suite('App commander', () => {
     );
     await page.keyboard.press('Backspace');
     await waitFor(
-      async () =>
-        (
-          await right().locator('.commander-row.selected').textContent()
-        )?.includes('src') === true,
+      async () => (await selectedText(right())).includes('src'),
       'src to be selected again',
     );
   });
 
   test('opens a folder with a double click, and one with a double click right after, which Chromium counts on from 3', async () => {
-    await right().locator('.commander-row', { hasText: 'src' }).dblclick();
+    await clickLine(page, right(), 'src', { clickCount: 2 });
     await waitFor(
       async () => (await rowNames()).join() === '..,main.ts',
       'the listing of src',
     );
-    await right().locator('.commander-row', { hasText: '..' }).hover();
+    await hoverLine(page, right(), '..');
     await page.mouse.down({ clickCount: 3 });
     await page.mouse.up({ clickCount: 3 });
     await page.mouse.down({ clickCount: 3 });
@@ -125,12 +123,9 @@ suite('App commander', () => {
       fs.chmodSync(locked, 0o000);
     }
     try {
-      await right().locator('.commander-row', { hasText: 'locked' }).click();
+      await clickLine(page, right(), 'locked');
       await waitFor(
-        async () =>
-          (
-            await right().locator('.commander-row.selected').textContent()
-          )?.includes('locked') === true,
+        async () => (await selectedText(right())).includes('locked'),
         'the locked folder to be selected',
       );
       await page.keyboard.press('Enter');
@@ -219,10 +214,7 @@ suite('App commander', () => {
       'the folder of the file to open',
     );
     await waitFor(
-      async () =>
-        (
-          await right().locator('.commander-row.selected').textContent()
-        )?.includes('notes') === true,
+      async () => (await selectedText(right())).includes('notes'),
       'the file to be selected',
     );
   });

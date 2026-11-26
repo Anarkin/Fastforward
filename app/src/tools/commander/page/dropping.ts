@@ -25,12 +25,10 @@ export function dropTargetOf(
     : `${folder}${separator}${into}`;
 }
 
-function dropIntoOf(target: EventTarget | null): string | null {
-  const row = target instanceof Element ? target.closest('[data-drop]') : null;
-  return row?.getAttribute('data-drop') ?? null;
-}
-
-export function useFileDrop(side: Side) {
+export function useFileDrop(
+  side: Side,
+  keyAt: (event: React.DragEvent) => string | null,
+) {
   const inArchive = useCommander(
     (state) => state.view.panes[side]?.archive !== undefined,
   );
@@ -45,7 +43,7 @@ export function useFileDrop(side: Side) {
     }
     event.preventDefault();
     event.dataTransfer.dropEffect = 'copy';
-    const into = dropIntoOf(event.target);
+    const into = keyAt(event);
     if (into !== dropInto) {
       setDropInto(into);
     }
@@ -69,7 +67,7 @@ export function useFileDrop(side: Side) {
     if (first === undefined || folder === undefined) {
       return;
     }
-    const into = dropIntoOf(event.target) ?? undefined;
+    const into = keyAt(event) ?? undefined;
     const what = whatOf(dropped.length, first.name);
     const target = dropTargetOf(folder, into, platform);
     showMenu({

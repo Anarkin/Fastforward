@@ -22,7 +22,15 @@ import { noop } from '../../../../helpers/fixtures';
 import {
   checkSize,
   checkStart,
+  tileCheckSize,
+  tileCheckStart,
 } from '../../../../../tools/commander/page/lineCheck';
+import { fixtureLine } from './listMock';
+import { shownRowsOf } from '../../../../../tools/commander/page/shownRows';
+import {
+  tileColumns,
+  tileWidthOf,
+} from '../../../../../tools/commander/page/tiles';
 
 interface Place {
   readonly clientX?: number;
@@ -123,6 +131,44 @@ export function workPane(): PaneView {
   };
 }
 
+const shown: { keys: readonly string[]; across: number; width: number } = {
+  keys: [],
+  across: 1,
+  width: 1,
+};
+
+function aimed(target: Element, at: Place): [Element, Place] {
+  const line = target.getAttribute('data-line');
+  const tile = target.getAttribute('data-tile');
+  const list = target.closest('[data-list]');
+  if (tile !== null && list !== null) {
+    const index = Number(tile);
+    const boxed = target.hasAttribute('data-box');
+    return [
+      list,
+      {
+        ...at,
+        clientX:
+          (index % shown.across) * shown.width +
+          (at.clientX ?? (boxed ? tileCheckStart + tileCheckSize / 2 : 40)),
+        clientY:
+          Math.floor(index / shown.across) * fixtureLine +
+          (at.clientY ?? (boxed ? tileCheckStart + tileCheckSize / 2 : 2)),
+      },
+    ];
+  }
+  return line === null || list === null
+    ? [target, at]
+    : [
+        list,
+        {
+          ...at,
+          clientX: at.clientX ?? 100,
+          clientY: Number(line) * fixtureLine + (at.clientY ?? fixtureLine / 2),
+        },
+      ];
+}
+
 export async function inSide(
   element: React.ReactNode,
   run: (shown: {
@@ -158,6 +204,10 @@ export async function inSide(
     Node: dom.window.Node,
     matchMedia: dom.window.matchMedia,
     devicePixelRatio: 1,
+    requestAnimationFrame: (step: (time: number) => void) =>
+      setTimeout(() => step(performance.now()), 0),
+    cancelAnimationFrame: (frame: ReturnType<typeof setTimeout>) =>
+      clearTimeout(frame),
     ResizeObserver: class {
       observe(): void {}
       unobserve(): void {}
@@ -172,6 +222,16 @@ export async function inSide(
   Object.defineProperty(dom.window.HTMLElement.prototype, 'clientWidth', {
     get: () => 800,
   });
+  Object.defineProperty(dom.window.HTMLElement.prototype, 'clientHeight', {
+    get: () => 600,
+  });
+  dom.window.HTMLElement.prototype.getBoundingClientRect = function (
+    this: HTMLElement,
+  ) {
+    return this.classList.contains('commander-ruler')
+      ? new dom.window.DOMRect(0, 0, 800, fixtureLine)
+      : new dom.window.DOMRect(0, 0, 0, 0);
+  };
   try {
     const { createRoot } = await import('react-dom/client');
     const main = dom.window.document.querySelector('main');
@@ -195,6 +255,10 @@ export async function inSide(
     await act(async () => {
       root.render(withStores(element, { shell, commander }));
     });
+    const state = commander.getState();
+    shown.keys = shownRowsOf(state, 'left').rows.map((row) => row.key);
+    shown.width = tileWidthOf(state.view.thumbnailSize);
+    shown.across = tileColumns(800, shown.width);
     const items = () =>
       (shell.getState().menu?.menu.items ?? []).flatMap((item) =>
         'separator' in item || item.disabled === true ? [] : [item],
@@ -203,24 +267,27 @@ export async function inSide(
       main,
       rightClick: (target, shift = false) => {
         assert.ok(target);
+        const [into, at] = target.hasAttribute('data-line')
+          ? aimed(target, { clientX: 10 })
+          : [target, { clientX: 10, clientY: 20 }];
         act(() => {
-          target.dispatchEvent(
+          into.dispatchEvent(
             new dom.window.MouseEvent('contextmenu', {
               bubbles: true,
               cancelable: true,
               button: 2,
-              clientX: 10,
-              clientY: 20,
+              ...at,
               shiftKey: shift,
             }),
           );
         });
       },
-      click: (target, count, at = {}) => {
+      click: (target, count, place = {}) => {
         assert.ok(target);
+        const [into, at] = aimed(target, place);
         act(() => {
           for (const type of count === 2 ? ['click', 'dblclick'] : ['click']) {
-            target.dispatchEvent(
+            into.dispatchEvent(
               new dom.window.MouseEvent(type, {
                 bubbles: true,
                 cancelable: true,
@@ -231,10 +298,11 @@ export async function inSide(
           }
         });
       },
-      point: (target, type, at = {}) => {
+      point: (target, type, place = {}) => {
         assert.ok(target);
+        const [into, at] = aimed(target, place);
         act(() => {
-          target.dispatchEvent(
+          into.dispatchEvent(
             new dom.window.MouseEvent(type, {
               bubbles: true,
               cancelable: true,
@@ -268,21 +336,37 @@ export async function inSide(
 }
 
 export const rowNamed = (main: HTMLElement, name: string) =>
-  [...main.querySelectorAll('.commander-row')].find(
-    (row) => row.querySelector('.commander-name')?.textContent === name,
-  ) ?? null;
+  [...main.querySelectorAll('[data-line]')].find((line) => {
+    const key = line.getAttribute('data-key') ?? '';
+    return key === name || key.startsWith(`${name}.`);
+  }) ?? null;
 
-export const tileNamed = (main: HTMLElement, name: string) =>
-  [...main.querySelectorAll('.commander-tile')].find(
-    (tile) => tile.querySelector('.commander-tile-base')?.textContent === name,
-  ) ?? null;
-
-export const boxOf = (item: Element | null) =>
-  item?.querySelector('.commander-check') ?? null;
-
-export const onBox: Place = {
-  clientX: checkStart + checkSize / 2,
-  clientY: 0,
+const tileMarkerIn = (list: Element | null, index: number, box: boolean) => {
+  const marker = (list?.ownerDocument ?? document).createElement('span');
+  marker.setAttribute('data-tile', String(index));
+  marker.toggleAttribute('data-box', box);
+  list?.append(marker);
+  return marker;
 };
 
-export const pastBox: Place = { clientX: checkStart + checkSize, clientY: 0 };
+export const tileNamed = (main: HTMLElement, name: string) => {
+  const index = shown.keys.findIndex(
+    (key) => key === name || key.startsWith(`${name}.`),
+  );
+  return index === -1
+    ? null
+    : tileMarkerIn(main.querySelector('[data-list]'), index, false);
+};
+
+export const boxOf = (item: Element | null) => {
+  const tile = item?.getAttribute('data-tile');
+  return item === null || tile === null || tile === undefined
+    ? null
+    : shown.keys[Number(tile)] === '..'
+      ? null
+      : tileMarkerIn(item.parentElement, Number(tile), true);
+};
+
+export const onBox: Place = { clientX: checkStart + checkSize / 2 };
+
+export const pastBox: Place = { clientX: checkStart + checkSize };

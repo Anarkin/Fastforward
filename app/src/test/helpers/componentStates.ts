@@ -111,18 +111,24 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a trigger: counts the asks to focus the filter box; the focus of the tab is kept apart in view.focus',
   'tools/commander/page/pane.tsx pairsClick':
     'made once: a function made once that pairs the two clicks of a double click on one row',
-  'tools/commander/page/paneCells.tsx asked':
-    'a moment: true once the list has rested long enough for the system icon to be asked for, at once when its ticket came before',
-  'tools/commander/page/paneCells.tsx failed':
-    'a measure: the url of an icon that failed to load, tried again once remounted',
-  'tools/commander/page/paneCells.tsx shown':
-    'a measure: true once the system icon has loaded, at once when its ticket came before',
-  'tools/commander/page/paneCells.tsx ticket':
-    'made once: the ticket of a system icon, taken once from the icon tickets of the store',
-  'tools/commander/page/paneRows.tsx settled':
-    'a measure: the address of the system icon a row has seen come or fail, and which of the two, so the row draws its generic icon behind no other; told again from the icon tickets of the store once the row shows another file',
-  'tools/commander/page/nameRoom.ts room':
-    'a measure: the characters a name has room for in a row of a side, measured from its rows as the side is laid out and resized, and kept for the side while the page lives',
+  'tools/commander/page/pane.tsx line':
+    'a measure: the height of a row of the details, read from the ruler of the side as it is laid out and resized',
+  'tools/commander/page/pane.tsx sight':
+    'made once: what the canvas of a side and the element under the pointer share, the row pointed at and where its controls stand, made once for the side',
+  'tools/commander/page/pane.tsx lineLooks':
+    'made once: the look of each line drawn, kept while its row, its state and the settings are as they were, so a frame reads no date or filter of a line anew',
+  'tools/commander/page/pane.tsx tileLooks':
+    'made once: the look of each tile drawn, kept while its row, its state and the settings are as they were',
+  'tools/commander/page/pane.tsx tileThumbnails':
+    'made once: the thumbnails the tiles of a side show, held while their tiles are in sight and let go once they leave it',
+  'tools/commander/page/pane.tsx icons':
+    'made once: the icons of the files a side draws, asked for once the list rests and kept while the side lives',
+  'tools/commander/page/paneCanvas.tsx scale':
+    'a measure: the device pixels of a CSS pixel, followed as the window moves between screens',
+  'tools/commander/page/panePointer.tsx shown':
+    'a moment: the row under the pointer, which the element over it stands on, found anew as the pointer moves',
+  'tools/commander/page/paneImages.ts cache':
+    'made once: the generic icons and the git mark the canvas of a side draws, decoded once and kept while the side lives',
   'tools/commander/page/paneTiles.ts fill':
     'a measure: where thumbnails fill from, set as the list scrolls and asked anew once shown again',
   'tools/commander/page/paneTiles.ts fitting':
@@ -149,12 +155,6 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the rows of the last screen, asked anew of the main process once mounted',
   'tools/viewer/page/textSideways.ts wide':
     'a measure: the widest line seen, grown anew from the rows and the whole text kept once mounted',
-  'tools/commander/page/thumbnails.tsx failed':
-    'a measure: the url of a vector thumbnail that failed to load, tried again once remounted',
-  'tools/commander/page/thumbnails.tsx inView':
-    'a measure: whether a thumbnail is in view, observed anew by an intersection observer once mounted',
-  'tools/commander/page/thumbnails.tsx shown':
-    'a measure: the thumbnail drawn, peeked from the thumbnail cache of the page as mounted',
   'tools/commander/page/tool.tsx store':
     'made once: the commander store, made once for the page; it keeps what each commander tab shows through tab changes',
   'tools/diff/page/tool.tsx store':

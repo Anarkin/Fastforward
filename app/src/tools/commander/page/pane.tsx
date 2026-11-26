@@ -1,6 +1,7 @@
 import { tip } from '../../../lib/page/tips';
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -28,14 +29,27 @@ import { useCommander, useCommanderActions } from './store';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import { useFileDrop } from './dropping';
 import { ShieldIcon } from '../../../lib/page/icons';
-import { VirtualRows } from '../../../lib/page/virtualRows';
+import { VirtualRows, type RowsDrawn } from '../../../lib/page/virtualRows';
 import { strings } from '../../../lib/shared/strings';
 import { PathTitle } from '../../../lib/page/pathTitle';
 import { menuOfClick, paneKey, type PaneAct } from './paneKeys';
 import { actOnPane } from './paneActs';
 import { useTiles } from './paneTiles';
-import { PaneLine, PaneTile, type PaneLook } from './paneRows';
-import { useNameRoom } from './nameRoom';
+import { iconSourceOf, type PaneItemProps, type PaneLook } from './paneItem';
+import { PaneCanvas } from './paneCanvas';
+import { PanePointer } from './panePointer';
+import { LineSight } from './lineSight';
+import { PaneIcons, pageIconLoads } from './paneIcons';
+import { lineLookOf, type LineLook, type LineState } from './lineLooks';
+import { RowLooks } from './rowLooks';
+import { lineBoxOf, locatedLine, locatedTile } from './linePlaces';
+import { tileLookOf, type TileLook } from './tileLooks';
+import { tileThumbnailUrl } from './paneTiles';
+import { TileThumbnails } from './tileThumbnails';
+import { thumbnails as thumbnailCache } from './thumbnailCache';
+import { tileWidthOf } from './tiles';
+import { tileCheckSize, tileCheckStart } from './lineCheck';
+import { PathLooksContext } from '../../../lib/page/pathLooks';
 import { PaneStatus } from './paneStatus';
 import { goesOn } from './sideStatus';
 import { folderLooks } from './headerLooks';
@@ -49,6 +63,8 @@ declare module 'react' {
     readonly '--commander-date'?: string;
   }
 }
+
+const noRow = () => null;
 
 export function Pane({
   side,
@@ -132,7 +148,25 @@ export function Pane({
   );
   const [focusAsks, setFocusAsks] = useState({ count: 0, select: true });
   const [pairsClick] = useState(clickPairs);
-  const { dropInto, onDragOver, onDragLeave, onDrop } = useFileDrop(side);
+  const list = useRef<HTMLDivElement | null>(null);
+  const [line, setLine] = useState<number>();
+  const [sight] = useState(() => new LineSight());
+  const [icons] = useState(
+    () => new PaneIcons(actions, () => sight.redraw(), pageIconLoads),
+  );
+  useEffect(() => {
+    icons.revive();
+    return () => icons.dispose();
+  }, [icons]);
+  const [tileThumbnails] = useState(
+    () => new TileThumbnails(thumbnailCache, () => sight.redraw()),
+  );
+  useEffect(() => () => tileThumbnails.dispose(), [tileThumbnails]);
+  const thumbnailSize = useCommander((state) => state.view.thumbnailSize);
+  const pathLooks = useContext(PathLooksContext);
+  const [lineLooks] = useState(() => new RowLooks<LineLook>());
+  const [tileLooks] = useState(() => new RowLooks<TileLook>());
+
   const { showMenu, copyText } = useShellActions();
   const platform = useCommander((state) => state.view.platform);
   const gitMissing = useCommander((state) => state.view.gitMissing);
@@ -214,6 +248,41 @@ export function Pane({
   const keptScroll = actions.scrollOf(scrollKey);
   const { tiled, across, shownList, tileTextRow, fillScrolledTo, tileRows } =
     useTiles(body, side, rows, scrollKey);
+  const tileWidth = tileWidthOf(thumbnailSize);
+  const locate = (
+    element: HTMLElement,
+    at: { readonly x: number; readonly y: number },
+  ) =>
+    line === undefined
+      ? undefined
+      : tiled
+        ? locatedTile(element, at, {
+            height: line,
+            width: tileWidth,
+            across,
+            count: rows.length,
+            check: {
+              left: tileCheckStart,
+              top: tileCheckStart,
+              size: tileCheckSize,
+            },
+          })
+        : locatedLine(element, at, line, rows.length);
+  const keyAt = (event: React.DragEvent): string | null => {
+    const element = list.current;
+    const at =
+      element === null
+        ? undefined
+        : locate(element, { x: event.clientX, y: event.clientY });
+    const row = at === undefined ? undefined : rows[at.index];
+    return row !== undefined && (row.entry === undefined || row.entry.folder)
+      ? row.key
+      : null;
+  };
+  const { dropInto, onDragOver, onDragLeave, onDrop } = useFileDrop(
+    side,
+    keyAt,
+  );
   const scrolledTo = (offset: number) => {
     actions.keepScroll(scrollKey, offset);
     fillScrolledTo(offset);
@@ -240,71 +309,157 @@ export function Pane({
   );
   const listKey =
     shownList === undefined ? undefined : `${shownList} ${tab ?? ''}`;
-  const nameColumns = useNameRoom(section, side, tiled ? undefined : listKey);
   const look = useMemo<PaneLook>(
     () => ({
       tab,
       folder: paneFolder,
       fileColors,
       gitMissing,
-      columns,
-      room: { name: nameColumns, ...columns },
       dateFormat,
       filter: matching,
     }),
-    [
-      tab,
-      paneFolder,
-      fileColors,
-      gitMissing,
-      columns,
-      nameColumns,
-      dateFormat,
-      matching,
-    ],
+    [tab, paneFolder, fileColors, gitMissing, dateFormat, matching],
   );
   const itemOf = useCallback(
-    (row: Row, index: number) => ({
+    (row: Row, index: number): PaneItemProps => ({
       side,
       row,
       index,
       look,
-      selected: row.key === selectedName,
-      marked: marked?.has(row.key) === true,
-      startsGroup: starts?.has(row.key) === true,
-      dropTarget: row.key === dropInto,
       pairsClick,
       onMenu,
     }),
-    [side, look, selectedName, marked, starts, dropInto, pairsClick, onMenu],
+    [side, look, pairsClick, onMenu],
   );
 
-  const renderRow = useCallback(
-    (index: number) => <PaneLine {...itemOf(rows[index], index)} />,
-    [rows, itemOf],
-  );
+  useLayoutEffect(() => {
+    const ruler = section.current?.querySelector(
+      tiled
+        ? '.commander-tile.commander-ruler'
+        : '.commander-line.commander-ruler',
+    );
+    if (ruler === null || ruler === undefined) {
+      return undefined;
+    }
+    const measure = () => {
+      const height = ruler.getBoundingClientRect().height;
+      if (height > 0) {
+        setLine(height);
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(ruler);
+    return () => observer.disconnect();
+  }, [tiled]);
 
-  const renderTiles = useCallback(
-    (gridRow: number) => (
-      <div className="commander-tiles">
-        {rows
-          .slice(gridRow * across, (gridRow + 1) * across)
-          .map((row, offset) => (
-            <PaneTile
-              key={row.key}
-              {...itemOf(row, gridRow * across + offset)}
-            />
-          ))}
-      </div>
-    ),
-    [rows, across, itemOf],
-  );
+  const stateOf = (row: Row): LineState => ({
+    selected: row.key === selectedName,
+    marked: marked?.has(row.key) === true,
+    startsGroup: starts?.has(row.key) === true,
+    dropTarget: row.key === dropInto,
+  });
+  const lineOf = (index: number) => {
+    const row = rows[index];
+    if (row === undefined) {
+      return undefined;
+    }
+    const state = stateOf(row);
+    return lineLooks.of(row, state, look, '', () =>
+      lineLookOf(row, state, look),
+    );
+  };
+  const sourceOf = (index: number) => {
+    const row = rows[index];
+    return row === undefined ? undefined : iconSourceOf(side, row, look);
+  };
+  const tileOf = (index: number) => {
+    const row = rows[index];
+    if (row === undefined) {
+      return undefined;
+    }
+    const state = stateOf(row);
+    const dotHides = pathLooks.dotHides();
+    return tileLooks.of(row, state, look, String(dotHides), () =>
+      tileLookOf(row, state, look, dotHides),
+    );
+  };
+  const thumbnailOf = (index: number) => {
+    const row = rows[index];
+    const source = row === undefined ? undefined : sourceOf(index);
+    return source === undefined || row?.entry === undefined
+      ? undefined
+      : tileThumbnailUrl(source, row.entry);
+  };
+  const renderList = (drawn: RowsDrawn) =>
+    line !== undefined && (
+      <>
+        <PanePointer
+          list={list}
+          locate={locate}
+          sight={sight}
+          marksRepositories={!tiled}
+          itemOf={(index) => {
+            const row = rows[index];
+            return row === undefined ? undefined : itemOf(row, index);
+          }}
+        />
+        <PaneCanvas
+          list={list}
+          drawn={drawn}
+          lineOf={lineOf}
+          sourceOf={sourceOf}
+          line={line}
+          lookKey={[active, columns.extension, columns.size, columns.date].join(
+            ' ',
+          )}
+          icons={icons}
+          sight={sight}
+          tiles={
+            tiled
+              ? {
+                  across,
+                  tileWidth,
+                  thumbnailSize,
+                  count: rows.length,
+                  tileOf,
+                  thumbnailOf,
+                  thumbnails: tileThumbnails,
+                  made: (index, made, pixelRatio) => {
+                    const source = sourceOf(index);
+                    if (source !== undefined) {
+                      void actions.saveThumbnail(
+                        source,
+                        thumbnailSize,
+                        pixelRatio,
+                        made,
+                      );
+                    }
+                  },
+                }
+              : undefined
+          }
+        />
+      </>
+    );
 
   const act = (action: PaneAct) =>
     actOnPane(action, side, actions, {
       query,
       copyItems,
       openMenu: (key) => {
+        const element = list.current;
+        if (
+          key !== undefined &&
+          !tiled &&
+          element !== null &&
+          line !== undefined &&
+          selectedIndex !== -1
+        ) {
+          const box = lineBoxOf(element, selectedIndex, line);
+          openMenu(key, { x: box.left, y: box.bottom });
+          return;
+        }
         const row =
           key === undefined
             ? null
@@ -366,7 +521,21 @@ export function Pane({
         )}
       </div>
       {!tiled && <ColumnHeader side={side} />}
-      {!tiled && (
+      {tiled ? (
+        <div
+          className="row commander-row commander-tile commander-ruler"
+          aria-hidden="true"
+          style={{ width: tileWidth }}
+        >
+          <div
+            className="commander-thumbnail"
+            style={{ height: thumbnailSize }}
+          />
+          <div className="commander-tile-name" />
+          <div className="commander-tile-size" />
+          <div className="commander-tile-date" />
+        </div>
+      ) : (
         <div className="row commander-line commander-ruler" aria-hidden="true">
           <span className="commander-name" />
         </div>
@@ -387,11 +556,13 @@ export function Pane({
             revealAtStart={!restored || keptScroll === 0}
             onScrolled={scrolledTo}
             rows={tiled ? tileRows : listed}
-            renderRow={tiled ? renderTiles : renderRow}
+            renderRow={noRow}
+            renderCanvas={renderList}
+            fixedRowHeight={line}
+            listRef={list}
             selectedKey={selectedName}
             label={strings.commander.sides[side]}
             wholeRows
-            recycled={!tiled}
             wheelStep={tiled ? tileTextRow : undefined}
             notchRows={tiled ? 1 : undefined}
             overscan={tiled ? 2 : undefined}
@@ -442,9 +613,11 @@ export function Pane({
                 return;
               }
               const rowHeight =
-                body.current
-                  ?.querySelector('.commander-row')
-                  ?.getBoundingClientRect().height ?? 1;
+                (tiled
+                  ? body.current
+                      ?.querySelector('.commander-row')
+                      ?.getBoundingClientRect().height
+                  : line) ?? 1;
               const page = Math.max(
                 1,
                 Math.floor((body.current?.clientHeight ?? 0) / rowHeight) - 1,

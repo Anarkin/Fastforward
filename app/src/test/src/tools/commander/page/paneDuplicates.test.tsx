@@ -8,30 +8,9 @@ import type { PaneView } from '../../../../../tools/commander/page/paneView';
 import type { Layout } from '../../../../../tools/commander/page/layouts';
 import { inSide, sort, workPane } from './paneFixtures';
 
-vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) => {
-  const { createElement, Fragment } = await import('react');
-  const { columnFocusAttribute } =
-    await import('../../../../../lib/page/columnFocus.js');
-  return {
-    ...(await importOriginal<
-      typeof import('../../../../../lib/page/virtualRows')
-    >()),
-    VirtualRows: ({
-      rows,
-      renderRow,
-    }: {
-      rows: { readonly count: number };
-      renderRow: (index: number) => React.ReactNode;
-    }) =>
-      createElement(
-        'div',
-        { [columnFocusAttribute]: '', tabIndex: 0 },
-        Array.from({ length: rows.count }, (_, index) =>
-          createElement(Fragment, { key: index }, renderRow(index)),
-        ),
-      ),
-  };
-});
+vi.mock('../../../../../lib/page/virtualRows', async (importOriginal) =>
+  (await import('./listMock.js')).withListMock(importOriginal),
+);
 
 const inPane = (
   run: Parameters<typeof inSide>[1],
@@ -112,16 +91,12 @@ suite('Commander side showing duplicates', () => {
   test('shows only the files that have a copy, a line above the first file of each group, and says so after its path', async () => {
     await inPane(
       async ({ main }) => {
-        const rows = [...main.querySelectorAll('.commander-row')].map((row) => [
-          row.querySelector('.commander-name')?.textContent,
-          row.classList.contains('group-start'),
-        ]);
-
-        assert.deepStrictEqual(rows, [
-          ['..', false],
-          ['copy', true],
-          ['notes', false],
-        ]);
+        assert.deepStrictEqual(
+          [...main.querySelectorAll('[data-line]')].map((line) =>
+            line.getAttribute('data-key'),
+          ),
+          ['..', 'copy.txt', 'notes.txt'],
+        );
         assert.strictEqual(
           main.querySelector('.commander-path .path-duplicates')?.textContent,
           strings.commander.duplicatesTag,

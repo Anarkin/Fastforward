@@ -5,7 +5,7 @@ import { suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
 import { waitForFocus } from './waits';
-import { assertFillsRows } from './markRows';
+import { linesShown, selectedLine } from './commanderRows';
 import {
   opened,
   page,
@@ -46,16 +46,14 @@ suite('App commander', () => {
         'the files with a copy',
       );
       assert.strictEqual((await groupStartsShown()).length, 1);
-      const spacing = await right()
-        .locator('.commander-row')
-        .evaluateAll((rows) =>
-          rows
-            .map((row) => row.getBoundingClientRect())
-            .map((box, index, boxes) => ({
-              height: box.height,
-              gap: index === 0 ? 0 : box.top - (boxes[index - 1]?.bottom ?? 0),
-            })),
-        );
+      const spacing = (await linesShown(right())).map((line, index, lines) => ({
+        height: line.height,
+        gap:
+          index === 0
+            ? 0
+            : line.top -
+              ((lines[index - 1]?.top ?? 0) + (lines[index - 1]?.height ?? 0)),
+      }));
       assert.ok(
         spacing.every(
           ({ height, gap }) =>
@@ -74,9 +72,7 @@ suite('App commander', () => {
         'the path of the file selected',
       );
       const headerColors = await colorsOf('.path-title .path-part');
-      const rowColor = await right()
-        .locator('.commander-row.selected')
-        .evaluate((row) => getComputedStyle(row).color);
+      const rowColor = (await selectedLine(right()))?.ink;
       await waitFor(
         async () =>
           JSON.stringify(await colorsOf('.column-status .path-part')) ===
@@ -248,13 +244,10 @@ suite('App commander', () => {
         'the files and the folder with the word',
       );
       assert.strictEqual(await count(), '2 of 3');
-      assert.strictEqual(
-        await right().locator('.commander-row .match').first().textContent(),
-        'report',
-      );
-      await assertFillsRows(
-        right().locator('.commander-row.selected .match').first(),
-        '.commander-row.selected',
+      assert.deepStrictEqual(
+        (await linesShown(right())).find((line) => line.found.length > 0)
+          ?.found,
+        ['report'],
       );
       await page.keyboard.press('ArrowDown');
       await waitFor(

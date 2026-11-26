@@ -6,7 +6,15 @@ import { afterAll, beforeAll } from 'vitest';
 import { waitFor } from '../helpers/fixtures';
 import { closeOrKill, launchApp } from './appLaunch';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
-import { fileName, nearItsStart, rowsShown } from './commanderRows';
+import {
+  clickLine,
+  fileName,
+  lineOf,
+  linesShown,
+  rowsShown,
+  selectedText,
+  untilLines,
+} from './commanderRows';
 
 export let folder: string;
 export let opened: string;
@@ -38,69 +46,78 @@ export const savedSetting = (
 };
 
 export const hiding = (element: Locator) =>
-  element.evaluate(async (shown) => {
+  element.evaluate((shown) => {
     const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
     const context = canvas.getContext('2d', {
       willReadFrequently: true,
     });
     if (context === null) {
       throw new Error('no canvas');
     }
-    const inked = async () => {
-      const image = new Image();
-      image.src = getComputedStyle(shown)
-        .backgroundImage.replace(/^url\("/, '')
-        .replace(/"\).*$/, '');
-      await image.decode();
-      canvas.width = image.naturalWidth;
-      canvas.height = image.naturalHeight;
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.drawImage(image, 0, 0);
-      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-      return Math.max(...data.filter((_, at) => at % 4 === 3));
-    };
-    const full = shown.classList.contains('commander-line')
-      ? shown.querySelector('.system-icon') === null
-        ? await inked()
-        : 1
-      : undefined;
-    const look = async () => {
-      const icon = shown.querySelector('.system-icon');
-      canvas.width = 1;
-      canvas.height = 1;
+    const look = () => {
       context.clearRect(0, 0, 1, 1);
       context.fillStyle = getComputedStyle(shown).color;
       context.fillRect(0, 0, 1, 1);
-      const color = [...context.getImageData(0, 0, 1, 1).data];
-      return {
-        color,
-        icon:
-          full === undefined
-            ? undefined
-            : icon === null
-              ? (await inked()) / full
-              : Number(getComputedStyle(icon).opacity),
-      };
+      return { color: [...context.getImageData(0, 0, 1, 1).data] };
     };
-    const before = await look();
+    const before = look();
     shown.classList.add('hidden');
-    const after = await look();
+    const after = look();
     shown.classList.remove('hidden');
     return { before, after };
   });
 
-export const looksOf = (row: Locator) =>
-  row.evaluate((shown) => {
-    const drawn = (part: string) =>
-      getComputedStyle(shown, part).content === 'none' ? 'hidden' : 'visible';
-    return {
-      color: getComputedStyle(shown).color,
-      weight: getComputedStyle(shown).fontWeight,
-      background: getComputedStyle(shown).backgroundColor,
-      box: drawn('::before'),
-      check: drawn('::after'),
-    };
-  });
+export const looksOf = async (match: string | RegExp) => {
+  const line = await lineOf(right(), match);
+  return {
+    color: line.ink,
+    background: line.ground,
+    box: line.check === 'none' ? 'hidden' : 'visible',
+    check: line.check === 'checked' ? 'visible' : 'hidden',
+  };
+};
+
+const bytesOf = (color: string) =>
+  page.evaluate((css) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (context === null) {
+      throw new Error('no canvas');
+    }
+    context.fillStyle = css;
+    context.fillRect(0, 0, 1, 1);
+    return [...context.getImageData(0, 0, 1, 1).data];
+  }, color);
+
+export const hidingLine = async (match: string | RegExp) => {
+  const line = await lineOf(right(), match);
+  const classes = line.classes
+    .filter((name) => name !== 'pointed' && !name.startsWith('generic-'))
+    .join(' ');
+  const inksOf = (shown: string) =>
+    right()
+      .locator('.commander-layer')
+      .evaluate(
+        (layer, asked) =>
+          layer instanceof HTMLElement ? layer.seenInks?.(asked) : undefined,
+        shown,
+      );
+  const look = async (shown: string) => {
+    const inks = await inksOf(shown);
+    if (inks === undefined) {
+      throw new Error('no inks of the canvas');
+    }
+    return { color: await bytesOf(inks.ink), icon: inks.iconOpacity };
+  };
+  return {
+    before: await look(classes),
+    after: await look(`${classes} hidden`),
+  };
+};
 
 export const savedText = (profileFolder: string, name: string): unknown =>
   savedSetting(profileFolder, 'text', name);
@@ -158,54 +175,21 @@ export const textOnClipboard = () =>
 
 export const markedNames = () => namesWith('marked');
 
-export const markingRow = (name: string) =>
-  right().locator('.commander-row', {
-    hasText: new RegExp(`^${name}\\s*txt`),
-  });
+export const markingRow = (name: string) => new RegExp(`^${name} txt`);
 
-export const icons = () =>
-  right()
-    .locator('.commander-row')
-    .evaluateAll((rows) =>
-      rows.map((row) => {
-        const image = row.querySelector<HTMLImageElement>('img.system-icon');
-        const text = [...row.childNodes]
-          .filter((node) => node.nodeType === Node.TEXT_NODE)
-          .map((node) => node.textContent ?? '')
-          .join('');
-        const drawn =
-          row.querySelector('.commander-name')?.textContent ??
-          text.split(String.fromCharCode(9))[0] ??
-          '';
-        const picture = getComputedStyle(row).backgroundImage;
-        const pictured = (name: string) =>
-          row.classList.contains(`generic-${name}`) &&
-          picture.startsWith('url("data:image/png') &&
-          picture.startsWith(
-            getComputedStyle(document.documentElement)
-              .getPropertyValue(`--${name}-icon`)
-              .trim(),
-          );
-        return {
-          name:
-            row.classList.contains('plain') &&
-            row.classList.contains('commander-folder')
-              ? drawn.slice(1, -1)
-              : drawn,
-          folder: pictured('folder'),
-          file: pictured('file'),
-          loaded: image !== null && image.complete && image.naturalWidth > 0,
-          loading: image?.classList.contains('loading') === true,
-        };
-      }),
-    );
+export const icons = async () =>
+  (await linesShown(right())).map((line) => ({
+    name: line.name,
+    folder:
+      line.icon === 'generic' && line.classes.includes('commander-folder'),
+    file: line.icon === 'generic' && !line.classes.includes('commander-folder'),
+    loaded: line.icon === 'system',
+    loading: false,
+  }));
 
-export const selected = async () =>
-  (await right().locator('.commander-row.selected').textContent()) ?? '';
+export const selected = () => selectedText(right());
 export const select = async (name: string | RegExp) => {
-  await right()
-    .locator('.commander-row', { hasText: name })
-    .click({ position: nearItsStart });
+  await clickLine(page, right(), name);
   await waitFor(
     async () => {
       const text = await selected();
@@ -326,7 +310,7 @@ export function sharedCommanderApp(): void {
     );
     app = await launchApp(profile);
     page = await app.firstWindow();
-    await right().locator('.commander-row').first().waitFor();
+    await untilLines(right());
   });
 
   afterAll(async () => {

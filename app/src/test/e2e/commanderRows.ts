@@ -1,6 +1,6 @@
-import type { Locator } from 'playwright-core';
-
-export const nearItsStart = { x: 48, y: 4 };
+import type { Locator, Page } from 'playwright-core';
+import type { SeenLine } from '../../tools/commander/page/lineRecords';
+import { waitFor } from '../helpers/fixtures';
 
 export interface ShownRow {
   readonly name: string;
@@ -11,62 +11,155 @@ export interface ShownRow {
   readonly classes: readonly string[];
 }
 
-export const rowsShown = (pane: Locator): Promise<ShownRow[]> =>
-  pane.locator('.commander-row').evaluateAll((rows) =>
-    rows.map((row) => {
-      const classes = [...row.classList];
-      if (!classes.includes('plain')) {
-        const cell = (name: string) =>
-          row.querySelector(`.commander-${name}`)?.textContent ?? '';
-        const named = row.querySelector('.commander-name');
-        const around = (part: string) => {
-          const content =
-            named === null ? 'none' : getComputedStyle(named, part).content;
-          return content === 'none' || content === 'normal'
-            ? ''
-            : content.replaceAll('"', '');
-        };
-        return {
-          name: cell('name'),
-          extension: cell('extension'),
-          size: cell('size'),
-          date: cell('date'),
-          drawn: `${around('::before')}${cell('name')}${around('::after')}`,
-          classes,
-        };
-      }
-      const side = row.closest('.commander-pane');
-      const columns = (name: string) =>
-        Number(
-          side === null
-            ? 0
-            : getComputedStyle(side).getPropertyValue(`--commander-${name}`),
-        );
-      const text = [...row.childNodes]
-        .filter((node) => node.nodeType === Node.TEXT_NODE)
-        .map((node) => node.textContent ?? '')
-        .join('');
-      const [drawn = '', rest = ''] = text.split(String.fromCharCode(9));
-      const extension = columns('extension');
-      const size = columns('size');
-      return {
-        name: classes.includes('commander-folder') ? drawn.slice(1, -1) : drawn,
-        extension: rest.slice(0, extension).trimEnd(),
-        size: rest.slice(extension + 2, extension + 2 + size).trim(),
-        date: rest.slice(extension + size + 4).trim(),
-        drawn,
-        classes,
-      };
-    }),
-  );
+export interface Pressing {
+  readonly button?: 'left' | 'right' | 'middle';
+  readonly clickCount?: number;
+  readonly modifiers?: readonly string[];
+  readonly at?: { readonly x: number; readonly y?: number };
+}
+
+export const linesShown = (pane: Locator): Promise<SeenLine[]> =>
+  pane.evaluate((side) => {
+    const layer = side.querySelector('.commander-layer');
+    return layer instanceof HTMLElement && layer.seenLines !== undefined
+      ? [...layer.seenLines()]
+      : [];
+  });
+
+const folderOf = (line: SeenLine) => line.classes.includes('commander-folder');
+
+const lineText = (line: SeenLine): string =>
+  [
+    folderOf(line) ? `[${line.name}]` : line.name,
+    line.extension,
+    line.size,
+    line.date,
+  ].join(' ');
+
+export const rowsShown = async (pane: Locator): Promise<ShownRow[]> =>
+  (await linesShown(pane)).map((line) => ({
+    name: line.name,
+    extension: line.extension,
+    size: line.size,
+    date: line.date,
+    drawn: folderOf(line) ? `[${line.name}]` : line.name,
+    classes: line.classes,
+  }));
 
 export const fileName = ({ name, extension }: ShownRow): string =>
   [name, extension].filter(Boolean).join('.');
 
-export const boxOfRow = async (row: Locator): Promise<void> => {
-  const box = await row.boundingBox();
-  if (box === null) {
-    throw new Error('no row');
+export type LineMatch = string | RegExp | { readonly key: string };
+
+const matches = (line: SeenLine, match: LineMatch) =>
+  typeof match === 'string'
+    ? lineText(line).includes(match)
+    : match instanceof RegExp
+      ? match.test(lineText(line))
+      : line.key === match.key;
+
+export async function lineOf(
+  pane: Locator,
+  match: LineMatch,
+): Promise<SeenLine> {
+  let found: SeenLine | undefined;
+  await waitFor(
+    async () => {
+      found = (await linesShown(pane)).find((line) => matches(line, match));
+      return found !== undefined;
+    },
+    `a line of ${JSON.stringify(match instanceof RegExp ? String(match) : match)} drawn`,
+  );
+  if (found === undefined) {
+    throw new Error(
+      `No line of ${JSON.stringify(match instanceof RegExp ? String(match) : match)}`,
+    );
   }
-  await row.click({ position: { x: 10, y: box.height / 2 } });
+  return found;
+}
+
+export const linesCount = async (
+  pane: Locator,
+  match?: string | RegExp,
+): Promise<number> =>
+  (await linesShown(pane)).filter(
+    (line) => match === undefined || matches(line, match),
+  ).length;
+
+export const untilLines = (pane: Locator): Promise<void> =>
+  waitFor(
+    async () => (await linesShown(pane)).length > 0,
+    'the lines of a side drawn',
+  );
+
+export const selectedLine = async (
+  pane: Locator,
+): Promise<SeenLine | undefined> =>
+  (await linesShown(pane)).find((line) => line.classes.includes('selected'));
+
+export const selectedText = async (pane: Locator): Promise<string> => {
+  const line = await selectedLine(pane);
+  return line === undefined ? '' : lineText(line);
 };
+
+const pointOf = (
+  line: SeenLine,
+  at: Pressing['at'] = { x: line.nameLeft + 8 },
+) => ({
+  x: line.left + at.x,
+  y: line.top + (at.y ?? line.height / 2),
+});
+
+export async function hoverLine(
+  page: Page,
+  pane: Locator,
+  match: LineMatch,
+  at?: Pressing['at'],
+): Promise<void> {
+  const { x, y } = pointOf(await lineOf(pane, match), at);
+  await page.mouse.move(x, y);
+}
+
+export async function clickLine(
+  page: Page,
+  pane: Locator,
+  match: LineMatch,
+  { button = 'left', clickCount = 1, modifiers = [], at }: Pressing = {},
+): Promise<void> {
+  const { x, y } = pointOf(await lineOf(pane, match), at);
+  await page.mouse.move(x, y);
+  for (const key of modifiers) {
+    await page.keyboard.down(key);
+  }
+  await page.mouse.click(x, y, { button, clickCount });
+  for (const key of modifiers.toReversed()) {
+    await page.keyboard.up(key);
+  }
+}
+
+const onBoxOf = (line: SeenLine) => ({
+  x: line.checkLeft + line.checkSize / 2,
+});
+
+export async function clickBox(
+  page: Page,
+  pane: Locator,
+  match: LineMatch,
+): Promise<void> {
+  const line = await lineOf(pane, match);
+  await clickLine(page, pane, match, { at: onBoxOf(line) });
+}
+
+export async function pointedLine(
+  page: Page,
+  pane: Locator,
+  match: LineMatch,
+): Promise<Locator> {
+  const line = await lineOf(pane, match);
+  await hoverLine(page, pane, match);
+  const pointed = pane.locator(
+    `.commander-pointed[data-key=${JSON.stringify(line.key)}]`,
+  );
+  await pointed.waitFor();
+  return pointed;
+}

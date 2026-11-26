@@ -13,6 +13,7 @@ import {
   sizedWindow,
   tabs,
 } from './tabReturns';
+import { clickLine, linesCount } from './commanderRows';
 
 const lines = (count: number, line: (index: number) => string) =>
   Array.from({ length: count }, (_, index) => line(index)).join(
@@ -116,16 +117,14 @@ export function sharedEveryToolApp(): void {
       'every tab',
     );
     const left = page.locator('.commander-pane').first();
-    await left.locator('.commander-row').first().click();
+    await clickLine(page, left, /^/);
     await page.keyboard.press('Control+Shift+F6');
     await page.locator('.prompt-input').waitFor();
     await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.type(listed);
     await page.keyboard.press('Enter');
     await waitFor(
-      async () =>
-        (await left.locator('.commander-row', { hasText: 'entry 0' }).count()) >
-        0,
+      async () => (await linesCount(left, 'entry 0')) > 0,
       'the left side in a folder of the test',
     );
   });

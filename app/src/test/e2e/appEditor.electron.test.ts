@@ -25,6 +25,7 @@ import {
   sharedEditorApp,
 } from './editorAppFixtures';
 import { writeSettings } from './settingsWritten';
+import { clickLine, lineOf, linesCount } from './commanderRows';
 
 const tabCount = () => page.locator('.tabs [role="tab"]').count();
 
@@ -177,7 +178,7 @@ suite('App editor', () => {
   test('edits a new file named on Shift+F4 as empty text, making the file only once it is saved', async () => {
     await backToCommander();
     const file = path.join(opened, 'fresh.txt');
-    await right().locator('.commander-row').first().click();
+    await clickLine(page, right(), /^/);
     await page.keyboard.press('Shift+F4');
     const prompt = page.locator('.prompt-input');
     await prompt.waitFor();
@@ -202,10 +203,7 @@ suite('App editor', () => {
     fs.writeFileSync(file, 'first\n');
     await backToCommander();
     await waitFor(
-      async () =>
-        (await right()
-          .locator('.commander-row', { hasText: 'outside' })
-          .count()) > 0,
+      async () => (await linesCount(right(), 'outside')) > 0,
       'the file listed',
     );
     await edit('outside.txt');
@@ -242,7 +240,7 @@ suite('App editor', () => {
     await backToCommander();
     await select('packed.zip');
     await page.keyboard.press('Shift+Enter');
-    await right().locator('.commander-row', { hasText: 'top' }).waitFor();
+    await lineOf(right(), 'top');
     await edit('top.txt');
     await waitFor(
       async () => (await editedText()) === 'the top of the zip',
@@ -265,7 +263,7 @@ suite('App editor', () => {
     await page.locator('.viewer').waitFor({ state: 'detached' });
     await right().locator('.virtual-rows').focus();
     await page.keyboard.press('Backspace');
-    await right().locator('.commander-row', { hasText: 'packed' }).waitFor();
+    await lineOf(right(), 'packed');
   });
 
   test('edits a file viewed in an editor tab of its own on F4, right after the viewer, the cursor on the line the viewer showed at its top, and goes to that tab on F4 again', async () => {

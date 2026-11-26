@@ -7,7 +7,7 @@ import { waitFor } from '../helpers/fixtures';
 import {
   opened,
   page,
-  hiding,
+  hidingLine,
   looksOf,
   right,
   rowNames,
@@ -18,7 +18,7 @@ import {
   openFolder,
   sharedCommanderApp,
 } from './commanderAppFixtures';
-import { boxOfRow, rowsShown } from './commanderRows';
+import { clickBox, clickLine, hoverLine, rowsShown } from './commanderRows';
 
 const selectedName = async () =>
   (await rowsShown(right())).find(({ classes }) => classes.includes('selected'))
@@ -66,25 +66,27 @@ suite('App commander', () => {
       async () => (await markedNames()).join() === 'b,c',
       'Space and Insert to toggle and move down',
     );
-    await markingRow('a').click({ modifiers: ['ControlOrMeta'] });
+    await clickLine(page, right(), markingRow('a'), {
+      modifiers: ['ControlOrMeta'],
+    });
     await waitFor(
       async () => (await markedNames()).join() === 'a,b,c',
       'Ctrl+click to toggle',
     );
-    await markingRow('d').click({ modifiers: ['Shift'] });
+    await clickLine(page, right(), markingRow('d'), { modifiers: ['Shift'] });
     await waitFor(
       async () => (await markedNames()).join() === 'a,b,c,d',
       'Shift+click to mark the range',
     );
     assert.strictEqual(await selectedName(), 'd');
-    await markingRow('b').hover();
-    await boxOfRow(markingRow('b'));
+    await hoverLine(page, right(), markingRow('b'));
+    await clickBox(page, right(), markingRow('b'));
     await waitFor(
       async () => (await markedNames()).join() === 'a,c,d',
       'a click on the box of a marked file to unmark it',
     );
     assert.strictEqual(await selectedName(), 'd');
-    await boxOfRow(markingRow('b'));
+    await clickBox(page, right(), markingRow('b'));
     await waitFor(
       async () => (await markedNames()).join() === 'a,b,c,d',
       'a click on the box of a file to mark it',
@@ -94,23 +96,11 @@ suite('App commander', () => {
 
     const marked = await looksOf(markingRow('b'));
     assert.deepStrictEqual(
-      {
-        color: marked.color,
-        weight: marked.weight,
-        box: marked.box,
-        check: marked.check,
-      },
-      {
-        color: unmarked.color,
-        weight: unmarked.weight,
-        box: 'visible',
-        check: 'visible',
-      },
+      { color: marked.color, box: marked.box, check: marked.check },
+      { color: unmarked.color, box: 'visible', check: 'visible' },
     );
     assert.notStrictEqual(marked.background, unmarked.background);
-    const hidden = await hiding(
-      right().locator('.commander-row.marked').first(),
-    );
+    const hidden = await hidingLine(markingRow('b'));
     assert.ok(
       (hidden.after.color[3] ?? 0) < (hidden.before.color[3] ?? 0),
       `A hidden file marked is dimmed as any hidden file, ${hidden.after.color.join()} after ${hidden.before.color.join()}`,

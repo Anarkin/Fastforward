@@ -16,6 +16,7 @@ import {
   toEnd,
   sharedEditorApp,
 } from './editorAppFixtures';
+import { clickLine, linesCount } from './commanderRows';
 
 const trigger = (label: RegExp) =>
   page.locator('.editor .menu-button-trigger', { hasText: label });
@@ -40,10 +41,7 @@ suite('App editor', () => {
     fs.writeFileSync(latin, Uint8Array.of(0x63, 0x61, 0x66, 0xe9, 0x0a));
     await backToCommander();
     await waitFor(
-      async () =>
-        (await right()
-          .locator('.commander-row', { hasText: 'latin' })
-          .count()) > 0,
+      async () => (await linesCount(right(), 'latin')) > 0,
       'the files listed',
     );
     await edit('endings.txt');
@@ -130,7 +128,7 @@ suite('App editor', () => {
     await page.keyboard.press('Escape');
 
     await backToCommander();
-    await right().locator('.commander-row').first().click();
+    await clickLine(page, right(), /^/);
     await page.keyboard.press('Shift+F4');
     const prompt = page.locator('.prompt-input');
     await prompt.waitFor();
@@ -155,7 +153,7 @@ suite('App editor', () => {
     );
     const file = path.join(opened, 'made.crlf.txt');
     await backToCommander();
-    await right().locator('.commander-row').first().click();
+    await clickLine(page, right(), /^/);
     await page.keyboard.press('Shift+F4');
     const prompt = page.locator('.prompt-input');
     await prompt.waitFor();

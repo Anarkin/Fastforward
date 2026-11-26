@@ -12,6 +12,7 @@ import {
 
 const componentDoors: Readonly<Record<string, readonly string[]>> = {
   cells: [
+    'components/cells/page/cellColors.ts',
     'components/cells/page/cellFont.ts',
     'components/cells/page/characterNames.ts',
     'components/cells/page/cellLook.ts',
