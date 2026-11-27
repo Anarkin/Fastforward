@@ -43,6 +43,7 @@ function canvas(
 ) {
   const saved: [string, string][] = [];
   const watched = new Map<string, () => void>();
+  let made = 0;
   const titled: string[] = [];
   const tool = new CanvasTool({
     files: {
@@ -75,7 +76,7 @@ function canvas(
       return Promise.resolve();
     },
     readOnly: (error) => error instanceof ReadOnly,
-    newId: () => 'made',
+    newId: () => (++made === 1 ? 'made' : `made${made}`),
     sizeOf: (name) =>
       name in files
         ? Promise.resolve(sizes[name] ?? files[name]?.length ?? 0)
@@ -315,6 +316,50 @@ suite('Canvas tool', () => {
     assert.deepStrictEqual(saved, [[made, '{}']]);
   });
 
+  test('places the files dropped on a canvas as file nodes from where they fell, one below the other, by their paths from the folder of its vault, as one change, and leaves out a file outside that folder, saying so', async () => {
+    const note = path.resolve('/boards/notes/a.md');
+    const other = path.resolve('/boards/b.txt');
+    const outside = path.resolve('/elsewhere/c.txt');
+    const files = { [file]: '{}', [note]: 'A', [other]: 'B' };
+    const { tool, page, notices } = canvas(files);
+    await tool.show(page, tab);
+    const box = { x: 14, y: 36, width: 210, height: 144 };
+    await tool.dropped(page, [note, other, outside], { tab: '7', box });
+    const shown = page.messages.filter((each) => each.type === 'board').at(-1);
+    assert.deepStrictEqual(shown?.type === 'board' && shown.board?.nodes, [
+      { id: 'made', type: 'file', file: 'notes/a.md', ...box },
+      { id: 'made2', type: 'file', file: 'b.txt', ...box, y: 180 },
+    ]);
+    assert.deepStrictEqual(shown?.type === 'board' && shown.made, 'made');
+    assert.deepStrictEqual(notices, [
+      {
+        level: 'info',
+        message: strings.canvas.outsideVault([outside], path.dirname(file)),
+      },
+    ]);
+    await tool.receive(page, { type: 'undo', tab: '7' });
+    const undone = page.messages.filter((each) => each.type === 'board').at(-1);
+    assert.deepStrictEqual(undone?.type === 'board' && undone.board?.nodes, []);
+  });
+
+  test('takes a drop on a canvas only with paths, a tab it holds and a box whole and in bounds, as the page is not trusted', async () => {
+    const note = path.resolve('/boards/a.md');
+    const { tool, page } = canvas({ [file]: '{}', [note]: 'A' });
+    await tool.show(page, tab);
+    const before = page.messages.length;
+    const box = { x: 0, y: 0, width: 70, height: 36 };
+    for (const [files, message] of [
+      [[note], { tab: '7', box: { ...box, width: 'wide' } }],
+      [[note], { tab: '8', box }],
+      [[7], { tab: '7', box }],
+      ['a.md', { tab: '7', box }],
+      [[note], undefined],
+    ] as const) {
+      await tool.dropped(page, files, message);
+    }
+    assert.strictEqual(page.messages.length, before);
+  });
+
   test('tells the page where the file of each file node is and the head of its text, read again each time its tab shows', async () => {
     const note = path.resolve('/boards/note.md');
     const files = {
@@ -351,6 +396,31 @@ suite('Canvas tool', () => {
       tab: '7',
       files: { 'note.md': { path: note, text: 'Changed\n' } },
     });
+  });
+
+  test('tells the page the title of the page of a link node placed', async () => {
+    const { tool, page, titled } = canvas({ [file]: '{}' });
+    await tool.show(page, tab);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: {
+        kind: 'link',
+        url: 'https://example.com/placed',
+        box: { x: 0, y: 0, width: 70, height: 36 },
+      },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepStrictEqual(titled, ['https://example.com/placed']);
+    assert.deepStrictEqual(
+      page.messages.filter((each) => each.type === 'titles').at(-1),
+      {
+        type: 'titles',
+        titles: {
+          'https://example.com/placed': 'Title of https://example.com/placed',
+        },
+      },
+    );
   });
 
   test('tells the page the title of the page each link node points to, read once a page while the app runs, and only from the web', async () => {

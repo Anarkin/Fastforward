@@ -11,6 +11,13 @@ export interface NodeBox {
   readonly height: number;
 }
 
+export type PlacedBox = Omit<NodeBox, 'id'>;
+
+export interface CanvasDrop {
+  readonly tab: string;
+  readonly box: PlacedBox;
+}
+
 export const addedKinds = ['text', 'group'] as const;
 
 export const nodeOrders = ['front', 'back'] as const;
@@ -39,6 +46,18 @@ export type BoardEdit =
       readonly fromSide: NodeSide;
       readonly toNode: string;
       readonly toSide: NodeSide;
+    }
+  | {
+      readonly kind: 'link';
+      readonly url: string;
+      readonly box: PlacedBox;
+    }
+  | {
+      readonly kind: 'files';
+      readonly files: readonly {
+        readonly file: string;
+        readonly box: PlacedBox;
+      }[];
     }
   | {
       readonly kind: 'reroute';

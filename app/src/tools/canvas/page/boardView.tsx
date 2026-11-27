@@ -15,7 +15,7 @@ import { NodeColors } from './nodeColors';
 import { hitOf, type Hit } from './hits';
 import { canvasKeymap } from './keymap';
 import { Panner } from './panner';
-import { fileBox, ghostId, placedSizes } from './placing';
+import { droppedSize, fileBox, ghostId, placedSizes } from './placing';
 import type { Cell } from './routes';
 import {
   boardShown,
@@ -32,6 +32,7 @@ import {
   cursorOf,
   hoverFrom,
   paint,
+  placedFrom,
   type Pressing,
 } from './boardPaint';
 import { offsetIn, typedLayout } from './typedLayout';
@@ -44,7 +45,7 @@ import { endAt } from './edgeHandles';
 import { markAt } from './wiring';
 import { boxOf } from './grid';
 import { useBoardKeys } from './boardKeys';
-import { openNode, openedOf } from './links';
+import { openNode, openedOf, pastedLink } from './links';
 import { typedTextOf, typesOneLine } from './typedTexts';
 
 interface Panning {
@@ -77,6 +78,7 @@ export function BoardView() {
     typed,
     stopTyping,
     askColor,
+    dropFiles,
   } = useCanvasActions();
   const { showMenu, followPath } = useShellActions();
   const table = useCellTable();
@@ -279,19 +281,7 @@ export function BoardView() {
   }, []);
 
   const startPlacing = (kind: Placing) => {
-    const known = drawn.current;
-    ghostAt.current =
-      lastAt.current ??
-      (known === undefined
-        ? undefined
-        : {
-            column: Math.floor(
-              known.origin.column + known.view.width / known.cell.width / 3,
-            ),
-            row: Math.floor(
-              known.origin.row + known.view.height / known.cell.height / 3,
-            ),
-          });
+    ghostAt.current = placedFrom(drawn.current, lastAt.current);
     place(kind);
   };
 
@@ -382,6 +372,21 @@ export function BoardView() {
       event.currentTarget.setPointerCapture(event.pointerId);
       pressing.current = { pointer: event.pointerId, gesture: chosen.gesture };
     }
+  };
+
+  const dropped = (event: React.DragEvent<HTMLDivElement>) => {
+    const known = drawn.current;
+    const droppedFiles = [...event.dataTransfer.files];
+    if (known === undefined || tab === undefined || droppedFiles.length === 0) {
+      return;
+    }
+    event.preventDefault();
+    const { id: _id, ...box } = fileBox(
+      ghostId,
+      { ...cellAt(event, known), ...droppedSize },
+      known.unit,
+    );
+    dropFiles(tab, droppedFiles, box);
   };
 
   const openMenu = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -674,6 +679,19 @@ export function BoardView() {
   const pasted = (event: React.ClipboardEvent<HTMLDivElement>) => {
     const now = tab === undefined ? undefined : typingOf(tab);
     const pastedText = event.clipboardData.getData('text/plain');
+    const url = now === undefined ? pastedLink(pastedText) : undefined;
+    const known = drawn.current;
+    const at = placedFrom(known, lastAt.current);
+    if (url !== undefined && tab !== undefined && known && at) {
+      event.preventDefault();
+      const { id: _id, ...box } = fileBox(
+        ghostId,
+        { ...at, ...placedSizes.text },
+        known.unit,
+      );
+      edit(tab, { kind: 'link', url, box });
+      return;
+    }
     const text = typesOneLine(board, now?.id)
       ? pastedText.replaceAll(/[\r\n]+/g, ' ')
       : pastedText;
@@ -717,6 +735,13 @@ export function BoardView() {
           }
         }}
         onContextMenu={openMenu}
+        onDragOver={(event) => {
+          if (event.dataTransfer.types.includes('Files')) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+          }
+        }}
+        onDrop={dropped}
         onKeyDown={keyDown}
         onCopy={(event) => copied(event, false)}
         onCut={(event) => copied(event, true)}

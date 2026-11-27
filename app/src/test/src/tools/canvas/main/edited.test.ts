@@ -445,6 +445,34 @@ suite('Canvas edited', () => {
     );
   });
 
+  test('places a link node of the URL pasted where it is asked, taking a URL only as a string of a length a URL has', () => {
+    const board = new EditedBoard(JSON.stringify({ nodes: [] }));
+    const box = { x: 14, y: 36, width: 210, height: 90 };
+    assert.deepStrictEqual(
+      board.apply({ kind: 'link', url: 'https://example.com/', box }, ids()),
+      { made: 'new1' },
+    );
+    const read = board.read();
+    assert.ok(read.kind === 'board');
+    assert.deepStrictEqual(read.board.nodes, [
+      { id: 'new1', type: 'link', url: 'https://example.com/', ...box },
+    ]);
+    assert.deepStrictEqual(
+      [
+        editOf({ kind: 'link', url: 'https://example.com/', box }),
+        editOf({ kind: 'link', url: 7, box }),
+        editOf({ kind: 'link', url: 'x'.repeat(10_000), box }),
+        editOf({ kind: 'link', url: 'https://example.com/', box: { x: 1 } }),
+      ],
+      [
+        { kind: 'link', url: 'https://example.com/', box },
+        undefined,
+        undefined,
+        undefined,
+      ],
+    );
+  });
+
   test('takes from the page only edits whole and in bounds, as the page is not trusted', () => {
     assert.deepStrictEqual(
       editOf({

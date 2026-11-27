@@ -1351,6 +1351,10 @@ export const strings = {
       sentence`${namedFile(file)} isn't JSON, so it can't be drawn as a canvas.`,
     notBoard: (file: string) =>
       sentence`${namedFile(file)} isn't JSON Canvas, as it holds no object with lists of nodes and edges.`,
+    outsideVault: (files: readonly string[], folder: string) =>
+      files.length === 1
+        ? sentence`${namedFile(files[0] ?? '')} isn't in ${namedFolder(folder)}, the folder the files of the canvas are read from, so it isn't placed.`
+        : sentence`${files.length.toLocaleString()} files aren't in ${namedFolder(folder)}, the folder the files of the canvas are read from, so they aren't placed.`,
     skipped: (file: string, count: number) =>
       count === 1
         ? sentence`One node or edge of ${namedFile(file)} isn't drawn, as it isn't JSON Canvas.`

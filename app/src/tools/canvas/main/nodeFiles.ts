@@ -42,6 +42,16 @@ export function pathIn(root: string, file: string): string | undefined {
     : at;
 }
 
+export function fileIn(root: string, file: string): string | undefined {
+  const inside = path.relative(root, file);
+  return inside === '' ||
+    inside === '..' ||
+    inside.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(inside)
+    ? undefined
+    : inside.split(path.sep).join('/');
+}
+
 export function shownText(
   bytes: Buffer,
   whole: boolean,

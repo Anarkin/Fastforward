@@ -59,7 +59,7 @@ suite('App canvas content', () => {
           {
             id: 'linked',
             type: 'link',
-            url: 'https://example.com/linked',
+            url: 'https://example.invalid/linked',
             x: 0,
             y: 108,
             width: 210,
@@ -138,7 +138,8 @@ suite('App canvas content', () => {
   test('draws a link node as its URL in the color of a link, and opens it outside the app on Enter once selected and on a double click', async () => {
     await page.locator('.board-host canvas').first().waitFor();
     await untilSettled(
-      async () => JSON.stringify(await kindsOf('https://example.com/linked')),
+      async () =>
+        JSON.stringify(await kindsOf('https://example.invalid/linked')),
       'the link drawn',
       { accepted: (kinds) => kinds === JSON.stringify(['link']) },
     );
@@ -159,15 +160,15 @@ suite('App canvas content', () => {
     await page.keyboard.press('Enter');
     await untilSettled(opened, 'the link opened on Enter', {
       accepted: (urls) =>
-        urls === JSON.stringify(['https://example.com/linked']),
+        urls === JSON.stringify(['https://example.invalid/linked']),
     });
     await page.mouse.dblclick(inside.x, inside.y);
     await untilSettled(opened, 'the link opened on a double click', {
       accepted: (urls) =>
         urls ===
         JSON.stringify([
-          'https://example.com/linked',
-          'https://example.com/linked',
+          'https://example.invalid/linked',
+          'https://example.invalid/linked',
         ]),
     });
   });
@@ -239,6 +240,71 @@ suite('App canvas content', () => {
       {
         accepted: (text) =>
           /"id":"wired"[^}]*"toNode":"other","toSide":"top"/.test(text),
+      },
+    );
+  });
+
+  test('places a file dropped on the canvas as a file node where it fell, by its path from the folder of the canvas, writing it into its file once saved', async () => {
+    await page.evaluate(() => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.id = 'dropped-files';
+      input.hidden = true;
+      document.body.append(input);
+    });
+    await page.setInputFiles('#dropped-files', [path.join(folder, 'note.md')]);
+    const at = await pointAt({ column: 40, row: 20 });
+    await page.evaluate(({ x, y }) => {
+      const data = new DataTransfer();
+      for (const file of document.querySelector<HTMLInputElement>(
+        '#dropped-files',
+      )?.files ?? []) {
+        data.items.add(file);
+      }
+      const body = document.querySelector('.board-body');
+      for (const type of ['dragenter', 'dragover', 'drop']) {
+        body?.dispatchEvent(
+          new DragEvent(type, {
+            dataTransfer: data,
+            bubbles: true,
+            cancelable: true,
+            clientX: x,
+            clientY: y,
+          }),
+        );
+      }
+    }, at);
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () =>
+        Promise.resolve(
+          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
+        ),
+      'the file dropped placed and saved',
+      {
+        accepted: (text) =>
+          (text.match(/"type":"file","file":"note\.md"/g) ?? []).length === 2,
+      },
+    );
+  });
+
+  test('places a link node of a URL pasted on the canvas, writing it into its file once saved', async () => {
+    await app.evaluate(({ clipboard }) =>
+      clipboard.writeText('https://example.invalid/pasted'),
+    );
+    const empty = await pointAt({ column: 60, row: 25 });
+    await page.mouse.click(empty.x, empty.y);
+    await page.keyboard.press('ControlOrMeta+V');
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () =>
+        Promise.resolve(
+          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
+        ),
+      'the link pasted placed and saved',
+      {
+        accepted: (text) =>
+          text.includes('"type":"link","url":"https://example.invalid/pasted"'),
       },
     );
   });

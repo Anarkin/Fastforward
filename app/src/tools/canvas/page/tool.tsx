@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react';
 import { useStore } from 'zustand';
 import './style.css';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
-import type { CanvasToHost, CanvasToWebview } from '../shared/protocol';
+import type {
+  CanvasDrop,
+  CanvasToHost,
+  CanvasToWebview,
+} from '../shared/protocol';
 import { BoardView } from './boardView';
 import { ColorPrompt } from './colorPrompt';
 import { CanvasStore, createCanvasStore } from './store';
@@ -11,14 +15,16 @@ export function CanvasTool({
   active,
   post,
   listen,
+  dropFiles,
   views = noViews,
 }: {
   active: boolean;
   post: (message: CanvasToHost) => void;
   listen: (handler: (message: CanvasToWebview) => void) => () => void;
+  dropFiles?: (files: readonly File[], message: CanvasDrop) => void;
   views?: ToolViews;
 }) {
-  const [store] = useState(() => createCanvasStore(post, {}, views));
+  const [store] = useState(() => createCanvasStore(post, {}, views, dropFiles));
   const tab = useStore(store, (state) => state.tab);
 
   useEffect(() => listen(store.getState().receive), [listen, store]);

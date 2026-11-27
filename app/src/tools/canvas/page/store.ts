@@ -5,7 +5,7 @@ import { strings } from '../../../lib/shared/strings';
 import { TabLife } from '../../../lib/page/tabLife';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { Board } from '../shared/board';
-import type { CanvasToHost } from '../shared/protocol';
+import type { CanvasToHost, CanvasDrop } from '../shared/protocol';
 import { canvasViewSchema } from './tabView';
 import { snapped } from './pan';
 import {
@@ -49,6 +49,7 @@ export function createCanvasStore(
   post: (message: CanvasToHost) => void,
   initial: Partial<CanvasSource> = {},
   views: ToolViews = noViews,
+  dropped: (files: readonly File[], message: CanvasDrop) => void = () => {},
 ): StoreApi<CanvasState> {
   return createStore<CanvasState>()((set, get) => {
     let sessions = Date.now();
@@ -278,6 +279,7 @@ export function createCanvasStore(
       undo: (tab) => post({ type: 'undo', tab }),
       redo: (tab) => post({ type: 'redo', tab }),
       save: (tab) => post({ type: 'save', tab }),
+      dropFiles: (tab, files, box) => dropped(files, { tab, box }),
       askColor: (tab, { nodes, edges }) => {
         set((state) => ({
           colorings: new Map(state.colorings).set(tab, { nodes, edges }),

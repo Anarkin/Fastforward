@@ -47,6 +47,7 @@ export function ToolViews() {
         active={active === 'canvas'}
         post={channels.canvas.post}
         listen={channels.canvas.listen}
+        dropFiles={channels.canvas.dropFiles}
         views={channels.canvas.views}
       />
       <DiffTool

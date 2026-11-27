@@ -86,6 +86,22 @@ export function paint(
   });
 }
 
+export const placedFrom = (
+  known: Drawn | undefined,
+  pointed: Cell | undefined,
+): Cell | undefined =>
+  pointed ??
+  (known === undefined
+    ? undefined
+    : {
+        column: Math.floor(
+          known.origin.column + known.view.width / known.cell.width / 3,
+        ),
+        row: Math.floor(
+          known.origin.row + known.view.height / known.cell.height / 3,
+        ),
+      });
+
 export const hoverFrom = (
   placing: Placing | undefined,
   typing: Typing | undefined,

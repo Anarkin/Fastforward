@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { isObject } from '../../../lib/main/json';
 import { edgeEnds, nodeSides, whichEnds } from '../shared/board';
 import {
@@ -5,7 +6,8 @@ import {
   isBoardColor,
   nodeOrders,
   type BoardEdit,
-  type NodeBox,
+  type CanvasDrop,
+  type PlacedBox,
 } from '../shared/protocol';
 
 const mostItems = 100_000;
@@ -15,6 +17,8 @@ const mostId = 256;
 const farthest = 1_000_000_000;
 
 const longestText = 50_000_000;
+
+const longestUrl = 8192;
 
 const isId = (value: unknown): value is string =>
   typeof value === 'string' && value.length > 0 && value.length <= mostId;
@@ -27,7 +31,7 @@ const isPlace = (value: unknown): value is number =>
 const isSize = (value: unknown): value is number =>
   isPlace(value) && value >= 1;
 
-function boxOf(value: unknown): Omit<NodeBox, 'id'> | undefined {
+function boxOf(value: unknown): PlacedBox | undefined {
   if (!isObject(value)) {
     return undefined;
   }
@@ -41,6 +45,26 @@ function idsOf(value: unknown): string[] | undefined {
   return Array.isArray(value) && value.length <= mostItems && value.every(isId)
     ? value
     : undefined;
+}
+
+export function dropOf(
+  files: unknown,
+  message: unknown,
+): (CanvasDrop & { readonly files: readonly string[] }) | undefined {
+  if (
+    !isObject(message) ||
+    !isId(message.tab) ||
+    !Array.isArray(files) ||
+    files.length > mostItems ||
+    !files.every(
+      (file): file is string =>
+        typeof file === 'string' && path.isAbsolute(file),
+    )
+  ) {
+    return undefined;
+  }
+  const box = boxOf(message.box);
+  return box === undefined ? undefined : { tab: message.tab, box, files };
 }
 
 export function editOf(value: unknown): BoardEdit | undefined {
@@ -82,6 +106,15 @@ export function editOf(value: unknown): BoardEdit | undefined {
         fromSide !== undefined &&
         toSide !== undefined
         ? { kind: 'connect', fromNode, fromSide, toNode, toSide }
+        : undefined;
+    }
+    case 'link': {
+      const { url } = value;
+      const box = boxOf(value.box);
+      return typeof url === 'string' &&
+        url.length <= longestUrl &&
+        box !== undefined
+        ? { kind: 'link', url, box }
         : undefined;
     }
     case 'reroute': {

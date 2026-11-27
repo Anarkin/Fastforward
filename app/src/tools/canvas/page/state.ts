@@ -1,8 +1,12 @@
-import type { NodeFile } from '../shared/protocol';
 import type { KeptTyped } from '../../../lib/page/viewFocus';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Board } from '../shared/board';
-import type { BoardEdit, CanvasToWebview } from '../shared/protocol';
+import type {
+  NodeFile,
+  PlacedBox,
+  BoardEdit,
+  CanvasToWebview,
+} from '../shared/protocol';
 import type { Origin } from './pan';
 import type { Caret } from './typing';
 
@@ -61,6 +65,11 @@ export interface CanvasActions {
   readonly askColor: (
     tab: string,
     ids: Pick<Coloring, 'nodes' | 'edges'>,
+  ) => void;
+  readonly dropFiles: (
+    tab: string,
+    files: readonly File[],
+    box: PlacedBox,
   ) => void;
   readonly keepColorTyped: (tab: string, typed: KeptTyped) => void;
   readonly answerColor: (tab: string, color: string | undefined) => void;

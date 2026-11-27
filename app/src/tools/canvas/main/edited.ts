@@ -57,6 +57,27 @@ function applied(
       }
       return id;
     }
+    case 'link': {
+      const nodes = listIn(raw, 'nodes');
+      if (!Array.isArray(raw.edges)) {
+        raw.edges = [];
+      }
+      const id = newId();
+      nodes.push({ id, type: 'link', url: edit.url, ...edit.box });
+      return id;
+    }
+    case 'files': {
+      const nodes = listIn(raw, 'nodes');
+      if (!Array.isArray(raw.edges)) {
+        raw.edges = [];
+      }
+      const ids = edit.files.map(({ file, box }) => {
+        const id = newId();
+        nodes.push({ id, type: 'file', file, ...box });
+        return id;
+      });
+      return ids[0] ?? false;
+    }
     case 'delete': {
       const gone = new Set(edit.nodes);
       const cut = new Set(edit.edges);

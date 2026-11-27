@@ -15,8 +15,8 @@ import {
 } from '../../../shell/main/toolContract';
 import { viewVersion, type CanvasToHost } from '../shared/protocol';
 import { EditedBoard } from './edited';
-import { editOf } from './edits';
-import { nodeFilesOf, type FileAccess } from './nodeFiles';
+import { dropOf, editOf } from './edits';
+import { fileIn, nodeFilesOf, vaultOf, type FileAccess } from './nodeFiles';
 import { isWebLink } from './pageTitles';
 import { post } from './post';
 import { boardOf } from './reading';
@@ -311,6 +311,9 @@ export class CanvasTool implements Tool<'canvas'> {
         if (done !== undefined) {
           this.postBoard(page, tab, done.made);
         }
+        if (done !== undefined && edit?.kind === 'link') {
+          this.postNodes(page, tab);
+        }
         break;
       }
       case 'undo':
@@ -329,6 +332,54 @@ export class CanvasTool implements Tool<'canvas'> {
       default:
         return;
     }
+    if (held.board.changed() !== wasChanged) {
+      this.shell.postTabs(page);
+    }
+  }
+
+  async dropped(page: Page, files: unknown, message: unknown): Promise<void> {
+    const drop = dropOf(files, message);
+    const held = drop === undefined ? undefined : this.held.get(drop.tab);
+    const access = this.access.files;
+    if (
+      drop === undefined ||
+      held === undefined ||
+      access === undefined ||
+      !this.shell.holds(page, drop.tab)
+    ) {
+      return;
+    }
+    const root = await vaultOf(held.file, access.isFolder);
+    const inside = drop.files.flatMap((file) => fileIn(root, file) ?? []);
+    const outside = drop.files.filter(
+      (file) => fileIn(root, file) === undefined,
+    );
+    if (outside.length > 0) {
+      this.shell.notice(page, {
+        level: 'info',
+        message: strings.canvas.outsideVault(outside, root),
+      });
+    }
+    if (inside.length === 0 || this.held.get(drop.tab) !== held) {
+      return;
+    }
+    const wasChanged = held.board.changed();
+    const { box } = drop;
+    const done = held.board.apply(
+      {
+        kind: 'files',
+        files: inside.map((file, at) => ({
+          file,
+          box: { ...box, y: box.y + at * box.height },
+        })),
+      },
+      this.access.newId ?? hexId,
+    );
+    if (done === undefined) {
+      return;
+    }
+    this.postBoard(page, drop.tab, done.made);
+    this.postNodes(page, drop.tab);
     if (held.board.changed() !== wasChanged) {
       this.shell.postTabs(page);
     }

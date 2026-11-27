@@ -13,6 +13,8 @@ export const placedSizes = {
   group: { columns: 40, rows: 12 },
 } as const;
 
+export const droppedSize = { columns: 30, rows: 8 } as const;
+
 export const ghostId = '';
 
 export function movedBy(box: Box, columns: number, rows: number): Box {
