@@ -87,6 +87,16 @@ const measuredStyles = [
   'textTransform',
 ] as const;
 
+const textStylesOf = (
+  style: CSSStyleDeclaration,
+): Readonly<Record<string, string>> =>
+  Object.fromEntries([
+    ...measuredStyles
+      .filter((name) => name !== 'font')
+      .map((name) => [name, style[name]]),
+    ['direction', style.direction],
+  ]);
+
 interface Measured {
   readonly key: string;
   readonly drawn: DrawnCursor;
@@ -271,21 +281,41 @@ class TextCursor {
       );
       return box === undefined ? [] : [box];
     });
-    return {
-      drawn: drawnCursor({
-        cell: fieldCell({
-          ...line,
-          before,
-          through: under === undefined ? undefined : under.right - origin,
-          emptyCell: this.digit.getBoundingClientRect().width,
-        }),
-        text: text.slice(head, end),
-        shape: look.style,
-        thickness: look.width,
-        ratio,
-        origin: { left: rect.left, top: rect.top },
-        font: style.font,
+    const made = drawnCursor({
+      cell: fieldCell({
+        ...line,
+        before,
+        through: under === undefined ? undefined : under.right - origin,
+        emptyCell: this.digit.getBoundingClientRect().width,
       }),
+      text: text.slice(head, end),
+      shape: look.style,
+      thickness: look.width,
+      ratio,
+      origin: { left: rect.left, top: rect.top },
+      font: style.font,
+    });
+    const drawn: DrawnCursor =
+      made.glyph === undefined
+        ? made
+        : {
+            ...made,
+            glyph: {
+              ...made.glyph,
+              boxCopy: {
+                value: text,
+                left: line.content.left - rect.left - made.box.left,
+                top: line.content.top - rect.top - made.box.top,
+                width: line.content.width,
+                height: line.content.height,
+                scrolled: field.scrollLeft,
+                lineHeight: style.lineHeight,
+                styles: textStylesOf(style),
+              },
+            },
+          };
+    return {
+      drawn,
       selection: selected.map((box) =>
         placedBox(pixelBox(box, ratio), ratio, padding),
       ),

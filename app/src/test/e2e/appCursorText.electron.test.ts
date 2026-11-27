@@ -29,11 +29,29 @@ import {
   sharedCursorApp,
 } from './cursorAppFixtures';
 
+const placeholderWidths = () =>
+  page.locator('.field-probe input').evaluate((field) => {
+    const probe = document.createElement('span');
+    probe.style.font = getComputedStyle(field).font;
+    probe.style.position = 'fixed';
+    probe.textContent = 'S';
+    document.body.append(probe);
+    const width = probe.getBoundingClientRect().width;
+    probe.remove();
+    return {
+      block:
+        field.parentElement
+          ?.querySelector('.text-cursor')
+          ?.getBoundingClientRect().width ?? 0,
+      letter: width,
+    };
+  });
+
 suite('Cursor over the text under it and beside it', () => {
   sharedCursorApp();
 
   for (const ratio of ratios) {
-    test(`draws the block of a text box over a wide character as wide as the box lays the character out at ${ratio * 100}%, in whatever font the system draws it, as a system without one for Chinese draws a box a cell wide`, async () => {
+    test(`draws the block of a text box over a wide character as wide as the box lays the character out at ${ratio * 100}%, in whatever font the system draws it, as a system without one for Chinese draws a box a cell wide, and draws the character under it where the box draws it, its ink centered within a quarter of a pixel of the box's, though the box lays a character of another font out by rules of its own`, async () => {
       await useStyle('block');
       await zoomTo(ratio);
       const parts = await partsInPage();
@@ -61,6 +79,19 @@ suite('Cursor over the text under it and beside it', () => {
       assert.ok(
         Math.abs(block.width - laid) <= 1,
         `the block over 中 ${block.width} device pixels wide, the box laying it out ${laid} wide`,
+      );
+      await focusField(3);
+      const away = await settledShot(
+        (taken) => !blockShown(taken, block),
+        'the block of the text box gone past 中',
+      );
+      const under = glyphPlace(shot, block, false).middle;
+      const own = glyphPlace(away, block, true).middle;
+      assert.ok(
+        under.every(
+          (value, axis) => Math.abs(value - (own[axis] ?? Number.NaN)) <= 0.25,
+        ),
+        `the ink of 中 under the block centered at ${JSON.stringify(under)}, of the box drawing it at ${JSON.stringify(own)}`,
       );
     });
 
@@ -216,28 +247,18 @@ suite('Cursor over the text under it and beside it', () => {
       }
     });
     await focusField(0);
-    await waitFor(
-      async () => (await fieldCursor().textContent()) === 'S',
-      'the first character of the placeholder in the block',
+    await waitFor(async () => {
+      const { block, letter } = await placeholderWidths();
+      return Math.abs(block - letter) <= 1;
+    }, 'the block as wide as the first character of the placeholder');
+    const placed = await elementBox(fieldCursor(), 1);
+    const shot = await settledShot(
+      (taken) => blockShown(taken, placed),
+      'the block on the placeholder',
     );
-    const { block, letter } = await page
-      .locator('.field-probe input')
-      .evaluate((field) => {
-        const probe = document.createElement('span');
-        probe.style.font = getComputedStyle(field).font;
-        probe.style.position = 'fixed';
-        probe.textContent = 'S';
-        document.body.append(probe);
-        const width = probe.getBoundingClientRect().width;
-        probe.remove();
-        return {
-          block:
-            field.parentElement
-              ?.querySelector('.text-cursor')
-              ?.getBoundingClientRect().width ?? 0,
-          letter: width,
-        };
-      });
-    assert.ok(Math.abs(block - letter) <= 1, `${block} for ${letter}`);
+    assert.ok(
+      glyphPlace(shot, placed, false).box !== undefined,
+      'the first character of the placeholder drawn inside the block',
+    );
   });
 });

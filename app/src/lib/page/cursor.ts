@@ -82,12 +82,24 @@ export function cursorBox(
   }
 }
 
+export interface TextBoxCopy {
+  readonly value: string;
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+  readonly scrolled: number;
+  readonly lineHeight: string;
+  readonly styles: Readonly<Record<string, string>>;
+}
+
 export interface Glyph {
   readonly text: string;
   readonly left: number;
   readonly top: number;
   readonly height: number;
   readonly font: string | undefined;
+  readonly boxCopy?: TextBoxCopy;
 }
 
 export interface DrawnCursor {
@@ -176,11 +188,19 @@ export function paintCursor(
         ? '0'
         : [edges.top, edges.right, edges.bottom, edges.left].map(px).join(' '),
   });
+  element.style.overflow = glyph?.boxCopy === undefined ? '' : 'hidden';
+  if (glyph?.boxCopy === undefined) {
+    shades.get(element)?.replaceChildren();
+  }
   if (glyph === undefined) {
     element.replaceChildren();
     return;
   }
-  const shown = document.createElement('span');
+  if (glyph.boxCopy !== undefined) {
+    paintBoxCopy(element, glyph, glyph.boxCopy);
+    return;
+  }
+  const shown = element.ownerDocument.createElement('span');
   shown.textContent = glyph.text;
   if (glyph.font !== undefined) {
     shown.style.font = glyph.font;
@@ -194,6 +214,52 @@ export function paintCursor(
     color: cursorTextColor,
   });
   element.replaceChildren(shown);
+}
+
+const shades = new WeakMap<HTMLElement, ShadowRoot>();
+
+function paintBoxCopy(
+  element: HTMLElement,
+  glyph: Glyph,
+  {
+    value,
+    left,
+    top,
+    width,
+    height,
+    scrolled,
+    lineHeight,
+    styles,
+  }: TextBoxCopy,
+): void {
+  const copy = element.ownerDocument.createElement('input');
+  copy.readOnly = true;
+  copy.tabIndex = -1;
+  copy.value = value;
+  if (glyph.font !== undefined) {
+    copy.style.font = glyph.font;
+  }
+  Object.assign(copy.style, styles, {
+    position: 'absolute',
+    left: px(left),
+    top: px(top),
+    width: px(width),
+    height: px(height),
+    lineHeight,
+    padding: '0',
+    margin: '0',
+    border: '0',
+    outline: 'none',
+    background: 'transparent',
+    color: cursorTextColor,
+    caretColor: 'transparent',
+    pointerEvents: 'none',
+  });
+  element.replaceChildren();
+  const shade = shades.get(element) ?? element.attachShadow({ mode: 'closed' });
+  shades.set(element, shade);
+  shade.replaceChildren(copy);
+  copy.scrollLeft = scrolled;
 }
 
 export class CursorMark {

@@ -9,7 +9,9 @@ import {
   cursorBlinkInterval,
   cursorBox,
   drawnCursor,
+  paintCursor,
 } from '../../../../lib/page/cursor';
+import { JSDOM } from 'jsdom';
 
 const cell = { left: 90, top: 36, width: 9, height: 23 };
 
@@ -177,5 +179,57 @@ suite('Cursor', () => {
     for (const shape of ['bar', 'underline', 'outline'] as const) {
       assert.strictEqual(drawn(shape).glyph, undefined, shape);
     }
+  });
+
+  test('draws the character under the block of a text box by a copy of the box in a shadow of the block, so the browser lays it out by the rules it lays the text of the box out by, a character of a fallback font too, out of reach of what queries the page, and takes the copy away once the cursor draws no character', () => {
+    const { document } = new JSDOM('<div class="field"></div>').window;
+    const element = document.createElement('div');
+    document.querySelector('.field')?.append(element);
+    const attach = element.attachShadow.bind(element);
+    let shade: ShadowRoot | undefined;
+    element.attachShadow = (init) => {
+      shade = attach(init);
+      return shade;
+    };
+    const box = { left: 9, top: 2, width: 13, height: 18 };
+    paintCursor(element, {
+      box,
+      edges: undefined,
+      glyph: {
+        text: '中',
+        left: 0,
+        top: 0,
+        height: 18,
+        font: '13px Mono',
+        boxCopy: {
+          value: 'x中x',
+          left: -9,
+          top: -2,
+          width: 120,
+          height: 22,
+          scrolled: 0,
+          lineHeight: '18px',
+          styles: { letterSpacing: '0.5px' },
+        },
+      },
+    });
+    const copy = shade?.querySelector('input');
+    assert.deepStrictEqual(
+      [
+        copy?.value,
+        copy?.readOnly,
+        copy?.tabIndex,
+        copy?.style.letterSpacing,
+        copy?.style.left,
+        element.style.overflow,
+        document.querySelectorAll('.field input').length,
+      ],
+      ['x中x', true, -1, '0.5px', '-9px', 'hidden', 0],
+    );
+    paintCursor(element, { box, edges: undefined, glyph: undefined });
+    assert.deepStrictEqual(
+      [shade?.childElementCount, element.shadowRoot, element.style.overflow],
+      [0, null, ''],
+    );
   });
 });
