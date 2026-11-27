@@ -20,8 +20,17 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const typing = useCanvas(typingShown);
   const files = useCanvas(filesShown);
   const { followPath } = useShellActions();
-  const { select, place, edit, undo, redo, save, startTyping, stopTyping } =
-    useCanvasActions();
+  const {
+    select,
+    place,
+    edit,
+    undo,
+    redo,
+    save,
+    startTyping,
+    stopTyping,
+    zoom,
+  } = useCanvasActions();
   const shownTab = tab !== undefined && board !== undefined;
   const calm = shownTab && typing === undefined;
   const [only] = selected.length === 1 ? selected : [];
@@ -34,6 +43,15 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const opened = openedOf(onlyNode, files);
 
   useBinding(canvasKeymap.placeText, () => startPlacing('text'), shownTab);
+  useBinding(
+    canvasKeymap.resetZoom,
+    () => {
+      if (tab !== undefined) {
+        zoom(tab, 0);
+      }
+    },
+    shownTab,
+  );
   useBinding(canvasKeymap.placeGroup, () => startPlacing('group'), shownTab);
   useBinding(
     canvasKeymap.delete,

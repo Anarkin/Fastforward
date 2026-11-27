@@ -338,7 +338,7 @@ suite('App canvas content', () => {
     });
   });
 
-  test('zooms the canvas on Mod and the wheel around the pointer, a device pixel of the width of a cell a notch, its nodes on the cells of the board they were on', async () => {
+  test('zooms the canvas on Mod and the wheel around the pointer, a device pixel of the width of a cell a notch, its nodes on the cells of the board they were on, and back to the size of the font on Mod+0', async () => {
     const corner = { column: 60, row: 0 };
     const drawnAt = async () => {
       const seen = await seenBoard();
@@ -363,6 +363,16 @@ suite('App canvas content', () => {
       accepted: (now) => now === before,
     });
     assert.strictEqual(await drawnAt(), '┌');
+    await zoomNotch(-100);
+    await zoomNotch(-100);
+    await untilSettled(advanceSeen, 'the canvas zoomed in twice', {
+      accepted: (now) => now === before + 2,
+    });
+    await page.locator('.board-body').focus();
+    await page.keyboard.press('ControlOrMeta+0');
+    await untilSettled(advanceSeen, 'the zoom reset on Mod+0', {
+      accepted: (now) => now === before,
+    });
   });
 
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {
