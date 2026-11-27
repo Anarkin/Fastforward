@@ -4,6 +4,7 @@ import './style.css';
 import { noViews, type ToolViews } from '../../../shell/page/toolViews';
 import type { CanvasToHost, CanvasToWebview } from '../shared/protocol';
 import { BoardView } from './boardView';
+import { ColorPrompt } from './colorPrompt';
 import { CanvasStore, createCanvasStore } from './store';
 
 export function CanvasTool({
@@ -41,6 +42,7 @@ export function CanvasTool({
             <BoardView key={tab} />
           )}
         </div>
+        <ColorPrompt />
       </div>
     </CanvasStore>
   );

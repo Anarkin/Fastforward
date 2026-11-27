@@ -100,13 +100,14 @@ export function createCanvasStore(
           return {
             origin: get().origins.get(tab),
             selected: get().selections.get(tab),
+            coloring: get().colorings.get(tab),
             typing:
               typing === undefined
                 ? undefined
                 : { id: typing.id, anchor: typing.anchor, head: typing.head },
           };
         },
-        restore: (tab, { origin, selected, typing }) => {
+        restore: (tab, { origin, selected, typing, coloring }) => {
           const text =
             typing === undefined
               ? undefined
@@ -123,6 +124,10 @@ export function createCanvasStore(
               selected === undefined
                 ? without(state.selections, tab)
                 : new Map(state.selections).set(tab, selected),
+            colorings:
+              coloring === undefined
+                ? without(state.colorings, tab)
+                : new Map(state.colorings).set(tab, coloring),
             typings:
               typing === undefined || text === undefined
                 ? without(state.typings, tab)
@@ -138,6 +143,7 @@ export function createCanvasStore(
             typings: without(state.typings, tab),
             origins: without(state.origins, tab),
             selections: without(state.selections, tab),
+            colorings: without(state.colorings, tab),
           }));
         },
       },
@@ -261,6 +267,39 @@ export function createCanvasStore(
       undo: (tab) => post({ type: 'undo', tab }),
       redo: (tab) => post({ type: 'redo', tab }),
       save: (tab) => post({ type: 'save', tab }),
+      askColor: (tab, { nodes, edges }) => {
+        set((state) => ({
+          colorings: new Map(state.colorings).set(tab, { nodes, edges }),
+        }));
+        tabs.changed(tab);
+      },
+      keepColorTyped: (tab, typed) => {
+        const coloring = get().colorings.get(tab);
+        if (coloring === undefined) {
+          return;
+        }
+        set((state) => ({
+          colorings: new Map(state.colorings).set(tab, { ...coloring, typed }),
+        }));
+        tabs.changed(tab);
+      },
+      answerColor: (tab, color) => {
+        const coloring = get().colorings.get(tab);
+        set((state) => ({ colorings: without(state.colorings, tab) }));
+        tabs.changed(tab);
+        if (coloring !== undefined && color !== undefined) {
+          post({
+            type: 'edit',
+            tab,
+            edit: {
+              kind: 'color',
+              nodes: coloring.nodes,
+              edges: coloring.edges,
+              color,
+            },
+          });
+        }
+      },
       keepTabs: () => tabs.flush(),
       releaseTab: (tab) => tabs.release(tab, get().tab),
     };

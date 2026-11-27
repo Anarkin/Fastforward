@@ -12,6 +12,7 @@ export interface Chosen {
 
 export interface MenuActs {
   readonly color: (color: string | undefined) => void;
+  readonly custom: () => void;
   readonly order: (to: NodeOrder) => void;
 }
 
@@ -51,6 +52,12 @@ export function boardMenuItems(
             onClick: () => act.color(color),
           };
         }),
+        { separator: true },
+        {
+          label: strings.canvas.customColor,
+          checked: typeof shared === 'string' && shared.startsWith('#'),
+          onClick: act.custom,
+        },
       ],
     },
     { separator: true },
@@ -78,10 +85,21 @@ export function chosenAt(
   return id === undefined || selected.includes(id) ? selected : [id];
 }
 
+export interface ChosenIds {
+  readonly nodes: readonly string[];
+  readonly edges: readonly string[];
+}
+
 export function boardMenuOf(
   board: Board,
   chosen: readonly string[],
-  send: (edit: BoardEdit) => void,
+  {
+    send,
+    custom,
+  }: {
+    readonly send: (edit: BoardEdit) => void;
+    readonly custom: (ids: ChosenIds) => void;
+  },
 ): ContextMenuItem[] {
   const nodes = board.nodes.filter((each) => chosen.includes(each.id));
   const edges = board.edges.filter((each) => chosen.includes(each.id));
@@ -98,6 +116,9 @@ export function boardMenuOf(
           ...ids,
           ...(color === undefined ? {} : { color }),
         });
+      },
+      custom: () => {
+        custom(ids);
       },
       order: (to) => {
         send({ kind: 'order', nodes: ids.nodes, to });

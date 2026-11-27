@@ -18,6 +18,7 @@ const acted = () => {
     done,
     act: {
       color: (color: string | undefined) => done.push(`color ${color}`),
+      custom: () => done.push('custom'),
       order: (to: NodeOrder) => done.push(`order ${to}`),
     },
   };
@@ -43,6 +44,8 @@ suite('Canvas menu', () => {
       ...strings.canvas.colors.map((name, at) =>
         at === 3 ? `${name} ✓` : name,
       ),
+      '-',
+      strings.canvas.customColor,
     ]);
     for (const item of [...(color.submenu ?? []), front, back]) {
       if (item !== undefined && !('separator' in item)) {
@@ -57,6 +60,7 @@ suite('Canvas menu', () => {
       'color 4',
       'color 5',
       'color 6',
+      'custom',
       'order front',
       'order back',
     ]);
@@ -72,6 +76,9 @@ suite('Canvas menu', () => {
       );
     };
     assert.deepStrictEqual(colorOf(['1', '2']), []);
+    assert.deepStrictEqual(colorOf(['#123456', '#123456']), [
+      `${strings.canvas.customColor} ✓`,
+    ]);
     assert.deepStrictEqual(colorOf([undefined]), [
       `${strings.canvas.noColor} ✓`,
     ]);

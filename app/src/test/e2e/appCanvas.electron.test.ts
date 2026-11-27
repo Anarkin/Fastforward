@@ -746,6 +746,32 @@ suite('App canvas', () => {
     );
   });
 
+  test('colors a node by a color of its own typed into a prompt that Custom… of the menu of a right click opens, writing it into its file once saved', async () => {
+    const inside = await pointAt({ column: 2, row: 1 });
+    await page.mouse.click(inside.x, inside.y, { button: 'right' });
+    await page
+      .locator('.context-menu .menu-item', { hasText: strings.canvas.color })
+      .click();
+    await page
+      .locator('.submenu .menu-item', { hasText: strings.canvas.customColor })
+      .click();
+    const prompt = page.locator('.prompt-input');
+    await prompt.waitFor();
+    await prompt.fill('#123456');
+    await prompt.press('Enter');
+    await prompt.waitFor({ state: 'detached' });
+    await page.locator('.board-body').focus();
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () => Promise.resolve(JSON.stringify(savedPlace('outside'))),
+      'the color of its own saved',
+      {
+        accepted: (seen) =>
+          seen === JSON.stringify({ at: 0, color: '#123456' }),
+      },
+    );
+  });
+
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {
     const fresh = path.join(folder, 'fresh.canvas');
     await showTab(page, 0);

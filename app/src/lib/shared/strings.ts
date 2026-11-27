@@ -1334,6 +1334,11 @@ export const strings = {
     colors: ['Red', 'Orange', 'Yellow', 'Green', 'Cyan', 'Purple'],
     toFront: 'Bring to Front',
     toBack: 'Send to Back',
+    customColor: 'Custom…',
+    customColorTitle: 'Color',
+    customColorLabel: 'Color, as # and six hex digits',
+    customColorConfirm: 'Color',
+    notAColor: sentence`A color is # and six hex digits, as #3366FF.`,
     couldNotSave: (file: string, reason: Sentence) =>
       sentence`Couldn't save ${namedFile(file)}. ${reason}`,
     readOnly: (file: string) =>

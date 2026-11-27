@@ -72,6 +72,7 @@ export function BoardView() {
     startTyping,
     typed,
     stopTyping,
+    askColor,
   } = useCanvasActions();
   const { showMenu } = useShellActions();
   const table = useCellTable();
@@ -463,8 +464,9 @@ export function BoardView() {
     showMenu({
       x: event.clientX,
       y: event.clientY,
-      items: boardMenuOf(board, chosen, (change) => {
-        edit(tab, change);
+      items: boardMenuOf(board, chosen, {
+        send: (change) => edit(tab, change),
+        custom: (ids) => askColor(tab, ids),
       }),
     });
   };

@@ -1,3 +1,4 @@
+import type { KeptTyped } from '../../../lib/page/viewFocus';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Board } from '../shared/board';
 import type { BoardEdit, CanvasToWebview } from '../shared/protocol';
@@ -18,6 +19,12 @@ export interface Typing extends Caret {
   readonly session: number;
 }
 
+export interface Coloring {
+  readonly nodes: readonly string[];
+  readonly edges: readonly string[];
+  readonly typed?: KeptTyped;
+}
+
 export interface CanvasSource {
   readonly tab: string | undefined;
   readonly file: string | undefined;
@@ -26,6 +33,7 @@ export interface CanvasSource {
   readonly selections: ReadonlyMap<string, readonly string[]>;
   readonly placing: Placing | undefined;
   readonly typings: ReadonlyMap<string, Typing>;
+  readonly colorings: ReadonlyMap<string, Coloring>;
 }
 
 export interface CanvasActions {
@@ -47,6 +55,12 @@ export interface CanvasActions {
   readonly undo: (tab: string) => void;
   readonly redo: (tab: string) => void;
   readonly save: (tab: string) => void;
+  readonly askColor: (
+    tab: string,
+    ids: Pick<Coloring, 'nodes' | 'edges'>,
+  ) => void;
+  readonly keepColorTyped: (tab: string, typed: KeptTyped) => void;
+  readonly answerColor: (tab: string, color: string | undefined) => void;
   readonly keepTabs: () => void;
   readonly releaseTab: (tab: string) => string | undefined;
 }
@@ -63,7 +77,11 @@ export const canvasDefaults: CanvasSource = {
   selections: new Map(),
   placing: undefined,
   typings: new Map(),
+  colorings: new Map(),
 };
+
+export const coloringShown = (state: CanvasSource): Coloring | undefined =>
+  state.tab === undefined ? undefined : state.colorings.get(state.tab);
 
 export const originShown = (state: CanvasSource): Origin | undefined =>
   state.tab === undefined ? undefined : state.origins.get(state.tab);
