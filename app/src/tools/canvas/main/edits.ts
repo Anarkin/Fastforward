@@ -1,6 +1,12 @@
 import { isObject } from '../../../lib/main/json';
 import { edgeEnds, nodeSides } from '../shared/board';
-import { addedKinds, type BoardEdit, type NodeBox } from '../shared/protocol';
+import {
+  addedKinds,
+  isBoardColor,
+  nodeOrders,
+  type BoardEdit,
+  type NodeBox,
+} from '../shared/protocol';
 
 const mostItems = 100_000;
 
@@ -102,6 +108,27 @@ export function editOf(value: unknown): BoardEdit | undefined {
       return nodes === undefined || edges === undefined
         ? undefined
         : { kind: 'delete', nodes, edges };
+    }
+    case 'color': {
+      const nodes = idsOf(value.nodes);
+      const edges = idsOf(value.edges);
+      const { color } = value;
+      if (nodes === undefined || edges === undefined) {
+        return undefined;
+      }
+      if (color === undefined) {
+        return { kind: 'color', nodes, edges };
+      }
+      return typeof color === 'string' && isBoardColor(color)
+        ? { kind: 'color', nodes, edges, color }
+        : undefined;
+    }
+    case 'order': {
+      const nodes = idsOf(value.nodes);
+      const to = nodeOrders.find((order) => order === value.to);
+      return nodes === undefined || to === undefined
+        ? undefined
+        : { kind: 'order', nodes, to };
     }
     default:
       return undefined;

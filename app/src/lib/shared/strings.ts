@@ -1329,6 +1329,11 @@ export const strings = {
     newFile: 'New file, made once saved',
   },
   canvas: {
+    color: 'Color',
+    noColor: 'None',
+    colors: ['Red', 'Orange', 'Yellow', 'Green', 'Cyan', 'Purple'],
+    toFront: 'Bring to Front',
+    toBack: 'Send to Back',
     couldNotSave: (file: string, reason: Sentence) =>
       sentence`Couldn't save ${namedFile(file)}. ${reason}`,
     readOnly: (file: string) =>

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { strings } from '../../lib/shared/strings';
 import { writeWhenFree } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
@@ -356,6 +357,16 @@ suite('App canvas', () => {
         ? [{ id: node.id, x: node.x, y: node.y }]
         : [],
     );
+  };
+
+  const savedPlace = (id: string) => {
+    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
+    const nodes: unknown = Reflect.get(Object(saved), 'nodes');
+    assert.ok(Array.isArray(nodes));
+    const at = nodes.findIndex(
+      (each: unknown) => Reflect.get(Object(each), 'id') === id,
+    );
+    return { at, color: Reflect.get(Object(nodes[at]), 'color') };
   };
 
   const savedText = (id: string) => {
@@ -712,6 +723,27 @@ suite('App canvas', () => {
       ),
     );
     await holds('the node written outside drawn', 'Written outside', true);
+  });
+
+  test('colors a node chosen from its menu on a right click and sends it to the back, under every other node, writing both into its file once saved', async () => {
+    const inside = await pointAt({ column: 2, row: 1 });
+    const menuItem = (label: string) =>
+      page.locator('.context-menu .menu-item', { hasText: label });
+    await page.mouse.click(inside.x, inside.y, { button: 'right' });
+    await menuItem(strings.canvas.color).click();
+    await page
+      .locator('.submenu .menu-item', { hasText: strings.canvas.colors[3] })
+      .click();
+    await page.mouse.click(inside.x, inside.y, { button: 'right' });
+    await menuItem(strings.canvas.toBack).click();
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () => Promise.resolve(JSON.stringify(savedPlace('outside'))),
+      'the color and the order saved',
+      {
+        accepted: (seen) => seen === JSON.stringify({ at: 0, color: '4' }),
+      },
+    );
   });
 
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {

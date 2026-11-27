@@ -138,6 +138,43 @@ function applied(
       node[key] = edit.text;
       return true;
     }
+    case 'color': {
+      let changed = false;
+      for (const [key, chosen] of [
+        ['nodes', new Set(edit.nodes)],
+        ['edges', new Set(edit.edges)],
+      ] as const) {
+        for (const item of listIn(raw, key)) {
+          if (
+            !isObject(item) ||
+            !chosen.has(idOf(item) ?? '') ||
+            item.color === edit.color
+          ) {
+            continue;
+          }
+          changed = true;
+          if (edit.color === undefined) {
+            delete item.color;
+          } else {
+            item.color = edit.color;
+          }
+        }
+      }
+      return changed;
+    }
+    case 'order': {
+      const chosen = new Set(edit.nodes);
+      const nodes = listIn(raw, 'nodes');
+      const moved = nodes.filter((node) => chosen.has(idOf(node) ?? ''));
+      const rest = nodes.filter((node) => !chosen.has(idOf(node) ?? ''));
+      const ordered =
+        edit.to === 'front' ? [...rest, ...moved] : [...moved, ...rest];
+      if (ordered.every((node, at) => node === nodes[at])) {
+        return false;
+      }
+      raw.nodes = ordered;
+      return true;
+    }
     default:
       return edit satisfies never;
   }

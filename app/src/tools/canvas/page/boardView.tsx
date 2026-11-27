@@ -6,10 +6,11 @@ import { Words } from '../../../lib/page/name';
 import { PathTitle } from '../../../lib/page/pathTitle';
 import { keyPressed, useBinding } from '../../../lib/page/shortcuts';
 import { clicked, wheeled } from '../../../lib/shared/keymap';
-import { useShell } from '../../../shell/page/store';
+import { useShell, useShellActions } from '../../../shell/page/store';
 import type { Board } from '../shared/board';
 import { dragged, wheelMove, type Origin, type Point } from './pan';
 import { dragging, pressed, released, type Preview } from './gestures';
+import { boardMenuOf, chosenAt } from './boardMenu';
 import { hitOf, type Hit } from './hits';
 import { canvasKeymap } from './keymap';
 import { Panner } from './panner';
@@ -72,6 +73,7 @@ export function BoardView() {
     typed,
     stopTyping,
   } = useCanvasActions();
+  const { showMenu } = useShellActions();
   const table = useCellTable();
   const body = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -445,6 +447,28 @@ export function BoardView() {
     }
   };
 
+  const openMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const known = drawn.current;
+    if (known === undefined || tab === undefined || board === undefined) {
+      return;
+    }
+    const chosen = chosenAt(
+      selected,
+      hitAt(board, known, cellAt(event, known)),
+    );
+    if (chosen !== selected) {
+      select(tab, chosen);
+    }
+    showMenu({
+      x: event.clientX,
+      y: event.clientY,
+      items: boardMenuOf(board, chosen, (change) => {
+        edit(tab, change);
+      }),
+    });
+  };
+
   const movePan = (event: React.PointerEvent<HTMLDivElement>): boolean => {
     const moving = panning.current;
     const known = drawn.current;
@@ -748,6 +772,7 @@ export function BoardView() {
             chosenWhole(event, 'word');
           }
         }}
+        onContextMenu={openMenu}
         onKeyDown={keyDown}
         onCopy={(event) => copied(event, false)}
         onCut={(event) => copied(event, true)}

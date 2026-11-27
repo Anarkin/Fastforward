@@ -144,6 +144,79 @@ suite('Canvas edited', () => {
     assert.deepStrictEqual(written()[0], ['ab', 'arrow', undefined]);
   });
 
+  test('colors the nodes and edges asked for by one of the six colors of JSON Canvas or a color of its own, and takes their color away, writing the field only while one is chosen', () => {
+    const board = new EditedBoard(canvas);
+    const colors = () => {
+      const parsed: unknown = JSON.parse(board.text());
+      assert.ok(typeof parsed === 'object' && parsed !== null);
+      return ['nodes', 'edges'].flatMap((key) => {
+        const listed: unknown = Reflect.get(parsed, key);
+        assert.ok(Array.isArray(listed));
+        return listed.map((each: unknown) =>
+          typeof each === 'object' && each !== null
+            ? [Reflect.get(each, 'id'), Reflect.get(each, 'color')]
+            : [],
+        );
+      });
+    };
+    assert.deepStrictEqual(
+      board.apply(
+        { kind: 'color', nodes: ['a'], edges: ['ab'], color: '4' },
+        ids(),
+      ),
+      {},
+    );
+    board.apply(
+      { kind: 'color', nodes: ['b'], edges: [], color: '#ff8800' },
+      ids(),
+    );
+    assert.deepStrictEqual(colors(), [
+      ['a', '4'],
+      ['b', '#ff8800'],
+      ['odd', undefined],
+      ['ab', '4'],
+      ['ba', undefined],
+    ]);
+    board.apply({ kind: 'color', nodes: ['a', 'b'], edges: ['ab'] }, ids());
+    assert.deepStrictEqual(colors(), [
+      ['a', undefined],
+      ['b', undefined],
+      ['odd', undefined],
+      ['ab', undefined],
+      ['ba', undefined],
+    ]);
+    assert.strictEqual(
+      board.apply({ kind: 'color', nodes: ['a'], edges: ['ab'] }, ids()),
+      undefined,
+    );
+  });
+
+  test('brings the nodes asked for to the front, over every other, and sends them to the back, under every other, keeping their order among themselves and the nodes it cannot read where they are among the rest', () => {
+    const board = new EditedBoard(canvas);
+    const order = () => {
+      const parsed: unknown = JSON.parse(board.text());
+      assert.ok(typeof parsed === 'object' && parsed !== null);
+      const nodes: unknown = Reflect.get(parsed, 'nodes');
+      assert.ok(Array.isArray(nodes));
+      return nodes.map((each: unknown) =>
+        typeof each === 'object' && each !== null
+          ? Reflect.get(each, 'id')
+          : undefined,
+      );
+    };
+    assert.deepStrictEqual(
+      board.apply({ kind: 'order', nodes: ['a'], to: 'front' }, ids()),
+      {},
+    );
+    assert.deepStrictEqual(order(), ['b', 'odd', 'a']);
+    board.apply({ kind: 'order', nodes: ['b', 'a'], to: 'back' }, ids());
+    assert.deepStrictEqual(order(), ['b', 'a', 'odd']);
+    assert.strictEqual(
+      board.apply({ kind: 'order', nodes: ['b', 'a'], to: 'back' }, ids()),
+      undefined,
+    );
+  });
+
   test('connects two nodes by an edge from a side of one to a side of the other, under an id of its own, as Obsidian writes an edge, and never a node to itself or to one not there', () => {
     const board = new EditedBoard(canvas);
     const connect = (fromNode: string, toNode: string) =>
@@ -293,6 +366,25 @@ suite('Canvas edited', () => {
       editOf({ kind: 'text', id: 'a', text: 'Line\r\nnext', session: 7 }),
       { kind: 'text', id: 'a', text: 'Line\r\nnext', session: 7 },
     );
+    assert.deepStrictEqual(
+      [
+        editOf({
+          kind: 'color',
+          nodes: ['a'],
+          edges: ['ab'],
+          color: '#ABCDEF',
+        }),
+        editOf({ kind: 'color', nodes: [], edges: ['ab'], color: '6' }),
+        editOf({ kind: 'color', nodes: ['a'], edges: [] }),
+        editOf({ kind: 'order', nodes: ['a'], to: 'back' }),
+      ],
+      [
+        { kind: 'color', nodes: ['a'], edges: ['ab'], color: '#ABCDEF' },
+        { kind: 'color', nodes: [], edges: ['ab'], color: '6' },
+        { kind: 'color', nodes: ['a'], edges: [] },
+        { kind: 'order', nodes: ['a'], to: 'back' },
+      ],
+    );
     for (const forged of [
       {
         kind: 'place',
@@ -323,6 +415,11 @@ suite('Canvas edited', () => {
       { kind: 'ends', edges: 'ab', fromEnd: 'arrow', toEnd: 'none' },
       { kind: 'text', id: 'a', text: 'x', session: 0.5 },
       { kind: 'text', id: '', text: 'x', session: 1 },
+      { kind: 'color', nodes: ['a'], edges: [], color: 'red' },
+      { kind: 'color', nodes: ['a'], edges: [], color: '7' },
+      { kind: 'color', nodes: ['a'], edges: [], color: '#12345' },
+      { kind: 'color', nodes: 'a', edges: [], color: '1' },
+      { kind: 'order', nodes: ['a'], to: 'middle' },
       { kind: 'rename' },
       'delete',
     ]) {

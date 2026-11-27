@@ -13,6 +13,13 @@ export interface NodeBox {
 
 export const addedKinds = ['text', 'group'] as const;
 
+export const nodeOrders = ['front', 'back'] as const;
+
+export type NodeOrder = (typeof nodeOrders)[number];
+
+export const isBoardColor = (color: string): boolean =>
+  /^(?:[1-6]|#[\da-f]{3}|#[\da-f]{6})$/i.test(color);
+
 type AddedKind = (typeof addedKinds)[number];
 
 export type BoardEdit =
@@ -44,6 +51,17 @@ export type BoardEdit =
       readonly id: string;
       readonly text: string;
       readonly session: number;
+    }
+  | {
+      readonly kind: 'color';
+      readonly nodes: readonly string[];
+      readonly edges: readonly string[];
+      readonly color?: string;
+    }
+  | {
+      readonly kind: 'order';
+      readonly nodes: readonly string[];
+      readonly to: NodeOrder;
     };
 
 export type CanvasToHost =
