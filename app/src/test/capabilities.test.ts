@@ -91,6 +91,14 @@ suite('Capabilities', () => {
     ]);
   });
 
+  test('marks the track of a scrollbar only through the marks of the library, the matches of a find and its current one worked out once for the editor, the viewer and a Markdown preview, the diff joining its runs of changes by the same joiner, and every mark made of one class and place, so a mark looks and stands alike in every view', () => {
+    heldBy(/scrollbar-mark\b(?!s)/, ['lib/page/trackMarks.ts']);
+    heldBy(/\btickJoiner\(/, [
+      'components/diff/page/changeMarks.ts',
+      'lib/page/scrollbarTicks.ts',
+    ]);
+  });
+
   test('watches the file system only through the watcher of the library, so every watch is kept, closed and told of an error alike', () => {
     heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts'], {
       'shell/main/settingsWatch.ts':

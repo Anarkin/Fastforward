@@ -6,51 +6,13 @@ import {
   type SurfaceUpdate,
 } from './surface';
 import {
-  leastTick,
-  tickJoiner,
-  type Tick,
+  leastOn,
+  matchMarks,
+  type MatchMark,
+  type Span,
 } from '../../../lib/page/scrollbarTicks';
+import { paintMarks } from '../../../lib/page/trackMarks';
 import { currentFound, foundOf, type Found } from './find';
-
-export interface Span {
-  readonly top: number;
-  readonly bottom: number;
-}
-
-export function ticksOf(
-  spans: readonly Span[],
-  total: number,
-  track: number,
-): Tick[] {
-  if (total <= 0) {
-    return [];
-  }
-  const joiner = tickJoiner(track > 0 ? leastTick / track : 0);
-  for (const { top, bottom } of spans) {
-    joiner.add(top / total, bottom / total);
-  }
-  return joiner.ticks();
-}
-
-export function currentTickOf(
-  span: Span | undefined,
-  total: number,
-  track: number,
-): Tick | undefined {
-  return span === undefined || total <= 0
-    ? undefined
-    : {
-        top: span.top / total,
-        height: Math.max(
-          (span.bottom - span.top) / total,
-          track > 0 ? leastTick / track : 0,
-        ),
-      };
-}
-
-interface Marked extends Tick {
-  readonly kind: 'match' | 'current';
-}
 
 function linesOf(view: EditorSurface, found: readonly Found[]): Span[] {
   const spans: Span[] = [];
@@ -65,13 +27,11 @@ function linesOf(view: EditorSurface, found: readonly Found[]): Span[] {
   return spans;
 }
 
-const percent = (share: number) => `${share * 100}%`;
-
 class FindTicks implements SurfacePart {
   private readonly box = document.createElement('div');
   private drawn = '';
   private readonly measure = {
-    read: (view: EditorSurface): Marked[] => {
+    read: (view: EditorSurface): MatchMark[] => {
       const found = foundOf(view.state);
       if (found.length === 0) {
         return [];
@@ -79,22 +39,14 @@ class FindTicks implements SurfacePart {
       const total = view.scrollDOM.scrollHeight;
       const track = this.box.clientHeight;
       const current = currentFound(view.state);
-      const shown = currentTickOf(
+      return matchMarks(
+        linesOf(view, found),
         current === undefined ? undefined : linesOf(view, [current])[0],
         total,
-        track,
+        leastOn(track),
       );
-      return [
-        ...ticksOf(linesOf(view, found), total, track).map((tick) => ({
-          kind: 'match' as const,
-          ...tick,
-        })),
-        ...(shown === undefined
-          ? []
-          : [{ kind: 'current' as const, ...shown }]),
-      ];
     },
-    write: (ticks: Marked[]) => {
+    write: (ticks: MatchMark[]) => {
       const drawing = ticks
         .map(({ kind, top, height }) => `${kind}${top}:${height}`)
         .join();
@@ -102,15 +54,7 @@ class FindTicks implements SurfacePart {
         return;
       }
       this.drawn = drawing;
-      this.box.replaceChildren(
-        ...ticks.map(({ kind, top, height }) => {
-          const mark = document.createElement('div');
-          mark.className = `scrollbar-mark ${kind}`;
-          mark.style.setProperty('--mark-top', percent(top));
-          mark.style.setProperty('--mark-height', percent(height));
-          return mark;
-        }),
-      );
+      paintMarks(this.box, ticks);
     },
   };
 

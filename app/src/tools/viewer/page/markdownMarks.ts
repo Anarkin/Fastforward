@@ -1,15 +1,15 @@
-import { leastMark, tickJoiner } from '../../../lib/page/scrollbarTicks';
-
-export interface MatchMark {
-  readonly kind: 'match' | 'current';
-  readonly top: number;
-  readonly height: number;
-}
+import {
+  leastMark,
+  matchMarks,
+  type MatchMark,
+} from '../../../lib/page/scrollbarTicks';
 
 export interface MatchSpan {
   readonly top: number;
   readonly height: number;
 }
+
+const spanOf = ({ top, height }: MatchSpan) => ({ top, bottom: top + height });
 
 export function markdownMarks(
   spans: readonly MatchSpan[],
@@ -17,25 +17,10 @@ export function markdownMarks(
   viewport: number,
   current?: MatchSpan,
 ): MatchMark[] {
-  if (total <= 0) {
-    return [];
-  }
-  const joiner = tickJoiner(leastMark(total, viewport));
-  for (const { top, height } of spans.toSorted(
-    (one, other) => one.top - other.top,
-  )) {
-    joiner.add(top / total, (top + height) / total);
-  }
-  const marks: MatchMark[] = joiner
-    .ticks()
-    .map((tick) => ({ kind: 'match' as const, ...tick }));
-  if (current !== undefined) {
-    const least = leastMark(total, viewport);
-    marks.push({
-      kind: 'current',
-      top: current.top / total,
-      height: Math.max(current.height / total, least),
-    });
-  }
-  return marks;
+  return matchMarks(
+    spans.toSorted((one, other) => one.top - other.top).map(spanOf),
+    current === undefined ? undefined : spanOf(current),
+    total,
+    leastMark(total, viewport),
+  );
 }

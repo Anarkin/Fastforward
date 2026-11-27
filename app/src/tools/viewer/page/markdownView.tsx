@@ -25,10 +25,8 @@ import type { CodeLook } from './codeCells';
 import { copiedMarkdown } from './markdownCopy';
 import { showBlocks, showImages, type MarkdownImages } from './markdownBlocks';
 import { createPortal } from 'react-dom';
-import {
-  ScrollbarMarks,
-  type ScrollbarMark,
-} from '../../../lib/page/scrollbarMarks';
+import { ScrollbarMarks } from '../../../lib/page/scrollbarMarks';
+import type { ScrollbarMark } from '../../../lib/page/trackMarks';
 import { markdownMarks } from './markdownMarks';
 import {
   markdownMatches,
