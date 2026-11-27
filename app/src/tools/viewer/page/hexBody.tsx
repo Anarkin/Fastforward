@@ -368,6 +368,7 @@ export function ByteBody({
       onFont={onFont}
       move={move}
       jump={jump}
+      jumps={jumps}
       error={viewing.error}
       keptLeft={keptLeft}
       settled={bytes !== undefined}

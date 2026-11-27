@@ -60,6 +60,7 @@ export function ScrollBody({
   settled = false,
   onLeft,
   reveal,
+  jumps = 0,
   matches = noMatches,
   currentMatch,
   size = 0,
@@ -82,6 +83,7 @@ export function ScrollBody({
   settled?: boolean;
   onLeft?: (left: number) => void;
   reveal?: { readonly column: number; readonly asked: number };
+  jumps?: number;
   matches?: readonly ByteRange[];
   currentMatch?: ByteRange | undefined;
   size?: number;
@@ -192,6 +194,11 @@ export function ScrollBody({
     placeRows();
   }, [lead, led, since]);
   useEffect(() => () => clearTimeout(resting.current), []);
+  useEffect(() => {
+    if (jumps > 0) {
+      glider.current?.reset();
+    }
+  }, [jumps]);
   useEffect(() => {
     const made = glideRowsOf({
       move: (by) => moveBy(by),

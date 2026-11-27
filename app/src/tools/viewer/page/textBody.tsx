@@ -201,6 +201,7 @@ export function TextBody({
       onFont={onFont}
       move={move}
       jump={jump}
+      jumps={jumps}
       error={viewing.error}
       width={width}
       wrapped={!whole}
