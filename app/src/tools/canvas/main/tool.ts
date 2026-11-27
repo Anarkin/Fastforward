@@ -38,6 +38,7 @@ interface Held {
   readonly file: string;
   readonly board: EditedBoard;
   made: boolean;
+  written?: string;
 }
 
 const newBoard = '{}';
@@ -55,6 +56,7 @@ export class CanvasTool implements Tool<'canvas'> {
   private readonly toldSkipped = new Set<string>();
   private readonly held = new Map<string, Held>();
   private readonly titles = new Map<string, Promise<string | undefined>>();
+  private readonly saving = new Map<string, Promise<boolean>>();
   private readonly watching = new Map<
     string,
     { readonly file: string; readonly stop: () => void }
@@ -94,6 +96,12 @@ export class CanvasTool implements Tool<'canvas'> {
     }
     const read = await this.read(file);
     if (this.shown.get(page) !== tab.id) {
+      return;
+    }
+    const current = this.held.get(tab.id);
+    if (current?.file === file && current.board.changed()) {
+      this.postBoard(page, tab.id);
+      this.postNodes(page, tab.id);
       return;
     }
     if ('error' in read) {
@@ -234,7 +242,12 @@ export class CanvasTool implements Tool<'canvas'> {
       .filter(([, shown]) => shown === tab)
       .map(([page]) => page);
     const read = await this.read(file);
-    if ('error' in read || read.held.board.text() === held.board.text()) {
+    const onDisk = 'error' in read ? undefined : read.held.board.text();
+    if (
+      'error' in read ||
+      onDisk === held.board.text() ||
+      onDisk === held.written
+    ) {
       return;
     }
     if (this.held.get(tab) !== held) {
@@ -385,7 +398,19 @@ export class CanvasTool implements Tool<'canvas'> {
     }
   }
 
-  private async save(page: Page, tab: string): Promise<boolean> {
+  private save(page: Page, tab: string): Promise<boolean> {
+    const before = this.saving.get(tab) ?? Promise.resolve(true);
+    const next = before.then(() => this.saveNow(page, tab));
+    this.saving.set(tab, next);
+    void next.then(() => {
+      if (this.saving.get(tab) === next) {
+        this.saving.delete(tab);
+      }
+    });
+    return next;
+  }
+
+  private async saveNow(page: Page, tab: string): Promise<boolean> {
     const held = this.held.get(tab);
     if (held === undefined) {
       return false;
@@ -393,10 +418,11 @@ export class CanvasTool implements Tool<'canvas'> {
     if (!held.board.changed() && !held.made) {
       return true;
     }
+    const checkpoint = held.board.checkpoint();
     try {
       await this.access.saveFile(
         held.file,
-        new TextEncoder().encode(held.board.text()),
+        new TextEncoder().encode(checkpoint.text),
       );
     } catch (error) {
       this.shell.notice(page, {
@@ -408,7 +434,8 @@ export class CanvasTool implements Tool<'canvas'> {
       });
       return false;
     }
-    held.board.saved();
+    held.written = checkpoint.text;
+    held.board.saved(checkpoint);
     held.made = false;
     this.postBoard(page, tab);
     this.shell.postTabs(page);

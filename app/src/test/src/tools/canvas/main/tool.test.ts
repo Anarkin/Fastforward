@@ -36,10 +36,24 @@ const link = (id: string, url: string) => ({
   height: 36,
 });
 
+interface Gates {
+  saving?: Promise<void> | undefined;
+  reading?: Promise<void> | undefined;
+  saves: number;
+}
+
+function gate(): { readonly closed: Promise<void>; readonly open: () => void } {
+  const { promise, resolve } = Promise.withResolvers<undefined>();
+  return { closed: promise, open: () => resolve(undefined) };
+}
+
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 function canvas(
   files: Record<string, string>,
   sizes: Record<string, number> = {},
   readOnly: readonly string[] = [],
+  gates: Gates = { saves: 0 },
 ) {
   const saved: [string, string][] = [];
   const watched = new Map<string, () => void>();
@@ -66,14 +80,15 @@ function canvas(
       watched.set(name, onChange);
       return () => watched.delete(name);
     },
-    saveFile: (name, bytes) => {
+    saveFile: async (name, bytes) => {
+      gates.saves++;
+      await gates.saving;
       if (readOnly.includes(name)) {
-        return Promise.reject(new ReadOnly(name));
+        throw new ReadOnly(name);
       }
       const text = new TextDecoder().decode(bytes);
       saved.push([name, text]);
       files[name] = text;
-      return Promise.resolve();
     },
     readOnly: (error) => error instanceof ReadOnly,
     newId: () => (++made === 1 ? 'made' : `made${made}`),
@@ -81,11 +96,13 @@ function canvas(
       name in files
         ? Promise.resolve(sizes[name] ?? files[name]?.length ?? 0)
         : Promise.reject(Object.assign(new Error('gone'), { code: 'ENOENT' })),
-    readFile: (name) => {
+    readFile: async (name) => {
+      await gates.reading;
       const text = files[name];
-      return text === undefined
-        ? Promise.reject(Object.assign(new Error('gone'), { code: 'ENOENT' }))
-        : Promise.resolve(Buffer.from(text));
+      if (text === undefined) {
+        throw Object.assign(new Error('gone'), { code: 'ENOENT' });
+      }
+      return Buffer.from(text);
     },
   });
   const page = new CanvasPage();
@@ -479,6 +496,76 @@ suite('Canvas tool', () => {
     ]);
     assert.strictEqual(tool.unsaved(tab), false);
     assert.strictEqual(board(page).changed, undefined);
+  });
+
+  test('keeps an edit made while the canvas is saved unsaved, writing what it held once the save began, never taking its own save for a change from outside, and saving a tab one save at a time', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const gates: Gates = { saves: 0 };
+    const { tool, page, saved, changed, notices } = canvas(
+      files,
+      {},
+      [],
+      gates,
+    );
+    await tool.show(page, tab);
+    const placed = (y: number) =>
+      tool.receive(page, {
+        type: 'edit',
+        tab: '7',
+        edit: { kind: 'place', boxes: [{ ...node, y }] },
+      });
+    const written = (y: number) => JSON.stringify({ nodes: [{ ...node, y }] });
+    await placed(18);
+    const first = gate();
+    gates.saving = first.closed;
+    const saving = tool.receive(page, { type: 'save', tab: '7' });
+    await tick();
+    await placed(36);
+    first.open();
+    await saving;
+    assert.deepStrictEqual(saved, [[file, written(18)]]);
+    assert.strictEqual(tool.unsaved(tab), true);
+    assert.strictEqual(board(page).changed, true);
+    await changed(file);
+    assert.deepStrictEqual(board(page).board?.nodes, [{ ...node, y: 36 }]);
+    assert.deepStrictEqual(notices, []);
+
+    const second = gate();
+    gates.saving = second.closed;
+    gates.saves = 0;
+    const both = [
+      tool.receive(page, { type: 'save', tab: '7' }),
+      tool.saveUnsaved(page, tab),
+    ];
+    await tick();
+    assert.strictEqual(gates.saves, 1);
+    second.open();
+    await Promise.all(both);
+    assert.deepStrictEqual(saved, [
+      [file, written(18)],
+      [file, written(36)],
+    ]);
+    assert.strictEqual(tool.unsaved(tab), false);
+  });
+
+  test('keeps an edit made to a canvas while its file is read again as its tab shows again, rather than the board read over it', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const gates: Gates = { saves: 0 };
+    const { tool, page } = canvas(files, {}, [], gates);
+    await tool.show(page, tab);
+    const reading = gate();
+    gates.reading = reading.closed;
+    const showing = tool.show(page, tab);
+    await tick();
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, y: 18 }] },
+    });
+    reading.open();
+    await showing;
+    assert.deepStrictEqual(board(page).board?.nodes, [{ ...node, y: 18 }]);
+    assert.strictEqual(tool.unsaved(tab), true);
   });
 
   test('says why it saves no canvas that is read-only, keeping its edits unsaved', async () => {

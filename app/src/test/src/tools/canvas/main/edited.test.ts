@@ -274,7 +274,7 @@ suite('Canvas edited', () => {
     move(7);
     move(14);
     assert.strictEqual(board.changed(), true);
-    board.saved();
+    board.saved(board.checkpoint());
     assert.strictEqual(board.changed(), false);
     assert.ok(board.undo());
     assert.deepStrictEqual(idsOf(board).nodes[0], 'a@7');
@@ -312,7 +312,7 @@ suite('Canvas edited', () => {
     assert.strictEqual(textOf('a'), 'a');
     assert.strictEqual(board.changed(), false);
     typed('ab', 2);
-    board.saved();
+    board.saved(board.checkpoint());
     typed('abc', 2);
     assert.strictEqual(board.changed(), true);
     board.undo();

@@ -225,12 +225,18 @@ function applied(
   }
 }
 
+export interface Checkpoint {
+  readonly revision: number;
+  readonly text: string;
+}
+
 export class EditedBoard {
   private raw: Json;
   private readonly layout: Layout;
   private readonly undone: Json[] = [];
   private readonly redone: Json[] = [];
   private at = 0;
+  private revision = 0;
   private savedAt: number | undefined = 0;
   private typing: { readonly id: string; readonly session: number } | undefined;
 
@@ -261,6 +267,7 @@ export class EditedBoard {
       return undefined;
     }
     this.typing = typing;
+    this.revision++;
     if (before === undefined) {
       return {};
     }
@@ -285,6 +292,7 @@ export class EditedBoard {
     this.redone.push(this.raw);
     this.raw = before;
     this.at--;
+    this.revision++;
     return true;
   }
 
@@ -297,6 +305,7 @@ export class EditedBoard {
     this.undone.push(this.raw);
     this.raw = after;
     this.at++;
+    this.revision++;
     return true;
   }
 
@@ -308,7 +317,15 @@ export class EditedBoard {
     return written(this.raw, this.layout);
   }
 
-  saved(): void {
+  checkpoint(): Checkpoint {
+    return { revision: this.revision, text: this.text() };
+  }
+
+  saved({ revision }: Checkpoint): void {
+    if (revision !== this.revision) {
+      this.savedAt = undefined;
+      return;
+    }
     this.typing = undefined;
     this.savedAt = this.at;
   }
