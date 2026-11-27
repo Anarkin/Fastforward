@@ -33,25 +33,34 @@ suite('Cursor over the text under it and beside it', () => {
   sharedCursorApp();
 
   for (const ratio of ratios) {
-    test(`draws the block of a text box over a wide character as wide as the box lays the character out at ${ratio * 100}%, wider than a block over a narrow one`, async () => {
+    test(`draws the block of a text box over a wide character as wide as the box lays the character out at ${ratio * 100}%, in whatever font the system draws it, as a system without one for Chinese draws a box a cell wide`, async () => {
       await useStyle('block');
       await zoomTo(ratio);
       const parts = await partsInPage();
-      const blockOn = async (text: string) => {
-        await mountEditorAndField(parts, text, 1);
-        await focusField(1);
-        const placed = await elementBox(fieldCursor(), ratio);
-        const shot = await settledShot(
-          (taken) => blockShown(taken, placed),
-          `the block of the text box on the second character of ${text}`,
-        );
-        return drawnBox(shot, around(placed), placed).box ?? placed;
-      };
-      const narrow = await blockOn('xx');
-      const block = await blockOn('x中x');
+      await mountEditorAndField(parts, 'x中x', 1);
+      await focusField(1);
+      const placed = await elementBox(fieldCursor(), ratio);
+      const shot = await settledShot(
+        (taken) => blockShown(taken, placed),
+        'the block of the text box on 中',
+      );
+      const block = drawnBox(shot, around(placed), placed).box ?? placed;
+      const laid = await page
+        .locator('.field-probe input')
+        .evaluate((field, scale) => {
+          const span = document.createElement('span');
+          span.style.font = getComputedStyle(field).font;
+          span.style.whiteSpace = 'pre';
+          span.style.position = 'fixed';
+          span.textContent = '中';
+          document.body.append(span);
+          const width = span.getBoundingClientRect().width * scale;
+          span.remove();
+          return width;
+        }, ratio);
       assert.ok(
-        block.width > narrow.width * 1.5,
-        `the block over 中 ${block.width} wide, over x ${narrow.width}`,
+        Math.abs(block.width - laid) <= 1,
+        `the block over 中 ${block.width} device pixels wide, the box laying it out ${laid} wide`,
       );
     });
 
