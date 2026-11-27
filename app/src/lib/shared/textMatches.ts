@@ -101,7 +101,7 @@ function patternMatches(
   return ranges;
 }
 
-const longestCopy = 200;
+export const longestCopy = 200;
 
 const blankOnly = /^\s*$/u;
 

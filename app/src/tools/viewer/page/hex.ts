@@ -10,7 +10,7 @@ import {
   type SelectionShape,
   type TextSelection,
 } from '../../../components/cells/page/cellView';
-import { wordAround } from '../../../lib/shared/textMatches';
+import { wordAround, longestCopy } from '../../../lib/shared/textMatches';
 import { byteTipText } from '../../../components/cells/page/characterNames';
 import { byteText, isPrintable } from '../shared/byteText';
 
@@ -202,8 +202,6 @@ export const hexPair = 2;
 
 export const hexStep = 3;
 
-const mostSought = 200;
-
 interface HexLayout {
   readonly bytesAt: number;
   readonly textAt: number;
@@ -383,7 +381,7 @@ export const hexShape: SelectionShape = {
       return undefined;
     }
     const pairs = spansOf(selection, rows).flatMap(pairsOf);
-    return pairs.length === 0 || pairs.length > mostSought
+    return pairs.length === 0 || pairs.length > longestCopy
       ? undefined
       : pairs.join('');
   },

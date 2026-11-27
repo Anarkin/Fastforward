@@ -164,4 +164,14 @@ suite('Unification', () => {
       'tools/editor/page/findBar.tsx',
     ]);
   });
+
+  test('seeks the copies of a selection by one rule, its blanks at its ends left out and 200 characters or bytes at most, in the views, the hex, the bytes and the editor alike, rather than by a limit of each and an editor that sought the blanks too', () => {
+    assert.deepStrictEqual(
+      doing(/\b(?:longestWord|mostSought|mostSelected)\b/),
+      [],
+    );
+    assert.deepStrictEqual(doing(/\blongestCopy = /), [
+      'lib/shared/textMatches.ts',
+    ]);
+  });
 });

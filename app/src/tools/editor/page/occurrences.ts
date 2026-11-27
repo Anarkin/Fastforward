@@ -10,10 +10,14 @@ import {
   type SurfacePart,
   type SurfaceUpdate,
 } from './surface';
-import { copiesIn, maxMatches } from '../../../lib/shared/textMatches';
+import {
+  copiesIn,
+  maxMatches,
+  soughtCopy,
+} from '../../../lib/shared/textMatches';
 import { findsText } from './find';
 import { stepsWords } from './nextOccurrence';
-import { longestWord, wordAt } from './words';
+import { wordAt } from './words';
 
 interface Place {
   readonly from: number;
@@ -51,24 +55,24 @@ function soughtIn(state: EditorState): Sought | undefined {
     );
   }
   const length = main.to - main.from;
-  if (length > longestWord) {
-    return undefined;
-  }
-  const text = state.sliceDoc(main.from, main.to);
+  const selectedText = state.sliceDoc(main.from, main.to);
+  const text = soughtCopy(selectedText);
   if (
-    text.includes(state.lineBreak) ||
+    text === undefined ||
+    selectedText.includes(state.lineBreak) ||
     ranges.some(
       (range) =>
         range.to - range.from !== length ||
-        state.sliceDoc(range.from, range.to) !== text,
+        state.sliceDoc(range.from, range.to) !== selectedText,
     )
   ) {
     return undefined;
   }
+  const lead = selectedText.indexOf(text);
   return {
     text,
     wordsOnly: stepsWords(state),
-    selected: new Set(ranges.map((range) => range.from)),
+    selected: new Set(ranges.map((range) => range.from + lead)),
   };
 }
 

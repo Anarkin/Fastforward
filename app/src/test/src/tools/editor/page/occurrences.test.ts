@@ -92,6 +92,18 @@ suite('The occurrences the editor marks', () => {
     );
   });
 
+  test('leaves the blanks at the ends of the text selected out of what it seeks, as the views leave them out, so a word selected with the space after it marks the other copies of the word', () => {
+    assert.deepStrictEqual(
+      marked(stateOf(text, EditorSelection.single(0, 6))),
+      [
+        [12, 'total'],
+        [23, 'total'],
+        [35, 'total'],
+        [43, 'total'],
+      ],
+    );
+  });
+
   test('marks the other copies of whitespace selected alone, as of any text selected, so a space selected marks the other spaces', () => {
     assert.deepStrictEqual(
       marked(stateOf(text, EditorSelection.single(5, 6))),

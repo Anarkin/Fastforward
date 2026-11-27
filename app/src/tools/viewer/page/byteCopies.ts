@@ -1,11 +1,9 @@
-import { maxMatches } from '../../../lib/shared/textMatches';
+import { maxMatches, longestCopy } from '../../../lib/shared/textMatches';
 import type { ByteRange } from '../shared/protocol';
 import {
   ordered,
   type TextSelection,
 } from '../../../components/cells/page/cellView';
-
-const mostSelected = 200;
 
 const pair = /^(?:[0-9a-f]{2})+$/i;
 
@@ -53,7 +51,7 @@ export function selectedBytes(
   const { first, last } = ordered(selection);
   const from = first.start + first.char - start;
   const to = last.start + last.char - start;
-  return from < 0 || to > data.length || to - from > mostSelected
+  return from < 0 || to > data.length || to - from > longestCopy
     ? []
     : data.slice(from, to);
 }
