@@ -64,6 +64,7 @@ export function textContextIn(
   }
   const context = new Context(init);
   element.editContext = context;
+  element.style.caretColor = 'transparent';
   return context;
 }
 

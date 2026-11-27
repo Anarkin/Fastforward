@@ -76,6 +76,10 @@
   color: var(--color-focus);
 }
 
+.board-chosen {
+  color: var(--color-background);
+}
+
 .board-grid {
   color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
 }

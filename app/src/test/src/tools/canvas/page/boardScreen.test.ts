@@ -5,7 +5,10 @@ import {
   colorKind,
   screenOf,
 } from '../../../../../tools/canvas/page/boardScreen';
-import { screenRows } from '../../../../../tools/canvas/page/seenScreen';
+import {
+  chosenRows,
+  screenRows,
+} from '../../../../../tools/canvas/page/seenScreen';
 import { boardOf } from '../../../../../tools/canvas/main/reading';
 import { boxOf } from '../../../../../tools/canvas/page/grid';
 import {
@@ -120,6 +123,17 @@ const typedOnEdge = (words: string) =>
     }),
   )[1];
 
+const drawnChosen = (board: Partial<Board>, selected: readonly string[]) => {
+  const screen = screenOf({
+    board: { nodes: [], edges: [], ...board },
+    unit,
+    view: { column: 0, row: 0, columns: 24, rows: 3 },
+    widths: { char: 1, of: narrow },
+    selected: new Set(selected),
+  });
+  return { rows: screenRows(screen), chosen: chosenRows(screen) };
+};
+
 suite('Canvas screen', () => {
   let corpus: ObsidianCanvases;
 
@@ -149,9 +163,9 @@ suite('Canvas screen', () => {
     );
   });
 
-  test('draws the selected node in double lines, a joint of a line meeting them in double lines too', () => {
+  test('draws the selected node in its single lines over its border cells chosen, so the surface lays the gray of a selection under them alone, a group alike', () => {
     assert.deepStrictEqual(
-      screenText(
+      drawnChosen(
         {
           nodes: [
             text('idea', 0, 0, 8, 3, 'Idea'),
@@ -159,18 +173,75 @@ suite('Canvas screen', () => {
           ],
           edges: [edge({ fromSide: 'right', toSide: 'left', toEnd: 'none' })],
         },
-        { column: 0, row: 0, columns: 24, rows: 3 },
         ['idea'],
       ),
-      [
-        '╔══════╗      ┌──────┐',
-        '║ Ide⏎ ╠──────┤ Pla⏎ │',
-        '╚══════╝      └──────┘',
-      ],
+      {
+        rows: [
+          '┌──────┐      ┌──────┐',
+          '│ Ide⏎ ├──────┤ Pla⏎ │',
+          '└──────┘      └──────┘',
+        ],
+        chosen: ['########', '#      #', '########'],
+      },
+    );
+    assert.deepStrictEqual(
+      drawnChosen(
+        { nodes: [{ ...text('group', 0, 0, 8, 3, ''), type: 'group' }] },
+        ['group'],
+      ),
+      {
+        rows: ['┌──────┐', '│      │', '└──────┘'],
+        chosen: ['########', '#      #', '########'],
+      },
     );
   });
 
-  test('draws the selected edge in double lines, and tells which edge each of its cells draws, its label too, for a click to select it', () => {
+  test('draws the selected edge over every node and edge in its way while selected, through the arrow of another edge too, its own arrow kept, as an edge selected is wanted whole', () => {
+    const board: Board = {
+      nodes: [
+        text('a', 0, 0, 6, 3, ''),
+        text('c', 10, 0, 6, 3, ''),
+        text('b', 20, 0, 6, 3, ''),
+        text('d', 0, 5, 6, 3, ''),
+      ],
+      edges: [
+        edge({
+          id: 'ab',
+          fromNode: 'a',
+          toNode: 'b',
+          fromSide: 'right',
+          toSide: 'left',
+        }),
+        edge({
+          id: 'dc',
+          fromNode: 'd',
+          toNode: 'c',
+          fromSide: 'right',
+          toSide: 'left',
+        }),
+      ],
+    };
+    const drawn = (selected: readonly string[]) => {
+      const screen = screenOf({
+        board,
+        unit,
+        view: { column: 0, row: 0, columns: 28, rows: 8 },
+        widths: { char: 1, of: narrow },
+        selected: new Set(selected),
+      });
+      return { row: screenRows(screen)[1], chosen: chosenRows(screen)[1] };
+    };
+    assert.deepStrictEqual(drawn([]), {
+      row: '│    ├──┬▶│    │───▶│    │',
+      chosen: '',
+    });
+    assert.deepStrictEqual(drawn(['ab']), {
+      row: '│    ├──┬─┼────┼───▶│    │',
+      chosen: '      ##############',
+    });
+  });
+
+  test('draws the selected edge in its single lines over its cells chosen from end to end, its label too, and tells which edge each of its cells draws, for a click to select it', () => {
     const board: Board = {
       nodes: [
         text('idea', 0, 0, 8, 3, 'Idea'),
@@ -181,11 +252,19 @@ suite('Canvas screen', () => {
       ],
     };
     const view = { column: 0, row: 0, columns: 24, rows: 3 };
-    assert.deepStrictEqual(screenText(board, view, ['e']), [
+    const selected = screenOf({
+      board,
+      unit,
+      view,
+      widths: { char: 1, of: narrow },
+      selected: new Set(['e']),
+    });
+    assert.deepStrictEqual(screenRows(selected), [
       '┌──────┐      ┌──────┐',
-      '│ Ide⏎ ╠══ x ═╣ Pla⏎ │',
+      '│ Ide⏎ ├── x ─┤ Pla⏎ │',
       '└──────┘      └──────┘',
     ]);
+    assert.deepStrictEqual(chosenRows(selected), ['', '        ######', '']);
     const screen = screenOf({
       board,
       unit,
@@ -534,6 +613,30 @@ suite('Canvas screen', () => {
       [{ text: 'next' }],
     ]);
     assert.deepStrictEqual(asked, ['f typescript const a = 1;\nnext']);
+  });
+
+  test('leaves the line out of a file node too short for a row of its text below it, drawing the head of its text right below its path', () => {
+    const file: BoardNode = {
+      id: 'f',
+      type: 'file',
+      file: 'a.md',
+      x: 0,
+      y: 0,
+      width: 26 * unit.width,
+      height: 4 * unit.height,
+    };
+    assert.deepStrictEqual(
+      screenRows(
+        screenOf({
+          board: { nodes: [file], edges: [] },
+          unit,
+          view: { column: 0, row: 0, columns: 28, rows: 4 },
+          widths: { char: 1, of: narrow },
+          files: { 'a.md': { path: '/vault/a.md', text: '# Note\nbody' } },
+        }),
+      ).slice(1, 3),
+      ['│ a.md                   │', '│ # Note                 │'],
+    );
   });
 
   test('draws the label typed on an edge as it is typed, the edge of no label too', () => {

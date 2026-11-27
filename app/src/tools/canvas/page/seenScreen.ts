@@ -36,3 +36,12 @@ export function screenRows(screen: Screen): string[] {
     return line.trimEnd();
   });
 }
+
+export const chosenRows = (screen: Screen): string[] =>
+  Array.from({ length: screen.rows }, (_, row) =>
+    Array.from({ length: screen.columns }, (__, column) =>
+      screen.chosen[row * screen.columns + column] === 1 ? '#' : ' ',
+    )
+      .join('')
+      .trimEnd(),
+  );

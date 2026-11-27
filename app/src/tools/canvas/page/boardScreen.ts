@@ -20,7 +20,6 @@ import { reversed, routeOf, type Cell, type Route } from './routes';
 import { rowsOf } from './nodeText';
 import { nodeSigns, signCellOf } from './nodeSigns';
 import {
-  doubleShift,
   emptyScreen,
   Painter,
   wayBits,
@@ -102,12 +101,13 @@ const bitOf = (from: Cell, to: Cell): number => {
   return way === undefined ? 0 : wayBits[way];
 };
 
-function border(
-  painter: Painter,
-  box: Box,
-  weight: number,
-  kind: string | undefined,
-): void {
+const onBorder = (box: Box, column: number, row: number): boolean =>
+  row === box.row ||
+  row === box.row + box.rows - 1 ||
+  column === box.column ||
+  column === box.column + box.columns - 1;
+
+function border(painter: Painter, box: Box, kind: string | undefined): void {
   const right = box.column + box.columns - 1;
   const bottom = box.row + box.rows - 1;
   if (box.columns === 1 && box.rows === 1) {
@@ -118,14 +118,14 @@ function border(
     const bits =
       (column > box.column ? wayBits.left : 0) |
       (column < right ? wayBits.right : 0);
-    painter.line(column, box.row, bits << weight, kind);
-    painter.line(column, bottom, bits << weight, kind);
+    painter.line(column, box.row, bits, kind);
+    painter.line(column, bottom, bits, kind);
   }
   for (let row = box.row; row <= bottom; row++) {
     const bits =
       (row > box.row ? wayBits.up : 0) | (row < bottom ? wayBits.down : 0);
-    painter.line(box.column, row, bits << weight, kind);
-    painter.line(right, row, bits << weight, kind);
+    painter.line(box.column, row, bits, kind);
+    painter.line(right, row, bits, kind);
   }
 }
 
@@ -202,11 +202,17 @@ function paintNode(
   looks: NodeLooks,
 ): void {
   const kind = colorKind(node.color);
-  const weight = selected ? doubleShift : 0;
   const right = box.column + box.columns - 1;
   const typed = typing?.id === node.id ? typing : undefined;
   if (node.type === 'group') {
-    border(painter, box, weight, kind);
+    for (let row = box.row; row < box.row + box.rows; row++) {
+      for (let column = box.column; column <= right; column++) {
+        if (selected && onBorder(box, column, row)) {
+          painter.choose(column, row, true);
+        }
+      }
+    }
+    border(painter, box, kind);
     const label = typed?.text ?? node.label;
     if (label !== undefined) {
       const area = labelAreaOf(box);
@@ -234,15 +240,18 @@ function paintNode(
       painter.cover(
         column,
         row,
-        (row === box.row ? outsideTop : 0) |
-          (column === right ? outsideRight : 0) |
-          (row === box.row + box.rows - 1 ? outsideBottom : 0) |
-          (column === box.column ? outsideLeft : 0),
+        selected
+          ? 0
+          : (row === box.row ? outsideTop : 0) |
+              (column === right ? outsideRight : 0) |
+              (row === box.row + box.rows - 1 ? outsideBottom : 0) |
+              (column === box.column ? outsideLeft : 0),
       );
       painter.claim(column, row, owner);
+      painter.choose(column, row, selected && onBorder(box, column, row));
     }
   }
-  border(painter, box, weight, kind);
+  border(painter, box, kind);
   const sign = signCellOf(box);
   if (sign !== undefined && (node.type === 'file' || node.type === 'link')) {
     painter.clear(sign.column - 1, sign.row);
@@ -274,14 +283,20 @@ function paintNode(
     segmentsOf: shownText.segmentsOf,
   });
   const divider = area.row + headRows;
-  if (divider >= box.row + box.rows - 1) {
+  if (divider + 1 >= box.row + box.rows - 1) {
+    paintText(painter, {
+      owner,
+      area: { ...area, row: divider, rows: area.rows - headRows },
+      widths,
+      ...body,
+    });
     return;
   }
   for (let column = box.column; column <= right; column++) {
     const bits =
       (column > box.column ? wayBits.left : 0) |
       (column < right ? wayBits.right : 0);
-    painter.line(column, divider, bits << weight, kind);
+    painter.line(column, divider, bits, kind);
   }
   paintText(painter, {
     owner,
@@ -304,20 +319,24 @@ function paintRoute(
   selected: boolean,
 ): void {
   const kind = colorKind(edge.color);
-  const weight = selected ? doubleShift : 0;
   const { cells } = route;
   for (const [at, cell] of cells.entries()) {
     const before = cells[at - 1];
     const after = cells[at + 1];
+    if (selected) {
+      painter.unarrow(cell.column, cell.row);
+    }
     painter.line(
       cell.column,
       cell.row,
-      ((before === undefined ? 0 : bitOf(cell, before)) |
-        (after === undefined ? 0 : bitOf(cell, after))) <<
-        weight,
+      (before === undefined ? 0 : bitOf(cell, before)) |
+        (after === undefined ? 0 : bitOf(cell, after)),
       kind,
     );
     painter.edge(cell.column, cell.row, edge.id);
+    if (selected) {
+      painter.choose(cell.column, cell.row, true);
+    }
   }
 }
 
@@ -332,12 +351,11 @@ interface End {
   readonly arrow: boolean;
   readonly kind: string | undefined;
   readonly id: string;
-  readonly weight: number;
 }
 
 function paintEnd(
   painter: Painter,
-  { stub, inward, arrow, kind, id, weight }: End,
+  { stub, inward, arrow, kind, id }: End,
 ): void {
   const joint = anchored(stub, inward);
   const way = wayOf(stub, joint);
@@ -349,12 +367,12 @@ function paintEnd(
     painter.edge(stub.column, stub.row, id);
     return;
   }
-  painter.line(stub.column, stub.row, wayBits[way] << weight, kind);
+  painter.line(stub.column, stub.row, wayBits[way], kind);
   painter.edge(stub.column, stub.row, id);
   if (painter.linesAt(joint.column, joint.row) !== 0) {
     const at = painter.indexOf(joint.column, joint.row);
     const kept = at === undefined ? undefined : painter.screen.lineKinds[at];
-    painter.line(joint.column, joint.row, bitOf(joint, stub) << weight, kept);
+    painter.line(joint.column, joint.row, bitOf(joint, stub), kept);
   }
 }
 
@@ -377,8 +395,11 @@ function paintEnds(
   const shared = {
     kind: colorKind(edge.color),
     id: edge.id,
-    weight: selected ? doubleShift : 0,
   };
+  if (selected) {
+    painter.choose(route.from.column, route.from.row, true);
+    painter.choose(route.to.column, route.to.row, true);
+  }
   paintEnd(painter, {
     ...shared,
     stub: route.from,
@@ -398,6 +419,7 @@ function paintLabel(
   { edge, route }: Routed,
   widths: TextWidths,
   typing: TypedNode | undefined,
+  selected = false,
 ): void {
   const typed = typing?.id === edge.id ? typing : undefined;
   const label = typed?.text ?? edge.label ?? '';
@@ -420,6 +442,9 @@ function paintLabel(
     column++
   ) {
     painter.edge(column, area.row, edge.id);
+    if (selected) {
+      painter.choose(column, area.row, true);
+    }
   }
 }
 
@@ -493,17 +518,24 @@ export function screenOf({
       paint(node);
     }
   }
-  for (const each of routed) {
-    paintRoute(painter, each, selected.has(each.edge.id));
+  const chosenEdges = routed.filter((each) => selected.has(each.edge.id));
+  const otherEdges = routed.filter((each) => !selected.has(each.edge.id));
+  for (const each of otherEdges) {
+    paintRoute(painter, each, false);
   }
   for (const node of board.nodes) {
     if (node.type !== 'group') {
       paint(node);
     }
   }
-  for (const each of routed) {
-    paintEnds(painter, each, selected.has(each.edge.id));
+  for (const each of otherEdges) {
+    paintEnds(painter, each, false);
     paintLabel(painter, each, widths, typing);
+  }
+  for (const each of chosenEdges) {
+    paintRoute(painter, each, true);
+    paintEnds(painter, each, true);
+    paintLabel(painter, each, widths, typing, true);
   }
   for (const cell of marks) {
     const at = painter.indexOf(cell.column, cell.row);

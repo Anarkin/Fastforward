@@ -56,9 +56,26 @@ function ownedParts(
   return parts;
 }
 
+const chosenAt = (
+  screen: Screen,
+  block: TextBlock,
+  part: RowPart,
+  down: number,
+): boolean => {
+  const across = Math.min(
+    screen.columns - 1,
+    Math.max(
+      0,
+      block.column + part.column - (block.first ?? 0) - screen.column,
+    ),
+  );
+  return screen.chosen[down * screen.columns + across] === 1;
+};
+
 export function drawTexts(
   screen: Screen,
   base: TextDrawing,
+  chosenBase: TextDrawing,
   rowHeight: number,
   above: number,
 ): void {
@@ -68,12 +85,9 @@ export function drawTexts(
       base.left + (block.column - screen.column) * advance,
     );
     const first = block.first ?? 0;
-    const drawing: TextDrawing = {
-      ...base,
-      first,
-      left,
-      limit: block.wrapAt ?? Infinity,
-    };
+    const placed = { first, left, limit: block.wrapAt ?? Infinity };
+    const drawing: TextDrawing = { ...base, ...placed };
+    const chosenDrawing: TextDrawing = { ...chosenBase, ...placed };
     const { kind } = block;
     const look: RowsLook = {
       wrapAt: block.wrapAt,
@@ -95,7 +109,13 @@ export function drawTexts(
         continue;
       }
       for (const part of ownedParts(screen, block, row, down, base.widths)) {
-        drawScreenRow(drawing, look, row, part, down * rowHeight - above);
+        drawScreenRow(
+          chosenAt(screen, block, part, down) ? chosenDrawing : drawing,
+          look,
+          row,
+          part,
+          down * rowHeight - above,
+        );
       }
     }
   }

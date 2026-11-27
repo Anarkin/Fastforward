@@ -54,6 +54,7 @@ export interface Screen {
   readonly arrows: (Way | undefined)[];
   readonly covered: Uint8Array;
   readonly outside: Uint8Array;
+  readonly chosen: Uint8Array;
   readonly edges: (string | undefined)[];
   readonly owners: Int32Array;
   readonly seen: (string | undefined)[];
@@ -87,6 +88,7 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     arrows: unset<Way | undefined>(cells),
     covered: new Uint8Array(cells),
     outside: new Uint8Array(cells),
+    chosen: new Uint8Array(cells),
     edges: unset<string | undefined>(cells),
     owners: new Int32Array(cells).fill(-1),
     seen: unset<string | undefined>(cells),
@@ -103,6 +105,13 @@ export class Painter {
 
   nextOwner(): number {
     return this.owned++;
+  }
+
+  choose(column: number, row: number, chosen: boolean): void {
+    const at = this.indexOf(column, row);
+    if (at !== undefined) {
+      this.screen.chosen[at] = chosen ? 1 : 0;
+    }
   }
 
   claim(column: number, row: number, owner: number): void {
@@ -154,6 +163,13 @@ export class Painter {
     screen.edges[at] = undefined;
     screen.owners[at] = -1;
     screen.seen[at] = undefined;
+  }
+
+  unarrow(column: number, row: number): void {
+    const at = this.indexOf(column, row);
+    if (at !== undefined) {
+      this.screen.arrows[at] = undefined;
+    }
   }
 
   edge(column: number, row: number, id: string): void {

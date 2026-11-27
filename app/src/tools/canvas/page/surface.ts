@@ -55,10 +55,11 @@ import { cornerRects } from './gridDots';
 import { originOf, type CellSize, type Origin } from './pan';
 import type { Cell } from './routes';
 import type { Screen } from './screen';
-import { screenRows } from './seenScreen';
+import { chosenRows, screenRows } from './seenScreen';
 
 interface SeenBoard {
   readonly rows: readonly string[];
+  readonly chosen: readonly string[];
   readonly column: number;
   readonly row: number;
   readonly origin: Origin;
@@ -88,9 +89,12 @@ const gridKind = 'grid';
 
 const marqueeKind = 'marquee';
 
+const chosenKind = 'chosen';
+
 const lookKinds = [
   [gridKind, 'board-grid'],
   [marqueeKind, 'board-marquee'],
+  [chosenKind, 'board-chosen'],
   [lineKind, 'board-line'],
   [labelKind, 'board-label'],
   [markKind, 'board-mark'],
@@ -328,8 +332,14 @@ export class BoardSurface {
         rowHeight,
       ),
     };
-    drawText(drawing, screen, rowHeight, shift.y);
-    drawTexts(screen, drawing, rowHeight, shift.y);
+    const chosen = over(ground, parsedColor(kinds.get(chosenKind) ?? ''));
+    const chosenDrawing: TextDrawing = {
+      ...drawing,
+      palette: paletteOf({ ...look, kinds, ground: chosen }),
+    };
+    drawChosen(cells, screen, shift, advance, rowHeight, packedOf(chosen));
+    drawText(drawing, chosenDrawing, screen, rowHeight, shift.y);
+    drawTexts(screen, drawing, chosenDrawing, rowHeight, shift.y);
     drawDots(cells, screen, shift, {
       advance,
       rowHeight,
@@ -357,6 +367,7 @@ export class BoardSurface {
     this.drawCursor(screen, { shift, advance, rowHeight, ratio });
     host.seenBoard = () => ({
       rows: screenRows(screen),
+      chosen: chosenRows(screen),
       column: screen.column,
       row: screen.row,
       origin,
@@ -448,8 +459,30 @@ export class BoardSurface {
   }
 }
 
+function drawChosen(
+  cells: CellSurface,
+  screen: Screen,
+  shift: { readonly x: number; readonly y: number },
+  advance: number,
+  rowHeight: number,
+  color: number,
+): void {
+  for (let at = 0; at < screen.columns * screen.rows; at++) {
+    if (screen.chosen[at] === 1) {
+      cells.frame.rect(
+        (at % screen.columns) * advance - shift.x,
+        Math.floor(at / screen.columns) * rowHeight - shift.y,
+        advance,
+        rowHeight,
+        color,
+      );
+    }
+  }
+}
+
 function drawText(
   drawing: TextDrawing,
+  chosenDrawing: TextDrawing,
   screen: Screen,
   rowHeight: number,
   above: number,
@@ -465,6 +498,7 @@ function drawText(
         continue;
       }
       const kind = screen.kinds[at];
+      const chosen = screen.chosen[at];
       const start = column;
       let text = '';
       while (column < screen.columns) {
@@ -472,14 +506,20 @@ function drawText(
         const each = screen.glyphs[next];
         if (
           each === undefined ||
-          (each !== '' && screen.kinds[next] !== kind)
+          (each !== '' &&
+            (screen.kinds[next] !== kind || screen.chosen[next] !== chosen))
         ) {
           break;
         }
         text += each;
         column++;
       }
-      drawPieces(drawing, [{ text, kind }], start, y);
+      drawPieces(
+        chosen === 1 ? chosenDrawing : drawing,
+        [{ text, kind }],
+        start,
+        y,
+      );
     }
   }
 }

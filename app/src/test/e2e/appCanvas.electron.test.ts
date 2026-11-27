@@ -7,6 +7,7 @@ import { strings } from '../../lib/shared/strings';
 import { writeWhenFree } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
+import { edgesSaved, nodesSaved, placeSaved, textSaved } from './canvasSaved';
 import { showTab } from './tabReturns';
 import { onceDrawn, untilSettled, waitForFocus } from './waits';
 
@@ -352,6 +353,26 @@ suite('App canvas', () => {
       accepted: (seen) => seen === drawn,
     });
 
+  const chosenAt = async (cell: Placed) => {
+    const seen = await seenBoard();
+    const row = seen?.chosen[cell.row - (seen?.row ?? 0)] ?? '';
+    return row.charAt(cell.column - (seen?.column ?? 0)) === '#';
+  };
+
+  const selectedAt = (
+    what: string,
+    cell: Placed,
+    drawn: string,
+    wanted = true,
+  ) =>
+    untilSettled(
+      async () => [await drawnAt(cell), await chosenAt(cell)] as const,
+      what,
+      {
+        accepted: ([seen, chosen]) => seen === drawn && chosen === wanted,
+      },
+    );
+
   const holds = (what: string, text: string, wanted: boolean) =>
     untilSettled(
       async () => (await seenBoard())?.rows.some((row) => row.includes(text)),
@@ -359,68 +380,15 @@ suite('App canvas', () => {
       { accepted: (seen) => seen === wanted },
     );
 
-  const savedNodes = () => {
-    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
-    assert.ok(typeof saved === 'object' && saved !== null && 'nodes' in saved);
-    assert.ok(Array.isArray(saved.nodes));
-    return saved.nodes.flatMap((node: unknown) =>
-      typeof node === 'object' &&
-      node !== null &&
-      'id' in node &&
-      'x' in node &&
-      'y' in node
-        ? [{ id: node.id, x: node.x, y: node.y }]
-        : [],
-    );
-  };
-
-  const savedPlace = (id: string) => {
-    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
-    const nodes: unknown = Reflect.get(Object(saved), 'nodes');
-    assert.ok(Array.isArray(nodes));
-    const at = nodes.findIndex(
-      (each: unknown) => Reflect.get(Object(each), 'id') === id,
-    );
-    return { at, color: Reflect.get(Object(nodes[at]), 'color') };
-  };
-
-  const savedText = (id: string) => {
-    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
-    assert.ok(typeof saved === 'object' && saved !== null && 'nodes' in saved);
-    assert.ok(Array.isArray(saved.nodes));
-    const found: unknown = saved.nodes.find(
-      (node: unknown) =>
-        typeof node === 'object' &&
-        node !== null &&
-        'id' in node &&
-        node.id === id,
-    );
-    return typeof found === 'object' && found !== null && 'text' in found
-      ? found.text
-      : undefined;
-  };
+  const savedNodes = () => nodesSaved(board);
+  const savedPlace = (id: string) => placeSaved(board, id);
+  const savedText = (id: string) => textSaved(board, id);
+  const savedEdges = () => edgesSaved(board);
 
   const cursorShown = (what: string, wanted: boolean) =>
     untilSettled(() => page.locator('.board-cursor').count(), what, {
       accepted: (count) => (count === 1) === wanted,
     });
-
-  const savedEdges = () => {
-    const saved: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
-    assert.ok(typeof saved === 'object' && saved !== null && 'edges' in saved);
-    assert.ok(Array.isArray(saved.edges));
-    return saved.edges.flatMap((edge: unknown) =>
-      typeof edge === 'object' &&
-      edge !== null &&
-      'fromNode' in edge &&
-      'fromSide' in edge &&
-      'toSide' in edge
-        ? [
-            `${String(edge.fromNode)} ${String(edge.fromSide)} ${String(edge.toSide)}`,
-          ]
-        : [],
-    );
-  };
 
   const panTo = async (wanted: Placed) => {
     const now = await settledOrigin();
@@ -439,19 +407,19 @@ suite('App canvas', () => {
     );
   };
 
-  test('selects a node clicked, drawing it in double lines, moves it dragged a cell at a time with its tab marked unsaved, and writes where it went into its file on Mod+S', async () => {
+  test('selects a node clicked, its border cells on the gray of a selection, moves it dragged a cell at a time with its tab marked unsaved, and writes where it went into its file on Mod+S', async () => {
     await panTo({ column: -2, row: -1 });
     const unit = await cellOfFont(page);
     const inside = await pointAt({ column: 3, row: 1 });
     await page.mouse.click(inside.x, inside.y);
-    await shows('the node selected', { column: 0, row: 0 }, '╔');
+    await selectedAt('the node selected', { column: 0, row: 0 }, '┌');
     const from = await pointAt({ column: 3, row: 1 });
     const to = await pointAt({ column: 7, row: 2 });
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     await page.mouse.move(to.x, to.y, { steps: 5 });
     await page.mouse.up();
-    await shows('the node moved', { column: 4, row: 1 }, '╔');
+    await selectedAt('the node moved', { column: 4, row: 1 }, '┌');
     const unsaved = page.locator(
       'nav.tabs [role="tab"][aria-selected="true"] .tab-unsaved',
     );
@@ -469,10 +437,10 @@ suite('App canvas', () => {
     await page.mouse.move(spot.x, spot.y);
     await page.keyboard.press('ControlOrMeta+1');
     await page.mouse.click(spot.x, spot.y);
-    await shows('the node placed, selected', { column: 30, row: 2 }, '╔');
+    await selectedAt('the node placed, selected', { column: 30, row: 2 }, '┌');
     const idea = await pointAt({ column: 7, row: 2 });
     await page.mouse.click(idea.x, idea.y);
-    await shows('the node selected', { column: 4, row: 1 }, '╔');
+    await selectedAt('the node selected', { column: 4, row: 1 }, '┌');
     await page.keyboard.press('Delete');
     await holds('the node deleted', 'Idea', false);
     assert.strictEqual(await drawnAt({ column: 14, row: 2 }), ' ');
@@ -487,8 +455,8 @@ suite('App canvas', () => {
     await page.mouse.down();
     await page.mouse.move(across.x, across.y, { steps: 5 });
     await page.mouse.up();
-    await shows('the first node selected', { column: 4, row: 1 }, '╔');
-    await shows('the second node selected', { column: 10, row: 4 }, '╔');
+    await selectedAt('the first node selected', { column: 4, row: 1 }, '┌');
+    await selectedAt('the second node selected', { column: 10, row: 4 }, '┌');
   });
 
   test('moves a group dragged by its top, with the node it holds whole', async () => {
@@ -496,14 +464,14 @@ suite('App canvas', () => {
     await page.mouse.move(corner.x, corner.y);
     await page.keyboard.press('ControlOrMeta+2');
     await page.mouse.click(corner.x, corner.y);
-    await shows('the group placed, selected', { column: 30, row: 0 }, '╔');
+    await selectedAt('the group placed, selected', { column: 30, row: 0 }, '┌');
     const top = await pointAt({ column: 40, row: 0 });
     const lower = await pointAt({ column: 40, row: 3 });
     await page.mouse.move(top.x, top.y);
     await page.mouse.down();
     await page.mouse.move(lower.x, lower.y, { steps: 4 });
     await page.mouse.up();
-    await shows('the group moved', { column: 30, row: 3 }, '╔');
+    await selectedAt('the group moved', { column: 30, row: 3 }, '┌');
     await shows('the node it holds moved with it', { column: 30, row: 5 }, '┌');
   });
 
@@ -520,7 +488,7 @@ suite('App canvas', () => {
     await holds('the letter typed', 'PlXan', true);
     await page.keyboard.press('Escape');
     await cursorShown('the cursor gone', false);
-    await shows('the node still selected', { column: 10, row: 4 }, '╔');
+    await selectedAt('the node still selected', { column: 10, row: 4 }, '┌');
     const unsaved = page.locator(
       'nav.tabs [role="tab"][aria-selected="true"] .tab-unsaved',
     );
@@ -544,7 +512,7 @@ suite('App canvas', () => {
     await holds('the typing before it taken back', 'Plan', true);
   });
 
-  test('types into a text node placed at once', async () => {
+  test('types into a text node placed at once, the caret of the browser hidden beside the cursor the canvas draws', async () => {
     const spot = await pointAt({ column: 2, row: 12 });
     await page.mouse.move(spot.x, spot.y);
     await page.keyboard.press('ControlOrMeta+1');
@@ -552,6 +520,15 @@ suite('App canvas', () => {
     await cursorShown('the cursor drawn in the node placed', true);
     await page.keyboard.type('Hello there');
     await holds('the words typed', 'Hello there', true);
+    assert.deepStrictEqual(
+      await page.evaluate(() => {
+        const typed = document.activeElement;
+        return typed instanceof HTMLElement
+          ? [typed.editContext !== null, getComputedStyle(typed).caretColor]
+          : [];
+      }),
+      [true, 'rgba(0, 0, 0, 0)'],
+    );
     await page.keyboard.press('Escape');
     await cursorShown('the cursor gone', false);
   });
@@ -655,17 +632,26 @@ suite('App canvas', () => {
     await page.mouse.down();
     await page.mouse.move(target.x, target.y, { steps: 5 });
     await page.mouse.up();
-    await shows('the edge drawn selected', { column: 14, row: 8 }, '║');
+    await selectedAt('the edge drawn selected', { column: 14, row: 8 }, '│');
     await page.keyboard.press('ControlOrMeta+S');
     await untilSettled(() => Promise.resolve(savedEdges()), 'the edge saved', {
       accepted: (edges) => edges.includes('plan bottom top'),
     });
     const empty = await pointAt({ column: 40, row: 20 });
     await page.mouse.click(empty.x, empty.y);
-    await shows('the edge no longer selected', { column: 14, row: 8 }, '│');
+    await selectedAt(
+      'the edge no longer selected',
+      { column: 14, row: 8 },
+      '│',
+      false,
+    );
     const line = await pointAt({ column: 14, row: 8 });
     await page.mouse.click(line.x, line.y);
-    await shows('the edge selected by a click', { column: 14, row: 8 }, '║');
+    await selectedAt(
+      'the edge selected by a click',
+      { column: 14, row: 8 },
+      '│',
+    );
     await page.keyboard.press('Delete');
     await shows('the edge deleted', { column: 14, row: 8 }, ' ');
   });
@@ -675,12 +661,15 @@ suite('App canvas', () => {
     await page.mouse.move(arrow.x, arrow.y);
     await page.mouse.down();
     await page.mouse.up();
-    await shows('the edge selected', { column: 14, row: 3 }, '▼');
-    await holds('the edge drawn in double lines', '║', true);
+    await selectedAt('the edge selected', { column: 14, row: 3 }, '▼');
     await page.keyboard.press('a');
     const away = await pointAt({ column: 40, row: 20 });
     await page.mouse.move(away.x, away.y);
-    await shows('the arrow gone from its end', { column: 14, row: 3 }, '║');
+    await selectedAt(
+      'the arrow gone from its end',
+      { column: 14, row: 3 },
+      '│',
+    );
     await shows('an arrow at its start', { column: 14, row: 2 }, '◀');
     await page.keyboard.press('ControlOrMeta+S');
     await untilSettled(
@@ -696,7 +685,7 @@ suite('App canvas', () => {
   test('names a group selected on Enter, typing its label into its top border, ends it on Enter and writes the label into its file', async () => {
     const top = await pointAt({ column: 40, row: 3 });
     await page.mouse.click(top.x, top.y);
-    await shows('the group selected', { column: 30, row: 3 }, '╔');
+    await selectedAt('the group selected', { column: 30, row: 3 }, '┌');
     await page.keyboard.press('Enter');
     await cursorShown('the cursor in the label', true);
     await page.keyboard.type('Ideas');
