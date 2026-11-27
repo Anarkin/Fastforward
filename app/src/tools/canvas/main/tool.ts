@@ -13,7 +13,12 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/toolContract';
-import { isWebLink, viewVersion, type CanvasToHost } from '../shared/protocol';
+import {
+  isWebLink,
+  viewVersion,
+  type CanvasDrop,
+  type CanvasToHost,
+} from '../shared/protocol';
 import { EditedBoard } from './edited';
 import { dropOf, editOf } from './edits';
 import { fileIn, nodeFilesOf, vaultOf, type FileAccess } from './nodeFiles';
@@ -55,7 +60,7 @@ export class CanvasTool implements Tool<'canvas'> {
   private readonly toldSkipped = new Set<string>();
   private readonly held = new Map<string, Held>();
   private readonly titles = new Map<string, Promise<string | undefined>>();
-  private readonly saving = new Map<string, Promise<boolean>>();
+  private readonly turns = new Map<string, Promise<unknown>>();
   private readonly watching = new Map<
     string,
     { readonly file: string; readonly stop: () => void }
@@ -364,6 +369,17 @@ export class CanvasTool implements Tool<'canvas'> {
     ) {
       return;
     }
+    await this.inTurn(drop.tab, () =>
+      this.droppedNow(page, drop, held, access),
+    );
+  }
+
+  private async droppedNow(
+    page: Page,
+    drop: CanvasDrop & { readonly files: readonly string[] },
+    held: Held,
+    access: FileAccess,
+  ): Promise<void> {
     const root = await vaultOf(held.file, access.isFolder);
     const inside = drop.files.flatMap((file) => fileIn(root, file) ?? []);
     const outside = drop.files.filter(
@@ -400,16 +416,21 @@ export class CanvasTool implements Tool<'canvas'> {
     }
   }
 
-  private save(page: Page, tab: string): Promise<boolean> {
-    const before = this.saving.get(tab) ?? Promise.resolve(true);
-    const next = before.then(() => this.saveNow(page, tab));
-    this.saving.set(tab, next);
-    void next.then(() => {
-      if (this.saving.get(tab) === next) {
-        this.saving.delete(tab);
+  private inTurn<T>(tab: string, work: () => Promise<T>): Promise<T> {
+    const before = this.turns.get(tab) ?? Promise.resolve();
+    const next = before.then(work, work);
+    this.turns.set(tab, next);
+    const done = () => {
+      if (this.turns.get(tab) === next) {
+        this.turns.delete(tab);
       }
-    });
+    };
+    void next.then(done, done);
     return next;
+  }
+
+  private save(page: Page, tab: string): Promise<boolean> {
+    return this.inTurn(tab, () => this.saveNow(page, tab));
   }
 
   private async saveNow(page: Page, tab: string): Promise<boolean> {

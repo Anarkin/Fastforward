@@ -382,6 +382,18 @@ suite('Canvas tool', () => {
     ]);
   });
 
+  test('saves the files pasted or dropped on a canvas before Mod+S, though placing them reads the folders above it first, as a save that came first wrote the canvas without them', async () => {
+    const note = path.resolve('/boards/notes/a.md');
+    const { tool, page, saved } = canvas({ [file]: '{}', [note]: 'A' });
+    await tool.show(page, tab);
+    const box = { x: 14, y: 36, width: 210, height: 144 };
+    await Promise.all([
+      tool.receive(page, { type: 'placeFiles', tab: '7', files: [note], box }),
+      tool.receive(page, { type: 'save', tab: '7' }),
+    ]);
+    assert.match(saved.at(-1)?.[1] ?? '', /"file":"notes\/a\.md"/);
+  });
+
   test('takes a drop on a canvas only with paths, a tab it holds and a box whole and in bounds, as the page is not trusted', async () => {
     const note = path.resolve('/boards/a.md');
     const gates: Gates = { saves: 0 };
