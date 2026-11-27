@@ -114,6 +114,14 @@ suite('Capabilities', () => {
     ]);
   });
 
+  test('counts the cells of a character by the one table of the grapheme add-on of the terminal, which the views read through the cell table of the library and the terminal loads on its page and in its screens of the main process, so a view never counts a character by a table of its own', () => {
+    heldBy(/@xterm\/addon-unicode-graphemes/, [
+      'lib/page/cellTable.ts',
+      'tools/terminal/main/graphemes.ts',
+      'tools/terminal/page/view.ts',
+    ]);
+  });
+
   test('starts every watch of the file system by the library, a folder or a tree of folders, so every watch takes the same options, none keeping the app from quitting, and each tool keeps only what it does once told of a change or an error', () => {
     heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts']);
   });

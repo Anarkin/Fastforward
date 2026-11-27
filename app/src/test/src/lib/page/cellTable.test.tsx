@@ -10,6 +10,8 @@ import {
   terminalCells,
   useCellTable,
 } from '../../../../lib/page/cellTable';
+import { graphemes } from '../../../../lib/page/graphemes';
+import { printedAlikeLines } from '../../../helpers/drawnAlike';
 
 async function terminalColumns(text: string): Promise<number> {
   const terminal = new Terminal({ cols: 40, rows: 2, allowProposedApi: true });
@@ -183,6 +185,34 @@ suite('Widths of text in columns', () => {
       );
     }
   });
+  test('places every character of the lines the views are drawn alike over on the column our terminal places it on, but for the tab and the controls, which a terminal steps to its own stops and reads, so the terminal is in the matrix of the views by its cells', async () => {
+    const table = await terminalCells();
+    for (const line of printedAlikeLines) {
+      const terminal = new Terminal({
+        cols: 80,
+        rows: 2,
+        allowProposedApi: true,
+      });
+      terminal.loadAddon(new UnicodeGraphemesAddon());
+      await new Promise<void>((resolve) => terminal.write(line, resolve));
+      const row = terminal.buffer.active.getLine(0);
+      const printed = Array.from({ length: terminal.cols }, (_, column) => {
+        const cell = row?.getCell(column);
+        return cell === undefined || cell.getChars() === ''
+          ? []
+          : [[column, cell.getChars()] as const];
+      }).flat();
+      terminal.dispose();
+      let column = 0;
+      const counted = [...graphemes.segment(line)].map(({ segment }) => {
+        const at = [column, segment] as const;
+        column += cellsOf(segment, table);
+        return at;
+      });
+      assert.deepStrictEqual(printed, counted, line);
+    }
+  });
+
   test('counts each invisible character a column of its own, where our terminal counts none, as the text views draw a sign on it: alone, after a letter it joins and after a character it asks to be an emoji though it has none, leaving an emoji whole', async () => {
     const table = await terminalCells();
     for (const [cluster, cells] of [

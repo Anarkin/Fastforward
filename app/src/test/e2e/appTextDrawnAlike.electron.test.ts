@@ -6,6 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import type { SeenRow } from '../../components/cells/page/seen';
 import { strings } from '../../lib/shared/strings';
 import { waitFor } from '../helpers/fixtures';
+import { drawnAlikeLines } from '../helpers/drawnAlike';
 import { tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { cellsOf, seenGlyphs, seenRows } from './cellsSeen';
@@ -22,15 +23,7 @@ import {
 } from './inkAlike';
 import { untilSettled } from './waits';
 
-const pig = '\u{1F437}';
-
-const lines = [
-  'API server #3',
-  `Node.js${pig}asd 中文\tend`,
-  "const controls = 'a\u0001b\u001bc\u007fd';",
-  '  two  spaces, ｆｕｌｌ and 한국어',
-  'a flag \u{1F1ED}\u{1F1FA}, a family \u{1F468}‍\u{1F469}‍\u{1F467} and a keycap 1️⃣',
-];
+const lines = drawnAlikeLines;
 
 const comparedColumns = 40;
 
@@ -56,23 +49,32 @@ const signsIn = (glyphs: readonly { row: number; column: number }[]) =>
 interface Compared {
   readonly pixels: boolean;
   readonly before?: readonly number[];
+  readonly columns?: number;
+  readonly rows?: number;
 }
 
 const alikeTo = (
   one: Seen,
   other: Seen,
-  { pixels, before }: Compared = { pixels: true },
+  {
+    pixels,
+    before,
+    columns = comparedColumns,
+    rows = lines.length,
+  }: Compared = { pixels: true },
 ) => {
-  const cellsApart = unlikeCells(one, other, comparedColumns, lines.length)
-    .map((at) => [Math.floor(at / comparedColumns), at % comparedColumns])
+  const leastInkIn =
+    (leastInk * columns * rows) / (comparedColumns * lines.length);
+  const cellsApart = unlikeCells(one, other, columns, rows)
+    .map((at) => [Math.floor(at / columns), at % columns])
     .filter(
       ([row = 0, column = 0]) =>
-        before === undefined || column < (before[row] ?? comparedColumns),
+        before === undefined || column < (before[row] ?? columns),
     );
   assert.deepStrictEqual(
     {
-      viewerInked: one.inked > leastInk,
-      otherInked: other.inked > leastInk,
+      viewerInked: one.inked > leastInkIn,
+      otherInked: other.inked > leastInkIn,
       cellsApart,
       pixelsAlike:
         !pixels ||
@@ -85,7 +87,7 @@ const alikeTo = (
       cellsApart: [],
       pixelsAlike: true,
     },
-    `${unlikeShare(one, other)} of the ink unlike, the text starting ${one.phase} and ${other.phase} of a device pixel in, most unlike in the cells ${unlikeWhere(one, other, comparedColumns, lines.length)}`,
+    `${unlikeShare(one, other)} of the ink unlike, the text starting ${one.phase} and ${other.phase} of a device pixel in, most unlike in the cells ${unlikeWhere(one, other, columns, rows)}`,
   );
 };
 
@@ -218,5 +220,43 @@ suite('App text drawn alike', () => {
       signsIn(await cellsOf(page, codeBlock).glyphs(strings.symbols.lineFeed)),
       ends,
     );
+  });
+
+  test('draws the characters of the bytes of a text in Hex and in the bytes as the viewer draws the text, a space as its dot and a line end as its sign, each in the cell of a character', async () => {
+    const [first] = lines;
+    const signed = first.length + 1;
+    const firstLine = async (): Promise<Box | undefined> => {
+      const row = (await seenRows(page)).find(({ text }) =>
+        text.includes(first),
+      );
+      const at = row?.text.indexOf(first) ?? -1;
+      return row === undefined || at < 0
+        ? undefined
+        : {
+            left: row.left + (at - row.column) * row.advance,
+            top: row.top,
+            width: signed * row.advance,
+            height: row.height,
+          };
+    };
+    const once = { pixels: true, columns: signed, rows: 1 };
+    const encoding = async (name: string) => {
+      await page
+        .locator('.viewer .viewer-encoding .menu-button-trigger')
+        .click();
+      await page
+        .locator('.menu.filtered-menu .menu-item', { hasText: name })
+        .first()
+        .click();
+    };
+    await show(0);
+    const text = await settled(firstLine, 'the viewer drawn at rest');
+    await page.locator('.viewer').click();
+    await page.keyboard.press('1');
+    alikeTo(text, await settled(firstLine, 'the hex drawn at rest'), once);
+    await page.keyboard.press('2');
+    await encoding('Bytes');
+    alikeTo(text, await settled(firstLine, 'the bytes drawn at rest'), once);
+    await encoding('Auto');
   });
 });
