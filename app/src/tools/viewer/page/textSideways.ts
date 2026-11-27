@@ -7,7 +7,7 @@ import {
   keptColumnsOf,
   shownWithin,
   widestColumns,
-} from '../../../components/cells/page/columns';
+} from '../../../lib/page/columns';
 import { bytesOf } from './encodedBytes';
 import type { WholeText } from './textColors';
 

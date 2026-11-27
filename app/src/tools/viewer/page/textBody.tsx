@@ -7,7 +7,7 @@ import type { Viewing } from './viewing';
 import type { ViewerFind } from './find';
 import { textMarks } from './markPieces';
 import { useShell } from '../../../shell/page/store';
-import { columnAt } from '../../../components/cells/page/columns';
+import { columnAt } from '../../../lib/page/columns';
 import { cellWidthsOf, withTabSize } from '../../../lib/page/textWidths';
 import { plainCells } from '../../../lib/page/cellTable';
 import { useCellFont } from '../../../components/cells/page/cellFont';

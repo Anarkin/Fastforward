@@ -342,6 +342,23 @@ suite('Diff row heights', () => {
     );
   });
 
+  test('estimates a row of joined emoji far from those in view by the columns the cells draw it in, a cluster by its width, rather than the sum of the characters it is joined from, which guessed the row onto lines it never took', () => {
+    const family = '\u{1F469}\u200D\u{1F469}\u200D\u{1F467}';
+    const rows = wholeRows(
+      ...Array.from({ length: 1500 }, () => 'fits'),
+      family.repeat(3),
+    );
+    const wide = {
+      char: 10,
+      of: (cluster: string) =>
+        /\p{Extended_Pictographic}/u.test(cluster) ? 20 : 10,
+    };
+    const measures = rowMeasures(rows, { left: 7, right: 7 }, 22, 1, wide, {
+      current: 0,
+    });
+    assert.strictEqual(measures.estimateSize(1500), 22);
+  });
+
   test('estimates a row of code over a thousand rows from those in view by the columns its text spans, finding where it wraps only for the rows nearer, a row that fits on one line as one either way, keeping each estimate until the rows are measured anew, as finding where every line of a large file wraps on each step of a resize took a quarter of a second', () => {
     const wraps = 'one two three four five six';
     const rows = wholeRows(

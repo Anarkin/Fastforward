@@ -3,7 +3,7 @@ import { clusterBreak } from '../../../lib/page/graphemes';
 import { invisibleParts } from '../../../lib/page/invisibles';
 import { widthsFor, type TextWidths } from '../../../lib/page/textWidths';
 import { strings } from '../../../lib/shared/strings';
-import { charAtColumn, columnAt } from './columns';
+import { charAtColumn, columnAt } from '../../../lib/page/columns';
 import type { ScreenRow } from './lines';
 
 export function rowHolding(

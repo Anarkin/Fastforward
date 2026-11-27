@@ -1,7 +1,7 @@
 import { rowWidths, type TabSizeOf } from './fileWidths';
 import type { FindRange } from './find';
 import type { DiffRow } from './rows';
-import { columnsAlong } from '../../cells/page/columns';
+import { columnsAlong } from '../../../lib/page/columns';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { codePadding } from './textLayout';
 

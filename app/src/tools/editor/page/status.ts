@@ -3,7 +3,7 @@ import { strings } from '../../../lib/shared/strings';
 import { cellWidthsOf, withTabSize } from '../../../lib/page/textWidths';
 import { graphemes } from '../../../lib/page/graphemes';
 import { drawnTabSize } from './indent';
-import { columnsAlong } from '../../../components/cells/page/columns';
+import { columnsAlong } from '../../../lib/page/columns';
 import { type CellTable } from '../../../lib/page/cellTable';
 
 const countedCharacters = 1_000_000;

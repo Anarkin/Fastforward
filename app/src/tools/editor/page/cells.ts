@@ -25,7 +25,7 @@ import {
   viewKey,
   type CellLooks,
 } from '../../../components/cells/page/cellView';
-import { shownWithin } from '../../../components/cells/page/columns';
+import { shownWithin } from '../../../lib/page/columns';
 import {
   gpuDevice,
   gpuGeneration,

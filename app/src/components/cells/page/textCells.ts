@@ -12,7 +12,7 @@ import { strings } from '../../../lib/shared/strings';
 import { filled, over, packedOf, parsedColor, type Rgba } from './cellColors';
 import type { CellFrame } from './cellFrame';
 import { notDrawn, type GlyphStyle, type GlyphTiles } from './glyphTiles';
-import { joins, standsAlone } from './joined';
+import { joins, standsAlone } from '../../../lib/page/joined';
 
 const signs = 'signs';
 

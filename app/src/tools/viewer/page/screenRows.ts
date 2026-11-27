@@ -4,7 +4,7 @@ import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import type { ScreenRow } from '../../../components/cells/page/lines';
 import { bytesOf } from './encodedBytes';
-import { columnsAlong } from '../../../components/cells/page/columns';
+import { columnsAlong } from '../../../lib/page/columns';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { onceAText } from '../../../lib/page/onceAText';
 

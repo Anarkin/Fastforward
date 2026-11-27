@@ -1,9 +1,9 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { plainCells } from '../../../../../lib/page/cellTable';
-import { columnsAlong } from '../../../../../components/cells/page/columns';
-import { cellWidthsOf } from '../../../../../lib/page/textWidths';
-import type { TextWidths } from '../../../../../lib/page/textWidths';
+import { plainCells } from '../../../../lib/page/cellTable';
+import { columnsAlong } from '../../../../lib/page/columns';
+import { cellWidthsOf } from '../../../../lib/page/textWidths';
+import type { TextWidths } from '../../../../lib/page/textWidths';
 
 suite('Columns along a text', () => {
   test('counts a control character one column, as its picture is drawn, a tab to its stop and a wide character two', () => {

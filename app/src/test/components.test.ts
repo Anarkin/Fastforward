@@ -34,7 +34,6 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/cells/page/listCanvas.ts',
     'components/cells/page/listLooks.ts',
     'components/cells/page/runText.ts',
-    'components/cells/page/columns.ts',
     'components/cells/page/glyphWarmth.ts',
     'components/cells/page/gpuDevice.ts',
     'components/cells/page/idleWork.ts',

@@ -9,7 +9,7 @@ import {
   shownWithin,
   unitAtColumn,
   widestColumns,
-} from '../../../../../components/cells/page/columns';
+} from '../../../../lib/page/columns';
 
 const tab = String.fromCharCode(9);
 

@@ -1,4 +1,4 @@
-import { placesWithin } from './columns';
+import { placesWithin } from '../../../lib/page/columns';
 import type { FindMark } from './marks';
 import { marksWithin, piecesWithin } from './lines';
 import type { CellFrame } from './cellFrame';

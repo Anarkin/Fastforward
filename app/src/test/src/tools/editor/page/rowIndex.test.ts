@@ -7,7 +7,7 @@ import {
   rowsOfLine,
 } from '../../../../../tools/editor/page/rowIndex';
 import { wrappedLines } from '../../../../../lib/page/wordWrap';
-import { columnsOf } from '../../../../../components/cells/page/columns';
+import { columnsOf } from '../../../../../lib/page/columns';
 
 const measure = { columns: 40, widths: undefined };
 

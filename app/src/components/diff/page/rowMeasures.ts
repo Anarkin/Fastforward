@@ -1,6 +1,5 @@
-import { tabCode } from '../../../lib/shared/characterCodes';
 import { rowWidths, type TabSizeOf } from './fileWidths';
-import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
+import { columnsOf } from '../../../lib/page/columns';
 import { wrappedLines } from '../../../lib/page/wordWrap';
 import { inLines, measureInLines } from '../../../lib/page/lineHeight';
 import type { TextWidths } from '../../../lib/page/textWidths';
@@ -75,8 +74,6 @@ interface TextSpan {
 
 const noSpan: TextSpan = { columns: 0, plain: true };
 
-const lastAscii = 0x7f;
-
 function spanOf(text: string, widths: TextWidths | undefined): TextSpan {
   const length = text.endsWith('\r') ? text.length - 1 : text.length;
   const measured =
@@ -84,20 +81,10 @@ function spanOf(text: string, widths: TextWidths | undefined): TextSpan {
   if (!measured && !text.includes('\t')) {
     return { columns: length, plain: true };
   }
-  let columns = 0;
-  for (let at = 0; at < length; at++) {
-    const code = text.codePointAt(at) ?? 0;
-    if (code === tabCode) {
-      columns = tabStop(columns, tabSizeOf(widths));
-    } else if (code <= lastAscii || !measured) {
-      columns += 1;
-    } else {
-      const character = String.fromCodePoint(code);
-      columns += widths.of(character) / widths.char;
-      at += character.length - 1;
-    }
-  }
-  return { columns, plain: false };
+  return {
+    columns: columnsOf(text.slice(0, length), measured ? widths : undefined),
+    plain: false,
+  };
 }
 
 function codeSpans(

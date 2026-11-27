@@ -6,6 +6,7 @@ import {
   type Box,
 } from './lineBreaks';
 import type { TextWidths } from './textWidths';
+import { columnsOf } from './columns';
 import { tabSizeOf, tabStop } from './tabStops';
 
 const blankKind = 1;
@@ -78,17 +79,14 @@ export function leadLength(text: string): number {
 export function wrapIndent(
   text: string,
   columns: number,
-  tabSize = tabSizeOf(undefined),
+  widths?: TextWidths,
 ): number {
   const lead = leadLength(text);
   if (lead === text.length) {
     return 0;
   }
-  let indent = 0;
-  for (let at = 0; at < lead; at++) {
-    indent = text[at] === '\t' ? tabStop(indent, tabSize) : indent + 1;
-  }
-  const offStops = indent % tabSize !== 0 && text.includes('\t');
+  const indent = columnsOf(text.slice(0, lead), widths);
+  const offStops = indent % tabSizeOf(widths) !== 0 && text.includes('\t');
   return offStops || indent + fullWidthColumns > columns ? 0 : indent;
 }
 
@@ -254,7 +252,7 @@ export function wrapStarts(
   return startsOf(
     text.endsWith('\r') ? text.slice(0, -1) : text,
     columns,
-    indent ?? wrapIndent(text, columns, tabSizeOf(widths)),
+    indent ?? wrapIndent(text, columns, widths),
     widths,
     breaksMarked(text),
   );

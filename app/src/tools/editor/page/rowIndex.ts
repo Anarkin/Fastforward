@@ -1,6 +1,5 @@
 import type { Text } from '@codemirror/state';
-import { columnsOf } from '../../../components/cells/page/columns';
-import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
+import { columnsOf } from '../../../lib/page/columns';
 import { wrappedLines } from '../../../lib/page/wordWrap';
 import type { TextWidths } from '../../../lib/page/textWidths';
 
@@ -16,20 +15,8 @@ export interface RowPlace {
 
 const beyondAscii = /[^\0-\x7f]/;
 
-const tab = '\t';
-
-function tabbedColumns(line: string, size: number): number {
-  let column = 0;
-  let from = 0;
-  for (let at = line.indexOf(tab); at !== -1; at = line.indexOf(tab, from)) {
-    column = tabStop(column + at - from, size);
-    from = at + 1;
-  }
-  return column + line.length - from;
-}
-
 const onOneRow = (line: string, { columns, widths }: WrapMeasure): boolean =>
-  !beyondAscii.test(line) && tabbedColumns(line, tabSizeOf(widths)) <= columns;
+  !beyondAscii.test(line) && columnsOf(line, widths) <= columns;
 
 export function rowsOfLine(line: string, measure: WrapMeasure): number {
   return onOneRow(line, measure)
@@ -195,12 +182,7 @@ export class WidestLine {
     let most = 0;
     if (node.children === null) {
       for (const line of node.iterLines()) {
-        most = Math.max(
-          most,
-          beyondAscii.test(line)
-            ? columnsOf(line, this.widths)
-            : tabbedColumns(line, tabSizeOf(this.widths)),
-        );
+        most = Math.max(most, columnsOf(line, this.widths));
       }
     } else {
       for (const child of node.children) {

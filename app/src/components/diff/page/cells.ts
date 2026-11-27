@@ -13,7 +13,7 @@ import {
   type CellLooks,
   type KeptText,
 } from '../../cells/page/cellView';
-import { shownWithin } from '../../cells/page/columns';
+import { shownWithin } from '../../../lib/page/columns';
 import { gpuDevice, gpuGeneration, watchGpu } from '../../cells/page/gpuDevice';
 import {
   wrappedRows,

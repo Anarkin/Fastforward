@@ -1,9 +1,9 @@
-import { tabCode } from '../../../lib/shared/characterCodes';
-import { graphemes, type Units } from '../../../lib/page/graphemes';
-import { onceAText } from '../../../lib/page/onceAText';
-import { tabSizeOf, tabStop } from '../../../lib/page/tabStops';
-import type { TextWidths } from '../../../lib/page/textWidths';
-import { joins } from './joined';
+import { tabCode } from '../shared/characterCodes';
+import { graphemes, type Units } from './graphemes';
+import { onceAText } from './onceAText';
+import { tabSizeOf, tabStop } from './tabStops';
+import type { TextWidths } from './textWidths';
+import { joins, standsAlone } from './joined';
 
 const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
 
@@ -24,6 +24,27 @@ const simple = /^[^\t\uD800-\uDBFF]*$/;
 const printable = /^[ -~]*$/;
 
 const plainAscii = /^[^\t\n\r\u0080-\uffff]*$/;
+
+const tabbedAscii = /^[^\n\r\u0080-\uffff]*$/;
+
+function tabbedColumns(
+  text: string,
+  from: number,
+  to: number,
+  size: number,
+): number {
+  let column = 0;
+  let at = from;
+  for (
+    let tab = text.indexOf('\t', at);
+    tab !== -1 && tab < to;
+    tab = text.indexOf('\t', at)
+  ) {
+    column = tabStop(column + tab - at, size);
+    at = tab + 1;
+  }
+  return column + to - at;
+}
 
 const joinsBeyondPlane = /^(?:\p{M}|[\u{E0020}-\u{E007F}])/u;
 
@@ -53,6 +74,12 @@ function stepsOf(text: string, widths: TextWidths | undefined): Step {
         column: column + 1,
       };
     }
+    if (standsAlone(code, text.charCodeAt(at + 1))) {
+      return {
+        next: at + 1,
+        column: column + widths.of(text[at] ?? '') / widths.char,
+      };
+    }
     clusters ??= graphemes.segment(text);
     const cluster = clusters.containing(at);
     return cluster === undefined
@@ -75,6 +102,9 @@ export function columnAt(
 ): number {
   if (plainFor(widths).test(text)) {
     return char - from;
+  }
+  if (tabbedAscii.test(text)) {
+    return tabbedColumns(text, from, char, tabSizeOf(widths));
   }
   const step = stepsOf(text, widths);
   let column = 0;

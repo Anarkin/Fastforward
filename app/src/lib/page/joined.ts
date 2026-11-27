@@ -1,4 +1,4 @@
-import { spaceCode } from '../../../lib/shared/characterCodes';
+import { spaceCode } from '../shared/characterCodes';
 
 const alone = (code: number) =>
   code < spaceCode ||

@@ -1,4 +1,4 @@
-import { tabSizeOf, tabStop } from './tabStops';
+import { columnsAlong } from './columns';
 import { isBlank } from './wordWrap';
 
 interface Blank {
@@ -37,18 +37,7 @@ export function blankRuns(blanks: readonly Blank[]): BlankRun[] {
 
 export type ColumnsIn = (row: string) => (index: number) => number;
 
-function countedColumns(row: string): (index: number) => number {
-  let at = 0;
-  let column = 0;
-  return (index) => {
-    while (at < index) {
-      column =
-        row[at] === '\t' ? tabStop(column, tabSizeOf(undefined)) : column + 1;
-      at += (row.codePointAt(at) ?? 0) > 0xffff ? 2 : 1;
-    }
-    return column;
-  };
-}
+const countedColumns: ColumnsIn = (row) => columnsAlong(row, undefined);
 
 export function rowBreaksAt(
   text: string,

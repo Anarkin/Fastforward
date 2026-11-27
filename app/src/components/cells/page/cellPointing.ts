@@ -1,7 +1,7 @@
 import type { ScreenRow } from './lines';
 import type { TextLine } from './lines';
 import { rowWidthsOf, type ShownRows } from './cellPainting';
-import { charAtColumn, unitAtColumn } from './columns';
+import { charAtColumn, unitAtColumn } from '../../../lib/page/columns';
 import {
   lineAt,
   ordered,

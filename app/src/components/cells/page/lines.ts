@@ -1,7 +1,6 @@
 import type { ColoredSegment } from '../../syntax/page/lineColors';
 import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
-import { tabSizeOf } from '../../../lib/page/tabStops';
-import { columnsAlong } from './columns';
+import { columnsAlong } from '../../../lib/page/columns';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import type { FindMark } from './marks';
@@ -110,7 +109,7 @@ export function wrappedRows(
   };
   let rows: readonly ScreenRow[] = [whole];
   if (columns !== undefined) {
-    const indent = wrapIndent(text, columns, tabSizeOf(widths));
+    const indent = wrapIndent(text, columns, widths);
     const starts = wrapStarts(
       text,
       columns,

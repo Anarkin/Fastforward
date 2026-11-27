@@ -1,6 +1,6 @@
 import { seenCells } from '../../../components/cells/page/textPlaces';
 import type { TextSelection } from '../../../components/cells/page/textSelection';
-import { columnsOf } from '../../../components/cells/page/columns';
+import { columnsOf } from '../../../lib/page/columns';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { strings } from '../../../lib/shared/strings';
 import type { Box } from './grid';

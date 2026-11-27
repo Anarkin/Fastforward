@@ -16,7 +16,7 @@ import {
   type EditorSurface,
   type SurfacePart,
 } from './surface';
-import { charAtColumn, columnAt } from '../../../components/cells/page/columns';
+import { charAtColumn, columnAt } from '../../../lib/page/columns';
 import { clicked } from '../../../lib/shared/keymap';
 import { editorKeymap } from './keymap';
 import { pointerHeld } from './occurrences';
