@@ -24,7 +24,7 @@ suite('Shortcuts popup', () => {
         ['viewer', 'Viewer', 4],
         ['diff', 'Diff', 2],
         ['editor', 'Editor', 4],
-        ['canvas', 'Canvas', 3],
+        ['canvas', 'Canvas', 4],
         ['paint', 'Paint', 0],
       ],
     );
@@ -61,9 +61,21 @@ suite('Shortcuts popup', () => {
           'Editor',
           ['Editing', 'Moving around', 'Cursors and selections', 'Searching'],
         ],
-        ['Canvas', ['Editing', 'Typing in a node', 'Moving around']],
+        [
+          'Canvas',
+          ['Creating', 'Editing', 'Typing in a node', 'Moving around'],
+        ],
         ['Paint', []],
       ],
+    );
+  });
+
+  test('lists what makes a node of the canvas under Creating: a text node, a group, and a link or files from the clipboard, as pasting them is told by no menu', () => {
+    const canvas = shortcutEntries.find((each) => each.id === 'canvas');
+    const creating = canvas?.groups.find((group) => group.title === 'Creating');
+    assert.deepStrictEqual(
+      creating?.bindings.map((binding) => Object.keys(binding.keys)),
+      [['Mod+1'], ['Mod+2'], ['Mod+V']],
     );
   });
 

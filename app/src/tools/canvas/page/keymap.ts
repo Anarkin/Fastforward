@@ -1,15 +1,23 @@
 import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 
-export const canvasGroups = ['Editing', 'Typing', 'Moving'] as const;
+export const canvasGroups = [
+  'Creating',
+  'Editing',
+  'Typing',
+  'Moving',
+] as const;
 
 const typing = { repeats: true, fields: true } as const;
 
 export const canvasKeymap = {
-  placeText: bind('Editing', strings.actions.placeTextNode, { 'Mod+1': true }),
-  placeGroup: bind('Editing', strings.actions.placeGroupNode, {
+  placeText: bind('Creating', strings.actions.placeTextNode, {
+    'Mod+1': true,
+  }),
+  placeGroup: bind('Creating', strings.actions.placeGroupNode, {
     'Mod+2': true,
   }),
+  paste: bind('Creating', strings.actions.pasteOnCanvas, { 'Mod+V': true }),
   select: bind('Editing', strings.actions.selectNodes, {
     Click: 'one',
     'Mod+Click': 'toggle',

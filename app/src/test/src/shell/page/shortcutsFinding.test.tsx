@@ -296,7 +296,7 @@ suite('Shortcuts popup', () => {
         view('editor/Searching', { atStart: true, atEnd: true }),
         1,
       ),
-      'canvas/Editing',
+      'canvas/Creating',
     );
     assert.strictEqual(
       steppedGroup(

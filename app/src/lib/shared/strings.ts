@@ -283,6 +283,8 @@ export const strings = {
     panCanvasHeld: 'Hold to move around the canvas by dragging it',
     placeTextNode: 'Place a text node, which follows the pointer until a click',
     placeGroupNode: 'Place a group, which follows the pointer until a click',
+    pasteOnCanvas:
+      'Place a link node of the URL on the clipboard, or file nodes of the paths on it, a line each, at the pointer, as files dropped on the canvas are placed',
     selectNodes:
       'Select a node or an edge, or add it to the selection or take it out',
     pointEdges:
@@ -496,6 +498,7 @@ export const strings = {
       Editing: 'Editing',
       Cursors: 'Cursors and selections',
       Typing: 'Typing in a node',
+      Creating: 'Creating',
     },
   },
   keys: {
