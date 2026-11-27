@@ -1,3 +1,4 @@
+import { groundUnder } from '../../../components/cells/page/cellLook';
 import { CellSurface } from '../../../components/cells/page/cellSurface';
 import {
   cellMetricsOf,
@@ -90,19 +91,7 @@ const lookKinds = [
   ...colorKinds,
 ] as const;
 
-const transparent = 0.001;
-
 const withinPixel = 0.01;
-
-function groundOf(element: Element): Rgba {
-  for (let at: Element | null = element; at !== null; at = at.parentElement) {
-    const color = parsedColor(getComputedStyle(at).backgroundColor);
-    if (color[3] > transparent) {
-      return over([0, 0, 0, 1], color);
-    }
-  }
-  return [0, 0, 0, 1];
-}
 
 export interface Drawn {
   readonly origin: Origin;
@@ -234,7 +223,7 @@ export class BoardSurface {
       nudge.shift,
       probeRowClass,
     );
-    const ground = groundOf(body);
+    const ground = groundUnder(body);
     const scheme = matchMedia('(prefers-color-scheme: dark)').matches;
     const look = this.lookOf(`${ground.join(',')}|${scheme}`, ground);
     cells.grounded(ground);

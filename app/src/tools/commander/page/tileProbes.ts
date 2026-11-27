@@ -1,11 +1,16 @@
 import {
+  backgroundOf,
+  layerOf,
+  tintedGround,
+} from '../../../components/cells/page/cellLook';
+import {
   filled,
   parsedColor,
   type Rgba,
 } from '../../../components/cells/page/cellColors';
 import { probed } from '../../../components/cells/page/listLooks';
 import { overCheckAttribute } from './lineCheck';
-import { groundOf, urlOf, type PaneLooks } from './paneLooks';
+import { urlOf, type PaneLooks } from './paneLooks';
 import { outlineOf, type Outline } from './rowOutline';
 
 interface Box {
@@ -155,12 +160,12 @@ export function tileLooksOf(
       tile.className = `${classes}${pointed ? ' pointed' : ''}`;
       tile.toggleAttribute(overCheckAttribute, overCheck);
       const style = getComputedStyle(tile);
-      const ground = groundOf(style, lines.ground);
+      const ground = tintedGround(style, lines.ground);
       const check = at('[data-check]');
       const checkBox = at('[data-box]');
       const boxStyle = getComputedStyle(checkBox);
       const after = getComputedStyle(checkBox, '::after');
-      const fill = parsedColor(boxStyle.backgroundColor);
+      const fill = backgroundOf(boxStyle);
       const made: TileInks = {
         ground,
         ink: style.color,
@@ -171,14 +176,11 @@ export function tileLooksOf(
         check:
           getComputedStyle(check).visibility === 'visible'
             ? {
-                ring: filled(
-                  ground,
-                  parsedColor(getComputedStyle(ring).backgroundColor),
-                ),
+                ring: filled(ground, layerOf(ring)),
                 edge: filled(ground, parsedColor(boxStyle.borderTopColor)),
                 fill: filled(ground, fill),
                 tick: shown(after.content)
-                  ? filled(ground, parsedColor(after.backgroundColor))
+                  ? filled(ground, backgroundOf(after))
                   : undefined,
               }
             : undefined,

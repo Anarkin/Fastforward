@@ -74,15 +74,8 @@ suite('Capabilities', () => {
     );
   });
 
-  test('reads the ground a text stands on from the page by one look of the cells, so every view draws on the color the page shows, rather than by a reading of each view', () => {
-    heldBy(/backgroundColor\)/, ['components/cells/page/cellLook.ts'], {
-      'tools/canvas/page/surface.ts':
-        'the canvas reads its ground by a walk of its own, to read it by the look of the cells',
-      'tools/commander/page/paneLooks.ts':
-        'the commander reads its grounds by a walk of its own, to read them by the look of the cells',
-      'tools/commander/page/tileProbes.ts':
-        'the tiles read their grounds by a walk of their own, to read them by the look of the cells',
-    });
+  test('reads the ground a text stands on from the page by one look of the cells, every layer up to the first opaque one blended as the page blends them and the tints of its gradients over them, so every view draws on the color the page shows, rather than by a reading of each view, the canvas having taken the first layer alone over black', () => {
+    heldBy(/backgroundColor\)/, ['components/cells/page/cellLook.ts']);
   });
 
   test('watches the file system only through the watcher of the library, so every watch is kept, closed and told of an error alike', () => {

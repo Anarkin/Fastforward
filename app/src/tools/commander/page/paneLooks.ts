@@ -1,4 +1,10 @@
 import {
+  backgroundOf,
+  groundUnder,
+  layerOf,
+  tintedGround,
+} from '../../../components/cells/page/cellLook';
+import {
   filled,
   parsedColor,
   type Rgba,
@@ -78,37 +84,6 @@ const fontOf = (style: CSSStyleDeclaration): TextFont => ({
   weight: style.fontWeight,
 });
 
-const gradient =
-  /linear-gradient\(\s*((?:rgba?|color|hsla?|oklch|oklab|lab|lch)\([^)]*\)|#[\da-f]+|[a-z]+)/gi;
-
-export function groundOf(style: CSSStyleDeclaration, under: Rgba): Rgba {
-  let ground = filled(under, parsedColor(style.backgroundColor));
-  const tints = [...style.backgroundImage.matchAll(gradient)].map(([, color]) =>
-    parsedColor(color ?? ''),
-  );
-  for (const tint of tints.toReversed()) {
-    ground = filled(ground, tint);
-  }
-  return ground;
-}
-
-function solidBehind(element: Element): Rgba {
-  const layers: Rgba[] = [];
-  for (let at: Element | null = element; at !== null; at = at.parentElement) {
-    const layer = parsedColor(getComputedStyle(at).backgroundColor);
-    if (layer[3] > 0) {
-      layers.push(layer);
-      if (layer[3] >= 1) {
-        break;
-      }
-    }
-  }
-  return layers.reduceRight<Rgba>(
-    (under, layer) => filled(under, layer),
-    [255, 255, 255, 1],
-  );
-}
-
 export const urlOf = (value: string): string | undefined =>
   /url\(\s*"?([^")]*)"?\s*\)/.exec(value)?.[1];
 
@@ -170,7 +145,7 @@ export function paneLooksOf(
   const sample = at('[data-text]');
   sample.textContent = shapedSample;
   const lineStyle = getComputedStyle(line);
-  const ground = solidBehind(host);
+  const ground = groundUnder(host);
   const looked = at('[data-look]');
   const mark2 = at('[data-mark]');
   const gitShape = gitIcon?.querySelector('svg');
@@ -210,14 +185,11 @@ export function paneLooksOf(
     checkLeft: checkStart,
     checkSize,
     markInk: getComputedStyle(mark).color,
-    markGround: filled(
-      ground,
-      parsedColor(getComputedStyle(mark).backgroundColor),
-    ),
+    markGround: filled(ground, layerOf(mark)),
     markTop: markBox.top - markRow.top,
     markHeight: markBox.height,
     hairline: hairline.getBoundingClientRect().height,
-    border: parsedColor(getComputedStyle(hairline).backgroundColor),
+    border: layerOf(hairline),
     gitMark,
     gitLeft: gitBox.left - gitRow.left,
     gitSize: gitBox.width,
@@ -230,12 +202,12 @@ export function paneLooksOf(
       looked.className = `${classes}${pointed ? ' pointed' : ''}`;
       looked.toggleAttribute(overCheckAttribute, overCheck);
       const style = getComputedStyle(looked);
-      const rowGround = groundOf(style, ground);
+      const rowGround = tintedGround(style, ground);
       const before = getComputedStyle(looked, '::before');
       const after = getComputedStyle(looked, '::after');
       const boxed = before.content !== 'none' && before.content !== 'normal';
       const ticked = after.content !== 'none' && after.content !== 'normal';
-      const fill = parsedColor(before.backgroundColor);
+      const fill = backgroundOf(before);
       const made: LineInks = {
         ground: rowGround,
         ink: style.color,
@@ -245,9 +217,7 @@ export function paneLooksOf(
           ? {
               edge: filled(rowGround, parsedColor(before.borderTopColor)),
               fill: fill[3] > 0 ? filled(rowGround, fill) : undefined,
-              tick: ticked
-                ? filled(rowGround, parsedColor(after.backgroundColor))
-                : undefined,
+              tick: ticked ? filled(rowGround, backgroundOf(after)) : undefined,
               thickness: parseFloat(before.borderTopWidth) || 1,
             }
           : undefined,

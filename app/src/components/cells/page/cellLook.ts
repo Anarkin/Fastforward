@@ -1,4 +1,4 @@
-import { over, parsedColor, type Rgba } from './cellColors';
+import { filled, over, parsedColor, type Rgba } from './cellColors';
 import type { CellMetrics } from './glyphTiles';
 import type { TextLook } from './textCells';
 
@@ -14,8 +14,42 @@ const kinds = [
 
 const colorOf = (element: Element) => getComputedStyle(element).color;
 
+export const backgroundOf = (style: CSSStyleDeclaration): Rgba =>
+  parsedColor(style.backgroundColor);
+
 export const layerOf = (element: Element): Rgba =>
-  parsedColor(getComputedStyle(element).backgroundColor);
+  backgroundOf(getComputedStyle(element));
+
+export function groundUnder(element: Element): Rgba {
+  const layers: Rgba[] = [];
+  for (let at: Element | null = element; at !== null; at = at.parentElement) {
+    const layer = layerOf(at);
+    if (layer[3] > 0) {
+      layers.push(layer);
+      if (layer[3] >= 1) {
+        break;
+      }
+    }
+  }
+  return layers.reduceRight<Rgba>(
+    (under, layer) => filled(under, layer),
+    [255, 255, 255, 1],
+  );
+}
+
+const gradient =
+  /linear-gradient\(\s*((?:rgba?|color|hsla?|oklch|oklab|lab|lch)\([^)]*\)|#[\da-f]+|[a-z]+)/gi;
+
+export function tintedGround(style: CSSStyleDeclaration, under: Rgba): Rgba {
+  let ground = filled(under, backgroundOf(style));
+  const tints = [...style.backgroundImage.matchAll(gradient)].map(([, color]) =>
+    parsedColor(color ?? ''),
+  );
+  for (const tint of tints.toReversed()) {
+    ground = filled(ground, tint);
+  }
+  return ground;
+}
 
 export function probedRow(host: Element, rowClass: string): HTMLDivElement {
   const row = document.createElement('div');
@@ -41,12 +75,7 @@ export const solidOn = (ground: Rgba, element: Element): Rgba =>
   over(ground, layerOf(element));
 
 export const groundBehind = (behind: Element | null): Rgba =>
-  over(
-    [0, 0, 0, 1],
-    parsedColor(
-      behind === null ? '' : getComputedStyle(behind).backgroundColor,
-    ),
-  );
+  over([0, 0, 0, 1], behind === null ? parsedColor('') : layerOf(behind));
 
 export function lookWithin(
   row: HTMLElement,
