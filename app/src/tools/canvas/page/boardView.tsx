@@ -247,6 +247,9 @@ export function BoardView() {
         typing,
         element.getBoundingClientRect(),
       );
+      if (origin === undefined && drawn.current !== undefined) {
+        panned(drawn.current.origin);
+      }
     }
   }, [
     board,

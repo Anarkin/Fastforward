@@ -362,4 +362,40 @@ suite('App canvas content', () => {
     );
     assert.strictEqual(fs.readFileSync(fresh, 'utf8'), '{}');
   });
+
+  test('places the first node of a new canvas where the pointer is once it moves, though the pointer had not moved over the canvas before Mod+1, and keeps the view where it was as the nodes change, rather than fitting it to them again', async () => {
+    const placed = path.join(folder, 'placed.canvas');
+    await showTab(page, 0);
+    await page.locator('.commander-pane').last().click();
+    await page.keyboard.press('Shift+F4');
+    const prompt = page.locator('.prompt-input');
+    await prompt.waitFor();
+    await prompt.fill('placed.canvas');
+    await prompt.press('Enter');
+    await page
+      .locator('.tabs .tab.active .tab-name', { hasText: 'placed.canvas' })
+      .waitFor();
+    await page.locator('.board-host canvas').first().waitFor();
+    await page.locator('.board-body').focus();
+    await page.keyboard.press('ControlOrMeta+1');
+    const seen = await seenBoard();
+    assert.ok(seen !== undefined);
+    const cell = { column: seen.origin.column + 40, row: seen.origin.row + 12 };
+    const spot = await pointAt(cell);
+    await page.mouse.move(spot.x - 30, spot.y - 30);
+    await page.mouse.move(spot.x, spot.y, { steps: 3 });
+    await page.mouse.click(spot.x, spot.y);
+    await page.keyboard.press('ControlOrMeta+S');
+    const written = await untilSettled(
+      () => fs.promises.readFile(placed, 'utf8').catch(() => ''),
+      'the node placed and saved',
+      { accepted: (text) => text.includes('"type":"text"') },
+    );
+    const [node] = JSON.parse(written).nodes;
+    assert.deepStrictEqual(
+      [node?.x, node?.y],
+      [cell.column * 7, cell.row * 18],
+    );
+    assert.deepStrictEqual((await seenBoard())?.origin, seen.origin);
+  });
 });
