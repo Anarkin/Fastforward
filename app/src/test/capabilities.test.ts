@@ -99,6 +99,14 @@ suite('Capabilities', () => {
     ]);
   });
 
+  test('hides an element the page reads a look from by one maker of probes of the cells, which every list, view and canvas takes its rows to read from, the shell measuring the fonts and the cursor of a text box by boxes of its own outside any view', () => {
+    heldBy(/visibility(?: = |: )'hidden'/, [
+      'components/cells/page/listLooks.ts',
+      'shell/page/textCursor.ts',
+      'shell/page/textHeights.ts',
+    ]);
+  });
+
   test('watches the file system only through the watcher of the library, so every watch is kept, closed and told of an error alike', () => {
     heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts'], {
       'shell/main/settingsWatch.ts':

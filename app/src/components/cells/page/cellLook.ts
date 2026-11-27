@@ -1,5 +1,6 @@
 import { filled, over, parsedColor, type Rgba } from './cellColors';
 import type { CellMetrics } from './glyphTiles';
+import { probed } from './listLooks';
 import type { TextLook } from './textCells';
 
 const kinds = [
@@ -52,11 +53,8 @@ export function tintedGround(style: CSSStyleDeclaration, under: Rgba): Rgba {
 }
 
 export function probedRow(host: Element, rowClass: string): HTMLDivElement {
-  const row = document.createElement('div');
+  const row = probed(host, '');
   row.className = rowClass;
-  row.style.position = 'absolute';
-  row.style.visibility = 'hidden';
-  host.append(row);
   return row;
 }
 

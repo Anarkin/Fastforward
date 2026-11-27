@@ -1,6 +1,6 @@
 import { scratchRange } from '../../../lib/page/scratchRange';
 
-export function probed(host: HTMLElement, html: string): HTMLElement {
+export function probed(host: Element, html: string): HTMLDivElement {
   const probe = document.createElement('div');
   probe.style.position = 'absolute';
   probe.style.visibility = 'hidden';
