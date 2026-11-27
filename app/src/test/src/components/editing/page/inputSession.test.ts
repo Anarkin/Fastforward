@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { differing } from '../../../../../tools/editor/page/textInput';
+import { differing } from '../../../../../components/editing/page/inputSession';
 
 suite('The text typed into the editor', () => {
   test('finds what changed between the text the input held and the one it holds now: what was typed, what was deleted and what was put in place of another text, and nothing where they are alike', () => {

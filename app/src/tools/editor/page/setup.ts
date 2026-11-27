@@ -8,7 +8,7 @@ import {
 } from '@codemirror/state';
 import { linesWrapped, surfaceUpdated, type SurfaceUpdate } from './surface';
 import { textInput } from './textInput';
-import { bracketsClose } from './typing';
+import { bracketsClose } from '../../../components/editing/page/typed';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { syntaxColors } from './colors';
 import { appSelection } from './selection';

@@ -8,7 +8,10 @@ import {
   type Transaction,
 } from '@codemirror/state';
 import { suite, test } from 'vitest';
-import { bracketsClose, typed } from '../../../../../tools/editor/page/typing';
+import {
+  bracketsClose,
+  typed,
+} from '../../../../../components/editing/page/typed';
 
 type Span = readonly [anchor: number, head: number];
 
