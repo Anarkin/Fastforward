@@ -30,6 +30,7 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
     startTyping,
     stopTyping,
     zoom,
+    panHome,
   } = useCanvasActions();
   const shownTab = tab !== undefined && board !== undefined;
   const calm = shownTab && typing === undefined;
@@ -43,6 +44,15 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const opened = openedOf(onlyNode, files);
 
   useBinding(canvasKeymap.placeText, () => startPlacing('text'), shownTab);
+  useBinding(
+    canvasKeymap.home,
+    () => {
+      if (tab !== undefined) {
+        panHome(tab);
+      }
+    },
+    calm,
+  );
   useBinding(
     canvasKeymap.resetZoom,
     () => {

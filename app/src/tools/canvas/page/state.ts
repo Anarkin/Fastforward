@@ -49,6 +49,7 @@ export interface CanvasSource {
 export interface CanvasActions {
   readonly receive: (message: CanvasToWebview) => void;
   readonly pan: (tab: string, origin: Origin) => void;
+  readonly panHome: (tab: string) => void;
   readonly zoom: (tab: string, step: number) => void;
   readonly originOf: (tab: string) => Origin | undefined;
   readonly typingOf: (tab: string) => Typing | undefined;

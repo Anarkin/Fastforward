@@ -222,6 +222,10 @@ export function createCanvasStore(
         set((state) => ({ origins: new Map(state.origins).set(tab, origin) }));
         tabs.changed(tab);
       },
+      panHome: (tab) => {
+        set((state) => ({ origins: without(state.origins, tab) }));
+        tabs.changed(tab);
+      },
       originOf: (tab) => get().origins.get(tab),
       zoom: (tab, step) => {
         set((state) => ({ zooms: new Map(state.zooms).set(tab, step) }));

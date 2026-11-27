@@ -149,6 +149,7 @@ export const canvasKeymap = {
   }),
   zoom: bind('Moving', strings.actions.zoomCanvas, { 'Mod+Wheel': true }),
   resetZoom: bind('Moving', strings.actions.resetCanvasZoom, { 'Mod+0': true }),
+  home: bind('Moving', strings.actions.canvasHome, { Home: true }),
   panAcross: bind('Moving', strings.actions.panCanvasAcross, {
     'Shift+Wheel': true,
   }),

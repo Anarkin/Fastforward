@@ -375,6 +375,29 @@ suite('App canvas content', () => {
     });
   });
 
+  test('goes back to where the canvas opens, the top left of its nodes, on Home', async () => {
+    await page.locator('.board-body').focus();
+    await page.keyboard.press('Home');
+    const opened = await untilSettled(
+      async () => JSON.stringify((await seenBoard())?.origin),
+      'the canvas where it opens',
+    );
+    const middle = await pointAt({ column: 40, row: 10 });
+    await page.mouse.move(middle.x, middle.y);
+    await page.mouse.wheel(0, 300);
+    await untilSettled(
+      async () => JSON.stringify((await seenBoard())?.origin),
+      'the canvas scrolled away',
+      { accepted: (now) => now !== opened },
+    );
+    await page.keyboard.press('Home');
+    await untilSettled(
+      async () => JSON.stringify((await seenBoard())?.origin),
+      'the canvas back where it opens',
+      { accepted: (now) => now === opened },
+    );
+  });
+
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {
     const fresh = path.join(folder, 'fresh.canvas');
     await showTab(page, 0);

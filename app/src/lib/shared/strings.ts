@@ -441,6 +441,7 @@ export const strings = {
     findInTerminal: 'Search the output of the terminal',
     viewDiffFile: 'View the file shown in a tab of its own',
     zoomPdf: 'Zoom a PDF in or out',
+    canvasHome: 'Go back to where the canvas opens, the top left of its nodes',
     resetCanvasZoom:
       'Zoom the canvas back to the size of the font of the settings',
     zoomCanvas:
