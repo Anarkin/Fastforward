@@ -604,6 +604,35 @@ suite('Playground of files', () => {
     }
   });
 
+  test('points every file node and group background of the canvases written as Obsidian writes them at a file it makes beside them, of every kind of the resources folder, so each one opens', () => {
+    const made = planFor('win32');
+    const folder = 'canvases/obsidian';
+    const paths = new Set(made.items.map((item) => item.path));
+    const named = made.items
+      .filter(
+        (item) => item.path.startsWith(`${folder}/`) && isCanvasFile(item.path),
+      )
+      .flatMap((item) => {
+        const read = boardOf(contentOf(item).toString());
+        assert.ok(read.kind === 'board', item.path);
+        return read.board.nodes.flatMap((node) =>
+          node.type === 'file'
+            ? [`${folder}/${node.file}`]
+            : node.type === 'group' && node.background !== undefined
+              ? [`${folder}/${node.background}`]
+              : [],
+        );
+      });
+    assert.deepStrictEqual(
+      named.filter((where) => !paths.has(where)),
+      [],
+    );
+    assert.deepStrictEqual(
+      [...new Set(named.map((where) => path.extname(where)))].toSorted(),
+      ['.cs', '.csv', '.jpg', '.md', '.pdf', '.png', '.svg', '.ts', '.txt'],
+    );
+  });
+
   test('holds canvases in a folder of their own, read as the canvas reads them: every kind of node, every color, every side and end of an edge and an edge to its own node drawn whole, those it leaves something out of, those it refuses, too large, of no JSON or of no canvas, and a canvas named otherwise, which it offers to open as none', () => {
     const made = planFor('win32');
     const canvases = made.items.filter(

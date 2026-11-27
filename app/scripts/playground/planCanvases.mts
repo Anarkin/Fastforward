@@ -2,6 +2,7 @@ import type { PlanBuilder } from './filesPlan.mts';
 import { mib } from './sizedContents.mts';
 import { asObsidianWrites, obsidianCanvases } from './obsidianCanvases.mts';
 import { architectureCanvases, meetingCanvases } from './canvasSamples.mts';
+import { obsidianResources } from './obsidianResources.mts';
 
 export const defaultCell = { width: 7, height: 18 } as const;
 
@@ -522,7 +523,7 @@ const smallBoard = {
 export function planCanvases({ items, file, section }: PlanBuilder): void {
   section(
     'canvases',
-    `Canvases of JSON Canvas to open with Open with Canvas in the menu of a file, their places and sizes in cells of the default font, ${defaultCell.width} by ${defaultCell.height} pixels: tour.canvas holds every kind of node and edge, colors.canvas every color, edges.canvas edges from and to every side with every end, to themselves and around nodes, groups.canvas groups in groups and nodes over each other, text.canvas text of every kind and nodes smaller than their borders, off-grid.canvas places and sizes off the grid of cells, as other apps write them, obsidian.canvas a canvas as Obsidian writes it, a tab an indent and an object a line, big.canvas ${bigBoard.nodes.length.toLocaleString('en-US')} nodes to move around in, extra-fields.canvas fields JSON Canvas lacks, to keep as saved, and read-only.canvas a file to save over; empty.canvas, blank.canvas, bom.canvas and Shouting.CANVAS open empty or small, skipped.canvas leaves out what it can't draw, not-json.canvas, not-a-board.canvas and too-large.canvas say why they draw nothing, and tour.json is no canvas by its name; obsidian holds the canvases the tests read as Obsidian writes them, every attribute of JSON Canvas among them, meetings the notes of a kickoff, a weekly sync and a brainstorm, and architecture diagrams of a web app, an event pipeline and the context of a system, drawn as people draw them in Obsidian, in its sizes rather than in cells.`,
+    `Canvases of JSON Canvas to open with Open with Canvas in the menu of a file, their places and sizes in cells of the default font, ${defaultCell.width} by ${defaultCell.height} pixels: tour.canvas holds every kind of node and edge, colors.canvas every color, edges.canvas edges from and to every side with every end, to themselves and around nodes, groups.canvas groups in groups and nodes over each other, text.canvas text of every kind and nodes smaller than their borders, off-grid.canvas places and sizes off the grid of cells, as other apps write them, obsidian.canvas a canvas as Obsidian writes it, a tab an indent and an object a line, big.canvas ${bigBoard.nodes.length.toLocaleString('en-US')} nodes to move around in, extra-fields.canvas fields JSON Canvas lacks, to keep as saved, and read-only.canvas a file to save over; empty.canvas, blank.canvas, bom.canvas and Shouting.CANVAS open empty or small, skipped.canvas leaves out what it can't draw, not-json.canvas, not-a-board.canvas and too-large.canvas say why they draw nothing, and tour.json is no canvas by its name; obsidian holds the canvases the tests read as Obsidian writes them, every attribute of JSON Canvas among them, and in resources the files of many kinds their file nodes and group backgrounds open, meetings the notes of a kickoff, a weekly sync and a brainstorm, and architecture diagrams of a web app, an event pipeline and the context of a system, drawn as people draw them in Obsidian, in its sizes rather than in cells.`,
   );
   file('canvases/tour.canvas', written(tourBoard));
   file('canvases/colors.canvas', written(colorsBoard));
@@ -536,6 +537,9 @@ export function planCanvases({ items, file, section }: PlanBuilder): void {
   );
   for (const [name, saved] of Object.entries(obsidianCanvases)) {
     file(`canvases/obsidian/${name}.canvas`, saved);
+  }
+  for (const [name, made] of Object.entries(obsidianResources)) {
+    file(`canvases/obsidian/resources/${name}`, made);
   }
   for (const [name, made] of Object.entries(meetingCanvases)) {
     file(`canvases/meetings/${name}.canvas`, made);
