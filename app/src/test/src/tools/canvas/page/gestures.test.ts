@@ -5,6 +5,7 @@ import {
   pressed,
   released,
 } from '../../../../../tools/canvas/page/gestures';
+import { ghostId, previewed } from '../../../../../tools/canvas/page/placing';
 import type {
   Board,
   BoardNode,
@@ -25,6 +26,13 @@ const text = (id: string, column: number, row: number): BoardNode => ({
 const board: Board = {
   nodes: [text('a', 0, 0), text('b', 20, 0), text('c', 0, 10)],
   edges: [],
+};
+
+const edged: Board = {
+  ...board,
+  edges: [
+    { id: 'ab', fromNode: 'a', fromSide: 'right', toNode: 'b', toSide: 'left' },
+  ],
 };
 
 suite('Canvas gestures', () => {
@@ -242,6 +250,73 @@ suite('Canvas gestures', () => {
     assert.deepStrictEqual(
       pressed(board, unit, hit, at, ['a', 'ab'], 'toggle'),
       { selected: ['a'] },
+    );
+  });
+
+  test('moves the end of an edge pressed to the side of the node it is dragged over, never to the node at its other end, and leaves it where it was once let go elsewhere', () => {
+    const start = pressed(
+      edged,
+      unit,
+      { kind: 'end', id: 'ab', end: 'to' },
+      { column: 19, row: 1 },
+      ['ab'],
+      'one',
+    );
+    assert.deepStrictEqual(start.selected, ['ab']);
+    assert.ok(start.gesture !== undefined);
+    const over = (column: number, row: number) =>
+      start.gesture === undefined
+        ? undefined
+        : dragging(start.gesture, edged, unit, { column, row }).preview.reroute;
+    assert.deepStrictEqual(over(15, 6), {
+      id: 'ab',
+      end: 'to',
+      to: { at: { column: 15, row: 6 } },
+    });
+    assert.deepStrictEqual(over(4, 10)?.to, { node: 'c', side: 'top' });
+    assert.deepStrictEqual(over(5, 2)?.to, { at: { column: 5, row: 2 } });
+    assert.deepStrictEqual(
+      released(start.gesture, edged, unit, { column: 4, row: 10 }),
+      { kind: 'reroute', edge: 'ab', end: 'to', node: 'c', side: 'top' },
+    );
+    for (const [column, row] of [
+      [15, 6],
+      [5, 2],
+    ] as const) {
+      assert.strictEqual(
+        released(start.gesture, edged, unit, { column, row }),
+        undefined,
+      );
+    }
+  });
+
+  test('draws the end of an edge dragged joined to the side of the node under the pointer, or at the pointer itself', () => {
+    const joined = previewed(edged, unit, new Map(), undefined, {
+      id: 'ab',
+      end: 'to',
+      to: { node: 'c', side: 'top' },
+    });
+    assert.deepStrictEqual(joined.edges, [
+      {
+        id: 'ab',
+        fromNode: 'a',
+        fromSide: 'right',
+        toNode: 'c',
+        toSide: 'top',
+      },
+    ]);
+    const loose = previewed(edged, unit, new Map(), undefined, {
+      id: 'ab',
+      end: 'from',
+      to: { at: { column: 15, row: 6 } },
+    });
+    assert.deepStrictEqual(loose.edges, [
+      { id: 'ab', fromNode: ghostId, toNode: 'b', toSide: 'left' },
+    ]);
+    const ghost = loose.nodes.at(-1);
+    assert.deepStrictEqual(
+      ghost && [ghost.id, ghost.x, ghost.y, ghost.width, ghost.height],
+      [ghostId, 15 * unit.width, 6 * unit.height, unit.width, unit.height],
     );
   });
 });

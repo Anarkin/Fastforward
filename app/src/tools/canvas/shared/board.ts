@@ -4,6 +4,10 @@ export type NodeSide = (typeof nodeSides)[number];
 
 export const edgeEnds = ['none', 'arrow'] as const;
 
+export const whichEnds = ['from', 'to'] as const;
+
+export type WhichEnd = (typeof whichEnds)[number];
+
 export const backgroundStyles = ['cover', 'ratio', 'repeat'] as const;
 
 export type EdgeEnd = (typeof edgeEnds)[number];

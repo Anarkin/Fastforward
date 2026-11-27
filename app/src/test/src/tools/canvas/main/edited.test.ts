@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { EditedBoard } from '../../../../../tools/canvas/main/edited';
 import { editOf } from '../../../../../tools/canvas/main/edits';
+import type { NodeSide } from '../../../../../tools/canvas/shared/board';
 
 const node = (id: string, x = 0, more: Record<string, unknown> = {}) => ({
   id,
@@ -377,6 +378,71 @@ suite('Canvas edited', () => {
     assert.deepStrictEqual(labels(), ['calls', 'returns']);
     board.undo();
     assert.deepStrictEqual(labels(), ['calls', undefined]);
+  });
+
+  test('moves an end of an edge to a side of another node, refusing a node not there and the node at its other end, as one change undone at once', () => {
+    const board = new EditedBoard(
+      JSON.stringify({
+        nodes: [node('a'), node('b', 140), node('c', 280)],
+        edges: [
+          {
+            id: 'e',
+            fromNode: 'a',
+            fromSide: 'right',
+            toNode: 'b',
+            toSide: 'left',
+          },
+        ],
+      }),
+    );
+    const ends = () => {
+      const read = board.read();
+      assert.ok(read.kind === 'board');
+      const [edge] = read.board.edges;
+      return [edge?.fromNode, edge?.fromSide, edge?.toNode, edge?.toSide];
+    };
+    const reroute = (end: 'from' | 'to', to: string, side: NodeSide) =>
+      board.apply({ kind: 'reroute', edge: 'e', end, node: to, side }, ids());
+    assert.ok(reroute('to', 'c', 'top'));
+    assert.deepStrictEqual(ends(), ['a', 'right', 'c', 'top']);
+    assert.ok(!reroute('from', 'c', 'left'));
+    assert.ok(!reroute('from', 'gone', 'left'));
+    assert.ok(reroute('from', 'b', 'bottom'));
+    assert.deepStrictEqual(ends(), ['b', 'bottom', 'c', 'top']);
+    board.undo();
+    assert.deepStrictEqual(ends(), ['a', 'right', 'c', 'top']);
+    assert.deepStrictEqual(
+      [
+        editOf({
+          kind: 'reroute',
+          edge: 'e',
+          end: 'to',
+          node: 'c',
+          side: 'top',
+        }),
+        editOf({
+          kind: 'reroute',
+          edge: 'e',
+          end: 'middle',
+          node: 'c',
+          side: 'top',
+        }),
+        editOf({
+          kind: 'reroute',
+          edge: 'e',
+          end: 'to',
+          node: 'c',
+          side: 'up',
+        }),
+        editOf({ kind: 'reroute', edge: 7, end: 'to', node: 'c', side: 'top' }),
+      ],
+      [
+        { kind: 'reroute', edge: 'e', end: 'to', node: 'c', side: 'top' },
+        undefined,
+        undefined,
+        undefined,
+      ],
+    );
   });
 
   test('takes from the page only edits whole and in bounds, as the page is not trusted', () => {

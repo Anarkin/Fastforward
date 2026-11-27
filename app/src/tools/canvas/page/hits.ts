@@ -1,4 +1,4 @@
-import type { Board, NodeSide } from '../shared/board';
+import type { Board, NodeSide, WhichEnd } from '../shared/board';
 import { boxOf, type Box, type Unit } from './grid';
 import type { Cell } from './routes';
 
@@ -14,6 +14,7 @@ export type Hit =
   | { readonly kind: 'node'; readonly id: string }
   | { readonly kind: 'mark'; readonly id: string; readonly side: NodeSide }
   | { readonly kind: 'edge'; readonly id: string }
+  | { readonly kind: 'end'; readonly id: string; readonly end: WhichEnd }
   | { readonly kind: 'empty' };
 
 const leastHandled = 3;

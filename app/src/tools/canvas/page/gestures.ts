@@ -1,4 +1,4 @@
-import type { Board, NodeSide } from '../shared/board';
+import type { Board, NodeSide, WhichEnd } from '../shared/board';
 import type { BoardEdit } from '../shared/protocol';
 import { boxOf, type Box, type Unit } from './grid';
 import { areaBetween, holds, touched, type Hit, type Sides } from './hits';
@@ -29,6 +29,12 @@ export type Gesture =
       readonly from: Cell;
       readonly id: string;
       readonly side: NodeSide;
+    }
+  | {
+      readonly kind: 'reroute';
+      readonly from: Cell;
+      readonly id: string;
+      readonly end: WhichEnd;
     };
 
 export interface Wire {
@@ -38,12 +44,19 @@ export interface Wire {
     { readonly node: string; readonly side: NodeSide } | { readonly at: Cell };
 }
 
+export interface Rerouted {
+  readonly id: string;
+  readonly end: WhichEnd;
+  readonly to: Wire['to'];
+}
+
 export type Way = 'one' | 'toggle' | 'add';
 
 export interface Preview {
   readonly boxes: ReadonlyMap<string, Box>;
   readonly area?: Box;
   readonly wire?: Wire;
+  readonly reroute?: Rerouted;
 }
 
 const noBoxes: ReadonlyMap<string, Box> = new Map();
@@ -94,6 +107,11 @@ export function pressed(
       return {
         selected,
         gesture: { kind: 'connect', from: at, id: hit.id, side: hit.side },
+      };
+    case 'end':
+      return {
+        selected,
+        gesture: { kind: 'reroute', from: at, id: hit.id, end: hit.end },
       };
     case 'edge':
       return { selected: chosenWith(selected, hit.id, way) };
@@ -162,6 +180,25 @@ function wireTo(
   };
 }
 
+function rerouteTo(
+  gesture: Extract<Gesture, { readonly kind: 'reroute' }>,
+  board: Board,
+  unit: Unit,
+  at: Cell,
+): Rerouted {
+  const edge = board.edges.find((each) => each.id === gesture.id);
+  const other = gesture.end === 'from' ? edge?.toNode : edge?.fromNode;
+  const target = hoveredAt(board, unit, at);
+  return {
+    id: gesture.id,
+    end: gesture.end,
+    to:
+      target === undefined || target.id === other
+        ? { at }
+        : { node: target.id, side: nearestSide(target.box, at, unit) },
+  };
+}
+
 function boxesAt(gesture: Gesture, at: Cell): ReadonlyMap<string, Box> {
   const columns = at.column - gesture.from.column;
   const rows = at.row - gesture.from.row;
@@ -179,6 +216,7 @@ function boxesAt(gesture: Gesture, at: Cell): ReadonlyMap<string, Box> {
       ]);
     case 'area':
     case 'connect':
+    case 'reroute':
       return noBoxes;
     default:
       return gesture satisfies never;
@@ -194,6 +232,11 @@ export function dragging(
   if (gesture.kind === 'connect') {
     return {
       preview: { boxes: noBoxes, wire: wireTo(gesture, board, unit, at) },
+    };
+  }
+  if (gesture.kind === 'reroute') {
+    return {
+      preview: { boxes: noBoxes, reroute: rerouteTo(gesture, board, unit, at) },
     };
   }
   if (gesture.kind !== 'area') {
@@ -213,6 +256,12 @@ export function released(
   unit: Unit,
   at: Cell,
 ): BoardEdit | undefined {
+  if (gesture.kind === 'reroute') {
+    const { id, end, to } = rerouteTo(gesture, board, unit, at);
+    return 'node' in to
+      ? { kind: 'reroute', edge: id, end, node: to.node, side: to.side }
+      : undefined;
+  }
   if (gesture.kind === 'connect') {
     const { fromNode, fromSide, to } = wireTo(gesture, board, unit, at);
     return 'node' in to

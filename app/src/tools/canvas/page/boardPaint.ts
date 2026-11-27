@@ -58,7 +58,7 @@ export function paint(
     placing === undefined || ghostAt === undefined
       ? undefined
       : { type: placing, box: { ...ghostAt, ...placedSizes[placing] } };
-  const wire = preview?.wire;
+  const wire = preview?.wire ?? preview?.reroute;
   const shown =
     unit !== undefined && (preview !== undefined || ghost !== undefined)
       ? previewed(board, unit, preview?.boxes ?? noBoxes, ghost, wire)
@@ -94,7 +94,9 @@ export const hoverFrom = (
 ): Cell | undefined =>
   placing === undefined &&
   typing === undefined &&
-  (pressing === undefined || pressing.gesture.kind === 'connect')
+  (pressing === undefined ||
+    pressing.gesture.kind === 'connect' ||
+    pressing.gesture.kind === 'reroute')
     ? at
     : undefined;
 

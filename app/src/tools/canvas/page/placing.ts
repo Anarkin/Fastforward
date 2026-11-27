@@ -1,5 +1,5 @@
 import type { Board, BoardEdge, BoardNode } from '../shared/board';
-import type { Wire } from './gestures';
+import type { Wire, Rerouted } from './gestures';
 import type { NodeBox } from '../shared/protocol';
 import { boxOf, type Box, type Unit } from './grid';
 import type { Sides } from './hits';
@@ -65,12 +65,34 @@ export function fileBox(id: string, box: Box, unit: Unit): NodeBox {
   };
 }
 
+function rerouted(edge: BoardEdge, { id, end, to }: Rerouted): BoardEdge {
+  if (edge.id !== id) {
+    return edge;
+  }
+  const { fromSide, toSide, ...rest } = edge;
+  const node = 'node' in to ? to.node : ghostId;
+  const side = 'node' in to ? to.side : undefined;
+  return end === 'from'
+    ? {
+        ...rest,
+        fromNode: node,
+        ...(side !== undefined && { fromSide: side }),
+        ...(toSide !== undefined && { toSide }),
+      }
+    : {
+        ...rest,
+        ...(fromSide !== undefined && { fromSide }),
+        toNode: node,
+        ...(side !== undefined && { toSide: side }),
+      };
+}
+
 export function previewed(
   board: Board,
   unit: Unit,
   boxes: ReadonlyMap<string, Box>,
   ghost?: { readonly type: 'text' | 'group'; readonly box: Box },
-  wire?: Wire,
+  link?: Wire | Rerouted,
 ): Board {
   const nodes = board.nodes.map((node): BoardNode => {
     const box = boxes.get(node.id);
@@ -86,14 +108,10 @@ export function previewed(
         : { ...placed, type: 'text', text: '' },
     );
   }
-  if (wire === undefined) {
+  if (link === undefined) {
     return { nodes, edges: board.edges };
   }
-  const { fromNode, fromSide, to } = wire;
-  const edge: BoardEdge =
-    'node' in to
-      ? { id: ghostId, fromNode, fromSide, toNode: to.node, toSide: to.side }
-      : { id: ghostId, fromNode, fromSide, toNode: ghostId };
+  const { to } = link;
   if ('at' in to) {
     nodes.push({
       ...fileBox(ghostId, { ...to.at, columns: 1, rows: 1 }, unit),
@@ -101,6 +119,14 @@ export function previewed(
       text: '',
     });
   }
+  if ('end' in link) {
+    return { nodes, edges: board.edges.map((edge) => rerouted(edge, link)) };
+  }
+  const { fromNode, fromSide } = link;
+  const edge: BoardEdge =
+    'node' in to
+      ? { id: ghostId, fromNode, fromSide, toNode: to.node, toSide: to.side }
+      : { id: ghostId, fromNode, fromSide, toNode: ghostId };
   return { nodes, edges: [...board.edges, edge] };
 }
 

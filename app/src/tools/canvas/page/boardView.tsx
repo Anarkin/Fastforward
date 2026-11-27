@@ -40,6 +40,7 @@ import { grippedReach } from '../../../components/cells/page/textSelection';
 import { useTypingSession } from './typingSession';
 import { typingKeyed } from './typingKeys';
 import { inserted, movedTo, selectedText } from './typing';
+import { endAt } from './edgeHandles';
 import { markAt } from './wiring';
 import { boxOf } from './grid';
 import { useBoardKeys } from './boardKeys';
@@ -316,6 +317,10 @@ export function BoardView() {
   };
 
   const hitAt = (on: Board, known: Drawn, at: Cell): Hit => {
+    const end = endAt(on, known.unit, at, selected);
+    if (end !== undefined) {
+      return { kind: 'end', ...end };
+    }
     const mark = markAt(on, known.unit, at);
     if (mark !== undefined) {
       return { kind: 'mark', id: mark.id, side: mark.side };
@@ -475,7 +480,7 @@ export function BoardView() {
     const cursor =
       hit.kind === 'handle'
         ? cursorOf(hit.sides)
-        : hit.kind === 'mark' && typing === undefined
+        : (hit.kind === 'mark' || hit.kind === 'end') && typing === undefined
           ? 'connect'
           : (hit.kind === 'node' || hit.kind === 'edge') &&
               hit.id === typing?.id

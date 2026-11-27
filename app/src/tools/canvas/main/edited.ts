@@ -97,6 +97,28 @@ function applied(
       listIn(raw, 'edges').push({ id, fromNode, fromSide, toNode, toSide });
       return id;
     }
+    case 'reroute': {
+      const edge = listIn(raw, 'edges').find(
+        (each) => idOf(each) === edit.edge,
+      );
+      const there = listIn(raw, 'nodes').some(
+        (each) => idOf(each) === edit.node,
+      );
+      const other = edit.end === 'from' ? 'toNode' : 'fromNode';
+      const nodeKey = `${edit.end}Node` as const;
+      const sideKey = `${edit.end}Side` as const;
+      if (
+        !isObject(edge) ||
+        !there ||
+        edge[other] === edit.node ||
+        (edge[nodeKey] === edit.node && edge[sideKey] === edit.side)
+      ) {
+        return false;
+      }
+      edge[nodeKey] = edit.node;
+      edge[sideKey] = edit.side;
+      return true;
+    }
     case 'ends': {
       const chosen = new Set(edit.edges);
       let changed = false;

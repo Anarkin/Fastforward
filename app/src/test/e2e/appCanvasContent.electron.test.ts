@@ -83,6 +83,15 @@ suite('App canvas content', () => {
             width: 70,
             height: 54,
           })),
+          {
+            id: 'other',
+            type: 'text',
+            text: 'other',
+            x: 700,
+            y: 180,
+            width: 70,
+            height: 54,
+          },
         ],
         edges: [
           {
@@ -210,6 +219,27 @@ suite('App canvas content', () => {
         ),
       'the label of the edge saved',
       { accepted: (text) => /"id":"wired"[^}]*"label":"uses"/.test(text) },
+    );
+  });
+
+  test('moves the end of the edge selected dragged onto another node to the side of it nearest the pointer, writing it into the edge in its file', async () => {
+    const end = await pointAt({ column: 99, row: 1 });
+    const onto = await pointAt({ column: 104, row: 10 });
+    await page.mouse.move(end.x, end.y);
+    await page.mouse.down();
+    await page.mouse.move(onto.x, onto.y, { steps: 5 });
+    await page.mouse.up();
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () =>
+        Promise.resolve(
+          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
+        ),
+      'the end of the edge moved and saved',
+      {
+        accepted: (text) =>
+          /"id":"wired"[^}]*"toNode":"other","toSide":"top"/.test(text),
+      },
     );
   });
 

@@ -1,5 +1,5 @@
 import { isObject } from '../../../lib/main/json';
-import { edgeEnds, nodeSides } from '../shared/board';
+import { edgeEnds, nodeSides, whichEnds } from '../shared/board';
 import {
   addedKinds,
   isBoardColor,
@@ -82,6 +82,14 @@ export function editOf(value: unknown): BoardEdit | undefined {
         fromSide !== undefined &&
         toSide !== undefined
         ? { kind: 'connect', fromNode, fromSide, toNode, toSide }
+        : undefined;
+    }
+    case 'reroute': {
+      const { edge, node } = value;
+      const end = whichEnds.find((each) => each === value.end);
+      const side = nodeSides.find((each) => each === value.side);
+      return isId(edge) && isId(node) && end !== undefined && side !== undefined
+        ? { kind: 'reroute', edge, end, node, side }
         : undefined;
     }
     case 'ends': {
