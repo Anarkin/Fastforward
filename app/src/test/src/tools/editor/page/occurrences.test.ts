@@ -165,6 +165,34 @@ suite('The occurrences the editor marks', () => {
     );
   });
 
+  test('copies no more of a long selection than what it could seek, a selection of a long line seeking nothing without copying it, and one with blanks around a word of its length seeking that word', () => {
+    const copied: number[] = [];
+    const slice = vi.spyOn(EditorState.prototype, 'sliceDoc');
+    slice.mockImplementation(function copy(
+      this: EditorState,
+      from = 0,
+      to = this.doc.length,
+    ) {
+      copied.push(Math.abs(to - from));
+      return this.doc.sliceString(from, to);
+    });
+    try {
+      const line = 'z'.repeat(1_000_000);
+      assert.deepStrictEqual(
+        marked(stateOf(line, EditorSelection.single(0, line.length))),
+        [],
+      );
+      assert.ok(Math.max(0, ...copied) <= 1000, String(Math.max(...copied)));
+      const padded = `${' '.repeat(300)}word${' '.repeat(300)} word`;
+      assert.deepStrictEqual(
+        marked(stateOf(padded, EditorSelection.single(0, 604))),
+        [[605, 'word']],
+      );
+    } finally {
+      slice.mockRestore();
+    }
+  });
+
   test('marks only the whole words Ctrl+D steps to once it selected the word at the cursor, leaving out those it selected', () => {
     const once = stepped(stateOf(text, EditorSelection.single(13)));
     assert.deepStrictEqual(marked(once), [

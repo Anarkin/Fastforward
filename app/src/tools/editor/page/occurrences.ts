@@ -14,6 +14,7 @@ import {
   copiesIn,
   maxMatches,
   soughtCopy,
+  longestCopy,
 } from '../../../lib/shared/textMatches';
 import { findsText } from './find';
 import { stepsWords } from './nextOccurrence';
@@ -36,6 +37,34 @@ const pausedField = StateField.define<boolean>({
     transaction.docChanged || (paused && transaction.selection === undefined),
 });
 
+const blank = /\s/;
+
+function blanksAlong(state: EditorState, from: number, to: number): number {
+  let count = 0;
+  const backward = from > to;
+  for (const chunks = state.doc.iterRange(from, to); !chunks.next().done;) {
+    const chunk = chunks.value;
+    for (let at = 0; at < chunk.length; at++) {
+      if (!blank.test(chunk.charAt(backward ? chunk.length - 1 - at : at))) {
+        return count;
+      }
+      count++;
+    }
+  }
+  return count;
+}
+
+function mayBeSought(state: EditorState, from: number, to: number): boolean {
+  const length = to - from;
+  if (length <= longestCopy) {
+    return true;
+  }
+  const lead = blanksAlong(state, from, to);
+  return (
+    lead < length && length - lead - blanksAlong(state, to, from) <= longestCopy
+  );
+}
+
 function soughtIn(state: EditorState): Sought | undefined {
   if ((state.field(pausedField, false) ?? true) || findsText(state)) {
     return undefined;
@@ -55,6 +84,9 @@ function soughtIn(state: EditorState): Sought | undefined {
     );
   }
   const length = main.to - main.from;
+  if (!mayBeSought(state, main.from, main.to)) {
+    return undefined;
+  }
   const selectedText = state.sliceDoc(main.from, main.to);
   const text = soughtCopy(selectedText);
   if (
