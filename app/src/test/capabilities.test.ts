@@ -106,8 +106,9 @@ suite('Capabilities', () => {
     ]);
   });
 
-  test('reaches the web from the main process only for the titles of the link nodes of a canvas, read by its reader over https alone, a head of the page at most and within a time, beside the files of the app it serves its pages, rather than by a fetch of each part', () => {
-    heldBy(/\bnet\.fetch\(/, ['boot/appProtocol.ts', 'boot/canvasHost.ts']);
+  test('reaches the web from the main process only for the titles of the link nodes of a canvas, read by its reader over https alone to addresses of the web, a move at a time, a head of the page at most and within a time, beside the files of the app it serves its pages, rather than by a fetch of each part', () => {
+    heldBy(/\bnet\.fetch\(/, ['boot/appProtocol.ts']);
+    heldBy(/\bnet\.request\(/, ['boot/canvasHost.ts']);
     heldBy(/\breadTitle\(/, [
       'boot/canvasHost.ts',
       'tools/canvas/main/pageTitles.ts',
