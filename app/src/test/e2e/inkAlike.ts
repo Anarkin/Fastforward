@@ -37,7 +37,7 @@ function blurredBrightness(
         (pixels[at] + pixels[at + 1] + pixels[at + 2]) / 3;
     }
   }
-  const blurred = new Float32Array(plain.length);
+  const blurred = Float32Array.from(plain);
   for (let y = 0; y < box.height; y++) {
     for (let x = 1; x < box.width - 1; x++) {
       const at = y * box.width + x;
