@@ -26,10 +26,8 @@ const numbersDeclared = (): ReadonlyMap<string, readonly string[]> => {
 };
 
 suite('Unification', () => {
-  test('declares a number once, in the part it belongs to, rather than the same name with the same value in parts that must agree on it, the version of the saved view of each tool being its own and the numbers of the pointing of the editor going with it once it points as the views do', () => {
+  test('declares a number once, in the part it belongs to, rather than the same name with the same value in parts that must agree on it, the version of the saved view of each tool being its own', () => {
     assert.deepStrictEqual([...numbersDeclared().keys()].toSorted(), [
-      'mostRowsAStep = 5',
-      'reachMs = 50',
       'viewVersion = 1',
     ]);
   });

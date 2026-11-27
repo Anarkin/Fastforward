@@ -5,7 +5,6 @@ import {
   heldRows,
   placeUnder,
   pressed,
-  reach,
   stillHeld,
   unitUnder,
 } from '../../../../../components/cells/page/cellPointing';
@@ -158,18 +157,5 @@ suite('Text under the pointer', () => {
     assert.strictEqual(stillHeld(within, held), true);
     assert.strictEqual(stillHeld(within, held.slice(2)), false);
     assert.strictEqual(stillHeld(within, []), false);
-  });
-
-  test('scrolls a row for every row the pointer is dragged past the top or the bottom, five at most, and none while it is over the text', () => {
-    assert.deepStrictEqual(
-      [
-        reach(100, 480, rowHeight),
-        reach(-1, 480, rowHeight),
-        reach(-40, 480, rowHeight),
-        reach(500, 480, rowHeight),
-        reach(2000, 480, rowHeight),
-      ],
-      [0, -1, -3, 2, 5],
-    );
   });
 });

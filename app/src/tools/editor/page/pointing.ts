@@ -1,5 +1,10 @@
 import { widthsFor } from '../../../lib/page/textWidths';
 import {
+  columnsReached,
+  reachEvery,
+  rowsReached,
+} from '../../../lib/page/dragReach';
+import {
   EditorSelection,
   type EditorState,
   type Extension,
@@ -20,20 +25,6 @@ import { rowsOf } from '../../../components/editing/page/rowSteps';
 import { wordRangeAt } from '../../../components/editing/page/textSteps';
 import { charAt } from '../../../components/cells/page/textPlaces';
 import { grippedReach } from '../../../components/cells/page/textSelection';
-
-const reachMs = 50;
-
-const mostRowsAStep = 5;
-
-const mostColumnsAStep = 10;
-
-const pastEdges = (at: number, from: number, to: number): number =>
-  at < from ? at - from : at > to ? at - to : 0;
-
-const stepsPast = (past: number, unit: number, most: number): number =>
-  past === 0 || !(unit > 0)
-    ? 0
-    : Math.sign(past) * Math.min(most, Math.ceil(Math.abs(past) / unit));
 
 export interface Pointed {
   readonly pos: number;
@@ -250,22 +241,20 @@ class Pointing implements SurfacePart {
     const grid = gridOf(view);
     const row = grid?.rowHeight ?? 0;
     const column = grid?.advance ?? 0;
-    const rows = stepsPast(
-      pastEdges(pointer.clientY, area.top, area.top + scroller.clientHeight),
+    const rows = rowsReached(
+      pointer.clientY,
+      area.top,
+      area.top + scroller.clientHeight,
       row,
-      mostRowsAStep,
     );
     const columns = view.lineWrapping
       ? 0
-      : stepsPast(
-          pastEdges(
-            pointer.clientX,
-            area.left +
-              (parseFloat(getComputedStyle(view.contentDOM).marginLeft) || 0),
-            area.left + scroller.clientWidth,
-          ),
+      : columnsReached(
+          pointer.clientX,
+          area.left +
+            (parseFloat(getComputedStyle(view.contentDOM).marginLeft) || 0),
+          area.left + scroller.clientWidth,
           column,
-          mostColumnsAStep,
         );
     clearInterval(this.reaching);
     this.reaching = undefined;
@@ -273,7 +262,7 @@ class Pointing implements SurfacePart {
       this.reaching = setInterval(() => {
         scroller.scrollBy(columns * column, rows * row);
         this.dragged();
-      }, reachMs);
+      }, reachEvery);
     }
   };
 

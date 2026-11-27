@@ -1,4 +1,5 @@
 import type { ScreenRow } from './lines';
+import { reachEvery, rowsReached } from '../../../lib/page/dragReach';
 import { soughtCopy } from '../../../lib/shared/textMatches';
 import type { ShownRows } from './cellPainting';
 import {
@@ -6,7 +7,6 @@ import {
   placedUnder,
   placeUnder,
   pressed,
-  reach,
   stillHeld,
 } from './cellPointing';
 import {
@@ -19,8 +19,6 @@ import {
   type TextPlace,
   type TextSelection,
 } from './textSelection';
-
-const reachMs = 50;
 
 export interface Selecting {
   readonly shown: () => ShownRows | undefined;
@@ -233,10 +231,15 @@ export class CellSelecting {
     const rows =
       area === undefined
         ? 0
-        : reach(pointer.clientY - area.top, area.height, rowHeight / scale);
+        : rowsReached(
+            pointer.clientY - area.top,
+            0,
+            area.height,
+            rowHeight / scale,
+          );
     clearInterval(this.reaching);
     if (rows !== 0) {
-      this.reaching = setInterval(() => this.on.move(rows), reachMs);
+      this.reaching = setInterval(() => this.on.move(rows), reachEvery);
     }
   };
 

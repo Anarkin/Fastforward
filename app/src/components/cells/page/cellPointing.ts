@@ -187,13 +187,3 @@ export function stillHeld(
     last.start <= end
   );
 }
-
-const mostRowsAStep = 5;
-
-export function reach(y: number, height: number, rowHeight: number): number {
-  const past = y < 0 ? y : y > height ? y - height : 0;
-  return past === 0
-    ? 0
-    : Math.sign(past) *
-        Math.min(mostRowsAStep, Math.ceil(Math.abs(past) / rowHeight));
-}
