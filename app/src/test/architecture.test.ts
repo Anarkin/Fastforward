@@ -455,6 +455,7 @@ suite('Architecture', () => {
         return folder === '.'
           ? ![
               'architecture.test.ts',
+              'capabilities.test.ts',
               'components.test.ts',
               'lessons.test.ts',
               'shortcutsShown.test.ts',
