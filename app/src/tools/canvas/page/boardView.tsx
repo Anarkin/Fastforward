@@ -277,7 +277,7 @@ export function BoardView() {
       });
       zoomRest.current = done.rest;
       if (done.zoomed !== undefined) {
-        pan(tab, done.zoomed.origin);
+        panner.current?.holdAt(done.zoomed.origin);
         zoom(tab, done.zoomed.step);
       }
       return;

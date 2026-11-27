@@ -28,7 +28,8 @@ export function fontSizeFor(
   step: number,
   { size, ch, advance, ratio }: ZoomBase,
 ): number | undefined {
-  return step === 0 ? undefined : (size * (advance + step)) / ratio / ch;
+  const kept = steppedZoom(step, 0, advance);
+  return kept === 0 ? undefined : (size * (advance + kept)) / ratio / ch;
 }
 
 export function zoomedOrigin(

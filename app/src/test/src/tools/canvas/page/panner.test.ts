@@ -52,6 +52,14 @@ suite('Canvas panner', () => {
     assert.ok(panned.some((each) => each.row > 0 && each.row < 6));
   });
 
+  test('stops a glide under way once a place is held, as a zoom holds the cell under the pointer, the glide moving it no further', () => {
+    const { made, run, at } = panner();
+    made.glideBy({ column: 0, row: 6 });
+    made.holdAt({ column: 40, row: 9 });
+    run(rowGlide);
+    assert.deepStrictEqual(at(), { column: 40, row: 9 });
+  });
+
   test('jumps to the whole cells a notch moves it by while scrolling glides not', () => {
     const { made, panned } = panner(false);
     made.glideBy({ column: 3, row: 0 });

@@ -31,6 +31,17 @@ suite('Canvas zoom', () => {
     assert.strictEqual(fontSizeFor(0, base), undefined);
   });
 
+  test('holds a zoom kept from a screen of another scale within the steps of the cell it is drawn with now, never a font of no size', () => {
+    const base = { size: 12, ch: 7.2246, advance: 7, ratio: 1 };
+    const size = fontSizeFor(-7, base) ?? 0;
+    assert.ok(Math.abs((size * base.ch) / base.size - 4) < 1e-9, String(size));
+    const grown = fontSizeFor(40, base) ?? 0;
+    assert.ok(
+      Math.abs((grown * base.ch) / base.size - 21) < 1e-9,
+      String(grown),
+    );
+  });
+
   test('keeps the cell under the pointer under it as the zoom changes, settling on whole cells', () => {
     assert.deepStrictEqual(
       zoomedOrigin(
