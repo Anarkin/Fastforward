@@ -143,6 +143,15 @@ suite('Icons', () => {
     assert.match(html, /class="terminal-icon-prompt"/);
   });
 
+  test('draws the floppy and the prompt on the device pixels of the pixel ratio asked for rather than of the screen, as the badge of the taskbar draws them as at 100% at every scale', () => {
+    for (const tool of ['commander', 'terminal'] as const) {
+      assert.match(
+        renderToStaticMarkup(<icons.ToolIcon tool={tool} pixelRatio={1.5} />),
+        /viewBox="0 0 24 24"/,
+      );
+    }
+  });
+
   test('draws every straight stroke and dot of an icon on half a unit, so at 100% it fills a row or column of whole pixels rather than two half-tone ones', () => {
     const blurred = everyIcon().flatMap(({ name, html }) => {
       const off = strokedEdges(html).filter(

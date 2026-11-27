@@ -11,6 +11,7 @@ import type {
 } from '../../shell/main/commandOffer';
 import type { DragEvent } from '../../shell/main/dragEvents';
 import type { ShellHost } from '../../shell/main/shell';
+import type { TaskbarBadge } from '../../shell/main/taskbarBadge';
 
 export class FakeHost implements ShellHost, GitHost {
   readonly viewedFiles = path.join(os.tmpdir(), 'fastforward-viewed-files');
@@ -104,6 +105,12 @@ export class FakeHost implements ShellHost, GitHost {
 
   showWindow(window: string): void {
     this.opened.push(`show window ${window}`);
+  }
+
+  readonly badges: (readonly [string, TaskbarBadge | undefined])[] = [];
+
+  badgeTaskbar(window: string, badge: TaskbarBadge | undefined): void {
+    this.badges.push([window, badge]);
   }
 
   tearsOff(): boolean {

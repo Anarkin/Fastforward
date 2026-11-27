@@ -107,6 +107,7 @@ export function shellHostOf({
     copyText: (text) => {
       void clipboard.writeText(text);
     },
+    badgeTaskbar: (id, badge) => windows.badge(id, badge),
     canInstallCommand: () => commandPlace !== undefined,
     commandState: () =>
       commandPlace === undefined

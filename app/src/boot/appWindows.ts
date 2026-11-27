@@ -1,5 +1,12 @@
 import * as path from 'node:path';
-import { app, type BrowserWindow, ipcMain, screen } from 'electron';
+import {
+  app,
+  type BrowserWindow,
+  ipcMain,
+  nativeImage,
+  screen,
+} from 'electron';
+import type { TaskbarBadge } from '../shell/main/taskbarBadge';
 import type { Log } from '../shell/main/log';
 import type { ToHost, ToWebview } from '../shell/shared/protocol';
 import { brand, strings } from '../lib/shared/strings';
@@ -212,6 +219,26 @@ export class AppWindows {
 
   dragged(window: string, event: DragEvent): void {
     this.windowDrag.dragged(window, event);
+  }
+
+  badge(id: string, badge: TaskbarBadge | undefined): void {
+    const window = this.opened.get(id)?.window;
+    if (
+      process.platform !== 'win32' ||
+      window === undefined ||
+      window.isDestroyed()
+    ) {
+      return;
+    }
+    const image =
+      badge !== undefined && this.deps.settings().windows.taskbarButtonPerWindow
+        ? nativeImage.createFromDataURL(badge.png)
+        : undefined;
+    if (image === undefined || badge === undefined || image.isEmpty()) {
+      window.setOverlayIcon(null, '');
+      return;
+    }
+    window.setOverlayIcon(image, badge.description);
   }
 
   regroup(): void {

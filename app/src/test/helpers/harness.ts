@@ -311,6 +311,7 @@ const shellMessages: Readonly<Record<ToHost['type'], true>> = {
   openWith: true,
   openIn: true,
   copyText: true,
+  taskbarBadge: true,
   partLooks: true,
   openSettings: true,
   openDefaultSettings: true,

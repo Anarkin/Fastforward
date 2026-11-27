@@ -45,6 +45,7 @@ import {
   type ViewVersions,
 } from './savedViews';
 import type { Notice, Page, ShellAccess, Tools } from './toolContract';
+import { taskbarBadgeOf, type TaskbarBadge } from './taskbarBadge';
 
 export interface ShellHost extends PathMenuHost {
   userSettingsFile(): Promise<string>;
@@ -58,6 +59,7 @@ export interface ShellHost extends PathMenuHost {
   updateStatus(): UpdateStatus;
   about(): AboutInfo;
   copyText(text: string): void;
+  badgeTaskbar(window: string, badge: TaskbarBadge | undefined): void;
   canInstallCommand(): boolean;
   commandState(): Promise<CommandState>;
   installCommand(): Promise<CommandInstall>;
@@ -461,6 +463,14 @@ export class Shell {
           host.copyText(message.text);
         }
         return;
+      case 'taskbarBadge': {
+        const window = this.pages.windowOf(page);
+        host.badgeTaskbar(
+          window.id,
+          taskbarBadgeOf(message.tool, message.png, window.tabs),
+        );
+        return;
+      }
       case 'partLooks': {
         const paths = lookedPaths(message.paths);
         if (paths !== undefined) {

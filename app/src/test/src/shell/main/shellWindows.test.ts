@@ -120,6 +120,28 @@ suite('Shell with several windows', () => {
     assert.deepStrictEqual(shownIn(first.page), [['1', '5'], '1']);
   });
 
+  test('badges the taskbar button of the window whose page asks, and only with the tool every tab of that window is of, as the page is not trusted', async () => {
+    const host = new FakeHost();
+    const { first, second } = await twoWindows(log, noGit, host);
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    await first.connection.receive({
+      type: 'taskbarBadge',
+      tool: 'commander',
+      png,
+    });
+    await second.connection.receive({
+      type: 'taskbarBadge',
+      tool: 'terminal',
+      png,
+    });
+    await first.connection.receive({ type: 'taskbarBadge' });
+    assert.deepStrictEqual(host.badges, [
+      ['1', { png, description: strings.tools.commander }],
+      ['2', undefined],
+      ['1', undefined],
+    ]);
+  });
+
   test('selects, moves and closes only the tabs of the window whose page asks, as the page is not trusted', async () => {
     const { first } = await twoWindows(log, noGit);
     await first.connection.receive({ type: 'selectTab', tab: '2' });

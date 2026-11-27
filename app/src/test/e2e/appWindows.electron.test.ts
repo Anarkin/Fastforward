@@ -320,4 +320,76 @@ suite('App windows on the taskbar', () => {
       }
     },
   );
+
+  test.runIf(process.platform === 'win32')(
+    'badges the button of a window whose tabs are all of one tool with the icon of the tool, 16 pixels at any scale, as the taskbar takes a badge as 16 pixels and scales it itself, and none of a window of several tools, nor any while the windows share one button',
+    async () => {
+      const folder = tempFolder('badge');
+      const profile = path.join(folder, 'profile');
+      fs.mkdirSync(profile, { recursive: true });
+      fs.writeFileSync(
+        path.join(profile, 'state.json'),
+        JSON.stringify({
+          tabs: [
+            { id: '1', tool: 'commander' },
+            { id: '2', tool: 'commander' },
+            { id: '3', tool: 'terminal' },
+          ],
+          windows: [
+            { id: '1', tabs: ['1'], active: '1' },
+            { id: '2', tabs: ['2', '3'], active: '2' },
+          ],
+        }),
+      );
+      const app = await launchApp(profile);
+      try {
+        const [page] = await shownWindows(app, 2);
+        assert.ok(page);
+        await app.evaluate(({ BrowserWindow }) => {
+          const badges = new Map<number, string>();
+          Reflect.set(globalThis, 'badges', badges);
+          for (const window of BrowserWindow.getAllWindows()) {
+            const badge = window.setOverlayIcon.bind(window);
+            window.setOverlayIcon = (overlay, description) => {
+              badges.set(
+                window.id,
+                overlay === null
+                  ? 'none'
+                  : `${JSON.stringify(overlay.getSize())} ${overlay.isEmpty() ? 'empty' : 'drawn'} ${description}`,
+              );
+              badge(overlay, description);
+            };
+          }
+        });
+        const badges = async () =>
+          (
+            await app.evaluate(() => {
+              const shown: unknown = Reflect.get(globalThis, 'badges');
+              return shown instanceof Map
+                ? [...shown.values()].map(String)
+                : [];
+            })
+          ).toSorted();
+        await writeSettings(page, profile, {
+          windows: { taskbarButtonPerWindow: false },
+        });
+        await waitFor(
+          async () => (await badges()).join() === ['none', 'none'].join(),
+          'no badge while the windows share one button',
+        );
+        await writeSettings(page, profile, {
+          windows: { taskbarButtonPerWindow: true },
+        });
+        const commander = `{"width":16,"height":16} drawn ${strings.tools.commander}`;
+        await waitFor(
+          async () =>
+            (await badges()).join() === [commander, 'none'].toSorted().join(),
+          'the badge of the commander on the window of commander tabs alone',
+        );
+      } finally {
+        await closeOrKill(app);
+        removeFolder(folder);
+      }
+    },
+  );
 });

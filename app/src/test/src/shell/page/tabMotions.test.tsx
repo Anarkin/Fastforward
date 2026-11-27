@@ -5,6 +5,7 @@ import { suite, test } from 'vitest';
 import type { TabInfo, TabVisit } from '../../../../shell/shared/protocol';
 import { ShellStore, createShellStore } from '../../../../shell/page/store';
 import { TabBar } from '../../../../shell/page/tabBar';
+import { withStillMediaQueries } from '../../../helpers/mediaQueries';
 
 async function inStrip(
   steps: (
@@ -22,6 +23,7 @@ async function inStrip(
   Object.assign(dom.window, {
     AnimationEvent: class extends dom.window.Event {},
   });
+  withStillMediaQueries(dom.window);
   const globals = {
     window: dom.window,
     document: dom.window.document,

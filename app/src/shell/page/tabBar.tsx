@@ -15,6 +15,7 @@ import { preloadDelay, resting } from '../../lib/page/resting';
 import { revealTab, sidewaysDelta, useOverflowing } from './tabStrip';
 import { leaving, usePlacedTabs } from './tabMotions';
 import { tabMenuItems, newTabTrigger } from './tabMenus';
+import { TaskbarBadge } from './taskbarBadge';
 
 function tabContent(tab: TabInfo, onClose?: () => void): React.ReactNode[] {
   return [
@@ -173,6 +174,7 @@ export function TabBar({ menu }: { menu?: React.ReactNode }) {
       style={{ minHeight: titleBarHeight }}
     >
       {menu}
+      <TaskbarBadge />
       {elevated !== undefined && (
         <span
           className="app-elevated"

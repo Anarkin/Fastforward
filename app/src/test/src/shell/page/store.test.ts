@@ -193,6 +193,19 @@ suite('Shell store', () => {
     );
   });
 
+  test('asks the main process to badge the taskbar button of the window with the image of a tool, or to clear it, clearing it too for a tool without an image', () => {
+    const { posted, store } = posting();
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    store.getState().badgeTaskbar('git', png);
+    store.getState().badgeTaskbar();
+    store.getState().badgeTaskbar('git');
+    assert.deepStrictEqual(posted, [
+      { type: 'taskbarBadge', tool: 'git', png },
+      { type: 'taskbarBadge' },
+      { type: 'taskbarBadge' },
+    ]);
+  });
+
   test('asks before closing a terminal tab and closes any other at once, closing or quitting once confirmed', () => {
     const { posted, store } = posting();
     store

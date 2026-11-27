@@ -117,6 +117,11 @@ export type ToHost =
   | { readonly type: 'openWith'; readonly tool: ToolId | undefined }
   | { readonly type: 'openIn' }
   | { readonly type: 'copyText'; readonly text: string }
+  | {
+      readonly type: 'taskbarBadge';
+      readonly tool?: ToolId;
+      readonly png?: string;
+    }
   | { readonly type: 'partLooks'; readonly paths: readonly string[] }
   | { readonly type: 'pathFacts'; readonly ask: number; readonly path: string }
   | {

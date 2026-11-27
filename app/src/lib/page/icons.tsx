@@ -132,8 +132,11 @@ export function ImageIcon() {
 
 const toolIconSize = 16;
 
-function FloppyIcon() {
-  const drawing = floppyDrawing(Math.round(toolIconSize * usePixelRatio()));
+function FloppyIcon({ pixelRatio }: { pixelRatio: number | undefined }) {
+  const shown = usePixelRatio();
+  const drawing = floppyDrawing(
+    Math.round(toolIconSize * (pixelRatio ?? shown)),
+  );
   const { size, shutter, shutterWindow, label, lines } = drawing;
   return (
     <svg
@@ -168,8 +171,11 @@ function FloppyIcon() {
   );
 }
 
-function TerminalIcon() {
-  const drawing = promptDrawing(Math.round(toolIconSize * usePixelRatio()));
+function TerminalIcon({ pixelRatio }: { pixelRatio: number | undefined }) {
+  const shown = usePixelRatio();
+  const drawing = promptDrawing(
+    Math.round(toolIconSize * (pixelRatio ?? shown)),
+  );
   const { size, screen, chevron, underscore } = drawing;
   return (
     <svg
@@ -196,14 +202,16 @@ function TerminalIcon() {
 
 export function ToolIcon({
   tool,
+  pixelRatio,
 }: {
   tool: keyof typeof toolSigns | 'commander' | 'terminal';
+  pixelRatio?: number;
 }) {
   if (tool === 'commander') {
-    return <FloppyIcon />;
+    return <FloppyIcon pixelRatio={pixelRatio} />;
   }
   if (tool === 'terminal') {
-    return <TerminalIcon />;
+    return <TerminalIcon pixelRatio={pixelRatio} />;
   }
   return <Icon className={`tool-icon tool-${tool}`}>{toolSigns[tool]}</Icon>;
 }

@@ -101,6 +101,7 @@ export interface ShellActions {
   readonly toggleTextView: (key: 'wordWrap' | 'showWhitespace') => void;
   readonly changeImageView: (change: Partial<ImageView>) => void;
   readonly copyText: (text: string) => void;
+  readonly badgeTaskbar: (tool?: ToolId, png?: string) => void;
   readonly askLooks: (path: string) => void;
   readonly ready: () => void;
   readonly log: (message: string) => void;

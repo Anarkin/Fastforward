@@ -191,6 +191,11 @@ export function createShellStore(
         post({ type: 'setImageView', view });
       },
       copyText: (text) => post({ type: 'copyText', text }),
+      badgeTaskbar: (tool, png) =>
+        post({
+          type: 'taskbarBadge',
+          ...(tool !== undefined && png !== undefined && { tool, png }),
+        }),
       askLooks,
       ready: () => post({ type: 'ready' }),
       log: (message) => post({ type: 'log', level: 'info', message }),
