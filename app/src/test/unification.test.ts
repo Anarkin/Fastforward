@@ -116,6 +116,13 @@ suite('Unification', () => {
     ]);
   });
 
+  test('colors each kind of syntax by one rule of the page, whatever view reads its color, rather than by rules scoped to the diff, Markdown, the editor and the viewer, which left the text of a canvas, read from a row of its own, uncolored', () => {
+    assert.deepStrictEqual(styling(/\.syntax-[a-z]+\s*[,{]/), [
+      'shell/page/text.css',
+    ]);
+    assert.deepStrictEqual(styling(/[\w)\]][ \t]+\.syntax-[a-z]+/), []);
+  });
+
   test('rounds the advance and the row of the monospace font to whole device pixels once, for the whole window, rather than in every view, the canvas having measured its text unrounded and so centered a wide character a tenth of a pixel off the viewer', () => {
     assert.deepStrictEqual(styling(/round\(1ch/), ['shell/page/window.css']);
     assert.deepStrictEqual(

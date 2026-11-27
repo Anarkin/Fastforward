@@ -1,3 +1,4 @@
+import type { NodeColors } from './nodeColors';
 import type { CellTable } from '../../../lib/page/cellTable';
 import type { Board } from '../shared/board';
 import type { Gesture, Preview } from './gestures';
@@ -26,6 +27,7 @@ interface Painted {
   readonly typing: Typing | undefined;
   readonly hover: Cell | undefined;
   readonly whitespace: boolean;
+  readonly colors?: NodeColors | undefined;
 }
 
 const noBoxes = new Map();
@@ -44,6 +46,7 @@ export function paint(
     typing,
     hover,
     whitespace,
+    colors,
   }: Painted,
 ): Drawn | undefined {
   const ghost =
@@ -69,6 +72,8 @@ export function paint(
     typing,
     whitespace,
     marks: mark === undefined ? [] : [mark.cell],
+    colorsOf:
+      colors === undefined ? undefined : (id, text) => colors.of(id, text),
   });
 }
 

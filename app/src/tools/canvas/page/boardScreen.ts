@@ -1,3 +1,4 @@
+import type { LineRanges } from '../../../components/syntax/page/engine';
 import type { Board, BoardEdge, BoardNode } from '../shared/board';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { boxOf, type Box, type Unit } from './grid';
@@ -51,7 +52,10 @@ export interface Drawn {
   readonly selected?: ReadonlySet<string>;
   readonly typing?: TypedNode | undefined;
   readonly marks?: readonly Cell[];
+  readonly colorsOf?: ColorsOf | undefined;
 }
+
+export type ColorsOf = (id: string, text: string) => LineRanges | undefined;
 
 export interface TypedNode {
   readonly id: string;
@@ -129,6 +133,7 @@ function paintNode(
   selected: boolean,
   widths: TextWidths,
   typing: TypedNode | undefined,
+  colorsOf: ColorsOf | undefined,
 ): void {
   const kind = colorKind(node.color);
   const weight = selected ? doubleShift : 0;
@@ -165,12 +170,14 @@ function paintNode(
     }
   }
   border(painter, box, weight, kind);
+  const text = typed?.text ?? contentOf(node);
   paintText(painter, {
     owner,
     area: textAreaOf(box),
-    text: typed?.text ?? contentOf(node),
+    text,
     widths,
     typed,
+    colors: node.type === 'text' ? colorsOf?.(node.id, text) : undefined,
   });
 }
 
@@ -311,6 +318,7 @@ export function screenOf({
   selected = noneSelected,
   typing,
   marks = [],
+  colorsOf,
 }: Drawn): Screen {
   const painter = new Painter(emptyScreen(view));
   const boxes = new Map(
@@ -333,7 +341,15 @@ export function screenOf({
   const paint = (node: BoardNode) => {
     const box = boxes.get(node.id);
     if (box !== undefined) {
-      paintNode(painter, node, box, selected.has(node.id), widths, typing);
+      paintNode(
+        painter,
+        node,
+        box,
+        selected.has(node.id),
+        widths,
+        typing,
+        colorsOf,
+      );
     }
   };
   for (const node of board.nodes) {

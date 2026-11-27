@@ -22,7 +22,7 @@ import {
   type CellWindow,
 } from '../../../components/cells/page/cellWindow';
 import { rowLooks } from './rowLooks';
-import { codeSegments } from './codeSegments';
+import { codeSegments } from '../../../components/syntax/page/codeSegments';
 import { columnsOf, shownWithin } from '../../../lib/page/columns';
 
 const lineBreak = '\n';

@@ -1,6 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { codeSegments } from '../../../../../tools/viewer/page/codeSegments';
+import { codeSegments } from '../../../../../components/syntax/page/codeSegments';
 
 suite('Code segments', () => {
   test('cuts a code block into the parts each color covers, keeping its lines', () => {

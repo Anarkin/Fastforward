@@ -10,7 +10,8 @@ import { useShell, useShellActions } from '../../../shell/page/store';
 import type { Board } from '../shared/board';
 import { dragged, wheelMove, type Origin, type Point } from './pan';
 import { dragging, pressed, released, type Preview } from './gestures';
-import { boardMenuOf, chosenAt } from './boardMenu';
+import { showBoardMenu } from './boardMenu';
+import { NodeColors } from './nodeColors';
 import { hitOf, type Hit } from './hits';
 import { canvasKeymap } from './keymap';
 import { Panner } from './panner';
@@ -96,6 +97,7 @@ export function BoardView() {
     readonly whole: 'word' | 'line';
   }>(undefined);
   const paintedBoard = useRef<Board>(undefined);
+  const colors = useRef<NodeColors>(undefined);
   const placeContext = useTypingSession(body, typing, (caret) => {
     if (tab !== undefined) {
       typed(tab, caret);
@@ -143,6 +145,7 @@ export function BoardView() {
         typing,
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
         whitespace,
+        colors: colors.current,
       });
       placeContext(
         board,
@@ -169,6 +172,7 @@ export function BoardView() {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(redraw);
     };
+    colors.current = new NodeColors(draw);
     const observer = new ResizeObserver(draw);
     observer.observe(element);
     const scheme = matchMedia('(prefers-color-scheme: dark)');
@@ -211,6 +215,7 @@ export function BoardView() {
         typing,
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
         whitespace,
+        colors: colors.current,
       });
       placeContext(
         board,
@@ -454,20 +459,12 @@ export function BoardView() {
     if (known === undefined || tab === undefined || board === undefined) {
       return;
     }
-    const chosen = chosenAt(
-      selected,
-      hitAt(board, known, cellAt(event, known)),
-    );
-    if (chosen !== selected) {
-      select(tab, chosen);
-    }
-    showMenu({
-      x: event.clientX,
-      y: event.clientY,
-      items: boardMenuOf(board, chosen, {
-        send: (change) => edit(tab, change),
-        custom: (ids) => askColor(tab, ids),
-      }),
+    showBoardMenu(board, selected, hitAt(board, known, cellAt(event, known)), {
+      at: { x: event.clientX, y: event.clientY },
+      select: (ids) => select(tab, ids),
+      show: showMenu,
+      send: (change) => edit(tab, change),
+      custom: (ids) => askColor(tab, ids),
     });
   };
 

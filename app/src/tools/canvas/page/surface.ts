@@ -43,6 +43,7 @@ import {
   markKind,
   screenOf,
   type TypedNode,
+  type ColorsOf,
 } from './boardScreen';
 import { unitOf, type Box, type Unit } from './grid';
 import { arrowRects, lineRects, strokeOf } from './lineRects';
@@ -62,6 +63,10 @@ interface SeenBoard {
   readonly advance: number;
   readonly rowHeight: number;
   readonly stroke: number;
+  readonly pieces: readonly {
+    readonly row: number;
+    readonly kinds: readonly (readonly [string, string])[];
+  }[];
 }
 
 declare global {
@@ -108,6 +113,7 @@ export interface Shown {
   readonly typing?: TypedNode | undefined;
   readonly marks?: readonly Cell[];
   readonly whitespace?: boolean;
+  readonly colorsOf?: ColorsOf | undefined;
 }
 
 interface CellPlace {
@@ -240,6 +246,7 @@ export class BoardSurface {
       selected: shown.selected,
       typing: shown.typing,
       marks: shown.marks,
+      colorsOf: shown.colorsOf,
     });
     cells.frame.reset();
     cells.under.reset();
@@ -304,6 +311,21 @@ export class BoardSurface {
       advance,
       rowHeight,
       stroke: strokeOf(ratio),
+      pieces: screen.texts.flatMap((block) =>
+        block.rows.flatMap((line, at) => {
+          const pieces = block.segmentsOf?.(line.row);
+          return pieces === undefined
+            ? []
+            : [
+                {
+                  row: block.row + at,
+                  kinds: pieces.map(
+                    (piece) => [piece.text, piece.kind ?? ''] as const,
+                  ),
+                },
+              ];
+        }),
+      ),
     });
     return {
       origin,

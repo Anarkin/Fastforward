@@ -71,6 +71,7 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/diff/shared/patchBudget.ts',
   ],
   syntax: [
+    'components/syntax/page/codeSegments.ts',
     'components/syntax/page/colorer.ts',
     'components/syntax/page/engine.ts',
     'components/syntax/page/languageChoice.tsx',

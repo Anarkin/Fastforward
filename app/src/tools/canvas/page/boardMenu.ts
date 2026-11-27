@@ -1,4 +1,7 @@
-import type { ContextMenuItem } from '../../../lib/page/contextMenuItem';
+import type {
+  ContextMenuItem,
+  OpenMenu,
+} from '../../../lib/page/contextMenuItem';
 import { strings } from '../../../lib/shared/strings';
 import type { Board } from '../shared/board';
 import type { BoardEdit, NodeOrder } from '../shared/protocol';
@@ -74,10 +77,7 @@ export function boardMenuItems(
   ];
 }
 
-export function chosenAt(
-  selected: readonly string[],
-  hit: Hit,
-): readonly string[] {
+function chosenAt(selected: readonly string[], hit: Hit): readonly string[] {
   const id =
     hit.kind === 'node' || hit.kind === 'edge' || hit.kind === 'handle'
       ? hit.id
@@ -90,7 +90,7 @@ export interface ChosenIds {
   readonly edges: readonly string[];
 }
 
-export function boardMenuOf(
+function boardMenuOf(
   board: Board,
   chosen: readonly string[],
   {
@@ -125,4 +125,29 @@ export function boardMenuOf(
       },
     },
   );
+}
+
+export function showBoardMenu(
+  board: Board,
+  selected: readonly string[],
+  hit: Hit,
+  {
+    at,
+    select,
+    show,
+    send,
+    custom,
+  }: {
+    readonly at: { readonly x: number; readonly y: number };
+    readonly select: (ids: readonly string[]) => void;
+    readonly show: (menu: OpenMenu) => void;
+    readonly send: (edit: BoardEdit) => void;
+    readonly custom: (ids: ChosenIds) => void;
+  },
+): void {
+  const chosen = chosenAt(selected, hit);
+  if (chosen !== selected) {
+    select(chosen);
+  }
+  show({ ...at, items: boardMenuOf(board, chosen, { send, custom }) });
 }

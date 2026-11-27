@@ -1,3 +1,7 @@
+import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
+import { codeSegments } from '../../../components/syntax/page/codeSegments';
+import type { LineRanges } from '../../../components/syntax/page/engine';
+import type { ColoredSegment } from '../../../components/syntax/page/lineColors';
 import { seenCells } from '../../../components/cells/page/textPlaces';
 import type { TextSelection } from '../../../components/cells/page/textSelection';
 import { columnsOf } from '../../../lib/page/columns';
@@ -59,6 +63,16 @@ function selectionOf(
     : { anchor: from, focus: to };
 }
 
+function segmentsOfLines(text: string, colors: LineRanges): SegmentsOf {
+  const byStart = new Map<number, readonly ColoredSegment[]>();
+  let start = 0;
+  for (const [at, line] of text.split('\n').entries()) {
+    byStart.set(start, codeSegments(line, [colors[at] ?? []]));
+    start += line.length + 1;
+  }
+  return (row) => byStart.get(row.start);
+}
+
 export function paintText(
   painter: Painter,
   {
@@ -67,12 +81,14 @@ export function paintText(
     text,
     widths,
     typed,
+    colors,
   }: {
     readonly owner: number;
     readonly area: TextArea;
     readonly text: string;
     readonly widths: TextWidths;
     readonly typed?: Typed | undefined;
+    readonly colors?: LineRanges | undefined;
   },
 ): void {
   if (area.room <= 0 || area.rows <= 0) {
@@ -92,6 +108,8 @@ export function paintText(
     wrapAt: area.wrapAt,
     room: area.room,
     selection: typed === undefined ? undefined : selectionOf(rows, typed),
+    segmentsOf:
+      colors === undefined ? undefined : segmentsOfLines(text, colors),
   });
   if (place !== undefined && place.row - scroll < area.rows) {
     painter.caret({

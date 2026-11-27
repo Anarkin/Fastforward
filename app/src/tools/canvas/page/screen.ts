@@ -1,3 +1,4 @@
+import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
 import type { ScreenRow } from '../../../components/cells/page/lines';
 import type { TextSelection } from '../../../components/cells/page/textSelection';
 import type { Box } from './grid';
@@ -24,6 +25,7 @@ export interface TextBlock {
   readonly room: number;
   readonly kind?: string | undefined;
   readonly selection?: TextSelection | undefined;
+  readonly segmentsOf?: SegmentsOf | undefined;
 }
 
 export interface Caret {

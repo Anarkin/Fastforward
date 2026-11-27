@@ -74,7 +74,10 @@ export function drawTexts(
     const look: RowsLook = {
       wrapAt: block.wrapAt,
       segmentsOf:
-        kind === undefined ? undefined : (line) => [{ text: line.text, kind }],
+        block.segmentsOf ??
+        (kind === undefined
+          ? undefined
+          : (line) => [{ text: line.text, kind }]),
       marksOf: () => noMarks,
       showWhitespace: base.blanks,
       widths: base.widths,

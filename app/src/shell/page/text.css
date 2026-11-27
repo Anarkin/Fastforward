@@ -199,44 +199,31 @@ mark.match,
   background: var(--color-search-match-current);
 }
 
-.diff-line .syntax-plain,
-.editor-surface .syntax-plain {
+.syntax-plain {
   color: var(--color-foreground);
 }
 
-.diff-line .syntax-keyword,
-.markdown .syntax-keyword,
-.editor-surface .syntax-keyword {
+.syntax-keyword {
   color: var(--color-syntax-keyword);
 }
 
-.diff-line .syntax-type,
-.markdown .syntax-type,
-.editor-surface .syntax-type {
+.syntax-type {
   color: var(--color-syntax-type);
 }
 
-.diff-line .syntax-function,
-.markdown .syntax-function,
-.editor-surface .syntax-function {
+.syntax-function {
   color: var(--color-syntax-function);
 }
 
-.diff-line .syntax-string,
-.markdown .syntax-string,
-.editor-surface .syntax-string {
+.syntax-string {
   color: var(--color-syntax-string);
 }
 
-.diff-line .syntax-number,
-.markdown .syntax-number,
-.editor-surface .syntax-number {
+.syntax-number {
   color: var(--color-syntax-number);
 }
 
-.diff-line .syntax-comment,
-.markdown .syntax-comment,
-.editor-surface .syntax-comment {
+.syntax-comment {
   color: var(--color-syntax-comment);
 }
 

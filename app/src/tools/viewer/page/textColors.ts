@@ -2,7 +2,7 @@ import { markCharacter } from '../../../components/encodings/shared/byteOrderMar
 import type { TextRow } from '../shared/protocol';
 import { brokenLines } from '../../../lib/page/textLines';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
-import type { CodeSegment } from './codeSegments';
+import type { CodeSegment } from '../../../components/syntax/page/codeSegments';
 import { bytesOf } from './encodedBytes';
 import type { SyntaxRange } from '../../../components/syntax/page/engine';
 import {
