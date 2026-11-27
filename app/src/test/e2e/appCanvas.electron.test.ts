@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { ElectronApplication, Page } from 'playwright-core';
 import { afterAll, beforeAll, suite, test } from 'vitest';
+import { writeWhenFree } from '../helpers/fixtures';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { showTab } from './tabReturns';
@@ -682,5 +683,34 @@ suite('App canvas', () => {
       'the label saved',
       { accepted: (text) => text.includes('"label":"Ideas"') },
     );
+  });
+
+  test('draws its file anew once another program changes it while its tab shows and nothing of it is unsaved', async () => {
+    const written: unknown = JSON.parse(fs.readFileSync(board, 'utf8'));
+    const nodes: unknown = Reflect.get(Object(written), 'nodes');
+    assert.ok(Array.isArray(nodes));
+    await writeWhenFree(
+      board,
+      JSON.stringify(
+        {
+          ...Object(written),
+          nodes: [
+            ...nodes,
+            {
+              id: 'outside',
+              type: 'text',
+              text: 'Written outside',
+              x: 0,
+              y: 0,
+              width: 210,
+              height: 54,
+            },
+          ],
+        },
+        null,
+        '	',
+      ),
+    );
+    await holds('the node written outside drawn', 'Written outside', true);
   });
 });

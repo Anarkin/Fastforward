@@ -31,7 +31,12 @@ function canvas(
   readOnly: readonly string[] = [],
 ) {
   const saved: [string, string][] = [];
+  const watched = new Map<string, () => void>();
   const tool = new CanvasTool({
+    watch: (name, onChange) => {
+      watched.set(name, onChange);
+      return () => watched.delete(name);
+    },
     saveFile: (name, bytes) => {
       if (readOnly.includes(name)) {
         return Promise.reject(new ReadOnly(name));
@@ -57,7 +62,11 @@ function canvas(
   const page = new CanvasPage();
   const shell = fakeShell(page);
   tool.attach(shell.shell);
-  return { tool, page, saved, ...shell };
+  const changed = async (name: string) => {
+    watched.get(name)?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  };
+  return { tool, page, saved, watched, changed, ...shell };
 }
 
 const tab: Tab = { id: '7', tool: 'canvas', root: file };
@@ -220,6 +229,57 @@ suite('Canvas tool', () => {
     await tool.receive(page, { type: 'undo', tab: '7' });
     await tool.show(page, tab);
     assert.strictEqual(board(page).board?.nodes[0]?.x, 700);
+  });
+
+  test('reads its file anew once it changes while its tab shows and nothing of it is unsaved, as the editor follows its file, and takes no change for its own save', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page, changed } = canvas(files);
+    await tool.show(page, tab);
+    files[file] = JSON.stringify({ nodes: [{ ...node, x: 700 }] });
+    await changed(file);
+    assert.strictEqual(board(page).board?.nodes[0]?.x, 700);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, x: 14 }] },
+    });
+    await tool.receive(page, { type: 'save', tab: '7' });
+    const boards = page.messages.filter((each) => each.type === 'board').length;
+    await changed(file);
+    assert.strictEqual(
+      page.messages.filter((each) => each.type === 'board').length,
+      boards,
+    );
+  });
+
+  test('keeps its edits not saved once its file changes while its tab shows, saying that saving writes over the change', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page, changed, notices } = canvas(files);
+    await tool.show(page, tab);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, x: 14 }] },
+    });
+    files[file] = JSON.stringify({ nodes: [{ ...node, x: 700 }] });
+    await changed(file);
+    assert.strictEqual(board(page).board?.nodes[0]?.x, 14);
+    assert.deepStrictEqual(
+      notices.map(({ message }) => message),
+      [strings.editor.changedOutside(file)],
+    );
+  });
+
+  test('watches its file only while its tab shows', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page, watched } = canvas(files);
+    await tool.show(page, tab);
+    assert.deepStrictEqual([...watched.keys()], [file]);
+    tool.hide(page);
+    assert.deepStrictEqual([...watched.keys()], []);
+    await tool.show(page, tab);
+    tool.closed(page, tab);
+    assert.deepStrictEqual([...watched.keys()], []);
   });
 
   test('saves the canvas in the layout of its file, the tab no longer unsaved, and a save asked for with nothing to save writes nothing', async () => {

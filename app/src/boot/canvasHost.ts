@@ -1,6 +1,7 @@
 import { fs } from '../lib/main/files';
 import { CanvasTool } from '../tools/canvas/main/tool';
 import { ReadOnlyFile, saveFile } from '../lib/main/fileSaving';
+import { watchFolder } from '../lib/main/watch';
 
 export function canvasToolOf(): CanvasTool {
   return new CanvasTool({
@@ -19,5 +20,6 @@ export function canvasToolOf(): CanvasTool {
           : {},
       ),
     readOnly: (error) => error instanceof ReadOnlyFile,
+    watch: (file, onChange) => watchFolder(file, onChange),
   });
 }

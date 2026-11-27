@@ -24,6 +24,7 @@ export interface CanvasAccess {
   readonly saveFile: (file: string, bytes: Uint8Array) => Promise<unknown>;
   readonly readOnly?: (error: unknown) => boolean;
   readonly newId?: () => string;
+  readonly watch?: (file: string, onChange: () => void) => () => void;
 }
 
 export const maxBoardBytes = 50 * 1024 * 1024;
@@ -45,6 +46,10 @@ export class CanvasTool implements Tool<'canvas'> {
   private readonly shown = new Map<Page, string>();
   private readonly toldSkipped = new Set<string>();
   private readonly held = new Map<string, Held>();
+  private readonly watching = new Map<
+    string,
+    { readonly file: string; readonly stop: () => void }
+  >();
 
   constructor(private readonly access: CanvasAccess) {}
 
@@ -65,7 +70,12 @@ export class CanvasTool implements Tool<'canvas'> {
     if (file === undefined) {
       return;
     }
+    const before = this.shown.get(page);
     this.shown.set(page, tab.id);
+    if (before !== undefined && before !== tab.id) {
+      this.unwatchHidden(before);
+    }
+    this.watched(tab.id, file);
     post(page, { type: 'show', tab: tab.id, file });
     const kept = this.held.get(tab.id);
     if (kept?.file === file && kept.board.changed()) {
@@ -133,13 +143,66 @@ export class CanvasTool implements Tool<'canvas'> {
     });
   }
 
+  private watched(tab: string, file: string): void {
+    const watch = this.access.watch;
+    if (watch === undefined || this.watching.get(tab)?.file === file) {
+      return;
+    }
+    this.watching.get(tab)?.stop();
+    this.watching.set(tab, {
+      file,
+      stop: watch(file, () => void this.changedOutside(tab, file)),
+    });
+  }
+
+  private unwatchHidden(tab: string): void {
+    if (![...this.shown.values()].includes(tab)) {
+      this.watching.get(tab)?.stop();
+      this.watching.delete(tab);
+    }
+  }
+
+  private async changedOutside(tab: string, file: string): Promise<void> {
+    const held = this.held.get(tab);
+    if (held?.file !== file) {
+      return;
+    }
+    const pages = [...this.shown]
+      .filter(([, shown]) => shown === tab)
+      .map(([page]) => page);
+    const read = await this.read(file);
+    if ('error' in read || read.held.board.text() === held.board.text()) {
+      return;
+    }
+    if (this.held.get(tab) !== held) {
+      return;
+    }
+    if (held.board.changed()) {
+      for (const page of pages) {
+        this.shell.notice(page, {
+          level: 'info',
+          message: strings.editor.changedOutside(file),
+        });
+      }
+      return;
+    }
+    this.held.set(tab, read.held);
+    for (const page of pages) {
+      this.postBoard(page, tab);
+    }
+  }
+
   shows(page: Page, tab: Tab): boolean {
     return this.shown.get(page) === tab.id;
   }
 
   hide(page: Page): void {
+    const tab = this.shown.get(page);
     if (this.shown.delete(page)) {
       post(page, { type: 'hide' });
+    }
+    if (tab !== undefined) {
+      this.unwatchHidden(tab);
     }
   }
 
@@ -156,6 +219,7 @@ export class CanvasTool implements Tool<'canvas'> {
     }
     this.toldSkipped.delete(tab.id);
     this.held.delete(tab.id);
+    this.unwatchHidden(tab.id);
   }
 
   async receive(page: Page, message: CanvasToHost): Promise<void> {
@@ -290,5 +354,9 @@ export class CanvasTool implements Tool<'canvas'> {
 
   quit(): void {
     this.shown.clear();
+    for (const { stop } of this.watching.values()) {
+      stop();
+    }
+    this.watching.clear();
   }
 }
