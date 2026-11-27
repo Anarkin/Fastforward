@@ -7,7 +7,6 @@ import { onceDrawn, untilSettled } from './waits';
 export interface TabLooks {
   readonly focus: string | null;
   readonly caret: readonly [number, number, string] | null;
-  readonly cursors: readonly (readonly [number, number, number])[];
   readonly fields: readonly (readonly [string, string])[];
   readonly scrolls: readonly (readonly [string, string, number, number])[];
   readonly states: readonly (readonly [string, string])[];
@@ -115,21 +114,6 @@ const looksNow = (page: Page): Promise<TabLooks> =>
     }
     return {
       focus: focused === undefined ? null : pathOf(focused),
-      cursors: [field?.nextElementSibling]
-        .filter(
-          (element): element is Element =>
-            element?.classList.contains('text-cursor') === true &&
-            onScreen(element),
-        )
-        .map((element) => {
-          const box = element.getBoundingClientRect();
-          const owner = element.previousElementSibling?.getBoundingClientRect();
-          return [
-            Math.round(box.left - (owner?.left ?? 0)),
-            Math.round(box.top - (owner?.top ?? 0)),
-            Math.round(box.width),
-          ] as const;
-        }),
       caret:
         field === undefined || field.selectionStart === null
           ? null

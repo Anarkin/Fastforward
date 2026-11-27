@@ -8,6 +8,7 @@ import { viewerRows } from './cellsSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { settledLooks, tabs } from './tabReturns';
+import { untilSettled } from './waits';
 
 const newline = String.fromCharCode(10);
 
@@ -46,6 +47,19 @@ suite('What a tab shows once settled', () => {
     removeFolder(folder);
   });
 
+  const cursorPlace = () =>
+    page.evaluate(() => {
+      const field = document.querySelector('.viewer .search-box-input');
+      const cursor = field?.nextElementSibling;
+      return field !== null &&
+        cursor?.classList.contains('text-cursor') === true
+        ? Math.round(
+            cursor.getBoundingClientRect().left -
+              field.getBoundingClientRect().left,
+          )
+        : undefined;
+    });
+
   const firstTexts = async () => {
     const lines = (await settledLooks(page)).text.split(newline);
     const pathLine = lines.findIndex((line) => line.endsWith('.env'));
@@ -63,7 +77,7 @@ suite('What a tab shows once settled', () => {
       'the matches counted',
     );
     assert.deepStrictEqual(await firstTexts(), ['1 of 10', 'Aa']);
-    const before = await settledLooks(page);
+    const before = await untilSettled(cursorPlace, 'the cursor drawn');
     await page.evaluate(() => {
       window.addEventListener(
         'keydown',
@@ -79,12 +93,13 @@ suite('What a tab shows once settled', () => {
       );
     });
     await page.keyboard.press('ArrowLeft');
-    const moved = await settledLooks(page);
-    const [was] = before.cursors;
-    const [now] = moved.cursors;
+    const moved = await untilSettled(
+      cursorPlace,
+      'the cursor drawn after the key',
+    );
     assert.ok(
-      was !== undefined && now !== undefined && now[0] < was[0],
-      JSON.stringify([before.cursors, moved.cursors]),
+      before !== undefined && moved !== undefined && moved < before,
+      JSON.stringify([before, moved]),
     );
   });
 });
