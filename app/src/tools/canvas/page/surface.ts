@@ -50,8 +50,8 @@ import {
 } from './boardScreen';
 import { unitOf, type Box, type Unit } from './grid';
 import { arrowRects, lineRects, strokeOf } from './lineRects';
-import { gridDots } from './gridDots';
 import { drawTexts } from './drawnTexts';
+import { cornerRects } from './gridDots';
 import { originOf, type CellSize, type Origin } from './pan';
 import type { Cell } from './routes';
 import type { Screen } from './screen';
@@ -504,14 +504,13 @@ function drawDots(
   }
   const color = packedOf(over(ground, parsedColor(css)));
   const stroke = strokeOf(ratio);
-  for (const { column, row } of gridDots(screen)) {
-    cells.frame.rect(
-      column * advance - shift.x,
-      row * rowHeight - shift.y,
-      stroke,
-      stroke,
-      color,
-    );
+  for (const { x, y, width, height } of cornerRects(screen, {
+    advance,
+    rowHeight,
+    stroke,
+    shift,
+  })) {
+    cells.frame.rect(x, y, width, height, color);
   }
 }
 

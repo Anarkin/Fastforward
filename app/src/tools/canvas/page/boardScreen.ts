@@ -26,6 +26,10 @@ import {
   wayBits,
   type Screen,
   type Way,
+  outsideTop,
+  outsideRight,
+  outsideBottom,
+  outsideLeft,
 } from './screen';
 
 export const lineKind = 'line';
@@ -225,7 +229,14 @@ function paintNode(
   for (let row = top; row < bottom; row++) {
     for (let column = left; column <= end; column++) {
       painter.clear(column, row);
-      painter.cover(column, row);
+      painter.cover(
+        column,
+        row,
+        (row === box.row ? outsideTop : 0) |
+          (column === right ? outsideRight : 0) |
+          (row === box.row + box.rows - 1 ? outsideBottom : 0) |
+          (column === box.column ? outsideLeft : 0),
+      );
       painter.claim(column, row, owner);
     }
   }

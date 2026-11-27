@@ -37,6 +37,11 @@ export interface Caret {
   readonly under: string;
 }
 
+export const outsideTop = 1;
+export const outsideRight = 2;
+export const outsideBottom = 4;
+export const outsideLeft = 8;
+
 export interface Screen {
   readonly column: number;
   readonly row: number;
@@ -48,6 +53,7 @@ export interface Screen {
   readonly lineKinds: (string | undefined)[];
   readonly arrows: (Way | undefined)[];
   readonly covered: Uint8Array;
+  readonly outside: Uint8Array;
   readonly edges: (string | undefined)[];
   readonly owners: Int32Array;
   readonly seen: (string | undefined)[];
@@ -80,6 +86,7 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     lineKinds: unset<string | undefined>(cells),
     arrows: unset<Way | undefined>(cells),
     covered: new Uint8Array(cells),
+    outside: new Uint8Array(cells),
     edges: unset<string | undefined>(cells),
     owners: new Int32Array(cells).fill(-1),
     seen: unset<string | undefined>(cells),
@@ -120,10 +127,11 @@ export class Painter {
       : undefined;
   }
 
-  cover(column: number, row: number): void {
+  cover(column: number, row: number, outside = 0): void {
     const at = this.indexOf(column, row);
     if (at !== undefined) {
       this.screen.covered[at] = 1;
+      this.screen.outside[at] = outside;
     }
   }
 
