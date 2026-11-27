@@ -25,6 +25,7 @@ import {
 } from './find';
 import { savingFixes } from './saving';
 import { endingsChanged, endingsField, endingsSent } from './endings';
+import { keptRestored, keptSent } from './undecodedBytes';
 import { endingsShownOf, type EndingsShown } from './endingsLabel';
 import {
   backTo,
@@ -197,16 +198,18 @@ export function useEditorView(language: string | undefined) {
       scrolling: scrollingNow,
       onUpdate: (update) => {
         const converted = endingsChanged(update.transactions);
+        const restored = keptRestored(update.transactions);
         if (update.docChanged && place !== undefined) {
           place = placeMapped(place, update.changes);
         }
-        if (update.docChanged || converted) {
+        if (update.docChanged || converted || restored) {
           editText(tab, {
             version,
             ...(update.docChanged && { changes: update.changes.toJSON() }),
             ...(converted && {
               endings: endingsSent(update.state.field(endingsField)),
             }),
+            ...(restored && { kept: keptSent(update.state) }),
           });
           version += 1;
           setEndingsShown(endingsShownOf(update.state));

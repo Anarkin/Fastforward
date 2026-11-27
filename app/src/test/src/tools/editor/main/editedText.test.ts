@@ -10,7 +10,7 @@ const read = (text: string) =>
 function change(
   edited: EditedText,
   spec: Parameters<typeof ChangeSet.of>[0],
-): unknown {
+): { readonly version: number; readonly changes: unknown } {
   return {
     version: edited.version,
     changes: ChangeSet.of(spec, edited.shown().text.length).toJSON(),
@@ -83,6 +83,45 @@ suite('Text being edited', () => {
       { at: 6, bytes: [0xe9] },
     ]);
     assert.strictEqual(bytesOf(edited), '>>a\nbc\xe9d\ne\xc3\xa9\n');
+  });
+
+  test('keeps the bytes again that the page tells once the deletion of their character is undone, but only bytes the file was read with, as the page is not trusted', () => {
+    const edited = read('a\xe9b\xe8c');
+    const kept = [
+      { at: 1, bytes: [0xe9] },
+      { at: 3, bytes: [0xe8] },
+    ];
+    assert.deepStrictEqual(edited.shown().keptBytes, kept);
+    const undone = (sent: unknown) => {
+      const again = read('a\xe9b\xe8c');
+      assert.ok(again.edit(change(again, { from: 1, to: 4 })));
+      assert.ok(again.changed());
+      assert.ok(
+        again.edit({
+          ...change(again, { from: 1, insert: '�b�' }),
+          kept: sent,
+        }),
+      );
+      return again;
+    };
+
+    const whole = undone(kept);
+    assert.deepStrictEqual(whole.shown().keptBytes, kept);
+    assert.strictEqual(bytesOf(whole), 'a\xe9b\xe8c');
+    assert.ok(!whole.changed());
+
+    const forged = undone([
+      { at: 1, bytes: [0xe9] },
+      { at: 3, bytes: [0x41] },
+    ]);
+    assert.deepStrictEqual(forged.shown().keptBytes, [
+      { at: 1, bytes: [0xe9] },
+    ]);
+
+    assert.ok(
+      !edited.edit({ version: edited.version, kept: [{ at: 1, bytes: 'x' }] }),
+    );
+    assert.deepStrictEqual(edited.shown().keptBytes, kept);
   });
 
   test('is changed once edited and unchanged again once edited back to the text saved or saved, a line ending changed too', () => {

@@ -100,6 +100,39 @@ suite('App editor', () => {
     await readButton.filter({ hasText: /^UTF-8 \(read\)$/ }).waitFor();
   });
 
+  test('writes the bytes it cannot decode and the line endings other than the file ending back as they were once their deletion is undone, rather than as a replacement character and the file ending', async () => {
+    const undone = path.join(opened, 'undone.txt');
+    const bytes = Buffer.from('a\r\nb\xffc\nd\r\n', 'latin1');
+    fs.writeFileSync(undone, bytes);
+    await backToCommander();
+    await waitFor(
+      async () => (await linesCount(right(), 'undone')) > 0,
+      'the file listed',
+    );
+    await edit('undone.txt');
+    const readButton = page.locator(
+      '.editor .menu-button-trigger[data-tip="Encoding to read in"]',
+    );
+    await readButton.click();
+    await page.locator('.menu-item', { hasText: /^UTF-8$/ }).click();
+    await readButton.filter({ hasText: /^UTF-8 \(read\)$/ }).waitFor();
+    await toEnd();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.press('Delete');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+Z');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    await toEnd();
+    await page.keyboard.type('x');
+    await activeTab().locator('.tab-unsaved').waitFor();
+    await page.keyboard.press('ControlOrMeta+S');
+    await activeTab().locator('.tab-unsaved').waitFor({ state: 'detached' });
+    assert.deepStrictEqual(
+      [...fs.readFileSync(undone)],
+      [...bytes, 'x'.charCodeAt(0)],
+    );
+  });
+
   test('shows the encodings and the line ending of a file opened read-only, the encoding to read in to be chosen, as reading the file again writes nothing, and the encoding to write in and the line ending disabled rather than left out, as the toolbar told nothing of the file, and the encoding to read in of a new file disabled', async () => {
     await backToCommander();
     await page.keyboard.press('F10');

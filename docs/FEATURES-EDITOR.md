@@ -36,7 +36,7 @@
 
 | Feature | What it does | Key | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Byte for byte | Change no byte that was not edited | — | Advanced | ✅ Yes | The byte order mark, the line ending of each line and every byte the encoding cannot decode are kept as marks that move with the edits, and written back as they were read |
+| Byte for byte | Change no byte that was not edited | — | Advanced | ✅ Yes | The byte order mark, the line ending of each line and every byte the encoding cannot decode are kept as marks that move with the edits, come back where an edit that deleted them is undone, and are written back as they were read |
 | Encodings | Read and write the encodings of the viewer | — | Common | ✅ Yes | Read and written as [FEATURES](FEATURES.md#common-text) says |
 | Reopen in an encoding | Read the bytes again in another encoding | — | Common | ✅ Yes | From the encoding button above the text marked (read), which lists them as the viewer does, Auto naming the one it read the file in, the one chosen checked; asks first while it has changes, the question kept with its tab until answered |
 | Save in an encoding | Write the text in another encoding | — | Common | ✅ Yes | From the encoding button marked (write) beside it, which lists them alike, UTF-8 with a byte order mark too, Auto first, saving it as it is on disk, with or without its byte order mark, the one it saves in checked, the two buttons saying the encoding it has on disk and the one it saves in, the file taken as read in the one it was saved in; the (read) one disabled for a new file, Auto naming the encoding its .editorconfig or the settings give it; refused, naming them, while the text has characters the encoding has no byte for |

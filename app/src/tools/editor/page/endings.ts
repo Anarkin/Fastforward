@@ -10,9 +10,13 @@ import {
 } from '@codemirror/state';
 import { strings } from '../../../lib/shared/strings';
 import {
+  droppedMapped,
+  marksAdded,
+  marksDropped,
   marksListed,
   movedMarks,
   strayMarks,
+  type DroppedMark,
   type EndingMark,
   type LineEnding,
   type StrayEnding,
@@ -25,6 +29,10 @@ export interface Endings {
 
 const setEndings = StateEffect.define<Endings>();
 
+const restoredStrays = StateEffect.define<readonly DroppedMark<EndingMark>[]>({
+  map: droppedMapped,
+});
+
 export const endingsField = StateField.define<Endings>({
   create: () => ({ ending: 'lf', strays: RangeSet.empty }),
   update(value, transaction) {
@@ -34,6 +42,17 @@ export const endingsField = StateField.define<Endings>({
     for (const effect of transaction.effects) {
       if (effect.is(setEndings)) {
         next = effect.value;
+      }
+      if (effect.is(restoredStrays)) {
+        next = {
+          ...next,
+          strays: marksAdded(
+            next.strays,
+            transaction.newDoc,
+            effect.value,
+            '\n',
+          ),
+        };
       }
     }
     return next;
@@ -64,11 +83,21 @@ export function endingsFrom(
   }));
 }
 
-export const endingsUndone = invertedEffects.of((transaction) =>
-  transaction.effects.some((effect) => effect.is(setEndings))
-    ? [setEndings.of(transaction.startState.field(endingsField))]
-    : [],
-);
+export const endingsUndone = invertedEffects.of((transaction) => {
+  const before = transaction.startState.field(endingsField, false);
+  if (before === undefined) {
+    return [];
+  }
+  const dropped = transaction.docChanged
+    ? marksDropped(before.strays, transaction.changes)
+    : [];
+  return [
+    ...(transaction.effects.some((effect) => effect.is(setEndings))
+      ? [setEndings.of(before)]
+      : []),
+    ...(dropped.length > 0 ? [restoredStrays.of(dropped)] : []),
+  ];
+});
 
 export function convertedTo(ending: LineEnding): TransactionSpec {
   return {
@@ -83,7 +112,9 @@ export function endingsChanged(
   }[],
 ): boolean {
   return transactions.some((transaction) =>
-    transaction.effects.some((effect) => effect.is(setEndings)),
+    transaction.effects.some(
+      (effect) => effect.is(setEndings) || effect.is(restoredStrays),
+    ),
   );
 }
 

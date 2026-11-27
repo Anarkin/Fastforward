@@ -8,6 +8,7 @@ import {
   movedMarks,
   strayMarks,
   type EndingMark,
+  type KeptBytes,
   type KeptMark,
   type LineEnding,
   type StrayEnding,
@@ -52,6 +53,41 @@ function endingsOf(
     : undefined;
 }
 
+const isBytes = (value: unknown): value is number[] =>
+  Array.isArray(value) &&
+  value.every(
+    (byte: unknown) =>
+      typeof byte === 'number' &&
+      Number.isInteger(byte) &&
+      byte >= 0 &&
+      byte <= 255,
+  );
+
+function keptBytesOf(value: unknown): KeptBytes[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const kept: KeptBytes[] = [];
+  for (const each of value) {
+    if (typeof each !== 'object' || each === null) {
+      return undefined;
+    }
+    const at: unknown = Reflect.get(each, 'at');
+    const bytes: unknown = Reflect.get(each, 'bytes');
+    if (
+      !Number.isSafeInteger(at) ||
+      typeof at !== 'number' ||
+      !isBytes(bytes)
+    ) {
+      return undefined;
+    }
+    kept.push({ at, bytes });
+  }
+  return kept;
+}
+
+const bytesKey = (bytes: readonly number[]) => bytes.join(',');
+
 function changesOf(value: unknown, length: number): ChangeSet | undefined {
   try {
     const changes = ChangeSet.fromJSON(value);
@@ -82,6 +118,7 @@ export class EditedText {
   private ending: LineEnding;
   private strays: RangeSet<EndingMark>;
   private kept: RangeSet<KeptMark>;
+  private readonly keptRead: ReadonlySet<string>;
   private last: Saved;
   version: number;
 
@@ -97,6 +134,7 @@ export class EditedText {
     this.ending = read.ending ?? fallbackEnding;
     this.strays = strayMarks(this.doc, read.strayEndings);
     this.kept = keptMarks(this.doc, read.keptBytes);
+    this.keptRead = new Set(read.keptBytes.map(({ bytes }) => bytesKey(bytes)));
     this.last = this.current();
   }
 
@@ -148,7 +186,12 @@ export class EditedText {
     }
     const sentChanges: unknown = Reflect.get(update, 'changes');
     const sentEndings: unknown = Reflect.get(update, 'endings');
-    if (sentChanges === undefined && sentEndings === undefined) {
+    const sentKept: unknown = Reflect.get(update, 'kept');
+    if (
+      sentChanges === undefined &&
+      sentEndings === undefined &&
+      sentKept === undefined
+    ) {
       return false;
     }
     const changes =
@@ -157,9 +200,11 @@ export class EditedText {
         : changesOf(sentChanges, this.doc.length);
     const endings =
       sentEndings === undefined ? undefined : endingsOf(sentEndings);
+    const kept = sentKept === undefined ? undefined : keptBytesOf(sentKept);
     if (
       (sentChanges !== undefined && changes === undefined) ||
-      (sentEndings !== undefined && endings === undefined)
+      (sentEndings !== undefined && endings === undefined) ||
+      (sentKept !== undefined && kept === undefined)
     ) {
       return false;
     }
@@ -171,6 +216,12 @@ export class EditedText {
     if (endings !== undefined) {
       this.ending = endings.ending;
       this.strays = strayMarks(this.doc, endings.strayEndings);
+    }
+    if (kept !== undefined) {
+      this.kept = keptMarks(
+        this.doc,
+        kept.filter(({ bytes }) => this.keptRead.has(bytesKey(bytes))),
+      );
     }
     this.version += 1;
     return true;

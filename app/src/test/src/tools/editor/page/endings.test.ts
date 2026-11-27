@@ -1,11 +1,12 @@
 import * as assert from 'node:assert';
 import { history, undo } from '@codemirror/commands';
-import { EditorState, Text } from '@codemirror/state';
+import { EditorState, Text, type Transaction } from '@codemirror/state';
 import { suite, test } from 'vitest';
 import {
   conversionsOf,
   convertedTo,
   endingCounts,
+  endingsChanged,
   endingsField,
   endingsFrom,
   endingsSent,
@@ -74,6 +75,25 @@ suite('Line endings of the editor', () => {
     });
     const joined = typed.update({ changes: { from: 3, to: 4 } }).state;
     assert.deepStrictEqual(endingCounts(joined), { lf: 0, crlf: 1, cr: 0 });
+  });
+
+  test('marks the line ending marked otherwise again once the deletion of its line break is undone, and tells it, as the undo brought back a line break in the line ending of the file', () => {
+    let state = opened('a\nb\nc');
+    state = state.update({ changes: { from: 0, to: 3 } }).state;
+    assert.deepStrictEqual(endingCounts(state), { lf: 0, crlf: 1, cr: 0 });
+    const undone: Transaction[] = [];
+    undo({
+      state,
+      dispatch: (transaction) => {
+        undone.push(transaction);
+        state = transaction.state;
+      },
+    });
+    assert.deepStrictEqual(endingsSent(state.field(endingsField)), {
+      ending: 'crlf',
+      strayEndings: [{ at: 1, ending: 'lf' }],
+    });
+    assert.ok(endingsChanged(undone));
   });
 
   test('ends every line in the line ending a file is converted to, and as it ended again once the conversion is undone', () => {

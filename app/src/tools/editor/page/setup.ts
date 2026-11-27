@@ -34,6 +34,7 @@ import {
 import { maxColoredBytes } from '../../../components/syntax/shared/colorLimit';
 import { type TextEncoding } from '../../../components/encodings/shared/textEncodings';
 import { endingsField, endingsFrom, endingsUndone } from './endings';
+import { keptFrom, keptUndone } from './undecodedBytes';
 import { type Encoded } from './encodings';
 import { type EditorPlace } from './place';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
@@ -113,6 +114,7 @@ export function extensionsOf({
     appSelection(editorKeymap.rowEnd, cursor),
     history(),
     endingsUndone,
+    keptUndone,
     editorFind,
     findTicks,
     occurring.of(occurrencesMarked(marksOccurrences)),
@@ -136,6 +138,7 @@ export function stateOf(
   const all = [
     extensions,
     endingsFrom(doc, shown),
+    keptFrom(doc, shown),
     indentionOf(doc, {
       ...(shown.indent !== undefined && { indent: shown.indent }),
       ...(shown.indentFile !== undefined && { indentFile: shown.indentFile }),

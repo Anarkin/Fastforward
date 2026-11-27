@@ -1,6 +1,7 @@
 import {
   RangeSet,
   RangeValue,
+  type ChangeDesc,
   type ChangeSet,
   type Text,
 } from '@codemirror/state';
@@ -105,6 +106,50 @@ export function movedMarks<Mark extends RangeValue>(
     }
   });
   return moved;
+}
+
+export interface DroppedMark<Mark> {
+  readonly at: number;
+  readonly mark: Mark;
+}
+
+export function marksDropped<Mark extends RangeValue>(
+  marks: RangeSet<Mark>,
+  changes: ChangeSet,
+): DroppedMark<Mark>[] {
+  const dropped: DroppedMark<Mark>[] = [];
+  changes.iterChangedRanges((fromA, toA) => {
+    marks.between(fromA, toA, (from, to, mark) => {
+      if (from >= fromA && to <= toA) {
+        dropped.push({ at: from, mark });
+      }
+    });
+  });
+  return dropped;
+}
+
+export const droppedMapped = <Mark>(
+  dropped: readonly DroppedMark<Mark>[],
+  mapping: ChangeDesc,
+): DroppedMark<Mark>[] =>
+  dropped.map(({ at, mark }) => ({ at: mapping.mapPos(at, 1), mark }));
+
+export function marksAdded<Mark extends RangeValue>(
+  marks: RangeSet<Mark>,
+  doc: Text,
+  added: readonly DroppedMark<Mark>[],
+  character: string,
+): RangeSet<Mark> {
+  const taken = new Set(marksListed(marks, (at) => at));
+  const fresh = added.filter(
+    ({ at }) => onCharacter(doc, at, character) && !taken.has(at),
+  );
+  return fresh.length === 0
+    ? marks
+    : marks.update({
+        add: fresh.map(({ at, mark }) => mark.range(at, at + 1)),
+        sort: true,
+      });
 }
 
 export function marksListed<Mark extends RangeValue, Listed>(
