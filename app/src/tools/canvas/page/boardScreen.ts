@@ -8,9 +8,9 @@ import { boxOf, type Box, type Unit } from './grid';
 import {
   labelAreaOf,
   coloredSegments,
+  edgeLabelAreaOf,
   headedSegments,
   linkSegments,
-  lineWidthOf,
   paintLine,
   paintText,
   seeTexts,
@@ -343,26 +343,29 @@ function paintLabel(
   painter: Painter,
   { edge, route }: Routed,
   widths: TextWidths,
+  typing: TypedNode | undefined,
 ): void {
-  if (edge.label === undefined || edge.label === '') {
+  const typed = typing?.id === edge.id ? typing : undefined;
+  const label = typed?.text ?? edge.label ?? '';
+  const area = edgeLabelAreaOf(route, label, widths);
+  if (area === undefined || (typed === undefined && label === '')) {
     return;
   }
-  const middle = route.cells[Math.floor(route.cells.length / 2)];
-  if (middle === undefined) {
-    return;
-  }
-  const width = lineWidthOf(edge.label, widths) + 2;
-  const start = middle.column - Math.floor(width / 2);
   paintLine(painter, {
-    column: start + 1,
-    row: middle.row,
-    text: edge.label,
-    room: width - 2,
+    column: area.column,
+    row: area.row,
+    text: label,
+    room: area.room,
     kind: labelKind,
     widths,
+    typed,
   });
-  for (let column = start; column < start + width; column++) {
-    painter.edge(column, middle.row, edge.id);
+  for (
+    let column = area.column - 1;
+    column <= area.column + area.room;
+    column++
+  ) {
+    painter.edge(column, area.row, edge.id);
   }
 }
 
@@ -421,7 +424,7 @@ export function screenOf({
   }
   for (const each of routed) {
     paintEnds(painter, each, selected.has(each.edge.id));
-    paintLabel(painter, each, widths);
+    paintLabel(painter, each, widths, typing);
   }
   for (const cell of marks) {
     const at = painter.indexOf(cell.column, cell.row);

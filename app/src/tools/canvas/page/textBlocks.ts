@@ -8,6 +8,7 @@ import { columnsOf } from '../../../lib/page/columns';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { strings } from '../../../lib/shared/strings';
 import type { Box } from './grid';
+import type { Route } from './routes';
 import { linesOf, placeOf, rowsOf, textPlaceOf, type Place } from './nodeText';
 import type { Painter, Screen, TextBlock } from './screen';
 
@@ -37,6 +38,27 @@ export function labelAreaOf(box: Box): TextArea {
     column: box.column + 3,
     row: box.row,
     columns: Math.max(0, room),
+    rows: 1,
+    room,
+    wrapAt: undefined,
+  };
+}
+
+export function edgeLabelAreaOf(
+  route: Route,
+  text: string,
+  widths: TextWidths,
+): TextArea | undefined {
+  const middle = route.cells[Math.floor(route.cells.length / 2)];
+  if (middle === undefined) {
+    return undefined;
+  }
+  const room = lineWidthOf(text, widths);
+  const column = middle.column - Math.floor((room + 2) / 2) + 1;
+  return {
+    column,
+    row: middle.row,
+    columns: room,
     rows: 1,
     room,
     wrapAt: undefined,
@@ -189,7 +211,7 @@ export function paintLine(
   }
 }
 
-export function lineWidthOf(text: string, widths: TextWidths): number {
+function lineWidthOf(text: string, widths: TextWidths): number {
   const [line] = linesOf(text);
   return line === undefined ? 0 : Math.ceil(columnsOf(line.text, widths));
 }

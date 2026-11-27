@@ -51,6 +51,9 @@ function opened(showing = true) {
   return { store, posted, kept, page };
 }
 
+const nodeAt = (id: string, x: number) =>
+  ({ id, type: 'text', text: '', x, y: 0, width: 70, height: 54 }) as const;
+
 suite('Canvas store typing', () => {
   test('types into a text node where asked, selecting it, and posts a change of its text under the number of the typing, but no move of the caret', () => {
     const { store, posted } = opened();
@@ -77,6 +80,43 @@ suite('Canvas store typing', () => {
         },
       },
     ]);
+  });
+
+  test('types the label of an edge where asked, from the label it has or from none, selecting the edge, and posts its changes as the text of a node', () => {
+    const { store, posted } = opened();
+    store.getState().receive({
+      type: 'board',
+      tab: '7',
+      file: '/boards/plan.canvas',
+      board: {
+        nodes: [nodeAt('a', 0), nodeAt('b', 140)],
+        edges: [
+          { id: 'named', fromNode: 'a', toNode: 'b', label: 'uses' },
+          { id: 'bare', fromNode: 'b', toNode: 'a' },
+        ],
+      },
+    });
+    const typedNow = () => {
+      const typing = store.getState().typingOf('7');
+      return typing && [typing.id, typing.text, typing.anchor, typing.head];
+    };
+    store.getState().startTyping('7', 'named');
+    assert.deepStrictEqual(typedNow(), ['named', 'uses', 4, 4]);
+    assert.deepStrictEqual(store.getState().selectedOf('7'), ['named']);
+    store.getState().startTyping('7', 'bare');
+    assert.deepStrictEqual(typedNow(), ['bare', '', 0, 0]);
+    store.getState().typed('7', { text: 'x', anchor: 1, head: 1 });
+    assert.deepStrictEqual(
+      posted.map((each) => each.type === 'edit' && each.edit),
+      [
+        {
+          kind: 'text',
+          id: 'bare',
+          text: 'x',
+          session: store.getState().typingOf('7')?.session,
+        },
+      ],
+    );
   });
 
   test('keeps the text typed while the boards of the changes posted come back behind it, types into a text node once made, and stops once its node is gone', () => {

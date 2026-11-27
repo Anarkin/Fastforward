@@ -44,6 +44,7 @@ import { markAt } from './wiring';
 import { boxOf } from './grid';
 import { useBoardKeys } from './boardKeys';
 import { openNode, openedOf } from './links';
+import { typedTextOf, typesOneLine } from './typedTexts';
 
 interface Panning {
   readonly pointer: number;
@@ -356,7 +357,7 @@ export function BoardView() {
       const caretWay = clicked(canvasKeymap.placeCaret, event);
       const layout = typedLayout(board, known.unit, known.widths, now);
       if (
-        hit.kind === 'node' &&
+        (hit.kind === 'node' || hit.kind === 'edge') &&
         hit.id === now.id &&
         caretWay !== undefined &&
         layout !== undefined
@@ -476,7 +477,8 @@ export function BoardView() {
         ? cursorOf(hit.sides)
         : hit.kind === 'mark' && typing === undefined
           ? 'connect'
-          : hit.kind === 'node' && hit.id === typing?.id
+          : (hit.kind === 'node' || hit.kind === 'edge') &&
+              hit.id === typing?.id
             ? 'text'
             : '';
     if (event.currentTarget.dataset.cursor !== cursor) {
@@ -577,32 +579,37 @@ export function BoardView() {
     }
     const onLabel =
       node?.type === 'group' && at.row === boxOf(node, known.unit).row;
-    if (node === undefined || (node.type !== 'text' && !onLabel)) {
+    const id =
+      hit.kind === 'edge'
+        ? hit.id
+        : node?.type === 'text' || onLabel
+          ? node?.id
+          : undefined;
+    if (id === undefined) {
       return;
     }
     const now = typingOf(tab);
-    const current = now?.id === node.id ? now : undefined;
+    const current = now?.id === id ? now : undefined;
     if (whole === 'line' && current === undefined) {
       return;
     }
-    const text =
-      current?.text ??
-      (node.type === 'group'
-        ? (node.label ?? '')
-        : node.type === 'text'
-          ? node.text
-          : '');
+    const text = current?.text ?? typedTextOf(board, id) ?? '';
     const layout = typedLayout(board, known.unit, known.widths, {
-      id: node.id,
+      id,
       text,
       head: current?.head ?? 0,
     });
-    const span =
-      layout === undefined
-        ? undefined
-        : spanAt(layout.rows, offsetIn(layout, at), whole);
+    const onText =
+      layout !== undefined &&
+      (hit.kind !== 'edge' ||
+        (at.row === layout.area.row &&
+          at.column >= layout.area.column &&
+          at.column < layout.area.column + layout.area.room));
+    const span = onText
+      ? spanAt(layout.rows, offsetIn(layout, at), whole)
+      : undefined;
     if (current === undefined) {
-      startTyping(tab, node.id, span);
+      startTyping(tab, id, span);
     } else if (span !== undefined) {
       typed(tab, { text, ...span });
       gripped.current =
@@ -624,9 +631,12 @@ export function BoardView() {
         known === undefined || board === undefined
           ? undefined
           : typedLayout(board, known.unit, known.widths, now);
-      const oneLine =
-        board?.nodes.find((node) => node.id === now.id)?.type === 'group';
-      const done = typingKeyed(event.nativeEvent, now, layout, oneLine);
+      const done = typingKeyed(
+        event.nativeEvent,
+        now,
+        layout,
+        typesOneLine(board, now.id),
+      );
       if (done !== undefined) {
         event.preventDefault();
         if (done.kind === 'stop') {
@@ -659,9 +669,9 @@ export function BoardView() {
   const pasted = (event: React.ClipboardEvent<HTMLDivElement>) => {
     const now = tab === undefined ? undefined : typingOf(tab);
     const pastedText = event.clipboardData.getData('text/plain');
-    const oneLine =
-      board?.nodes.find((node) => node.id === now?.id)?.type === 'group';
-    const text = oneLine ? pastedText.replaceAll(/[\r\n]+/g, ' ') : pastedText;
+    const text = typesOneLine(board, now?.id)
+      ? pastedText.replaceAll(/[\r\n]+/g, ' ')
+      : pastedText;
     if (tab === undefined || now === undefined || text === '') {
       return;
     }

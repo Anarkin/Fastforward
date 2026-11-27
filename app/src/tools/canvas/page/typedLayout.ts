@@ -3,8 +3,14 @@ import type { TextWidths } from '../../../lib/page/textWidths';
 import type { Board } from '../shared/board';
 import { boxOf, type Unit } from './grid';
 import { offsetAt, placeOf, rowsOf } from './nodeText';
-import type { Cell } from './routes';
-import { labelAreaOf, scrollOf, textAreaOf, type TextArea } from './textBlocks';
+import { routeOf, type Cell } from './routes';
+import {
+  edgeLabelAreaOf,
+  labelAreaOf,
+  scrollOf,
+  textAreaOf,
+  type TextArea,
+} from './textBlocks';
 
 export interface TypedLayout {
   readonly area: TextArea;
@@ -31,7 +37,7 @@ export function typedLayout(
 ): TypedLayout | undefined {
   const node = board.nodes.find((each) => each.id === id);
   if (node === undefined) {
-    return undefined;
+    return edgeLayout(board, unit, widths, id, text);
   }
   const box = boxOf(node, unit);
   const area = node.type === 'group' ? labelAreaOf(box) : textAreaOf(box);
@@ -42,6 +48,33 @@ export function typedLayout(
     scroll: scrollOf(placeOf(rows, head, widths, assoc), area),
     widths,
   };
+}
+
+function edgeLayout(
+  board: Board,
+  unit: Unit,
+  widths: TextWidths,
+  id: string,
+  text: string,
+): TypedLayout | undefined {
+  const edge = board.edges.find((each) => each.id === id);
+  const boxOfNode = (nodeId: string | undefined) => {
+    const found = board.nodes.find((each) => each.id === nodeId);
+    return found === undefined ? undefined : boxOf(found, unit);
+  };
+  const from = boxOfNode(edge?.fromNode);
+  const to = boxOfNode(edge?.toNode);
+  const area =
+    edge === undefined || from === undefined || to === undefined
+      ? undefined
+      : edgeLabelAreaOf(
+          routeOf(from, to, unit, edge.fromSide, edge.toSide),
+          text,
+          widths,
+        );
+  return area === undefined
+    ? undefined
+    : { area, rows: rowsOf(text, undefined, widths), scroll: 0, widths };
 }
 
 export function offsetIn(

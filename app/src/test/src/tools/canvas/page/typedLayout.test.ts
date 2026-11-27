@@ -5,6 +5,8 @@ import {
   typedLayout,
 } from '../../../../../tools/canvas/page/typedLayout';
 import type { Board } from '../../../../../tools/canvas/shared/board';
+import { screenOf } from '../../../../../tools/canvas/page/boardScreen';
+import { screenRows } from '../../../../../tools/canvas/page/seenScreen';
 
 const unit = { width: 7, height: 18 };
 
@@ -32,6 +34,31 @@ const typed = (head: number) =>
     head,
   });
 
+const edged = (label: string): Board => ({
+  nodes: [
+    { id: 'a', type: 'text', text: '', x: 0, y: 0, width: 56, height: 54 },
+    {
+      id: 'b',
+      type: 'text',
+      text: '',
+      x: 168,
+      y: 0,
+      width: 56,
+      height: 54,
+    },
+  ],
+  edges: [
+    {
+      id: 'e',
+      fromNode: 'a',
+      fromSide: 'right',
+      toNode: 'b',
+      toSide: 'left',
+      label,
+    },
+  ],
+});
+
 suite('Canvas typed layout', () => {
   test('lays the text typed out in the node, inside its border and padding, wrapped as every view wraps a text with a column for a blank hanging at the end of a row and one for the mark of its break, scrolled so the row of the caret is the last shown once it is below them', () => {
     assert.deepStrictEqual(typed(0)?.area, {
@@ -52,6 +79,36 @@ suite('Canvas typed layout', () => {
       typedLayout(board, unit, widths, { id: 'gone', text: '', head: 0 }),
       undefined,
     );
+  });
+
+  test('lays the label typed on an edge out on the row and the columns its label is drawn on, halfway along the edge and centered there as it is typed', () => {
+    for (const label of ['to', 'calls it']) {
+      const rows = screenRows(
+        screenOf({
+          board: edged(label),
+          unit,
+          view: { column: 0, row: 0, columns: 34, rows: 3 },
+          widths,
+        }),
+      );
+      const row = rows.findIndex((each) => each.includes(label));
+      assert.deepStrictEqual(
+        typedLayout(edged(label), unit, widths, {
+          id: 'e',
+          text: label,
+          head: 0,
+        })?.area,
+        {
+          column: rows[row]?.indexOf(label),
+          row,
+          columns: label.length,
+          rows: 1,
+          room: label.length,
+          wrapAt: undefined,
+        },
+        label,
+      );
+    }
   });
 
   test('takes a cell pressed in the node for the place in the text under it, the rows above and below it for the first and the last', () => {

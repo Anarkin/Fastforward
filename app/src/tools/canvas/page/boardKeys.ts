@@ -26,7 +26,11 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const calm = shownTab && typing === undefined;
   const [only] = selected.length === 1 ? selected : [];
   const onlyNode = board?.nodes.find((node) => node.id === only);
-  const typeable = onlyNode?.type === 'text' || onlyNode?.type === 'group';
+  const typeable =
+    onlyNode?.type === 'text' ||
+    onlyNode?.type === 'group' ||
+    (onlyNode === undefined &&
+      board?.edges.some((each) => each.id === only) === true);
   const opened = openedOf(onlyNode, files);
 
   useBinding(canvasKeymap.placeText, () => startPlacing('text'), shownTab);

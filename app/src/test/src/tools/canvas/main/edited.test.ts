@@ -351,6 +351,34 @@ suite('Canvas edited', () => {
     assert.deepStrictEqual(labels(), ['Plans', undefined]);
   });
 
+  test('writes the label typed onto an edge, one it had or one it had none of, as the label of a group is written', () => {
+    const board = new EditedBoard(
+      JSON.stringify({
+        nodes: [node('a'), node('b', 140)],
+        edges: [
+          { id: 'named', fromNode: 'a', toNode: 'b', label: 'uses' },
+          { id: 'bare', fromNode: 'b', toNode: 'a' },
+        ],
+      }),
+    );
+    board.apply(
+      { kind: 'text', id: 'named', text: 'calls', session: 1 },
+      ids(),
+    );
+    board.apply(
+      { kind: 'text', id: 'bare', text: 'returns', session: 2 },
+      ids(),
+    );
+    const labels = () => {
+      const read = board.read();
+      assert.ok(read.kind === 'board');
+      return read.board.edges.map((each) => each.label);
+    };
+    assert.deepStrictEqual(labels(), ['calls', 'returns']);
+    board.undo();
+    assert.deepStrictEqual(labels(), ['calls', undefined]);
+  });
+
   test('takes from the page only edits whole and in bounds, as the page is not trusted', () => {
     assert.deepStrictEqual(
       editOf({

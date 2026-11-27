@@ -1,3 +1,4 @@
+import { typedTextOf } from './typedTexts';
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
 import { strings } from '../../../lib/shared/strings';
@@ -19,14 +20,6 @@ interface Kept {
   readonly id: string;
   readonly anchor: number;
   readonly head: number;
-}
-
-function textOf(board: Board | undefined, id: string): string | undefined {
-  const node = board?.nodes.find((each) => each.id === id);
-  if (node?.type === 'group') {
-    return node.label ?? '';
-  }
-  return node?.type === 'text' ? node.text : undefined;
 }
 
 function typingIn(
@@ -68,7 +61,7 @@ export function createCanvasStore(
       if (made !== undefined) {
         const text =
           board?.nodes.find((each) => each.id === made)?.type === 'text'
-            ? textOf(board, made)
+            ? typedTextOf(board, made)
             : undefined;
         return text === undefined
           ? undefined
@@ -81,13 +74,13 @@ export function createCanvasStore(
       const waiting = kept.get(tab);
       if (waiting !== undefined) {
         kept.delete(tab);
-        const text = textOf(board, waiting.id);
+        const text = typedTextOf(board, waiting.id);
         return text === undefined
           ? undefined
           : typingIn(text, waiting, ++sessions);
       }
       const typing = get().typings.get(tab);
-      return typing === undefined || textOf(board, typing.id) === undefined
+      return typing === undefined || typedTextOf(board, typing.id) === undefined
         ? undefined
         : typing;
     };
@@ -111,7 +104,7 @@ export function createCanvasStore(
           const text =
             typing === undefined
               ? undefined
-              : textOf(get().boards.get(tab)?.board, typing.id);
+              : typedTextOf(get().boards.get(tab)?.board, typing.id);
           if (typing !== undefined && text === undefined) {
             kept.set(tab, typing);
           }
@@ -231,7 +224,7 @@ export function createCanvasStore(
       selectedOf: (tab) => get().selections.get(tab) ?? [],
       place: (placing) => set({ placing }),
       startTyping: (tab, id, span) => {
-        const text = textOf(get().boards.get(tab)?.board, id);
+        const text = typedTextOf(get().boards.get(tab)?.board, id);
         if (text === undefined) {
           return;
         }

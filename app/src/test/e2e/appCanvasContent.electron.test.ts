@@ -8,7 +8,7 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { showTab } from './tabReturns';
 import { untilSettled } from './waits';
 
-suite('App canvas files', () => {
+suite('App canvas content', () => {
   let folder: string;
   let app: ElectronApplication;
   let page: Page;
@@ -38,7 +38,7 @@ suite('App canvas files', () => {
   };
 
   beforeAll(async () => {
-    folder = tempFolder('app-canvas-files');
+    folder = tempFolder('app-canvas-content');
     const profile = path.join(folder, 'profile');
     fs.mkdirSync(profile);
     const board = path.join(folder, 'notes.canvas');
@@ -74,8 +74,25 @@ suite('App canvas files', () => {
             width: 210,
             height: 72,
           },
+          ...['from', 'to'].map((id, at) => ({
+            id,
+            type: 'text',
+            text: id,
+            x: 420 + at * 280,
+            y: 0,
+            width: 70,
+            height: 54,
+          })),
         ],
-        edges: [],
+        edges: [
+          {
+            id: 'wired',
+            fromNode: 'from',
+            fromSide: 'right',
+            toNode: 'to',
+            toSide: 'left',
+          },
+        ],
       }),
     );
     fs.writeFileSync(
@@ -168,6 +185,32 @@ suite('App canvas files', () => {
     await page
       .locator('.tabs .tab.active .tab-name', { hasText: 'note.md' })
       .waitFor();
+  });
+
+  test('labels an edge selected on Enter, typing its label halfway along it, ends it on Enter and writes the label into the edge in its file', async () => {
+    await showTab(page, 1);
+    await page.locator('.board-host canvas').first().waitFor();
+    const middle = await pointAt({ column: 85, row: 1 });
+    await page.mouse.click(middle.x, middle.y);
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('uses');
+    await page.keyboard.press('Enter');
+    await untilSettled(
+      async () =>
+        (await seenBoard())?.rows.some((row) => /[─═] uses [─═]/.test(row)) ??
+        false,
+      'the label of the edge drawn',
+      { accepted: (drawn) => drawn },
+    );
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () =>
+        Promise.resolve(
+          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
+        ),
+      'the label of the edge saved',
+      { accepted: (text) => /"id":"wired"[^}]*"label":"uses"/.test(text) },
+    );
   });
 
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {

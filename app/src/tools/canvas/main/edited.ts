@@ -123,9 +123,11 @@ function applied(
       return changed;
     }
     case 'text': {
-      const node = listIn(raw, 'nodes').find((each) => idOf(each) === edit.id);
+      const found = listIn(raw, 'nodes').find((each) => idOf(each) === edit.id);
+      const edge = listIn(raw, 'edges').find((each) => idOf(each) === edit.id);
+      const node = found ?? edge;
       const key =
-        isObject(node) && node.type === 'group'
+        isObject(node) && (node === edge || node.type === 'group')
           ? 'label'
           : isObject(node) &&
               node.type === 'text' &&

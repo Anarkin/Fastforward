@@ -69,6 +69,32 @@ const edge = (more: Partial<BoardEdge> = {}): BoardEdge => ({
   ...more,
 });
 
+const typedOnEdge = (words: string) =>
+  screenRows(
+    screenOf({
+      board: {
+        nodes: [text('a', 0, 0, 8, 3, ''), text('b', 24, 0, 8, 3, '')],
+        edges: [
+          edge({
+            fromNode: 'a',
+            fromSide: 'right',
+            toNode: 'b',
+            toSide: 'left',
+          }),
+        ],
+      },
+      unit,
+      view: { column: 0, row: 0, columns: 34, rows: 3 },
+      widths: { char: 1, of: narrow },
+      typing: {
+        id: 'e',
+        text: words,
+        anchor: words.length,
+        head: words.length,
+      },
+    }),
+  )[1];
+
 suite('Canvas screen', () => {
   let corpus: ObsidianCanvases;
 
@@ -384,6 +410,11 @@ suite('Canvas screen', () => {
       [{ text: 'next' }],
     ]);
     assert.deepStrictEqual(asked, ['f typescript const a = 1;\nnext']);
+  });
+
+  test('draws the label typed on an edge as it is typed, the edge of no label too', () => {
+    assert.ok(typedOnEdge('new')?.includes('─ new ─'), typedOnEdge('new'));
+    assert.ok(typedOnEdge('')?.includes('────'), typedOnEdge(''));
   });
 
   test('draws a node smaller than its borders as a line or a small square, so none is lost', () => {
