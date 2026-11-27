@@ -1340,7 +1340,7 @@ export const strings = {
     toBack: 'Send to Back',
     customColor: 'Custom…',
     customColorTitle: 'Color',
-    customColorLabel: 'Color, as # and six hex digits',
+    customColorLabel: 'Color, as # and three or six hex digits',
     customColorConfirm: 'Color',
     notAColor: sentence`A color is # and three or six hex digits, as #36F or #3366FF.`,
     couldNotSave: (file: string, reason: Sentence) =>

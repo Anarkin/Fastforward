@@ -28,8 +28,13 @@ const hexColor = /^#(?:[\da-f]{3}|[\da-f]{6})$/i;
 
 export const isHexColor = (color: string): boolean => hexColor.test(color);
 
+export const isPresetColor = (color: string): boolean => /^[1-6]$/.test(color);
+
 export const isBoardColor = (color: string): boolean =>
-  /^[1-6]$/.test(color) || isHexColor(color);
+  isPresetColor(color) || isHexColor(color);
+
+export const isWebLink = (url: string): boolean =>
+  URL.parse(url)?.protocol === 'https:';
 
 export const sixDigitColor = (color: string): string =>
   isHexColor(color) && color.length === 4

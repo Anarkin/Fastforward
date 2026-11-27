@@ -1,7 +1,7 @@
 import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
 import { languageOf } from '../../../lib/page/languages';
 import type { NodeFile } from '../shared/protocol';
-import { isHexColor } from '../shared/protocol';
+import { isHexColor, isPresetColor } from '../shared/protocol';
 import type { LineRanges } from '../../../components/syntax/page/engine';
 import type { Board, BoardEdge, BoardNode } from '../shared/board';
 import type { TextWidths } from '../../../lib/page/textWidths';
@@ -39,13 +39,11 @@ const mark = '●';
 
 const tinyNode = '□';
 
-const presets = /^[1-6]$/;
-
 export function colorKind(color: string | undefined): string | undefined {
   if (color === undefined) {
     return undefined;
   }
-  if (presets.test(color)) {
+  if (isPresetColor(color)) {
     return `color-${color}`;
   }
   return isHexColor(color) ? color.toLowerCase() : undefined;

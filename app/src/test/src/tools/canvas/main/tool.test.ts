@@ -40,6 +40,7 @@ interface Gates {
   saving?: Promise<void> | undefined;
   reading?: Promise<void> | undefined;
   saves: number;
+  refused?: boolean;
 }
 
 function gate(): { readonly closed: Promise<void>; readonly open: () => void } {
@@ -108,7 +109,11 @@ function canvas(
   });
   const page = new CanvasPage();
   const shell = fakeShell(page);
-  tool.attach(shell.shell);
+  tool.attach({
+    ...shell.shell,
+    holds: (shownIn, held) =>
+      gates.refused !== true && shell.shell.holds(shownIn, held),
+  });
   const changed = async (name: string) => {
     watched.get(name)?.();
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -362,7 +367,8 @@ suite('Canvas tool', () => {
 
   test('takes a drop on a canvas only with paths, a tab it holds and a box whole and in bounds, as the page is not trusted', async () => {
     const note = path.resolve('/boards/a.md');
-    const { tool, page } = canvas({ [file]: '{}', [note]: 'A' });
+    const gates: Gates = { saves: 0 };
+    const { tool, page } = canvas({ [file]: '{}', [note]: 'A' }, {}, [], gates);
     await tool.show(page, tab);
     const before = page.messages.length;
     const box = { x: 0, y: 0, width: 70, height: 36 };
@@ -375,7 +381,10 @@ suite('Canvas tool', () => {
     ] as const) {
       await tool.dropped(page, files, message);
     }
+    gates.refused = true;
+    await tool.dropped(page, [note], { tab: '7', box });
     assert.strictEqual(page.messages.length, before);
+    assert.strictEqual(tool.unsaved(tab), false);
   });
 
   test('tells the page where the file of each file node is and the head of its text, read again each time its tab shows', async () => {

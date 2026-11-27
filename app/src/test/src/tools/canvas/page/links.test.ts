@@ -6,13 +6,13 @@ import type { BoardNode } from '../../../../../tools/canvas/shared/board';
 const box = { x: 0, y: 0, width: 70, height: 36 };
 
 suite('Canvas links', () => {
-  test('takes a text pasted for a link only when it is one URL of the web, its blanks around it left out', () => {
+  test('takes a text pasted for a link only when it is one URL of the web over https, which a link node opens, its blanks around it left out', () => {
     assert.strictEqual(
       pastedLink('  https://example.com/a?b=c#d \n'),
       'https://example.com/a?b=c#d',
     );
-    assert.strictEqual(pastedLink('http://example.com'), 'http://example.com');
     for (const text of [
+      'http://example.com',
       'plain words',
       'https://example.com/a https://example.com/b',
       'ftp://example.com/file',

@@ -13,11 +13,10 @@ import {
   type TabName,
   type Tool,
 } from '../../../shell/main/toolContract';
-import { viewVersion, type CanvasToHost } from '../shared/protocol';
+import { isWebLink, viewVersion, type CanvasToHost } from '../shared/protocol';
 import { EditedBoard } from './edited';
 import { dropOf, editOf } from './edits';
 import { fileIn, nodeFilesOf, vaultOf, type FileAccess } from './nodeFiles';
-import { isWebLink } from './pageTitles';
 import { post } from './post';
 import { boardOf } from './reading';
 

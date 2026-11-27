@@ -1,16 +1,11 @@
 import type { BoardNode } from '../shared/board';
-import type { NodeFile } from '../shared/protocol';
+import { isWebLink, type NodeFile } from '../shared/protocol';
 
 export type Opened = { readonly url: string } | { readonly path: string };
 
-const pastedProtocols = new Set(['http:', 'https:']);
-
 export function pastedLink(text: string): string | undefined {
   const trimmed = text.trim();
-  return /\s/.test(trimmed) ||
-    !pastedProtocols.has(URL.parse(trimmed)?.protocol ?? '')
-    ? undefined
-    : trimmed;
+  return /\s/.test(trimmed) || !isWebLink(trimmed) ? undefined : trimmed;
 }
 
 export function openedOf(

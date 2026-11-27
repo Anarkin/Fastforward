@@ -1,5 +1,6 @@
 import { BlockList, isIP } from 'node:net';
 import { decodeHTML } from 'entities';
+import { isWebLink } from '../shared/protocol';
 
 export type Fetched = Response | { readonly moved: string };
 
@@ -57,9 +58,6 @@ for (const [address, prefix] of [
 ] as const) {
   unreachable.addSubnet(address, prefix, 'ipv6');
 }
-
-export const isWebLink = (url: string): boolean =>
-  URL.parse(url)?.protocol === 'https:';
 
 function onTheWeb(address: string): boolean {
   const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address)?.[1];
