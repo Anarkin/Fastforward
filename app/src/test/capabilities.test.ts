@@ -95,6 +95,10 @@ suite('Capabilities', () => {
     ]);
   });
 
+  test('saves a file whole only by the saver of the library, through a file beside it flushed to the disk before it takes the place of the old one, which the editor, the canvas, the settings, the state of the app and the places of a PDF write through, rather than by a writer of each', () => {
+    heldBy(/\.sync\(\)/, ['lib/main/fileSaving.ts']);
+  });
+
   test('starts every watch of the file system by the library, a folder or a tree of folders, so every watch takes the same options, none keeping the app from quitting, and each tool keeps only what it does once told of a change or an error', () => {
     heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts']);
   });

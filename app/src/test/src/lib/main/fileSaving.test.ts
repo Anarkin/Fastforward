@@ -8,8 +8,8 @@ import {
   NoRoomToSave,
   ReadOnlyFile,
   saveFile,
-} from '../../../../../tools/editor/main/fileSaving';
-import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+} from '../../../../lib/main/fileSaving';
+import { removeFolder, tempFolder } from '../../../helpers/tempFolders';
 
 const bytes = (text: string) => new TextEncoder().encode(text);
 
@@ -225,7 +225,7 @@ suite('Saving a file', () => {
     'keeps the attributes and the streams of a file on Windows, its Mark of the Web too, as ReplaceFile carries them over to the new one',
     async () => {
       const { windowsReplaceFile } =
-        await import('../../../../../tools/editor/main/windowsReplaceFile.js');
+        await import('../../../../boot/windowsReplaceFile.js');
       fs.writeFileSync(file, 'old');
       fs.writeFileSync(
         `${file}:Zone.Identifier`,

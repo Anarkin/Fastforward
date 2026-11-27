@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import koffi from 'koffi';
-import type { ReplaceFile } from './fileSaving';
-import { called } from '../../../lib/main/nativeCalls';
+import type { ReplaceFile } from '../lib/main/fileSaving';
+import { called } from '../lib/main/nativeCalls';
 
 const writeThrough = 0x1;
 

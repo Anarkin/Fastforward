@@ -7,10 +7,7 @@ import {
   type EditingAccess,
   type EditingMessage,
 } from '../../../../../tools/editor/main/editing';
-import {
-  KeptBeside,
-  ReadOnlyFile,
-} from '../../../../../tools/editor/main/fileSaving';
+import { KeptBeside, ReadOnlyFile } from '../../../../../lib/main/fileSaving';
 import type {
   EditorToWebview,
   EditorToWebviewOf,

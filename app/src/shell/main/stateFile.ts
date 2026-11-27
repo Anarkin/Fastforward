@@ -2,7 +2,8 @@ import { messageOf } from '../../lib/shared/errors';
 import { fs } from '../../lib/main/files';
 import { isObject } from '../../lib/main/json';
 import { readText } from './readText';
-import { isHeld, writeAtomically } from '../../lib/main/textFiles';
+import { isHeld } from '../../lib/main/fileSaving';
+import { writeAtomically } from '../../lib/main/textFiles';
 import { strings } from '../../lib/shared/strings';
 import type { Sentence } from '../../lib/shared/sentences';
 

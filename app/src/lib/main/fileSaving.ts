@@ -1,7 +1,7 @@
-import { codeOf, hasCode } from '../../../lib/shared/errors';
+import { codeOf, hasCode } from '../shared/errors';
 import { randomBytes } from 'node:crypto';
-import { fs } from '../../../lib/main/files';
-import type { FileHandle, Stats } from '../../../lib/main/files';
+import { fs } from './files';
+import type { FileHandle, Stats } from './files';
 import * as path from 'node:path';
 
 export type ReplaceFile = (
@@ -13,6 +13,30 @@ export interface Saving {
   readonly replaceFile?: ReplaceFile;
   readonly overwriteReadOnly?: boolean;
   readonly freeBytes?: (folder: string) => Promise<number>;
+  readonly heldRetries?: readonly number[];
+}
+
+export function isHeld(error: unknown): boolean {
+  return hasCode(error, 'EBUSY', 'EPERM', 'EACCES');
+}
+
+async function renamed(
+  from: string,
+  to: string,
+  { heldRetries = [] }: Saving,
+): Promise<void> {
+  for (const delay of heldRetries) {
+    try {
+      await fs.promises.rename(from, to);
+      return;
+    } catch (error) {
+      if (!isHeld(error)) {
+        throw error;
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, delay));
+  }
+  await fs.promises.rename(from, to);
 }
 
 export type Saved = 'replaced' | 'inPlace' | 'created';
@@ -190,7 +214,7 @@ async function replaced(
       return await writtenInPlace(target, stat, bytes, saving);
     }
     await fs.promises.chmod(beside, stat.mode & 0o7777);
-    await fs.promises.rename(beside, target);
+    await renamed(beside, target, saving);
     return 'replaced';
   } catch (error) {
     if (!(error instanceof KeptBeside)) {
@@ -200,14 +224,18 @@ async function replaced(
   }
 }
 
-async function created(target: string, bytes: Uint8Array): Promise<Saved> {
+async function created(
+  target: string,
+  bytes: Uint8Array,
+  saving: Saving,
+): Promise<Saved> {
   const beside = await writtenBeside(target, bytes);
   if (beside === undefined) {
     await fs.promises.writeFile(target, bytes, { flag: 'wx' });
     return 'created';
   }
   try {
-    await fs.promises.rename(beside, target);
+    await renamed(beside, target, saving);
   } catch (error) {
     await fs.promises.rm(beside, { force: true });
     throw error;
@@ -223,7 +251,7 @@ export async function saveFile(
   const target = await linkedTarget(file);
   const stat = await statOf(target);
   if (stat === undefined) {
-    return created(target, bytes);
+    return created(target, bytes, saving);
   }
   const readOnly = !(await writable(target));
   if (readOnly && !saving.overwriteReadOnly) {

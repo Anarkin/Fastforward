@@ -20,7 +20,7 @@ import {
   NoRoomToSave,
   ReadOnlyFile,
   type Saved,
-} from './fileSaving';
+} from '../../../lib/main/fileSaving';
 import { reasonOf } from '../../../lib/main/reasons';
 import { rulesOf, type TextDefaults, type TextRules } from './textDefaults';
 import { decodedText } from './textCodec';

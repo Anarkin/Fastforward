@@ -1,6 +1,6 @@
 import { fs } from '../lib/main/files';
 import { CanvasTool } from '../tools/canvas/main/tool';
-import { ReadOnlyFile, saveFile } from '../tools/editor/main/fileSaving';
+import { ReadOnlyFile, saveFile } from '../lib/main/fileSaving';
 
 export function canvasToolOf(): CanvasTool {
   return new CanvasTool({
@@ -13,7 +13,7 @@ export function canvasToolOf(): CanvasTool {
         process.platform === 'win32'
           ? {
               replaceFile: (
-                await import('../tools/editor/main/windowsReplaceFile.js')
+                await import('./windowsReplaceFile.js')
               ).windowsReplaceFile(),
             }
           : {},
