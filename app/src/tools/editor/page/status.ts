@@ -3,7 +3,7 @@ import { strings } from '../../../lib/shared/strings';
 import { cellWidthsOf, withTabSize } from '../../../lib/page/textWidths';
 import { graphemes } from '../../../lib/page/graphemes';
 import { drawnTabSize } from './indent';
-import { columnsOf } from '../../../lib/page/textColumns';
+import { columnsAlong } from '../../../components/cells/page/columns';
 import { type CellTable } from '../../../lib/page/cellTable';
 
 const countedCharacters = 1_000_000;
@@ -18,7 +18,7 @@ export function statusOf(state: EditorState, table: CellTable): string {
   const { main, ranges } = state.selection;
   const line = state.doc.lineAt(main.head);
   const column =
-    columnsOf(
+    columnsAlong(
       line.text,
       withTabSize(cellWidthsOf(table), drawnTabSize(state)),
     )(main.head - line.from) + 1;

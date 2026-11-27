@@ -4,7 +4,7 @@ import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import type { ScreenRow } from '../../../components/cells/page/lines';
 import { bytesOf } from './encodedBytes';
-import { columnsOf } from '../../../lib/page/textColumns';
+import { columnsAlong } from '../../../components/cells/page/columns';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { onceAText } from '../../../lib/page/onceAText';
 
@@ -36,7 +36,7 @@ const wrappingWays = onceAText(
               text,
               cut ? [...starts, text.length] : starts,
               columns,
-              widths && ((part: string) => columnsOf(part, widths)),
+              widths && ((part: string) => columnsAlong(part, widths)),
               indent,
             ),
       sizes: starts

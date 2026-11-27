@@ -7,11 +7,32 @@ import { joins } from './joined';
 
 const isHighSurrogate = (code: number) => code >= 0xd800 && code <= 0xdbff;
 
-const isPrintableAscii = (code: number) => code >= 0x20 && code < 0x7f;
+const lineFeed = 0x0a;
+
+const carriageReturn = 0x0d;
+
+const firstBeyondAscii = 0x80;
+
+const isPlainAscii = (code: number) =>
+  code < firstBeyondAscii &&
+  code !== tabCode &&
+  code !== lineFeed &&
+  code !== carriageReturn;
 
 const simple = /^[^\t\uD800-\uDBFF]*$/;
 
 const printable = /^[ -~]*$/;
+
+const plainAscii = /^[^\t\n\r\u0080-\uffff]*$/;
+
+const joinsBeyondPlane = /^(?:\p{M}|[\u{E0020}-\u{E007F}])/u;
+
+function joinsAfter(text: string, at: number): boolean {
+  const next = text.charCodeAt(at + 1);
+  return isHighSurrogate(next)
+    ? joinsBeyondPlane.test(text.slice(at + 1, at + 3))
+    : joins(next);
+}
 
 type Step = (
   at: number,
@@ -26,10 +47,7 @@ function stepsOf(text: string, widths: TextWidths | undefined): Step {
     if (code === tabCode) {
       return { next: at + 1, column: tabStop(column, size) };
     }
-    if (
-      widths === undefined ||
-      (isPrintableAscii(code) && !joins(text.charCodeAt(at + 1)))
-    ) {
+    if (widths === undefined || (isPlainAscii(code) && !joinsAfter(text, at))) {
       return {
         next: at + (isHighSurrogate(code) && at + 1 < text.length ? 2 : 1),
         column: column + 1,
@@ -47,7 +65,7 @@ function stepsOf(text: string, widths: TextWidths | undefined): Step {
 }
 
 const plainFor = (widths: TextWidths | undefined) =>
-  widths === undefined ? simple : printable;
+  widths === undefined ? simple : plainAscii;
 
 export function columnAt(
   text: string,
@@ -70,6 +88,33 @@ export function columnAt(
 
 export function columnsOf(text: string, widths?: TextWidths): number {
   return columnAt(text, text.length, 0, widths);
+}
+
+export function columnsAlong(
+  text: string,
+  widths: TextWidths | undefined,
+): (index: number) => number {
+  if (plainFor(widths).test(text)) {
+    return (index) => index;
+  }
+  const step = stepsOf(text, widths);
+  let at = 0;
+  let column = 0;
+  return (index) => {
+    if (index < at) {
+      at = 0;
+      column = 0;
+    }
+    while (at < index) {
+      const moved = step(at, column);
+      if (moved.next > index) {
+        return column;
+      }
+      at = moved.next;
+      column = moved.column;
+    }
+    return column;
+  };
 }
 
 export const keptColumnsOf = onceAText(

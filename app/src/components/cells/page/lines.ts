@@ -1,7 +1,7 @@
 import type { ColoredSegment } from '../../syntax/page/lineColors';
 import { rowBreaksAt, type RowBreak } from '../../../lib/page/rowBreaks';
 import { tabSizeOf } from '../../../lib/page/tabStops';
-import { columnsOf } from '../../../lib/page/textColumns';
+import { columnsAlong } from './columns';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { wrapIndent, wrapStarts } from '../../../lib/page/wordWrap';
 import type { FindMark } from './marks';
@@ -122,7 +122,7 @@ export function wrappedRows(
         text,
         starts,
         columns,
-        widths && ((part: string) => columnsOf(part, widths)),
+        widths && ((part: string) => columnsAlong(part, widths)),
         indent,
       );
       rows = starts.map((from, part) => ({

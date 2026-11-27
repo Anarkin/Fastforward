@@ -1,7 +1,7 @@
 import { rowWidths, type TabSizeOf } from './fileWidths';
 import type { FindRange } from './find';
 import type { DiffRow } from './rows';
-import { columnsOf } from '../../../lib/page/textColumns';
+import { columnsAlong } from '../../cells/page/columns';
 import { type TextWidths } from '../../../lib/page/textWidths';
 import { codePadding } from './textLayout';
 
@@ -10,7 +10,7 @@ export function textColumn(
   index: number,
   widths?: TextWidths,
 ): number {
-  return columnsOf(text, widths)(index);
+  return columnsAlong(text, widths)(index);
 }
 
 export function widestColumns(
@@ -99,7 +99,7 @@ function textSpan(
   range: FindRange,
   widths: TextWidths,
 ): { start: number; end: number } {
-  const columnAt = columnsOf(text, widths);
+  const columnAt = columnsAlong(text, widths);
   return {
     start: area.origin + columnAt(range.start) * widths.char,
     end: area.origin + columnAt(range.end) * widths.char,

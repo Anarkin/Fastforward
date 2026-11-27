@@ -183,4 +183,20 @@ suite('Unification', () => {
       'tools/editor/page/pointing.ts',
     ]);
   });
+
+  test('counts the columns of a text by one engine of the cells, a tab to its stop and a cluster by its width, rather than by a second engine of the library that counted a character beyond the first plane two columns where the cells drew it in one, the drawing of the cells, the measures of the diff, the wrapping of the library and the index of the rows of the editor stepping through them as they go until they take the engine too', () => {
+    assert.deepStrictEqual(doing(/\btabStop\(/), [
+      'components/cells/page/columns.ts',
+      'components/cells/page/textCells.ts',
+      'components/diff/page/rowMeasures.ts',
+      'lib/page/rowBreaks.ts',
+      'lib/page/tabStops.ts',
+      'lib/page/wordWrap.ts',
+      'tools/editor/page/rowIndex.ts',
+    ]);
+    assert.deepStrictEqual(
+      doing(/\bfunction (?:columnsOf|columnAt|charAtColumn|columnsAlong)\b/),
+      ['components/cells/page/columns.ts'],
+    );
+  });
 });
