@@ -1,3 +1,4 @@
+import { findBindings } from '../../../lib/page/findKeys';
 import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 
@@ -193,16 +194,6 @@ export const editorKeymap = {
     { 'Ctrl+H': true },
     { fields: true },
   ),
-  match: bind(
-    'Searching',
-    strings.actions.match,
-    { Enter: 1, 'Shift+Enter': -1 } as const,
-    typing,
-  ),
-  stopFinding: bind(
-    'Searching',
-    strings.actions.stopFinding,
-    { Escape: true },
-    { fields: true },
-  ),
+  match: findBindings.match,
+  stopFinding: findBindings.stopFinding,
 };

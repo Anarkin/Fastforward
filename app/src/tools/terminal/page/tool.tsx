@@ -1,3 +1,4 @@
+import { findKeyDown } from '../../../lib/page/findKeys';
 import {
   useEffect,
   useEffectEvent,
@@ -16,7 +17,6 @@ import { createTerminalStore } from './store';
 import { pageCursorLook } from '../../../lib/page/cursor';
 import { FloatingSearch } from '../../../lib/page/floatingSearch';
 import { SearchBar } from '../../../lib/page/searchBar';
-import { keyPressed } from '../../../lib/page/shortcuts';
 import { terminalKeymap } from './keymap';
 
 export function TerminalTool({
@@ -156,18 +156,14 @@ export function TerminalTool({
                   view.current?.find(find.query, find.options, step)
                 }
                 onClose={stopFinding}
-                onKeyDown={(event) => {
-                  const step = keyPressed(terminalKeymap.match, event);
-                  if (step !== undefined) {
-                    event.preventDefault();
-                    view.current?.find(find.query, find.options, step);
-                  } else if (
-                    keyPressed(terminalKeymap.stopFinding, event) !== undefined
-                  ) {
-                    event.preventDefault();
-                    stopFinding();
-                  }
-                }}
+                onKeyDown={(event) =>
+                  findKeyDown(
+                    terminalKeymap,
+                    (step) =>
+                      view.current?.find(find.query, find.options, step),
+                    stopFinding,
+                  )(event)
+                }
               />
             </FloatingSearch>
           )}

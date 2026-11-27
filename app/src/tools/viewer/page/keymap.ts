@@ -1,3 +1,4 @@
+import { findBindings } from '../../../lib/page/findKeys';
 import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 
@@ -53,18 +54,8 @@ export const viewerKeymap = {
     { 'Mod+F': true },
     { fields: true },
   ),
-  match: bind(
-    'Searching',
-    strings.actions.match,
-    { Enter: 1, 'Shift+Enter': -1 } as const,
-    { repeats: true, fields: true },
-  ),
-  stopFinding: bind(
-    'Searching',
-    strings.actions.stopFinding,
-    { Escape: true },
-    { fields: true },
-  ),
+  match: findBindings.match,
+  stopFinding: findBindings.stopFinding,
   zoomPdf: bind('Showing', strings.actions.zoomPdf, { 'Mod+Wheel': true }),
   realSize: bind('Showing', strings.actions.realSize, { F: true }),
   version: bind('Showing', strings.actions.chooseVersion, { V: true }),

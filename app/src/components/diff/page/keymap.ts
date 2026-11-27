@@ -1,20 +1,11 @@
+import { findBindings } from '../../../lib/page/findKeys';
 import { bind } from '../../../lib/shared/keymap';
 import { strings } from '../../../lib/shared/strings';
 
 export const diffKeymap = {
   find: bind('Searching', strings.actions.find, { 'Mod+F': true }),
-  match: bind(
-    'Searching',
-    strings.actions.match,
-    { Enter: 1, 'Shift+Enter': -1 },
-    { repeats: true, fields: true },
-  ),
-  stopFinding: bind(
-    'Searching',
-    strings.actions.stopFinding,
-    { Escape: true },
-    { fields: true },
-  ),
+  match: findBindings.match,
+  stopFinding: findBindings.stopFinding,
   change: bind(
     'Diff',
     strings.actions.change,

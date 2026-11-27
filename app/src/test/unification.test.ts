@@ -153,4 +153,13 @@ suite('Unification', () => {
       'lib/page/cursor.ts',
     ]);
   });
+
+  test('binds the keys that step through the matches of a search and close it once, for every search of the app, and takes them in a search box by one handler, rather than in a binding and a handler of each tool', () => {
+    assert.deepStrictEqual(doing(/strings\.actions\.(?:match|stopFinding)\b/), [
+      'lib/page/findKeys.ts',
+    ]);
+    assert.deepStrictEqual(doing(/keyPressed\(\w+Keymap\.match, event\)/), [
+      'tools/editor/page/findBar.tsx',
+    ]);
+  });
 });
