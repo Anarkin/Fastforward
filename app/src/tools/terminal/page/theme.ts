@@ -1,3 +1,8 @@
+import {
+  filled,
+  parsedColor,
+  type Rgba,
+} from '../../../components/cells/page/cellColors';
 import type { ITheme } from '@xterm/xterm';
 
 const themeColors = {
@@ -34,12 +39,14 @@ export function withHiddenCursor(theme: ITheme): ITheme {
   return { ...theme, cursor: theme.background };
 }
 
-export function hexOf(color: string): string | undefined {
-  const channels = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(color);
-  return channels === null
-    ? undefined
-    : `#${channels
-        .slice(1, 4)
-        .map((channel) => Number(channel).toString(16).padStart(2, '0'))
-        .join('')}`;
+const colorFunction = /^(?:rgba?|color)\(/;
+
+export function opaqueHexOf(color: string, under: Rgba): string | undefined {
+  if (!colorFunction.test(color)) {
+    return undefined;
+  }
+  return `#${filled(under, parsedColor(color))
+    .slice(0, 3)
+    .map((channel) => channel.toString(16).padStart(2, '0'))
+    .join('')}`;
 }

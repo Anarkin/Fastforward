@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
-  hexOf,
+  opaqueHexOf,
   terminalTheme,
   withHiddenCursor,
 } from '../../../../../tools/terminal/page/theme';
@@ -32,10 +32,15 @@ suite('Terminal theme', () => {
     );
   });
 
-  test('hands the search the colors of a find match as hex, the form its highlights take, from the colors the page resolves', () => {
+  test('hands the search a see-through color of a find match laid over the ground of the terminal, as the page blends a fill, and a color the page resolves as a color of srgb, rather than the color without its share or no color at all', () => {
     assert.deepStrictEqual(
-      [hexOf('rgb(255, 238, 102)'), hexOf('rgba(0, 0, 0, 1)'), hexOf('red')],
-      ['#ffee66', '#000000', undefined],
+      [
+        opaqueHexOf('rgba(255, 238, 102, 0.5)', [0, 0, 0, 1]),
+        opaqueHexOf('color(srgb 1 0.5 0 / 0.4)', [17, 17, 17, 1]),
+        opaqueHexOf('rgb(255, 238, 102)', [17, 17, 17, 1]),
+        opaqueHexOf('red', [17, 17, 17, 1]),
+      ],
+      ['#807733', '#703d0a', '#ffee66', undefined],
     );
   });
 });

@@ -1,3 +1,4 @@
+import { parsedColor } from '../../../components/cells/page/cellColors';
 import { withoutPasteMarks } from './pasted';
 import type { FitAddon } from '@xterm/addon-fit';
 import type { UnicodeGraphemesAddon } from '@xterm/addon-unicode-graphemes';
@@ -10,7 +11,7 @@ import { rowGlide } from '../../../lib/page/rowScroll';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { notchesOf, type Wheel } from '../../../lib/page/wheelTurns';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
-import { hexOf, withHiddenCursor, terminalTheme } from './theme';
+import { opaqueHexOf, terminalTheme, withHiddenCursor } from './theme';
 import { firstFrom, screenMatches, type ScreenMatch } from './screenFind';
 import { maxMatches } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
@@ -552,10 +553,12 @@ export class TerminalView {
         readonly currentForeground: string;
       }
     | undefined {
-    const resolved = (color: string) => {
+    const computed = (color: string) => {
       this.probe.style.color = color;
-      return hexOf(getComputedStyle(this.probe).color);
+      return getComputedStyle(this.probe).color;
     };
+    const ground = parsedColor(computed('var(--color-terminal-background)'));
+    const resolved = (color: string) => opaqueHexOf(computed(color), ground);
     const background = resolved('var(--color-search-match)');
     const current = resolved('var(--color-search-match-current)');
     const foreground = resolved('var(--color-search-match-foreground)');
