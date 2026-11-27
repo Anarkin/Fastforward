@@ -115,16 +115,18 @@ const looksNow = (page: Page): Promise<TabLooks> =>
     }
     return {
       focus: focused === undefined ? null : pathOf(focused),
-      cursors: inside
+      cursors: [field?.nextElementSibling]
         .filter(
-          (element) =>
-            element.classList.contains('text-cursor') && onScreen(element),
+          (element): element is Element =>
+            element?.classList.contains('text-cursor') === true &&
+            onScreen(element),
         )
         .map((element) => {
           const box = element.getBoundingClientRect();
+          const owner = element.previousElementSibling?.getBoundingClientRect();
           return [
-            Math.round(box.left),
-            Math.round(box.top),
+            Math.round(box.left - (owner?.left ?? 0)),
+            Math.round(box.top - (owner?.top ?? 0)),
             Math.round(box.width),
           ] as const;
         }),
