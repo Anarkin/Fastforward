@@ -174,10 +174,9 @@ function nodeTextOf(
         return { text: typed, segmentsOf: linkSegments(0, linkKind) };
       }
       const title = looks.titles?.get(node.url);
-      const text = title === undefined ? node.url : `${title}\n${node.url}`;
       return {
-        text,
-        segmentsOf: linkSegments(text.length - node.url.length, linkKind),
+        text: title === undefined ? node.url : `${node.url}\n${title}`,
+        segmentsOf: headedSegments(node.url.length + 1, linkKind, undefined),
       };
     }
     case 'group':

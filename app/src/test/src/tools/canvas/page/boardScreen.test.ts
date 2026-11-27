@@ -448,7 +448,7 @@ suite('Canvas screen', () => {
     );
   });
 
-  test('draws a link node as the title of its page over its URL once the title is known, and as its URL alone before, the URL in the color of a link', () => {
+  test('draws a link node as its URL in the color of a link over the title of its page once the title is known, as a file node draws its path over its text, and as its URL alone before', () => {
     const link: BoardNode = {
       id: 'l',
       type: 'link',
@@ -476,12 +476,12 @@ suite('Canvas screen', () => {
     ]);
     const titled = drawn(new Map([[link.url, 'Example A']]));
     assert.deepStrictEqual(screenRows(titled).slice(1, 3), [
-      '│ Example A              │',
       '│ https://example.com/a  │',
+      '│ Example A              │',
     ]);
     assert.deepStrictEqual(segmentKinds(titled), [
-      undefined,
       [{ text: 'https://example.com/a', kind: 'link' }],
+      undefined,
     ]);
   });
 
