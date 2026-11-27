@@ -23,6 +23,7 @@ export interface TextBlock {
   readonly rows: readonly ScreenRow[];
   readonly wrapAt: number | undefined;
   readonly room: number;
+  readonly first?: number | undefined;
   readonly kind?: string | undefined;
   readonly selection?: TextSelection | undefined;
   readonly segmentsOf?: SegmentsOf | undefined;

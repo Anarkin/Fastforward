@@ -53,6 +53,17 @@ const labelled = (label: string): BoardNode => ({
   label,
 });
 
+const labelTypedAt = (head: number) =>
+  screenRows(
+    screenOf({
+      board: { nodes: [labelled('Long plan')], edges: [] },
+      unit,
+      view: { column: 0, row: 0, columns: 12, rows: 3 },
+      widths: { char: 1, of: narrow },
+      typing: { id: 'g', text: 'Long plan', anchor: head, head },
+    }),
+  )[0];
+
 const narrow = (cluster: string) => (/[　-鿿]/.test(cluster) ? 2 : 1);
 
 function screenText(
@@ -337,6 +348,13 @@ suite('Canvas screen', () => {
         (node) => screenText({ nodes: [node] })[0],
       ),
       ['┌─ Plan ─┐', '┌─ Lon… ─┐'],
+    );
+  });
+
+  test('scrolls the label typed into a group sideways to keep the cursor in its border, as a text box does, and shows it whole there while typed', () => {
+    assert.deepStrictEqual(
+      [labelTypedAt(0), labelTypedAt(3), labelTypedAt(6), labelTypedAt(9)],
+      ['┌─ Long ─┐', '┌─ Long ─┐', '┌─ g pl ─┐', '┌─ plan ─┐'],
     );
   });
 

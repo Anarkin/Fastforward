@@ -52,7 +52,7 @@ function typedCellOf(board: Board, drawn: Placed, typing: Typing): CellOf {
     if (layout === undefined || place === undefined) {
       return undefined;
     }
-    const column = layout.area.column + place.column;
+    const column = layout.area.column + place.column - layout.across;
     const row = layout.area.row + place.row - layout.scroll;
     return {
       left: drawn.left + (column - drawn.origin.column) * drawn.cell.width,

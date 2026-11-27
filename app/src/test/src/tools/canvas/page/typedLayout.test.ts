@@ -119,4 +119,31 @@ suite('Canvas typed layout', () => {
     assert.strictEqual(offsetIn(layout, { column: 2, row: 0 }), 3);
     assert.strictEqual(offsetIn(layout, { column: 20, row: 9 }), 14);
   });
+
+  test('takes a cell pressed in a group label scrolled sideways for the place in the text drawn there, as the label scrolls to keep the cursor in its border', () => {
+    const grouped: Board = {
+      nodes: [
+        {
+          id: 'g',
+          type: 'group',
+          x: 0,
+          y: 0,
+          width: 10 * unit.width,
+          height: 3 * unit.height,
+          label: 'Long plan',
+        },
+      ],
+      edges: [],
+    };
+    const layout = typedLayout(grouped, unit, widths, {
+      id: 'g',
+      text: 'Long plan',
+      head: 9,
+    });
+    assert.ok(layout !== undefined);
+    assert.deepStrictEqual(
+      [3, 4, 6].map((column) => offsetIn(layout, { column, row: 0 })),
+      [5, 6, 8],
+    );
+  });
 });

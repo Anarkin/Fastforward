@@ -66,6 +66,15 @@ export function edgeLabelAreaOf(
   };
 }
 
+export const sidewaysOf = (
+  place: Place | undefined,
+  room: number,
+  whole: number,
+): number =>
+  place === undefined
+    ? 0
+    : Math.max(0, place.column - (place.column >= whole ? room : room - 1));
+
 export const scrollOf = (place: Place | undefined, area: Box): number =>
   Math.max(0, (place?.row ?? 0) - (area.rows - 1));
 
@@ -184,6 +193,11 @@ export function paintLine(
   const whole = Math.ceil(columnsOf(line.text, widths));
   const width = Math.min(room, whole);
   const cut = typed === undefined && whole > room && width > 0;
+  const place =
+    typed === undefined
+      ? undefined
+      : placeOf(rows, typed.head, widths, typed.assoc);
+  const first = sidewaysOf(place, room, whole);
   const owner = painter.nextOwner();
   for (let at = column - 1; at <= column + width; at++) {
     painter.clear(at, row);
@@ -196,20 +210,17 @@ export function paintLine(
     rows,
     wrapAt: undefined,
     room: cut ? width - 1 : width,
+    first,
     kind,
     selection: typed === undefined ? undefined : selectionOf(rows, typed),
   });
   if (cut) {
     painter.glyph(column + width - 1, row, ellipsis, 1, kind);
   }
-  const place =
-    typed === undefined
-      ? undefined
-      : placeOf(rows, typed.head, widths, typed.assoc);
-  if (place !== undefined && place.column <= width) {
+  if (place !== undefined && place.column - first <= width) {
     painter.caret({
       start: column,
-      column: column + place.column,
+      column: column + place.column - first,
       row,
       cells: place.cells,
       under: place.under,
@@ -217,7 +228,7 @@ export function paintLine(
   }
 }
 
-function lineWidthOf(text: string, widths: TextWidths): number {
+export function lineWidthOf(text: string, widths: TextWidths): number {
   const [line] = linesOf(text);
   return line === undefined ? 0 : Math.ceil(columnsOf(line.text, widths));
 }
@@ -228,11 +239,13 @@ function seeCell(
   { column, row }: { readonly column: number; readonly row: number },
   text: string,
 ): void {
-  const across = block.column + column - screen.column;
+  const shown = column - (block.first ?? 0);
+  const across = block.column + shown - screen.column;
   const down = row - screen.row;
   const at = down * screen.columns + across;
   if (
-    column < block.room &&
+    shown >= 0 &&
+    shown < block.room &&
     across >= 0 &&
     across < screen.columns &&
     down >= 0 &&

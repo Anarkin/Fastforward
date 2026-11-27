@@ -20,6 +20,7 @@ function ownedParts(
   widths: TextWidths,
 ): RowPart[] {
   const { text } = row.row;
+  const first = block.first ?? 0;
   const parts: RowPart[] = [];
   let start: number | undefined;
   const owned = (column: number) => {
@@ -35,8 +36,10 @@ function ownedParts(
       return;
     }
     const from =
-      start <= row.indent ? row.from : charAt(widths, text, row, start);
-    const to = charAt(widths, text, row, end);
+      start + first <= row.indent
+        ? row.from
+        : charAt(widths, text, row, start + first);
+    const to = charAt(widths, text, row, end + first);
     if (to > from || (parts.length === 0 && from === row.from)) {
       parts.push({ from, to, column: columnIn(widths, text, row, from) });
     }
@@ -64,9 +67,10 @@ export function drawTexts(
     const left = Math.round(
       base.left + (block.column - screen.column) * advance,
     );
+    const first = block.first ?? 0;
     const drawing: TextDrawing = {
       ...base,
-      first: 0,
+      first,
       left,
       limit: block.wrapAt ?? Infinity,
     };
@@ -81,7 +85,7 @@ export function drawTexts(
       marksOf: () => noMarks,
       showWhitespace: base.blanks,
       widths: base.widths,
-      first: 0,
+      first,
       selection: block.selection,
       left,
     };

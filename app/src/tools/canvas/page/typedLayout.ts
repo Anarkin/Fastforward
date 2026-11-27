@@ -7,7 +7,9 @@ import { routeOf, type Cell } from './routes';
 import {
   edgeLabelAreaOf,
   labelAreaOf,
+  lineWidthOf,
   scrollOf,
+  sidewaysOf,
   textAreaOf,
   type TextArea,
 } from './textBlocks';
@@ -16,6 +18,7 @@ export interface TypedLayout {
   readonly area: TextArea;
   readonly rows: readonly ScreenRow[];
   readonly scroll: number;
+  readonly across: number;
   readonly widths: TextWidths;
 }
 
@@ -42,10 +45,15 @@ export function typedLayout(
   const box = boxOf(node, unit);
   const area = node.type === 'group' ? labelAreaOf(box) : textAreaOf(box);
   const rows = rowsOf(text, area.wrapAt, widths);
+  const place = placeOf(rows, head, widths, assoc);
   return {
     area,
     rows,
-    scroll: scrollOf(placeOf(rows, head, widths, assoc), area),
+    scroll: scrollOf(place, area),
+    across:
+      node.type === 'group'
+        ? sidewaysOf(place, area.room, lineWidthOf(text, widths))
+        : 0,
     widths,
   };
 }
@@ -74,16 +82,25 @@ function edgeLayout(
         );
   return area === undefined
     ? undefined
-    : { area, rows: rowsOf(text, undefined, widths), scroll: 0, widths };
+    : {
+        area,
+        rows: rowsOf(text, undefined, widths),
+        scroll: 0,
+        across: 0,
+        widths,
+      };
 }
 
 export function offsetIn(
-  { area, rows, scroll, widths }: TypedLayout,
+  { area, rows, scroll, across, widths }: TypedLayout,
   at: Cell,
 ): number {
   return offsetAt(
     rows,
-    { row: at.row - area.row + scroll, column: at.column - area.column },
+    {
+      row: at.row - area.row + scroll,
+      column: at.column - area.column + across,
+    },
     widths,
   );
 }
