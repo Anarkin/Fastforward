@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import type { ToWebview } from '../../../../../shell/shared/protocol';
 import type { Page, Tab } from '../../../../../shell/main/toolContract';
@@ -44,6 +45,16 @@ function canvas(
   const watched = new Map<string, () => void>();
   const titled: string[] = [];
   const tool = new CanvasTool({
+    files: {
+      isFolder: () => Promise.resolve(false),
+      readHead: (name, bytes) => {
+        const text = files[name];
+        return text === undefined
+          ? Promise.reject(Object.assign(new Error('gone'), { code: 'ENOENT' }))
+          : Promise.resolve(Buffer.from(text).subarray(0, bytes));
+      },
+      codePage: () => Promise.resolve('utf-8'),
+    },
     titleOf: (url) => {
       titled.push(url);
       return Promise.resolve(
@@ -302,6 +313,44 @@ suite('Canvas tool', () => {
     await tool.receive(page, { type: 'save', tab: '9' });
     await tool.receive(page, { type: 'save', tab: '9' });
     assert.deepStrictEqual(saved, [[made, '{}']]);
+  });
+
+  test('tells the page where the file of each file node is and the head of its text, read again each time its tab shows', async () => {
+    const note = path.resolve('/boards/note.md');
+    const files = {
+      [file]: JSON.stringify({
+        nodes: [
+          {
+            id: 'n',
+            type: 'file',
+            file: 'note.md',
+            x: 0,
+            y: 0,
+            width: 70,
+            height: 36,
+          },
+        ],
+      }),
+      [note]: 'Hello\n',
+    };
+    const { tool, page } = canvas(files);
+    const told = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return page.messages.filter((each) => each.type === 'files').at(-1);
+    };
+    await tool.show(page, tab);
+    assert.deepStrictEqual(await told(), {
+      type: 'files',
+      tab: '7',
+      files: { 'note.md': { path: note, text: 'Hello\n' } },
+    });
+    files[note] = 'Changed\n';
+    await tool.show(page, tab);
+    assert.deepStrictEqual(await told(), {
+      type: 'files',
+      tab: '7',
+      files: { 'note.md': { path: note, text: 'Changed\n' } },
+    });
   });
 
   test('tells the page the title of the page each link node points to, read once a page while the app runs, and only from the web', async () => {

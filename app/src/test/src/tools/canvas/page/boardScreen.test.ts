@@ -339,6 +339,53 @@ suite('Canvas screen', () => {
     ]);
   });
 
+  test('draws a file node as its path in the color of a link over the head of its text, colored as the language of its name, and as its path alone while its text is not known', () => {
+    const file: BoardNode = {
+      id: 'f',
+      type: 'file',
+      file: 'code/a.ts',
+      x: 0,
+      y: 0,
+      width: 26 * unit.width,
+      height: 5 * unit.height,
+    };
+    const asked: string[] = [];
+    const drawn = (files?: Record<string, { path: string; text?: string }>) =>
+      screenOf({
+        board: { nodes: [file], edges: [] },
+        unit,
+        view: { column: 0, row: 0, columns: 28, rows: 5 },
+        widths: { char: 1, of: narrow },
+        files,
+        colorsOf: (id, words, language) => {
+          asked.push(`${id} ${language} ${words}`);
+          return [[{ start: 0, end: 5, kind: 'keyword' }], []];
+        },
+      });
+    const unread = drawn();
+    assert.deepStrictEqual(screenRows(unread).slice(1, 3), [
+      '│ code/a.ts              │',
+      '│                        │',
+    ]);
+    assert.deepStrictEqual(segmentKinds(unread), [
+      [{ text: 'code/a.ts', kind: 'link' }],
+    ]);
+    const read = drawn({
+      'code/a.ts': { path: '/vault/code/a.ts', text: 'const a = 1;\nnext' },
+    });
+    assert.deepStrictEqual(screenRows(read).slice(1, 4), [
+      '│ code/a.ts              │',
+      '│ const a = 1;           │',
+      '│ next                   │',
+    ]);
+    assert.deepStrictEqual(segmentKinds(read), [
+      [{ text: 'code/a.ts', kind: 'link' }],
+      [{ text: 'const', kind: 'keyword' }, { text: ' a = 1;' }],
+      [{ text: 'next' }],
+    ]);
+    assert.deepStrictEqual(asked, ['f typescript const a = 1;\nnext']);
+  });
+
   test('draws a node smaller than its borders as a line or a small square, so none is lost', () => {
     assert.deepStrictEqual(
       screenText(

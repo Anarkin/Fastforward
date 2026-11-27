@@ -1,3 +1,4 @@
+import type { NodeFile } from '../shared/protocol';
 import { groundUnder } from '../../../components/cells/page/cellLook';
 import type { CellSurface } from '../../../components/cells/page/cellSurface';
 import { HeldSurface } from '../../../components/cells/page/heldSurface';
@@ -117,6 +118,7 @@ export interface Shown {
   readonly whitespace?: boolean;
   readonly colorsOf?: ColorsOf | undefined;
   readonly titles?: ReadonlyMap<string, string> | undefined;
+  readonly files?: Readonly<Record<string, NodeFile>> | undefined;
 }
 
 interface CellPlace {
@@ -251,6 +253,7 @@ export class BoardSurface {
       marks: shown.marks,
       colorsOf: shown.colorsOf,
       titles: shown.titles,
+      files: shown.files,
     });
     cells.frame.reset();
     cells.under.reset();

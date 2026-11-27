@@ -1,8 +1,15 @@
 import { useBinding } from '../../../lib/page/shortcuts';
 import { nextEnds } from './arrows';
 import { canvasKeymap } from './keymap';
-import { openLink } from './links';
-import { boardShown, selectedShown, typingShown, type Placing } from './state';
+import { useShellActions } from '../../../shell/page/store';
+import { openNode, openedOf } from './links';
+import {
+  boardShown,
+  filesShown,
+  selectedShown,
+  typingShown,
+  type Placing,
+} from './state';
 import { useCanvas, useCanvasActions } from './store';
 
 export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
@@ -11,6 +18,8 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const selected = useCanvas(selectedShown);
   const placing = useCanvas((state) => state.placing);
   const typing = useCanvas(typingShown);
+  const files = useCanvas(filesShown);
+  const { followPath } = useShellActions();
   const { select, place, edit, undo, redo, save, startTyping, stopTyping } =
     useCanvasActions();
   const shownTab = tab !== undefined && board !== undefined;
@@ -18,7 +27,7 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const [only] = selected.length === 1 ? selected : [];
   const onlyNode = board?.nodes.find((node) => node.id === only);
   const typeable = onlyNode?.type === 'text' || onlyNode?.type === 'group';
-  const linked = onlyNode?.type === 'link' ? onlyNode.url : undefined;
+  const opened = openedOf(onlyNode, files);
 
   useBinding(canvasKeymap.placeText, () => startPlacing('text'), shownTab);
   useBinding(canvasKeymap.placeGroup, () => startPlacing('group'), shownTab);
@@ -95,8 +104,8 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   useBinding(canvasKeymap.redo, () => settled(redo), shownTab);
   useBinding(canvasKeymap.save, () => tab !== undefined && save(tab), shownTab);
   useBinding(
-    canvasKeymap.openLink,
-    () => linked !== undefined && openLink(linked),
-    calm && placing === undefined && linked !== undefined,
+    canvasKeymap.openNode,
+    () => opened !== undefined && openNode(opened, followPath),
+    calm && placing === undefined && opened !== undefined,
   );
 }

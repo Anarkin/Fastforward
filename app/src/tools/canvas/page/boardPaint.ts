@@ -1,3 +1,4 @@
+import type { NodeFile } from '../shared/protocol';
 import type { NodeColors } from './nodeColors';
 import type { CellTable } from '../../../lib/page/cellTable';
 import type { Board } from '../shared/board';
@@ -29,6 +30,7 @@ interface Painted {
   readonly whitespace: boolean;
   readonly colors?: NodeColors | undefined;
   readonly titles?: ReadonlyMap<string, string> | undefined;
+  readonly files?: Readonly<Record<string, NodeFile>> | undefined;
 }
 
 const noBoxes = new Map();
@@ -49,6 +51,7 @@ export function paint(
     whitespace,
     colors,
     titles,
+    files,
   }: Painted,
 ): Drawn | undefined {
   const ghost =
@@ -75,8 +78,11 @@ export function paint(
     whitespace,
     marks: mark === undefined ? [] : [mark.cell],
     colorsOf:
-      colors === undefined ? undefined : (id, text) => colors.of(id, text),
+      colors === undefined
+        ? undefined
+        : (id, text, language) => colors.of(id, text, language),
     titles,
+    files,
   });
 }
 

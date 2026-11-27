@@ -1,3 +1,4 @@
+import type { NodeFile } from '../shared/protocol';
 import type { KeptTyped } from '../../../lib/page/viewFocus';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Board } from '../shared/board';
@@ -35,6 +36,7 @@ export interface CanvasSource {
   readonly typings: ReadonlyMap<string, Typing>;
   readonly colorings: ReadonlyMap<string, Coloring>;
   readonly titles: ReadonlyMap<string, string>;
+  readonly files: ReadonlyMap<string, Readonly<Record<string, NodeFile>>>;
 }
 
 export interface CanvasActions {
@@ -80,6 +82,7 @@ export const canvasDefaults: CanvasSource = {
   typings: new Map(),
   colorings: new Map(),
   titles: new Map(),
+  files: new Map(),
 };
 
 export const coloringShown = (state: CanvasSource): Coloring | undefined =>
@@ -90,6 +93,11 @@ export const originShown = (state: CanvasSource): Origin | undefined =>
 
 export const boardShown = (state: CanvasSource): BoardShown | undefined =>
   state.tab === undefined ? undefined : state.boards.get(state.tab);
+
+export const filesShown = (
+  state: CanvasSource,
+): Readonly<Record<string, NodeFile>> | undefined =>
+  state.tab === undefined ? undefined : state.files.get(state.tab);
 
 export const typingShown = (state: CanvasSource): Typing | undefined =>
   state.tab === undefined ? undefined : state.typings.get(state.tab);

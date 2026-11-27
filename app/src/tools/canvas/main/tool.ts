@@ -16,6 +16,7 @@ import {
 import { viewVersion, type CanvasToHost } from '../shared/protocol';
 import { EditedBoard } from './edited';
 import { editOf } from './edits';
+import { nodeFilesOf, type FileAccess } from './nodeFiles';
 import { isWebLink } from './pageTitles';
 import { post } from './post';
 import { boardOf } from './reading';
@@ -28,6 +29,7 @@ export interface CanvasAccess {
   readonly newId?: () => string;
   readonly watch?: (file: string, onChange: () => void) => () => void;
   readonly titleOf?: (url: string) => Promise<string | undefined>;
+  readonly files?: FileAccess;
 }
 
 export const maxBoardBytes = 50 * 1024 * 1024;
@@ -87,7 +89,7 @@ export class CanvasTool implements Tool<'canvas'> {
     const kept = this.held.get(tab.id);
     if (kept?.file === file && kept.board.changed()) {
       this.postBoard(page, tab.id);
-      this.postTitles(page, tab.id);
+      this.postNodes(page, tab.id);
       return;
     }
     const read = await this.read(file);
@@ -101,7 +103,7 @@ export class CanvasTool implements Tool<'canvas'> {
     }
     this.held.set(tab.id, read.held);
     this.postBoard(page, tab.id);
-    this.postTitles(page, tab.id);
+    this.postNodes(page, tab.id);
     if (read.skipped > 0 && !this.toldSkipped.has(tab.id)) {
       this.toldSkipped.add(tab.id);
       this.shell.notice(page, {
@@ -162,6 +164,24 @@ export class CanvasTool implements Tool<'canvas'> {
       ...(held.board.changed() && { changed: true }),
       ...(made !== undefined && { made }),
     });
+  }
+
+  private postNodes(page: Page, tab: string): void {
+    this.postTitles(page, tab);
+    void this.postFiles(page, tab);
+  }
+
+  private async postFiles(page: Page, tab: string): Promise<void> {
+    const held = this.held.get(tab);
+    const read = held?.board.read();
+    const access = this.access.files;
+    if (held === undefined || access === undefined || read?.kind !== 'board') {
+      return;
+    }
+    const files = await nodeFilesOf(held.file, read.board, access);
+    if (this.held.get(tab) === held && Object.keys(files).length > 0) {
+      post(page, { type: 'files', tab, files });
+    }
   }
 
   private postTitles(page: Page, tab: string): void {
@@ -232,7 +252,7 @@ export class CanvasTool implements Tool<'canvas'> {
     this.held.set(tab, read.held);
     for (const page of pages) {
       this.postBoard(page, tab);
-      this.postTitles(page, tab);
+      this.postNodes(page, tab);
     }
   }
 

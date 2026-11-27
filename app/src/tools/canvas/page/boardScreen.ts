@@ -1,11 +1,15 @@
+import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
+import { languageOf } from '../../../lib/page/languages';
+import type { NodeFile } from '../shared/protocol';
 import type { LineRanges } from '../../../components/syntax/page/engine';
 import type { Board, BoardEdge, BoardNode } from '../shared/board';
 import type { TextWidths } from '../../../lib/page/textWidths';
 import { boxOf, type Box, type Unit } from './grid';
 import {
   labelAreaOf,
+  coloredSegments,
+  headedSegments,
   linkSegments,
-  markdownSegments,
   lineWidthOf,
   paintLine,
   paintText,
@@ -58,11 +62,16 @@ export interface Drawn {
   readonly marks?: readonly Cell[];
   readonly colorsOf?: ColorsOf | undefined;
   readonly titles?: ReadonlyMap<string, string> | undefined;
+  readonly files?: Readonly<Record<string, NodeFile>> | undefined;
 }
 
-type NodeLooks = Pick<Drawn, 'colorsOf' | 'titles'>;
+type NodeLooks = Pick<Drawn, 'colorsOf' | 'titles' | 'files'>;
 
-export type ColorsOf = (id: string, text: string) => LineRanges | undefined;
+export type ColorsOf = (
+  id: string,
+  text: string,
+  language: string,
+) => LineRanges | undefined;
 
 export interface TypedNode {
   readonly id: string;
@@ -118,18 +127,58 @@ function border(
   }
 }
 
-function contentOf(node: BoardNode, titles: NodeLooks['titles']): string {
+interface NodeText {
+  readonly text: string;
+  readonly segmentsOf?: SegmentsOf | undefined;
+}
+
+function fileTextOf(
+  node: Extract<BoardNode, { type: 'file' }>,
+  { colorsOf, files }: NodeLooks,
+): NodeText {
+  const head = node.file + (node.subpath ?? '');
+  const shown = files?.[node.file];
+  if (shown?.text === undefined) {
+    return { text: head, segmentsOf: linkSegments(0, linkKind) };
+  }
+  const language = languageOf(shown.path);
+  const colors =
+    language === undefined
+      ? undefined
+      : colorsOf?.(node.id, shown.text, language);
+  return {
+    text: `${head}\n${shown.text}`,
+    segmentsOf: headedSegments(
+      head.length + 1,
+      linkKind,
+      colors && coloredSegments(shown.text, colors),
+    ),
+  };
+}
+
+function nodeTextOf(
+  node: BoardNode,
+  looks: NodeLooks,
+  typed: string | undefined,
+): NodeText {
   switch (node.type) {
-    case 'text':
-      return node.text;
+    case 'text': {
+      const text = typed ?? node.text;
+      const colors = looks.colorsOf?.(node.id, text, 'markdown');
+      return { text, segmentsOf: colors && coloredSegments(text, colors) };
+    }
     case 'file':
-      return node.file + (node.subpath ?? '');
+      return fileTextOf(node, looks);
     case 'link': {
-      const title = titles?.get(node.url);
-      return title === undefined ? node.url : `${title}\n${node.url}`;
+      const title = looks.titles?.get(node.url);
+      const text = title === undefined ? node.url : `${title}\n${node.url}`;
+      return {
+        text,
+        segmentsOf: linkSegments(text.length - node.url.length, linkKind),
+      };
     }
     case 'group':
-      return node.label ?? '';
+      return { text: typed ?? node.label ?? '' };
     default:
       return node satisfies never;
   }
@@ -142,7 +191,7 @@ function paintNode(
   selected: boolean,
   widths: TextWidths,
   typing: TypedNode | undefined,
-  { colorsOf, titles }: NodeLooks,
+  looks: NodeLooks,
 ): void {
   const kind = colorKind(node.color);
   const weight = selected ? doubleShift : 0;
@@ -179,18 +228,12 @@ function paintNode(
     }
   }
   border(painter, box, weight, kind);
-  const text = typed?.text ?? contentOf(node, titles);
-  const colors = node.type === 'text' ? colorsOf?.(node.id, text) : undefined;
   paintText(painter, {
     owner,
     area: textAreaOf(box),
-    text,
     widths,
     typed,
-    segmentsOf:
-      node.type === 'link'
-        ? linkSegments(text.length - node.url.length, linkKind)
-        : colors && markdownSegments(text, colors),
+    ...nodeTextOf(node, looks, typed?.text),
   });
 }
 
@@ -333,6 +376,7 @@ export function screenOf({
   marks = [],
   colorsOf,
   titles,
+  files,
 }: Drawn): Screen {
   const painter = new Painter(emptyScreen(view));
   const boxes = new Map(
@@ -358,6 +402,7 @@ export function screenOf({
       paintNode(painter, node, box, selected.has(node.id), widths, typing, {
         colorsOf,
         titles,
+        files,
       });
     }
   };

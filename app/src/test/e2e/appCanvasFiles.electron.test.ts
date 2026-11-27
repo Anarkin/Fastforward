@@ -42,6 +42,7 @@ suite('App canvas files', () => {
     const profile = path.join(folder, 'profile');
     fs.mkdirSync(profile);
     const board = path.join(folder, 'notes.canvas');
+    fs.writeFileSync(path.join(folder, 'note.md'), '# Note\nbody\n');
     fs.writeFileSync(
       board,
       JSON.stringify({
@@ -61,6 +62,15 @@ suite('App canvas files', () => {
             url: 'https://example.com/linked',
             x: 0,
             y: 108,
+            width: 210,
+            height: 72,
+          },
+          {
+            id: 'filed',
+            type: 'file',
+            file: 'note.md',
+            x: 0,
+            y: 216,
             width: 210,
             height: 72,
           },
@@ -134,6 +144,30 @@ suite('App canvas files', () => {
           'https://example.com/linked',
         ]),
     });
+  });
+
+  test('draws a file node as its path over the head of its text, colored as the language of its name, and opens the file in a viewer tab on Enter once selected', async () => {
+    await untilSettled(
+      async () =>
+        JSON.stringify([await kindsOf('note.md'), await kindsOf('# Note')]),
+      'the file drawn',
+      {
+        accepted: (kinds) => {
+          const [shownPath, heading]: unknown[] = JSON.parse(kinds);
+          return (
+            JSON.stringify(shownPath) === JSON.stringify(['link']) &&
+            Array.isArray(heading) &&
+            heading.length > 0
+          );
+        },
+      },
+    );
+    const inside = await pointAt({ column: 4, row: 13 });
+    await page.mouse.click(inside.x, inside.y);
+    await page.keyboard.press('Enter');
+    await page
+      .locator('.tabs .tab.active .tab-name', { hasText: 'note.md' })
+      .waitFor();
   });
 
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {

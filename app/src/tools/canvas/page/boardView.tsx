@@ -19,6 +19,7 @@ import { fileBox, ghostId, placedSizes } from './placing';
 import type { Cell } from './routes';
 import {
   boardShown,
+  filesShown,
   originShown,
   selectedShown,
   typingShown,
@@ -42,7 +43,7 @@ import { inserted, movedTo, selectedText } from './typing';
 import { markAt } from './wiring';
 import { boxOf } from './grid';
 import { useBoardKeys } from './boardKeys';
-import { openLink } from './links';
+import { openNode, openedOf } from './links';
 
 interface Panning {
   readonly pointer: number;
@@ -60,6 +61,7 @@ export function BoardView() {
   const placing = useCanvas((state) => state.placing);
   const typing = useCanvas(typingShown);
   const titles = useCanvas((state) => state.titles);
+  const files = useCanvas(filesShown);
   const scrolling = useShell((state) => state.scrolling);
   const whitespace = useShell((state) => state.textView.showWhitespace);
   const {
@@ -74,7 +76,7 @@ export function BoardView() {
     stopTyping,
     askColor,
   } = useCanvasActions();
-  const { showMenu } = useShellActions();
+  const { showMenu, followPath } = useShellActions();
   const table = useCellTable();
   const body = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -146,6 +148,7 @@ export function BoardView() {
         whitespace,
         colors: colors.current,
         titles,
+        files,
       });
       placeContext(
         board,
@@ -217,6 +220,7 @@ export function BoardView() {
         whitespace,
         colors: colors.current,
         titles,
+        files,
       });
       placeContext(
         board,
@@ -234,6 +238,7 @@ export function BoardView() {
     typing,
     whitespace,
     titles,
+    files,
     placeContext,
   ]);
 
@@ -565,8 +570,9 @@ export function BoardView() {
       hit.kind === 'node'
         ? board.nodes.find((each) => each.id === hit.id)
         : undefined;
-    if (node?.type === 'link' && whole === 'word') {
-      openLink(node.url);
+    const opened = openedOf(node, files);
+    if (opened !== undefined && whole === 'word') {
+      openNode(opened, followPath);
       return;
     }
     const onLabel =

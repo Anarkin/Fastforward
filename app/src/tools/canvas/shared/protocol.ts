@@ -70,6 +70,11 @@ export type CanvasToHost =
   | { readonly type: 'redo'; readonly tab: string }
   | { readonly type: 'save'; readonly tab: string };
 
+export interface NodeFile {
+  readonly path: string;
+  readonly text?: string;
+}
+
 export type CanvasToWebview =
   | { readonly type: 'show'; readonly tab: string; readonly file: string }
   | { readonly type: 'hide' }
@@ -82,6 +87,11 @@ export type CanvasToWebview =
       readonly error?: Sentence;
       readonly changed?: true;
       readonly made?: string;
+    }
+  | {
+      readonly type: 'files';
+      readonly tab: string;
+      readonly files: Readonly<Record<string, NodeFile>>;
     }
   | {
       readonly type: 'titles';

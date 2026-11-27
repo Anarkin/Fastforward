@@ -20,8 +20,8 @@ function colored() {
     () => {
       arrivals++;
     },
-    (text) => {
-      asked.push(text);
+    (language, text) => {
+      asked.push(`${language}: ${text}`);
       return new Promise((resolve) => answers.set(text, resolve));
     },
   );
@@ -35,21 +35,32 @@ function colored() {
 suite('Colors of the text of a canvas', () => {
   test('colors the text of a node as Markdown once, asking the colorer for a text only once however often it is drawn, and draws it again once the colors arrive', async () => {
     const { colors, asked, answer, arrivals } = colored();
-    assert.strictEqual(colors.of('a', '# Title\n**ok**'), undefined);
-    assert.strictEqual(colors.of('a', '# Title\n**ok**'), undefined);
+    assert.strictEqual(
+      colors.of('a', '# Title\n**ok**', 'markdown'),
+      undefined,
+    );
+    assert.strictEqual(
+      colors.of('a', '# Title\n**ok**', 'markdown'),
+      undefined,
+    );
     await answer('# Title\n**ok**', heading);
     assert.deepStrictEqual(
-      [asked, arrivals(), colors.of('a', '# Title\n**ok**')],
-      [['# Title\n**ok**'], 1, heading],
+      [asked, arrivals(), colors.of('a', '# Title\n**ok**', 'markdown')],
+      [['markdown: # Title\n**ok**'], 1, heading],
     );
+    assert.strictEqual(colors.of('a', '# Title\n**ok**', 'python'), undefined);
+    assert.deepStrictEqual(asked, [
+      'markdown: # Title\n**ok**',
+      'python: # Title\n**ok**',
+    ]);
   });
 
   test('keeps the colors of the lines of a node that stay as they were while the colors of its text typed anew are on their way, so typing does not blink the colors of the rest away', async () => {
     const { colors, answer } = colored();
-    colors.of('a', '# Title\n**ok**');
+    colors.of('a', '# Title\n**ok**', 'markdown');
     await answer('# Title\n**ok**', heading);
-    colors.of('a', '# Title\n**ok**');
-    assert.deepStrictEqual(colors.of('a', '# Title\n**ok** more'), [
+    colors.of('a', '# Title\n**ok**', 'markdown');
+    assert.deepStrictEqual(colors.of('a', '# Title\n**ok** more', 'markdown'), [
       heading[0],
       [],
     ]);
@@ -70,8 +81,10 @@ suite('Colors of the text of a canvas', () => {
       unit: { width: 7, height: 18 },
       view: { column: 0, row: 0, columns: 24, rows: 6 },
       widths: { char: 1, of: () => 1 },
-      colorsOf: (id, text) =>
-        id === 'a' && text === node.text ? heading : undefined,
+      colorsOf: (id, text, language) =>
+        id === 'a' && text === node.text && language === 'markdown'
+          ? heading
+          : undefined,
     });
     const [block] = screen.texts;
     assert.deepStrictEqual(

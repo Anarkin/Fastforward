@@ -6,6 +6,7 @@ const mostKept = 500;
 const lineBreak = '\n';
 
 interface Colored {
+  readonly language: string;
   readonly text: string;
   readonly lines: LineRanges;
 }
@@ -18,43 +19,48 @@ function keptLines(before: Colored, text: string): LineRanges {
 }
 
 export class NodeColors {
-  private readonly colored = new Map<string, LineRanges>();
-  private readonly asked = new Set<string>();
+  private readonly colored = new Map<string, Map<string, LineRanges>>();
+  private readonly asked = new Map<string, Set<string>>();
   private readonly last = new Map<string, Colored>();
+  private kept = 0;
 
   constructor(
     private readonly arrived: () => void,
     private readonly color: (
+      language: string,
       text: string,
-    ) => Promise<LineRanges | undefined> = (text) =>
-      colorCode('markdown', text),
+    ) => Promise<LineRanges | undefined> = colorCode,
   ) {}
 
-  of(id: string, text: string): LineRanges | undefined {
-    const found = this.colored.get(text);
+  of(id: string, text: string, language: string): LineRanges | undefined {
+    const found = this.colored.get(language)?.get(text);
     if (found !== undefined) {
-      this.last.set(id, { text, lines: found });
+      this.last.set(id, { language, text, lines: found });
       return found;
     }
-    this.ask(text);
+    this.ask(language, text);
     const before = this.last.get(id);
-    return before === undefined ? undefined : keptLines(before, text);
+    return before?.language === language ? keptLines(before, text) : undefined;
   }
 
-  private ask(text: string): void {
-    if (this.asked.has(text)) {
+  private ask(language: string, text: string): void {
+    const asking = this.asked.get(language) ?? new Set<string>();
+    if (asking.has(text)) {
       return;
     }
-    this.asked.add(text);
-    void this.color(text).then((lines) => {
-      this.asked.delete(text);
+    this.asked.set(language, asking.add(text));
+    void this.color(language, text).then((lines) => {
+      asking.delete(text);
       if (lines === undefined) {
         return;
       }
-      if (this.colored.size >= mostKept) {
+      if (this.kept >= mostKept) {
         this.colored.clear();
+        this.kept = 0;
       }
-      this.colored.set(text, lines);
+      const known = this.colored.get(language) ?? new Map<string, LineRanges>();
+      this.colored.set(language, known.set(text, lines));
+      this.kept += 1;
       this.arrived();
     });
   }

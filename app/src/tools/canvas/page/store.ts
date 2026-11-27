@@ -160,6 +160,11 @@ export function createCanvasStore(
           case 'hide':
             set({ ...hidden, placing: undefined });
             break;
+          case 'files':
+            set((state) => ({
+              files: new Map(state.files).set(message.tab, message.files),
+            }));
+            break;
           case 'titles':
             set((state) => ({
               titles: new Map([
@@ -171,7 +176,12 @@ export function createCanvasStore(
           case 'closed': {
             const boards = new Map(get().boards);
             boards.delete(message.tab);
-            set(get().tab === message.tab ? { ...hidden, boards } : { boards });
+            const files = without(get().files, message.tab);
+            set(
+              get().tab === message.tab
+                ? { ...hidden, boards, files }
+                : { boards, files },
+            );
             tabs.closed(message.tab);
             break;
           }

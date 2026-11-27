@@ -63,7 +63,7 @@ function selectionOf(
     : { anchor: from, focus: to };
 }
 
-export function markdownSegments(text: string, colors: LineRanges): SegmentsOf {
+export function coloredSegments(text: string, colors: LineRanges): SegmentsOf {
   const byStart = new Map<number, readonly ColoredSegment[]>();
   let start = 0;
   for (const [at, line] of text.split('\n').entries()) {
@@ -77,6 +77,13 @@ export const linkSegments =
   (from: number, kind: string): SegmentsOf =>
   (line) =>
     line.start >= from ? [{ text: line.text, kind }] : undefined;
+
+export const headedSegments =
+  (bodyStart: number, kind: string, body: SegmentsOf | undefined): SegmentsOf =>
+  (line) =>
+    line.start < bodyStart
+      ? [{ text: line.text, kind }]
+      : body?.({ ...line, start: line.start - bodyStart });
 
 export function paintText(
   painter: Painter,
