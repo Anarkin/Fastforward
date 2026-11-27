@@ -143,3 +143,21 @@ export function withTabSize(
   }
   return made;
 }
+
+let measuring: OffscreenCanvasRenderingContext2D | null | undefined;
+let measuringFont = '';
+
+export function metricsIn(font: string, text: string): TextMetrics | undefined {
+  measuring ??=
+    typeof OffscreenCanvas === 'undefined'
+      ? null
+      : new OffscreenCanvas(1, 1).getContext('2d');
+  if (measuring === null) {
+    return undefined;
+  }
+  if (measuringFont !== font) {
+    measuring.font = font;
+    measuringFont = font;
+  }
+  return measuring.measureText(text);
+}

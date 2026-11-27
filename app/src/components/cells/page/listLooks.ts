@@ -1,4 +1,5 @@
 import { scratchRange } from '../../../lib/page/scratchRange';
+import { metricsIn } from '../../../lib/page/textWidths';
 
 export function probed(host: Element, html: string): HTMLDivElement {
   const probe = document.createElement('div');
@@ -12,22 +13,17 @@ export function probed(host: Element, html: string): HTMLDivElement {
 export const shapedSample =
   'The quick brown fox jumps over the lazy dog, 0123456789 times';
 
-let measuring: OffscreenCanvasRenderingContext2D | null | undefined;
-
 export function textScaleOf(sample: HTMLElement, scale: number): number {
-  measuring ??= new OffscreenCanvas(1, 1).getContext('2d');
-  if (measuring === null || scale === 1) {
+  if (scale === 1) {
     return 1;
   }
   const style = getComputedStyle(sample);
   const size = parseFloat(style.fontSize);
-  const widthAt = (pixels: number) => {
-    if (measuring === null || measuring === undefined) {
-      return 0;
-    }
-    measuring.font = `${style.fontWeight} ${pixels}px ${style.fontFamily}`;
-    return measuring.measureText(shapedSample).width;
-  };
+  const widthAt = (pixels: number) =>
+    metricsIn(
+      `${style.fontWeight} ${pixels}px ${style.fontFamily}`,
+      shapedSample,
+    )?.width ?? 0;
   const range = scratchRange();
   range.selectNodeContents(sample);
   const laid = range.getBoundingClientRect().width;

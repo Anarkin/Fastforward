@@ -1,3 +1,4 @@
+import { metricsIn } from '../../../lib/page/textWidths';
 import { shapeKey, type BubbleLook } from './bubbleLooks';
 
 function pixels(value: string | undefined): number {
@@ -5,8 +6,6 @@ function pixels(value: string | undefined): number {
 }
 
 const measuredTexts = new Map<string, Map<string, number>>();
-
-let canvas: OffscreenCanvasRenderingContext2D | null | undefined;
 
 function textMeasure(probe: Element): (text: string) => number {
   const style = probe.ownerDocument.defaultView?.getComputedStyle(probe);
@@ -18,22 +17,11 @@ function textMeasure(probe: Element): (text: string) => number {
     known = new Map();
     measuredTexts.set(key, known);
   }
-  canvas ??=
-    typeof OffscreenCanvas === 'undefined'
-      ? null
-      : new OffscreenCanvas(1, 1).getContext('2d', {
-          willReadFrequently: true,
-        });
-  const context = canvas;
-  if (context === null) {
-    return () => 0;
-  }
-  context.font = font;
   const widths = known;
   return (text) => {
     let width = widths.get(text);
     if (width === undefined) {
-      width = context.measureText(text).width;
+      width = metricsIn(font, text)?.width ?? 0;
       widths.set(text, width);
     }
     return width;

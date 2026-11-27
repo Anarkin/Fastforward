@@ -53,22 +53,13 @@ suite('Capabilities', () => {
     ]);
   });
 
-  test('measures text only by the widths of the library and the runs of the cells, so every part agrees on how wide a text is, the terminal alone measuring the cell xterm.js lays its grid on', () => {
-    heldBy(
-      /\.measureText\(/,
-      [
-        'components/cells/page/glyphAtlas.ts',
-        'components/cells/page/listLooks.ts',
-        'components/cells/page/runAtlas.ts',
-        'components/cells/page/runText.ts',
-        'lib/page/textWidths.ts',
-        'tools/terminal/page/cells.ts',
-      ],
-      {
-        'tools/git/page/bubbleRoom.ts':
-          'the room of a bubble is measured by a canvas of its own, to measure it by the runs it is drawn by',
-      },
-    );
+  test('measures text only by the widths of the library and the atlases of the cells, the room of a bubble, the scale of a list and the ascent of a run by one measurer of the library, so every part agrees on how wide a text is, the terminal alone measuring the cell xterm.js lays its grid on', () => {
+    heldBy(/\.measureText\(/, [
+      'components/cells/page/glyphAtlas.ts',
+      'components/cells/page/runAtlas.ts',
+      'lib/page/textWidths.ts',
+      'tools/terminal/page/cells.ts',
+    ]);
   });
 
   test('reads the ground a text stands on from the page by one look of the cells, every layer up to the first opaque one blended as the page blends them and the tints of its gradients over them, so every view draws on the color the page shows, rather than by a reading of each view, the canvas having taken the first layer alone over black', () => {

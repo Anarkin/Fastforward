@@ -1,3 +1,4 @@
+import { metricsIn } from '../../../lib/page/textWidths';
 import { cssOf, packedOf, type Rgba } from './cellColors';
 import { offsetOf, runPadding, type RunAtlas } from './runAtlas';
 
@@ -154,13 +155,6 @@ export function fitted(
   return low === 0 ? '' : characters.slice(0, low).join('') + ellipsis;
 }
 
-let measuring: OffscreenCanvasRenderingContext2D | null | undefined;
-
 export function ascentOf(font: string): number {
-  measuring ??= new OffscreenCanvas(1, 1).getContext('2d');
-  if (measuring === null) {
-    return 0;
-  }
-  measuring.font = font;
-  return Math.round(measuring.measureText('x').fontBoundingBoxAscent);
+  return Math.round(metricsIn(font, 'x')?.fontBoundingBoxAscent ?? 0);
 }
