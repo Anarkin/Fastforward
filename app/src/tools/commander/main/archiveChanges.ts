@@ -46,21 +46,34 @@ async function temporariesOf(file: string): Promise<string[]> {
     .map((each) => path.join(folder, each));
 }
 
+async function newestFileOf(
+  files: readonly string[],
+): Promise<string | undefined> {
+  let newest: { readonly file: string; readonly at: number } | undefined;
+  for (const file of files) {
+    const stats = await fs.promises.lstat(file).catch(() => undefined);
+    if (stats?.isFile() === true && (newest?.at ?? -1) < stats.mtimeMs) {
+      newest = { file, at: stats.mtimeMs };
+    }
+  }
+  return newest?.file;
+}
+
 async function restored(
   file: string,
   before: ReadonlySet<string>,
 ): Promise<void> {
   const made = (await temporariesOf(file)).filter((left) => !before.has(left));
-  const written = `${file}.tmp`;
   const gone = !(await fs.promises.lstat(file).then(
     () => true,
     () => false,
   ));
-  if (gone && made.includes(written)) {
+  const written = gone ? await newestFileOf(made) : undefined;
+  if (written !== undefined) {
     await fs.promises.rename(written, file);
   }
   for (const left of made) {
-    if (left === written && gone) {
+    if (left === written) {
       continue;
     }
     const isFile = await fs.promises.lstat(left).then(

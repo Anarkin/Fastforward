@@ -402,4 +402,37 @@ suite('Archives', () => {
       ['a.zip'],
     );
   });
+
+  test('puts back the archive 7-Zip wrote under another name than its own .tmp, as it does while a .tmp left by a crash is in the way, keeping that one as it was', async () => {
+    const zip = path.join(folder, 'a.zip');
+    fs.writeFileSync(zip, 'old');
+    fs.writeFileSync(`${zip}.tmp`, 'left by a crash');
+    const reader: ArchiveReader = {
+      ...readerOf({}).reader,
+      list: () => Promise.resolve({ kind: 'listed', items: [item('x.txt')] }),
+      remove: async (file) => {
+        await fs.promises.writeFile(`${file}.tmp1`, 'new');
+        await fs.promises.rm(file);
+        throw new Error('The operation was aborted');
+      },
+    };
+    const archives = new Archives(reader, 'linux', workFolder);
+    const opened = await archives.open(zip);
+    assert.ok(opened.kind === 'opened');
+
+    await assert.rejects(archives.remove(opened.archive, ['x.txt']));
+
+    assert.strictEqual(fs.readFileSync(zip, 'utf8'), 'new');
+    assert.strictEqual(
+      fs.readFileSync(`${zip}.tmp`, 'utf8'),
+      'left by a crash',
+    );
+    assert.deepStrictEqual(
+      fs
+        .readdirSync(folder)
+        .filter((name) => name.startsWith('a.zip'))
+        .toSorted(),
+      ['a.zip', 'a.zip.tmp'],
+    );
+  });
 });
