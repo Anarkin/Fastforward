@@ -52,3 +52,4 @@
 - Reproduce a flaky test before fixing it: a first guess at its cause was wrong twice
 - Compare positions and sizes within a fraction of a pixel, never exactly: CI runs Windows at 125% and the rest at 100%, nightly at 150% and 175%, while other screens scale by other fractions
 - Run a test that measures the page under a condition CI lacks, as another screen scale, before trusting it
+- Commit a file that must stay executable, as `.githooks/commit-msg`, from the index, by `git add --chmod=+x <path>` and `git commit` without paths, as `git commit -- <paths>` takes each mode from the working tree, which on Windows marks nothing executable, and stored the hook as a plain file
