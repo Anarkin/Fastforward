@@ -109,7 +109,10 @@ suite('App commander', () => {
       );
       await toggle('Use Regular Expression').click();
       await page.locator('.viewer .search-box-input').fill('needle');
-      await waitFor(async () => (await findCount()) === '1 of 3', 'the count');
+      await waitFor(
+        async () => (await findCount()) === '2 of 3',
+        'the count from the match the view stands at',
+      );
 
       await page.keyboard.press('Escape');
       await page.locator('.viewer .search-box').waitFor({ state: 'detached' });
