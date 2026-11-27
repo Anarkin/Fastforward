@@ -1,5 +1,4 @@
 import * as assert from 'node:assert';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { JSHandle } from 'playwright-core';
 import { suite, test } from 'vitest';
@@ -13,7 +12,7 @@ import {
 import { waitForCount, waitForFocus } from './waits';
 import { drawnCodeRow } from './wrappingFixtures';
 import { longLines } from './wrappingSamples';
-import { waitFor } from '../helpers/fixtures';
+import { waitFor, writeWhenFree } from '../helpers/fixtures';
 import { assertFillsRows } from './markRows';
 import {
   diffFinds,
@@ -151,7 +150,7 @@ suite('App', () => {
 
   test('keeps the lines of a diff colored as the whole text of their side has it while the working tree changes under it', async () => {
     const file = path.join(repository.root, 'commented.ts');
-    fs.writeFileSync(file, commented(43));
+    await writeWhenFree(file, commented(43));
     let watching:
       JSHandle<{ uncolored: string[]; stop: () => void }> | undefined;
     try {
@@ -197,7 +196,7 @@ suite('App', () => {
         };
       }, diffSides);
       for (const answer of [44, 45, 46]) {
-        fs.writeFileSync(file, commented(answer));
+        await writeWhenFree(file, commented(answer));
         await untilDiffLine(
           page,
           colored('number', String(answer)),
@@ -315,12 +314,12 @@ suite('App', () => {
 
   test('shows all the changes of a file first, then its staged and unstaged halves apart', async () => {
     const file = path.join(repository.root, 'changed.txt');
-    fs.writeFileSync(file, 'one\nstaged\nthree\n');
+    await writeWhenFree(file, 'one\nstaged\nthree\n');
     try {
       await commitRow(page, 'second').click();
       await commitRow(page, 'second', { selected: true }).waitFor();
       await repository.git('add', 'changed.txt');
-      fs.writeFileSync(file, 'one\nstaged\nunstaged\n');
+      await writeWhenFree(file, 'one\nstaged\nunstaged\n');
       await commitRow(page, '1 uncommitted change').click();
       await fileRow(page, 'All Changes', {
         kind: 'header',
@@ -339,7 +338,7 @@ suite('App', () => {
 
   test('jumps to the first change of a file once selected, and again once shown entire or not, landing where J would', async () => {
     const file = path.join(repository.root, 'long.txt');
-    fs.writeFileSync(
+    await writeWhenFree(
       file,
       `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
     );
@@ -388,7 +387,7 @@ suite('App', () => {
 
   test('starts a search of the diff at the first match at or below the top of what it shows, as the editor starts at its cursor and the terminal at the top of its screen, rather than at the first match of the diff', async () => {
     const file = path.join(repository.root, 'long.txt');
-    fs.writeFileSync(
+    await writeWhenFree(
       file,
       `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
     );
