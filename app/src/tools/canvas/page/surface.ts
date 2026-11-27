@@ -53,7 +53,6 @@ import { drawTexts } from './drawnTexts';
 import { originOf, type CellSize, type Origin } from './pan';
 import type { Cell } from './routes';
 import type { Screen } from './screen';
-import type { ClientBox } from './typingContext';
 import { screenRows } from './seenScreen';
 
 interface SeenBoard {
@@ -114,7 +113,6 @@ export interface Drawn {
   readonly left: number;
   readonly top: number;
   readonly widths: TextWidths;
-  readonly caret: ClientBox | undefined;
   readonly edgeAt: (cell: Cell) => string | undefined;
 }
 
@@ -319,7 +317,7 @@ export class BoardSurface {
       });
     }
     cells.draw();
-    const caret = this.drawCursor(screen, { shift, advance, rowHeight, ratio });
+    this.drawCursor(screen, { shift, advance, rowHeight, ratio });
     host.seenBoard = () => ({
       rows: screenRows(screen),
       column: screen.column,
@@ -348,27 +346,19 @@ export class BoardSurface {
           ? undefined
           : screen.edges[inRows * screen.columns + inColumns];
       },
-      caret:
-        caret === undefined
-          ? undefined
-          : {
-              ...caret,
-              left: caret.left + box.left + nudge.left,
-              top: caret.top + box.top + nudge.top,
-            },
     };
   }
 
   private drawCursor(
     screen: Screen,
     { shift, advance, rowHeight, ratio }: CellPlace,
-  ): ClientBox | undefined {
+  ): void {
     const [at] = screen.carets;
     if (at === undefined) {
       this.cursor?.remove();
       this.cursor = undefined;
       this.cursorAt = '';
-      return undefined;
+      return;
     }
     const down = at.row - screen.row;
     const look = pageCursorLook();
@@ -402,7 +392,6 @@ export class BoardSurface {
         ? blinkAnimation(this.blinkAgain)
         : 'none';
     }
-    return cell;
   }
 
   dispose(): void {

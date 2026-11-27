@@ -529,6 +529,51 @@ suite('App canvas', () => {
     await cursorShown('the cursor gone', false);
   });
 
+  test('shows what an input method composes in a node as it composes it, each step in place of the one before, as the editor shows it, telling the input method where each character composed stands on the cells rather than where the cursor stands for all of them', async () => {
+    const spot = await pointAt({ column: 2, row: 20 });
+    await page.mouse.move(spot.x, spot.y);
+    await page.keyboard.press('ControlOrMeta+1');
+    await page.mouse.click(spot.x, spot.y);
+    await cursorShown('the cursor drawn in the node placed', true);
+    const session = await page.context().newCDPSession(page);
+    try {
+      await session.send('Input.imeSetComposition', {
+        text: 'n',
+        selectionStart: 1,
+        selectionEnd: 1,
+      });
+      await holds('the first letter composed', 'n', true);
+      await session.send('Input.imeSetComposition', {
+        text: 'ni',
+        selectionStart: 2,
+        selectionEnd: 2,
+      });
+      await holds('the second letter composed', 'ni', true);
+      const lefts = await untilSettled(
+        () =>
+          page.evaluate(() =>
+            [...document.querySelectorAll<HTMLElement>('.board-body')]
+              .flatMap((body) => body.editContext?.characterBounds() ?? [])
+              .map((bounds) => bounds.left),
+          ),
+        'the bounds of the characters composed',
+        { accepted: (seen) => seen.length === 2 },
+      );
+      assert.ok(
+        (lefts[1] ?? 0) > (lefts[0] ?? 0),
+        `the second character composed stands after the first, not at ${JSON.stringify(lefts)}`,
+      );
+      await session.send('Input.insertText', { text: '你' });
+      await holds('the character it settled on', '你', true);
+      await page.keyboard.type(' x');
+      await holds('the text typed after it', '你 x', true);
+      await page.keyboard.press('Escape');
+      await cursorShown('the cursor gone', false);
+    } finally {
+      await session.detach();
+    }
+  });
+
   test('shows the mark beside the middle of a side of a node only while the pointer is in its cell, joins it to another node by an edge dragged from that mark, the side nearest the pointer, selected and saved, and deletes an edge clicked on Delete', async () => {
     const plan = await pointAt({ column: 14, row: 5 });
     await page.mouse.move(plan.x, plan.y);

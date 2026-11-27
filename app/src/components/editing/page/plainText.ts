@@ -45,7 +45,7 @@ function positionIn(
   return line.from + Math.min(line.length, offset - (starts[number - 1] ?? 0));
 }
 
-const keptOf = ({ goalColumn, assoc }: SelectionRange) => ({
+export const keptOf = ({ goalColumn, assoc }: SelectionRange) => ({
   ...(goalColumn !== undefined && { goalColumn }),
   ...(assoc !== 0 && { assoc }),
 });

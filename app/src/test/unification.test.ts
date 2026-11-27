@@ -136,4 +136,14 @@ suite('Unification', () => {
       );
     assert.deepStrictEqual(unsnapped, []);
   });
+
+  test('takes what is typed and composed through one input session of the editing component, which the editor and the canvas both open their EditContext through, the canvas having given an input method the box of its caret for every character it asked for', () => {
+    assert.deepStrictEqual(doing(/\btextContextIn\(/), [
+      'components/editing/page/inputSession.ts',
+      'lib/page/textContext.ts',
+    ]);
+    assert.deepStrictEqual(doing(/addEventListener\('textupdate'/), [
+      'components/editing/page/inputSession.ts',
+    ]);
+  });
 });

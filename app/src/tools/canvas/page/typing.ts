@@ -20,7 +20,7 @@ export interface Span {
   readonly to: number;
 }
 
-export const spanOf = ({ anchor, head }: Caret): Span => ({
+const spanOf = ({ anchor, head }: Caret): Span => ({
   from: Math.min(anchor, head),
   to: Math.max(anchor, head),
 });

@@ -27,6 +27,7 @@ export interface TextContext {
   updateControlBounds(bounds: DOMRect): void;
   updateSelectionBounds(bounds: DOMRect): void;
   updateCharacterBounds(rangeStart: number, bounds: DOMRect[]): void;
+  characterBounds(): DOMRect[];
   addEventListener<Kind extends keyof TextContextEvents>(
     kind: Kind,
     listener: (event: TextContextEvents[Kind]) => void,

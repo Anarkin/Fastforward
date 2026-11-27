@@ -33,7 +33,7 @@ import {
 } from './boardPaint';
 import { offsetIn, typedLayout } from './typedLayout';
 import { spanAt } from './nodeText';
-import { useTypingContext } from './typingContext';
+import { useTypingSession } from './typingSession';
 import { typingKeyed } from './typingKeys';
 import { inserted, movedTo, selectedText } from './typing';
 import { markAt } from './wiring';
@@ -87,7 +87,7 @@ export function BoardView() {
   const held = useRef(false);
   const choosing = useRef<number>(undefined);
   const paintedBoard = useRef<Board>(undefined);
-  const placeContext = useTypingContext(body, typing, (caret) => {
+  const placeContext = useTypingSession(body, typing, (caret) => {
     if (tab !== undefined) {
       typed(tab, caret);
     }
@@ -135,7 +135,12 @@ export function BoardView() {
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
         whitespace,
       });
-      placeContext(drawn.current?.caret, element.getBoundingClientRect());
+      placeContext(
+        board,
+        drawn.current,
+        typing,
+        element.getBoundingClientRect(),
+      );
     }
   };
 
@@ -198,7 +203,12 @@ export function BoardView() {
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
         whitespace,
       });
-      placeContext(drawn.current?.caret, element.getBoundingClientRect());
+      placeContext(
+        board,
+        drawn.current,
+        typing,
+        element.getBoundingClientRect(),
+      );
     }
   }, [
     board,
