@@ -317,12 +317,13 @@ suite('App commander', () => {
       );
       await waitForFocus(page.locator('.viewer-body'), 'the viewer');
       await waitFor(async () => {
-        if ((await firstViewerRow()).startsWith('hay 2')) {
+        const top = Number(/^hay (\d+)/.exec(await firstViewerRow())?.[1] ?? 0);
+        if (top > 3 && top < 300) {
           return true;
         }
         await page.keyboard.press('PageDown');
         return false;
-      }, 'the rows past the first needle');
+      }, 'the top row past the first needle');
       await page.keyboard.press('ControlOrMeta+F');
       await page.keyboard.type('needle');
       await waitFor(
