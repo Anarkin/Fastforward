@@ -128,6 +128,40 @@ suite('Text selected in cells', () => {
     assert.strictEqual(copiedWhole(), 1);
   });
 
+  test('extends a selection begun by a double click by whole words as it is dragged, either way from the word, and one begun by a triple click by whole lines, as the editor extends them', () => {
+    const words = selectingIn(true);
+    words.press(1, 8, { detail: 2 });
+    assert.deepStrictEqual(words.selecting.selection, {
+      anchor: at(1, 7),
+      focus: at(1, 11),
+    });
+    words.drag(0, 2);
+    assert.deepStrictEqual(words.selecting.selection, {
+      anchor: at(1, 11),
+      focus: at(0, 0),
+    });
+    words.drag(2, 2);
+    assert.deepStrictEqual(words.selecting.selection, {
+      anchor: at(1, 7),
+      focus: at(2, 5),
+    });
+    words.release();
+
+    const lines = selectingIn(true);
+    lines.press(1, 3, { detail: 3 });
+    lines.drag(2, 1);
+    assert.deepStrictEqual(lines.selecting.selection, {
+      anchor: at(1, 0),
+      focus: at(2, 5),
+    });
+    lines.drag(0, 3);
+    assert.deepStrictEqual(lines.selecting.selection, {
+      anchor: at(1, 11),
+      focus: at(0, 0),
+    });
+    lines.release();
+  });
+
   test('marks the copies of what is selected at once once the selection is done, by a double click or a drag let go, and none while a drag goes on, rather than a quarter of a second after the selection rested, mid drag too', () => {
     const clicked = selectingIn(true);
     clicked.press(1, 8, { detail: 2 });

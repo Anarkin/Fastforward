@@ -10,10 +10,12 @@ import {
   stillHeld,
 } from './cellPointing';
 import {
+  before,
   isEmpty,
   keptText,
   ordered,
   type KeptText,
+  type TextPlace,
   type TextSelection,
 } from './textSelection';
 
@@ -42,6 +44,13 @@ export class CellSelecting {
   private told: string | undefined;
   private kept: KeptText | undefined;
   private whole: TextSelection | undefined;
+  private grip:
+    | {
+        readonly clicks: number;
+        readonly first: TextPlace;
+        readonly last: TextPlace;
+      }
+    | undefined;
 
   constructor(
     private readonly host: HTMLElement,
@@ -169,32 +178,48 @@ export class CellSelecting {
     }
     const extending = way === 'extend';
     this.on.began();
-    this.dragging = press.detail === 1 || extending;
-    this.select(
-      pressed(
-        this.selection,
-        under,
-        press.detail,
-        extending,
-        this.on.shown()?.shape,
-      ),
+    this.dragging = true;
+    const chosen = pressed(
+      this.selection,
+      under,
+      press.detail,
+      extending,
+      this.on.shown()?.shape,
     );
+    this.grip =
+      extending || press.detail < 2
+        ? undefined
+        : { clicks: press.detail, ...ordered(chosen) };
+    this.select(chosen);
     const page = this.host.ownerDocument;
     page.addEventListener('mousemove', this.moved);
     page.addEventListener('mouseup', this.up);
   };
 
+  private reached(
+    under: NonNullable<ReturnType<typeof placeUnder>>,
+    anchor: TextPlace,
+  ): TextSelection {
+    const { grip } = this;
+    const shape = this.on.shown()?.shape;
+    if (grip === undefined) {
+      return { anchor, focus: placedUnder(under, anchor, shape) };
+    }
+    const { first, last } = ordered(
+      pressed(undefined, under, grip.clicks, false, shape),
+    );
+    return before(first, grip.first)
+      ? { anchor: grip.last, focus: first }
+      : {
+          anchor: grip.first,
+          focus: before(last, grip.last) ? grip.last : last,
+        };
+  }
+
   private refocus(): void {
     const under = this.under();
     if (this.selection !== undefined && under !== undefined) {
-      this.select({
-        anchor: this.selection.anchor,
-        focus: placedUnder(
-          under,
-          this.selection.anchor,
-          this.on.shown()?.shape,
-        ),
-      });
+      this.select(this.reached(under, this.selection.anchor));
     }
   }
 
@@ -221,6 +246,7 @@ export class CellSelecting {
   private readonly up = () => {
     const dragged = this.dragging;
     this.dragging = false;
+    this.grip = undefined;
     clearInterval(this.reaching);
     const page = this.host.ownerDocument;
     page.removeEventListener('mousemove', this.moved);
@@ -268,10 +294,7 @@ export class CellSelecting {
     } else if (this.dragging) {
       const under = this.under();
       if (under !== undefined) {
-        this.selection = this.taken({
-          anchor: selection.anchor,
-          focus: placedUnder(under, selection.anchor, this.on.shown()?.shape),
-        });
+        this.selection = this.taken(this.reached(under, selection.anchor));
       }
     }
   }

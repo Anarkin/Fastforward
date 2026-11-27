@@ -24,7 +24,7 @@ export function textEnd(text: string): number {
   return text.endsWith(carriageReturn) ? text.length - 1 : text.length;
 }
 
-const before = (one: TextPlace, other: TextPlace) =>
+export const before = (one: TextPlace, other: TextPlace): boolean =>
   one.start < other.start ||
   (one.start === other.start && one.char < other.char);
 
