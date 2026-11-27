@@ -33,6 +33,7 @@ import {
 } from './boardPaint';
 import { offsetIn, typedLayout } from './typedLayout';
 import { spanAt } from './nodeText';
+import { grippedReach } from '../../../components/cells/page/textSelection';
 import { useTypingSession } from './typingSession';
 import { typingKeyed } from './typingKeys';
 import { inserted, movedTo, selectedText } from './typing';
@@ -86,6 +87,11 @@ export function BoardView() {
   const markedAt = useRef<string>(undefined);
   const held = useRef(false);
   const choosing = useRef<number>(undefined);
+  const gripped = useRef<{
+    readonly first: number;
+    readonly last: number;
+    readonly whole: 'word' | 'line';
+  }>(undefined);
   const paintedBoard = useRef<Board>(undefined);
   const placeContext = useTypingSession(body, typing, (caret) => {
     if (tab !== undefined) {
@@ -473,7 +479,25 @@ export function BoardView() {
           ? undefined
           : typedLayout(board, known.unit, known.widths, now);
       if (now !== undefined && layout !== undefined) {
-        typed(tab, movedTo(now, offsetIn(layout, at), true));
+        const offset = offsetIn(layout, at);
+        const grip = gripped.current;
+        const span =
+          grip === undefined
+            ? undefined
+            : spanAt(layout.rows, offset, grip.whole);
+        if (grip === undefined || span === undefined) {
+          typed(tab, movedTo(now, offset, true));
+        } else {
+          const { anchor, focus } = grippedReach(
+            grip,
+            {
+              first: Math.min(span.anchor, span.head),
+              last: Math.max(span.anchor, span.head),
+            },
+            (one, other) => one < other,
+          );
+          typed(tab, { text: now.text, anchor, head: focus });
+        }
       }
       return;
     }
@@ -536,6 +560,7 @@ export function BoardView() {
     }
     if (choosing.current === event.pointerId) {
       choosing.current = undefined;
+      gripped.current = undefined;
       return;
     }
     const going = pressing.current;
@@ -627,6 +652,14 @@ export function BoardView() {
       startTyping(tab, node.id, span);
     } else if (span !== undefined) {
       typed(tab, { text, ...span });
+      gripped.current =
+        choosing.current === undefined
+          ? undefined
+          : {
+              first: Math.min(span.anchor, span.head),
+              last: Math.max(span.anchor, span.head),
+              whole,
+            };
     }
   };
 
@@ -711,9 +744,10 @@ export function BoardView() {
           event.preventDefault();
           if (event.detail >= 3) {
             chosenWhole(event, 'line');
+          } else if (event.detail === 2) {
+            chosenWhole(event, 'word');
           }
         }}
-        onDoubleClick={(event) => chosenWhole(event, 'word')}
         onKeyDown={keyDown}
         onCopy={(event) => copied(event, false)}
         onCut={(event) => copied(event, true)}

@@ -174,4 +174,15 @@ suite('Unification', () => {
       'lib/shared/textMatches.ts',
     ]);
   });
+
+  test('reaches from the word or line a double or triple click took to where the pointer is dragged by one rule, which the views, the editor and the canvas all extend a selection by', () => {
+    assert.deepStrictEqual(doing(/anchor: grip\.last|grip\.to, Math\.min/), [
+      'components/cells/page/textSelection.ts',
+    ]);
+    assert.deepStrictEqual(doing(/\bgrippedReach\(/), [
+      'components/cells/page/cellSelecting.ts',
+      'tools/canvas/page/boardView.tsx',
+      'tools/editor/page/pointing.ts',
+    ]);
+  });
 });

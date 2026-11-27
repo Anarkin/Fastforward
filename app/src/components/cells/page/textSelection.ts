@@ -226,3 +226,21 @@ export function keptText(
     ? kept.text + between
     : kept.text.slice(0, kept.text.length - between.length);
 }
+
+export interface Gripped<Place> {
+  readonly first: Place;
+  readonly last: Place;
+}
+
+export function grippedReach<Place>(
+  grip: Gripped<Place>,
+  reached: Gripped<Place>,
+  isBefore: (one: Place, other: Place) => boolean,
+): { readonly anchor: Place; readonly focus: Place } {
+  return isBefore(reached.first, grip.first)
+    ? { anchor: grip.last, focus: reached.first }
+    : {
+        anchor: grip.first,
+        focus: isBefore(reached.last, grip.last) ? grip.last : reached.last,
+      };
+}

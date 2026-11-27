@@ -11,6 +11,7 @@ import {
 } from './cellPointing';
 import {
   before,
+  grippedReach,
   isEmpty,
   keptText,
   ordered,
@@ -205,15 +206,11 @@ export class CellSelecting {
     if (grip === undefined) {
       return { anchor, focus: placedUnder(under, anchor, shape) };
     }
-    const { first, last } = ordered(
-      pressed(undefined, under, grip.clicks, false, shape),
+    return grippedReach(
+      grip,
+      ordered(pressed(undefined, under, grip.clicks, false, shape)),
+      before,
     );
-    return before(first, grip.first)
-      ? { anchor: grip.last, focus: first }
-      : {
-          anchor: grip.first,
-          focus: before(last, grip.last) ? grip.last : last,
-        };
   }
 
   private refocus(): void {

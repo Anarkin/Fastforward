@@ -529,6 +529,43 @@ suite('App canvas', () => {
     await cursorShown('the cursor gone', false);
   });
 
+  test('extends what a double click on a word of a node selected by whole words as it is dragged, as the editor and the views extend it, rather than from where the second press fell', async () => {
+    const spot = await pointAt({ column: 2, row: 28 });
+    await page.mouse.move(spot.x, spot.y);
+    await page.keyboard.press('ControlOrMeta+1');
+    await page.mouse.click(spot.x, spot.y);
+    await cursorShown('the cursor drawn in the node placed', true);
+    await page.keyboard.type('one two three four');
+    await holds('the words typed', 'one two three four', true);
+    const seen = await seenBoard();
+    assert.ok(seen !== undefined);
+    const row = seen.rows.findIndex((each) => each.includes('two three'));
+    const column = seen.rows[row]?.indexOf('two') ?? -1;
+    assert.ok(row >= 0 && column >= 0, 'the words are drawn');
+    const two = await pointAt({
+      column: seen.column + column + 1,
+      row: seen.row + row,
+    });
+    const three = await pointAt({
+      column: seen.column + column + 6,
+      row: seen.row + row,
+    });
+    await page.mouse.move(two.x, two.y);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.mouse.down({ clickCount: 2 });
+    await page.mouse.move(three.x, three.y, { steps: 3 });
+    await page.mouse.up();
+    await page.keyboard.press('ControlOrMeta+C');
+    await untilSettled(
+      () => app.evaluate(({ clipboard }) => clipboard.readText()),
+      'the words copied',
+      { accepted: (copied) => copied === 'two three' },
+    );
+    await page.keyboard.press('Escape');
+    await cursorShown('the cursor gone', false);
+  });
+
   test('shows what an input method composes in a node as it composes it, each step in place of the one before, as the editor shows it, telling the input method where each character composed stands on the cells rather than where the cursor stands for all of them', async () => {
     const spot = await pointAt({ column: 2, row: 20 });
     await page.mouse.move(spot.x, spot.y);

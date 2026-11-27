@@ -8,6 +8,7 @@ import {
   ordered,
   selectedIn,
   selectedText,
+  grippedReach,
   wordAt,
 } from '../../../../../components/cells/page/textSelection';
 
@@ -19,6 +20,8 @@ const rows = [
 ];
 
 const from = (start: number, char: number) => ({ start, char });
+
+const lessThan = (one: number, other: number) => one < other;
 
 suite('Text selected in a file viewed', () => {
   test('orders a selection dragged backwards, by row and then by character, and says when nothing is selected', () => {
@@ -103,6 +106,22 @@ suite('Text selected in a file viewed', () => {
       anchor: from(6, 0),
       focus: from(6, 16),
     });
+  });
+
+  test('reaches from the word or line a double or triple click took to the one the pointer is dragged to, keeping the whole of what it took, toward the start or the end alike, wherever a place is counted', () => {
+    const grip = { first: 10, last: 15 };
+    assert.deepStrictEqual(
+      grippedReach(grip, { first: 2, last: 6 }, lessThan),
+      { anchor: 15, focus: 2 },
+    );
+    assert.deepStrictEqual(
+      grippedReach(grip, { first: 20, last: 24 }, lessThan),
+      { anchor: 10, focus: 24 },
+    );
+    assert.deepStrictEqual(
+      grippedReach(grip, { first: 10, last: 15 }, lessThan),
+      { anchor: 10, focus: 15 },
+    );
   });
 
   test('selects the whole character a double click is on where there is no word, an emoji or a letter with its accent alike, rather than half of it', () => {

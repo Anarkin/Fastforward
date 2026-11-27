@@ -19,6 +19,7 @@ import { gridOf, type Grid } from './grid';
 import { rowsOf } from '../../../components/editing/page/rowSteps';
 import { wordRangeAt } from '../../../components/editing/page/textSteps';
 import { charAt } from '../../../components/cells/page/textPlaces';
+import { grippedReach } from '../../../components/cells/page/textSelection';
 
 const reachMs = 50;
 
@@ -231,11 +232,12 @@ class Pointing implements SurfacePart {
         grip.kind === 'words'
           ? wordRangeAt(state, under.pos)
           : lineRange(state, under.pos);
-      this.select([
-        under.pos < grip.from
-          ? EditorSelection.range(grip.to, Math.min(reached.from, grip.from))
-          : EditorSelection.range(grip.from, Math.max(reached.to, grip.to)),
-      ]);
+      const { anchor, focus } = grippedReach(
+        { first: grip.from, last: grip.to },
+        { first: reached.from, last: reached.to },
+        (one, other) => one < other,
+      );
+      this.select([EditorSelection.range(anchor, focus)]);
     }
   }
 
