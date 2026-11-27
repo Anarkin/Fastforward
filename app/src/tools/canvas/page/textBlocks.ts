@@ -110,13 +110,6 @@ export const linkSegments =
   (line) =>
     line.start >= from ? [{ text: line.text, kind }] : undefined;
 
-export const headedSegments =
-  (bodyStart: number, kind: string, body: SegmentsOf | undefined): SegmentsOf =>
-  (line) =>
-    line.start < bodyStart
-      ? [{ text: line.text, kind }]
-      : body?.({ ...line, start: line.start - bodyStart });
-
 export function paintText(
   painter: Painter,
   {

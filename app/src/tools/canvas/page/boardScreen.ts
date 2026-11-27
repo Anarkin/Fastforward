@@ -10,7 +10,6 @@ import {
   labelAreaOf,
   coloredSegments,
   edgeLabelAreaOf,
-  headedSegments,
   linkSegments,
   paintLine,
   paintText,
@@ -18,6 +17,7 @@ import {
   textAreaOf,
 } from './textBlocks';
 import { reversed, routeOf, type Cell, type Route } from './routes';
+import { rowsOf } from './nodeText';
 import { nodeSigns, signCellOf } from './nodeSigns';
 import {
   doubleShift,
@@ -132,6 +132,7 @@ function border(
 interface NodeText {
   readonly text: string;
   readonly segmentsOf?: SegmentsOf | undefined;
+  readonly body?: NodeText | undefined;
 }
 
 function fileTextOf(
@@ -149,12 +150,12 @@ function fileTextOf(
       ? undefined
       : colorsOf?.(node.id, shown.text, language);
   return {
-    text: `${head}\n${shown.text}`,
-    segmentsOf: headedSegments(
-      head.length + 1,
-      linkKind,
-      colors && coloredSegments(shown.text, colors),
-    ),
+    text: head,
+    segmentsOf: linkSegments(0, linkKind),
+    body: {
+      text: shown.text,
+      segmentsOf: colors && coloredSegments(shown.text, colors),
+    },
   };
 }
 
@@ -179,8 +180,9 @@ function nodeTextOf(
       }
       const title = looks.titles?.get(node.url);
       return {
-        text: title === undefined ? node.url : `${node.url}\n${title}`,
-        segmentsOf: headedSegments(node.url.length + 1, linkKind, undefined),
+        text: node.url,
+        segmentsOf: linkSegments(0, linkKind),
+        body: title === undefined ? undefined : { text: title },
       };
     }
     case 'group':
@@ -253,12 +255,39 @@ function paintNode(
       kind ?? lineKind,
     );
   }
+  const shownText = nodeTextOf(node, looks, typed?.text);
+  const area = textAreaOf(box);
+  const { body } = shownText;
+  if (body === undefined) {
+    paintText(painter, { owner, area, widths, typed, ...shownText });
+    return;
+  }
+  const headRows = Math.min(
+    area.rows,
+    rowsOf(shownText.text, area.wrapAt, widths).length,
+  );
   paintText(painter, {
     owner,
-    area: textAreaOf(box),
+    area: { ...area, rows: headRows },
     widths,
-    typed,
-    ...nodeTextOf(node, looks, typed?.text),
+    text: shownText.text,
+    segmentsOf: shownText.segmentsOf,
+  });
+  const divider = area.row + headRows;
+  if (divider >= box.row + box.rows - 1) {
+    return;
+  }
+  for (let column = box.column; column <= right; column++) {
+    const bits =
+      (column > box.column ? wayBits.left : 0) |
+      (column < right ? wayBits.right : 0);
+    painter.line(column, divider, bits << weight, kind);
+  }
+  paintText(painter, {
+    owner,
+    area: { ...area, row: divider + 1, rows: area.rows - headRows - 1 },
+    widths,
+    ...body,
   });
 }
 

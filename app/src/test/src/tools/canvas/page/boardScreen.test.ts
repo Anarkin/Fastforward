@@ -82,8 +82,8 @@ function screenText(
   );
 }
 
-const segmentKinds = (screen: ReturnType<typeof screenOf>) => {
-  const [block] = screen.texts;
+const segmentKinds = (screen: ReturnType<typeof screenOf>, index = 0) => {
+  const block = screen.texts[index];
   return block?.rows.map((row) => block.segmentsOf?.(row.row));
 };
 
@@ -448,7 +448,7 @@ suite('Canvas screen', () => {
     );
   });
 
-  test('draws a link node as its URL in the color of a link over the title of its page once the title is known, as a file node draws its path over its text, and as its URL alone before', () => {
+  test('draws a link node as its URL in the color of a link over the title of its page once the title is known, a line between them from side to side, as a file node draws its path over its text, and as its URL alone before', () => {
     const link: BoardNode = {
       id: 'l',
       type: 'link',
@@ -456,13 +456,13 @@ suite('Canvas screen', () => {
       x: 0,
       y: 0,
       width: 26 * unit.width,
-      height: 4 * unit.height,
+      height: 5 * unit.height,
     };
     const drawn = (titles?: ReadonlyMap<string, string>) =>
       screenOf({
         board: { nodes: [link], edges: [] },
         unit,
-        view: { column: 0, row: 0, columns: 28, rows: 4 },
+        view: { column: 0, row: 0, columns: 28, rows: 5 },
         widths: { char: 1, of: narrow },
         titles,
       });
@@ -475,17 +475,18 @@ suite('Canvas screen', () => {
       [{ text: 'https://example.com/a', kind: 'link' }],
     ]);
     const titled = drawn(new Map([[link.url, 'Example A']]));
-    assert.deepStrictEqual(screenRows(titled).slice(1, 3), [
+    assert.deepStrictEqual(screenRows(titled).slice(1, 4), [
       '│ https://example.com/a  │',
+      '├────────────────────────┤',
       '│ Example A              │',
     ]);
     assert.deepStrictEqual(segmentKinds(titled), [
       [{ text: 'https://example.com/a', kind: 'link' }],
-      undefined,
     ]);
+    assert.deepStrictEqual(segmentKinds(titled, 1), [undefined]);
   });
 
-  test('draws a file node as its path in the color of a link over the head of its text, colored as the language of its name, and as its path alone while its text is not known', () => {
+  test('draws a file node as its path in the color of a link over the head of its text, a line between them from side to side, colored as the language of its name, and as its path alone while its text is not known', () => {
     const file: BoardNode = {
       id: 'f',
       type: 'file',
@@ -493,14 +494,14 @@ suite('Canvas screen', () => {
       x: 0,
       y: 0,
       width: 26 * unit.width,
-      height: 5 * unit.height,
+      height: 6 * unit.height,
     };
     const asked: string[] = [];
     const drawn = (files?: Record<string, { path: string; text?: string }>) =>
       screenOf({
         board: { nodes: [file], edges: [] },
         unit,
-        view: { column: 0, row: 0, columns: 28, rows: 5 },
+        view: { column: 0, row: 0, columns: 28, rows: 6 },
         widths: { char: 1, of: narrow },
         files,
         colorsOf: (id, words, language) => {
@@ -519,13 +520,16 @@ suite('Canvas screen', () => {
     const read = drawn({
       'code/a.ts': { path: '/vault/code/a.ts', text: 'const a = 1;\nnext' },
     });
-    assert.deepStrictEqual(screenRows(read).slice(1, 4), [
+    assert.deepStrictEqual(screenRows(read).slice(1, 5), [
       '│ code/a.ts              │',
+      '├────────────────────────┤',
       '│ const a = 1;           │',
       '│ next                   │',
     ]);
     assert.deepStrictEqual(segmentKinds(read), [
       [{ text: 'code/a.ts', kind: 'link' }],
+    ]);
+    assert.deepStrictEqual(segmentKinds(read, 1), [
       [{ text: 'const', kind: 'keyword' }, { text: ' a = 1;' }],
       [{ text: 'next' }],
     ]);
