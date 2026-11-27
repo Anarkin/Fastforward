@@ -1,3 +1,5 @@
+import { pastedLink, pastedPaths } from './links';
+import { droppedSize, fileBox, ghostId, placedSizes } from './placing';
 import { typedTextOf } from './typedTexts';
 import { createContext, useContext } from 'react';
 import { createStore, useStore, type StoreApi } from 'zustand';
@@ -290,6 +292,21 @@ export function createCanvasStore(
       redo: (tab) => post({ type: 'redo', tab }),
       save: (tab) => post({ type: 'save', tab }),
       dropFiles: (tab, files, box) => dropped(files, { tab, box }),
+      pasteOnBoard: (tab, text, at, unit) => {
+        const url = pastedLink(text);
+        const paths = url === undefined ? pastedPaths(text) : undefined;
+        const { id: _id, ...box } = fileBox(
+          ghostId,
+          { ...at, ...(url === undefined ? droppedSize : placedSizes.text) },
+          unit,
+        );
+        if (url !== undefined) {
+          post({ type: 'edit', tab, edit: { kind: 'link', url, box } });
+        } else if (paths !== undefined) {
+          post({ type: 'placeFiles', tab, files: paths, box });
+        }
+        return url !== undefined || paths !== undefined;
+      },
       askColor: (tab, { nodes, edges }) => {
         set((state) => ({
           colorings: new Map(state.colorings).set(tab, { nodes, edges }),

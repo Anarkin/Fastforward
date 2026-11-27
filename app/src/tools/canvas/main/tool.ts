@@ -341,6 +341,9 @@ export class CanvasTool implements Tool<'canvas'> {
       case 'save':
         await this.save(page, tab);
         return;
+      case 'placeFiles':
+        await this.dropped(page, sent.files, { tab, box: sent.box });
+        return;
       default:
         return;
     }

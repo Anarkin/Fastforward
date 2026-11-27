@@ -1,6 +1,10 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
-import { openedOf, pastedLink } from '../../../../../tools/canvas/page/links';
+import {
+  openedOf,
+  pastedLink,
+  pastedPaths,
+} from '../../../../../tools/canvas/page/links';
 import type { BoardNode } from '../../../../../tools/canvas/shared/board';
 
 const box = { x: 0, y: 0, width: 70, height: 36 };
@@ -21,6 +25,29 @@ suite('Canvas links', () => {
       '',
     ]) {
       assert.strictEqual(pastedLink(text), undefined, text);
+    }
+  });
+
+  test('takes a text pasted for paths only when every line of it is a whole path, of Windows, of a share or of macOS and Linux, its quotes and blanks left out', () => {
+    assert.deepStrictEqual(
+      pastedPaths(
+        '"C:\\Code\\notes\\a.md"\r\n  D:/work/b.txt \n\n\\\\server\\share\\c.md\n/home/me/d.md',
+      ),
+      [
+        'C:\\Code\\notes\\a.md',
+        'D:/work/b.txt',
+        '\\\\server\\share\\c.md',
+        '/home/me/d.md',
+      ],
+    );
+    for (const text of [
+      'notes/a.md',
+      'C:\\a.md\nnot a path',
+      'https://example.com/a',
+      '',
+      '   ',
+    ]) {
+      assert.strictEqual(pastedPaths(text), undefined, text);
     }
   });
 

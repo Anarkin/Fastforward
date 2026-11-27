@@ -1,3 +1,5 @@
+import type { Unit } from './grid';
+import type { Cell } from './routes';
 import type { KeptTyped } from '../../../lib/page/viewFocus';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Board } from '../shared/board';
@@ -73,6 +75,12 @@ export interface CanvasActions {
     files: readonly File[],
     box: PlacedBox,
   ) => void;
+  readonly pasteOnBoard: (
+    tab: string,
+    text: string,
+    at: Cell,
+    unit: Unit,
+  ) => boolean;
   readonly keepColorTyped: (tab: string, typed: KeptTyped) => void;
   readonly answerColor: (tab: string, color: string | undefined) => void;
   readonly keepTabs: () => void;

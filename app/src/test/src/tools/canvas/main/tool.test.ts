@@ -365,6 +365,23 @@ suite('Canvas tool', () => {
     assert.deepStrictEqual(undone?.type === 'board' && undone.board?.nodes, []);
   });
 
+  test('places the paths pasted on a canvas as file nodes, as files dropped on it are', async () => {
+    const note = path.resolve('/boards/notes/a.md');
+    const { tool, page } = canvas({ [file]: '{}', [note]: 'A' });
+    await tool.show(page, tab);
+    const box = { x: 14, y: 36, width: 210, height: 144 };
+    await tool.receive(page, {
+      type: 'placeFiles',
+      tab: '7',
+      files: [note],
+      box,
+    });
+    const shown = page.messages.filter((each) => each.type === 'board').at(-1);
+    assert.deepStrictEqual(shown?.type === 'board' && shown.board?.nodes, [
+      { id: 'made', type: 'file', file: 'notes/a.md', ...box },
+    ]);
+  });
+
   test('takes a drop on a canvas only with paths, a tab it holds and a box whole and in bounds, as the page is not trusted', async () => {
     const note = path.resolve('/boards/a.md');
     const gates: Gates = { saves: 0 };

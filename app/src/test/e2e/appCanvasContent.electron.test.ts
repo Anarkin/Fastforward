@@ -298,6 +298,29 @@ suite('App canvas content', () => {
     );
   });
 
+  test('places a file node of a path pasted on the canvas, quoted as Windows copies a path, as a file dropped on it is', async () => {
+    const note = path.join(folder, 'note.md');
+    await app.evaluate(
+      ({ clipboard }, copied) => clipboard.writeText(`"${copied}"`),
+      note,
+    );
+    const empty = await pointAt({ column: 80, row: 30 });
+    await page.mouse.click(empty.x, empty.y);
+    await page.keyboard.press('ControlOrMeta+V');
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () =>
+        Promise.resolve(
+          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
+        ),
+      'the path pasted placed and saved',
+      {
+        accepted: (text) =>
+          (text.match(/"type":"file","file":"note\.md"/g) ?? []).length === 3,
+      },
+    );
+  });
+
   test('places a link node of a URL pasted on the canvas, writing it into its file once saved', async () => {
     await app.evaluate(({ clipboard }) =>
       clipboard.writeText('https://example.invalid/pasted'),

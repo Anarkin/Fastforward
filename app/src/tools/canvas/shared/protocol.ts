@@ -105,6 +105,12 @@ export type BoardEdit =
     };
 
 export type CanvasToHost =
+  | {
+      readonly type: 'placeFiles';
+      readonly tab: string;
+      readonly files: readonly string[];
+      readonly box: PlacedBox;
+    }
   | { readonly type: 'edit'; readonly tab: string; readonly edit: BoardEdit }
   | { readonly type: 'undo'; readonly tab: string }
   | { readonly type: 'redo'; readonly tab: string }

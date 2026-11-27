@@ -46,7 +46,7 @@ import { endAt } from './edgeHandles';
 import { markAt } from './wiring';
 import { boxOf } from './grid';
 import { useBoardKeys } from './boardKeys';
-import { openNode, openedOf, pastedLink } from './links';
+import { openNode, openedOf } from './links';
 import { typedTextOf, typesOneLine } from './typedTexts';
 import { wheelZoom } from './zoom';
 
@@ -82,6 +82,7 @@ export function BoardView() {
     stopTyping,
     askColor,
     dropFiles,
+    pasteOnBoard,
     zoom,
   } = useCanvasActions();
   const { showMenu, followPath } = useShellActions();
@@ -712,17 +713,12 @@ export function BoardView() {
   const pasted = (event: React.ClipboardEvent<HTMLDivElement>) => {
     const now = tab === undefined ? undefined : typingOf(tab);
     const pastedText = event.clipboardData.getData('text/plain');
-    const url = now === undefined ? pastedLink(pastedText) : undefined;
     const known = drawn.current;
     const at = placedFrom(known, lastAt.current);
-    if (url !== undefined && tab !== undefined && known && at) {
-      event.preventDefault();
-      const { id: _id, ...box } = fileBox(
-        ghostId,
-        { ...at, ...placedSizes.text },
-        known.unit,
-      );
-      edit(tab, { kind: 'link', url, box });
+    if (now === undefined && tab !== undefined && known && at) {
+      if (pasteOnBoard(tab, pastedText, at, known.unit)) {
+        event.preventDefault();
+      }
       return;
     }
     const text = typesOneLine(board, now?.id)
