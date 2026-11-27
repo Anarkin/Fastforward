@@ -71,7 +71,8 @@
 }
 
 .board-marquee,
-.board-mark {
+.board-mark,
+.board-link {
   color: var(--color-focus);
 }
 

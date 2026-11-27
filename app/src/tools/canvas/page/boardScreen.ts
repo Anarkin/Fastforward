@@ -4,6 +4,8 @@ import type { TextWidths } from '../../../lib/page/textWidths';
 import { boxOf, type Box, type Unit } from './grid';
 import {
   labelAreaOf,
+  linkSegments,
+  markdownSegments,
   lineWidthOf,
   paintLine,
   paintText,
@@ -25,6 +27,8 @@ export const lineKind = 'line';
 export const labelKind = 'label';
 
 export const markKind = 'mark';
+
+export const linkKind = 'link';
 
 const mark = '●';
 
@@ -53,7 +57,10 @@ export interface Drawn {
   readonly typing?: TypedNode | undefined;
   readonly marks?: readonly Cell[];
   readonly colorsOf?: ColorsOf | undefined;
+  readonly titles?: ReadonlyMap<string, string> | undefined;
 }
+
+type NodeLooks = Pick<Drawn, 'colorsOf' | 'titles'>;
 
 export type ColorsOf = (id: string, text: string) => LineRanges | undefined;
 
@@ -111,14 +118,16 @@ function border(
   }
 }
 
-function contentOf(node: BoardNode): string {
+function contentOf(node: BoardNode, titles: NodeLooks['titles']): string {
   switch (node.type) {
     case 'text':
       return node.text;
     case 'file':
       return node.file + (node.subpath ?? '');
-    case 'link':
-      return node.url;
+    case 'link': {
+      const title = titles?.get(node.url);
+      return title === undefined ? node.url : `${title}\n${node.url}`;
+    }
     case 'group':
       return node.label ?? '';
     default:
@@ -133,7 +142,7 @@ function paintNode(
   selected: boolean,
   widths: TextWidths,
   typing: TypedNode | undefined,
-  colorsOf: ColorsOf | undefined,
+  { colorsOf, titles }: NodeLooks,
 ): void {
   const kind = colorKind(node.color);
   const weight = selected ? doubleShift : 0;
@@ -170,14 +179,18 @@ function paintNode(
     }
   }
   border(painter, box, weight, kind);
-  const text = typed?.text ?? contentOf(node);
+  const text = typed?.text ?? contentOf(node, titles);
+  const colors = node.type === 'text' ? colorsOf?.(node.id, text) : undefined;
   paintText(painter, {
     owner,
     area: textAreaOf(box),
     text,
     widths,
     typed,
-    colors: node.type === 'text' ? colorsOf?.(node.id, text) : undefined,
+    segmentsOf:
+      node.type === 'link'
+        ? linkSegments(text.length - node.url.length, linkKind)
+        : colors && markdownSegments(text, colors),
   });
 }
 
@@ -319,6 +332,7 @@ export function screenOf({
   typing,
   marks = [],
   colorsOf,
+  titles,
 }: Drawn): Screen {
   const painter = new Painter(emptyScreen(view));
   const boxes = new Map(
@@ -341,15 +355,10 @@ export function screenOf({
   const paint = (node: BoardNode) => {
     const box = boxes.get(node.id);
     if (box !== undefined) {
-      paintNode(
-        painter,
-        node,
-        box,
-        selected.has(node.id),
-        widths,
-        typing,
+      paintNode(painter, node, box, selected.has(node.id), widths, typing, {
         colorsOf,
-      );
+        titles,
+      });
     }
   };
   for (const node of board.nodes) {

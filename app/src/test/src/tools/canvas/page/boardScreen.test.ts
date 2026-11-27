@@ -57,6 +57,11 @@ function screenText(
   );
 }
 
+const segmentKinds = (screen: ReturnType<typeof screenOf>) => {
+  const [block] = screen.texts;
+  return block?.rows.map((row) => block.segmentsOf?.(row.row));
+};
+
 const edge = (more: Partial<BoardEdge> = {}): BoardEdge => ({
   id: 'e',
   fromNode: 'idea',
@@ -295,6 +300,43 @@ suite('Canvas screen', () => {
       ),
       ['┌──────────┐', '│ 日本語 ⏎  │', '│ ¤x  end  │', '└──────────┘'],
     );
+  });
+
+  test('draws a link node as the title of its page over its URL once the title is known, and as its URL alone before, the URL in the color of a link', () => {
+    const link: BoardNode = {
+      id: 'l',
+      type: 'link',
+      url: 'https://example.com/a',
+      x: 0,
+      y: 0,
+      width: 26 * unit.width,
+      height: 4 * unit.height,
+    };
+    const drawn = (titles?: ReadonlyMap<string, string>) =>
+      screenOf({
+        board: { nodes: [link], edges: [] },
+        unit,
+        view: { column: 0, row: 0, columns: 28, rows: 4 },
+        widths: { char: 1, of: narrow },
+        titles,
+      });
+    const untitled = drawn();
+    assert.deepStrictEqual(screenRows(untitled).slice(1, 3), [
+      '│ https://example.com/a  │',
+      '│                        │',
+    ]);
+    assert.deepStrictEqual(segmentKinds(untitled), [
+      [{ text: 'https://example.com/a', kind: 'link' }],
+    ]);
+    const titled = drawn(new Map([[link.url, 'Example A']]));
+    assert.deepStrictEqual(screenRows(titled).slice(1, 3), [
+      '│ Example A              │',
+      '│ https://example.com/a  │',
+    ]);
+    assert.deepStrictEqual(segmentKinds(titled), [
+      undefined,
+      [{ text: 'https://example.com/a', kind: 'link' }],
+    ]);
   });
 
   test('draws a node smaller than its borders as a line or a small square, so none is lost', () => {

@@ -16,6 +16,7 @@ import {
 import { viewVersion, type CanvasToHost } from '../shared/protocol';
 import { EditedBoard } from './edited';
 import { editOf } from './edits';
+import { isWebLink } from './pageTitles';
 import { post } from './post';
 import { boardOf } from './reading';
 
@@ -26,6 +27,7 @@ export interface CanvasAccess {
   readonly readOnly?: (error: unknown) => boolean;
   readonly newId?: () => string;
   readonly watch?: (file: string, onChange: () => void) => () => void;
+  readonly titleOf?: (url: string) => Promise<string | undefined>;
 }
 
 export const maxBoardBytes = 50 * 1024 * 1024;
@@ -50,6 +52,7 @@ export class CanvasTool implements Tool<'canvas'> {
   private readonly shown = new Map<Page, string>();
   private readonly toldSkipped = new Set<string>();
   private readonly held = new Map<string, Held>();
+  private readonly titles = new Map<string, Promise<string | undefined>>();
   private readonly watching = new Map<
     string,
     { readonly file: string; readonly stop: () => void }
@@ -84,6 +87,7 @@ export class CanvasTool implements Tool<'canvas'> {
     const kept = this.held.get(tab.id);
     if (kept?.file === file && kept.board.changed()) {
       this.postBoard(page, tab.id);
+      this.postTitles(page, tab.id);
       return;
     }
     const read = await this.read(file);
@@ -97,6 +101,7 @@ export class CanvasTool implements Tool<'canvas'> {
     }
     this.held.set(tab.id, read.held);
     this.postBoard(page, tab.id);
+    this.postTitles(page, tab.id);
     if (read.skipped > 0 && !this.toldSkipped.has(tab.id)) {
       this.toldSkipped.add(tab.id);
       this.shell.notice(page, {
@@ -159,6 +164,28 @@ export class CanvasTool implements Tool<'canvas'> {
     });
   }
 
+  private postTitles(page: Page, tab: string): void {
+    const titleOf = this.access.titleOf;
+    const read = this.held.get(tab)?.board.read();
+    if (titleOf === undefined || read?.kind !== 'board') {
+      return;
+    }
+    const urls = new Set(
+      read.board.nodes.flatMap((node) =>
+        node.type === 'link' && isWebLink(node.url) ? [node.url] : [],
+      ),
+    );
+    for (const url of urls) {
+      const asked = this.titles.get(url) ?? titleOf(url);
+      this.titles.set(url, asked);
+      void asked.then((title) => {
+        if (title !== undefined) {
+          post(page, { type: 'titles', titles: { [url]: title } });
+        }
+      });
+    }
+  }
+
   private watched(tab: string, file: string): void {
     const watch = this.access.watch;
     if (watch === undefined || this.watching.get(tab)?.file === file) {
@@ -205,6 +232,7 @@ export class CanvasTool implements Tool<'canvas'> {
     this.held.set(tab, read.held);
     for (const page of pages) {
       this.postBoard(page, tab);
+      this.postTitles(page, tab);
     }
   }
 

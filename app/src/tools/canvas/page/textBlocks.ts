@@ -63,7 +63,7 @@ function selectionOf(
     : { anchor: from, focus: to };
 }
 
-function segmentsOfLines(text: string, colors: LineRanges): SegmentsOf {
+export function markdownSegments(text: string, colors: LineRanges): SegmentsOf {
   const byStart = new Map<number, readonly ColoredSegment[]>();
   let start = 0;
   for (const [at, line] of text.split('\n').entries()) {
@@ -73,6 +73,11 @@ function segmentsOfLines(text: string, colors: LineRanges): SegmentsOf {
   return (row) => byStart.get(row.start);
 }
 
+export const linkSegments =
+  (from: number, kind: string): SegmentsOf =>
+  (line) =>
+    line.start >= from ? [{ text: line.text, kind }] : undefined;
+
 export function paintText(
   painter: Painter,
   {
@@ -81,14 +86,14 @@ export function paintText(
     text,
     widths,
     typed,
-    colors,
+    segmentsOf,
   }: {
     readonly owner: number;
     readonly area: TextArea;
     readonly text: string;
     readonly widths: TextWidths;
     readonly typed?: Typed | undefined;
-    readonly colors?: LineRanges | undefined;
+    readonly segmentsOf?: SegmentsOf | undefined;
   },
 ): void {
   if (area.room <= 0 || area.rows <= 0) {
@@ -108,8 +113,7 @@ export function paintText(
     wrapAt: area.wrapAt,
     room: area.room,
     selection: typed === undefined ? undefined : selectionOf(rows, typed),
-    segmentsOf:
-      colors === undefined ? undefined : segmentsOfLines(text, colors),
+    segmentsOf,
   });
   if (place !== undefined && place.row - scroll < area.rows) {
     painter.caret({

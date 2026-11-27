@@ -39,6 +39,7 @@ import type { Board } from '../shared/board';
 import {
   boundsOf,
   labelKind,
+  linkKind,
   lineKind,
   markKind,
   screenOf,
@@ -91,6 +92,7 @@ const lookKinds = [
   [lineKind, 'board-line'],
   [labelKind, 'board-label'],
   [markKind, 'board-mark'],
+  [linkKind, 'board-link'],
   ...colorKinds,
 ] as const;
 
@@ -114,6 +116,7 @@ export interface Shown {
   readonly marks?: readonly Cell[];
   readonly whitespace?: boolean;
   readonly colorsOf?: ColorsOf | undefined;
+  readonly titles?: ReadonlyMap<string, string> | undefined;
 }
 
 interface CellPlace {
@@ -247,6 +250,7 @@ export class BoardSurface {
       typing: shown.typing,
       marks: shown.marks,
       colorsOf: shown.colorsOf,
+      titles: shown.titles,
     });
     cells.frame.reset();
     cells.under.reset();

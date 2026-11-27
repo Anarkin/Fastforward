@@ -44,6 +44,7 @@ export const canvasKeymap = {
     { fields: true },
   ),
   typeIn: bind('Typing', strings.actions.typeInNode, { Enter: true }),
+  openLink: bind('Editing', strings.actions.openLinkNode, { Enter: true }),
   stopTyping: bind(
     'Typing',
     strings.actions.stopTyping,

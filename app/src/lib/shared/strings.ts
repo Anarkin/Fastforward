@@ -298,6 +298,8 @@ export const strings = {
     saveCanvas: 'Save the canvas',
     typeInNode:
       'Type in the text node selected, or in the one double-clicked where it was clicked',
+    openLinkNode:
+      'Open the page of the link node selected, or of the one double-clicked, in the browser',
     stopTyping: 'Stop typing, the node staying selected',
     newLineInNode: 'Start a new line',
     cursorTextEnd:

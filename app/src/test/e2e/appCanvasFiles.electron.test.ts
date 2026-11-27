@@ -24,6 +24,19 @@ suite('App canvas files', () => {
       ?.kinds.map(([, kind]) => kind)
       .filter((kind) => kind !== '');
 
+  const pointAt = async (cell: { column: number; row: number }) => {
+    const seen = await seenBoard();
+    const box = await page.locator('.board-host').boundingBox();
+    const ratio = await page.evaluate(() => devicePixelRatio);
+    assert.ok(seen !== undefined && box !== null);
+    return {
+      x:
+        box.x +
+        (cell.column - seen.origin.column + 0.5) * (seen.advance / ratio),
+      y: box.y + (cell.row - seen.origin.row + 0.5) * (seen.rowHeight / ratio),
+    };
+  };
+
   beforeAll(async () => {
     folder = tempFolder('app-canvas-files');
     const profile = path.join(folder, 'profile');
@@ -39,6 +52,15 @@ suite('App canvas files', () => {
             text: 'plain words\n# Heading',
             x: 0,
             y: 0,
+            width: 210,
+            height: 72,
+          },
+          {
+            id: 'linked',
+            type: 'link',
+            url: 'https://example.com/linked',
+            x: 0,
+            y: 108,
             width: 210,
             height: 72,
           },
@@ -75,6 +97,43 @@ suite('App canvas files', () => {
       { accepted: (kinds) => kinds !== undefined && kinds !== '[]' },
     );
     assert.deepStrictEqual(await kindsOf('plain words'), []);
+  });
+
+  test('draws a link node as its URL in the color of a link, and opens it outside the app on Enter once selected and on a double click', async () => {
+    await page.locator('.board-host canvas').first().waitFor();
+    await untilSettled(
+      async () => JSON.stringify(await kindsOf('https://example.com/linked')),
+      'the link drawn',
+      { accepted: (kinds) => kinds === JSON.stringify(['link']) },
+    );
+    await app.evaluate(({ shell }) => {
+      const opened: string[] = [];
+      Reflect.set(globalThis, 'openedLinks', opened);
+      shell.openExternal = (url: string) => {
+        opened.push(url);
+        return Promise.resolve();
+      };
+    });
+    const opened = () =>
+      app.evaluate(() =>
+        JSON.stringify(Reflect.get(globalThis, 'openedLinks')),
+      );
+    const inside = await pointAt({ column: 4, row: 7 });
+    await page.mouse.click(inside.x, inside.y);
+    await page.keyboard.press('Enter');
+    await untilSettled(opened, 'the link opened on Enter', {
+      accepted: (urls) =>
+        urls === JSON.stringify(['https://example.com/linked']),
+    });
+    await page.mouse.dblclick(inside.x, inside.y);
+    await untilSettled(opened, 'the link opened on a double click', {
+      accepted: (urls) =>
+        urls ===
+        JSON.stringify([
+          'https://example.com/linked',
+          'https://example.com/linked',
+        ]),
+    });
   });
 
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {

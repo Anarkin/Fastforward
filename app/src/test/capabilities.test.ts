@@ -99,6 +99,21 @@ suite('Capabilities', () => {
     heldBy(/\.sync\(\)/, ['lib/main/fileSaving.ts']);
   });
 
+  test('opens a link outside the app only by the open handler of a window, which lets out https and mailto alone, the page asking for it as a Markdown preview, About and the link nodes of a canvas do, and the page of a release the updater names, rather than by a page or a tool of its own', () => {
+    heldBy(/\bshell\.openExternal\(/, [
+      'boot/browserWindow.ts',
+      'boot/main.ts',
+    ]);
+  });
+
+  test('reaches the web from the main process only for the titles of the link nodes of a canvas, read by its reader over https alone, a head of the page at most and within a time, beside the files of the app it serves its pages, rather than by a fetch of each part', () => {
+    heldBy(/\bnet\.fetch\(/, ['boot/appProtocol.ts', 'boot/canvasHost.ts']);
+    heldBy(/\breadTitle\(/, [
+      'boot/canvasHost.ts',
+      'tools/canvas/main/pageTitles.ts',
+    ]);
+  });
+
   test('starts every watch of the file system by the library, a folder or a tree of folders, so every watch takes the same options, none keeping the app from quitting, and each tool keeps only what it does once told of a change or an error', () => {
     heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts']);
   });

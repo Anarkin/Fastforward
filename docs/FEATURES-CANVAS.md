@@ -55,6 +55,6 @@
 | Group labels | Name a group | Enter, double click | Common | ✅ Yes | `label` of a group, drawn in its top border, cut where the border ends; typed on Enter on the group selected or a double click on its label, as the text of a node is typed, Enter or Escape ending it, a line break pasted into it typed as a space, as a label holds one line; not on a group placed, which is moved by its top as it is placed |
 | Group backgrounds | Show an image behind a group, covering it, at its ratio or repeated | — | Advanced | ❌ No | `background` and `backgroundStyle`, `cover`, `ratio` or `repeat`, read and kept in the file as they are, not drawn |
 | Files | Show a file in a node | — | Common | 🟡 Partial | A node of the type `file`, its `file` path and its `subpath`, a heading or block after its #, shown; not the file |
-| Links | Show a web page in a node | — | Common | 🟡 Partial | A node of the type `link`, its `url` shown; not the page |
+| Links | Show a web page in a node | Enter, double click | Common | 🟡 Partial | A node of the type `link`, its `url` drawn in the color of a link below the title of its page, which the main process reads from the web over https alone, from the first 256 KB of the page at most, within 10 seconds and without cookies, once a page while the app runs; opened by the system on Enter on the node selected or a double click, through the window, which lets out https and mailto alone, as it opens a link of a Markdown preview; not the page itself, as no page of the web runs in the app |
 
 <!-- prettier-ignore-end -->

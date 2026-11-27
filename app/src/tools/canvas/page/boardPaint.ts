@@ -28,6 +28,7 @@ interface Painted {
   readonly hover: Cell | undefined;
   readonly whitespace: boolean;
   readonly colors?: NodeColors | undefined;
+  readonly titles?: ReadonlyMap<string, string> | undefined;
 }
 
 const noBoxes = new Map();
@@ -47,6 +48,7 @@ export function paint(
     hover,
     whitespace,
     colors,
+    titles,
   }: Painted,
 ): Drawn | undefined {
   const ghost =
@@ -74,6 +76,7 @@ export function paint(
     marks: mark === undefined ? [] : [mark.cell],
     colorsOf:
       colors === undefined ? undefined : (id, text) => colors.of(id, text),
+    titles,
   });
 }
 

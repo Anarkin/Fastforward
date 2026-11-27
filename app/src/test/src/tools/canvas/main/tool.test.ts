@@ -25,6 +25,16 @@ const file = '/boards/plan.canvas';
 
 class ReadOnly extends Error {}
 
+const link = (id: string, url: string) => ({
+  id,
+  type: 'link',
+  url,
+  x: 0,
+  y: 0,
+  width: 70,
+  height: 36,
+});
+
 function canvas(
   files: Record<string, string>,
   sizes: Record<string, number> = {},
@@ -32,7 +42,14 @@ function canvas(
 ) {
   const saved: [string, string][] = [];
   const watched = new Map<string, () => void>();
+  const titled: string[] = [];
   const tool = new CanvasTool({
+    titleOf: (url) => {
+      titled.push(url);
+      return Promise.resolve(
+        url.includes('nameless') ? undefined : `Title of ${url}`,
+      );
+    },
     watch: (name, onChange) => {
       watched.set(name, onChange);
       return () => watched.delete(name);
@@ -66,7 +83,7 @@ function canvas(
     watched.get(name)?.();
     await new Promise((resolve) => setTimeout(resolve, 0));
   };
-  return { tool, page, saved, watched, changed, ...shell };
+  return { tool, page, saved, watched, changed, titled, ...shell };
 }
 
 const tab: Tab = { id: '7', tool: 'canvas', root: file };
@@ -285,6 +302,41 @@ suite('Canvas tool', () => {
     await tool.receive(page, { type: 'save', tab: '9' });
     await tool.receive(page, { type: 'save', tab: '9' });
     assert.deepStrictEqual(saved, [[made, '{}']]);
+  });
+
+  test('tells the page the title of the page each link node points to, read once a page while the app runs, and only from the web', async () => {
+    const { tool, page, titled } = canvas({
+      [file]: JSON.stringify({
+        nodes: [
+          link('a', 'https://example.com/a'),
+          link('b', 'https://example.com/a'),
+          link('c', 'https://example.com/nameless'),
+          link('d', 'file:///etc/passwd'),
+          link('e', 'http://example.com/plain'),
+        ],
+      }),
+    });
+    await tool.show(page, tab);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await tool.show(page, tab);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.deepStrictEqual(titled, [
+      'https://example.com/a',
+      'https://example.com/nameless',
+    ]);
+    assert.deepStrictEqual(
+      page.messages.filter((each) => each.type === 'titles'),
+      [
+        {
+          type: 'titles',
+          titles: { 'https://example.com/a': 'Title of https://example.com/a' },
+        },
+        {
+          type: 'titles',
+          titles: { 'https://example.com/a': 'Title of https://example.com/a' },
+        },
+      ],
+    );
   });
 
   test('saves the canvas in the layout of its file, the tab no longer unsaved, and a save asked for with nothing to save writes nothing', async () => {

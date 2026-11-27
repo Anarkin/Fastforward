@@ -34,6 +34,7 @@ export interface CanvasSource {
   readonly placing: Placing | undefined;
   readonly typings: ReadonlyMap<string, Typing>;
   readonly colorings: ReadonlyMap<string, Coloring>;
+  readonly titles: ReadonlyMap<string, string>;
 }
 
 export interface CanvasActions {
@@ -78,6 +79,7 @@ export const canvasDefaults: CanvasSource = {
   placing: undefined,
   typings: new Map(),
   colorings: new Map(),
+  titles: new Map(),
 };
 
 export const coloringShown = (state: CanvasSource): Coloring | undefined =>

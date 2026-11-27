@@ -4,7 +4,7 @@ import { useCellTable } from '../../../lib/page/cellTable';
 import { watchDevicePixels } from '../../../lib/page/devicePixels';
 import { Words } from '../../../lib/page/name';
 import { PathTitle } from '../../../lib/page/pathTitle';
-import { keyPressed, useBinding } from '../../../lib/page/shortcuts';
+import { keyPressed } from '../../../lib/page/shortcuts';
 import { clicked, wheeled } from '../../../lib/shared/keymap';
 import { useShell, useShellActions } from '../../../shell/page/store';
 import type { Board } from '../shared/board';
@@ -41,7 +41,8 @@ import { typingKeyed } from './typingKeys';
 import { inserted, movedTo, selectedText } from './typing';
 import { markAt } from './wiring';
 import { boxOf } from './grid';
-import { nextEnds } from './arrows';
+import { useBoardKeys } from './boardKeys';
+import { openLink } from './links';
 
 interface Panning {
   readonly pointer: number;
@@ -58,6 +59,7 @@ export function BoardView() {
   const selected = useCanvas(selectedShown);
   const placing = useCanvas((state) => state.placing);
   const typing = useCanvas(typingShown);
+  const titles = useCanvas((state) => state.titles);
   const scrolling = useShell((state) => state.scrolling);
   const whitespace = useShell((state) => state.textView.showWhitespace);
   const {
@@ -67,9 +69,6 @@ export function BoardView() {
     select,
     place,
     edit,
-    undo,
-    redo,
-    save,
     startTyping,
     typed,
     stopTyping,
@@ -146,6 +145,7 @@ export function BoardView() {
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
         whitespace,
         colors: colors.current,
+        titles,
       });
       placeContext(
         board,
@@ -216,6 +216,7 @@ export function BoardView() {
         hover: hoverFrom(placing, typing, pressing.current, lastAt.current),
         whitespace,
         colors: colors.current,
+        titles,
       });
       placeContext(
         board,
@@ -232,6 +233,7 @@ export function BoardView() {
     placing,
     typing,
     whitespace,
+    titles,
     placeContext,
   ]);
 
@@ -269,15 +271,6 @@ export function BoardView() {
     return () => element.removeEventListener('wheel', onWheel);
   }, []);
 
-  const shownTab = tab !== undefined && board !== undefined;
-  const calm = shownTab && typing === undefined;
-  const [only] = selected.length === 1 ? selected : [];
-  const typeable =
-    only !== undefined &&
-    ['text', 'group'].includes(
-      board?.nodes.find((node) => node.id === only)?.type ?? '',
-    );
-
   const startPlacing = (kind: Placing) => {
     const known = drawn.current;
     ghostAt.current =
@@ -295,80 +288,7 @@ export function BoardView() {
     place(kind);
   };
 
-  useBinding(canvasKeymap.placeText, () => startPlacing('text'), shownTab);
-  useBinding(canvasKeymap.placeGroup, () => startPlacing('group'), shownTab);
-  useBinding(
-    canvasKeymap.delete,
-    () => {
-      if (tab !== undefined) {
-        const edges = new Set(board?.edges.map((each) => each.id));
-        edit(tab, {
-          kind: 'delete',
-          nodes: selected.filter((id) => !edges.has(id)),
-          edges: selected.filter((id) => edges.has(id)),
-        });
-      }
-    },
-    calm && selected.length > 0,
-  );
-  useBinding(
-    canvasKeymap.selectAll,
-    () => {
-      if (tab !== undefined && board !== undefined) {
-        select(
-          tab,
-          board.nodes.map((node) => node.id),
-        );
-      }
-    },
-    calm,
-  );
-  useBinding(
-    canvasKeymap.leave,
-    () => {
-      if (placing !== undefined) {
-        place(undefined);
-      } else if (tab !== undefined) {
-        select(tab, []);
-      }
-    },
-    calm && (placing !== undefined || selected.length > 0),
-  );
-  const selectedEdges =
-    board?.edges.filter((edge) => selected.includes(edge.id)) ?? [];
-  useBinding(
-    canvasKeymap.point,
-    () => {
-      const [first] = selectedEdges;
-      if (tab !== undefined && first !== undefined) {
-        edit(tab, {
-          kind: 'ends',
-          edges: selectedEdges.map((edge) => edge.id),
-          ...nextEnds(first),
-        });
-      }
-    },
-    calm && selectedEdges.length > 0,
-  );
-  useBinding(
-    canvasKeymap.typeIn,
-    () => {
-      if (tab !== undefined && only !== undefined) {
-        startTyping(tab, only);
-      }
-    },
-    calm && placing === undefined && typeable,
-  );
-  const settled = (then: (tab: string) => void) => {
-    if (tab === undefined) {
-      return;
-    }
-    stopTyping(tab);
-    then(tab);
-  };
-  useBinding(canvasKeymap.undo, () => settled(undo), shownTab);
-  useBinding(canvasKeymap.redo, () => settled(redo), shownTab);
-  useBinding(canvasKeymap.save, () => tab !== undefined && save(tab), shownTab);
+  useBoardKeys(startPlacing);
 
   const startPan = (event: React.PointerEvent<HTMLDivElement>): boolean => {
     const known = drawn.current;
@@ -645,6 +565,10 @@ export function BoardView() {
       hit.kind === 'node'
         ? board.nodes.find((each) => each.id === hit.id)
         : undefined;
+    if (node?.type === 'link' && whole === 'word') {
+      openLink(node.url);
+      return;
+    }
     const onLabel =
       node?.type === 'group' && at.row === boxOf(node, known.unit).row;
     if (node === undefined || (node.type !== 'text' && !onLabel)) {

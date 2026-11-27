@@ -82,4 +82,8 @@ export type CanvasToWebview =
       readonly error?: Sentence;
       readonly changed?: true;
       readonly made?: string;
+    }
+  | {
+      readonly type: 'titles';
+      readonly titles: Readonly<Record<string, string>>;
     };

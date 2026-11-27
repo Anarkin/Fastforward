@@ -160,6 +160,14 @@ export function createCanvasStore(
           case 'hide':
             set({ ...hidden, placing: undefined });
             break;
+          case 'titles':
+            set((state) => ({
+              titles: new Map([
+                ...state.titles,
+                ...Object.entries(message.titles),
+              ]),
+            }));
+            break;
           case 'closed': {
             const boards = new Map(get().boards);
             boards.delete(message.tab);
