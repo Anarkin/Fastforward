@@ -33,7 +33,7 @@ import {
   textEncodingOf,
 } from './encodingSources';
 
-const maxEditedBytes = 50 * 1024 * 1024;
+export const maxEditedBytes = 50 * 1024 * 1024;
 
 const maxKeptState = 16 * 1024 * 1024;
 
@@ -266,6 +266,15 @@ export class Editing {
     startByte?: number,
   ): Promise<Read> {
     const stamp = await this.access.stampOf(file);
+    const stat = await this.access.statFile(file).catch(() => undefined);
+    if (stat !== undefined && !stat.folder && stat.size > maxEditedBytes) {
+      return {
+        text: undefined,
+        error: strings.editor.tooLarge(file),
+        made: false,
+        stamp,
+      };
+    }
     let bytes: Buffer;
     try {
       bytes = await this.access.readFile(file);

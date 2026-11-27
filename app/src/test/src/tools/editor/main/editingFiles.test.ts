@@ -278,4 +278,35 @@ suite('Editing files on disk', () => {
     assert.strictEqual(page.last('askChangedOnDisk')?.tab, '1');
     assert.ok(fs.statSync(file).isDirectory());
   });
+
+  test('stamps a file over 50 MB by its size and its time alone, never reading it whole, as the editor refuses it', async () => {
+    const access = editingFiles({
+      watch: () => () => {},
+      codePage: () => Promise.resolve('utf-8'),
+      readOnlyCopy: () => false,
+      copySaved: () => {},
+    });
+    const size = 50 * 1024 * 1024 + 1;
+    const [one, other] = ['one.log', 'other.log'].map((name) =>
+      path.join(folder, name),
+    );
+    assert.ok(one !== undefined && other !== undefined);
+    for (const [file, byte] of [
+      [one, 0x61],
+      [other, 0x62],
+    ] as const) {
+      fs.writeFileSync(file, '');
+      fs.truncateSync(file, size);
+      const handle = fs.openSync(file, 'r+');
+      fs.writeSync(handle, Buffer.from([byte]), 0, 1, 0);
+      fs.closeSync(handle);
+      fs.utimesSync(file, 1_700_000_000, 1_700_000_000);
+    }
+    assert.strictEqual(await access.stampOf(one), await access.stampOf(other));
+    fs.appendFileSync(other, 'more');
+    assert.notStrictEqual(
+      await access.stampOf(one),
+      await access.stampOf(other),
+    );
+  });
 });

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import { firstBytes } from '../../../components/encodings/main/encodingDetection';
 import type { EditingAccess } from './editing';
+import { maxEditedBytes } from './editing';
 import { saveFile } from '../../../lib/main/fileSaving';
 import { bytesVersion } from '../../../lib/main/fileVersions';
 import type { Saved } from '../../../lib/main/fileSaving';
@@ -45,7 +46,10 @@ export function editingFiles(access: EditingFilesAccess): EditingAccess {
     },
     stampOf: async (file) => {
       try {
-        return bytesVersion(await fs.promises.readFile(file));
+        const { size, mtimeMs } = await fs.promises.stat(file);
+        return size > maxEditedBytes
+          ? `size:${size}:${mtimeMs}`
+          : bytesVersion(await fs.promises.readFile(file));
       } catch (error) {
         return codeOf(error) === 'ENOENT'
           ? undefined

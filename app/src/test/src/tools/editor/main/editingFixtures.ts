@@ -52,6 +52,7 @@ export function editing(
   const windows = new Map<string, Page>();
   const watchers: { file: string; onChange: () => void }[] = [];
   const held = new Map<string, Promise<void>>();
+  const reads: string[] = [];
   const saving: {
     until: Promise<void> | undefined;
     running: number;
@@ -60,6 +61,7 @@ export function editing(
   } = { until: undefined, running: 0, most: 0, after: undefined };
   const access: EditingAccess = {
     readFile: async (file) => {
+      reads.push(file);
       await held.get(file);
       const content = files[file];
       return content === undefined
@@ -146,7 +148,7 @@ export function editing(
     }
     await settled();
   };
-  const changeOnDisk = async (file: string, content: string) => {
+  const changeOnDisk = async (file: string, content: string | Uint8Array) => {
     files[file] = content;
     await touched(file);
   };
@@ -163,6 +165,7 @@ export function editing(
     touched,
     watchers,
     held,
+    reads,
   };
 }
 

@@ -207,6 +207,22 @@ suite('Editing a file', () => {
     assert.strictEqual(page.last('editedText')?.shown.text, 'two\n');
   });
 
+  test('refuses a file that grew past 50 MB while it was edited by its size, never reading it whole again', async () => {
+    const { edits, changeOnDisk, showing, reads } = editing({
+      'log.txt': 'a\n',
+    });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'log.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    reads.length = 0;
+    await changeOnDisk(
+      'log.txt',
+      new Uint8Array(50 * 1024 * 1024 + 1).fill(0x61),
+    );
+    assert.deepStrictEqual(reads, []);
+  });
+
   test('reads the file again once it changes on disk while it has no changes here, giving the pages showing it the new text in a version of its own, the cursor kept', async () => {
     const { edits, changeOnDisk, showing } = editing({ 'a.txt': 'one\n' });
     const page = new EditorPage();
