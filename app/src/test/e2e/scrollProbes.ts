@@ -1,6 +1,7 @@
 import * as assert from 'node:assert';
 import type { Locator, Page } from 'playwright-core';
 import { waitFor } from '../helpers/fixtures';
+import { longestFrame } from './scrollingPlaces';
 
 export async function scrollPlaces(
   page: Page,
@@ -9,7 +10,9 @@ export async function scrollPlaces(
 ): Promise<number[]> {
   await list.evaluate((element) => {
     const places: number[] = [];
+    const times: number[] = [];
     Reflect.set(window, 'scrollPlaces', places);
+    Reflect.set(window, 'scrollTimes', times);
     Reflect.set(window, 'scrollRested', false);
     let moved = performance.now();
     const record = () => {
@@ -17,6 +20,7 @@ export async function scrollPlaces(
         moved = performance.now();
       }
       places.push(element.scrollTop);
+      times.push(performance.now());
       if (
         places.some((place) => place !== places[0]) &&
         performance.now() - moved > 300
@@ -37,6 +41,23 @@ export async function scrollPlaces(
     const places: unknown = Reflect.get(window, 'scrollPlaces');
     return Array.isArray(places) ? places.map(Number) : [];
   });
+}
+
+export async function scrollStalled(page: Page): Promise<boolean> {
+  const { places, times } = await page.evaluate(() => {
+    const placed: unknown = Reflect.get(window, 'scrollPlaces');
+    const timed: unknown = Reflect.get(window, 'scrollTimes');
+    return {
+      places: Array.isArray(placed) ? placed.map(Number) : [],
+      times: Array.isArray(timed) ? timed.map(Number) : [],
+    };
+  });
+  const lastMove = places.findLastIndex(
+    (place, at) => at > 0 && place !== places[at - 1],
+  );
+  return times
+    .slice(1, lastMove + 1)
+    .some((time, at) => time - (times[at] ?? time) > longestFrame);
 }
 
 function settledTop(list: Locator): Promise<number | undefined> {

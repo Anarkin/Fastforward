@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { defaultSettings, waitFor } from '../helpers/fixtures';
 import { untilSettled } from './waits';
-import { scrollPlaces } from './scrollProbes';
+import { scrollPlaces, scrollStalled } from './scrollProbes';
 import { tilesCount } from './commanderTiles';
 import { barOf, barParts, drawnBarWidth } from './scrollbarsShown';
 import {
@@ -110,9 +110,6 @@ suite('App commander', () => {
       });
 
     await list.hover();
-    const notched = await scrollPlaces(page, list, () =>
-      page.mouse.wheel(0, 300),
-    );
     const oneRow = await list.evaluate(
       (element) =>
         element
@@ -120,6 +117,17 @@ suite('App commander', () => {
           ?.querySelector('.commander-ruler')
           ?.getBoundingClientRect().height ?? 0,
     );
+    const notch = () =>
+      scrollPlaces(page, list, () => page.mouse.wheel(0, 300));
+    let notched = await notch();
+    for (
+      let again = 0;
+      again < 2 && !betweenRows(notched, oneRow) && (await scrollStalled(page));
+      again++
+    ) {
+      await scrollPlaces(page, list, () => page.mouse.wheel(0, -300));
+      notched = await notch();
+    }
     assert.ok(
       Math.abs(
         (notched.at(-1) ?? 0) - oneRow * defaultSettings().scrolling.wheelRows,

@@ -237,7 +237,7 @@ export function thumbShownAt(bar: {
     : !thumb.hidden;
 }
 
-const longestFrame = 100;
+export const longestFrame = 100;
 
 export function stalled(
   painted: readonly { state: string; at: number }[],
