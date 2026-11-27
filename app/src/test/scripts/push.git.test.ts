@@ -69,7 +69,7 @@ suite('Pushing', () => {
     });
 
   test('pushes the commit to main, and says at once that it could not watch its CI run, apart from a failed one, when gh does not work here', async () => {
-    await local.commit('local', { b: 'b' });
+    await local.commit('fix: local', { b: 'b' });
     const { code, said } = await pushing();
     assert.deepStrictEqual(
       await remote.resolve('main'),
@@ -91,10 +91,27 @@ suite('Pushing', () => {
     assert.deepStrictEqual(await remote.resolve('main'), [start]);
   });
 
+  test('refuses to push commits whose messages break the rules of CONTRIBUTING.md, naming each with its lines, leaving main on the remote as it was and watching no CI run', async () => {
+    await local.commit('fix: kept', { b: 'b' });
+    await local.commit('Broken', { c: 'c' });
+    const [broken] = await local.resolve('--short', 'HEAD');
+    const { code, said } = await pushing();
+    assert.strictEqual(code, 1);
+    assert.match(
+      said,
+      new RegExp(
+        String.raw`These commits break the rules of CONTRIBUTING\.md for a commit message:\n {2}${broken} Broken\n {4}line 1: not <type>`,
+      ),
+    );
+    assert.match(said, /Reword them before pushing; nothing was pushed\./);
+    assert.doesNotMatch(said, /kept|CI run/);
+    assert.deepStrictEqual(await remote.resolve('main'), [start]);
+  });
+
   test('never forces a push the remote refuses, leaving the commits of the remote, and watches no CI run', async () => {
     await other.commit('pushed elsewhere', { c: 'c' });
     await other.git('push', 'origin', 'HEAD:main');
-    await local.commit('local', { d: 'd' });
+    await local.commit('fix: local', { d: 'd' });
     const { code, said } = await pushing();
     assert.strictEqual(code, 1);
     assert.match(said, /never force/);

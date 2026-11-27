@@ -5,12 +5,19 @@ import {
   runOfPush,
   watchRunToFirstFailure,
 } from './ciRun.mts';
+import { refusalOfCommits } from './commitMessage.mts';
 
 const git = (...args: string[]) =>
   execFileSync('git', args, { encoding: 'utf8' }).trim();
 
 if (git('branch', '--show-current') !== 'main') {
   console.error('Switch to the main branch before pushing.');
+  process.exit(1);
+}
+
+const refusal = refusalOfCommits('origin/main..HEAD');
+if (refusal !== undefined) {
+  console.error(`${refusal}\nReword them before pushing; nothing was pushed.`);
   process.exit(1);
 }
 
