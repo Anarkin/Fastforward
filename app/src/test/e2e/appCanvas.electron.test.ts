@@ -669,7 +669,7 @@ suite('App canvas', () => {
     await shows('an arrow at its start', { column: 14, row: 2 }, '◀');
     await page.keyboard.press('ControlOrMeta+S');
     await untilSettled(
-      () => Promise.resolve(fs.readFileSync(board, 'utf8')),
+      () => fs.promises.readFile(board, 'utf8').catch(() => ''),
       'the arrows saved',
       {
         accepted: (text) =>
@@ -690,7 +690,7 @@ suite('App canvas', () => {
     await holds('the label drawn', 'Ideas', true);
     await page.keyboard.press('ControlOrMeta+S');
     await untilSettled(
-      () => Promise.resolve(fs.readFileSync(board, 'utf8')),
+      () => fs.promises.readFile(board, 'utf8').catch(() => ''),
       'the label saved',
       { accepted: (text) => text.includes('"label":"Ideas"') },
     );

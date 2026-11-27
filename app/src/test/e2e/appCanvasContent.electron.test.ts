@@ -10,6 +10,10 @@ import { untilSettled } from './waits';
 
 suite('App canvas content', () => {
   let folder: string;
+  const savedBoard = () =>
+    fs.promises
+      .readFile(path.join(folder, 'notes.canvas'), 'utf8')
+      .catch(() => '');
   let app: ElectronApplication;
   let page: Page;
 
@@ -223,14 +227,9 @@ suite('App canvas content', () => {
       { accepted: (drawn) => drawn },
     );
     await page.keyboard.press('ControlOrMeta+S');
-    await untilSettled(
-      () =>
-        Promise.resolve(
-          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
-        ),
-      'the label of the edge saved',
-      { accepted: (text) => /"id":"wired"[^}]*"label":"uses"/.test(text) },
-    );
+    await untilSettled(savedBoard, 'the label of the edge saved', {
+      accepted: (text) => /"id":"wired"[^}]*"label":"uses"/.test(text),
+    });
   });
 
   test('moves the end of the edge selected dragged onto another node to the side of it nearest the pointer, writing it into the edge in its file', async () => {
@@ -241,17 +240,10 @@ suite('App canvas content', () => {
     await page.mouse.move(onto.x, onto.y, { steps: 5 });
     await page.mouse.up();
     await page.keyboard.press('ControlOrMeta+S');
-    await untilSettled(
-      () =>
-        Promise.resolve(
-          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
-        ),
-      'the end of the edge moved and saved',
-      {
-        accepted: (text) =>
-          /"id":"wired"[^}]*"toNode":"other","toSide":"top"/.test(text),
-      },
-    );
+    await untilSettled(savedBoard, 'the end of the edge moved and saved', {
+      accepted: (text) =>
+        /"id":"wired"[^}]*"toNode":"other","toSide":"top"/.test(text),
+    });
   });
 
   test('places a file dropped on the canvas as a file node where it fell, by its path from the folder of the canvas, writing it into its file once saved', async () => {
@@ -285,17 +277,10 @@ suite('App canvas content', () => {
       }
     }, at);
     await page.keyboard.press('ControlOrMeta+S');
-    await untilSettled(
-      () =>
-        Promise.resolve(
-          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
-        ),
-      'the file dropped placed and saved',
-      {
-        accepted: (text) =>
-          (text.match(/"type":"file","file":"note\.md"/g) ?? []).length === 2,
-      },
-    );
+    await untilSettled(savedBoard, 'the file dropped placed and saved', {
+      accepted: (text) =>
+        (text.match(/"type":"file","file":"note\.md"/g) ?? []).length === 2,
+    });
   });
 
   test('places a file node of a path pasted on the canvas, quoted as Windows copies a path, as a file dropped on it is', async () => {
@@ -308,17 +293,10 @@ suite('App canvas content', () => {
     await page.mouse.click(empty.x, empty.y);
     await page.keyboard.press('ControlOrMeta+V');
     await page.keyboard.press('ControlOrMeta+S');
-    await untilSettled(
-      () =>
-        Promise.resolve(
-          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
-        ),
-      'the path pasted placed and saved',
-      {
-        accepted: (text) =>
-          (text.match(/"type":"file","file":"note\.md"/g) ?? []).length === 3,
-      },
-    );
+    await untilSettled(savedBoard, 'the path pasted placed and saved', {
+      accepted: (text) =>
+        (text.match(/"type":"file","file":"note\.md"/g) ?? []).length === 3,
+    });
   });
 
   test('places a link node of a URL pasted on the canvas, writing it into its file once saved', async () => {
@@ -329,17 +307,10 @@ suite('App canvas content', () => {
     await page.mouse.click(empty.x, empty.y);
     await page.keyboard.press('ControlOrMeta+V');
     await page.keyboard.press('ControlOrMeta+S');
-    await untilSettled(
-      () =>
-        Promise.resolve(
-          fs.readFileSync(path.join(folder, 'notes.canvas'), 'utf8'),
-        ),
-      'the link pasted placed and saved',
-      {
-        accepted: (text) =>
-          text.includes('"type":"link","url":"https://example.invalid/pasted"'),
-      },
-    );
+    await untilSettled(savedBoard, 'the link pasted placed and saved', {
+      accepted: (text) =>
+        text.includes('"type":"link","url":"https://example.invalid/pasted"'),
+    });
   });
 
   test('zooms the canvas on Mod and the wheel around the pointer, a device pixel of the width of a cell a notch, its nodes on the cells of the board they were on', async () => {
