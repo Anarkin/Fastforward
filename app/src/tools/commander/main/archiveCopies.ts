@@ -393,8 +393,6 @@ export class ArchiveCopies {
             stamp = (await stampNow()) ?? now;
             if (update) {
               this.putBack(archives, archive, inner, copy, marked);
-            } else {
-              await marked();
             }
           }
         } while (again);

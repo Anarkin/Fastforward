@@ -210,10 +210,14 @@ suite('Commander tool in archives', () => {
         },
       ]);
 
+      const markOfCopy = () =>
+        fs.readFileSync(path.join(holding, '.fastforward-copy.json'), 'utf8');
+      const putBackMark = markOfCopy();
       await saved('Changed once put back.');
       await waitFor(() => asked().length === 2, 'the update to be asked again');
       await send({ type: 'updateArchive', ask: 2, update: false });
       await made.settled();
+      assert.strictEqual(markOfCopy(), putBackMark);
       tool.hide(page);
       await saved('Changed while the commander is hidden.');
       await waitFor(
