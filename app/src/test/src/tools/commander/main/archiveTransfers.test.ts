@@ -434,6 +434,10 @@ suite('Commander tool in archives', () => {
         await betweenArchives();
 
       await transfer(['docs', 'top.txt'], false);
+      await waitFor(
+        () => page.of('askExisting').length > 0,
+        'the items there already to be asked about',
+      );
       assert.deepStrictEqual(
         page.of('askExisting').map((message) => message.existing),
         [['top.txt']],

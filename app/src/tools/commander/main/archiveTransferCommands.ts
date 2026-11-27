@@ -17,7 +17,7 @@ import type { ArchiveCommands } from './archiveCommands';
 import type { ArchiveAccess, OpenedArchive } from './archives';
 import type { ArchiveBranch } from './archiveTree';
 import type { TransferCommandsHost } from './transferCommands';
-import { nameShared, refusedTarget } from './transferTargets';
+import { nameShared, refusedTargetInArchives } from './transferTargets';
 import type { Stock } from './originals';
 
 export interface ArchiveTransferCommandsAccess {
@@ -212,14 +212,21 @@ export class ArchiveTransferCommands {
   ): Promise<void> {
     const { archives, platform } = this.access;
     const into = archives?.within(other.folder);
-    if (archives === undefined || into === undefined) {
+    const from = archives?.within(shown.pane.folder);
+    if (archives === undefined || into === undefined || from === undefined) {
       return;
     }
     const key = (each: string) => folderKey(each, platform);
     const { folder } = shown.pane;
     const sources = names.map((name) => path.join(folder, name));
     const target = other.folder;
-    const refused = refusedTarget(sources, target, platform);
+    const refused = await refusedTargetInArchives(
+      sources,
+      from.archive.file,
+      target,
+      into.archive.file,
+      platform,
+    );
     if (refused !== undefined) {
       this.host.refuse(page, refused);
       return;

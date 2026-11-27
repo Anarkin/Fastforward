@@ -52,6 +52,26 @@ export function refusedTarget(
 
 const real = (file: string) => fs.promises.realpath(file).catch(() => file);
 
+const inRealArchive = async (archive: string, inside: string) =>
+  path.join(await real(archive), path.relative(archive, inside));
+
+export async function refusedTargetInArchives(
+  sources: readonly string[],
+  from: string,
+  target: string,
+  into: string,
+  platform: NodeJS.Platform,
+): Promise<Sentence | undefined> {
+  return (
+    refusedTarget(sources, target, platform) ??
+    refusedTarget(
+      await Promise.all(sources.map((source) => inRealArchive(from, source))),
+      await inRealArchive(into, target),
+      platform,
+    )
+  );
+}
+
 export async function refusedTargetOnDisk(
   sources: readonly string[],
   target: string,
