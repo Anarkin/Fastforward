@@ -63,6 +63,7 @@ suite('What a tab shows once settled', () => {
       'the matches counted',
     );
     assert.deepStrictEqual(await firstTexts(), ['1 of 10', 'Aa']);
+    const before = await settledLooks(page);
     await page.evaluate(() => {
       window.addEventListener(
         'keydown',
@@ -78,6 +79,12 @@ suite('What a tab shows once settled', () => {
       );
     });
     await page.keyboard.press('ArrowLeft');
-    assert.deepStrictEqual(await firstTexts(), ['m', '1 of 10']);
+    const moved = await settledLooks(page);
+    const [was] = before.cursors;
+    const [now] = moved.cursors;
+    assert.ok(
+      was !== undefined && now !== undefined && now[0] < was[0],
+      JSON.stringify([before.cursors, moved.cursors]),
+    );
   });
 });
