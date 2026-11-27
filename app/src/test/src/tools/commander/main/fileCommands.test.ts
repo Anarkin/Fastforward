@@ -153,6 +153,21 @@ suite('Commander tool', () => {
     assert.deepStrictEqual(edited, []);
     assert.deepStrictEqual(renamed, []);
   });
+  test('opens a file named as new in an editor tab, and one named as a canvas in any case in a canvas tab of its own, either made once saved', async () => {
+    const { tool, page, send, edited, tabsOpened } = commander({ [root]: [] });
+    await tool.show(page, tab);
+    const named = { tab: '1', side: 'right', folder: root } as const;
+    await send({ type: 'newFile', ...named, name: 'notes.txt' });
+    await send({ type: 'newFile', ...named, name: 'Plan.Canvas' });
+    assert.deepStrictEqual(
+      { edited, tabsOpened },
+      {
+        edited: [at('notes.txt')],
+        tabsOpened: [['canvas', [at('Plan.Canvas')], true]],
+      },
+    );
+  });
+
   test('opens a tab viewing a file the side lists, and nothing for a folder, ..  or a name it doesn’t list', async () => {
     const { tool, page, send, viewed } = commander({
       [root]: [folder('Users'), file('notes.txt')],

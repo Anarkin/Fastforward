@@ -354,6 +354,7 @@ export function commander(
     windows,
     openedIn,
     settled,
+    tabsOpened,
   } = fakeShell(page);
   tool.attach(shell);
   const folderShown = (tab: string, side: Side) =>
@@ -413,6 +414,7 @@ export function commander(
   };
   return {
     tool,
+    tabsOpened,
     tabsPosted,
     page,
     pages,

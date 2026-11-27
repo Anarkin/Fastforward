@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { isObject } from '../../../lib/main/json';
+import { hasCode } from '../../../lib/shared/errors';
 import { reasonOf } from '../../../lib/main/reasons';
 import type { Sentence } from '../../../lib/shared/sentences';
 import { strings } from '../../../lib/shared/strings';
@@ -32,7 +33,10 @@ export const maxBoardBytes = 50 * 1024 * 1024;
 interface Held {
   readonly file: string;
   readonly board: EditedBoard;
+  made: boolean;
 }
+
+const newBoard = '{}';
 
 type Read =
   | { readonly held: Held; readonly skipped: number }
@@ -104,7 +108,19 @@ export class CanvasTool implements Tool<'canvas'> {
 
   private async read(file: string): Promise<Read> {
     try {
-      if ((await this.access.sizeOf(file)) > maxBoardBytes) {
+      const size = await this.access.sizeOf(file).catch((error: unknown) => {
+        if (hasCode(error, 'ENOENT')) {
+          return undefined;
+        }
+        throw error;
+      });
+      if (size === undefined) {
+        return {
+          held: { file, board: new EditedBoard(newBoard), made: true },
+          skipped: 0,
+        };
+      }
+      if (size > maxBoardBytes) {
         return { error: strings.canvas.tooLarge(file) };
       }
       const text = (await this.access.readFile(file)).toString();
@@ -112,7 +128,7 @@ export class CanvasTool implements Tool<'canvas'> {
       switch (read.kind) {
         case 'board':
           return {
-            held: { file, board: new EditedBoard(text) },
+            held: { file, board: new EditedBoard(text), made: false },
             skipped: read.skipped,
           };
         case 'notJson':
@@ -275,7 +291,7 @@ export class CanvasTool implements Tool<'canvas'> {
     if (held === undefined) {
       return false;
     }
-    if (!held.board.changed()) {
+    if (!held.board.changed() && !held.made) {
       return true;
     }
     try {
@@ -294,6 +310,7 @@ export class CanvasTool implements Tool<'canvas'> {
       return false;
     }
     held.board.saved();
+    held.made = false;
     this.postBoard(page, tab);
     this.shell.postTabs(page);
     return true;

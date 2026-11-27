@@ -23,7 +23,7 @@
 | Restore after a restart | Open the canvases again once the app starts | — | Common | ✅ Yes | Their tabs come back, read anew |
 | Follow changes | Draw a canvas anew once its file changes | — | Common | ✅ Yes | Watched while its tab shows, as the editor watches its file, and drawn anew once another program changes it while nothing of it is unsaved; its edits kept otherwise, a notice saying that saving writes over the change; its own save never taken for a change; read anew each time its tab shows too |
 | Save | Write the canvas | Ctrl+S | Core | ✅ Yes | Mod+S, through a file of its own beside it that replaces it once whole, as the editor saves; written as its file was, as Obsidian writes a canvas, a tab an indent and an object a line, or indented or on one line, with its line endings, byte order mark and last line break, every field and node it could not read kept, so a canvas saved unchanged is written byte for byte and an edit changes the lines of what it changed alone; a star on its tab while it has changes not saved, closing it asking first; a file read-only refused, saying so; held in the main process, so a reload or a move to another window keeps its edits |
-| New canvas | Make a canvas | — | Core | ❌ No |  |
+| New canvas | Make a canvas | — | Core | ✅ Yes | Shift+F4 in the commander with a name ending in .canvas, in any case, opens an empty canvas in a canvas tab of its own, its file written only once saved, as `{}`, though nothing was added to it, as the editor makes a new file; a canvas whose file is not there is drawn empty the same way |
 
 ## Board
 

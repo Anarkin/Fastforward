@@ -209,7 +209,9 @@ export class FileCommands {
       this.host.shell().notice(page, { level: 'error', message: refusal });
       return;
     }
-    await this.host.shell().openEdit(page, file);
+    await (path.extname(name).toLowerCase() === '.canvas'
+      ? this.host.shell().open(page, 'canvas', [file], true)
+      : this.host.shell().openEdit(page, file));
   }
 
   async folderCommand(

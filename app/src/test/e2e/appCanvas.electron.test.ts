@@ -713,4 +713,27 @@ suite('App canvas', () => {
     );
     await holds('the node written outside drawn', 'Written outside', true);
   });
+
+  test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {
+    const fresh = path.join(folder, 'fresh.canvas');
+    await showTab(page, 0);
+    await page.locator('.commander-pane').last().click();
+    await page.keyboard.press('Shift+F4');
+    const prompt = page.locator('.prompt-input');
+    await prompt.waitFor();
+    await prompt.fill('fresh.canvas');
+    await prompt.press('Enter');
+    await page
+      .locator('.tabs .tab.active .tab-name', { hasText: 'fresh.canvas' })
+      .waitFor();
+    await page.locator('.board-host canvas').first().waitFor();
+    assert.strictEqual(fs.existsSync(fresh), false);
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(
+      () => Promise.resolve(fs.existsSync(fresh)),
+      'the new canvas written',
+      { accepted: (written) => written },
+    );
+    assert.strictEqual(fs.readFileSync(fresh, 'utf8'), '{}');
+  });
 });

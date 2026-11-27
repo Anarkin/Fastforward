@@ -106,17 +106,16 @@ suite('Canvas tool', () => {
     });
   });
 
-  test('says why it draws no canvas of a file too large, of no JSON, of JSON without a canvas or that is gone', async () => {
+  test('says why it draws no canvas of a file too large, of no JSON or of JSON without a canvas', async () => {
     const large = '/boards/large.canvas';
     const text = '/boards/text.canvas';
     const list = '/boards/list.canvas';
-    const gone = '/boards/gone.canvas';
     const { tool, page } = canvas(
       { [large]: '{}', [text]: 'nodes', [list]: '[]' },
       { [large]: maxBoardBytes + 1 },
     );
     const errors = [];
-    for (const shown of [large, text, list, gone]) {
+    for (const shown of [large, text, list]) {
       await tool.show(page, { id: shown, tool: 'canvas', root: shown });
       errors.push(page.messages.at(-1));
     }
@@ -138,12 +137,6 @@ suite('Canvas tool', () => {
         tab: list,
         file: list,
         error: strings.canvas.notBoard(list),
-      },
-      {
-        type: 'board',
-        tab: gone,
-        file: gone,
-        error: strings.textFile.couldNotRead(gone, strings.commander.gone),
       },
     ]);
   });
@@ -280,6 +273,18 @@ suite('Canvas tool', () => {
     await tool.show(page, tab);
     tool.closed(page, tab);
     assert.deepStrictEqual([...watched.keys()], []);
+  });
+
+  test('draws an empty canvas for a file not there yet, writing it on its first save though nothing was added to it, as the editor makes a new file', async () => {
+    const made = '/boards/new.canvas';
+    const files: Record<string, string> = {};
+    const { tool, page, saved } = canvas(files);
+    await tool.show(page, { id: '9', tool: 'canvas', root: made });
+    assert.deepStrictEqual(board(page).board, { nodes: [], edges: [] });
+    assert.strictEqual(board(page).error, undefined);
+    await tool.receive(page, { type: 'save', tab: '9' });
+    await tool.receive(page, { type: 'save', tab: '9' });
+    assert.deepStrictEqual(saved, [[made, '{}']]);
   });
 
   test('saves the canvas in the layout of its file, the tab no longer unsaved, and a save asked for with nothing to save writes nothing', async () => {
