@@ -269,10 +269,9 @@ export function DiffView({
       return undefined;
     }
     topLine.current = () => {
-      const offset = virtualizer.scrollOffset ?? 0;
-      const first = virtualizer
-        .getVirtualItems()
-        .find((item) => item.end > offset);
+      const first = virtualizer.getVirtualItemForOffset(
+        list.current?.scrollTop ?? 0,
+      );
       for (let at = first?.index ?? keys.length; at < keys.length; at++) {
         const [key] = keys[at] ?? [];
         if (key !== undefined) {
@@ -285,7 +284,7 @@ export function DiffView({
     return () => {
       topLine.current = undefined;
     };
-  }, [topLine, virtualizer, keys]);
+  }, [topLine, virtualizer, keys, list]);
   const widest = useMemo(
     () =>
       wordWrap
