@@ -13,7 +13,7 @@ export const canvasKeymap = {
   select: bind('Editing', strings.actions.selectNodes, {
     Click: 'one',
     'Mod+Click': 'toggle',
-    'Shift+Click': 'add',
+    'Shift+Click': 'toggle',
   } as const),
   selectArea: bind('Editing', strings.actions.selectArea, {
     Drag: 'one',
