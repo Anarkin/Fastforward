@@ -1,3 +1,4 @@
+import { globMatches } from './editorGlobs';
 import { fs } from './files';
 import type { FileTabSize } from '../shared/tabSize';
 import * as path from 'node:path';
@@ -76,81 +77,6 @@ function parsed(content: string): Parsed {
     }
   }
   return { root, sections };
-}
-
-const special = /[.+^$()|\\]/;
-
-function numbers(from: number, to: number): string {
-  const [low, high] = from <= to ? [from, to] : [to, from];
-  return high - low > 10_000
-    ? '\\d+'
-    : Array.from({ length: high - low + 1 }, (_, at) => String(low + at)).join(
-        '|',
-      );
-}
-
-function globBody(glob: string): string {
-  let body = '';
-  let braces = 0;
-  for (let at = 0; at < glob.length; at++) {
-    const character = glob[at];
-    if (character === '\\' && at + 1 < glob.length) {
-      at += 1;
-      body += special.test(glob[at]) ? `\\${glob[at]}` : glob[at];
-    } else if (character === '*') {
-      if (glob[at + 1] === '*') {
-        body += '.*';
-        at += 1;
-      } else {
-        body += '[^/]*';
-      }
-    } else if (character === '?') {
-      body += '[^/]';
-    } else if (character === '[') {
-      const end = glob.indexOf(']', at + 1);
-      if (end === -1) {
-        body += '\\[';
-      } else {
-        const inside = glob.slice(at + 1, end);
-        body += inside.startsWith('!')
-          ? `[^${inside.slice(1)}]`
-          : `[${inside}]`;
-        at = end;
-      }
-    } else if (character === '{') {
-      const end = glob.indexOf('}', at + 1);
-      const range =
-        end === -1
-          ? null
-          : /^(-?\d+)\.\.(-?\d+)$/.exec(glob.slice(at + 1, end));
-      if (range !== null && end !== -1) {
-        body += `(?:${numbers(Number(range[1]), Number(range[2]))})`;
-        at = end;
-      } else {
-        body += '(?:';
-        braces += 1;
-      }
-    } else if (character === ',' && braces > 0) {
-      body += '|';
-    } else if (character === '}' && braces > 0) {
-      body += ')';
-      braces -= 1;
-    } else {
-      body += special.test(character) ? `\\${character}` : character;
-    }
-  }
-  return body + ')'.repeat(braces);
-}
-
-export function globPattern(glob: string): RegExp {
-  const anchored = glob.startsWith('/');
-  const pattern = anchored ? glob.slice(1) : glob;
-  const anywhere = !pattern.includes('/');
-  try {
-    return new RegExp(`^${anywhere ? '(?:.*/)?' : ''}${globBody(pattern)}$`);
-  } catch {
-    return /$^/;
-  }
 }
 
 const positive = (value: string | undefined) => {
@@ -247,7 +173,7 @@ export async function editorConfigOf(
   for (const { folder, file: configFile, config } of found.toReversed()) {
     const relative = path.relative(folder, file).split(path.sep).join('/');
     for (const { glob, properties: set } of config.sections) {
-      if (globPattern(glob).test(relative)) {
+      if (globMatches(glob, relative)) {
         for (const [key, value] of set) {
           if (value === 'unset') {
             properties.delete(key);

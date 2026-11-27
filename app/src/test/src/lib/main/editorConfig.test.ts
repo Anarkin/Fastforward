@@ -4,7 +4,6 @@ import { suite, test } from 'vitest';
 import {
   editorConfigOf,
   fileTabSizeOf,
-  globPattern,
 } from '../../../../lib/main/editorConfig';
 
 const root = path.resolve('/work');
@@ -14,24 +13,7 @@ function reading(files: Readonly<Record<string, string>>) {
   return (file: string) => Promise.resolve(files[file]);
 }
 
-const matches = (glob: string, file: string) => globPattern(glob).test(file);
-
 suite('EditorConfig', () => {
-  test('matches the globs of its sections as EditorConfig does, a name without a slash in any folder and one with a slash from the folder of the file', () => {
-    assert.ok(matches('*', 'src/a.ts'));
-    assert.ok(matches('*.ts', 'src/deep/a.ts'));
-    assert.ok(!matches('*.ts', 'src/a.tsx'));
-    assert.ok(matches('{*.cmd,*.bat}', 'run.bat'));
-    assert.ok(matches('src/*.ts', 'src/a.ts'));
-    assert.ok(!matches('src/*.ts', 'src/deep/a.ts'));
-    assert.ok(matches('src/**.ts', 'src/deep/a.ts'));
-    assert.ok(matches('file?.txt', 'file1.txt'));
-    assert.ok(matches('[ab].txt', 'b.txt'));
-    assert.ok(!matches('[!ab].txt', 'b.txt'));
-    assert.ok(matches('v{1..3}.txt', 'v2.txt'));
-    assert.ok(!matches('v{1..3}.txt', 'v4.txt'));
-  });
-
   test('takes the properties of the sections that match the file, a later section over an earlier one and a file closer to it over one further, up to the one that says it is the root, naming the file each came from', async () => {
     const config = await editorConfigOf(
       at('src', 'app', 'main.ts'),
