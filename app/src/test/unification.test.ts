@@ -199,4 +199,16 @@ suite('Unification', () => {
       ['components/cells/page/columns.ts'],
     );
   });
+
+  test('starts a new search at the first match at or after where the view is by one rule, which the editor, the viewer, the diff and the terminal all take, the viewer and the diff having started at the first match of all', () => {
+    assert.deepStrictEqual(doing(/=== -1 \? 0 : at\b|\?\? found\.at\(0\)/), [
+      'lib/shared/textMatches.ts',
+    ]);
+    assert.deepStrictEqual(doing(/\bfirstNotBefore\(/), [
+      'components/diff/page/finding.ts',
+      'tools/editor/page/find.ts',
+      'tools/terminal/page/screenFind.ts',
+      'tools/viewer/page/find.ts',
+    ]);
+  });
 });

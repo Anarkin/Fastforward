@@ -49,6 +49,9 @@ const thumbHeld = () =>
     return { top, height };
   });
 
+const searchCount = () =>
+  page.locator('.viewer .search-count').textContent({ timeout: 1000 });
+
 const insideLines = () =>
   page.locator('.viewer').evaluate((viewer) => {
     const line = parseFloat(
@@ -292,6 +295,51 @@ suite('App commander', () => {
       fs.rmSync(path.join(opened, 'uneven.txt'));
       await waitFor(
         async () => !(await rowNames()).includes('uneven.txt'),
+        'the file to be gone from the list',
+      );
+    }
+  });
+
+  test('starts a search of a file viewed at the first match at or below the top of what it shows, as the editor starts at its cursor and the terminal at the top of its screen, rather than at the first match of the file', async () => {
+    const lines = Array.from({ length: 400 }, (_, index) =>
+      index === 3 || index === 300 ? `needle ${index}` : `hay ${index}`,
+    );
+    fs.writeFileSync(
+      path.join(opened, 'needles.txt'),
+      lines.join(String.fromCharCode(10)),
+    );
+    try {
+      await select('needles');
+      await page.keyboard.press('F3');
+      await waitFor(
+        async () => (await firstViewerRow()) === 'hay 0',
+        'the first row',
+      );
+      await waitForFocus(page.locator('.viewer-body'), 'the viewer');
+      await waitFor(async () => {
+        if ((await firstViewerRow()).startsWith('hay 2')) {
+          return true;
+        }
+        await page.keyboard.press('PageDown');
+        return false;
+      }, 'the rows past the first needle');
+      await page.keyboard.press('ControlOrMeta+F');
+      await page.keyboard.type('needle');
+      await waitFor(
+        async () => (await searchCount()) === '2 of 2',
+        'the needle below the top counted first',
+      ).catch(async (error: unknown) => {
+        throw new Error(`${String(error)}, counting ${await searchCount()}`);
+      });
+    } finally {
+      if (await page.locator('.viewer').isVisible()) {
+        await page.keyboard.press('Escape');
+        await page.keyboard.press('Escape');
+        await page.locator('.viewer').waitFor({ state: 'detached' });
+      }
+      fs.rmSync(path.join(opened, 'needles.txt'));
+      await waitFor(
+        async () => !(await rowNames()).includes('needles.txt'),
         'the file to be gone from the list',
       );
     }

@@ -23,14 +23,8 @@ export function DiffFindBar({
         unsearched > 0 ? strings.find.unsearched(unsearched) : undefined
       }
       input={input}
-      onQuery={(next) => {
-        find.setQuery(next);
-        find.goTo(0);
-      }}
-      onOptions={(next) => {
-        find.setOptions(next);
-        find.goTo(0);
-      }}
+      onQuery={find.search}
+      onOptions={find.choose}
       onStep={step}
       onClose={closeFind}
       onKeyDown={findKeyDown(diffKeymap, step, closeFind)}

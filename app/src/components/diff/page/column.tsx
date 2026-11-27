@@ -18,7 +18,7 @@ import { Words } from '../../../lib/page/name';
 import type { WholeFile } from './rows';
 import { DiffView } from './view';
 import { shownFiles, filteredDiffFiles } from './files';
-import { useDiffFind, type DiffTab } from './finding';
+import { useDiffFind, type DiffTab, type LinePlace } from './finding';
 import { DiffFindBar } from './findBar';
 import { ColumnStatus } from '../../../lib/page/columnStatusLine';
 import { linesCounted } from './lineCounts';
@@ -134,12 +134,14 @@ export function Diff({
     }
   }, [viewAsked]);
   const shownAt = JSON.stringify([scope, selection]);
+  const topLine = useRef<() => LinePlace | undefined>(undefined);
   const find = useDiffFind({
     shownAt,
     tab,
     diffFiles,
     fileContent,
     findAsked,
+    topLine,
   });
   const { jump, matches, shown, finding } = find;
   const [firstChange, setFirstChange] = useState(0);
@@ -181,6 +183,7 @@ export function Diff({
         key={shownAt}
         keptPlace={tab.place}
         placeNow={tab.placeNow}
+        topLine={topLine}
         onPlace={tab.keepPlace}
         error={errorRow}
         files={diffFiles}

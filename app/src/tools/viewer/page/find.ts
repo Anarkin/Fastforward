@@ -1,7 +1,11 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import type { ByteRange } from '../shared/protocol';
 import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
-import { stepMatch, type MatchesFound } from '../../../lib/shared/textMatches';
+import {
+  stepMatch,
+  type MatchesFound,
+  firstNotBefore,
+} from '../../../lib/shared/textMatches';
 import {
   noSearch,
   type Search,
@@ -46,7 +50,7 @@ export function useViewerFind(
   viewing: Viewing | undefined,
   encoding: TextEncoding,
 ) {
-  const { findText, keepViewer } = useViewerActions();
+  const { findText, keepViewer, placeOf } = useViewerActions();
   const { query, options } = useViewer((state) =>
     tab === undefined
       ? noSearch
@@ -86,13 +90,21 @@ export function useViewerFind(
             done,
           },
         });
-        if (awaitingFirst.current && matches.length > 0) {
+        const top = placeOf(viewing.tab);
+        if (
+          awaitingFirst.current &&
+          matches.length > 0 &&
+          (done || matches.some((match) => match.start >= top))
+        ) {
           awaitingFirst.current = false;
+          keepViewer(viewing.tab, {
+            current: firstNotBefore(matches, (match) => match.start < top),
+          });
           setJump((count) => count + 1);
         }
       },
     );
-  }, [viewing, encoding, query, options, findText, keepViewer]);
+  }, [viewing, encoding, query, options, findText, keepViewer, placeOf]);
 
   const ours = foundFor(found, { query, options }, encoding, version);
   const matches = ours ? found.matches : [];

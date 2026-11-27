@@ -1,4 +1,8 @@
-import { matchesIn, maxMatches } from '../../../lib/shared/textMatches';
+import {
+  matchesIn,
+  maxMatches,
+  firstNotBefore,
+} from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 
 interface CellLike {
@@ -115,12 +119,12 @@ export function firstFrom(
   row: number,
   column: number,
 ): number {
-  const at = matches.findIndex((match) => {
+  return firstNotBefore(matches, (match) => {
     const first = match[0];
     return (
-      first !== undefined &&
-      (first.row > row || (first.row === row && first.column >= column))
+      first === undefined ||
+      first.row < row ||
+      (first.row === row && first.column < column)
     );
   });
-  return at === -1 ? 0 : at;
 }

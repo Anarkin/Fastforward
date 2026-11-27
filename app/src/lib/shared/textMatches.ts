@@ -234,6 +234,14 @@ export function matchCount(
   return strings.find.count(current + 1, matches, capped);
 }
 
+export function firstNotBefore<Match>(
+  matches: readonly Match[],
+  before: (match: Match) => boolean,
+): number {
+  const at = matches.findIndex((match) => !before(match));
+  return at === -1 ? 0 : at;
+}
+
 export function stepMatch(
   current: number,
   matches: number,

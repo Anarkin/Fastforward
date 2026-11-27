@@ -13,6 +13,7 @@ import {
   searchPattern,
   validSearch,
   type FindRange,
+  firstNotBefore,
 } from '../../../lib/shared/textMatches';
 
 export interface FindQuery {
@@ -196,7 +197,7 @@ export function findNearest(view: EditorSurface): void {
   const { state } = view;
   const { found } = findingOf(state);
   const { from: at } = state.selection.main;
-  const nearest = found.find(({ from }) => from >= at) ?? found.at(0);
+  const nearest = found[firstNotBefore(found, ({ from }) => from < at)];
   if (nearest !== undefined) {
     view.dispatch({
       selection: EditorSelection.single(nearest.from, nearest.to),

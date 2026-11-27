@@ -385,4 +385,36 @@ suite('App', () => {
     }
     await commitRow(page, 'No uncommitted changes').waitFor();
   });
+
+  test('starts a search of the diff at the first match at or below the top of what it shows, as the editor starts at its cursor and the terminal at the top of its screen, rather than at the first match of the diff', async () => {
+    const file = path.join(repository.root, 'long.txt');
+    fs.writeFileSync(
+      file,
+      `${longLines.map((line, index) => (index === 150 ? 'changed far down' : line)).join('\n')}\n`,
+    );
+    try {
+      await commitRow(page, 'second').click();
+      await commitRow(page, 'second', { selected: true }).waitFor();
+      await commitRow(page, '1 uncommitted change').click();
+      await fileRow(page, 'long.txt', { kind: 'file' }).click();
+      await untilDiffLine(page, changedFarDown, 'the line changed far down');
+      await page.locator('.diff-view .virtual-rows').focus();
+      await page.keyboard.press('ControlOrMeta+F');
+      const field = page.locator('.search-box-input');
+      await waitForFocus(field, 'the find field');
+      await field.fill('line17');
+      await page
+        .locator('.search-count', { hasText: '2 of 11' })
+        .waitFor()
+        .catch(async (error: unknown) => {
+          throw new Error(
+            `${String(error)}, counting ${await page.locator('.search-count').textContent()}`,
+          );
+        });
+      await field.press('Escape');
+    } finally {
+      await repository.git('checkout', '-q', 'HEAD', '--', 'long.txt');
+    }
+    await commitRow(page, 'No uncommitted changes').waitFor();
+  });
 });

@@ -1,3 +1,4 @@
+import type { LinePlace } from './finding';
 import type { TabSizeOf } from './fileWidths';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
@@ -7,6 +8,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  type RefObject,
   useState,
 } from 'react';
 import type { TextRequest } from '../shared/protocol';
@@ -91,12 +93,14 @@ export function DiffView({
   measuring,
   keptPlace,
   placeNow,
+  topLine,
   onPlace,
   tabSizeOfPath,
 }: {
   tabSizeOfPath?: ((path: string) => number | undefined) | undefined;
   keptPlace: DiffPlace | undefined;
   placeNow: () => DiffPlace | undefined;
+  topLine?: RefObject<(() => LinePlace | undefined) | undefined>;
   onPlace: (change: PlaceChange) => void;
   error: React.ReactNode;
   files: readonly DiffFile[];
@@ -260,6 +264,28 @@ export function DiffView({
     setToggled((all) => new Map(all).set(path, !open));
 
   const keys = useMemo(() => lineKeys(rows), [rows]);
+  useEffect(() => {
+    if (topLine === undefined) {
+      return undefined;
+    }
+    topLine.current = () => {
+      const offset = virtualizer.scrollOffset ?? 0;
+      const first = virtualizer
+        .getVirtualItems()
+        .find((item) => item.end > offset);
+      for (let at = first?.index ?? keys.length; at < keys.length; at++) {
+        const [key] = keys[at] ?? [];
+        if (key !== undefined) {
+          const [file = 0, line = 0] = key.split(':').map(Number);
+          return { file, line };
+        }
+      }
+      return undefined;
+    };
+    return () => {
+      topLine.current = undefined;
+    };
+  }, [topLine, virtualizer, keys]);
   const widest = useMemo(
     () =>
       wordWrap

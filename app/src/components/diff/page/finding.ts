@@ -10,7 +10,7 @@ import { columnFocusOf } from '../../../lib/page/columnFocus';
 import type { DiffFile } from './diff';
 import type { WholeFile } from './rows';
 import { findMatches, type FindMatch } from './find';
-import { stepMatch } from '../../../lib/shared/textMatches';
+import { firstNotBefore, stepMatch } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import { currentOf, type DiffPlace } from './place';
 import type { KeptFind, PlaceChange } from './slice';
@@ -24,20 +24,29 @@ export interface DiffTab {
   readonly keepPlace: (change: PlaceChange) => void;
 }
 
+export interface LinePlace {
+  readonly file: number;
+  readonly line: number;
+}
+
 export function useDiffFind({
   shownAt,
   tab,
   diffFiles,
   fileContent,
   findAsked,
+  topLine,
 }: {
   readonly shownAt: string;
   readonly tab: DiffTab;
   readonly diffFiles: readonly DiffFile[];
   readonly fileContent: WholeFile | undefined;
   readonly findAsked: number;
+  readonly topLine: RefObject<(() => LinePlace | undefined) | undefined>;
 }): {
   readonly query: string;
+  readonly search: (next: string) => void;
+  readonly choose: (next: SearchOptions) => void;
   readonly options: SearchOptions;
   readonly setQuery: (query: string) => void;
   readonly setOptions: (options: SearchOptions) => void;
@@ -84,6 +93,23 @@ export function useDiffFind({
     setJump((count) => count + 1);
   };
   const step = (by: 1 | -1) => goTo(stepMatch(shown, matches.length, by));
+  const searchFrom = (next: { query: string; options: SearchOptions }) => {
+    keepFind({ finding, search: next });
+    const top = topLine.current?.();
+    const found =
+      top === undefined
+        ? []
+        : findMatches(diffFiles, fileContent, next.query, next.options);
+    goTo(
+      top === undefined
+        ? 0
+        : firstNotBefore(
+            found,
+            ({ file, line }) =>
+              file < top.file || (file === top.file && line < top.line),
+          ),
+    );
+  };
   const [focusAsks, setFocusAsks] = useState(0);
   const openFind = () => {
     keepFind({ finding: true, search: kept.search });
@@ -109,6 +135,8 @@ export function useDiffFind({
   }, [focusAsks]);
   return {
     query,
+    search: (next) => searchFrom({ query: next, options }),
+    choose: (next) => searchFrom({ query, options: next }),
     options,
     setQuery,
     setOptions,

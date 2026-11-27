@@ -14,6 +14,8 @@ type Find = ReturnType<typeof useDiffFind>;
 function find(asked: unknown[], matches: number): Find {
   return {
     query: 'find',
+    search: (query) => asked.push({ search: query }),
+    choose: (options: SearchOptions) => asked.push({ choose: options }),
     options: { ...plainSearch, regex: true },
     setQuery: (query) => asked.push({ query }),
     setOptions: (options: SearchOptions) => asked.push({ options }),
@@ -36,7 +38,7 @@ function find(asked: unknown[], matches: number): Find {
 }
 
 suite('The find of the diff', () => {
-  test('draws the search bar with the query, its options and the current match of all, stepping, closing and asking for the query and the options anew from the first match', async () => {
+  test('draws the search bar with the query, its options and the current match of all, stepping, closing and searching for the query and the options anew from where the diff is', async () => {
     const asked: unknown[] = [];
     await mounted(
       <DiffFindBar find={find(asked, 3)} unsearched={2} />,
@@ -68,10 +70,8 @@ suite('The find of the diff', () => {
     assert.deepStrictEqual(asked, [
       { step: -1 },
       { step: 1 },
-      { options: { caseSensitive: false, wholeWord: true, regex: true } },
-      { goTo: 0 },
-      { query: 'found' },
-      { goTo: 0 },
+      { choose: { caseSensitive: false, wholeWord: true, regex: true } },
+      { search: 'found' },
       'closed',
     ]);
   });
