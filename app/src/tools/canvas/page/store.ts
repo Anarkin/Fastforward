@@ -93,6 +93,7 @@ export function createCanvasStore(
           const typing = get().typings.get(tab) ?? kept.get(tab);
           return {
             origin: get().origins.get(tab),
+            zoom: get().zooms.get(tab),
             selected: get().selections.get(tab),
             coloring: get().colorings.get(tab),
             typing:
@@ -101,7 +102,7 @@ export function createCanvasStore(
                 : { id: typing.id, anchor: typing.anchor, head: typing.head },
           };
         },
-        restore: (tab, { origin, selected, typing, coloring }) => {
+        restore: (tab, { origin, zoom, selected, typing, coloring }) => {
           const text =
             typing === undefined
               ? undefined
@@ -114,6 +115,10 @@ export function createCanvasStore(
               origin === undefined
                 ? without(state.origins, tab)
                 : new Map(state.origins).set(tab, snapped(origin)),
+            zooms:
+              zoom === undefined
+                ? without(state.zooms, tab)
+                : new Map(state.zooms).set(tab, zoom),
             selections:
               selected === undefined
                 ? without(state.selections, tab)
@@ -136,6 +141,7 @@ export function createCanvasStore(
           set((state) => ({
             typings: without(state.typings, tab),
             origins: without(state.origins, tab),
+            zooms: without(state.zooms, tab),
             selections: without(state.selections, tab),
             colorings: without(state.colorings, tab),
           }));
@@ -215,6 +221,10 @@ export function createCanvasStore(
         tabs.changed(tab);
       },
       originOf: (tab) => get().origins.get(tab),
+      zoom: (tab, step) => {
+        set((state) => ({ zooms: new Map(state.zooms).set(tab, step) }));
+        tabs.changed(tab);
+      },
       typingOf: (tab) => get().typings.get(tab),
       select: (tab, ids) => {
         set((state) => ({

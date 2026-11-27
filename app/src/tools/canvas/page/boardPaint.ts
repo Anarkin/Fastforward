@@ -31,6 +31,7 @@ interface Painted {
   readonly colors?: NodeColors | undefined;
   readonly titles?: ReadonlyMap<string, string> | undefined;
   readonly files?: Readonly<Record<string, NodeFile>> | undefined;
+  readonly zoom?: number;
 }
 
 const noBoxes = new Map();
@@ -52,6 +53,7 @@ export function paint(
     colors,
     titles,
     files,
+    zoom,
   }: Painted,
 ): Drawn | undefined {
   const ghost =
@@ -83,6 +85,7 @@ export function paint(
         : (id, text, language) => colors.of(id, text, language),
     titles,
     files,
+    zoom,
   });
 }
 

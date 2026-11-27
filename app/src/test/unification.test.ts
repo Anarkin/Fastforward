@@ -144,6 +144,15 @@ suite('Unification', () => {
     assert.deepStrictEqual(unsnapped, []);
   });
 
+  test('zooms a text by the size of its font alone, the window rounding the advance and the row of a zoomed element by its one rule, declared for any element zoomed so, rather than by an advance or a row of its own, as the canvas zooms', () => {
+    assert.deepStrictEqual(styling(/\[data-font-zoomed\]/), [
+      'shell/page/window.css',
+    ]);
+    assert.deepStrictEqual(doing(/\bfontZoomed\b|data-font-zoomed/), [
+      'tools/canvas/page/surface.ts',
+    ]);
+  });
+
   test('takes what is typed and composed through one input session of the editing component, which the editor and the canvas both open their EditContext through, the canvas having given an input method the box of its caret for every character it asked for', () => {
     assert.deepStrictEqual(doing(/\btextContextIn\(/), [
       'components/editing/page/inputSession.ts',

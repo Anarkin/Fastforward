@@ -3,6 +3,7 @@ import { suite, test } from 'vitest';
 import { pageViews } from '../../../../../shell/page/toolViews';
 import type { ToHost } from '../../../../../shell/shared/protocol';
 import { createCanvasStore } from '../../../../../tools/canvas/page/store';
+import { zoomShown } from '../../../../../tools/canvas/page/state';
 import type { CanvasToHost } from '../../../../../tools/canvas/shared/protocol';
 
 function keepingViews() {
@@ -46,6 +47,20 @@ suite('Canvas store keeping its tabs', () => {
       column: -12,
       row: 4,
     });
+  });
+
+  test('brings a canvas tab back as zoomed as it was moved, and as a tab of no zoom once it forgets it', () => {
+    const left = keepingViews();
+    left.store.getState().receive(show('7'));
+    left.store.getState().zoom('7', 3);
+    assert.strictEqual(zoomShown(left.store.getState()), 3);
+    left.store.getState().receive(show('8'));
+    assert.strictEqual(zoomShown(left.store.getState()), 0);
+    const sent = left.release('7') ?? '';
+    const back = keepingViews();
+    back.hand('7', sent);
+    back.store.getState().receive(show('7'));
+    assert.strictEqual(zoomShown(back.store.getState()), 3);
   });
 
   test('brings back the color a canvas tab was asking for, with what was typed into it, once the tab is moved, and colors what it was asked for once answered', () => {

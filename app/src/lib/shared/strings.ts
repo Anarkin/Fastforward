@@ -439,6 +439,8 @@ export const strings = {
     findInTerminal: 'Search the output of the terminal',
     viewDiffFile: 'View the file shown in a tab of its own',
     zoomPdf: 'Zoom a PDF in or out',
+    zoomCanvas:
+      'Zoom the canvas in or out a device pixel of the width of a cell at a time, around the pointer',
     realSize: 'Show an image at its real size, or fit it to the viewer',
     filterFolder: 'Filter the folder by name',
     filterLetter: 'Filter the folder by the letters typed with Alt',

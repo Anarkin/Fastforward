@@ -35,6 +35,7 @@ export interface CanvasSource {
   readonly file: string | undefined;
   readonly boards: ReadonlyMap<string, BoardShown>;
   readonly origins: ReadonlyMap<string, Origin>;
+  readonly zooms: ReadonlyMap<string, number>;
   readonly selections: ReadonlyMap<string, readonly string[]>;
   readonly placing: Placing | undefined;
   readonly typings: ReadonlyMap<string, Typing>;
@@ -46,6 +47,7 @@ export interface CanvasSource {
 export interface CanvasActions {
   readonly receive: (message: CanvasToWebview) => void;
   readonly pan: (tab: string, origin: Origin) => void;
+  readonly zoom: (tab: string, step: number) => void;
   readonly originOf: (tab: string) => Origin | undefined;
   readonly typingOf: (tab: string) => Typing | undefined;
   readonly select: (tab: string, ids: readonly string[]) => void;
@@ -86,6 +88,7 @@ export const canvasDefaults: CanvasSource = {
   file: undefined,
   boards: new Map(),
   origins: new Map(),
+  zooms: new Map(),
   selections: new Map(),
   placing: undefined,
   typings: new Map(),
@@ -96,6 +99,9 @@ export const canvasDefaults: CanvasSource = {
 
 export const coloringShown = (state: CanvasSource): Coloring | undefined =>
   state.tab === undefined ? undefined : state.colorings.get(state.tab);
+
+export const zoomShown = (state: CanvasSource): number =>
+  (state.tab === undefined ? undefined : state.zooms.get(state.tab)) ?? 0;
 
 export const originShown = (state: CanvasSource): Origin | undefined =>
   state.tab === undefined ? undefined : state.origins.get(state.tab);

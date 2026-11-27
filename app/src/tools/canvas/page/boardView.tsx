@@ -21,6 +21,7 @@ import {
   boardShown,
   filesShown,
   originShown,
+  zoomShown,
   selectedShown,
   typingShown,
   type Placing,
@@ -47,6 +48,7 @@ import { boxOf } from './grid';
 import { useBoardKeys } from './boardKeys';
 import { openNode, openedOf, pastedLink } from './links';
 import { typedTextOf, typesOneLine } from './typedTexts';
+import { wheelZoom } from './zoom';
 
 interface Panning {
   readonly pointer: number;
@@ -65,6 +67,7 @@ export function BoardView() {
   const typing = useCanvas(typingShown);
   const titles = useCanvas((state) => state.titles);
   const files = useCanvas(filesShown);
+  const zoomed = useCanvas(zoomShown);
   const scrolling = useShell((state) => state.scrolling);
   const whitespace = useShell((state) => state.textView.showWhitespace);
   const {
@@ -79,12 +82,15 @@ export function BoardView() {
     stopTyping,
     askColor,
     dropFiles,
+    zoom,
   } = useCanvasActions();
   const { showMenu, followPath } = useShellActions();
   const table = useCellTable();
   const body = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const probe = useRef<HTMLDivElement>(null);
+  const unitProbe = useRef<HTMLDivElement>(null);
+  const zoomRest = useRef(0);
   const surface = useRef<BoardSurface>(undefined);
   const drawn = useRef<Drawn>(undefined);
   const panning = useRef<Panning>(undefined);
@@ -153,6 +159,7 @@ export function BoardView() {
         colors: colors.current,
         titles,
         files,
+        zoom: zoomed,
       });
       placeContext(
         board,
@@ -169,10 +176,16 @@ export function BoardView() {
     const element = body.current;
     const hosting = host.current;
     const measuring = probe.current;
-    if (element === null || hosting === null || measuring === null) {
+    const unitMeasuring = unitProbe.current;
+    if (
+      element === null ||
+      hosting === null ||
+      measuring === null ||
+      unitMeasuring === null
+    ) {
       return undefined;
     }
-    const made = new BoardSurface(hosting, element, measuring);
+    const made = new BoardSurface(hosting, element, measuring, unitMeasuring);
     surface.current = made;
     let frame = 0;
     const draw = () => {
@@ -225,6 +238,7 @@ export function BoardView() {
         colors: colors.current,
         titles,
         files,
+        zoom: zoomed,
       });
       placeContext(
         board,
@@ -243,12 +257,31 @@ export function BoardView() {
     whitespace,
     titles,
     files,
+    zoomed,
     placeContext,
   ]);
 
   const onWheel = useEffectEvent((event: WheelEvent) => {
     const across = wheeled(canvasKeymap.panAcross, event) !== undefined;
     const known = drawn.current;
+    if (
+      tab !== undefined &&
+      known !== undefined &&
+      wheeled(canvasKeymap.zoom, event) !== undefined
+    ) {
+      event.preventDefault();
+      const rect = body.current?.getBoundingClientRect();
+      const done = wheelZoom(zoomRest.current + event.deltaY, zoomed, known, {
+        x: event.clientX - (rect?.left ?? 0),
+        y: event.clientY - (rect?.top ?? 0),
+      });
+      zoomRest.current = done.rest;
+      if (done.zoomed !== undefined) {
+        pan(tab, done.zoomed.origin);
+        zoom(tab, done.zoomed.step);
+      }
+      return;
+    }
     if (
       tab === undefined ||
       known === undefined ||
@@ -713,6 +746,7 @@ export function BoardView() {
 
   return (
     <section className="column board">
+      <div className={probeRowClass} ref={unitProbe} aria-hidden="true" />
       <div className="path-row">
         {file !== undefined && <PathTitle path={file} file />}
       </div>

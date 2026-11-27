@@ -1,3 +1,4 @@
+import { fontSizeFor } from './zoom';
 import type { NodeFile } from '../shared/protocol';
 import { groundUnder } from '../../../components/cells/page/cellLook';
 import type { CellSurface } from '../../../components/cells/page/cellSurface';
@@ -101,6 +102,7 @@ const withinPixel = 0.01;
 
 export interface Drawn {
   readonly origin: Origin;
+  readonly advance: number;
   readonly cell: CellSize;
   readonly view: CellSize;
   readonly unit: Unit;
@@ -119,6 +121,7 @@ export interface Shown {
   readonly colorsOf?: ColorsOf | undefined;
   readonly titles?: ReadonlyMap<string, string> | undefined;
   readonly files?: Readonly<Record<string, NodeFile>> | undefined;
+  readonly zoom?: number;
 }
 
 interface CellPlace {
@@ -142,14 +145,53 @@ export class BoardSurface {
   private look: { readonly key: string; readonly look: TextLook } | undefined;
   private readonly computed = new Map<string, string>();
   private cursor: CursorMark | undefined;
+  private zoomedSize = '';
 
   constructor(
     private readonly host: HTMLElement,
     private readonly body: HTMLElement,
     private readonly probe: HTMLElement,
+    private readonly unitProbe: HTMLElement,
   ) {}
 
-  private measured(table: CellTable, ratio: number): Measured | undefined {
+  private zoomTo(
+    step: number,
+    table: CellTable,
+    ratio: number,
+  ): { readonly unit: Unit; readonly advance: number } | undefined {
+    const base = elementWidths(this.unitProbe, table);
+    if (base === undefined) {
+      return undefined;
+    }
+    const spacing = spacingOf(this.unitProbe);
+    const size = fontSizeFor(step, {
+      size: parseFloat(getComputedStyle(this.unitProbe).fontSize),
+      ch: base.char - spacing,
+      advance: Math.round(base.char * ratio),
+      ratio,
+    });
+    const value = size === undefined ? '' : `${size}px`;
+    if (value !== this.zoomedSize) {
+      this.zoomedSize = value;
+      if (size === undefined) {
+        delete this.body.dataset.fontZoomed;
+        this.body.style.removeProperty('--monospace-font-size');
+      } else {
+        this.body.dataset.fontZoomed = '';
+        this.body.style.setProperty('--monospace-font-size', value);
+      }
+    }
+    return {
+      unit: unitOf(base.char, lineHeightOf(this.unitProbe, 18, ratio)),
+      advance: Math.round(base.char * ratio),
+    };
+  }
+
+  private measured(
+    table: CellTable,
+    ratio: number,
+    unit: Unit,
+  ): Measured | undefined {
     const widths = elementWidths(this.probe, table);
     if (widths === undefined) {
       return undefined;
@@ -161,7 +203,7 @@ export class BoardSurface {
     };
     return {
       key: `${font.family}|${font.char}|${ratio}|${gpuGeneration()}`,
-      unit: unitOf(widths.char, lineHeightOf(this.probe, 18, ratio)),
+      unit,
       widths,
       font,
     };
@@ -200,7 +242,11 @@ export class BoardSurface {
       return undefined;
     }
     const ratio = devicePixelRatio;
-    const measured = this.measured(table, ratio);
+    const zoomed = this.zoomTo(shown.zoom ?? 0, table, ratio);
+    const measured =
+      zoomed === undefined
+        ? undefined
+        : this.measured(table, ratio, zoomed.unit);
     if (measured === undefined) {
       return undefined;
     }
@@ -336,6 +382,7 @@ export class BoardSurface {
     });
     return {
       origin,
+      advance: zoomed?.advance ?? advance,
       cell: { width: advance / ratio, height: rowHeight / ratio },
       view: { width: body.clientWidth, height: body.clientHeight },
       unit,

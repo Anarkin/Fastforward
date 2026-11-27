@@ -9,6 +9,7 @@ import { typedSchema } from '../../../lib/page/viewFocus';
 
 export const canvasViewSchema = record({
   origin: optional(record({ column: count(), row: count() })),
+  zoom: optional(count({ min: -1000, max: 1000, integer: true })),
   selected: optional(list(text({ max: 256 }), { max: 10_000 })),
   typing: optional(
     record({

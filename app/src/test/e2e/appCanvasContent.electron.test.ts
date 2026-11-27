@@ -37,6 +37,16 @@ suite('App canvas content', () => {
     };
   };
 
+  const advanceSeen = async () => (await seenBoard())?.advance ?? 0;
+
+  const zoomNotch = async (by: number) => {
+    const at = await pointAt({ column: 62, row: 1 });
+    await page.mouse.move(at.x, at.y);
+    await page.keyboard.down('ControlOrMeta');
+    await page.mouse.wheel(0, by);
+    await page.keyboard.up('ControlOrMeta');
+  };
+
   beforeAll(async () => {
     folder = tempFolder('app-canvas-content');
     const profile = path.join(folder, 'profile');
@@ -307,6 +317,33 @@ suite('App canvas content', () => {
           text.includes('"type":"link","url":"https://example.invalid/pasted"'),
       },
     );
+  });
+
+  test('zooms the canvas on Mod and the wheel around the pointer, a device pixel of the width of a cell a notch, its nodes on the cells of the board they were on', async () => {
+    const corner = { column: 60, row: 0 };
+    const drawnAt = async () => {
+      const seen = await seenBoard();
+      return (
+        seen?.rows[corner.row - seen.row]?.charAt(
+          corner.column - seen.column,
+        ) ?? ''
+      );
+    };
+    await page.locator('.board-host canvas').first().waitFor();
+    const before = await untilSettled(advanceSeen, 'the canvas drawn at rest', {
+      accepted: (now) => now > 0,
+    });
+    assert.strictEqual(await drawnAt(), '┌');
+    await zoomNotch(-100);
+    await untilSettled(advanceSeen, 'the canvas zoomed in', {
+      accepted: (now) => now === before + 1,
+    });
+    assert.strictEqual(await drawnAt(), '┌');
+    await zoomNotch(100);
+    await untilSettled(advanceSeen, 'the canvas zoomed back', {
+      accepted: (now) => now === before,
+    });
+    assert.strictEqual(await drawnAt(), '┌');
   });
 
   test('makes a new canvas named on Shift+F4 in the commander, empty in a canvas tab of its own, writing its file once it is saved', async () => {
