@@ -8,7 +8,7 @@ import { viewerRows } from './cellsSeen';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { settledLooks, tabs } from './tabReturns';
-import { untilSettled } from './waits';
+import { onceDrawn, untilSettled } from './waits';
 
 const newline = String.fromCharCode(10);
 
@@ -47,8 +47,9 @@ suite('What a tab shows once settled', () => {
     removeFolder(folder);
   });
 
-  const cursorPlace = () =>
-    page.evaluate(() => {
+  const cursorPlace = async () => {
+    await onceDrawn(page);
+    return page.evaluate(() => {
       const field = document.querySelector('.viewer .search-box-input');
       const cursor = field?.nextElementSibling;
       return field !== null &&
@@ -59,6 +60,7 @@ suite('What a tab shows once settled', () => {
           )
         : undefined;
     });
+  };
 
   const firstTexts = async () => {
     const lines = (await settledLooks(page)).text.split(newline);
