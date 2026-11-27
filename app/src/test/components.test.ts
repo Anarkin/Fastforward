@@ -29,6 +29,7 @@ const componentDoors: Readonly<Record<string, readonly string[]>> = {
     'components/cells/page/seen.ts',
     'components/cells/page/shapeLayer.ts',
     'components/cells/page/cellSurface.ts',
+    'components/cells/page/heldSurface.ts',
     'components/cells/page/runAtlas.ts',
     'components/cells/page/listCanvas.ts',
     'components/cells/page/listLooks.ts',

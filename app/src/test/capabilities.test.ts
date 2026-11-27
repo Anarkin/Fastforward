@@ -34,18 +34,15 @@ suite('Capabilities', () => {
     );
   });
 
-  test('makes a surface of the GPU only in the views of the cells, CellView for a text and ListCanvas for a list, so a new view takes one of them and every view is drawn, sized, kept and presented alike', () => {
-    heldBy(
-      /new CellSurface\(/,
-      [
-        'components/cells/page/cellView.ts',
-        'components/cells/page/listCanvas.ts',
-      ],
-      {
-        'tools/canvas/page/surface.ts':
-          'BoardSurface repeats what CellView does, to draw through it',
-      },
-    );
+  test('makes a surface of the GPU only in the cells, the pool of CellView for a text and one held surface for a list or a board, made anew for a new device and its canvas put in its host alike, so a new view takes one of them rather than a surface of its own', () => {
+    heldBy(/new CellSurface\(/, [
+      'components/cells/page/cellView.ts',
+      'components/cells/page/heldSurface.ts',
+    ]);
+    heldBy(/new HeldSurface\(/, [
+      'components/cells/page/listCanvas.ts',
+      'tools/canvas/page/surface.ts',
+    ]);
   });
 
   test('draws a glyph only into the atlases of the cells, so text drawn by the GPU is drawn alike everywhere, the icons of a bubble alone drawn by a canvas of the CPU, as ARCHITECTURE records', () => {

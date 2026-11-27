@@ -1,7 +1,7 @@
 import { laidOut } from '../../../lib/page/pixelBoxes';
 import type { CellFrame } from './cellFrame';
-import { CellSurface } from './cellSurface';
-import { gpuDevice } from './gpuDevice';
+import type { CellSurface } from './cellSurface';
+import { HeldSurface } from './heldSurface';
 import { RunAtlas } from './runAtlas';
 import type { RowPaint } from './runText';
 import type { Shape } from './shapeLayer';
@@ -63,6 +63,7 @@ function replay(row: RowPaint, originPixels: number, into: CellFrame): void {
 }
 
 export class ListCanvas<Row extends RowRecord> {
+  private readonly held: HeldSurface;
   private surface: CellSurface | undefined;
   private atlas: RunAtlas | undefined;
   private kept:
@@ -80,7 +81,9 @@ export class ListCanvas<Row extends RowRecord> {
       }
     | undefined;
 
-  constructor(private readonly className: string) {}
+  constructor(className: string) {
+    this.held = new HeldSurface(className);
+  }
 
   viewOf(
     host: HTMLElement,
@@ -88,21 +91,18 @@ export class ListCanvas<Row extends RowRecord> {
     scale: number,
     tileHeight: number,
   ): ListView | undefined {
-    const device = gpuDevice();
-    if (device === undefined) {
+    const surface = this.held.in(host);
+    if (surface === undefined) {
       return undefined;
     }
-    if (this.surface?.device !== device) {
-      this.surface?.dispose();
+    if (this.surface !== surface) {
+      this.surface = surface;
       this.atlas?.dispose();
-      this.surface = new CellSurface(device);
-      this.surface.canvas.className = this.className;
-      host.append(this.surface.canvas);
       this.atlas = undefined;
     }
     if (this.atlas?.tileHeight !== tileHeight) {
       this.atlas?.dispose();
-      this.atlas = new RunAtlas(device, tileHeight);
+      this.atlas = new RunAtlas(surface.device, tileHeight);
     }
     const spacer = (host.parentElement ?? list).getBoundingClientRect();
     const across = laidOut(spacer.left * scale);
@@ -185,7 +185,7 @@ export class ListCanvas<Row extends RowRecord> {
   }
 
   dispose(): void {
-    this.surface?.dispose();
+    this.held.dispose();
     this.atlas?.dispose();
     this.surface = undefined;
     this.atlas = undefined;

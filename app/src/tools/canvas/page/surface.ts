@@ -1,5 +1,6 @@
 import { groundUnder } from '../../../components/cells/page/cellLook';
-import { CellSurface } from '../../../components/cells/page/cellSurface';
+import type { CellSurface } from '../../../components/cells/page/cellSurface';
+import { HeldSurface } from '../../../components/cells/page/heldSurface';
 import {
   cellMetricsOf,
   lookWithin,
@@ -19,10 +20,7 @@ import {
   type TextLook,
 } from '../../../components/cells/page/textCells';
 import { dotBoxOf, nudgeOf } from '../../../components/cells/page/cellView';
-import {
-  gpuDevice,
-  gpuGeneration,
-} from '../../../components/cells/page/gpuDevice';
+import { gpuGeneration } from '../../../components/cells/page/gpuDevice';
 import type { CellTable } from '../../../lib/page/cellTable';
 import {
   CursorMark,
@@ -129,7 +127,7 @@ interface Measured {
 }
 
 export class BoardSurface {
-  private surface: CellSurface | undefined;
+  private readonly held = new HeldSurface('board-canvas');
   private look: { readonly key: string; readonly look: TextLook } | undefined;
   private readonly computed = new Map<string, string>();
   private cursor: CursorMark | undefined;
@@ -186,15 +184,9 @@ export class BoardSurface {
     panned: Origin | undefined,
     shown: Shown = noneShown,
   ): Drawn | undefined {
-    const device = gpuDevice();
-    if (device === undefined) {
+    const cells = this.held.in(this.host);
+    if (cells === undefined) {
       return undefined;
-    }
-    if (this.surface?.device !== device) {
-      this.surface?.dispose();
-      this.surface = new CellSurface(device);
-      this.surface.canvas.className = 'board-canvas';
-      this.host.append(this.surface.canvas);
     }
     const ratio = devicePixelRatio;
     const measured = this.measured(table, ratio);
@@ -214,7 +206,6 @@ export class BoardSurface {
     host.style.top = `${nudge.top}px`;
     host.style.width = `${pixelWidth / ratio}px`;
     host.style.height = `${pixelHeight / ratio}px`;
-    const cells = this.surface;
     cells.sized(pixelWidth, pixelHeight);
     const metrics = cellMetricsOf(
       host,
@@ -377,8 +368,7 @@ export class BoardSurface {
     this.cursor?.hide();
     this.cursor = undefined;
     this.host.seenBoard = undefined;
-    this.surface?.dispose();
-    this.surface = undefined;
+    this.held.dispose();
   }
 }
 
