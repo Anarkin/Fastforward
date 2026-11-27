@@ -36,8 +36,6 @@ const comparedColumns = 40;
 
 const codeBlock = '.viewer .markdown pre code .cell-rows';
 
-const reachedFrom = 1;
-
 const boxOf = (rows: readonly SeenRow[]): Box | undefined => {
   const row = rows.find(({ text }) => text.startsWith(lines[0] ?? ''));
   return row === undefined
@@ -49,6 +47,11 @@ const boxOf = (rows: readonly SeenRow[]): Box | undefined => {
         height: lines.length * row.height,
       };
 };
+
+const signsIn = (glyphs: readonly { row: number; column: number }[]) =>
+  glyphs
+    .toSorted((one, other) => one.row - other.row)
+    .map(({ column }) => column);
 
 interface Compared {
   readonly pixels: boolean;
@@ -64,8 +67,7 @@ const alikeTo = (
     .map((at) => [Math.floor(at / comparedColumns), at % comparedColumns])
     .filter(
       ([row = 0, column = 0]) =>
-        before === undefined ||
-        column < (before[row] ?? comparedColumns) - reachedFrom,
+        before === undefined || column < (before[row] ?? comparedColumns),
     );
   assert.deepStrictEqual(
     {
@@ -198,11 +200,9 @@ suite('App text drawn alike', () => {
     alikeTo(text, await settled(sideOfDiff(1), 'the new side drawn at rest'));
   });
 
-  test('draws the lines of a code block of a Markdown preview as the viewer draws them, cell by cell up to where each line ends, on the ground of the block, which signs no line ending', async () => {
+  test('draws the lines of a code block of a Markdown preview as the viewer draws them, cell by cell on the ground of the block, each line ending signed where the viewer signs it while whitespace is shown', async () => {
     const text = await viewed();
-    const ends = (await seenGlyphs(page, strings.symbols.lineFeed))
-      .toSorted((one, other) => one.row - other.row)
-      .map(({ column }) => column);
+    const ends = signsIn(await seenGlyphs(page, strings.symbols.lineFeed));
     assert.strictEqual(ends.length, lines.length);
     await show(2);
     await page.locator(codeBlock).waitFor();
@@ -213,6 +213,10 @@ suite('App text drawn alike', () => {
         'the code block drawn at rest',
       ),
       { pixels: false, before: ends },
+    );
+    assert.deepStrictEqual(
+      signsIn(await cellsOf(page, codeBlock).glyphs(strings.symbols.lineFeed)),
+      ends,
     );
   });
 });

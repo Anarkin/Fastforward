@@ -1,3 +1,4 @@
+import { strings } from '../../../../../lib/shared/strings';
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
@@ -23,6 +24,18 @@ suite('Code blocks drawn as cells', () => {
     assert.deepStrictEqual(
       codeRows('').map(({ row }) => row.text),
       [''],
+    );
+  });
+
+  test('ends each line of a code block followed by a line break with it, so the cells sign it while whitespace is shown as they sign the lines of a file viewed, and the last line of a block not ended by one with none', () => {
+    const lineFeed = strings.symbols.lineFeed;
+    assert.deepStrictEqual(
+      codeRows('one\n\nlast\n').map(({ row }) => row.ending),
+      [lineFeed, lineFeed, lineFeed],
+    );
+    assert.deepStrictEqual(
+      codeRows('one\nlast').map(({ row }) => row.ending),
+      [lineFeed, undefined],
     );
   });
 

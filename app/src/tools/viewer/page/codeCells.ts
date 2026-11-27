@@ -1,3 +1,4 @@
+import { strings } from '../../../lib/shared/strings';
 import {
   occurrencesOf,
   type FindMark,
@@ -50,13 +51,21 @@ export function codeRows(text: string): ScreenRow[] {
   if (lines.length > 1 && lines.at(-1) === '') {
     lines.pop();
   }
+  const ended = text.endsWith(lineBreak);
   let start = 0;
-  return lines.map((line) => {
+  return lines.map((line, at) => {
     const end = start + line.length + 1;
     const row: ScreenRow = {
       start,
       end,
-      row: { start, end, text: line },
+      row: {
+        start,
+        end,
+        text: line,
+        ...((ended || at < lines.length - 1) && {
+          ending: strings.symbols.lineFeed,
+        }),
+      },
       index: 0,
       from: 0,
       to: line.length,
@@ -107,7 +116,11 @@ export class CodeCells {
     this.lineAt = new Map(this.rows.map((row, line) => [row.start, line]));
     this.columns = Math.max(
       1,
-      ...this.rows.map((row) => columnsOf(row.row.text, look.widths)),
+      ...this.rows.map(
+        (row) =>
+          columnsOf(row.row.text, look.widths) +
+          (row.row.ending === undefined ? 0 : 1),
+      ),
     );
     const page = code.ownerDocument;
     this.block = page.createElement('div');
