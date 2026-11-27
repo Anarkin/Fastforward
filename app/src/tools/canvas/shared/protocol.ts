@@ -24,8 +24,17 @@ export const nodeOrders = ['front', 'back'] as const;
 
 export type NodeOrder = (typeof nodeOrders)[number];
 
+const hexColor = /^#(?:[\da-f]{3}|[\da-f]{6})$/i;
+
+export const isHexColor = (color: string): boolean => hexColor.test(color);
+
 export const isBoardColor = (color: string): boolean =>
-  /^(?:[1-6]|#[\da-f]{3}|#[\da-f]{6})$/i.test(color);
+  /^[1-6]$/.test(color) || isHexColor(color);
+
+export const sixDigitColor = (color: string): string =>
+  isHexColor(color) && color.length === 4
+    ? `#${color.slice(1).replaceAll(/./g, (digit) => digit.repeat(2))}`
+    : color;
 
 type AddedKind = (typeof addedKinds)[number];
 

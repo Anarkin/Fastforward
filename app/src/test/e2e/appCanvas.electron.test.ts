@@ -746,7 +746,7 @@ suite('App canvas', () => {
     );
   });
 
-  test('colors a node by a color of its own typed into a prompt that Custom… of the menu of a right click opens, writing it into its file once saved', async () => {
+  test('colors a node by a color of its own typed into a prompt that Custom… of the menu of a right click opens, three hex digits too, writing it into its file as six once saved, as Obsidian writes a color', async () => {
     const inside = await pointAt({ column: 2, row: 1 });
     await page.mouse.click(inside.x, inside.y, { button: 'right' });
     await page
@@ -757,7 +757,7 @@ suite('App canvas', () => {
       .click();
     const prompt = page.locator('.prompt-input');
     await prompt.waitFor();
-    await prompt.fill('#123456');
+    await prompt.fill('#1a5');
     await prompt.press('Enter');
     await prompt.waitFor({ state: 'detached' });
     await page.locator('.board-body').focus();
@@ -767,7 +767,7 @@ suite('App canvas', () => {
       'the color of its own saved',
       {
         accepted: (seen) =>
-          seen === JSON.stringify({ at: 0, color: '#123456' }),
+          seen === JSON.stringify({ at: 0, color: '#11aa55' }),
       },
     );
   });

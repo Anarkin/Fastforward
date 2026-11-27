@@ -1,6 +1,7 @@
 import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
 import { languageOf } from '../../../lib/page/languages';
 import type { NodeFile } from '../shared/protocol';
+import { isHexColor } from '../shared/protocol';
 import type { LineRanges } from '../../../components/syntax/page/engine';
 import type { Board, BoardEdge, BoardNode } from '../shared/board';
 import type { TextWidths } from '../../../lib/page/textWidths';
@@ -40,8 +41,6 @@ const tinyNode = '□';
 
 const presets = /^[1-6]$/;
 
-const hexColor = /^#(?:[\da-f]{3}|[\da-f]{6})$/i;
-
 export function colorKind(color: string | undefined): string | undefined {
   if (color === undefined) {
     return undefined;
@@ -49,7 +48,7 @@ export function colorKind(color: string | undefined): string | undefined {
   if (presets.test(color)) {
     return `color-${color}`;
   }
-  return hexColor.test(color) ? color.toLowerCase() : undefined;
+  return isHexColor(color) ? color.toLowerCase() : undefined;
 }
 
 export interface Drawn {

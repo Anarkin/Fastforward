@@ -123,6 +123,12 @@ suite('Unification', () => {
     assert.deepStrictEqual(styling(/[\w)\]][ \t]+\.syntax-[a-z]+/), []);
   });
 
+  test('tells a color of its own of a canvas, # and three or six hex digits, by one rule, which the prompt, the checks of the main process and the drawing all take, the prompt having taken six digits alone', () => {
+    assert.deepStrictEqual(doing(/\[\\da-f\]\{[36]\}/i), [
+      'tools/canvas/shared/protocol.ts',
+    ]);
+  });
+
   test('rounds the advance and the row of the monospace font to whole device pixels once, for the whole window, rather than in every view, the canvas having measured its text unrounded and so centered a wide character a tenth of a pixel off the viewer', () => {
     assert.deepStrictEqual(styling(/round\(1ch/), ['shell/page/window.css']);
     assert.deepStrictEqual(

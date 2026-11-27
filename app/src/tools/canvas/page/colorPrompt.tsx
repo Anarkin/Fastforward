@@ -1,9 +1,8 @@
+import { isHexColor } from '../shared/protocol';
 import { PromptPopup } from '../../../shell/page/promptPopup';
 import { strings } from '../../../lib/shared/strings';
 import { coloringShown } from './state';
 import { useCanvas, useCanvasActions } from './store';
-
-const hexColor = /^#[\da-f]{6}$/i;
 
 export function ColorPrompt() {
   const tab = useCanvas((state) => state.tab);
@@ -19,7 +18,7 @@ export function ColorPrompt() {
       confirm={strings.canvas.customColorConfirm}
       initial="#"
       problemOf={(value) =>
-        hexColor.test(value) ? undefined : strings.canvas.notAColor
+        isHexColor(value) ? undefined : strings.canvas.notAColor
       }
       typed={coloring.typed}
       onTyped={(typed) => {

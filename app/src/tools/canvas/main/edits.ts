@@ -4,6 +4,7 @@ import { edgeEnds, nodeSides, whichEnds } from '../shared/board';
 import {
   addedKinds,
   isBoardColor,
+  sixDigitColor,
   nodeOrders,
   type BoardEdit,
   type CanvasDrop,
@@ -161,7 +162,7 @@ export function editOf(value: unknown): BoardEdit | undefined {
         return { kind: 'color', nodes, edges };
       }
       return typeof color === 'string' && isBoardColor(color)
-        ? { kind: 'color', nodes, edges, color }
+        ? { kind: 'color', nodes, edges, color: sixDigitColor(color) }
         : undefined;
     }
     case 'order': {
