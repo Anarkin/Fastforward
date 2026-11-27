@@ -32,8 +32,25 @@ function sameTags(
   );
 }
 
+export class PushedTags {
+  private readonly counts = new Map<string, number>();
+
+  private static keyOf(repository: string, remote: string): string {
+    return JSON.stringify([repository, remote]);
+  }
+
+  countOf(repository: string, remote: string): number {
+    return this.counts.get(PushedTags.keyOf(repository, remote)) ?? 0;
+  }
+
+  record(repository: string, remote: string): void {
+    const key = PushedTags.keyOf(repository, remote);
+    this.counts.set(key, (this.counts.get(key) ?? 0) + 1);
+  }
+}
+
 export class RemoteTags {
-  private tagsRecorded = 0;
+  private readonly pushed = new PushedTags();
 
   constructor(private readonly access: RemoteAccess) {}
 
@@ -90,7 +107,7 @@ export class RemoteTags {
     if (pushedTo === undefined || known === undefined) {
       return;
     }
-    this.tagsRecorded++;
+    this.pushed.record(context.repository, pushedTo);
     await this.access.storage.remoteTags.setRemoteTags(
       context.repository,
       pushedTo,
@@ -118,14 +135,14 @@ export class RemoteTags {
     let newlyKnown = false;
     for (const remote of remotes.filter((name) => !notFetched.includes(name))) {
       try {
-        const recorded = this.tagsRecorded;
+        const recorded = this.pushed.countOf(repository, remote);
         const tags = await this.tagsOfRemote(
           gitPath,
           root,
           remote,
           interactive,
         );
-        if (this.tagsRecorded !== recorded) {
+        if (this.pushed.countOf(repository, remote) !== recorded) {
           continue;
         }
         const known = this.access.storage.remoteTags
