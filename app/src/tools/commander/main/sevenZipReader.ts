@@ -123,32 +123,40 @@ async function renamedIn(
   file: string,
   from: string,
   to: string,
-  { password, signal, ...told }: UpdateOptions,
+  { listIn, password, signal, ...told }: ListedOptions,
 ): Promise<Packing> {
+  const names = listOf([from, to]);
+  if (names === undefined) {
+    return { kind: 'refused', reason: strings.commander.lineBreakInName };
+  }
+  const list = path.join(listIn, 'renamed.paths');
+  await fs.promises.writeFile(list, names);
   const onOutput = packOutput(told, keptPattern);
   const { switches, input } = passwordGiven(password);
-  const run = await sevenZip(
-    [
-      'rn',
-      '-y',
-      ...switches,
-      '-spd',
-      '-sccUTF-8',
-      '-scsUTF-8',
-      '-ssc',
-      ...(onOutput === undefined ? [] : ['-bsp1']),
-      '--',
-      file,
-      from,
-      to,
-    ],
-    {
-      ...(signal !== undefined && { signal }),
-      ...(input !== undefined && { input }),
-      ...(onOutput !== undefined && { onOutput }),
-    },
-  );
-  return outcomeOf(run, file);
+  try {
+    const run = await sevenZip(
+      [
+        'rn',
+        '-y',
+        ...switches,
+        '-spd',
+        '-sccUTF-8',
+        '-scsUTF-8',
+        '-ssc',
+        ...(onOutput === undefined ? [] : ['-bsp1']),
+        path.resolve(file),
+        `@${list}`,
+      ],
+      {
+        ...(signal !== undefined && { signal }),
+        ...(input !== undefined && { input }),
+        ...(onOutput !== undefined && { onOutput }),
+      },
+    );
+    return outcomeOf(run, file);
+  } finally {
+    await fs.promises.rm(list, { force: true });
+  }
 }
 
 async function addedTo(

@@ -95,7 +95,7 @@ export interface ArchiveReader {
     file: string,
     from: string,
     to: string,
-    options: UpdateOptions,
+    options: ListedOptions,
   ): Promise<Packing>;
   add(
     file: string,

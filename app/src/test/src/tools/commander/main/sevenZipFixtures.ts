@@ -20,6 +20,8 @@ export interface Asked {
 }
 
 export const listedBy = (args: readonly string[]) => {
-  const list = args.find((arg) => arg.startsWith('-i@'))?.slice(3);
+  const list = args
+    .find((arg) => arg.startsWith('-i@') || arg.startsWith('@'))
+    ?.replace(/^(-i)?@/, '');
   return list === undefined ? {} : { list: fs.readFileSync(list, 'utf8') };
 };

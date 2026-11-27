@@ -235,7 +235,7 @@ suite('7-Zip', () => {
     );
   });
 
-  test('deletes, extracts and renames alone each of the items whose names differ only in case, in spaces around them or by a quote, but on Windows renames none with a quote, which its command line cannot hold, and refuses a name with a line break', async () => {
+  test('deletes, extracts and renames alone each of the items whose names differ only in case, in spaces around them or by a quote, to a name with quotes of its own, on Windows too, as names pass in a list file', async () => {
     const names = ['a.txt', 'A.TXT', ' a.txt', 'a.txt ', 'q"a.txt'];
     let zips = 0;
     const zip = () => {
@@ -280,20 +280,16 @@ suite('7-Zip', () => {
         [`text of ${name}`],
         name,
       );
-      if (process.platform === 'win32' && name.includes('"')) {
-        continue;
-      }
       const renamedIn = zip();
+      const renamed = 'renamed "again".txt';
       assert.deepStrictEqual(
-        await reader.rename(renamedIn, name, 'renamed.txt', {}),
+        await reader.rename(renamedIn, name, renamed, { listIn }),
         { kind: 'packed' },
         name,
       );
       assert.deepStrictEqual(
         await namesIn(renamedIn),
-        [...names.filter((each) => each !== name), 'renamed.txt'].toSorted(
-          byText,
-        ),
+        [...names.filter((each) => each !== name), renamed].toSorted(byText),
         name,
       );
     }
@@ -303,6 +299,10 @@ suite('7-Zip', () => {
     };
     assert.deepStrictEqual(
       await reader.remove(zip(), ['line\nbreak.txt'], { listIn }),
+      refused,
+    );
+    assert.deepStrictEqual(
+      await reader.rename(zip(), 'line\nbreak.txt', 'x.txt', { listIn }),
       refused,
     );
     assert.deepStrictEqual(

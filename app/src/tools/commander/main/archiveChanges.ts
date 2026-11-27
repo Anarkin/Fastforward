@@ -156,7 +156,13 @@ export class ArchiveChanges {
     options: PackOptions = {},
   ): Promise<Packing> {
     return this.updating(archive, (reader, password) =>
-      reader.rename(archive.file, from, to, { ...options, ...password }),
+      this.listedIn((listIn) =>
+        reader.rename(archive.file, from, to, {
+          ...options,
+          ...password,
+          listIn,
+        }),
+      ),
     );
   }
 

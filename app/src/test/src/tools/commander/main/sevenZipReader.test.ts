@@ -72,36 +72,43 @@ const askedBy = async (
 };
 
 suite('changing an archive with 7-Zip', () => {
-  test('renames an item of an archive by its path in it, the password on its input or none asked for', async () => {
-    assert.deepStrictEqual(
-      await askedBy((reader) =>
-        reader.rename('a.7z', 'docs/old.txt', 'docs/new.txt', {
-          password: 'secret',
-        }),
-      ),
-      [
-        {
-          args: [
-            'rn',
-            '-y',
-            '-spd',
-            '-sccUTF-8',
-            '-scsUTF-8',
-            '-ssc',
-            '--',
-            'a.7z',
-            'docs/old.txt',
-            'docs/new.txt',
-          ],
-          input: 'secret\n',
-          onOutput: undefined,
-        },
-      ],
-    );
-    const [unlocked] = await askedBy((reader) =>
-      reader.rename('a.zip', 'a', 'b', {}),
-    );
-    assert.ok(unlocked?.args.includes('-p-'));
+  test('renames an item of an archive by its path in it, the pair named in a list file rather than on the command line, where Windows escapes a quote as 7-Zip does not read it, the password on its input or none asked for', async () => {
+    const listIn = tempFolder('renaming');
+    const list = path.join(listIn, 'renamed.paths');
+    try {
+      assert.deepStrictEqual(
+        await askedBy((reader) =>
+          reader.rename('a.7z', 'docs/old.txt', 'docs/"new".txt', {
+            password: 'secret',
+            listIn,
+          }),
+        ),
+        [
+          {
+            args: [
+              'rn',
+              '-y',
+              '-spd',
+              '-sccUTF-8',
+              '-scsUTF-8',
+              '-ssc',
+              path.resolve('a.7z'),
+              `@${list}`,
+            ],
+            input: 'secret\n',
+            onOutput: undefined,
+            list: '"docs/old.txt"\n"docs/"new".txt"',
+          },
+        ],
+      );
+      assert.ok(!fs.existsSync(list));
+      const [unlocked] = await askedBy((reader) =>
+        reader.rename('a.zip', 'a', 'b', { listIn }),
+      );
+      assert.ok(unlocked?.args.includes('-p-'));
+    } finally {
+      removeFolder(listIn);
+    }
   });
 
   test('adds the items named in a list file from the folder they are in, so they keep their folders under it and any number of them fits on the command line, setting no password unless one is given, as -p- would set the password -, and giving it twice, as 7-Zip asks once to open a 7z with its names encrypted and again for what it adds', async () => {
