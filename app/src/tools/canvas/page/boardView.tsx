@@ -49,6 +49,7 @@ import { useBoardKeys } from './boardKeys';
 import { openNode, openedOf } from './links';
 import { typedTextOf, typesOneLine } from './typedTexts';
 import { wheelZoom } from './zoom';
+import { useSignTips } from './signTipping';
 
 interface Panning {
   readonly pointer: number;
@@ -323,6 +324,7 @@ export function BoardView() {
   };
 
   useBoardKeys(startPlacing);
+  useSignTips(body, board, drawn);
 
   const startPan = (event: React.PointerEvent<HTMLDivElement>): boolean => {
     const known = drawn.current;

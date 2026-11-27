@@ -138,11 +138,11 @@ suite('App canvas', () => {
     assert.ok(seen !== undefined);
     assert.deepStrictEqual(seen.rows.slice(0, 9), [
       '',
-      '  ┌────────┐',
+      '  ┌¶───────┐',
       '  │ Idea   ├────┐',
       '  └────────┘    │',
       '                ▼',
-      '            ┌────────┐',
+      '            ┌¶───────┐',
       '            │ Plan   │',
       '            └────────┘',
       '',
@@ -163,8 +163,8 @@ suite('App canvas', () => {
       [
         [x, y],
         [x, y - 1],
-        [x + advance, y + stroke - 1],
-        [x + advance, y + stroke],
+        [x + 2 * advance, y + stroke - 1],
+        [x + 2 * advance, y + stroke],
         [x + 7 * advance, y + rowHeight],
         [left + advance, top + rowHeight],
         [left + advance + 1, top + rowHeight + 1],

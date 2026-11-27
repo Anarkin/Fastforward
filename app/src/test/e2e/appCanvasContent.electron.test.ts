@@ -7,6 +7,7 @@ import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { closeOrKill, launchApp } from './appLaunch';
 import { showTab } from './tabReturns';
 import { untilSettled } from './waits';
+import { strings } from '../../lib/shared/strings';
 
 suite('App canvas content', () => {
   let folder: string;
@@ -147,6 +148,31 @@ suite('App canvas content', () => {
       { accepted: (kinds) => kinds !== undefined && kinds !== '[]' },
     );
     assert.deepStrictEqual(await kindsOf('plain words'), []);
+  });
+
+  test('signs the kind of each node in the corner of its top border and names it in a tooltip once the pointer is on the sign', async () => {
+    const rows = (await seenBoard())?.rows ?? [];
+    const origin = (await seenBoard())?.origin ?? { column: 0, row: 0 };
+    const signOn = (row: number) =>
+      (rows[row - origin.row] ?? '').charAt(1 - origin.column);
+    assert.deepStrictEqual([signOn(0), signOn(6), signOn(12)], ['¶', '∞', '≡']);
+    const tip = page.locator('.card.tip');
+    for (const [row, named] of [
+      [0, strings.canvas.nodeKinds.text],
+      [6, strings.canvas.nodeKinds.link],
+      [12, strings.canvas.nodeKinds.file],
+    ] as const) {
+      const sign = await pointAt({ column: 1, row });
+      await page.mouse.move(sign.x, sign.y);
+      await tip.waitFor();
+      assert.strictEqual(
+        await tip.locator('.card-message').textContent(),
+        named,
+      );
+      const beside = await pointAt({ column: 3, row });
+      await page.mouse.move(beside.x, beside.y);
+      await tip.waitFor({ state: 'detached' });
+    }
   });
 
   test('draws a link node as its URL in the color of a link, and opens it outside the app on Enter once selected and on a double click', async () => {

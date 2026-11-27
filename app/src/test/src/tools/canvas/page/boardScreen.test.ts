@@ -39,6 +39,13 @@ const text = (
   ...more,
 });
 
+const placedAt = (column: number, row: number, columns: number) => ({
+  x: column * unit.width,
+  y: row * unit.height,
+  width: columns * unit.width,
+  height: 3 * unit.height,
+});
+
 const narrow = (cluster: string) => (/[　-鿿]/.test(cluster) ? 2 : 1);
 
 function screenText(
@@ -112,11 +119,11 @@ suite('Canvas screen', () => {
         edges: [edge({ fromSide: 'right', toSide: 'top' })],
       }),
       [
-        '┌────────┐',
+        '┌¶───────┐',
         '│ Idea   ├────┐',
         '└────────┘    │',
         '              ▼',
-        '          ┌────────┐',
+        '          ┌¶───────┐',
         '          │ Plan   │',
         '          └────────┘',
         '',
@@ -138,7 +145,7 @@ suite('Canvas screen', () => {
         ['idea'],
       ),
       [
-        '╔══════╗      ┌──────┐',
+        '╔¶═════╗      ┌¶─────┐',
         '║ Ide⏎ ╠──────┤ Pla⏎ │',
         '╚══════╝      └──────┘',
       ],
@@ -157,7 +164,7 @@ suite('Canvas screen', () => {
     };
     const view = { column: 0, row: 0, columns: 24, rows: 3 };
     assert.deepStrictEqual(screenText(board, view, ['e']), [
-      '┌──────┐      ┌──────┐',
+      '┌¶─────┐      ┌¶─────┐',
       '│ Ide⏎ ╠══ x ═╣ Pla⏎ │',
       '└──────┘      └──────┘',
     ]);
@@ -224,7 +231,7 @@ suite('Canvas screen', () => {
         },
         { column: 0, row: 0, columns: 20, rows: 3 },
       ),
-      ['┌────┐      ┌────┐', '│ A  │◀────▶│ B  │', '└────┘      └────┘'],
+      ['┌¶───┐      ┌¶───┐', '│ A  │◀────▶│ B  │', '└────┘      └────┘'],
     );
   });
 
@@ -271,6 +278,22 @@ suite('Canvas screen', () => {
     assert.strictEqual(shown.lineKinds[0], '#ff7800');
   });
 
+  test('signs the kind of a node in the corner of its top border, ¶ a text, ≡ a file and ∞ a link, of characters every monospace font of the settings has, none for a group, whose label goes there, nor for a node too narrow for one', () => {
+    const rows = screenText({
+      nodes: [
+        text('note', 0, 0, 6, 3, ''),
+        { id: 'file', type: 'file', file: 'a.md', ...placedAt(7, 0, 6) },
+        { id: 'link', type: 'link', url: 'https://a.b', ...placedAt(14, 0, 6) },
+        { id: 'group', type: 'group', ...placedAt(0, 4, 6) },
+        text('narrow', 8, 4, 2, 3, ''),
+      ],
+    });
+    assert.deepStrictEqual(
+      [rows[0], rows[4]],
+      ['┌¶───┐ ┌≡───┐ ┌∞───┐', '┌────┐  ┌┐'],
+    );
+  });
+
   test('writes the label of a group in its top border, keeps what lies inside it, and draws a node over a group listed before it', () => {
     assert.deepStrictEqual(
       screenText(
@@ -292,7 +315,7 @@ suite('Canvas screen', () => {
       ),
       [
         '┌─ Plan ───────────┐',
-        '│ ┌──────┐         │',
+        '│ ┌¶─────┐         │',
         '│ │ Ide⏎ │         │',
         '│ └──────┘         │',
         '│                  │',
@@ -312,7 +335,7 @@ suite('Canvas screen', () => {
         { column: 0, row: 0, columns: 14, rows: 5 },
       ),
       [
-        '┌──────────┐',
+        '┌¶─────────┐',
         '│ one two ⏎│',
         '│ three ⏎  │',
         '│ four ⏎   │',
@@ -324,7 +347,7 @@ suite('Canvas screen', () => {
         { nodes: [text('a', 0, 0, 12, 4, '日本語​x\tend')] },
         { column: 0, row: 0, columns: 14, rows: 4 },
       ),
-      ['┌──────────┐', '│ 日本語 ⏎  │', '│ ¤x  end  │', '└──────────┘'],
+      ['┌¶─────────┐', '│ 日本語 ⏎  │', '│ ¤x  end  │', '└──────────┘'],
     );
   });
 

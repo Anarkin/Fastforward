@@ -18,6 +18,7 @@ import {
   textAreaOf,
 } from './textBlocks';
 import { reversed, routeOf, type Cell, type Route } from './routes';
+import { nodeSigns, signCellOf } from './nodeSigns';
 import {
   doubleShift,
   emptyScreen,
@@ -225,6 +226,16 @@ function paintNode(
     }
   }
   border(painter, box, weight, kind);
+  const sign = signCellOf(box);
+  if (sign !== undefined) {
+    painter.glyph(
+      sign.column,
+      sign.row,
+      nodeSigns[node.type],
+      1,
+      kind ?? lineKind,
+    );
+  }
   paintText(painter, {
     owner,
     area: textAreaOf(box),
