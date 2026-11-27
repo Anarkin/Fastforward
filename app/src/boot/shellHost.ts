@@ -1,7 +1,7 @@
 import { fs } from '../lib/main/files';
 import { appFs } from '../lib/main/appFiles';
 import * as path from 'node:path';
-import { app, clipboard, dialog } from 'electron';
+import { app, clipboard, dialog, shell } from 'electron';
 import { brand, strings } from '../lib/shared/strings';
 import type { ShellHost } from '../shell/main/shell';
 import type { UserSettings } from '../shell/main/userSettings';
@@ -108,6 +108,7 @@ export function shellHostOf({
       void clipboard.writeText(text);
     },
     badgeTaskbar: (id, badge) => windows.badge(id, badge),
+    openWithSystem: (file) => shell.openPath(file),
     canInstallCommand: () => commandPlace !== undefined,
     commandState: () =>
       commandPlace === undefined

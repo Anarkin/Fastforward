@@ -20,6 +20,7 @@ export interface PathMenuHost {
   editRefusal(file: string): Promise<Sentence | undefined>;
   cloneInto(folder: string): Promise<void>;
   initRepository(folder: string): Promise<void>;
+  openWithSystem?(path: string): Promise<string>;
   shellMenu?(
     files: readonly string[],
     at: { readonly x: number; readonly y: number },
@@ -78,12 +79,25 @@ export async function runPathCommand(
     return followLink(page, at, await host.pathFacts(at), tools, opening);
   }
   const facts = await host.pathFacts(path);
+  const openWithSystem = async (at: string) => {
+    const failure = await host.openWithSystem?.(at);
+    if (failure !== undefined && failure !== '') {
+      opening.notice(page, {
+        level: 'error',
+        message: strings.commander.openFailed(at, failure),
+      });
+    }
+  };
+  if (command === 'openWithSystem' && facts.kind === 'file') {
+    return openWithSystem(path);
+  }
   if (isFolderCommand(command)) {
     return facts.kind === 'folder'
       ? runFolderCommand(command, path, {
           open: (tool, folder) => tools[tool].open(page, [folder]),
           cloneInto: (folder) => host.cloneInto(folder),
           initRepository: (folder) => host.initRepository(folder),
+          openWithSystem,
         })
       : Promise.resolve();
   }

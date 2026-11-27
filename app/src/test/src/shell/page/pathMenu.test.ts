@@ -55,6 +55,7 @@ suite('The menu of a part of a path', () => {
   test('offers a folder on disk what the commander offers it, acting on its whole path, the menu of Windows on Windows alone', () => {
     const menu = menuOf({ path: 'C:\\Code' }, facts('folder'));
     assert.deepStrictEqual(menu.offered, [
+      commander.openWithSystem,
       commander.openWithTerminal,
       commander.openWithCommander,
       commander.cloneWithGit,
@@ -63,6 +64,7 @@ suite('The menu of a part of a path', () => {
       commander.showMoreOptions,
     ]);
     assert.deepStrictEqual(menu.chooseAll(), [
+      'openWithSystem',
       'newTerminal',
       'openInCommander',
       'cloneHere',
@@ -81,6 +83,7 @@ suite('The menu of a part of a path', () => {
     assert.deepStrictEqual(
       menuOf({ path: 'C:\\Code\\repo' }, facts('folder', true)).offered,
       [
+        commander.openWithSystem,
         commander.openWithTerminal,
         commander.openWithCommander,
         commander.openWithGit,
@@ -96,6 +99,7 @@ suite('The menu of a part of a path', () => {
       facts('file'),
     );
     assert.deepStrictEqual(menu.offered, [
+      commander.openWithSystem,
       commander.openWithSevenZip,
       commander.openWithViewer,
       commander.openWithEditor,
@@ -104,6 +108,7 @@ suite('The menu of a part of a path', () => {
       commander.showMoreOptions,
     ]);
     assert.deepStrictEqual(menu.chooseAll(), [
+      'openWithSystem',
       'enterArchive',
       'view',
       'edit',
@@ -118,6 +123,7 @@ suite('The menu of a part of a path', () => {
       facts('file'),
     );
     assert.deepStrictEqual(menu.offered, [
+      commander.openWithSystem,
       commander.openWithSevenZip,
       commander.openWithViewer,
       commander.openWithEditor,
@@ -132,6 +138,7 @@ suite('The menu of a part of a path', () => {
     const file = { path: 'C:\\Code\\repo\\a.txt', file: true };
     const menu = menuOf(file, facts('file', true));
     assert.deepStrictEqual(menu.offered, [
+      commander.openWithSystem,
       commander.openWithSevenZip,
       commander.openWithViewer,
       commander.openWithDiff,

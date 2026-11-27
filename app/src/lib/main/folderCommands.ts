@@ -4,6 +4,7 @@ export interface FolderCommandRunner {
   open(tool: 'terminal' | 'commander' | 'git', folder: string): Promise<void>;
   cloneInto(folder: string): Promise<void>;
   initRepository(folder: string): Promise<void>;
+  openWithSystem(folder: string): Promise<void>;
 }
 
 export function runFolderCommand(
@@ -22,6 +23,8 @@ export function runFolderCommand(
       return runner.cloneInto(folder);
     case 'initHere':
       return runner.initRepository(folder);
+    case 'openWithSystem':
+      return runner.openWithSystem(folder);
     default:
       return command satisfies never;
   }

@@ -48,6 +48,7 @@ const settings = (gitMissing: boolean): CommanderToWebview => ({
 });
 
 const shownFolderMenu = [
+  strings.commander.openWithSystem,
   strings.commander.openWithTerminal,
   strings.commander.openWithCommander,
   strings.commander.cloneWithGit,
@@ -191,12 +192,13 @@ suite('Commander menu on a side', () => {
     });
   });
 
-  test('opens the menu of a folder or file clicked, selecting it, a repository offered to open in git, a folder in the commander too, the diff comparing files as Shift+F3 does, a file alone with its history', async () => {
+  test('opens the menu of a folder or file clicked, selecting it, a repository offered to open in git, a folder in the commander too, the diff comparing files as Shift+F3 does, a file alone with its history, and either opened with the OS, a file as Enter opens it', async () => {
     await inPane(
       async ({ main, rightClick, menu, choose, posted, selected }) => {
         rightClick(rowNamed(main, 'app'));
         assert.strictEqual(selected(), 'app');
         assert.deepStrictEqual(menu(), [
+          strings.commander.openWithSystem,
           strings.commander.openWithTerminal,
           strings.commander.openWithCommander,
           strings.commander.openWithGit,
@@ -205,10 +207,12 @@ suite('Commander menu on a side', () => {
         ]);
         choose(strings.commander.openWithGit);
         choose(strings.commander.openWithCommander);
+        choose(strings.commander.openWithSystem);
 
         rightClick(rowNamed(main, 'notes'));
         assert.strictEqual(selected(), 'notes.txt');
         assert.deepStrictEqual(menu(), [
+          strings.commander.openWithSystem,
           strings.commander.openWithSevenZip,
           strings.commander.openWithViewer,
           strings.commander.openWithDiff,
@@ -217,6 +221,7 @@ suite('Commander menu on a side', () => {
           strings.commander.showMoreOptions,
         ]);
         choose(strings.commander.openWithDiff);
+        choose(strings.commander.openWithSystem);
 
         assert.deepStrictEqual(posted, [
           {
@@ -236,9 +241,24 @@ suite('Commander menu on a side', () => {
             command: 'openInCommander',
           },
           {
+            type: 'folderCommand',
+            tab: '1',
+            side: 'left',
+            folder: '/work',
+            name: 'app',
+            command: 'openWithSystem',
+          },
+          {
             type: 'compare',
             tab: '1',
             files: [{ side: 'left', folder: '/work', name: 'notes.txt' }],
+          },
+          {
+            type: 'open',
+            tab: '1',
+            side: 'left',
+            folder: '/work',
+            name: 'notes.txt',
           },
         ]);
       },

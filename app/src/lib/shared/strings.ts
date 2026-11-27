@@ -1078,6 +1078,7 @@ export const strings = {
     asAdministrator: 'As Administrator',
     readAsAdministrator: 'Read as administrator',
     openRepository: 'Open the repository in a git tab',
+    openWithSystem: 'Open with OS',
     openWithTerminal: 'Open with Terminal',
     openWithCommander: 'Open with Commander',
     openWithGit: 'Open with Git',

@@ -151,6 +151,15 @@ export class FakeHost implements ShellHost, GitHost {
     boolean,
   ][] = [];
 
+  readonly openedWithSystem: string[] = [];
+
+  openWithSystem(file: string): Promise<string> {
+    this.openedWithSystem.push(file);
+    return Promise.resolve(
+      file.endsWith('locked.txt') ? 'Access is denied.' : '',
+    );
+  }
+
   cloneInto(folder: string): Promise<void> {
     this.cloned.push(folder);
     return Promise.resolve();

@@ -299,6 +299,54 @@ suite('Shell with no tab open', () => {
     );
   });
 
+  test('opens a file or a folder of the menu of a part of a path with the OS, nothing that is not there, and says why the OS could not open one', async () => {
+    const host = new FakeHost();
+    const facts: PathFacts = {
+      kind: 'folder',
+      inRepository: false,
+      gitMissing: false,
+    };
+    host.facts.set('C:\\Code', facts);
+    host.facts.set('C:\\a.txt', { ...facts, kind: 'file' });
+    host.facts.set('C:\\locked.txt', { ...facts, kind: 'file' });
+    await withView(
+      log,
+      [],
+      async (view) => {
+        const run = (file: string) =>
+          view.connection.receive(
+            forged(
+              JSON.stringify({
+                type: 'pathCommand',
+                path: file,
+                command: 'openWithSystem',
+              }),
+            ),
+          );
+        await run('C:\\gone');
+        await run('C:\\Code');
+        await run('C:\\a.txt');
+        assert.deepStrictEqual(host.openedWithSystem, [
+          'C:\\Code',
+          'C:\\a.txt',
+        ]);
+        assert.strictEqual(view.page.last('notice'), undefined);
+        await run('C:\\locked.txt');
+        assert.deepStrictEqual(view.page.last('notice'), {
+          type: 'notice',
+          level: 'error',
+          message: strings.commander.openFailed(
+            'C:\\locked.txt',
+            'Access is denied.',
+          ),
+        });
+      },
+      true,
+      host,
+      noGit,
+    );
+  });
+
   test('views or edits a file of the menu of a part of a path in a tab of its own, nothing that is no file, and says why the editor refuses a file rather than opening it', async () => {
     const host = new FakeHost();
     const file: PathFacts = {

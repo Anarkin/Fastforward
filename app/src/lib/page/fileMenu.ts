@@ -24,6 +24,7 @@ export interface FileMenuActions {
   readonly onCanvas?: (name: string) => void;
   readonly onCopy: (copied: Copied, names: readonly string[]) => void;
   readonly onSystemMenu: ((names: readonly string[]) => void) | undefined;
+  readonly onOpenWithSystem?: (name: string | undefined) => void;
 }
 
 export function editsImage(name: string): boolean {
@@ -73,6 +74,7 @@ function toolItems(
     onCompare,
     onEdit,
     onCanvas,
+    onOpenWithSystem,
   }: FileMenuActions,
   {
     inArchive = false,
@@ -91,6 +93,16 @@ function toolItems(
   const name = file?.name ?? '';
   const opens = file !== undefined && onDisk && entersArchives;
   return [
+    offered(
+      strings.commander.openWithSystem,
+      (file !== undefined || (folder !== undefined && !inArchive)) &&
+        onOpenWithSystem !== undefined,
+      {
+        ...(onOpenWithSystem !== undefined && {
+          onClick: () => onOpenWithSystem(file?.name ?? folder?.name),
+        }),
+      },
+    ),
     offered(strings.commander.openWithTerminal, onFolders, {
       icon: 'terminal',
       onClick: run('newTerminal'),

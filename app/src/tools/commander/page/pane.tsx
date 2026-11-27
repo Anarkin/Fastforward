@@ -224,6 +224,10 @@ export function Pane({
         onEdit: (name) => actions.editFile(side, name),
         onCanvas: (name) => actions.drawCanvas(side, name),
         onCopy: copyItems,
+        onOpenWithSystem: (name) =>
+          target.kind === 'file' && name !== undefined
+            ? actions.open(side, name)
+            : actions.folderCommand(side, name, 'openWithSystem'),
         onSystemMenu:
           platform === 'win32' && !inArchive
             ? (names) => onShellMenu(names, at, false)

@@ -23,7 +23,8 @@ type Chosen =
   | { readonly compare: true }
   | { readonly edit: string }
   | { readonly canvas: string }
-  | { readonly system: readonly string[] };
+  | { readonly system: readonly string[] }
+  | { readonly outside: string | undefined };
 
 function menuOf(
   target: MenuTarget,
@@ -47,6 +48,7 @@ function menuOf(
       onSystemMenu: windows
         ? (names) => chosen.push({ system: names })
         : undefined,
+      onOpenWithSystem: (name) => chosen.push({ outside: name }),
     },
     { inArchive, gitMissing },
   );
@@ -97,6 +99,7 @@ const copyMany = [strings.commander.copyPaths];
 suite('File menu', () => {
   const { commander } = strings;
   const all = [
+    commander.openWithSystem,
     commander.openWithTerminal,
     commander.openWithCommander,
     commander.openWithSevenZip,
@@ -140,8 +143,25 @@ suite('File menu', () => {
     );
   });
 
+  test('offers first to open a file or a folder with the app the system opens it with, as Enter does in the commander, the folder shown too, and no set of marked items', () => {
+    const file = menuOf(text);
+    file.choose(commander.openWithSystem);
+    const folder = menuOf(docs(false));
+    folder.choose(commander.openWithSystem);
+    const shown = menuOf(folderShown(false));
+    shown.choose(commander.openWithSystem);
+    assert.deepStrictEqual(
+      [...file.chosen, ...folder.chosen, ...shown.chosen],
+      [{ outside: 'notes.txt' }, { outside: 'docs' }, { outside: undefined }],
+    );
+    assert.ok(
+      !offered(menuOf(marked).items).includes(commander.openWithSystem),
+    );
+  });
+
   test('offers a folder a terminal and the commander in it, and git to open it when it is in a repository, or to clone into it or init one in it when it is not, never making a repository inside another, the menu of Windows last', () => {
     assert.deepStrictEqual(offered(menuOf(docs(false)).items), [
+      commander.openWithSystem,
       commander.openWithTerminal,
       commander.openWithCommander,
       commander.cloneWithGit,
@@ -150,6 +170,7 @@ suite('File menu', () => {
       commander.showMoreOptions,
     ]);
     assert.deepStrictEqual(offered(menuOf(docs(true)).items), [
+      commander.openWithSystem,
       commander.openWithTerminal,
       commander.openWithCommander,
       commander.openWithGit,
@@ -169,6 +190,7 @@ suite('File menu', () => {
       const { items } = menuOf(target, true, false, true);
       assert.deepStrictEqual(toolsOf(items), ['terminal', 'commander']);
       assert.deepStrictEqual(offered(items), [
+        commander.openWithSystem,
         commander.openWithTerminal,
         commander.openWithCommander,
         ...copyOne,
@@ -201,6 +223,7 @@ suite('File menu', () => {
   test('offers a file to open with the viewer, the diff, the editor and 7-Zip, by its name, and an image with Paint too, which does nothing yet, as Paint is still to come, and no SVG, and marked items with the diff', () => {
     const menu = menuOf(image);
     assert.deepStrictEqual(offered(menu.items), [
+      commander.openWithSystem,
       commander.openWithSevenZip,
       commander.openWithViewer,
       commander.openWithDiff,
@@ -226,6 +249,7 @@ suite('File menu', () => {
       { archive: 'photo.png' },
     ]);
     assert.deepStrictEqual(offered(menuOf(text, false).items), [
+      commander.openWithSystem,
       commander.openWithSevenZip,
       commander.openWithViewer,
       commander.openWithDiff,
@@ -246,6 +270,7 @@ suite('File menu', () => {
     const board = { kind: 'file', name: 'Plan.CANVAS', image: false } as const;
     const menu = menuOf(board, false);
     assert.deepStrictEqual(offered(menu.items), [
+      commander.openWithSystem,
       commander.openWithSevenZip,
       commander.openWithViewer,
       commander.openWithDiff,
@@ -301,6 +326,7 @@ suite('File menu', () => {
 
   test('leaves the menu of Windows disabled where there is none', () => {
     assert.deepStrictEqual(offered(menuOf(docs(false), false).items), [
+      commander.openWithSystem,
       commander.openWithTerminal,
       commander.openWithCommander,
       commander.cloneWithGit,
@@ -330,6 +356,7 @@ suite('File menu', () => {
   test('offers inside an archive to open one of its files with the viewer, the diff, the editor and 7-Zip, and to copy paths, no tools on its folders and no Paint', () => {
     const menu = menuInArchive(image);
     assert.deepStrictEqual(offered(menu.items), [
+      commander.openWithSystem,
       commander.openWithSevenZip,
       commander.openWithViewer,
       commander.openWithDiff,

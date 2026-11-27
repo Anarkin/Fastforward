@@ -60,6 +60,7 @@ export function pathMenuItems(
         facts.inRepository &&
         !facts.gitMissing && { onCompare: () => acts.command('compare') }),
       onCopy: () => acts.copy(path),
+      ...(onDisk && { onOpenWithSystem: () => acts.command('openWithSystem') }),
       onSystemMenu:
         platform === 'win32' && onDisk
           ? () => acts.command('systemMenu')

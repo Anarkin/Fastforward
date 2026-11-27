@@ -383,7 +383,7 @@ suite('App commander', () => {
         await appMenu.waitFor();
         assert.strictEqual(
           (await appMenuItems()).at(0),
-          strings.commander.openWithTerminal,
+          strings.commander.openWithSystem,
         );
         await page.keyboard.press('Escape');
         await appMenu.waitFor({ state: 'detached' });

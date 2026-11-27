@@ -4,6 +4,7 @@ const folderCommands = [
   'openInGit',
   'cloneHere',
   'initHere',
+  'openWithSystem',
 ] as const;
 
 export type FolderCommand = (typeof folderCommands)[number];

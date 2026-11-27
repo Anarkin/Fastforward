@@ -241,6 +241,7 @@ export class FileCommands {
       open: (tool, at) => this.host.shell().openFolders(page, tool, [at]),
       cloneInto: async (at) => this.access.cloneInto?.(at),
       initRepository: async (at) => this.access.initRepository?.(at),
+      openWithSystem: (at) => this.openFileNamed(page, at),
     });
   }
 

@@ -3,7 +3,7 @@ import { suite, test } from 'vitest';
 import { runFolderCommand } from '../../../../lib/main/folderCommands';
 
 suite('Folder commands', () => {
-  test('opens a terminal, the commander or git in a folder, or clones or inits a repository in it, the same wherever the menu that asked for it was', async () => {
+  test('opens a terminal, the commander or git in a folder, clones or inits a repository in it, or opens it with the system, the same wherever the menu that asked for it was', async () => {
     const ran: string[] = [];
     const runner = {
       open: (tool: 'terminal' | 'commander' | 'git', folder: string) => {
@@ -18,6 +18,10 @@ suite('Folder commands', () => {
         ran.push(`init ${folder}`);
         return Promise.resolve();
       },
+      openWithSystem: (folder: string) => {
+        ran.push(`system ${folder}`);
+        return Promise.resolve();
+      },
     };
     for (const command of [
       'newTerminal',
@@ -25,6 +29,7 @@ suite('Folder commands', () => {
       'openInGit',
       'cloneHere',
       'initHere',
+      'openWithSystem',
     ] as const) {
       await runFolderCommand(command, '/code', runner);
     }
@@ -34,6 +39,7 @@ suite('Folder commands', () => {
       'git /code',
       'clone /code',
       'init /code',
+      'system /code',
     ]);
   });
 });
