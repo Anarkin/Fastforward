@@ -7,7 +7,7 @@ import type { RowPaint } from './runText';
 import type { Shape } from './shapeLayer';
 
 export interface RowRecord extends RowPaint {
-  readonly sign: string;
+  readonly sign: unknown;
 }
 
 export interface ListView {
@@ -147,6 +147,7 @@ export class ListCanvas<Row extends RowRecord> {
     frameKey: string,
     finish: (cells: CellSurface) => void = () => {},
     shapes: readonly Shape[] = [],
+    shapesOrigin = 0,
   ): Presented {
     const { cells, runs, originPixels } = view;
     cells.frame.reset();
@@ -178,7 +179,7 @@ export class ListCanvas<Row extends RowRecord> {
       return 'full';
     }
     runs.flush();
-    cells.shaped(shapes, 0);
+    cells.shaped(shapes, shapesOrigin);
     cells.draw();
     return 'drawn';
   }

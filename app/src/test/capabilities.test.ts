@@ -44,8 +44,6 @@ suite('Capabilities', () => {
       {
         'tools/canvas/page/surface.ts':
           'BoardSurface repeats what CellView does, to draw through it',
-        'tools/git/page/commitCanvas.tsx':
-          'the commit list draws by its own copy of ListCanvas, to move onto it',
       },
     );
   });

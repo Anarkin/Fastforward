@@ -6,19 +6,21 @@ import {
   useRef,
   useSyncExternalStore,
 } from 'react';
-import { CellSurface } from '../../../components/cells/page/cellSurface';
 import {
-  gpuDevice,
   gpuGeneration,
   watchGpu,
 } from '../../../components/cells/page/gpuDevice';
 import {
+  drawnWithRoom,
+  ListCanvas,
+  type Presented,
+  type ShownRow,
+} from '../../../components/cells/page/listCanvas';
+import {
   offsetOf,
-  RunAtlas,
   runPadding,
   type RunStyle,
 } from '../../../components/cells/page/runAtlas';
-import type { Shape } from '../../../components/cells/page/shapeLayer';
 import { type GraphRow } from '../shared/protocol';
 import {
   bubbleFontOf,
@@ -43,8 +45,8 @@ import {
 } from './commitListLooks';
 import { seenShapesOf, shapesOf, type SeenShape } from './graphSeen';
 import {
+  barsOf,
   recordOf,
-  replay,
   sameSign,
   type RecordedRow,
   type SeenText,
@@ -81,12 +83,6 @@ const bubbleGap = 4;
 
 const mergeReach = 8;
 
-interface Drawn {
-  readonly surface: CellSurface;
-  readonly key: string;
-  readonly indexes: readonly number[];
-}
-
 export function CommitCanvas({
   list,
   hits,
@@ -113,13 +109,7 @@ export function CommitCanvas({
   active: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const surface = useRef<CellSurface>(undefined);
-  const atlas = useRef<RunAtlas>(undefined);
-  const drawn = useRef<Drawn>(undefined);
-  const recorded = useRef<{
-    key: string;
-    rows: Map<number, RecordedRow>;
-  }>(undefined);
+  const kept = useRef<ListCanvas<RecordedRow>>(undefined);
   const read = useRef<{ key: string; looks: Looks }>(undefined);
   const readBubbles = useRef<{
     key: string;
@@ -138,10 +128,8 @@ export function CommitCanvas({
       if (animation.current !== undefined) {
         cancelAnimationFrame(animation.current);
       }
-      surface.current?.dispose();
-      atlas.current?.dispose();
-      surface.current = undefined;
-      atlas.current = undefined;
+      kept.current?.dispose();
+      kept.current = undefined;
     },
     [],
   );
@@ -193,33 +181,20 @@ export function CommitCanvas({
   };
 
   useLayoutEffect(() => {
-    const draw = (forced: boolean) => {
+    const frame = (): Presented | undefined => {
       const element = host.current;
       const listed = list.current;
-      const device = gpuDevice();
-      if (element === null || listed === null || device === undefined) {
-        return;
+      if (element === null || listed === null) {
+        return undefined;
       }
       const tileHeight = Math.round(line * scale);
-      if (surface.current?.device !== device) {
-        surface.current?.dispose();
-        atlas.current?.dispose();
-        surface.current = new CellSurface(device);
-        surface.current.canvas.className = 'commit-canvas';
-        element.append(surface.current.canvas);
-        atlas.current = undefined;
+      kept.current ??= new ListCanvas<RecordedRow>('commit-canvas');
+      const canvas = kept.current;
+      const view = canvas.viewOf(element, listed, scale, tileHeight);
+      if (view === undefined) {
+        return undefined;
       }
-      if (atlas.current?.tileHeight !== tileHeight) {
-        atlas.current?.dispose();
-        atlas.current = new RunAtlas(device, tileHeight);
-      }
-      const runs = atlas.current;
-      const cells = surface.current;
-      const spacer = (element.parentElement ?? listed).getBoundingClientRect();
-      const view = listed.getBoundingClientRect();
-      const width = spacer.width;
-      const origin = view.top + listed.clientTop - spacer.top;
-      const viewHeight = listed.clientHeight;
+      const { cells, runs, width, origin, viewHeight, pixelWidth } = view;
       const end = origin + viewHeight;
       const lookKey = [dark, scale, line, generation, active].join(' ');
       if (read.current?.key !== lookKey) {
@@ -244,28 +219,10 @@ export function CommitCanvas({
         };
       }
       const bubbleLooks: BubbleLooks | undefined = readBubbles.current.looks;
-      const rowsKey = [shapesKey, width, runs.generation].join(' ');
-      if (recorded.current?.key !== rowsKey) {
-        recorded.current = { key: rowsKey, rows: new Map() };
-      }
-      const cache = recorded.current.rows;
-      const key = [rowsKey, origin, viewHeight].join(' ');
-      const before = drawn.current;
-      if (
-        !forced &&
-        before !== undefined &&
-        before.surface === cells &&
-        before.key === key &&
-        before.indexes.every((index) =>
-          sameSign(cache.get(index)?.sign, signOf(index)),
-        )
-      ) {
-        return;
-      }
+      const cache = canvas.rowsFor([shapesKey, width].join(' '), undefined);
       if (shown.length === 0) {
         element.style.display = 'none';
-        drawn.current = undefined;
-        return;
+        return undefined;
       }
       const lowest = Math.min(...shown);
       const highest = Math.max(...shown);
@@ -282,25 +239,13 @@ export function CommitCanvas({
         last--;
       }
       const hairline = Math.max(1, Math.floor(scale + 1e-6));
-      const pixelWidth = Math.round(width * scale);
-      const pixelHeight = Math.ceil(viewHeight * scale);
-      element.style.display = '';
-      element.style.width = `${pixelWidth / scale}px`;
-      element.style.height = `${pixelHeight / scale}px`;
-      element.style.marginBottom = `${-pixelHeight / scale}px`;
-      cells.sized(pixelWidth, pixelHeight);
       cells.grounded(looks.ground);
-      cells.texturedBy(runs.texture);
       runs.textScale = looks.textScale;
       const fontScale = scale / looks.textScale;
-      const frame = cells.frame;
-      frame.reset();
-      cells.under.reset();
       const rows: GraphRowPlace[] = [];
       const indexes: number[] = [];
       const rowHits: RowHit[] = [];
-      const seenTexts: SeenText[] = [];
-      const seenBars: Shape[] = [];
+      const shownRows: ShownRow<RecordedRow>[] = [];
       let record = recordOf([]);
       const originPixels = Math.round(origin * scale);
       const fontOf = (weight: string) =>
@@ -369,6 +314,7 @@ export function CommitCanvas({
               tile.u,
               tile.v,
               tile.width,
+              tileHeight,
               packed(pieceGround),
             );
           }
@@ -471,6 +417,7 @@ export function CommitCanvas({
                 tile.u,
                 tile.v,
                 tile.width,
+                tileHeight,
                 packed(ground),
               );
               record.texts.push({ text: shownText, x: left, y: lineTop });
@@ -631,38 +578,43 @@ export function CommitCanvas({
           rows.push({ row: shownGraph, top: place.top, height: place.height });
         }
         const sign = signOf(index);
-        let row = cache.get(index);
+        const keyOfRow = String(index);
+        let row = cache.get(keyOfRow);
         if (row === undefined || !sameSign(row.sign, sign)) {
           record = recordOf(sign);
           recordRow(index, place);
           row = record;
           if (row.animated) {
-            cache.delete(index);
+            cache.delete(keyOfRow);
           } else {
-            cache.set(index, row);
+            cache.set(keyOfRow, row);
           }
         }
-        replay(row, frame, originPixels, tileHeight, seenBars, seenTexts);
+        shownRows.push({ row, pinned: false });
         if (row.hit !== undefined) {
           rowHits.push(row.hit);
         }
       }
       hits.current = rowHits;
       const shapes = graphShapes(rows, origin, line, scale);
-      cells.shaped(
-        [...seenBars, ...shapesOf(shapes, looks.lanes, scale)],
+      const recordedRows = shownRows.map((each) => each.row);
+      const presented = canvas.present(
+        view,
+        shownRows,
+        [lookKey, shapesKey, width, origin, viewHeight, pixelWidth].join(' '),
+        undefined,
+        [
+          ...barsOf(recordedRows, originPixels),
+          ...shapesOf(shapes, looks.lanes, scale),
+        ],
         originPixels,
       );
-      if (runs.full) {
-        runs.reset();
-        drawn.current = undefined;
-        draw(true);
-        return;
+      if (presented !== 'drawn') {
+        return presented;
       }
-      runs.flush();
-      cells.draw();
+      const seenTexts: SeenText[] = recordedRows.flatMap((row) => row.texts);
       if (
-        indexes.some((index) => !cache.has(index)) &&
+        indexes.some((index) => !cache.has(String(index))) &&
         animation.current === undefined
       ) {
         animation.current = requestAnimationFrame(() => {
@@ -670,7 +622,6 @@ export function CommitCanvas({
           redraw.current();
         });
       }
-      drawn.current = { surface: cells, key, indexes };
       element.seenShapes = () => seenShapesOf(shapes, origin, scale);
       element.seenTexts = () => seenTexts;
       element.seenCommits = () => {
@@ -720,10 +671,12 @@ export function CommitCanvas({
           };
         });
       };
+      return presented;
     };
-    redraw.current = () => draw(true);
-    scrolled.current = () => draw(false);
-    draw(false);
+    const draw = () => drawnWithRoom(frame);
+    redraw.current = draw;
+    scrolled.current = draw;
+    draw();
   });
 
   return <div ref={host} className="graph-layer" aria-hidden="true" />;
