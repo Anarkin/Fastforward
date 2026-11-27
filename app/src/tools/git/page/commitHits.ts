@@ -130,6 +130,7 @@ export interface SeenCommit {
   readonly selected: boolean;
   readonly compareFrom: boolean;
   readonly checkedOut: boolean;
+  readonly hovered: boolean;
   readonly left: number;
   readonly top: number;
   readonly width: number;

@@ -67,6 +67,7 @@ export interface SeenFile {
   readonly found: readonly string[];
   readonly open: boolean | undefined;
   readonly pinned: boolean;
+  readonly hovered: boolean;
   readonly left: number;
   readonly top: number;
   readonly width: number;

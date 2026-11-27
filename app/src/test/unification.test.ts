@@ -211,4 +211,13 @@ suite('Unification', () => {
       'tools/viewer/page/find.ts',
     ]);
   });
+
+  test('follows the pointer over a list that draws the row under it by one helper, which finds that row again once the list scrolls under a pointer at rest, as the two lists of git kept the row they were over before the scroll', () => {
+    const keepingHover = doing(/\bhovered\.current = |sight\.point\(/);
+    assert.deepStrictEqual(
+      keepingHover.filter((file) => !/\bfollowPointer\(/.test(read(file))),
+      [],
+    );
+    assert.ok(keepingHover.length >= 2, JSON.stringify(keepingHover));
+  });
 });

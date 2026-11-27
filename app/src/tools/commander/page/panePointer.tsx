@@ -1,3 +1,4 @@
+import { followPointer } from '../../../lib/page/pointerFollow';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { labelled, tip } from '../../../lib/page/tips';
 import { ToolIcon } from '../../../lib/page/icons';
@@ -156,29 +157,15 @@ export function PanePointer({
     if (element === null) {
       return undefined;
     }
-    let last: { x: number; y: number } | undefined;
-    const onMove = (event: PointerEvent) => {
-      last = { x: event.clientX, y: event.clientY };
-      moved(last);
-    };
-    const onLeave = () => {
-      last = undefined;
-      moved(undefined);
-    };
-    const onScroll = () => moved(last);
+    const unfollow = followPointer(element, (at) => moved(at));
     const onDown = (event: PointerEvent) => pressed('pointerdown', event);
     const onClick = (event: MouseEvent) => pressed('click', event);
     const onMenu = (event: MouseEvent) => pressed('contextmenu', event);
-    element.addEventListener('pointermove', onMove);
-    element.addEventListener('pointerleave', onLeave);
-    element.addEventListener('scroll', onScroll);
     element.addEventListener('pointerdown', onDown);
     element.addEventListener('click', onClick);
     element.addEventListener('contextmenu', onMenu);
     return () => {
-      element.removeEventListener('pointermove', onMove);
-      element.removeEventListener('pointerleave', onLeave);
-      element.removeEventListener('scroll', onScroll);
+      unfollow();
       element.removeEventListener('pointerdown', onDown);
       element.removeEventListener('click', onClick);
       element.removeEventListener('contextmenu', onMenu);

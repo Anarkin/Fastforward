@@ -311,6 +311,23 @@ async function wheelsDiffOverItsBar(page: Page): Promise<void> {
   assert.strictEqual((await scrolled()).column, 0);
 }
 
+const hoveredUnder = (list: Locator, y: number) =>
+  list.evaluate((element, at) => {
+    const seen = [
+      ...(element.querySelector<HTMLElement>('.graph-layer')?.seenCommits?.() ??
+        []),
+      ...(element.querySelector<HTMLElement>('.files-layer')?.seenFiles?.() ??
+        []),
+    ];
+    const under = seen.find(
+      (row) => row.top <= at && at < row.top + row.height,
+    );
+    return {
+      under: under?.index,
+      hovered: seen.filter((row) => row.hovered).map((row) => row.index),
+    };
+  }, y);
+
 async function settledTop(list: Locator): Promise<number | undefined> {
   return list.evaluate(
     (element) =>
@@ -508,6 +525,53 @@ suite('App with lists longer than their columns', () => {
           `a row at the top of the list after the wheel turned by ${delta}`,
         );
       }
+    }
+  });
+
+  test('draws the commit or the file the pointer rests on as hovered once the wheel scrolls the list under it, rather than the one it rested on before the list moved, as the commander draws its files', async () => {
+    const commits = page.locator('.virtual-rows.list');
+    const files = page.locator('.column').nth(1).locator('.virtual-rows');
+    for (const list of [commits, files]) {
+      await list.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      const box = await list.boundingBox();
+      assert.ok(box, 'the list has no box');
+      const y = box.y + box.height / 2;
+      await page.mouse.move(box.x + box.width / 2, y);
+      await waitFor(async () => {
+        const seen = await hoveredUnder(list, y);
+        return (
+          seen.under !== undefined &&
+          seen.hovered.length === 1 &&
+          seen.hovered[0] === seen.under
+        );
+      }, 'the row under the pointer drawn as hovered');
+      const before = await hoveredUnder(list, y);
+      await page.mouse.wheel(0, 100);
+      await waitFor(async () => {
+        const seen = await hoveredUnder(list, y);
+        return (
+          seen.under !== before.under &&
+          seen.hovered.length === 1 &&
+          seen.hovered[0] === seen.under
+        );
+      }, 'the row the list scrolled under the pointer drawn as hovered').catch(
+        async (error: unknown) => {
+          throw new Error(
+            `${String(error)}: ${JSON.stringify(await hoveredUnder(list, y))}`,
+          );
+        },
+      );
+    }
+    for (const list of [commits, files]) {
+      await list.evaluate((element) => {
+        element.scrollTop = 0;
+      });
+      await waitFor(
+        async () => (await settledTop(list)) === 0,
+        'the list back at its top',
+      );
     }
   });
 

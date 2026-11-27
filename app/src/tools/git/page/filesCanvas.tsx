@@ -1,3 +1,4 @@
+import { followPointer } from '../../../lib/page/pointerFollow';
 import {
   useContext,
   useEffect,
@@ -53,7 +54,10 @@ declare global {
 
 interface FileRecord extends RowRecord {
   readonly hit: FileHit;
-  readonly seen: Omit<SeenFile, 'left' | 'top' | 'width' | 'height' | 'pinned'>;
+  readonly seen: Omit<
+    SeenFile,
+    'left' | 'top' | 'width' | 'height' | 'pinned' | 'hovered'
+  >;
 }
 
 const noMarks: readonly Range[] = [];
@@ -131,25 +135,23 @@ export function FilesCanvas({
         redraw.current();
       }
     };
-    const moved = (event: PointerEvent) => {
-      const box = element.getBoundingClientRect();
-      hover(
-        fileHitAt(
-          hits.current,
-          event.clientX - box.left - element.clientLeft,
-          event.clientY - box.top - element.clientTop,
-        )?.row.index,
-      );
-    };
-    const left = () => hover(undefined);
     const onScroll = () => scrolled.current();
     element.addEventListener('scroll', onScroll);
-    element.addEventListener('pointermove', moved);
-    element.addEventListener('pointerleave', left);
+    const unfollow = followPointer(element, (at) => {
+      const box = element.getBoundingClientRect();
+      hover(
+        at === undefined
+          ? undefined
+          : fileHitAt(
+              hits.current,
+              at.x - box.left - element.clientLeft,
+              at.y - box.top - element.clientTop,
+            )?.row.index,
+      );
+    });
     return () => {
       element.removeEventListener('scroll', onScroll);
-      element.removeEventListener('pointermove', moved);
-      element.removeEventListener('pointerleave', left);
+      unfollow();
     };
   }, [list, hits]);
 
@@ -498,6 +500,7 @@ export function FilesCanvas({
           width,
           height: line,
           pinned: each.pinned,
+          hovered: each.row.seen.index === hovered.current,
         });
       }
       hits.current = rowHits;

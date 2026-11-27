@@ -1,3 +1,4 @@
+import { followPointer } from '../../../lib/page/pointerFollow';
 import { layoutUnits } from '../../../lib/page/pixelBoxes';
 import {
   useEffect,
@@ -157,32 +158,24 @@ export function CommitCanvas({
         redraw.current();
       }
     };
-    const moved = (event: PointerEvent) => {
+    const onScroll = () => scrolled.current();
+    element.addEventListener('scroll', onScroll);
+    const unfollow = followPointer(element, (at) => {
       const spacer = host.current?.parentElement?.getBoundingClientRect();
       const hit =
-        spacer === undefined
+        spacer === undefined || at === undefined
           ? undefined
-          : hitAt(
-              hits.current,
-              event.clientX - spacer.left,
-              event.clientY - spacer.top,
-            );
+          : hitAt(hits.current, at.x - spacer.left, at.y - spacer.top);
       hover(
         hit?.row.index,
         hit?.kind === 'action'
           ? `${hit.row.bubbles.indexOf(hit.bubble)}:${hit.action.key}`
           : undefined,
       );
-    };
-    const left = () => hover(undefined, undefined);
-    const onScroll = () => scrolled.current();
-    element.addEventListener('scroll', onScroll);
-    element.addEventListener('pointermove', moved);
-    element.addEventListener('pointerleave', left);
+    });
     return () => {
       element.removeEventListener('scroll', onScroll);
-      element.removeEventListener('pointermove', moved);
-      element.removeEventListener('pointerleave', left);
+      unfollow();
     };
   }, [list, hits]);
 
@@ -701,6 +694,7 @@ export function CommitCanvas({
             selected: told?.selected ?? false,
             compareFrom: told?.compareFrom ?? false,
             checkedOut: told?.kind === 'commit' && told.checkedOut,
+            hovered: hit.index === hovered.current,
             left,
             top: top + hit.top,
             width: box?.width ?? 0,
