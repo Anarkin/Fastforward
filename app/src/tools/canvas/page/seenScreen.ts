@@ -12,6 +12,9 @@ const arrows: Readonly<Record<Way, string>> = {
 };
 
 export function screenRows(screen: Screen): string[] {
+  const { see } = screen;
+  screen.see = undefined;
+  see?.();
   return Array.from({ length: screen.rows }, (_, row) => {
     let line = '';
     for (let column = 0; column < screen.columns; column++) {

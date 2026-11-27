@@ -384,6 +384,20 @@ function paintLabel(
   }
 }
 
+const routeReach = 3;
+
+const spanning = (one: Box, other: Box): Box => {
+  const column = Math.min(one.column, other.column);
+  const row = Math.min(one.row, other.row);
+  return {
+    column,
+    row,
+    columns:
+      Math.max(one.column + one.columns, other.column + other.columns) - column,
+    rows: Math.max(one.row + one.rows, other.row + other.rows) - row,
+  };
+};
+
 export function screenOf({
   board,
   unit,
@@ -400,10 +414,21 @@ export function screenOf({
   const boxes = new Map(
     board.nodes.map((node) => [node.id, boxOf(node, unit)]),
   );
+  const inView = (box: Box, across = 0, down = 0) =>
+    box.column - across < view.column + view.columns &&
+    box.column + box.columns + across > view.column &&
+    box.row - down < view.row + view.rows &&
+    box.row + box.rows + down > view.row;
   const routed = board.edges.flatMap((edge): Routed[] => {
     const from = boxes.get(edge.fromNode);
     const to = boxes.get(edge.toNode);
-    return from === undefined || to === undefined
+    return from === undefined ||
+      to === undefined ||
+      !inView(
+        spanning(from, to),
+        routeReach + 2 * (edge.label?.length ?? 0),
+        routeReach,
+      )
       ? []
       : [
           {
@@ -416,7 +441,7 @@ export function screenOf({
   });
   const paint = (node: BoardNode) => {
     const box = boxes.get(node.id);
-    if (box !== undefined) {
+    if (box !== undefined && inView(box)) {
       paintNode(painter, node, box, selected.has(node.id), widths, typing, {
         colorsOf,
         titles,
@@ -447,8 +472,9 @@ export function screenOf({
       painter.glyph(cell.column, cell.row, mark, 1, markKind);
     }
   }
-  seeTexts(painter.screen, widths);
-  return painter.screen;
+  const { screen } = painter;
+  screen.see = () => seeTexts(screen, widths);
+  return screen;
 }
 
 export function boundsOf(board: Board, unit: Unit): Box | undefined {

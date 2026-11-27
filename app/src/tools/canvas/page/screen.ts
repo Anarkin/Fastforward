@@ -53,6 +53,7 @@ export interface Screen {
   readonly seen: (string | undefined)[];
   readonly texts: TextBlock[];
   readonly carets: Caret[];
+  see: (() => void) | undefined;
 }
 
 export function emptyScreen({ column, row, columns, rows }: Box): Screen {
@@ -73,6 +74,7 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     seen: Array.from<string | undefined>({ length: cells }),
     texts: [],
     carets: [],
+    see: undefined,
   };
 }
 

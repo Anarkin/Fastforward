@@ -358,6 +358,69 @@ suite('Canvas screen', () => {
     );
   });
 
+  test('draws a part of a large board as that part of the whole board drawn at once, nodes and edges crossing its edge too, while it lays out none of the nodes far from it', () => {
+    const nodes: BoardNode[] = [];
+    const edges: BoardEdge[] = [];
+    for (let row = 0; row < 8; row++) {
+      for (let column = 0; column < 8; column++) {
+        const id = `n${column}-${row}`;
+        nodes.push(text(id, column * 14, row * 6, 10, 4, `Node ${id}`));
+        if (column > 0) {
+          edges.push({
+            id: `a${id}`,
+            fromNode: `n${column - 1}-${row}`,
+            toNode: id,
+            ...(row === 3 && { label: 'a label longer than its edge' }),
+          });
+        }
+        if (row > 0) {
+          edges.push({
+            id: `d${id}`,
+            fromNode: `n${column}-${row - 1}`,
+            toNode: id,
+          });
+        }
+      }
+    }
+    nodes.push(text('wide', 30, 50, 80, 4, 'A node wider than the view'));
+    const laidOut = new Set<string>();
+    const shown = (view: {
+      column: number;
+      row: number;
+      columns: number;
+      rows: number;
+    }) =>
+      screenRows(
+        screenOf({
+          board: { nodes, edges },
+          unit,
+          view,
+          widths: { char: 1, of: narrow },
+          colorsOf: (id) => {
+            laidOut.add(id);
+            return undefined;
+          },
+        }),
+      );
+    const whole = shown({ column: 0, row: 0, columns: 120, rows: 56 });
+    const part = { column: 37, row: 15, columns: 30, rows: 40 };
+    laidOut.clear();
+    assert.deepStrictEqual(
+      shown(part),
+      whole.slice(part.row, part.row + part.rows).map((row) =>
+        Array.from(row.padEnd(part.column + part.columns))
+          .slice(part.column, part.column + part.columns)
+          .join('')
+          .trimEnd(),
+      ),
+    );
+    assert.ok(
+      !laidOut.has('n0-0') && !laidOut.has('n7-0'),
+      [...laidOut].join(),
+    );
+    assert.ok(laidOut.has('n3-3') && laidOut.has('wide'));
+  });
+
   test('wraps the text of a node at its words within its border as every view wraps a text, leaving a column for the blank hanging at the end of a row and one for the mark of its break, wide characters two cells, a character that shows nothing as ¤, a tab to its stop, and cuts what its node has no room for', () => {
     assert.deepStrictEqual(
       screenText(
