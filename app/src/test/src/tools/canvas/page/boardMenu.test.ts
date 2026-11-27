@@ -108,7 +108,7 @@ suite('Canvas menu', () => {
     );
   });
 
-  test('puts File first for a file node, the menu of its path as every path has it, Link for a link node, opening it with the OS or copying its URL, each over a divider and the colors', () => {
+  test('puts File first for a file node, the menu of its path as every path has it, Link for a link node, opening it with the OS or copying its URL apart, as the menu of a path puts copying apart, each over a divider and the colors', () => {
     const box = { x: 0, y: 0, width: 70, height: 54 };
     const board: Board = {
       nodes: [
@@ -171,9 +171,10 @@ suite('Canvas menu', () => {
     assert.ok(link !== undefined && !('separator' in link));
     assert.deepStrictEqual(labelsOf(link.submenu ?? []), [
       strings.commander.openWithSystem,
+      '-',
       strings.canvas.copyUrl,
     ]);
-    const copy = link.submenu?.[1];
+    const copy = link.submenu?.[2];
     assert.ok(copy !== undefined && !('separator' in copy));
     copy.onClick?.();
     assert.deepStrictEqual(copied, ['https://a.example/']);

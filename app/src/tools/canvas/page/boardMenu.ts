@@ -193,6 +193,7 @@ export function showBoardMenu(
               label: strings.commander.openWithSystem,
               onClick: () => openLink(url),
             },
+            { separator: true },
             { label: strings.canvas.copyUrl, onClick: () => copy(url) },
           ],
         },
