@@ -13,6 +13,36 @@ import {
 } from '../../../../../components/diff/page/rowMeasures';
 import { patch } from '../../../tools/git/page/diffViewFixtures';
 
+const oneLineDiff = (line: string) =>
+  diffRows(
+    parsePatch(
+      [
+        'diff --git a/a.go b/a.go',
+        '--- a/a.go',
+        '+++ b/a.go',
+        '@@ -0,0 +1 @@',
+        `+${line}`,
+      ].join('\n'),
+    ),
+    new Map(),
+    undefined,
+  );
+
+const farEstimate = (line: string) => {
+  const rows = oneLineDiff(line);
+  const at = rows.findIndex((row) => row.kind === 'line');
+  return rowMeasures(
+    rows,
+    { left: 12, right: 12 },
+    22,
+    1,
+    { char: 10, of: () => 10 },
+    { current: at + 5000 },
+    true,
+    () => 8,
+  ).estimateSize(at);
+};
+
 suite('Renamed files', () => {
   test('makes every row a whole number of code lines tall, so the diff scrolls by whole lines, an empty one none', () => {
     const line = 16.8;
@@ -311,6 +341,10 @@ suite('Diff row heights', () => {
       rows.map((_, index) => taller.estimateSize(index)),
       [204, 17, 17, 34, 68],
     );
+  });
+
+  test('guesses a row of code with tabs far from the view by the tab size of its file, though its line is plain ASCII and never measured', () => {
+    assert.strictEqual(farEstimate('\t\tx'), farEstimate(`${' '.repeat(16)}x`));
   });
 
   test('estimates a row of code by how wide its characters are drawn once measured, as the browser wraps a line of Chinese or emoji by their widths', () => {

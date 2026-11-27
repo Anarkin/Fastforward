@@ -2,7 +2,7 @@ import { rowWidths, type TabSizeOf } from './fileWidths';
 import { columnsOf } from '../../../lib/page/columns';
 import { wrappedLines } from '../../../lib/page/wordWrap';
 import { inLines, measureInLines } from '../../../lib/page/lineHeight';
-import type { TextWidths } from '../../../lib/page/textWidths';
+import { tabsAlone, type TextWidths } from '../../../lib/page/textWidths';
 import {
   type DiffRow,
   type CodeRow,
@@ -82,7 +82,10 @@ function spanOf(text: string, widths: TextWidths | undefined): TextSpan {
     return { columns: length, plain: true };
   }
   return {
-    columns: columnsOf(text.slice(0, length), measured ? widths : undefined),
+    columns: columnsOf(
+      text.slice(0, length),
+      measured ? widths : tabsAlone(widths),
+    ),
     plain: false,
   };
 }

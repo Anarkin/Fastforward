@@ -122,6 +122,23 @@ export function widthsFor(
     : undefined;
 }
 
+const tabsOnly = new Map<number, TextWidths>();
+
+export function tabsAlone(
+  widths: TextWidths | undefined,
+): TextWidths | undefined {
+  const size = widths?.tabSize;
+  if (size === undefined) {
+    return undefined;
+  }
+  let made = tabsOnly.get(size);
+  if (made === undefined) {
+    made = { char: 1, of: () => 1, tabSize: size };
+    tabsOnly.set(size, made);
+  }
+  return made;
+}
+
 const tabbed = new WeakMap<TextWidths, Map<number, TextWidths>>();
 
 export function withTabSize(
