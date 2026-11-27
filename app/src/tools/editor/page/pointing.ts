@@ -17,6 +17,7 @@ import { editorKeymap } from './keymap';
 import { pointerHeld } from './occurrences';
 import { gridOf, type Grid } from './grid';
 import { rowsOf } from '../../../components/editing/page/rowSteps';
+import { wordRangeAt } from '../../../components/editing/page/textSteps';
 import { charAt } from '../../../components/cells/page/textPlaces';
 
 const reachMs = 50;
@@ -109,10 +110,6 @@ type Grip =
     }
   | { readonly kind: 'block'; readonly from: Pointed };
 
-function wordOrPlace(state: EditorState, pos: number): SelectionRange {
-  return state.wordAt(pos) ?? EditorSelection.cursor(pos);
-}
-
 function lineRange(state: EditorState, pos: number): SelectionRange {
   const line = state.doc.lineAt(pos);
   return EditorSelection.range(
@@ -176,7 +173,7 @@ class Pointing implements SurfacePart {
       this.grip = { kind: 'lines', from: line.from, to: line.to };
       this.select([line]);
     } else if (press.detail === 2) {
-      const word = wordOrPlace(state, under.pos);
+      const word = wordRangeAt(state, under.pos);
       this.grip = { kind: 'words', from: word.from, to: word.to };
       this.select([word]);
     } else if (clicked(editorKeymap.selectText, press) === 'extend') {
@@ -232,7 +229,7 @@ class Pointing implements SurfacePart {
     } else {
       const reached =
         grip.kind === 'words'
-          ? wordOrPlace(state, under.pos)
+          ? wordRangeAt(state, under.pos)
           : lineRange(state, under.pos);
       this.select([
         under.pos < grip.from

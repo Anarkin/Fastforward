@@ -10,6 +10,7 @@ import {
   characterDeleted,
   groupDeleted,
   movedSideways,
+  wordRangeAt,
 } from '../../../../../components/editing/page/textSteps';
 
 type Span = readonly [anchor: number, head: number];
@@ -64,6 +65,11 @@ const movedByWord = (doc: string, at: number, onward: boolean) =>
   spansOf(
     movedSideways(stateOf(doc, [[at, at]]), 'group', onward, false),
   )[0]?.[0];
+
+const range = (doc: string, at: number) => {
+  const { from, to } = wordRangeAt(EditorState.create({ doc }), at);
+  return [from, to];
+};
 
 suite('Steps through a text edited', () => {
   test('deletes the character before or after every cursor, a line break at an end of a line, what is selected in its place, an accent alone before a cursor and a whole character with its accents after one, and nothing of a text that is read-only or at either end', () => {
@@ -161,5 +167,14 @@ suite('Steps through a text edited', () => {
     );
     assert.strictEqual(movedByWord('one\ntwo', 3, true), 7);
     assert.strictEqual(movedByWord('one\ntwo', 4, false), 0);
+  });
+
+  test('takes the word a double click is on as the views take it, a letter with its accent within it, or else the whole character under it, an emoji whole, rather than by the words of CodeMirror, which ended a word at an accent', () => {
+    const pig = String.fromCodePoint(0x1f437);
+    assert.deepStrictEqual(range('cafe\u0301 au lait', 2), [0, 5]);
+    assert.deepStrictEqual(range('one\nsecond word', 6), [4, 10]);
+    assert.deepStrictEqual(range('(x)', 0), [0, 1]);
+    assert.deepStrictEqual(range(`a ${pig} b`, 2), [2, 4]);
+    assert.deepStrictEqual(range('', 0), [0, 0]);
   });
 });

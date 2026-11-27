@@ -101,11 +101,13 @@ suite('Unification', () => {
     );
     assert.deepStrictEqual(doing(/\bclusterBreak\(/), [
       'components/cells/page/textPlaces.ts',
+      'components/cells/page/textSelection.ts',
       'components/editing/page/textSteps.ts',
       'lib/page/graphemes.ts',
       'shell/page/textCursor.ts',
     ]);
     assert.deepStrictEqual(doing(/charCategorizer/), []);
+    assert.deepStrictEqual(doing(/\bstate\.wordAt\(/), []);
   });
 
   test('tells a letter, a mark, a digit or an underscore of a word by one class, which the steps, the finds, the occurrences and the diff all take theirs from, and the anchors of a Markdown heading by the class GitHub takes', () => {

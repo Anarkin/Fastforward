@@ -105,6 +105,18 @@ suite('Text selected in a file viewed', () => {
     });
   });
 
+  test('selects the whole character a double click is on where there is no word, an emoji or a letter with its accent alike, rather than half of it', () => {
+    const pig = String.fromCodePoint(0x1f437);
+    assert.deepStrictEqual(wordAt({ start: 0, text: `a ${pig} b` }, 2), {
+      anchor: from(0, 2),
+      focus: from(0, 4),
+    });
+    assert.deepStrictEqual(wordAt({ start: 0, text: '(́)' }, 0), {
+      anchor: from(0, 0),
+      focus: from(0, 2),
+    });
+  });
+
   test('keeps a double and a triple click within the text a line ends after, leaving out its carriage return with its line feed, and copies a selection running past the line with the whole line ending the file has', () => {
     const windows = { start: 0, end: 5, text: 'one\r' };
 

@@ -1,5 +1,6 @@
 import { clusterBreak } from '../../../lib/page/graphemes';
 import { characterKind } from '../../../lib/shared/textMatches';
+import { wordAt } from '../../cells/page/textSelection';
 import {
   EditorSelection,
   findClusterBreak,
@@ -173,4 +174,13 @@ export function movedSideways(
     }),
     selection.mainIndex,
   );
+}
+
+export function wordRangeAt(state: EditorState, pos: number): SelectionRange {
+  const line = state.doc.lineAt(pos);
+  const { anchor, focus } = wordAt(
+    { start: 0, text: line.text },
+    pos - line.from,
+  );
+  return EditorSelection.range(line.from + anchor.char, line.from + focus.char);
 }

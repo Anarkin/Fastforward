@@ -1,4 +1,5 @@
 import { wordAround } from '../../../lib/shared/textMatches';
+import { clusterBreak } from '../../../lib/page/graphemes';
 import type { TextLine } from './lines';
 
 export interface TextPlace {
@@ -99,8 +100,11 @@ export function wordAt(
 ): TextSelection {
   const text = row.text.slice(0, textEnd(row.text));
   const word = wordAround(text, char);
-  const from = word?.start ?? Math.min(char, Math.max(0, text.length - 1));
-  const to = word?.end ?? Math.min(text.length, from + 1);
+  const from =
+    word?.start ??
+    (char >= text.length ? clusterBreak(text, text.length, false) : char);
+  const to =
+    word?.end ?? (from < text.length ? clusterBreak(text, from, true) : from);
   return {
     anchor: { start: row.start, char: from },
     focus: { start: row.start, char: to },
