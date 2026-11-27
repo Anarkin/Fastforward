@@ -1,5 +1,4 @@
-import { glideAt, glideEnded, type Glide } from '../../../lib/page/glide';
-import { rowGlide } from '../../../lib/page/rowScroll';
+import { alongLine, gliderOf } from '../../../lib/page/glide';
 import { holdRest } from '../../../lib/page/scrollSettings';
 
 const onRow = 1e-6;
@@ -29,17 +28,8 @@ export function glideRowsOf({
 }): RowGlider {
   let at = 0;
   let moved = 0;
-  let glide: Glide | undefined;
-  let frame: number | undefined;
   let rest: ReturnType<typeof setTimeout> | undefined;
   let held = false;
-  const settle = () => {
-    glide = undefined;
-    if (frame !== undefined) {
-      cancelAnimationFrame(frame);
-      frame = undefined;
-    }
-  };
   const place = (next: number) => {
     const blocked =
       (next < at && atStart()) || (next > at && atEnd()) ? moved : next;
@@ -53,34 +43,15 @@ export function glideRowsOf({
     if (blocked !== next) {
       settle();
     }
-    if (glide === undefined && at - moved < onRow) {
+    if (glider.target() === undefined && at - moved < onRow) {
       at = 0;
       moved = 0;
     }
   };
-  const animate = () => {
-    frame = undefined;
-    if (!glide) {
-      return;
-    }
-    const now = performance.now();
-    const next = glideAt(glide, now);
-    if (glideEnded(glide, now)) {
-      glide = undefined;
-    } else {
-      frame = requestAnimationFrame(animate);
-    }
-    place(next);
-  };
+  const glider = gliderOf(place, alongLine);
+  const settle = glider.settle;
   const glideTo = (to: number) => {
-    glide = {
-      from: at,
-      to,
-      start: performance.now(),
-      duration: rowGlide,
-      power: 2,
-    };
-    frame ??= requestAnimationFrame(animate);
+    glider.glideTo(to, at);
   };
   const letGo = () => {
     rest = undefined;
@@ -100,7 +71,7 @@ export function glideRowsOf({
   return {
     glideBy: (rows) => {
       unrest();
-      glideTo(Math.round(glide?.to ?? at) + rows);
+      glideTo(Math.round(glider.target() ?? at) + rows);
     },
     holdBy: (rows) => {
       unrest();

@@ -1,7 +1,7 @@
 import { wheeledAlone } from '../shared/keymap';
 import { listMoveOf, type ListMove } from './listMoves';
 import { holdRest } from './scrollSettings';
-import { glideAt, glideEnded, type Glide } from './glide';
+import { alongLine, gliderOf } from './glide';
 import {
   setRowScroller,
   setWheeled,
@@ -16,24 +16,7 @@ export function snappedTop(top: number, row: number, max: number): number {
   return Math.max(0, Math.min(max, Math.ceil(top / row - onRow) * row));
 }
 
-export const rowGlide = 150;
-
 const farViews = 2;
-
-export function glideRows(
-  glide: Glide | undefined,
-  scrolled: number,
-  now: number,
-  to: number,
-): Glide {
-  return {
-    from: glide ? glideAt(glide, now) : scrolled,
-    to,
-    start: now,
-    duration: rowGlide,
-    power: 2,
-  };
-}
 
 export function revealGlides(
   from: number,
@@ -95,8 +78,6 @@ export function followRows(
   } = {},
 ): RowFollower {
   let pending = 0;
-  let glide: Glide | undefined;
-  let frame: number | undefined;
   let placed: number | undefined;
   let held = false;
   let heldFrom = 0;
@@ -116,26 +97,8 @@ export function followRows(
     seen = placed;
     onPlace(placed);
   };
-  const settle = () => {
-    glide = undefined;
-    if (frame !== undefined) {
-      cancelAnimationFrame(frame);
-      frame = undefined;
-    }
-  };
-  const animate = () => {
-    frame = undefined;
-    if (!glide) {
-      return;
-    }
-    const now = performance.now();
-    place(glideAt(glide, now));
-    if (glideEnded(glide, now)) {
-      glide = undefined;
-    } else {
-      frame = requestAnimationFrame(animate);
-    }
-  };
+  const glider = gliderOf(place, alongLine);
+  const settle = glider.settle;
   const scrollTo = (top: number, glides: boolean) => {
     heldAt = undefined;
     const to = Math.max(0, Math.min(max(), top));
@@ -151,17 +114,17 @@ export function followRows(
       settle();
       place(target - Math.sign(away) * view);
     }
-    glide = glideRows(glide, element.scrollTop, performance.now(), target);
-    frame ??= requestAnimationFrame(animate);
+    glider.glideTo(target, element.scrollTop);
   };
-  const aim = () => glide?.to ?? element.scrollTop;
+  const aim = () => glider.target() ?? element.scrollTop;
   const reveals = () => {
     if (!smooth()) {
       return;
     }
     const from = element.scrollTop;
-    if (glide) {
-      element.scrollTop = glide.to;
+    const aimed = glider.target();
+    if (aimed !== undefined) {
+      element.scrollTop = aimed;
     }
     queueMicrotask(() => {
       const to = element.scrollTop;
@@ -241,7 +204,7 @@ export function followRows(
       seen = element.scrollTop;
       return;
     }
-    if (glide) {
+    if (glider.target() !== undefined) {
       if (placed !== undefined && Math.abs(element.scrollTop - placed) <= 1) {
         return;
       }
@@ -290,7 +253,7 @@ export function followRows(
   return {
     aim,
     end: max,
-    glidingTo: () => glide?.to,
+    glidingTo: glider.target,
     scrollTo,
     reveals,
     dragTo,

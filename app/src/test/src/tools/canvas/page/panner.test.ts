@@ -1,7 +1,7 @@
 import * as assert from 'node:assert';
 import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import { holdRest } from '../../../../../lib/page/scrollSettings';
-import { rowGlide } from '../../../../../lib/page/rowScroll';
+import { rowGlide } from '../../../../../lib/page/glide';
 import type { Origin } from '../../../../../tools/canvas/page/pan';
 import { Panner } from '../../../../../tools/canvas/page/panner';
 
@@ -17,10 +17,12 @@ function panner(smooth = true, smoothSnap = true) {
       panned.push(to);
     },
     scrolling: () => ({ wheelRows: 3, smooth, smoothSnap }),
-    now: () => now,
-    frame: (step) => frames.push(step),
-    cancelFrame: () => {
-      frames.length = 0;
+    clock: {
+      now: () => now,
+      frame: (step) => frames.push(step),
+      cancel: () => {
+        frames.length = 0;
+      },
     },
   });
   const run = (until: number) => {

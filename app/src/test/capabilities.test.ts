@@ -78,6 +78,19 @@ suite('Capabilities', () => {
     heldBy(/backgroundColor\)/, ['components/cells/page/cellLook.ts']);
   });
 
+  test('glides a list, a column, the viewer and the canvas only through the one glider of the library, so every smooth scroll takes as long, eases alike and is redirected from where it is, the terminal handing its moment to xterm.js, which glides its own screen', () => {
+    heldBy(/\browGlide\b(?!')/, [
+      'lib/page/glide.ts',
+      'tools/terminal/page/view.ts',
+    ]);
+    heldBy(/\bgliderOf\(/, [
+      'lib/page/columnScroll.ts',
+      'lib/page/rowScroll.ts',
+      'tools/canvas/page/panner.ts',
+      'tools/viewer/page/rowGlide.ts',
+    ]);
+  });
+
   test('watches the file system only through the watcher of the library, so every watch is kept, closed and told of an error alike', () => {
     heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts'], {
       'shell/main/settingsWatch.ts':

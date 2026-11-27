@@ -1,5 +1,4 @@
-import { glideAt, glideEnded, type Glide } from './glide';
-import { rowGlide } from './rowScroll';
+import { alongLine, gliderOf } from './glide';
 import { holdRest } from './scrollSettings';
 import {
   setColumnScroller,
@@ -56,30 +55,10 @@ export function followColumns(
 ): ColumnFollower {
   let pending = 0;
   let swiped = 0;
-  let glide: Glide | undefined;
-  let frame: number | undefined;
   let held = false;
   let rest: ReturnType<typeof setTimeout> | undefined;
-  const settle = () => {
-    glide = undefined;
-    if (frame !== undefined) {
-      cancelAnimationFrame(frame);
-      frame = undefined;
-    }
-  };
-  const animate = () => {
-    frame = undefined;
-    if (!glide) {
-      return;
-    }
-    const now = performance.now();
-    scrollTo(glideAt(glide, now));
-    if (glideEnded(glide, now)) {
-      glide = undefined;
-    } else {
-      frame = requestAnimationFrame(animate);
-    }
-  };
+  const glider = gliderOf(scrollTo, alongLine);
+  const settle = glider.settle;
   const moveTo = (left: number, glides: boolean) => {
     const to = snappedLeft(left, advance(), room());
     if (!glides || !smooth()) {
@@ -87,15 +66,7 @@ export function followColumns(
       scrollTo(to);
       return;
     }
-    const now = performance.now();
-    glide = {
-      from: glide ? glideAt(glide, now) : scrolled(),
-      to,
-      start: now,
-      duration: rowGlide,
-      power: 2,
-    };
-    frame ??= requestAnimationFrame(animate);
+    glider.glideTo(to, scrolled());
   };
   const hold = (left: number) => {
     clearTimeout(rest);
@@ -150,7 +121,7 @@ export function followColumns(
       );
       pending = turn.pending;
       if (turn.rows !== 0) {
-        moveTo((glide?.to ?? scrolled()) + turn.rows * column, true);
+        moveTo((glider.target() ?? scrolled()) + turn.rows * column, true);
       }
       return;
     }
@@ -177,7 +148,7 @@ export function followColumns(
   const stepBy = (steps: number) => {
     const column = advance();
     if (column > 0) {
-      moveTo((glide?.to ?? scrolled()) + steps * column, true);
+      moveTo((glider.target() ?? scrolled()) + steps * column, true);
     }
     return column > 0;
   };

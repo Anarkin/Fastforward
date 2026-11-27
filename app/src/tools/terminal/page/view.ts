@@ -7,7 +7,7 @@ import type { IDecoration, IMarker, Terminal } from '@xterm/xterm';
 import { terminalKey } from './keys';
 import { snapOffset, watchDevicePixels } from '../../../lib/page/devicePixels';
 import { dialogHoldsFocus } from '../../../lib/page/modalDialog';
-import { rowGlide } from '../../../lib/page/rowScroll';
+import { rowGlide } from '../../../lib/page/glide';
 import type { ScrollSettings } from '../../../lib/page/scrollSettings';
 import { notchesOf, type Wheel } from '../../../lib/page/wheelTurns';
 import { pressedAlone, type Modifiers } from '../../../lib/shared/keymap';
