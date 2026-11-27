@@ -88,6 +88,7 @@ export function canvasToolOf(): CanvasTool {
     readOnly: (error) => error instanceof ReadOnlyFile,
     watch: (file, onChange) => watchFolder(file, onChange),
     files: {
+      realPath: (file) => fs.promises.realpath(file),
       isFolder: async (file) =>
         (await fs.promises.stat(file).catch(() => undefined))?.isDirectory() ??
         false,

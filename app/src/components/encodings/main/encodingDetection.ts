@@ -120,6 +120,7 @@ export function isUtf8(bytes: Buffer, whole = false): boolean {
 export function encodingOf(
   bytes: Buffer,
   codePage: TextEncoding,
+  whole = true,
 ): TextEncoding | undefined {
   const marked = byteOrderMarkOf(bytes) ?? utf16Order(bytes);
   if (marked !== undefined) {
@@ -128,7 +129,7 @@ export function encodingOf(
   if (looksBinary(bytes)) {
     return undefined;
   }
-  return isUtf8(bytes, true) ? 'utf-8' : codePage;
+  return isUtf8(bytes, whole) ? 'utf-8' : codePage;
 }
 
 export interface DecodedText {
@@ -140,8 +141,9 @@ export interface DecodedText {
 export function decodedText(
   bytes: Buffer,
   codePage: TextEncoding,
+  whole = true,
 ): DecodedText | undefined {
-  const encoding = encodingOf(bytes, codePage);
+  const encoding = encodingOf(bytes, codePage, whole);
   if (encoding === undefined) {
     return undefined;
   }

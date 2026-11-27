@@ -61,6 +61,7 @@ function canvas(
   const titled: string[] = [];
   const tool = new CanvasTool({
     files: {
+      realPath: (name) => Promise.resolve(name),
       isFolder: () => Promise.resolve(false),
       readHead: (name, bytes) => {
         const text = files[name];

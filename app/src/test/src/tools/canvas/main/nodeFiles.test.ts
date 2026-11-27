@@ -26,10 +26,12 @@ const fileNode = (id: string, file: string) => ({
 function access(
   files: Record<string, string | Buffer>,
   folders: readonly string[],
+  links: Readonly<Record<string, string>> = {},
 ): FileAccess & { readonly asked: string[] } {
   const asked: string[] = [];
   return {
     asked,
+    realPath: (file) => Promise.resolve(links[file] ?? file),
     isFolder: (file) => Promise.resolve(folders.includes(file)),
     readHead: (file, bytes) => {
       asked.push(file);
@@ -107,6 +109,44 @@ suite('Canvas node files', () => {
       ),
       undefined,
     );
+  });
+
+  test('reads the head of a file of UTF-8 as UTF-8 though it was cut inside a character, rather than in the code page of the system', () => {
+    const text = 'Ünïcödé\n日本語 ü';
+    const bytes = Buffer.from(text);
+    assert.strictEqual(
+      shownText(bytes.subarray(0, bytes.length - 1), false, 'windows-1252'),
+      'Ünïcödé',
+    );
+  });
+
+  test('reads no file of a node whose real path leaves the vault, as a link inside it to a file outside', async () => {
+    const canvas = path.join(root, 'plan.canvas');
+    const linked = path.join(root, 'notes', 'k.md');
+    const outside = path.resolve('/home/me/.ssh/id_rsa');
+    const inside = path.join(root, 'notes', 'kept.md');
+    const files = access(
+      { [linked]: 'secret', [outside]: 'secret', [inside]: 'kept' },
+      [],
+      { [linked]: outside, [path.join(root, 'notes', 'alias.md')]: inside },
+    );
+    assert.deepStrictEqual(
+      await nodeFilesOf(
+        canvas,
+        {
+          nodes: [fileNode('k', 'notes/k.md'), fileNode('a', 'notes/alias.md')],
+          edges: [],
+        },
+        files,
+      ),
+      {
+        'notes/alias.md': {
+          path: path.join(root, 'notes', 'alias.md'),
+          text: 'kept',
+        },
+      },
+    );
+    assert.ok(!files.asked.includes(linked));
   });
 
   test('tells the page where each file of a node is and the head of its text, a folder, a binary file or a file not there by its path alone, and nothing of a path that leaves the vault', async () => {

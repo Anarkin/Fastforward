@@ -11,6 +11,7 @@ const mostLines = 500;
 const vaultMark = '.obsidian';
 
 export interface FileAccess {
+  readonly realPath: (file: string) => Promise<string>;
   readonly isFolder: (file: string) => Promise<boolean>;
   readonly readHead: (file: string, bytes: number) => Promise<Buffer>;
   readonly codePage: () => Promise<TextEncoding>;
@@ -57,7 +58,7 @@ export function shownText(
   whole: boolean,
   codePage: TextEncoding,
 ): string | undefined {
-  const decoded = decodedText(bytes, codePage);
+  const decoded = decodedText(bytes, codePage, whole);
   if (decoded === undefined) {
     return undefined;
   }
@@ -68,14 +69,15 @@ export function shownText(
 
 async function nodeFileOf(
   at: string,
+  real: string,
   access: FileAccess,
   codePage: TextEncoding,
 ): Promise<NodeFile> {
   try {
-    if (await access.isFolder(at)) {
+    if (await access.isFolder(real)) {
       return { path: at };
     }
-    const bytes = await access.readHead(at, headBytes + 1);
+    const bytes = await access.readHead(real, headBytes + 1);
     const text = shownText(
       bytes.subarray(0, headBytes),
       bytes.length <= headBytes,
@@ -99,13 +101,20 @@ export async function nodeFilesOf(
     return {};
   }
   const root = await vaultOf(canvas, access.isFolder);
+  const realRoot = await access.realPath(root).catch(() => root);
   const codePage = await access.codePage();
   const read = await Promise.all(
     [...named].map(async (file) => {
       const at = pathIn(root, file);
-      return at === undefined
+      const real =
+        at === undefined
+          ? undefined
+          : await access.realPath(at).catch(() => at);
+      return at === undefined ||
+        real === undefined ||
+        (real !== at && pathIn(realRoot, real) === undefined)
         ? []
-        : [[file, await nodeFileOf(at, access, codePage)] as const];
+        : [[file, await nodeFileOf(at, real, access, codePage)] as const];
     }),
   );
   return Object.fromEntries(read.flat());
