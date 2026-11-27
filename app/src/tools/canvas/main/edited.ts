@@ -9,6 +9,34 @@ const mostUndone = 500;
 const idOf = (item: unknown): string | undefined =>
   isObject(item) && typeof item.id === 'string' ? item.id : undefined;
 
+const lineBreak = /[\r\n]/;
+
+function pointedAt(node: Json, text: string): boolean {
+  if (lineBreak.test(text)) {
+    return false;
+  }
+  if (node.type === 'link') {
+    if (node.url === text) {
+      return false;
+    }
+    node.url = text;
+    return true;
+  }
+  const mark = text.indexOf('#');
+  const file = mark < 0 ? text : text.slice(0, mark);
+  const subpath = mark < 0 ? undefined : text.slice(mark);
+  if (node.file === file && node.subpath === subpath) {
+    return false;
+  }
+  node.file = file;
+  if (subpath === undefined) {
+    delete node.subpath;
+  } else {
+    node.subpath = subpath;
+  }
+  return true;
+}
+
 function listIn(raw: Json, key: 'nodes' | 'edges'): unknown[] {
   const listed = raw[key];
   if (Array.isArray(listed)) {
@@ -169,6 +197,9 @@ function applied(
       const found = listIn(raw, 'nodes').find((each) => idOf(each) === edit.id);
       const edge = listIn(raw, 'edges').find((each) => idOf(each) === edit.id);
       const node = found ?? edge;
+      if (isObject(found) && (found.type === 'file' || found.type === 'link')) {
+        return pointedAt(found, edit.text);
+      }
       const key =
         isObject(node) && (node === edge || node.type === 'group')
           ? 'label'

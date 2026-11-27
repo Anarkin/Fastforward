@@ -1,15 +1,7 @@
 import { useBinding } from '../../../lib/page/shortcuts';
 import { nextEnds } from './arrows';
 import { canvasKeymap } from './keymap';
-import { useShellActions } from '../../../shell/page/store';
-import { openNode, openedOf } from './links';
-import {
-  boardShown,
-  filesShown,
-  selectedShown,
-  typingShown,
-  type Placing,
-} from './state';
+import { boardShown, selectedShown, typingShown, type Placing } from './state';
 import { useCanvas, useCanvasActions } from './store';
 
 export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
@@ -18,8 +10,6 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const selected = useCanvas(selectedShown);
   const placing = useCanvas((state) => state.placing);
   const typing = useCanvas(typingShown);
-  const files = useCanvas(filesShown);
-  const { followPath } = useShellActions();
   const {
     select,
     place,
@@ -37,11 +27,8 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   const [only] = selected.length === 1 ? selected : [];
   const onlyNode = board?.nodes.find((node) => node.id === only);
   const typeable =
-    onlyNode?.type === 'text' ||
-    onlyNode?.type === 'group' ||
-    (onlyNode === undefined &&
-      board?.edges.some((each) => each.id === only) === true);
-  const opened = openedOf(onlyNode, files);
+    onlyNode !== undefined ||
+    board?.edges.some((each) => each.id === only) === true;
 
   useBinding(canvasKeymap.placeText, () => startPlacing('text'), shownTab);
   useBinding(
@@ -135,9 +122,4 @@ export function useBoardKeys(startPlacing: (kind: Placing) => void): void {
   useBinding(canvasKeymap.undo, () => settled(undo), shownTab);
   useBinding(canvasKeymap.redo, () => settled(redo), shownTab);
   useBinding(canvasKeymap.save, () => tab !== undefined && save(tab), shownTab);
-  useBinding(
-    canvasKeymap.openNode,
-    () => opened !== undefined && openNode(opened, followPath),
-    calm && placing === undefined && opened !== undefined,
-  );
 }

@@ -166,8 +166,13 @@ function nodeTextOf(
       return { text, segmentsOf: colors && coloredSegments(text, colors) };
     }
     case 'file':
-      return fileTextOf(node, looks);
+      return typed === undefined
+        ? fileTextOf(node, looks)
+        : { text: typed, segmentsOf: linkSegments(0, linkKind) };
     case 'link': {
+      if (typed !== undefined) {
+        return { text: typed, segmentsOf: linkSegments(0, linkKind) };
+      }
       const title = looks.titles?.get(node.url);
       const text = title === undefined ? node.url : `${title}\n${node.url}`;
       return {

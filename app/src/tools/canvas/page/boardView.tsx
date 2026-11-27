@@ -46,7 +46,6 @@ import { endAt } from './edgeHandles';
 import { markAt } from './wiring';
 import { boxOf } from './grid';
 import { useBoardKeys } from './boardKeys';
-import { openNode, openedOf } from './links';
 import { typedTextOf, typesOneLine } from './typedTexts';
 import { wheelZoom } from './zoom';
 import { useSignTips } from './signTipping';
@@ -86,7 +85,7 @@ export function BoardView() {
     pasteOnBoard,
     zoom,
   } = useCanvasActions();
-  const { showMenu, followPath } = useShellActions();
+  const { showMenu, openPathMenu, copyText } = useShellActions();
   const table = useCellTable();
   const body = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
@@ -440,6 +439,9 @@ export function BoardView() {
       show: showMenu,
       send: (change) => edit(tab, change),
       custom: (ids) => askColor(tab, ids),
+      files,
+      openPathMenu,
+      copy: copyText,
     });
   };
 
@@ -621,17 +623,12 @@ export function BoardView() {
       hit.kind === 'node'
         ? board.nodes.find((each) => each.id === hit.id)
         : undefined;
-    const opened = openedOf(node, files);
-    if (opened !== undefined && whole === 'word') {
-      openNode(opened, followPath);
-      return;
-    }
     const onLabel =
       node?.type === 'group' && at.row === boxOf(node, known.unit).row;
     const id =
       hit.kind === 'edge'
         ? hit.id
-        : node?.type === 'text' || onLabel
+        : (node !== undefined && node.type !== 'group') || onLabel
           ? node?.id
           : undefined;
     if (id === undefined) {

@@ -2,7 +2,13 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import type { ContextMenuItem } from '../../../../../lib/page/contextMenuItem';
 import { strings } from '../../../../../lib/shared/strings';
-import { boardMenuItems } from '../../../../../tools/canvas/page/boardMenu';
+import {
+  boardMenuItems,
+  showBoardMenu,
+} from '../../../../../tools/canvas/page/boardMenu';
+import type { OpenMenu } from '../../../../../lib/page/contextMenuItem';
+import type { PathMenuAsk } from '../../../../../lib/page/pathMenu';
+import type { Board } from '../../../../../tools/canvas/shared/board';
 import type { NodeOrder } from '../../../../../tools/canvas/shared/protocol';
 
 const labelsOf = (items: readonly ContextMenuItem[]) =>
@@ -100,5 +106,76 @@ suite('Canvas menu', () => {
         `${strings.canvas.toBack} (off)`,
       ],
     );
+  });
+
+  test('puts File first for a file node, the menu of its path as every path has it, Link for a link node, opening it with the OS or copying its URL, each over a divider and the colors', () => {
+    const box = { x: 0, y: 0, width: 70, height: 54 };
+    const board: Board = {
+      nodes: [
+        { id: 'f', type: 'file', file: 'a.md', ...box },
+        { id: 'g', type: 'file', file: 'gone.md', ...box },
+        { id: 'l', type: 'link', url: 'https://a.example/', ...box },
+        { id: 't', type: 'text', text: '', ...box },
+      ],
+      edges: [],
+    };
+    const shown: OpenMenu[] = [];
+    const asked: PathMenuAsk[] = [];
+    const copied: string[] = [];
+    const rightClicked = (id: string) =>
+      showBoardMenu(
+        board,
+        [],
+        { kind: 'node', id },
+        {
+          at: { x: 1, y: 2 },
+          select: () => {},
+          show: (menu) => shown.push(menu),
+          send: () => {},
+          custom: () => {},
+          files: { 'a.md': { path: '/vault/a.md' } },
+          openPathMenu: (ask) => asked.push(ask),
+          copy: (text) => copied.push(text),
+        },
+      );
+
+    rightClicked('f');
+    const [ask] = asked;
+    assert.deepStrictEqual(
+      [ask?.path, ask?.file, ask?.at],
+      ['/vault/a.md', true, { x: 1, y: 2 }],
+    );
+    const pathItems: ContextMenuItem[] = [{ label: 'Open with OS' }];
+    const wrapped = ask?.within?.(pathItems) ?? [];
+    const [head] = wrapped;
+    assert.ok(head !== undefined && !('separator' in head));
+    assert.deepStrictEqual(head.submenu, pathItems);
+    assert.deepStrictEqual(labelsOf(wrapped).slice(0, 3), [
+      strings.canvas.fileMenu,
+      '-',
+      strings.canvas.color,
+    ]);
+
+    rightClicked('g');
+    rightClicked('l');
+    rightClicked('t');
+    assert.deepStrictEqual(
+      shown.map((menu) => labelsOf(menu.items)[0]),
+      [
+        `${strings.canvas.fileMenu} (off)`,
+        strings.canvas.linkMenu,
+        strings.canvas.color,
+      ],
+    );
+    const link = shown[1]?.items[0];
+    assert.ok(link !== undefined && !('separator' in link));
+    assert.deepStrictEqual(labelsOf(link.submenu ?? []), [
+      strings.commander.openWithSystem,
+      strings.canvas.copyUrl,
+    ]);
+    const copy = link.submenu?.[1];
+    assert.ok(copy !== undefined && !('separator' in copy));
+    copy.onClick?.();
+    assert.deepStrictEqual(copied, ['https://a.example/']);
   });
 });

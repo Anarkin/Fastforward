@@ -1,7 +1,4 @@
-import type { BoardNode } from '../shared/board';
-import { isWebLink, type NodeFile } from '../shared/protocol';
-
-export type Opened = { readonly url: string } | { readonly path: string };
+import { isWebLink } from '../shared/protocol';
 
 export function pastedLink(text: string): string | undefined {
   const trimmed = text.trim();
@@ -20,24 +17,6 @@ export function pastedPaths(text: string): string[] | undefined {
     : undefined;
 }
 
-export function openedOf(
-  node: BoardNode | undefined,
-  files: Readonly<Record<string, NodeFile>> | undefined,
-): Opened | undefined {
-  if (node?.type === 'link') {
-    return { url: node.url };
-  }
-  const at = node?.type === 'file' ? files?.[node.file]?.path : undefined;
-  return at === undefined ? undefined : { path: at };
-}
-
-export function openNode(
-  opened: Opened,
-  followPath: (path: string) => void,
-): void {
-  if ('url' in opened) {
-    window.open(opened.url, '_blank', 'noopener');
-  } else {
-    followPath(opened.path);
-  }
+export function openLink(url: string): void {
+  window.open(url, '_blank', 'noopener');
 }

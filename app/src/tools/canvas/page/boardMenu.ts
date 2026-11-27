@@ -2,10 +2,12 @@ import type {
   ContextMenuItem,
   OpenMenu,
 } from '../../../lib/page/contextMenuItem';
+import type { PathMenuAsk } from '../../../lib/page/pathMenu';
 import { strings } from '../../../lib/shared/strings';
 import type { Board } from '../shared/board';
-import type { BoardEdit, NodeOrder } from '../shared/protocol';
+import type { BoardEdit, NodeFile, NodeOrder } from '../shared/protocol';
 import type { Hit } from './hits';
+import { openLink } from './links';
 
 export interface Chosen {
   readonly nodes: readonly string[];
@@ -85,7 +87,7 @@ function chosenAt(selected: readonly string[], hit: Hit): readonly string[] {
   return id === undefined || selected.includes(id) ? selected : [id];
 }
 
-export interface ChosenIds {
+interface ChosenIds {
   readonly nodes: readonly string[];
   readonly edges: readonly string[];
 }
@@ -127,27 +129,77 @@ function boardMenuOf(
   );
 }
 
+export interface BoardMenuShell {
+  readonly at: { readonly x: number; readonly y: number };
+  readonly select: (ids: readonly string[]) => void;
+  readonly show: (menu: OpenMenu) => void;
+  readonly send: (edit: BoardEdit) => void;
+  readonly custom: (ids: ChosenIds) => void;
+  readonly files: Readonly<Record<string, NodeFile>> | undefined;
+  readonly openPathMenu: (ask: PathMenuAsk) => void;
+  readonly copy: (text: string) => void;
+}
+
+const headed = (
+  head: ContextMenuItem,
+  items: readonly ContextMenuItem[],
+): ContextMenuItem[] => [head, { separator: true }, ...items];
+
 export function showBoardMenu(
   board: Board,
   selected: readonly string[],
   hit: Hit,
-  {
-    at,
-    select,
-    show,
-    send,
-    custom,
-  }: {
-    readonly at: { readonly x: number; readonly y: number };
-    readonly select: (ids: readonly string[]) => void;
-    readonly show: (menu: OpenMenu) => void;
-    readonly send: (edit: BoardEdit) => void;
-    readonly custom: (ids: ChosenIds) => void;
-  },
+  shell: BoardMenuShell,
 ): void {
+  const { at, select, show, send, custom, files, openPathMenu, copy } = shell;
   const chosen = chosenAt(selected, hit);
   if (chosen !== selected) {
     select(chosen);
   }
-  show({ ...at, items: boardMenuOf(board, chosen, { send, custom }) });
+  const items = boardMenuOf(board, chosen, { send, custom });
+  const [only] = chosen.length === 1 ? chosen : [];
+  const node = board.nodes.find((each) => each.id === only);
+  if (node?.type === 'file') {
+    const path = files?.[node.file]?.path;
+    if (path === undefined) {
+      show({
+        ...at,
+        items: headed(
+          { label: strings.canvas.fileMenu, disabled: true },
+          items,
+        ),
+      });
+      return;
+    }
+    openPathMenu({
+      path,
+      file: true,
+      at,
+      extended: false,
+      within: (fileItems) =>
+        headed({ label: strings.canvas.fileMenu, submenu: fileItems }, items),
+    });
+    return;
+  }
+  if (node?.type === 'link') {
+    const { url } = node;
+    show({
+      ...at,
+      items: headed(
+        {
+          label: strings.canvas.linkMenu,
+          submenu: [
+            {
+              label: strings.commander.openWithSystem,
+              onClick: () => openLink(url),
+            },
+            { label: strings.canvas.copyUrl, onClick: () => copy(url) },
+          ],
+        },
+        items,
+      ),
+    });
+    return;
+  }
+  show({ ...at, items });
 }

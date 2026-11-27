@@ -8,6 +8,12 @@ export function typedTextOf(
   if (node?.type === 'group') {
     return node.label ?? '';
   }
+  if (node?.type === 'file') {
+    return node.file + (node.subpath ?? '');
+  }
+  if (node?.type === 'link') {
+    return node.url;
+  }
   if (node !== undefined) {
     return node.type === 'text' ? node.text : undefined;
   }
@@ -15,10 +21,12 @@ export function typedTextOf(
   return edge === undefined ? undefined : (edge.label ?? '');
 }
 
+const oneLineKinds: ReadonlySet<string> = new Set(['group', 'file', 'link']);
+
 export const typesOneLine = (
   board: Board | undefined,
   id: string | undefined,
 ): boolean =>
   id !== undefined &&
-  (board?.nodes.find((each) => each.id === id)?.type === 'group' ||
+  (oneLineKinds.has(board?.nodes.find((each) => each.id === id)?.type ?? '') ||
     board?.edges.some((each) => each.id === id) === true);

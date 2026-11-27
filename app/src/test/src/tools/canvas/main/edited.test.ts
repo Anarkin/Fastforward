@@ -352,6 +352,49 @@ suite('Canvas edited', () => {
     assert.deepStrictEqual(labels(), ['Plans', undefined]);
   });
 
+  test('writes the line typed into a file node as its path and the subpath after its first #, and into a link node as its URL, never a line break', () => {
+    const box = { x: 0, y: 0, width: 140, height: 90 };
+    const board = new EditedBoard(
+      JSON.stringify({
+        nodes: [
+          { id: 'f', type: 'file', file: 'a.md', subpath: '#Old', ...box },
+          { id: 'l', type: 'link', url: 'https://a.example/', ...box },
+        ],
+      }),
+    );
+    const shown = () => {
+      const read = board.read();
+      assert.ok(read.kind === 'board');
+      return read.board.nodes.map((each) =>
+        each.type === 'file'
+          ? [each.file, each.subpath]
+          : each.type === 'link'
+            ? each.url
+            : undefined,
+      );
+    };
+    board.apply(
+      { kind: 'text', id: 'f', text: 'notes/b.md#Steps#more', session: 1 },
+      ids(),
+    );
+    board.apply(
+      { kind: 'text', id: 'l', text: 'https://b.example/', session: 2 },
+      ids(),
+    );
+    assert.deepStrictEqual(shown(), [
+      ['notes/b.md', '#Steps#more'],
+      'https://b.example/',
+    ]);
+    board.apply({ kind: 'text', id: 'f', text: 'c.md', session: 3 }, ids());
+    assert.deepStrictEqual(shown()[0], ['c.md', undefined]);
+    assert.strictEqual(
+      board.apply({ kind: 'text', id: 'l', text: 'a\nb', session: 4 }, ids()),
+      undefined,
+    );
+    board.undo();
+    assert.deepStrictEqual(shown()[0], ['notes/b.md', '#Steps#more']);
+  });
+
   test('writes the label typed onto an edge, one it had or one it had none of, as the label of a group is written', () => {
     const board = new EditedBoard(
       JSON.stringify({

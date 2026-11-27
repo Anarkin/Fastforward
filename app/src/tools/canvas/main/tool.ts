@@ -38,6 +38,15 @@ export interface CanvasAccess {
 
 export const maxBoardBytes = 50 * 1024 * 1024;
 
+function pointsElsewhere(held: Held, id: string): boolean {
+  const read = held.board.read();
+  const node =
+    read.kind === 'board'
+      ? read.board.nodes.find((each) => each.id === id)
+      : undefined;
+  return node?.type === 'file' || node?.type === 'link';
+}
+
 interface Held {
   readonly file: string;
   readonly board: EditedBoard;
@@ -328,7 +337,11 @@ export class CanvasTool implements Tool<'canvas'> {
         if (done !== undefined) {
           this.postBoard(page, tab, done.made);
         }
-        if (done !== undefined && edit?.kind === 'link') {
+        if (
+          done !== undefined &&
+          (edit?.kind === 'link' ||
+            (edit?.kind === 'text' && pointsElsewhere(held, edit.id)))
+        ) {
           this.postNodes(page, tab);
         }
         break;
@@ -336,11 +349,13 @@ export class CanvasTool implements Tool<'canvas'> {
       case 'undo':
         if (held.board.undo()) {
           this.postBoard(page, tab);
+          this.postNodes(page, tab);
         }
         break;
       case 'redo':
         if (held.board.redo()) {
           this.postBoard(page, tab);
+          this.postNodes(page, tab);
         }
         break;
       case 'save':

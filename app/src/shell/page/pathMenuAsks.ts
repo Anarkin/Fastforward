@@ -56,24 +56,21 @@ export function pathMenuAsks(
       }
       const { ask } = waiting;
       waiting = undefined;
-      return {
-        x: ask.at.x,
-        y: ask.at.y,
-        items: pathMenuItems(ask, facts, platform(), {
-          command: (command) =>
-            post({
-              type: 'pathCommand',
-              path: ask.path,
-              command,
-              ...(command === 'systemMenu' && {
-                x: ask.at.x,
-                y: ask.at.y,
-                extended: false,
-              }),
+      const items = pathMenuItems(ask, facts, platform(), {
+        command: (command) =>
+          post({
+            type: 'pathCommand',
+            path: ask.path,
+            command,
+            ...(command === 'systemMenu' && {
+              x: ask.at.x,
+              y: ask.at.y,
+              extended: false,
             }),
-          copy,
-        }),
-      };
+          }),
+        copy,
+      });
+      return { x: ask.at.x, y: ask.at.y, items: ask.within?.(items) ?? items };
     },
   };
 }

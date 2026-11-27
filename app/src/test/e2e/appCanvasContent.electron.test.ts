@@ -174,7 +174,7 @@ suite('App canvas content', () => {
     }
   });
 
-  test('draws a link node as its URL in the color of a link, and opens it outside the app on Enter once selected and on a double click', async () => {
+  test('draws a link node as its URL in the color of a link, and opens it outside the app from Link and Open with OS in the menu a right click opens', async () => {
     await page.locator('.board-host canvas').first().waitFor();
     await untilSettled(
       async () =>
@@ -195,24 +195,22 @@ suite('App canvas content', () => {
         JSON.stringify(Reflect.get(globalThis, 'openedLinks')),
       );
     const inside = await pointAt({ column: 4, row: 7 });
-    await page.mouse.click(inside.x, inside.y);
-    await page.keyboard.press('Enter');
-    await untilSettled(opened, 'the link opened on Enter', {
+    await page.mouse.click(inside.x, inside.y, { button: 'right' });
+    await page
+      .locator('.context-menu .menu-item', { hasText: strings.canvas.linkMenu })
+      .click();
+    await page
+      .locator('.submenu .menu-item', {
+        hasText: strings.commander.openWithSystem,
+      })
+      .click();
+    await untilSettled(opened, 'the link opened from its menu', {
       accepted: (urls) =>
         urls === JSON.stringify(['https://example.invalid/linked']),
     });
-    await page.mouse.dblclick(inside.x, inside.y);
-    await untilSettled(opened, 'the link opened on a double click', {
-      accepted: (urls) =>
-        urls ===
-        JSON.stringify([
-          'https://example.invalid/linked',
-          'https://example.invalid/linked',
-        ]),
-    });
   });
 
-  test('draws a file node as its path over the head of its text, colored as the language of its name, and opens the file in a viewer tab on Enter once selected', async () => {
+  test('draws a file node as its path over the head of its text, colored as the language of its name, and opens the file in a viewer tab from File in the menu a right click opens, as every path offers it', async () => {
     await untilSettled(
       async () =>
         JSON.stringify([await kindsOf('note.md'), await kindsOf('# Note')]),
@@ -229,11 +227,46 @@ suite('App canvas content', () => {
       },
     );
     const inside = await pointAt({ column: 4, row: 13 });
-    await page.mouse.click(inside.x, inside.y);
-    await page.keyboard.press('Enter');
+    await page.mouse.click(inside.x, inside.y, { button: 'right' });
+    await page
+      .locator('.context-menu .menu-item', { hasText: strings.canvas.fileMenu })
+      .click();
+    await page
+      .locator('.submenu .menu-item', {
+        hasText: strings.commander.openWithViewer,
+      })
+      .click();
     await page
       .locator('.tabs .tab.active .tab-name', { hasText: 'note.md' })
       .waitFor();
+    await showTab(page, 1);
+    await page.locator('.board-host canvas').first().waitFor();
+  });
+
+  test('types the path of a file node on a double click, its subpath after a #, rather than opening it, and writes it into the node once saved', async () => {
+    const inside = await pointAt({ column: 4, row: 13 });
+    await page.mouse.dblclick(inside.x, inside.y);
+    await page.keyboard.press('End');
+    await page.keyboard.type('#Note');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(savedBoard, 'the path typed saved', {
+      accepted: (text) =>
+        /"id":"filed"[^}]*"file":"note\.md"[^}]*"subpath":"#Note"/.test(text),
+    });
+    await page.mouse.click(inside.x, inside.y);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('End');
+    for (let at = 0; at < 5; at++) {
+      await page.keyboard.press('Backspace');
+    }
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('ControlOrMeta+S');
+    await untilSettled(savedBoard, 'the subpath deleted saved', {
+      accepted: (text) =>
+        /"id":"filed"[^}]*"file":"note\.md"/.test(text) &&
+        !/"subpath"/.test(text),
+    });
   });
 
   test('labels an edge selected on Enter, typing its label halfway along it, ends it on Enter and writes the label into the edge in its file', async () => {
