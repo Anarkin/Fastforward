@@ -46,6 +46,13 @@ const placedAt = (column: number, row: number, columns: number) => ({
   height: 3 * unit.height,
 });
 
+const labelled = (label: string): BoardNode => ({
+  id: 'g',
+  type: 'group',
+  ...placedAt(0, 0, 10),
+  label,
+});
+
 const narrow = (cluster: string) => (/[　-鿿]/.test(cluster) ? 2 : 1);
 
 function screenText(
@@ -119,11 +126,11 @@ suite('Canvas screen', () => {
         edges: [edge({ fromSide: 'right', toSide: 'top' })],
       }),
       [
-        '┌¶───────┐',
+        '┌────────┐',
         '│ Idea   ├────┐',
         '└────────┘    │',
         '              ▼',
-        '          ┌¶───────┐',
+        '          ┌────────┐',
         '          │ Plan   │',
         '          └────────┘',
         '',
@@ -145,7 +152,7 @@ suite('Canvas screen', () => {
         ['idea'],
       ),
       [
-        '╔¶═════╗      ┌¶─────┐',
+        '╔══════╗      ┌──────┐',
         '║ Ide⏎ ╠──────┤ Pla⏎ │',
         '╚══════╝      └──────┘',
       ],
@@ -164,7 +171,7 @@ suite('Canvas screen', () => {
     };
     const view = { column: 0, row: 0, columns: 24, rows: 3 };
     assert.deepStrictEqual(screenText(board, view, ['e']), [
-      '┌¶─────┐      ┌¶─────┐',
+      '┌──────┐      ┌──────┐',
       '│ Ide⏎ ╠══ x ═╣ Pla⏎ │',
       '└──────┘      └──────┘',
     ]);
@@ -231,7 +238,7 @@ suite('Canvas screen', () => {
         },
         { column: 0, row: 0, columns: 20, rows: 3 },
       ),
-      ['┌¶───┐      ┌¶───┐', '│ A  │◀────▶│ B  │', '└────┘      └────┘'],
+      ['┌────┐      ┌────┐', '│ A  │◀────▶│ B  │', '└────┘      └────┘'],
     );
   });
 
@@ -278,7 +285,7 @@ suite('Canvas screen', () => {
     assert.strictEqual(shown.lineKinds[0], '#ff7800');
   });
 
-  test('signs the kind of a node in the corner of its top border, ¶ a text, ≡ a file and ∞ a link, of characters every monospace font of the settings has, none for a group, whose label goes there, nor for a node too narrow for one', () => {
+  test('signs the kind of a node that points elsewhere in its top border, where a group has its label, ≡ a file and ∞ a link, of characters every monospace font of the settings has, none for a text, which holds what it shows, a group, whose label goes there, or a node too narrow for one', () => {
     const rows = screenText({
       nodes: [
         text('note', 0, 0, 6, 3, ''),
@@ -290,7 +297,7 @@ suite('Canvas screen', () => {
     });
     assert.deepStrictEqual(
       [rows[0], rows[4]],
-      ['┌¶───┐ ┌≡───┐ ┌∞───┐', '┌────┐  ┌┐'],
+      ['┌────┐ ┌─ ≡ ┐ ┌─ ∞ ┐', '┌────┐  ┌┐'],
     );
   });
 
@@ -315,12 +322,21 @@ suite('Canvas screen', () => {
       ),
       [
         '┌─ Plan ───────────┐',
-        '│ ┌¶─────┐         │',
+        '│ ┌──────┐         │',
         '│ │ Ide⏎ │         │',
         '│ └──────┘         │',
         '│                  │',
         '└──────────────────┘',
       ],
+    );
+  });
+
+  test('ends the label of a group cut by its border with an ellipsis, as the app ends any text cut short', () => {
+    assert.deepStrictEqual(
+      [labelled('Plan'), labelled('Long plan')].map(
+        (node) => screenText({ nodes: [node] })[0],
+      ),
+      ['┌─ Plan ─┐', '┌─ Lon… ─┐'],
     );
   });
 
@@ -335,7 +351,7 @@ suite('Canvas screen', () => {
         { column: 0, row: 0, columns: 14, rows: 5 },
       ),
       [
-        '┌¶─────────┐',
+        '┌──────────┐',
         '│ one two ⏎│',
         '│ three ⏎  │',
         '│ four ⏎   │',
@@ -347,7 +363,7 @@ suite('Canvas screen', () => {
         { nodes: [text('a', 0, 0, 12, 4, '日本語​x\tend')] },
         { column: 0, row: 0, columns: 14, rows: 4 },
       ),
-      ['┌¶─────────┐', '│ 日本語 ⏎  │', '│ ¤x  end  │', '└──────────┘'],
+      ['┌──────────┐', '│ 日本語 ⏎  │', '│ ¤x  end  │', '└──────────┘'],
     );
   });
 

@@ -227,7 +227,9 @@ function paintNode(
   }
   border(painter, box, weight, kind);
   const sign = signCellOf(box);
-  if (sign !== undefined) {
+  if (sign !== undefined && (node.type === 'file' || node.type === 'link')) {
+    painter.clear(sign.column - 1, sign.row);
+    painter.clear(sign.column + 1, sign.row);
     painter.glyph(
       sign.column,
       sign.row,

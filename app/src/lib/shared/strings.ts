@@ -1336,7 +1336,7 @@ export const strings = {
     newFile: 'New file, made once saved',
   },
   canvas: {
-    nodeKinds: { text: 'Text node', file: 'File node', link: 'Link node' },
+    nodeKinds: { file: 'File node', link: 'Link node' },
     color: 'Color',
     noColor: 'None',
     colors: ['Red', 'Orange', 'Yellow', 'Green', 'Cyan', 'Purple'],

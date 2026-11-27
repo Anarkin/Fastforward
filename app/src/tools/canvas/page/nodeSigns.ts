@@ -2,13 +2,13 @@ import type { Board } from '../shared/board';
 import { boxOf, type Box, type Unit } from './grid';
 import type { Cell } from './routes';
 
-export const nodeSigns = { text: '¶', file: '≡', link: '∞' } as const;
+export const nodeSigns = { file: '≡', link: '∞' } as const;
 
 export type SignedKind = keyof typeof nodeSigns;
 
 export const signCellOf = (box: Box): Cell | undefined =>
-  box.columns >= 3 && box.rows >= 2
-    ? { column: box.column + 1, row: box.row }
+  box.columns >= 6 && box.rows >= 2
+    ? { column: box.column + 3, row: box.row }
     : undefined;
 
 const holds = (box: Box, { column, row }: Cell): boolean =>
@@ -27,7 +27,7 @@ export function signAt(
     ...board.nodes.filter((node) => node.type !== 'group'),
   ];
   const top = painted.findLast((node) => holds(boxOf(node, unit), at));
-  if (top === undefined || top.type === 'group') {
+  if (top?.type !== 'file' && top?.type !== 'link') {
     return undefined;
   }
   const sign = signCellOf(boxOf(top, unit));

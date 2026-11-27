@@ -1,3 +1,4 @@
+import { ellipsis } from '../../../components/cells/page/runText';
 import type { SegmentsOf } from '../../../components/cells/page/cellPainting';
 import { codeSegments } from '../../../components/syntax/page/codeSegments';
 import type { LineRanges } from '../../../components/syntax/page/engine';
@@ -180,7 +181,9 @@ export function paintLine(
     return;
   }
   const rows = rowsOf(line.text, undefined, widths);
-  const width = Math.min(room, Math.ceil(columnsOf(line.text, widths)));
+  const whole = Math.ceil(columnsOf(line.text, widths));
+  const width = Math.min(room, whole);
+  const cut = typed === undefined && whole > room && width > 0;
   const owner = painter.nextOwner();
   for (let at = column - 1; at <= column + width; at++) {
     painter.clear(at, row);
@@ -192,10 +195,13 @@ export function paintLine(
     row,
     rows,
     wrapAt: undefined,
-    room: width,
+    room: cut ? width - 1 : width,
     kind,
     selection: typed === undefined ? undefined : selectionOf(rows, typed),
   });
+  if (cut) {
+    painter.glyph(column + width - 1, row, ellipsis, 1, kind);
+  }
   const place =
     typed === undefined
       ? undefined
