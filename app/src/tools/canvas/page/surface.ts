@@ -24,10 +24,9 @@ import {
 } from '../../../components/cells/page/gpuDevice';
 import type { CellTable } from '../../../lib/page/cellTable';
 import {
-  blinkAnimation,
+  CursorMark,
   drawnCursor,
   pageCursorLook,
-  paintCursor,
 } from '../../../lib/page/cursor';
 import { fontDotLook } from '../../../lib/page/dotLook';
 import { lineHeightOf } from '../../../lib/page/lineHeight';
@@ -144,9 +143,7 @@ export class BoardSurface {
   private surface: CellSurface | undefined;
   private look: { readonly key: string; readonly look: TextLook } | undefined;
   private readonly computed = new Map<string, string>();
-  private cursor: HTMLElement | undefined;
-  private cursorAt = '';
-  private blinkAgain = false;
+  private cursor: CursorMark | undefined;
 
   constructor(
     private readonly host: HTMLElement,
@@ -355,9 +352,8 @@ export class BoardSurface {
   ): void {
     const [at] = screen.carets;
     if (at === undefined) {
-      this.cursor?.remove();
+      this.cursor?.hide();
       this.cursor = undefined;
-      this.cursorAt = '';
       return;
     }
     const down = at.row - screen.row;
@@ -379,23 +375,17 @@ export class BoardSurface {
       origin: { left: 0, top: 0 },
     });
     if (this.cursor === undefined) {
-      this.cursor = document.createElement('div');
-      this.cursor.className = 'board-cursor';
-      this.host.append(this.cursor);
+      const element = document.createElement('div');
+      element.className = 'board-cursor';
+      this.host.append(element);
+      this.cursor = new CursorMark(element);
     }
-    paintCursor(this.cursor, drawn);
-    const placed = `${at.column},${at.row},${at.cells}`;
-    if (placed !== this.cursorAt) {
-      this.cursorAt = placed;
-      this.blinkAgain = !this.blinkAgain;
-      this.cursor.style.animation = look.blink
-        ? blinkAnimation(this.blinkAgain)
-        : 'none';
-    }
+    this.cursor.paint(drawn);
+    this.cursor.blinkAt(`${at.column},${at.row},${at.cells}`, look.blink);
   }
 
   dispose(): void {
-    this.cursor?.remove();
+    this.cursor?.hide();
     this.cursor = undefined;
     this.host.seenBoard = undefined;
     this.surface?.dispose();

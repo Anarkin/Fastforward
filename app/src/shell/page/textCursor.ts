@@ -1,12 +1,10 @@
 import { clusterBreak } from '../../lib/page/graphemes';
 import { watchDevicePixels } from '../../lib/page/devicePixels';
 import {
-  blinkAnimation,
+  CursorMark,
   drawnCursor,
-  pageCursorLook,
-  paintCursor,
-  sameDrawing,
   type DrawnCursor,
+  pageCursorLook,
 } from '../../lib/page/cursor';
 import { pixelBox, placedBox, type Box } from '../../lib/page/pixelBoxes';
 import { fieldSelection, paintSelection } from './fieldSelection';
@@ -96,6 +94,7 @@ interface Measured {
 
 class TextCursor {
   private readonly element = document.createElement('div');
+  private readonly mark = new CursorMark(this.element);
   private readonly measure = document.createElement('span');
   private readonly textNode = document.createTextNode('');
   private readonly digit = document.createElement('span');
@@ -105,7 +104,6 @@ class TextCursor {
   private last: Measured | undefined;
   private font = '';
   private frame: number | undefined;
-  private place = '';
 
   constructor() {
     this.element.className = textCursorClass;
@@ -146,10 +144,9 @@ class TextCursor {
     this.field = undefined;
     this.last = undefined;
     this.font = '';
-    this.place = '';
     this.watched.disconnect();
     this.moved.disconnect();
-    this.element.remove();
+    this.mark.hide();
     this.measure.remove();
   }
 
@@ -169,12 +166,11 @@ class TextCursor {
       return;
     }
     if (field === undefined || document.activeElement !== field) {
-      this.element.remove();
+      this.mark.hide();
       if (field !== undefined) {
         paintSelection(field, []);
       }
       this.last = undefined;
-      this.place = '';
       return;
     }
     if (this.element.previousSibling !== field) {
@@ -208,19 +204,11 @@ class TextCursor {
         head,
         look,
       );
-      if (this.last === undefined || !sameDrawing(this.last.drawn, drawn)) {
-        paintCursor(this.element, drawn, anchorName);
-      }
+      this.mark.paint(drawn, anchorName);
       paintSelection(field, selection);
       this.last = { key, drawn };
     }
-    const place = JSON.stringify([field.value, head]);
-    if (place !== this.place) {
-      this.element.style.animation = look.blink
-        ? blinkAnimation(this.element.style.animationName === 'cursor-blink')
-        : 'none';
-      this.place = place;
-    }
+    this.mark.blinkAt(JSON.stringify([field.value, head]), look.blink);
   }
 
   private drawing(

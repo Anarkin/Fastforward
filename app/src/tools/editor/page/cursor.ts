@@ -1,10 +1,9 @@
 import { type Extension, type SelectionRange } from '@codemirror/state';
 import type { CursorLook } from '../../../lib/shared/cursorSettings';
 import {
-  blinkAnimation,
+  CursorMark,
+  blinkAnew,
   drawnCursor,
-  paintCursor,
-  sameDrawing,
   type DrawnCursor,
 } from '../../../lib/page/cursor';
 import type { Box } from '../../../lib/page/pixelBoxes';
@@ -68,13 +67,10 @@ function cursorMarkers(view: EditorSurface, look: CursorLook): Marker[] {
   }));
 }
 
-function blinking(look: CursorLook, again: boolean): string {
-  return look.blink ? blinkAnimation(again) : 'none';
-}
-
 class Cursors implements SurfacePart {
   private readonly layer: HTMLDivElement;
-  private shown: Marker[] = [];
+  private shown: { readonly className: string; readonly mark: CursorMark }[] =
+    [];
 
   constructor(
     private readonly view: EditorSurface,
@@ -82,17 +78,14 @@ class Cursors implements SurfacePart {
   ) {
     this.layer = view.dom.ownerDocument.createElement('div');
     this.layer.className = 'editor-cursors';
-    this.layer.style.animation = blinking(look, false);
+    blinkAnew(this.layer, look.blink);
     view.scrollDOM.append(this.layer);
     this.draw();
   }
 
   update(update: SurfaceUpdate): void {
     if (update.transactions.some((transaction) => transaction.selection)) {
-      this.layer.style.animation = blinking(
-        this.look,
-        this.layer.style.animationName === 'cursor-blink',
-      );
+      blinkAnew(this.layer, this.look.blink);
     }
     if (
       update.transactions.length > 0 ||
@@ -109,32 +102,24 @@ class Cursors implements SurfacePart {
 
   private draw(): void {
     const markers = cursorMarkers(this.view, this.look);
-    const { children } = this.layer;
     for (const [at, marker] of markers.entries()) {
-      const before = this.shown[at];
-      const element = children[at];
-      if (
-        element instanceof HTMLElement &&
-        before?.className === marker.className
-      ) {
-        if (!sameDrawing(before.drawn, marker.drawn)) {
-          paintCursor(element, marker.drawn);
+      let kept = this.shown[at];
+      if (kept?.className !== marker.className) {
+        const made = this.layer.ownerDocument.createElement('div');
+        made.className = marker.className;
+        if (kept === undefined) {
+          this.layer.append(made);
+        } else {
+          kept.mark.element.replaceWith(made);
         }
-        continue;
+        kept = { className: marker.className, mark: new CursorMark(made) };
+        this.shown[at] = kept;
       }
-      const made = this.layer.ownerDocument.createElement('div');
-      made.className = marker.className;
-      paintCursor(made, marker.drawn);
-      if (element === undefined) {
-        this.layer.append(made);
-      } else {
-        element.replaceWith(made);
-      }
+      kept.mark.paint(marker.drawn);
     }
-    while (this.layer.children.length > markers.length) {
-      this.layer.lastElementChild?.remove();
+    for (const left of this.shown.splice(markers.length)) {
+      left.mark.hide();
     }
-    this.shown = markers;
   }
 }
 

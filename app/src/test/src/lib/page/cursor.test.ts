@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
   thicknessPixels,
-  blinkAnimation,
+  blinkAnew,
   cursorBlinkInterval,
   cursorBox,
   drawnCursor,
@@ -112,14 +112,22 @@ suite('Cursor', () => {
       source,
       new RegExp(`const BLINK_INTERVAL = ${cursorBlinkInterval};`),
     );
-    assert.strictEqual(
-      blinkAnimation(false),
+    const style = {
+      animation: '',
+      get animationName() {
+        return this.animation.split(' ')[0] ?? '';
+      },
+    };
+    const shown = [true, true, true, false].map((blink) => {
+      blinkAnew({ style }, blink);
+      return style.animation;
+    });
+    assert.deepStrictEqual(shown, [
       `cursor-blink ${2 * cursorBlinkInterval}ms steps(1) infinite`,
-    );
-    assert.strictEqual(
-      blinkAnimation(true),
       `cursor-blink-again ${2 * cursorBlinkInterval}ms steps(1) infinite`,
-    );
+      `cursor-blink ${2 * cursorBlinkInterval}ms steps(1) infinite`,
+      'none',
+    ]);
   });
 
   test('draws a block over the cell of the character, the character in it in the font of the text, where the line draws it', () => {

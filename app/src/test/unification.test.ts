@@ -146,4 +146,11 @@ suite('Unification', () => {
       'components/editing/page/inputSession.ts',
     ]);
   });
+
+  test('paints a cursor and starts its blink over once it moves by one mark of the library, which the editor, the canvas, the text boxes and the terminal all draw theirs by, rather than by a copy of that in each', () => {
+    assert.deepStrictEqual(doing(/\bpaintCursor\(/), ['lib/page/cursor.ts']);
+    assert.deepStrictEqual(doing(/'cursor-blink-again'|=== 'cursor-blink'/), [
+      'lib/page/cursor.ts',
+    ]);
+  });
 });

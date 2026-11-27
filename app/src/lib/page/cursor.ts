@@ -19,9 +19,19 @@ export function pageCursorLook(): CursorLook {
 
 export const cursorBlinkInterval = 600;
 
-export function blinkAnimation(again: boolean): string {
+function blinkAnimation(again: boolean): string {
   const name = again ? 'cursor-blink-again' : 'cursor-blink';
   return `${name} ${2 * cursorBlinkInterval}ms steps(1) infinite`;
+}
+
+interface Blinking {
+  readonly style: { animation: string; readonly animationName: string };
+}
+
+export function blinkAnew(element: Blinking, blink: boolean): void {
+  element.style.animation = blink
+    ? blinkAnimation(element.style.animationName === 'cursor-blink')
+    : 'none';
 }
 
 export interface CursorBox extends Box {
@@ -184,4 +194,31 @@ export function paintCursor(
     color: cursorTextColor,
   });
   element.replaceChildren(shown);
+}
+
+export class CursorMark {
+  private drawn: DrawnCursor | undefined;
+  private place: string | undefined;
+
+  constructor(readonly element: HTMLElement) {}
+
+  paint(drawn: DrawnCursor, anchor?: string): void {
+    if (this.drawn === undefined || !sameDrawing(this.drawn, drawn)) {
+      paintCursor(this.element, drawn, anchor);
+      this.drawn = drawn;
+    }
+  }
+
+  blinkAt(place: string, blink: boolean): void {
+    if (place !== this.place) {
+      blinkAnew(this.element, blink);
+      this.place = place;
+    }
+  }
+
+  hide(): void {
+    this.element.remove();
+    this.drawn = undefined;
+    this.place = undefined;
+  }
 }

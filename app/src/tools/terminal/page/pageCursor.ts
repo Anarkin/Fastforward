@@ -1,9 +1,8 @@
 import type { IDisposable, Terminal } from '@xterm/xterm';
 import {
-  blinkAnimation,
   cursorBlinkInterval,
+  CursorMark,
   drawnCursor,
-  paintCursor,
 } from '../../../lib/page/cursor';
 import type { Box } from '../../../lib/page/pixelBoxes';
 import type {
@@ -120,11 +119,11 @@ export function cursorOptions(look: CursorLook): {
 
 export class PageCursor {
   private readonly element = document.createElement('div');
+  private readonly mark = new CursorMark(this.element);
   private shown = true;
   private initialized = false;
   private programStyle: CursorStyle | undefined;
   private programBlink: boolean | undefined;
-  private place = '';
   private blinker: ReturnType<typeof setInterval> | undefined;
   private blinkedOff = false;
   private readonly disposables: IDisposable[];
@@ -265,8 +264,7 @@ export class PageCursor {
       !this.initialized ||
       !drawnByPage(this.style)
     ) {
-      this.element.remove();
-      this.place = '';
+      this.mark.hide();
       return;
     }
     const ratio = devicePixelRatio;
@@ -277,8 +275,7 @@ export class PageCursor {
       canvas instanceof HTMLCanvasElement ? canvas : undefined,
       ratio,
     );
-    paintCursor(
-      this.element,
+    this.mark.paint(
       drawnCursor({
         cell: cellBox(grid, terminal.cols, terminal.rows, cell),
         text: '',
@@ -288,13 +285,7 @@ export class PageCursor {
         origin: { left: rect.left, top: rect.top },
       }),
     );
-    const place = JSON.stringify([cell, this.blink]);
-    if (place !== this.place) {
-      this.element.style.animation = this.blink
-        ? blinkAnimation(this.element.style.animationName === 'cursor-blink')
-        : 'none';
-      this.place = place;
-    }
+    this.mark.blinkAt(JSON.stringify([cell, this.blink]), this.blink);
     if (this.element.parentElement !== screen) {
       screen.append(this.element);
     }
