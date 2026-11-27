@@ -398,6 +398,11 @@ suite('App', () => {
       await commitRow(page, '1 uncommitted change').click();
       await fileRow(page, 'long.txt', { kind: 'file' }).click();
       await untilDiffLine(page, changedFarDown, 'the line changed far down');
+      const row = await drawnCodeRow();
+      await waitFor(
+        async () => (await belowTop()) === Math.round(3 * row),
+        'the change to be shown at its place',
+      );
       await page.locator('.diff-view .virtual-rows').focus();
       await page.keyboard.press('ControlOrMeta+F');
       const field = page.locator('.search-box-input');
