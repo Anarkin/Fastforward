@@ -17,8 +17,11 @@ export type StartWatching = (
   listener: (event: string, name: string | null) => void,
 ) => FSWatcher;
 
-const startWatching: StartWatching = (folder, listener) =>
+export const startWatching: StartWatching = (folder, listener) =>
   fs.watch(folder, { persistent: false }, listener);
+
+export const startWatchingTree: StartWatching = (folder, listener) =>
+  fs.watch(folder, { persistent: false, recursive: true }, listener);
 
 export function watched(
   start: StartWatching,

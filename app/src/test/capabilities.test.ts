@@ -95,17 +95,7 @@ suite('Capabilities', () => {
     ]);
   });
 
-  test('watches the file system only through the watcher of the library, so every watch is kept, closed and told of an error alike', () => {
-    heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts'], {
-      'shell/main/settingsWatch.ts':
-        'to watch through the watcher of the library',
-      'tools/commander/main/watchTree.ts':
-        'to watch through the watcher of the library',
-      'tools/diff/main/compareWatch.ts':
-        'to watch through the watcher of the library',
-      'tools/git/main/watch.ts': 'to watch through the watcher of the library',
-      'tools/git/main/watchFolders.ts':
-        'to watch through the watcher of the library',
-    });
+  test('starts every watch of the file system by the library, a folder or a tree of folders, so every watch takes the same options, none keeping the app from quitting, and each tool keeps only what it does once told of a change or an error', () => {
+    heldBy(/\bfs\.watch\(/, ['lib/main/watch.ts']);
   });
 });

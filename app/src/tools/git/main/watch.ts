@@ -1,3 +1,4 @@
+import { startWatchingTree } from '../../../lib/main/watch';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
 import { InFlight } from '../../../lib/main/inFlight';
@@ -231,7 +232,7 @@ export async function watchRepository(
   let rootTree: TreeWatcher | undefined;
   if (recursive) {
     watchers = watchEach([root, ...gitDirs], (folder) => {
-      const watcher = fs.watch(folder, { recursive: true }, (event, file) => {
+      const watcher = startWatchingTree(folder, (event, file) => {
         const gone = file !== null && path.isAbsolute(file);
         if (gone) {
           watcher.close();

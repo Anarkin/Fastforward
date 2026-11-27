@@ -1,14 +1,14 @@
-import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
-import { watched, type StartWatching } from '../../../lib/main/watch';
+import {
+  startWatchingTree,
+  watched,
+  type StartWatching,
+} from '../../../lib/main/watch';
 
 export type WatchTree = (
   folder: string,
   onChange: (changed: string | undefined) => void,
 ) => () => void;
-
-const startWatchingTree: StartWatching = (folder, listener) =>
-  fs.watch(folder, { persistent: false, recursive: true }, listener);
 
 export function watchTree(
   folder: string,

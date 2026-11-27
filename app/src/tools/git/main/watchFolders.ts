@@ -1,3 +1,4 @@
+import { startWatching } from '../../../lib/main/watch';
 import { codeOf, hasCode } from '../../../lib/shared/errors';
 import { fs } from '../../../lib/main/files';
 import type { Dirent } from '../../../lib/main/files';
@@ -378,5 +379,5 @@ export function watchOneFolder(
   folder: string,
   listener: (event: string, file: string | null) => void,
 ): FolderWatcher {
-  return fs.watch(folder, listener);
+  return startWatching(folder, listener);
 }

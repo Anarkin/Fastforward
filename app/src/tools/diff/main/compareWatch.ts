@@ -1,4 +1,4 @@
-import { fs } from '../../../lib/main/files';
+import { startWatching } from '../../../lib/main/watch';
 import * as path from 'node:path';
 
 const changeDelay = 100;
@@ -23,15 +23,11 @@ export function watchFiles(
   const watchers = [...folders].flatMap(([folder, inside]) => {
     const names = new Set(inside.map((file) => path.basename(file)));
     try {
-      const watcher = fs.watch(
-        folder,
-        { persistent: false },
-        (_event, name) => {
-          if (name === null || names.has(name)) {
-            changed();
-          }
-        },
-      );
+      const watcher = startWatching(folder, (_event, name) => {
+        if (name === null || names.has(name)) {
+          changed();
+        }
+      });
       watcher.on('error', (error) => {
         onFailed(error);
         changed();

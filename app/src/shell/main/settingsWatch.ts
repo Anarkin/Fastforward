@@ -1,3 +1,4 @@
+import { startWatching } from '../../lib/main/watch';
 import { fs } from '../../lib/main/files';
 import type { Stats } from '../../lib/main/files';
 import * as path from 'node:path';
@@ -18,7 +19,7 @@ export function watchSettings(
   const watchers = files.map((watched) => {
     const folder = path.dirname(watched);
     let stamp = stampOf(watched);
-    const watcher = fs.watch(folder, (_event, name) => {
+    const watcher = startWatching(folder, (_event, name) => {
       if (!fs.existsSync(folder)) {
         watcher.close();
         return;
