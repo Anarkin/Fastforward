@@ -359,6 +359,7 @@ suite('App commander', () => {
         await appMenu.waitFor();
         assert.match(await selected(), /menu/);
         assert.deepStrictEqual(await appMenuItems(), [
+          strings.commander.openWithSystem,
           strings.commander.openWithSevenZip,
           strings.commander.openWithViewer,
           strings.commander.openWithDiff,
@@ -403,6 +404,7 @@ suite('App commander', () => {
         await page.keyboard.press('Shift+F10');
         await appMenu.waitFor();
         assert.deepStrictEqual(await appMenuItems(), [
+          strings.commander.openWithSystem,
           strings.commander.openWithSevenZip,
           strings.commander.openWithViewer,
           strings.commander.openWithDiff,
