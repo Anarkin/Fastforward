@@ -56,6 +56,17 @@ export interface Screen {
   see: (() => void) | undefined;
 }
 
+let blank: undefined[] = [];
+
+function unset<Value>(cells: number): (Value | undefined)[] {
+  if (blank.length < cells) {
+    blank = [];
+    blank.length = cells;
+    blank.fill(undefined);
+  }
+  return blank.slice(0, cells);
+}
+
 export function emptyScreen({ column, row, columns, rows }: Box): Screen {
   const cells = Math.max(0, columns * rows);
   return {
@@ -63,15 +74,15 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     row,
     columns,
     rows,
-    glyphs: Array.from<string | undefined>({ length: cells }),
-    kinds: Array.from<string | undefined>({ length: cells }),
+    glyphs: unset<string | undefined>(cells),
+    kinds: unset<string | undefined>(cells),
     lines: new Uint8Array(cells),
-    lineKinds: Array.from<string | undefined>({ length: cells }),
-    arrows: Array.from<Way | undefined>({ length: cells }),
+    lineKinds: unset<string | undefined>(cells),
+    arrows: unset<Way | undefined>(cells),
     covered: new Uint8Array(cells),
-    edges: Array.from<string | undefined>({ length: cells }),
+    edges: unset<string | undefined>(cells),
     owners: new Int32Array(cells).fill(-1),
-    seen: Array.from<string | undefined>({ length: cells }),
+    seen: unset<string | undefined>(cells),
     texts: [],
     carets: [],
     see: undefined,
