@@ -7,7 +7,10 @@ import {
   shownColumns,
   shownRowsOf,
 } from '../../../../../tools/commander/page/shownRows';
-import { filterOf } from '../../../../../tools/commander/page/sideFilters';
+import {
+  filterKey,
+  filterOf,
+} from '../../../../../tools/commander/page/sideFilters';
 import { createCommanderStore } from '../../../../../tools/commander/page/store';
 import { nextSort } from '../../../../../tools/commander/page/rowOrder';
 import { emptyView } from '../../../../../tools/commander/page/view';
@@ -80,6 +83,29 @@ suite('Commander store', () => {
       ['..', 'a.txt', 'c.txt'],
     );
     assert.strictEqual(shownRowsOf(store.getState(), 'left'), filtered);
+  });
+
+  test('shows the same nothing for each side not listed yet, one of them filtered, read in turn, as each answer evicted the other and the window crashed on an update that never settled, again after a reload', () => {
+    const store = createCommanderStore(noop);
+    const state = {
+      ...store.getState(),
+      view: { ...emptyView, tab: '1' },
+      filters: new Map([
+        [
+          filterKey('1', 'left'),
+          { folder: undefined, query: 'a', options: plainSearch },
+        ],
+      ]),
+    };
+    const first = [shownRowsOf(state, 'left'), shownRowsOf(state, 'right')];
+
+    assert.deepStrictEqual(
+      [shownRowsOf(state, 'left'), shownRowsOf(state, 'right')],
+      first,
+    );
+    assert.strictEqual(shownRowsOf(state, 'left'), first[0]);
+    assert.strictEqual(shownRowsOf(state, 'right'), first[1]);
+    assert.deepStrictEqual(first[0]?.rows, []);
   });
 
   test('shows only the files of a side that have a copy while it shows duplicates, grouped in the order of the side and after its filter, once for each change of its rows or groups', () => {

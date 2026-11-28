@@ -137,19 +137,24 @@ function withDuplicates(
   return shown;
 }
 
+const nothingShown: ShownRows = { rows: noRows };
+
 export function shownRowsOf(state: CommanderSource, side: Side): ShownRows {
   const pane = state.view.panes[side];
+  if (pane === undefined) {
+    return nothingShown;
+  }
   const search = filterOf(state, side) ?? noSearch;
   const all =
     pane?.flat === undefined
-      ? shownRowsIn(pane?.rows ?? noRows, search)
+      ? shownRowsIn(pane.rows, search)
       : flatShownRows(
           pane.rows,
           narrows(searchFilter(search.query, search.options))
             ? pane.flat.shown?.rows
             : undefined,
         );
-  return pane?.duplicates === undefined
+  return pane.duplicates === undefined
     ? all
     : withDuplicates(all, pane.duplicates.groups);
 }
