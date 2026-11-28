@@ -144,6 +144,17 @@ export function nudgeOf(left: number, top: number, ratio: number): Nudge {
   };
 }
 
+export function paintedAgain(
+  whole: boolean,
+  filled: boolean,
+  refills: number,
+): { readonly again: boolean; readonly refills: number } {
+  if (whole || (filled && refills > 0)) {
+    return { again: false, refills: 0 };
+  }
+  return { again: true, refills: filled ? refills + 1 : 0 };
+}
+
 export function rasterBudget(
   sinceRowsChanged: number,
   rowsChanged: boolean,
@@ -177,6 +188,7 @@ export class CellView {
   private columns = 0;
   private size: CellSize | undefined;
   private again = 0;
+  private refills = 0;
   private rowsAt = 0;
   private firstRow: string | undefined;
   private budget = restingBudget;
@@ -435,11 +447,14 @@ export class CellView {
       this.budgetFor(shown),
     );
     surface.draw();
-    if (tiles.full) {
+    const filled = tiles.full;
+    if (filled) {
       tiles.reset();
       this.warm();
     }
-    if (!whole) {
+    const next = paintedAgain(whole, filled, this.refills);
+    this.refills = next.refills;
+    if (next.again) {
       this.again = requestAnimationFrame(this.paint);
     }
   };

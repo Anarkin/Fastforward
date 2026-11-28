@@ -4,10 +4,34 @@ import { dotLook } from '../../../../../lib/page/dotLook';
 import {
   dotBoxOf,
   nudgeOf,
+  paintedAgain,
   rasterBudget,
 } from '../../../../../components/cells/page/cellView';
 
 suite('View of cells', () => {
+  test('paints again in the next frame what a frame left, once more with the atlas emptied when it filled, but not again and again when the screen needs more glyphs than it holds, as such a screen painted every frame for ever', () => {
+    assert.deepStrictEqual(paintedAgain(true, false, 0), {
+      again: false,
+      refills: 0,
+    });
+    assert.deepStrictEqual(paintedAgain(false, false, 0), {
+      again: true,
+      refills: 0,
+    });
+    assert.deepStrictEqual(paintedAgain(false, true, 0), {
+      again: true,
+      refills: 1,
+    });
+    assert.deepStrictEqual(paintedAgain(false, true, 1), {
+      again: false,
+      refills: 0,
+    });
+    assert.deepStrictEqual(paintedAgain(true, true, 1), {
+      again: false,
+      refills: 0,
+    });
+  });
+
   test('draws the dot of a space where the stylesheet draws it, on whole device pixels at every scale, in the middle of its row', () => {
     assert.deepStrictEqual(dotBoxOf(dotLook(12, 7, 1), 1, 18), {
       size: 2,
