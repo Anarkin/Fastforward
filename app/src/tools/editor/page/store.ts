@@ -137,6 +137,9 @@ export function createEditorStore(
               get().keepEditing(message.tab, { reopening: undefined });
             }
             break;
+          case 'askReopen':
+            get().keepEditing(message.tab, { reopening: message.encoding });
+            break;
           case 'textChanged':
             set((state) =>
               state.edited?.tab === message.tab

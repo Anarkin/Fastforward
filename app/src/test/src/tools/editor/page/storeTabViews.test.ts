@@ -128,5 +128,11 @@ suite('Editor store keeping its tabs', () => {
     assert.strictEqual(store.getState().keptEditing('3').reopening, 'utf-16le');
     editing(false);
     assert.strictEqual(store.getState().keptEditing('3').reopening, undefined);
+    editing(true);
+    receive({ type: 'askReopen', tab: '3', encoding: 'windows-1252' });
+    assert.strictEqual(
+      store.getState().keptEditing('3').reopening,
+      'windows-1252',
+    );
   });
 });

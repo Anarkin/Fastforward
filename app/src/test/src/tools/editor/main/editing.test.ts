@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { ChangeSet } from '@codemirror/state';
 import { suite, test, vi } from 'vitest';
 import { plainOf, type Sentence } from '../../../../../lib/shared/sentences';
 import {
@@ -359,6 +360,42 @@ suite('Editing a file', () => {
     await edits.receive(page, { type: 'readEdited', tab: '2' });
     assert.strictEqual(page.last('editedText')?.at, 13);
     assert.strictEqual(page.last('editedText')?.shown.encoding, 'utf-8');
+  });
+
+  test('reads a file with changes not saved again in another encoding only once told to drop them, asking the page otherwise, as the page that asked first could not know of an edit just made', async () => {
+    const { edits, showing } = editing({ 'a.txt': 'one\n' });
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, {
+      type: 'editText',
+      tab: '1',
+      update: {
+        version: 0,
+        changes: ChangeSet.of({ from: 0, insert: 'A' }, 4).toJSON(),
+      },
+    });
+
+    await edits.receive(page, {
+      type: 'reopenIn',
+      tab: '1',
+      encoding: 'windows-1252',
+    });
+    assert.strictEqual(edits.unsaved('1'), true);
+    assert.deepStrictEqual(page.last('askReopen'), {
+      type: 'askReopen',
+      tab: '1',
+      encoding: 'windows-1252',
+    });
+
+    await edits.receive(page, {
+      type: 'reopenIn',
+      tab: '1',
+      encoding: 'windows-1252',
+      discard: true,
+    });
+    assert.strictEqual(edits.unsaved('1'), false);
+    assert.strictEqual(page.last('editedText')?.shown.encoding, 'windows-1252');
   });
 
   test('reads the file again in the encoding chosen once it changes on disk, in the one found once Auto is chosen, and in the one it was saved in', async () => {

@@ -44,7 +44,11 @@ export interface EditorActions {
     encoding: TextEncoding | 'auto',
     bom: boolean,
   ) => void;
-  readonly reopenIn: (tab: string, encoding: TextEncoding | 'auto') => void;
+  readonly reopenIn: (
+    tab: string,
+    encoding: TextEncoding | 'auto',
+    discard?: true,
+  ) => void;
   readonly keptEditor: (tab: string) => KeptEditor | undefined;
   readonly keptEditing: (tab: string) => KeptEditing;
   readonly keepEditing: (tab: string, change: Partial<KeptEditing>) => void;

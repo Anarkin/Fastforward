@@ -109,7 +109,13 @@ export function editorActions(
       editSource: (tab, file) => post({ type: 'editSource', tab, file }),
       saveIn: (tab, encoding, bom) =>
         post({ type: 'saveIn', tab, encoding, bom }),
-      reopenIn: (tab, encoding) => post({ type: 'reopenIn', tab, encoding }),
+      reopenIn: (tab, encoding, discard) =>
+        post({
+          type: 'reopenIn',
+          tab,
+          encoding,
+          ...(discard === true && { discard }),
+        }),
       compareVersions: (tab) => post({ type: 'compareVersions', tab }),
       viewEdited: (tab, at) => post({ type: 'viewEdited', tab, at }),
     },

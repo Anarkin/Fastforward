@@ -479,6 +479,14 @@ export class Editing {
       case 'reopenIn':
         if (message.encoding === 'auto' || isTextEncoding(message.encoding)) {
           const { encoding } = message;
+          if (opened.changed && message.discard !== true) {
+            this.ask(page, message.tab, opened.file, {
+              type: 'askReopen',
+              tab: message.tab,
+              encoding,
+            });
+            return;
+          }
           await this.inTurn(message.tab, () =>
             this.readAgain(message.tab, opened, encoding),
           );

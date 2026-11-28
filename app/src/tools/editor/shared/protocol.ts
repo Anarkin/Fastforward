@@ -93,6 +93,7 @@ export type EditorToHost =
       readonly type: 'reopenIn';
       readonly tab: string;
       readonly encoding: TextEncoding | 'auto';
+      readonly discard?: true;
     }
   | {
       readonly type: 'editSource';
@@ -137,7 +138,12 @@ export type EditorToWebview =
       readonly changed: boolean;
     }
   | { readonly type: 'askOverwrite'; readonly tab: string }
-  | { readonly type: 'askChangedOnDisk'; readonly tab: string };
+  | { readonly type: 'askChangedOnDisk'; readonly tab: string }
+  | {
+      readonly type: 'askReopen';
+      readonly tab: string;
+      readonly encoding: TextEncoding | 'auto';
+    };
 
 export type EditorToWebviewOf<T extends EditorToWebview['type']> = Extract<
   EditorToWebview,

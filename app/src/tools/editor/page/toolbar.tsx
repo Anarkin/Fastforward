@@ -223,7 +223,7 @@ export function EditorToolbar({
           confirm={strings.editor.reopen}
           onConfirm={() => {
             setReopening(undefined);
-            reopenIn(tab, reopening);
+            reopenIn(tab, reopening, true);
             view.current?.focus();
           }}
           onCancel={() => {
