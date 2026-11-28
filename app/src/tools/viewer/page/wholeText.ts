@@ -12,6 +12,10 @@ import {
 import type { Viewing } from './viewing';
 import { useViewer, useViewerActions } from './store';
 
+export const previewEncoding = (
+  viewing: Pick<Viewing, 'detected'>,
+): TextEncoding => viewing.detected ?? 'utf-8';
+
 export function useWholeText(
   viewing: Viewing,
   wanted: boolean,

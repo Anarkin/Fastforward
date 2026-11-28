@@ -17,7 +17,7 @@ import { imageType, vectorType } from '../../../lib/shared/images';
 import { MarkdownPane } from './markdownView';
 import { PdfPane } from './pdfView';
 import { viewerKeymap } from './keymap';
-import { useWholeText } from './wholeText';
+import { previewEncoding, useWholeText } from './wholeText';
 import { keyPressed } from '../../../lib/page/shortcuts';
 import { previewUrl, type Preview } from './previews';
 import { imageScrolled } from './imageScroll';
@@ -44,7 +44,7 @@ function MarkdownPreview({
   find: MarkdownFindControls;
 }) {
   const tooLarge = viewing.size !== undefined && viewing.size > maxPreviewBytes;
-  const text = useWholeText(viewing, !tooLarge, 'utf-8')?.text;
+  const text = useWholeText(viewing, !tooLarge, previewEncoding(viewing))?.text;
   const { tab, version } = viewing;
   const images = useMemo(() => {
     const document = file.replaceAll('\\', '/');
