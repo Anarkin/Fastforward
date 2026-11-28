@@ -450,6 +450,7 @@ suite('App with lists longer than their columns', () => {
         element.scrollTop = element.scrollHeight;
       });
     await fileRow(page, 'long.txt', { kind: 'file' }).click();
+    await fileRow(page, 'long.txt', { kind: 'file', selected: true }).waitFor();
     await untilDiffLine(
       page,
       ({ text }) => text === firstLongLine,
