@@ -6,7 +6,7 @@ import { afterAll, beforeAll, suite, test } from 'vitest';
 import { strings } from '../../lib/shared/strings';
 import { closeOrKill, launchApp } from './appLaunch';
 import { writeSettings } from './settingsWritten';
-import { onceDrawn } from './waits';
+import { onceDrawn, untilSettled } from './waits';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { waitFor } from '../helpers/fixtures';
 import { seenRows } from './cellsSeen';
@@ -207,11 +207,11 @@ suite('App tooltips', () => {
       [2, editorRows],
     ] as const) {
       await page.locator('.tabs .tab').nth(tab).click();
-      let row: SeenRow | undefined;
-      await waitFor(async () => {
-        [row] = await rows(page);
-        return row?.text === 'te​xt';
-      }, `the text of tab ${tab}`);
+      const [row] = await untilSettled(
+        () => rows(page),
+        `the text of tab ${tab}, laid out to rest`,
+        { accepted: ([first]) => first?.text === 'te​xt' },
+      );
       assert.ok(row);
       await page.mouse.move(
         row.left + (2 - row.column + 0.5) * row.advance,
@@ -282,11 +282,11 @@ suite('App tooltips', () => {
     await page.locator('.viewer .viewer-body').first().focus();
     await page.keyboard.press('1');
     const signs = `te${strings.symbols.invisible.repeat(3)}xt`;
-    let row: SeenRow | undefined;
-    await waitFor(async () => {
-      [row] = await seenRows(page);
-      return row?.text.endsWith(signs) ?? false;
-    }, 'the bytes in Hex');
+    const [row] = await untilSettled(
+      () => seenRows(page),
+      'the bytes in Hex, laid out to rest',
+      { accepted: ([first]) => first?.text.endsWith(signs) ?? false },
+    );
     assert.ok(row);
     const first = row.text.length - signs.length + 2;
     await page.mouse.move(
