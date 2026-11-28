@@ -119,7 +119,11 @@ export class ViewerTool implements Tool<'viewer'> {
     if (tab.root === undefined) {
       return;
     }
-    this.pages.shown.set(page, { tab: tab.id, viewingsAsked: 0 });
+    const showing = { tab: tab.id, viewingsAsked: 0 };
+    this.pages.shown.set(page, showing);
+    if (tab.version === undefined) {
+      this.copies.delete(tab.id);
+    }
     const start =
       tab.version === undefined ? this.starts.get(tab.root) : undefined;
     if (tab.version === undefined) {
@@ -137,6 +141,9 @@ export class ViewerTool implements Tool<'viewer'> {
       tab.version === undefined
         ? tab.root
         : await this.copyOf(page, tab.id, tab.root, tab.version);
+    if (this.pages.shown.get(page) !== showing) {
+      return;
+    }
     if (read !== undefined) {
       await this.viewers.startViewing(page, tab.id, tab.root, read);
     }

@@ -45,6 +45,7 @@ export function viewer({ patterns }: { patterns?: PatternSearch } = {}) {
   const histories = new Map<string, FileHistoryListed>();
   const comparedHistories: (readonly [string, string | undefined])[] = [];
   const clipboard: string[] = [];
+  const copying: { until: Promise<void> | undefined } = { until: undefined };
   const tool = new ViewerTool({
     copy: (text) => {
       clipboard.push(text);
@@ -84,11 +85,12 @@ export function viewer({ patterns }: { patterns?: PatternSearch } = {}) {
       comparedHistories.push([file, rev]);
       return Promise.resolve();
     },
-    versionCopy: (file, rev) => {
+    versionCopy: async (file, rev) => {
+      await copying.until;
       const copy = versions.get(`${rev} ${file}`);
-      return Promise.resolve(
-        copy === undefined ? { kind: 'missing' } : { kind: 'file', file: copy },
-      );
+      return copy === undefined
+        ? { kind: 'missing' }
+        : { kind: 'file', file: copy };
     },
     ...(patterns !== undefined && { patterns }),
   });
@@ -123,6 +125,7 @@ export function viewer({ patterns }: { patterns?: PatternSearch } = {}) {
     versionsSet,
     tabsOpened,
     clipboard,
+    copying,
   };
 }
 

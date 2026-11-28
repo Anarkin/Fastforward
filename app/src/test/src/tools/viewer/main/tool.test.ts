@@ -128,6 +128,51 @@ suite('Viewer tool', () => {
     assert.strictEqual(await served.text(), 'old pixels');
   });
 
+  test('serves the file on disk once its tab shows it again after a version of it, as the copy of the version was served under the title of the file', async () => {
+    const copy = path.join(opened, 'copies', 'logo.png');
+    fs.mkdirSync(path.dirname(copy));
+    fs.writeFileSync(copy, 'old pixels');
+    const logo = path.join(opened, 'logo.png');
+    fs.writeFileSync(logo, 'new pixels');
+    const { tool, page, tabs, versions } = viewer();
+    versions.set(`${hash} ${logo}`, copy);
+    tabs.push(versionOf(logo));
+    await tool.show(page, versionOf(logo));
+    const onDisk = { id: '3', tool: 'viewer', root: logo } as const;
+    tabs.splice(0, tabs.length, onDisk);
+    await tool.show(page, onDisk);
+
+    const served = await tool.file(
+      new URL(`fastforward://app${viewedFileUrl('3', logo)}`),
+      null,
+    );
+    assert.strictEqual(await served.text(), 'new pixels');
+  });
+
+  test('views the file on disk shown after a version whose copy git was still making, rather than the version once its copy comes, as the late copy took the tab over under the title of the file', async () => {
+    const copy = path.join(opened, 'copies', 'notes.txt');
+    fs.mkdirSync(path.dirname(copy));
+    fs.writeFileSync(copy, 'the old version, longer');
+    const notes = path.join(opened, 'notes.txt');
+    fs.writeFileSync(notes, 'new');
+    const { tool, page, tabs, versions, copying } = viewer();
+    versions.set(`${hash} ${notes}`, copy);
+    const { promise: held, resolve: release } = Promise.withResolvers<void>();
+    copying.until = held;
+    tabs.push(versionOf(notes));
+    const showingVersion = tool.show(page, versionOf(notes));
+    const onDisk = { id: '3', tool: 'viewer', root: notes } as const;
+    tabs.splice(0, tabs.length, onDisk);
+    await tool.show(page, onDisk);
+    release();
+    await showingVersion;
+
+    assert.deepStrictEqual(
+      page.of('viewing').map(({ size }) => size),
+      [3],
+    );
+  });
+
   test('says a version is not there to view when git can no longer give it', async () => {
     const notes = path.join(opened, 'notes.txt');
     const { tool, page } = viewer();
