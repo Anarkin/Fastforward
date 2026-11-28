@@ -533,6 +533,19 @@ suite('Git tool navigating the history', () => {
     assert.strictEqual(page.last('navigation')?.forward.length, 0);
   });
 
+  test('selects a commit a collapsed merge hides, as one found by the filter, by expanding the merge, as it said the commit was not in the history', async () => {
+    await withNotices(page, 'error', async (errors) => {
+      await connection.receive({
+        type: 'selectCommit',
+        root: repository.root,
+        hash: fixture.f2,
+        selection: 1,
+      });
+      assert.deepStrictEqual(errors, []);
+    });
+    assert.strictEqual(page.last('reveal')?.hash, fixture.f2);
+  });
+
   test('goes back two steps clicked at once, the first to a commit a collapsed merge hides', async () => {
     for (const hash of [fixture.merge, fixture.b]) {
       await connection.receive({

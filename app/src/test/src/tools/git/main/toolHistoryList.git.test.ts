@@ -8,7 +8,6 @@ import {
   test,
 } from 'vitest';
 import { comparisonOf } from '../../../../../lib/shared/comparisons';
-import { plainOf } from '../../../../../lib/shared/sentences';
 import type { GitTool } from '../../../../../tools/git/main/tool';
 import type { TempRepository } from '../../../../helpers/repositories';
 import {
@@ -252,16 +251,14 @@ suite('Git tool listing the history', () => {
       assert.strictEqual(page.last('files')?.hash, fixture.f2);
     });
 
-    test('says so when a commit picked is hidden in a collapsed merge', async () => {
+    test('expands the collapsed merge that hides a commit picked, as the filter lists such commits, rather than saying it is not in the history', async () => {
       await connection.receive({
         type: 'selectCommit',
         root: repository.root,
         hash: fixture.f2,
       });
-      assert.match(
-        plainOf(page.last('error')?.message ?? ''),
-        /not in the history/,
-      );
+      assert.strictEqual(page.last('error'), undefined);
+      assert.strictEqual(page.last('reveal')?.hash, fixture.f2);
     });
   });
 });

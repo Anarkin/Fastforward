@@ -4,7 +4,14 @@ import type { Diffs } from './diffs';
 import type { DiffTexts } from './diffTexts';
 import type { GitStorage } from './storage';
 import { notInHistory, type Context } from './tabContext';
-import { pickable, select, stillThere, unselect } from './tabState';
+import {
+  hiddenSides,
+  pickable,
+  select,
+  stillThere,
+  unselect,
+} from './tabState';
+import { mergesHidingCommit } from './tabLayout';
 import type { TreePaths } from './treePaths';
 
 export type SelectionMessage = Extract<
@@ -42,7 +49,19 @@ export class Selections {
           return;
         }
         if (!pickable(context.tab, message.hash)) {
-          notInHistory(context, message.hash);
+          if (
+            hiddenSides(context.tab, message.hash).every(
+              (side) => mergesHidingCommit(context.tab, side).length > 0,
+            )
+          ) {
+            await this.commitNavigation().showCommit(
+              context,
+              message.hash,
+              message.selection,
+            );
+          } else {
+            notInHistory(context, message.hash);
+          }
           return;
         }
         this.commitNavigation().visit(context, message.hash, message.replace);
