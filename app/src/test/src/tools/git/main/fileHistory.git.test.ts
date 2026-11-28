@@ -56,6 +56,25 @@ suite('File history', () => {
     assert.deepStrictEqual([history.staged, history.changed], [false, false]);
   });
 
+  test('lists the merge that changed a file against its first parent as the newest version, as the file on disk is the merge, which the history left out', async () => {
+    const merged = await tempRepository(path.join(parent, 'merged'));
+    await merged.commit('base', { 'm.txt': 'base\n' });
+    await merged.git('switch', '-q', '-c', 'side');
+    await merged.commit('theirs', { 'm.txt': 'theirs\n' });
+    await merged.git('switch', '-q', 'main');
+    await merged.commit('ours', { 'm.txt': 'ours\n' });
+    await merged.git('merge', '-q', '--no-edit', '-X', 'theirs', 'side');
+    const [merge] = await merged.resolve('HEAD');
+
+    const history = await fileHistory(
+      merged.gitPath,
+      path.join(merged.root, 'm.txt'),
+    );
+
+    assert.strictEqual(history?.versions[0]?.rev, merge);
+    assert.strictEqual(history.changed, false);
+  });
+
   test('marks the commit that deleted a file, as it has no version of it', async () => {
     const [one, five] = await repository.resolve('HEAD~4', 'HEAD');
     const history = await fileHistory(repository.gitPath, at('c.txt'));

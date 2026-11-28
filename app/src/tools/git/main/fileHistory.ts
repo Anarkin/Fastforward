@@ -52,6 +52,7 @@ export async function fileHistory(
     runGit(gitPath, at.root, [
       'log',
       '--follow',
+      '--diff-merges=first-parent',
       '-z',
       '--name-status',
       `--format=${recordStart}%H%x00%ct%x00%s`,
