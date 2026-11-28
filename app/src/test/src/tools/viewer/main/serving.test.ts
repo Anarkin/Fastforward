@@ -51,6 +51,71 @@ suite('Viewer tool serving the files of a tab', () => {
     );
     assert.strictEqual((await served('3', large)).status, 413);
   });
+
+  test('serves a document only the images of its repository, or of its own folder and those below it outside one, as a document could name any image of the drive by going up its folders', async () => {
+    const { tool, tabs } = viewer();
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    const repository = path.join(opened, 'repository');
+    const loose = path.join(opened, 'loose');
+    for (const folder of [
+      path.join(repository, '.git'),
+      path.join(repository, 'docs'),
+      path.join(repository, 'assets'),
+      path.join(loose, 'pictures'),
+    ]) {
+      fs.mkdirSync(folder, { recursive: true });
+    }
+    const inRepository = path.join(repository, 'assets', 'a.png');
+    const below = path.join(loose, 'pictures', 'b.png');
+    const outside = path.join(opened, 'outside.png');
+    for (const image of [inRepository, below, outside]) {
+      fs.writeFileSync(image, png);
+    }
+    tabs.push(
+      { id: '3', tool: 'viewer', root: path.join(repository, 'docs', 'a.md') },
+      { id: '4', tool: 'viewer', root: path.join(loose, 'b.md') },
+    );
+    const status = async (tab: string, image: string) =>
+      (
+        await tool.file(
+          new URL(`fastforward://app${viewedFileUrl(tab, image)}`),
+          null,
+        )
+      ).status;
+
+    assert.deepStrictEqual(
+      [
+        await status('3', inRepository),
+        await status('3', outside),
+        await status('4', below),
+        await status('4', outside),
+        await status('4', inRepository),
+      ],
+      [200, 404, 200, 404, 404],
+    );
+  });
+
+  test.skipIf(process.platform === 'win32')(
+    'serves no image whose real path leaves the folder of the document, as a link beside it named as an image could lead anywhere',
+    async () => {
+      const { tool, tabs } = viewer();
+      const loose = path.join(opened, 'loose');
+      fs.mkdirSync(loose);
+      const secret = path.join(opened, 'secret.png');
+      fs.writeFileSync(secret, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+      const linked = path.join(loose, 'linked.png');
+      fs.symlinkSync(secret, linked);
+      tabs.push({ id: '3', tool: 'viewer', root: path.join(loose, 'a.md') });
+
+      const served = await tool.file(
+        new URL(`fastforward://app${viewedFileUrl('3', linked)}`),
+        null,
+      );
+
+      assert.strictEqual(served.status, 404);
+    },
+  );
+
   test.skipIf(process.platform !== 'win32')(
     'refuses the images of a drive or share other than that of the file viewed, as a document on a share could name an image on a host of its own and have Windows sign in to it',
     async () => {

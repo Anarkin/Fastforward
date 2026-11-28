@@ -9,6 +9,42 @@ import { onSameVolume } from '../../../lib/main/volumes';
 
 const notFound = () => new Response(null, { status: 404 });
 
+async function imagesRootOf(viewed: string): Promise<string> {
+  const folder = path.dirname(viewed);
+  for (let at = folder; ; at = path.dirname(at)) {
+    if (
+      await fs.promises.stat(path.join(at, '.git')).then(
+        () => true,
+        () => false,
+      )
+    ) {
+      return at;
+    }
+    if (path.dirname(at) === at) {
+      return folder;
+    }
+  }
+}
+
+const isWithin = (root: string, file: string): boolean => {
+  const relative = path.relative(root, file);
+  return (
+    relative !== '' &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+};
+
+async function shownBy(viewed: string, image: string): Promise<boolean> {
+  const root = await imagesRootOf(viewed);
+  const [realRoot, real] = await Promise.all([
+    fs.promises.realpath(root).catch(() => root),
+    fs.promises.realpath(image).catch(() => undefined),
+  ]);
+  return real !== undefined && isWithin(realRoot, real);
+}
+
 export class Serving {
   constructor(
     private readonly tabs: () => readonly Tab[],
@@ -36,7 +72,8 @@ export class Serving {
     if (
       !type ||
       !path.isAbsolute(asked.file) ||
-      !onSameVolume(asked.file, viewer.root)
+      !onSameVolume(asked.file, viewer.root) ||
+      (asked.file !== viewer.root && !(await shownBy(viewer.root, asked.file)))
     ) {
       return notFound();
     }
