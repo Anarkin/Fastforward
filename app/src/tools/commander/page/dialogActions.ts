@@ -156,7 +156,7 @@ export function dialogActions({
     },
     cancelNewFolder: () => set({ makingFolder: undefined }),
     askNewFile: (side) =>
-      onDisk(side, (tab, folder) => set({ makingFile: { tab, side, folder } })),
+      onPane(side, (tab, folder) => set({ makingFile: { tab, side, folder } })),
     makeFile: (name) => {
       const { makingFile } = get();
       if (makingFile !== undefined) {

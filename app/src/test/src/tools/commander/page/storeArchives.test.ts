@@ -12,23 +12,28 @@ const fileEntry = (name: string) => ({
 });
 
 suite('The commander store in archives', () => {
-  test('asks for a new name and for the name of a new folder inside an archive too, sending them for the folder in it', () => {
+  test('asks for a new name and for the name of a new folder or file inside an archive too, sending them for the folder in it, as Shift+F4 asked nothing there though the main process makes the file', () => {
     const { posted, store } = shown();
     store.getState().receive({ ...listing('C:\\a.zip'), archive: 'C:\\a.zip' });
     store.getState().askRename('left', 'a.txt');
     store.getState().rename('b.txt');
     store.getState().askNewFolder('left');
     store.getState().makeFolder('fresh');
+    store.getState().askNewFile('left');
+    store.getState().makeFile('new.txt');
     assert.deepStrictEqual(
       posted
         .filter(
           (message) =>
-            message.type === 'rename' || message.type === 'newFolder',
+            message.type === 'rename' ||
+            message.type === 'newFolder' ||
+            message.type === 'newFile',
         )
         .map((message) => [message.type, message.folder]),
       [
         ['rename', 'C:\\a.zip'],
         ['newFolder', 'C:\\a.zip'],
+        ['newFile', 'C:\\a.zip'],
       ],
     );
   });
