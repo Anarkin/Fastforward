@@ -57,7 +57,7 @@ export class FlatSorter {
       if (kept === undefined) {
         continue;
       }
-      const { order, shown, query } = kept.order.result();
+      const { order, shown, query, options } = kept.order.result();
       this.post(
         {
           type: 'order',
@@ -65,6 +65,7 @@ export class FlatSorter {
           walk: kept.walk,
           batch: kept.batch,
           query,
+          options,
           order,
           shown,
         },

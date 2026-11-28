@@ -1,3 +1,4 @@
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type {
   CommanderToWebviewOf,
   Entry,
@@ -22,6 +23,7 @@ export interface Listed {
 
 export interface FlatShown {
   readonly query: string;
+  readonly options: SearchOptions;
   readonly rows: readonly Row[];
 }
 

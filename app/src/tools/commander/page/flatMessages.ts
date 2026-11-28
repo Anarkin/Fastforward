@@ -46,6 +46,7 @@ export interface FromFlatWorker {
   readonly walk: number;
   readonly batch: number;
   readonly query: string;
+  readonly options: SearchOptions;
   readonly order: Uint32Array;
   readonly shown: Uint32Array | undefined;
 }

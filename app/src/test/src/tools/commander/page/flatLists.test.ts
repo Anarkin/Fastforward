@@ -133,6 +133,7 @@ suite('The rows of flat views', () => {
             pane: 'a',
             walk: 1,
             batch,
+            options: plainSearch,
             query: '',
             order: Uint32Array.from(order),
             shown: undefined,

@@ -1,5 +1,6 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type {
   CommanderToHost,
   CommanderToWebview,
@@ -115,7 +116,7 @@ suite('The commander store in flat view', () => {
     );
   });
 
-  test('filters a flat side through the worker', () => {
+  test('filters a flat side through the worker, and on the page while the worker has not answered for the filter the side shows, as Mod+A marked, and F8 deleted, every file in between', () => {
     const { store, sort, keys } = flat();
     const { receive, filterSide } = store.getState();
     receive(
@@ -127,12 +128,20 @@ suite('The commander store in flat view', () => {
     sort();
 
     filterSide('left', 'cat');
-    assert.deepStrictEqual(keys(), [
-      '..',
-      'cat.jpg',
-      'dog.jpg',
-      'more/cat.png',
-    ]);
+    assert.deepStrictEqual(keys(), ['..', 'cat.jpg', 'more/cat.png']);
+    sort();
+    filterSide('left', 'dog');
+    assert.deepStrictEqual(keys(), ['..', 'dog.jpg']);
+    sort();
+    filterSide('left', 'CAT', {
+      caseSensitive: true,
+      wholeWord: false,
+      regex: false,
+    });
+    assert.deepStrictEqual(keys(), ['..']);
+    sort();
+    assert.deepStrictEqual(keys(), ['..']);
+    filterSide('left', 'cat', plainSearch);
     sort();
 
     assert.deepStrictEqual(keys(), ['..', 'cat.jpg', 'more/cat.png']);

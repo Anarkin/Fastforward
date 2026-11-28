@@ -22,6 +22,7 @@ export interface FlatResult {
   readonly order: Uint32Array;
   readonly shown: Uint32Array | undefined;
   readonly query: string;
+  readonly options: SearchOptions;
 }
 
 function sortsAlike(one: FlatChoices, other: FlatChoices): boolean {
@@ -112,6 +113,7 @@ export class FlatOrder {
               (row) => row.slot,
             ),
       query: choices.query,
+      options: choices.options,
     };
   }
 

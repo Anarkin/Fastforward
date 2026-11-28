@@ -145,13 +145,18 @@ export function shownRowsOf(state: CommanderSource, side: Side): ShownRows {
     return nothingShown;
   }
   const search = filterOf(state, side) ?? noSearch;
+  const answered = pane.flat?.shown;
   const all =
-    pane?.flat === undefined
+    pane.flat === undefined ||
+    (narrows(searchFilter(search.query, search.options)) &&
+      (answered === undefined ||
+        answered.query !== search.query ||
+        !sameSearchOptions(answered.options, search.options)))
       ? shownRowsIn(pane.rows, search)
       : flatShownRows(
           pane.rows,
           narrows(searchFilter(search.query, search.options))
-            ? pane.flat.shown?.rows
+            ? answered?.rows
             : undefined,
         );
   return pane.duplicates === undefined

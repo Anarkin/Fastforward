@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { suite, test } from 'vitest';
 import {
   reduceView,
@@ -117,6 +118,7 @@ suite('The view of a flat side', () => {
       flatRows(['a.txt', 'cat.jpg', 'sub/cat.png'], {
         shown: {
           query: 'cat',
+          options: plainSearch,
           rows: [parentRow, rowNamed('cat.jpg'), rowNamed('sub/cat.png')],
         },
       }),

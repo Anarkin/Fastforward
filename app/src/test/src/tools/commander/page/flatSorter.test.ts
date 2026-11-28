@@ -83,6 +83,7 @@ suite('The sorter of flat views', () => {
           walk: 1,
           batch: 2,
           query: '',
+          options: plainSearch,
           order: [1, 0, 2],
           shown: undefined,
         },

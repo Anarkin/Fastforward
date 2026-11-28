@@ -1,3 +1,4 @@
+import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import { type FlatFolder } from '../shared/protocol';
 import { sameSearchOptions } from '../../../lib/shared/searchOptions';
 import { sides, type Side } from '../shared/sides';
@@ -23,7 +24,12 @@ export interface FlatWorker {
 export interface FlatBuilt {
   readonly rows: readonly Row[];
   readonly shown:
-    { readonly query: string; readonly rows: readonly Row[] } | undefined;
+    | {
+        readonly query: string;
+        readonly options: SearchOptions;
+        readonly rows: readonly Row[];
+      }
+    | undefined;
   readonly complete: boolean;
 }
 
@@ -266,7 +272,11 @@ export class FlatLists {
       shown:
         answer.shown === undefined
           ? undefined
-          : { query: answer.query, rows: rowsOf(answer.shown) },
+          : {
+              query: answer.query,
+              options: answer.options,
+              rows: rowsOf(answer.shown),
+            },
       complete: answer.batch === kept.sent,
     };
     while (
