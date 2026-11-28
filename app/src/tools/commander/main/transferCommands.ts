@@ -121,7 +121,7 @@ export class TransferCommands {
     }
     if (other.archive !== undefined) {
       if (shown.pane.archive === undefined) {
-        this.archiveTransferCommands.transferIn(
+        await this.archiveTransferCommands.transferIn(
           page,
           shown,
           other,

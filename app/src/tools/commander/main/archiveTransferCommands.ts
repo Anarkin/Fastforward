@@ -80,14 +80,14 @@ export class ArchiveTransferCommands {
     private readonly host: Pick<TransferCommandsHost, 'refuse'>,
   ) {}
 
-  transferIn(
+  async transferIn(
     page: Page,
     shown: ShownPane,
     other: Pane,
     names: readonly string[],
     move: boolean,
     existing: unknown,
-  ): void {
+  ): Promise<void> {
     const { archives, platform, stock } = this.access;
     const inside = archives?.within(other.folder);
     if (
@@ -134,6 +134,19 @@ export class ArchiveTransferCommands {
       return;
     }
     if (kept.length === 0 || !this.archiveCommands.changeable(page, archive)) {
+      return;
+    }
+    const encrypted = archive.tree.totals(
+      (archive.tree.entries([]) ?? []).map((entry) => ({
+        inner: [],
+        name: entry.name,
+      })),
+    ).encrypted;
+    if (
+      encrypted &&
+      !archives.hasPassword(archive.file) &&
+      !(await this.passwords.passwordGiven(page, archive.file, false))
+    ) {
       return;
     }
     this.transfers.start(

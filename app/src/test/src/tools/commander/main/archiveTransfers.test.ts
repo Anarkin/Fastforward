@@ -98,6 +98,38 @@ suite('Commander tool in archives', () => {
     ]);
   });
 
+  test('asks for the password of an archive whose files are encrypted before adding items to it, adding nothing without one, as the items went in unencrypted beside encrypted ones', async () => {
+    const { tool, page, send, archived, secrets, changedInArchives } =
+      commander({ [root]: [file('a.zip'), file('new.txt')] });
+    archived.set(at('a.zip'), [
+      { ...archiveItem('secret.txt'), encrypted: true },
+    ]);
+    secrets.set(at('a.zip'), 'right');
+    await tool.show(page, tab);
+    await send({ type: 'enterArchive', tab: '1', side: 'left', name: 'a.zip' });
+    const copying = send({
+      type: 'transfer',
+      tab: '1',
+      side: 'right',
+      folder: root,
+      names: ['new.txt'],
+      target: at('a.zip'),
+      move: false,
+    });
+    await waitFor(
+      () => page.of('askPassword').length === 1,
+      'the password of the archive to be asked',
+    );
+    assert.deepStrictEqual(changedInArchives, []);
+
+    await send({
+      type: 'password',
+      ask: page.of('askPassword').at(-1)?.ask ?? 0,
+    });
+    await copying;
+    assert.deepStrictEqual(changedInArchives, []);
+  });
+
   test('keeps what changed in an item moved into an archive while it was packed, deleting only what it took stock of before, and says which', async () => {
     const { tool, page, send, archived, removed, notices } = commander({
       [root]: [file('a.zip'), folder('busy'), file('new.txt')],
