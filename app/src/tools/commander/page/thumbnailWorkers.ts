@@ -15,6 +15,7 @@ export interface WorkerLike {
     type: 'message' | 'error',
     listener: (event: MessageEvent<FromThumbnailWorker>) => void,
   ): void;
+  terminate(): void;
 }
 
 interface Job {
@@ -86,13 +87,18 @@ export class ThumbnailWorkers {
     if (filling) {
       this.fillsRunning++;
     }
-    const done = (answer: FromThumbnailWorker) => {
+    const done = (answer: FromThumbnailWorker, lost = false) => {
       worker.removeEventListener('message', answered);
       worker.removeEventListener('error', failed);
       if (filling) {
         this.fillsRunning--;
       }
-      this.idle.push(worker);
+      if (lost) {
+        worker.terminate();
+        this.started--;
+      } else {
+        this.idle.push(worker);
+      }
       job.answer(answer);
       this.assign();
     };
@@ -101,7 +107,7 @@ export class ThumbnailWorkers {
         done(data);
       }
     };
-    const failed = () => done({ id });
+    const failed = () => done({ id }, true);
     worker.addEventListener('message', answered);
     worker.addEventListener('error', failed);
     worker.postMessage(job.message);

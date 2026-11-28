@@ -41,11 +41,33 @@ suite('Thumbnails', () => {
       ],
     );
   });
+
+  test('ends a worker that failed, as one whose script never loaded answers nothing again, and gives the next tile a new one, the failed tile answered empty', async () => {
+    const started: FakeWorker[] = [];
+    const workers = new ThumbnailWorkers(() => {
+      const worker = new FakeWorker();
+      started.push(worker);
+      return worker;
+    }, 1);
+    const failed = workers.make('broken', 144, 1, false);
+    started[0]?.fail();
+    assert.deepStrictEqual(await failed, { id: 1 });
+    assert.strictEqual(started[0]?.ended, true);
+    const next = workers.make('next', 144, 1, false);
+    assert.strictEqual(started.length, 2);
+    assert.deepStrictEqual(started[0]?.asked.length, 1);
+    started[1]?.answer();
+    assert.deepStrictEqual(await next, { id: 2, outcome: 'stored' });
+  });
 });
 
 class FakeWorker implements WorkerLike {
+  ended = false;
   readonly asked: ToThumbnailWorker[] = [];
   private readonly listeners = new Set<
+    (event: MessageEvent<FromThumbnailWorker>) => void
+  >();
+  private readonly failures = new Set<
     (event: MessageEvent<FromThumbnailWorker>) => void
   >();
 
@@ -57,17 +79,24 @@ class FakeWorker implements WorkerLike {
     type: 'message' | 'error',
     listener: (event: MessageEvent<FromThumbnailWorker>) => void,
   ): void {
-    if (type === 'message') {
-      this.listeners.add(listener);
-    }
+    (type === 'message' ? this.listeners : this.failures).add(listener);
   }
 
   removeEventListener(
     type: 'message' | 'error',
     listener: (event: MessageEvent<FromThumbnailWorker>) => void,
   ): void {
-    if (type === 'message') {
-      this.listeners.delete(listener);
+    (type === 'message' ? this.listeners : this.failures).delete(listener);
+  }
+
+  terminate(): void {
+    this.ended = true;
+  }
+
+  fail(): void {
+    const event = new MessageEvent<FromThumbnailWorker>('error');
+    for (const listener of Array.from(this.failures)) {
+      listener(event);
     }
   }
 
