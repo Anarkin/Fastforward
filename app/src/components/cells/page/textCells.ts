@@ -349,6 +349,11 @@ export function drawDot(
   );
 }
 
+const markFirst = /^\p{M}/u;
+
+const markAfter = (text: string, at: number) =>
+  markFirst.test(text.slice(at + 1, at + 3));
+
 function drawText(
   drawing: TextDrawing,
   text: string,
@@ -365,7 +370,7 @@ function drawText(
   let clusters: Units | undefined;
   for (let at = 0; at < text.length;) {
     const code = text.charCodeAt(at);
-    if (code === spaceCode && !joins(text.charCodeAt(at + 1))) {
+    if (code === spaceCode && !markAfter(text, at)) {
       if (blanks && column <= limit) {
         drawDot(drawing, column, y, under, mark, selected);
       }

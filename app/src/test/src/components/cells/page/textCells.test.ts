@@ -144,6 +144,14 @@ suite('Cells of a text', () => {
     assert.strictEqual(end, 3);
   });
 
+  test('dots a space before an emoji or a letter of another script while whitespace is shown, as only a mark joins a space, and a space taken as joined to an emoji lost its dot', () => {
+    const { frame } = drawn([{ text: 'a 😀 中' }], { blanks: true });
+    assert.deepStrictEqual(
+      rectsIn(frame).map(({ x }) => x),
+      [7 + 2, 3 * 7 + 2],
+    );
+  });
+
   test('goes on at the next tab stop after a tab, signing it in its first cell only while whitespace is shown', () => {
     const plain = drawn([{ text: 'a\tb' }]);
     const signed = drawn([{ text: 'a\tb' }], { blanks: true });
