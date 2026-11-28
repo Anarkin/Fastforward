@@ -119,7 +119,7 @@ suite('App with several windows', () => {
     );
   });
 
-  test('asks before closing a window that holds a terminal, and closes it with its tabs once that is confirmed', async () => {
+  test('asks before closing a window that holds a terminal, showing it again to ask where it was minimized, where the system minimizes windows, and closes it with its tabs once that is confirmed', async () => {
     const pages = await windowsShown(2);
     const counts = await Promise.all(pages.map(tabsIn));
     const second = pages[counts.indexOf(2)];
@@ -132,23 +132,25 @@ suite('App with several windows', () => {
     });
     await asked.waitFor();
     assert.strictEqual((await visiblePages(launched())).length, 2);
-    await asked
-      .locator('.confirm-button:not(.default)')
-      .last()
-      .evaluate((button: HTMLElement) => button.click());
-    await asked.waitFor({ state: 'detached' });
-    const window = await launched().browserWindow(second);
-    await window.evaluate((shown) => shown.minimize());
-    await waitFor(
-      () => window.evaluate((shown) => shown.isMinimized()),
-      'the window to be minimized',
-    );
-    await window.evaluate((shown) => shown.close());
-    await asked.waitFor();
-    await waitFor(
-      () => window.evaluate((shown) => !shown.isMinimized()),
-      'the window asking to be shown again, as a question in a minimized window showed nothing',
-    );
+    if (process.platform !== 'linux') {
+      await asked
+        .locator('.confirm-button:not(.default)')
+        .last()
+        .evaluate((button: HTMLElement) => button.click());
+      await asked.waitFor({ state: 'detached' });
+      const window = await launched().browserWindow(second);
+      await window.evaluate((shown) => shown.minimize());
+      await waitFor(
+        () => window.evaluate((shown) => shown.isMinimized()),
+        'the window to be minimized',
+      );
+      await window.evaluate((shown) => shown.close());
+      await asked.waitFor();
+      await waitFor(
+        () => window.evaluate((shown) => !shown.isMinimized()),
+        'the window asking to be shown again, as a question in a minimized window showed nothing',
+      );
+    }
     await asked
       .locator('.confirm-button.default')
       .evaluate((button: HTMLElement) => button.click())
