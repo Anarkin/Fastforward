@@ -8,6 +8,7 @@ import { tempFolder } from '../helpers/tempFolders';
 import { tempRepository } from '../helpers/repositories';
 import { closeOrKill, launchApp } from './appLaunch';
 import { cellsOf } from './cellsSeen';
+import { inkSeen, type Box } from './inkAlike';
 import { diffTexts } from './diffSeen';
 import { untilSettled } from './waits';
 import { strings } from '../../lib/shared/strings';
@@ -489,6 +490,68 @@ suite('App, every view alike', () => {
           { copies: [...copies].toSorted(), many: true },
         ]),
       ),
+    );
+  });
+
+  test('draws every view again with the device the GPU gives it once the one it had is lost while its window was down, a block of Markdown code too, which kept drawing with the device lost once the new one came before its next frame', async () => {
+    const inked: Record<string, boolean> = {};
+    for (const [name, view] of Object.entries(views)) {
+      await shown(view);
+      const area = async (): Promise<Box> => {
+        const box = await page
+          .locator(`${view.cells} >> visible=true`)
+          .first()
+          .boundingBox();
+        assert.ok(box !== null, name);
+        return {
+          left: box.x,
+          top: box.y,
+          width: Math.min(box.width, 200),
+          height: Math.min(box.height, 40),
+        };
+      };
+      const inkNow = () =>
+        area().then(
+          async (box) => (await inkSeen(app, page, box)).inked,
+          () => 0,
+        );
+      const before = await inkNow();
+      assert.ok(before > 0, `${name} drawn no ink before its device is lost`);
+      await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]?.minimize(),
+      );
+      const lost = await page
+        .locator(`${view.cells} >> visible=true`)
+        .first()
+        .evaluate((host) => {
+          const canvas = host.querySelector('canvas');
+          const context: unknown = canvas?.getContext('webgpu') ?? null;
+          const device =
+            context instanceof GPUCanvasContext
+              ? context.getConfiguration()?.device
+              : undefined;
+          device?.destroy();
+          return device !== undefined;
+        });
+      assert.ok(lost, `${name} has no device to lose`);
+      await waitFor(
+        () => page.evaluate(() => navigator.gpu.requestAdapter().then(Boolean)),
+        'a GPU to ask again',
+      );
+      await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]?.restore(),
+      );
+      inked[name] = await waitFor(
+        async () => (await inkNow()) >= before * 0.9,
+        `${name} drawn again`,
+      ).then(
+        () => true,
+        () => false,
+      );
+    }
+    assert.deepStrictEqual(
+      inked,
+      Object.fromEntries(Object.keys(views).map((name) => [name, true])),
     );
   });
 });
