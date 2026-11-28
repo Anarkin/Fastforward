@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import * as path from 'node:path';
-import { markCopy } from './workFolders';
+import { markCopy, removed } from './workFolders';
 import { strings } from '../../../lib/shared/strings';
 import type { Sentence } from '../../../lib/shared/sentences';
 import type { Page, ShellAccess } from '../../../shell/main/toolContract';
@@ -147,6 +147,9 @@ export class ArchiveCopies {
           strings.commander.couldNotExtract(extracted.reason),
         );
         return undefined;
+      }
+      if (into !== undefined) {
+        await removed(into);
       }
       if (
         !(await this.passwords.passwordGiven(

@@ -16,7 +16,11 @@ export function fakeArchives() {
   const archived = new Map<string, readonly ArchiveItem[] | string>();
   const openedArchives = new Map<string, OpenedArchive>();
   const archivesOf = new WeakMap<readonly ArchiveItem[], OpenedArchive>();
-  const copies = { folder: '', refused: undefined as string | undefined };
+  const copies = {
+    folder: '',
+    refused: undefined as string | undefined,
+    wrongPasswordLeavesEmpty: false,
+  };
   let extractions = 0;
   const opensHeld: { until: Promise<unknown> | undefined } = {
     until: undefined,
@@ -106,6 +110,13 @@ export function fakeArchives() {
         ) === true &&
         !passwordRight(archive.file)
       ) {
+        if (into !== undefined && copies.wrongPasswordLeavesEmpty) {
+          for (const each of paths) {
+            const left = path.join(into, ...each.split('/'));
+            await fs.promises.mkdir(path.dirname(left), { recursive: true });
+            await fs.promises.writeFile(left, '');
+          }
+        }
         return {
           kind: 'refused',
           reason: 'Wrong password',
@@ -126,7 +137,14 @@ export function fakeArchives() {
               ? path.join(extractedInto, path.posix.basename(item.path))
               : path.join(extractedInto, ...item.path.split('/'));
           await fs.promises.mkdir(path.dirname(copy), { recursive: true });
-          await fs.promises.writeFile(copy, extractedText(item.path));
+          const free =
+            copies.wrongPasswordLeavesEmpty && fs.existsSync(copy)
+              ? path.join(
+                  path.dirname(copy),
+                  `${path.parse(copy).name}_1${path.parse(copy).ext}`,
+                )
+              : copy;
+          await fs.promises.writeFile(free, extractedText(item.path));
         }
       }
       return { kind: 'extracted', folder: extractedInto };

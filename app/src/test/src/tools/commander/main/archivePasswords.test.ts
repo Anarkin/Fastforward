@@ -1,4 +1,5 @@
 import * as assert from 'node:assert';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../../lib/shared/strings';
@@ -60,6 +61,41 @@ suite('Commander tool in archives', () => {
       assert.strictEqual(asked().length, 2);
       assert.strictEqual(viewed.length, 2);
       assert.deepStrictEqual(notices, []);
+    });
+
+    test('views the file taken out with the password once one was wrong, rather than the empty file the wrong one left, as 7-Zip writes the next beside it under another name and Edit saved the empty one over the entry', async () => {
+      const made = await inArchive();
+      const { page, send, archived, secrets, viewed, copies } = made;
+      copies.wrongPasswordLeavesEmpty = true;
+      archived.set(at('a.zip'), [
+        ...zipped,
+        { ...archiveItem('secret.txt'), encrypted: true },
+      ]);
+      secrets.set(at('a.zip'), 'right');
+      await send({ type: 'reread', tab: '1', side: 'right' });
+      const asked = () => page.of('askPassword');
+      const answer = (password: string) =>
+        send({ type: 'password', ask: asked().at(-1)?.ask ?? 0, password });
+
+      const viewing = send({
+        type: 'view',
+        tab: '1',
+        side: 'right',
+        name: 'secret.txt',
+      });
+      await waitFor(() => asked().length === 1, 'the password to be asked');
+      await answer('wrong');
+      await waitFor(() => asked().length === 2, 'the password asked again');
+      await answer('right');
+      await viewing;
+
+      const [copy] = viewed;
+      assert.ok(copy !== undefined);
+      assert.strictEqual(path.basename(copy), 'secret.txt');
+      assert.notStrictEqual(fs.readFileSync(copy, 'utf8'), '');
+      assert.deepStrictEqual(fs.readdirSync(path.dirname(copy)), [
+        'secret.txt',
+      ]);
     });
 
     test('gives up an earlier question for a password once another is asked, as the page shows one at a time, ignoring a late answer to it', async () => {
