@@ -41,10 +41,11 @@ import { spanAt } from './nodeText';
 import { grippedReach } from '../../../components/cells/page/textSelection';
 import { useTypingSession } from './typingSession';
 import { typingKeyed } from './typingKeys';
-import { inserted, movedTo, selectedText } from './typing';
+import { movedTo } from './typing';
 import { endAt } from './edgeHandles';
 import { markAt } from './wiring';
 import { boxOf } from './grid';
+import { useBoardClipboard } from './boardClipboard';
 import { useBoardKeys } from './boardKeys';
 import { typedTextOf, typesOneLine } from './typedTexts';
 import { wheelZoom } from './zoom';
@@ -82,7 +83,6 @@ export function BoardView() {
     stopTyping,
     askColor,
     dropFiles,
-    pasteOnBoard,
     zoom,
   } = useCanvasActions();
   const { showMenu, openPathMenu, copyText } = useShellActions();
@@ -324,6 +324,7 @@ export function BoardView() {
 
   useBoardKeys(startPlacing);
   useSignTips(body, board, drawn);
+  useBoardClipboard(body, drawn, lastAt);
 
   const startPan = (event: React.PointerEvent<HTMLDivElement>): boolean => {
     const known = drawn.current;
@@ -696,43 +697,6 @@ export function BoardView() {
     hold(event, true);
   };
 
-  const copied = (
-    event: React.ClipboardEvent<HTMLDivElement>,
-    cut: boolean,
-  ) => {
-    const now = tab === undefined ? undefined : typingOf(tab);
-    const text = now === undefined ? '' : selectedText(now);
-    if (tab === undefined || now === undefined || text === '') {
-      return;
-    }
-    event.preventDefault();
-    event.clipboardData.setData('text/plain', text);
-    if (cut) {
-      typed(tab, inserted(now, ''));
-    }
-  };
-
-  const pasted = (event: React.ClipboardEvent<HTMLDivElement>) => {
-    const now = tab === undefined ? undefined : typingOf(tab);
-    const pastedText = event.clipboardData.getData('text/plain');
-    const known = drawn.current;
-    const at = placedFrom(known, lastAt.current);
-    if (now === undefined && tab !== undefined && known && at) {
-      if (pasteOnBoard(tab, pastedText, at, known.unit)) {
-        event.preventDefault();
-      }
-      return;
-    }
-    const text = typesOneLine(board, now?.id)
-      ? pastedText.replaceAll(/[\r\n]+/g, ' ')
-      : pastedText;
-    if (tab === undefined || now === undefined || text === '') {
-      return;
-    }
-    event.preventDefault();
-    typed(tab, inserted(now, text));
-  };
-
   const hold = (event: React.KeyboardEvent<HTMLDivElement>, down: boolean) => {
     if (keyPressed(canvasKeymap.panHeld, event.nativeEvent) === undefined) {
       return;
@@ -775,9 +739,6 @@ export function BoardView() {
         }}
         onDrop={dropped}
         onKeyDown={keyDown}
-        onCopy={(event) => copied(event, false)}
-        onCut={(event) => copied(event, true)}
-        onPaste={pasted}
         onKeyUp={(event) => hold(event, false)}
         onBlur={(event) => {
           held.current = false;
