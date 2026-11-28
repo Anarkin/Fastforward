@@ -40,10 +40,11 @@ function launched(overrides: Partial<ShellSystem>, folder?: string) {
 
 async function windowsShell(
   isFound: (file: string) => Promise<boolean>,
+  more: NodeJS.ProcessEnv = {},
 ): Promise<string> {
   const launch = await launched({
     platform: 'win32',
-    env: { Path: 'C:\\Windows;C:\\Program Files\\PowerShell\\7' },
+    env: { Path: 'C:\\Windows;C:\\Program Files\\PowerShell\\7', ...more },
     isProgram: isFound,
   });
   return launch.file;
@@ -92,7 +93,7 @@ suite('Shell launch', () => {
     }
   });
 
-  test('starts PowerShell 7 on Windows when it is on the PATH, and Windows PowerShell otherwise', async () => {
+  test('starts PowerShell 7 on Windows when it is on the PATH, and Windows PowerShell otherwise, by its whole path in the folder of the system, as Windows looks for a bare name in the folder the app was started in first', async () => {
     assert.strictEqual(
       await windowsShell((file) =>
         Promise.resolve(file === 'C:\\Program Files\\PowerShell\\7\\pwsh.exe'),
@@ -100,8 +101,14 @@ suite('Shell launch', () => {
       'C:\\Program Files\\PowerShell\\7\\pwsh.exe',
     );
     assert.strictEqual(
+      await windowsShell(() => Promise.resolve(false), {
+        SystemRoot: 'D:\\Win',
+      }),
+      'D:\\Win\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+    );
+    assert.strictEqual(
       await windowsShell(() => Promise.resolve(false)),
-      'powershell.exe',
+      'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
     );
   });
 

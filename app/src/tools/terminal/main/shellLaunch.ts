@@ -54,7 +54,15 @@ async function shellCommand(
   switch (platform) {
     case 'win32':
       return {
-        file: (await onPath('pwsh.exe', env, found)) ?? 'powershell.exe',
+        file:
+          (await onPath('pwsh.exe', env, found)) ??
+          path.win32.join(
+            env.SystemRoot ?? 'C:\\Windows',
+            'System32',
+            'WindowsPowerShell',
+            'v1.0',
+            'powershell.exe',
+          ),
         args,
       };
     case 'darwin':
