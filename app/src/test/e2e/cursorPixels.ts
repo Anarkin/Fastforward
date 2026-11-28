@@ -152,6 +152,7 @@ function lightness(taken: Shot, x: number, y: number): number {
 export interface GlyphPlace {
   readonly box: Box | undefined;
   readonly middle: readonly [number, number];
+  readonly inkMap: string;
 }
 
 const sidesOf = (box: Box | undefined) =>
@@ -168,7 +169,7 @@ export function assertSamePlace(
   assert.ok(
     mine.length === 4 &&
       mine.every((edge, side) => Math.abs(edge - (theirs[side] ?? NaN)) <= 1),
-    `${what}: ${JSON.stringify([actual.box, expected.box])}`,
+    `${what}: ${JSON.stringify([actual.box, expected.box])}, the ink of the one ${actual.inkMap} and of the other ${expected.inkMap}`,
   );
   assert.ok(
     actual.middle.every(
@@ -210,6 +211,12 @@ export function glyphPlace(taken: Shot, cell: Box, dark: boolean): GlyphPlace {
       tenths(inks.reduce((sum, [x, , ink]) => sum + x * ink, 0) / total),
       tenths(inks.reduce((sum, [, y, ink]) => sum + y * ink, 0) / total),
     ],
+    inkMap: Array.from({ length: cell.height }, (_, y) =>
+      inks
+        .slice(y * cell.width, (y + 1) * cell.width)
+        .map(([, , ink]) => (ink > 0.5 ? '#' : ink > 0.25 ? '+' : '.'))
+        .join(''),
+    ).join('|'),
   };
 }
 
