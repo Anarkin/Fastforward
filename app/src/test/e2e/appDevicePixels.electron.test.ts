@@ -8,7 +8,7 @@ import { closeOrKill, launchApp } from './appLaunch';
 import { barOf, barParts, paintedAt } from './scrollbarsShown';
 import { waitFor } from '../helpers/fixtures';
 import { viewerRows } from './cellsSeen';
-import { waitForFocus } from './waits';
+import { untilSettled, waitForFocus } from './waits';
 import { tempRepository } from '../helpers/repositories';
 import { removeFolder, tempFolder } from '../helpers/tempFolders';
 import { commitRow } from './commitRows';
@@ -158,7 +158,10 @@ async function viewsOf(page: Page): Promise<Record<string, string[]>> {
           requestAnimationFrame(() => setTimeout(resolve));
         }),
     );
-    seen[name] = await page.evaluate(thinLinesOffPixels);
+    seen[name] = await untilSettled(
+      () => page.evaluate(thinLinesOffPixels),
+      `the thin lines of ${name} to settle`,
+    );
   };
   await commitRow(page, 'second').click();
   await untilDiffLine(page, ({ change }) => change === 'added', 'a line added');
