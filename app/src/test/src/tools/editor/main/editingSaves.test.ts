@@ -15,6 +15,33 @@ const typed = (version: number, insert: string, length: number) => ({
 });
 
 suite('Saving a file edited', () => {
+  test('saves a read-only file changed on disk once told to save over the change and then to overwrite it, asking each once, as each answer dropped the other and the two questions alternated for ever', async () => {
+    const files = { 'read-only.txt': 'one\n' };
+    const { edits, showing, changeOnDisk } = editing(files);
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'read-only.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    await edits.receive(page, typed(0, 'A', 4));
+    await changeOnDisk('read-only.txt', 'theirs\n');
+    const asked = () =>
+      page.messages.flatMap((each) =>
+        each.type === 'askChangedOnDisk' || each.type === 'askOverwrite'
+          ? [each.type]
+          : [],
+      );
+
+    assert.strictEqual(await edits.save(page, '1'), false);
+    assert.strictEqual(await edits.save(page, '1', { changed: true }), false);
+    assert.strictEqual(await edits.save(page, '1', { readOnly: true }), true);
+
+    assert.deepStrictEqual(asked(), ['askChangedOnDisk', 'askOverwrite']);
+    assert.strictEqual(
+      Buffer.from(files['read-only.txt']).toString('latin1'),
+      'Aone\n',
+    );
+  });
+
   test('saves a file one save at a time, a save asked for while one runs waiting for it, as two saves writing at once cut the file short or left a stale end', async () => {
     const files = { 'a.txt': 'one\n' };
     const { edits, saving, showing } = editing(files);
