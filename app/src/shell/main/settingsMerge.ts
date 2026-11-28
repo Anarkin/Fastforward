@@ -66,6 +66,8 @@ const choices: ReadonlyMap<string, readonly string[]> = new Map([
 const themed =
   /^(?:colors\.|fonts\.|scrolling\.scrollbarSize|tools\.[^.]+\.colors\.)/;
 
+const themedItem = /\.colors\.[^.]+$/;
+
 const closers: Readonly<Record<string, string>> = { '(': ')', '[': ']' };
 
 const readsPastValue = /[\\\p{Cc}]|\/\*/u;
@@ -119,6 +121,13 @@ function itemProblems(template: Json, item: unknown, name: string): Sentence[] {
           ? wrongKind(inner, fallback)
           : strings.settings.shouldBeListOrOneOf(inner, standIns),
       ];
+    }
+    if (
+      typeof value === 'string' &&
+      themedItem.test(inner) &&
+      !isCssValue(value)
+    ) {
+      return [strings.settings.notCssValue(inner)];
     }
     return isObject(fallback) ? itemProblems(fallback, value, inner) : [];
   });

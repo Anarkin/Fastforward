@@ -202,6 +202,30 @@ suite('Settings', () => {
     );
   });
 
+  test('keeps the default color groups of the commander when the color of one is no CSS value whole, and says why, as the theme writes each into its CSS as it writes the colors', () => {
+    const { settings, problems } = mergeSettings(defaults, {
+      tools: {
+        commander: {
+          fileColors: [
+            { extensions: ['png'], colors: { light: '#a0a', dark: '#f0f' } },
+            {
+              extensions: ['svg'],
+              colors: { light: 'red; } body { display: none', dark: '#f0f' },
+            },
+            { extensions: ['gif'], colors: { light: '#a0a', dark: 'red\\' } },
+          ],
+        },
+      },
+    });
+    assert.deepStrictEqual(settings, defaults);
+    assert.deepStrictEqual(problems, [
+      strings.settings.notCssValue(
+        'tools.commander.fileColors[1].colors.light',
+      ),
+      strings.settings.notCssValue('tools.commander.fileColors[2].colors.dark'),
+    ]);
+  });
+
   test('keeps the default of a color, font or size with a backslash, a comment or a control character, and says why, as CSS read past its end into the rest of the theme', () => {
     const { settings, problems } = mergeSettings(defaults, {
       colors: { light: { foreground: '12px /* big' } },
