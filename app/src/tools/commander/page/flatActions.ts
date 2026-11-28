@@ -13,9 +13,19 @@ import { filterKey, filterOf } from './sideFilters';
 import { reduceView } from './view';
 
 export function startFlatWorker(): FlatWorker {
-  return new Worker(new URL('flatWorker.js', location.href), {
+  const worker = new Worker(new URL('flatWorker.js', location.href), {
     type: 'module',
   });
+  return {
+    postMessage: (message) => worker.postMessage(message),
+    onAnswer: (listener) => worker.addEventListener('message', listener),
+    onError: (listener) =>
+      worker.addEventListener('error', (event) => {
+        event.preventDefault();
+        listener({ error: event.error ?? new Error(event.message) });
+      }),
+    terminate: () => worker.terminate(),
+  };
 }
 
 export interface FlatOptions {

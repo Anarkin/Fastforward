@@ -14,11 +14,10 @@ import type { PaneView } from './paneView';
 import type { CommanderView } from './view';
 
 export interface FlatWorker {
-  postMessage(message: ToFlatWorker, transfer?: Transferable[]): void;
-  addEventListener(
-    type: 'message',
-    listener: (event: { readonly data: FromFlatWorker }) => void,
-  ): void;
+  postMessage(message: ToFlatWorker): void;
+  onAnswer(listener: (event: { readonly data: FromFlatWorker }) => void): void;
+  onError(listener: (event: { readonly error: unknown }) => void): void;
+  terminate(): void;
 }
 
 export interface FlatBuilt {
@@ -35,10 +34,12 @@ export interface FlatTiming {
 
 const shortestGap = 100;
 
+type FlatRow = ReturnType<typeof flatRowOf>;
+
 interface Kept {
   readonly walk: number;
   readonly parent: boolean;
-  readonly bySlot: (Row | undefined)[];
+  readonly bySlot: (FlatRow | undefined)[];
   readonly slotsOf: Map<string, readonly number[]>;
   readonly freeing: { readonly batch: number; readonly slots: number[] }[];
   readonly free: number[];
@@ -70,12 +71,15 @@ const realTiming: FlatTiming = {
 
 export class FlatLists {
   private worker: FlatWorker | undefined;
+  private replayed = false;
   private readonly kept = new Map<string, Kept>();
 
   constructor(
     private readonly create: () => FlatWorker,
     private readonly onBuilt: (pane: string) => void,
     private readonly timing: FlatTiming = realTiming,
+    private readonly report: (error: unknown) => void = (error) =>
+      reportError(error),
   ) {}
 
   ensure(
@@ -161,10 +165,59 @@ export class FlatLists {
   private tell(message: ToFlatWorker): void {
     if (this.worker === undefined) {
       const worker = this.create();
-      worker.addEventListener('message', ({ data }) => this.answered(data));
+      worker.onAnswer(({ data }) => {
+        this.replayed = false;
+        this.answered(data);
+      });
+      worker.onError(({ error }) => this.lost(worker, error));
       this.worker = worker;
     }
     this.worker.postMessage(message);
+  }
+
+  private lost(worker: FlatWorker, error: unknown): void {
+    if (this.worker !== worker) {
+      return;
+    }
+    this.report(error);
+    worker.terminate();
+    this.worker = undefined;
+    if (this.replayed) {
+      this.replayed = false;
+      return;
+    }
+    this.replayed = true;
+    for (const [pane, kept] of this.kept) {
+      this.replay(pane, kept);
+    }
+  }
+
+  private replay(pane: string, kept: Kept): void {
+    for (const { slots } of kept.freeing.splice(0)) {
+      for (const slot of slots) {
+        kept.bySlot[slot] = undefined;
+        kept.free.push(slot);
+      }
+    }
+    kept.waiting = undefined;
+    const folders = [...kept.slotsOf].map(([under, slots]) => ({
+      under,
+      slots,
+      entries: slots.flatMap((slot) => {
+        const row = kept.bySlot[slot];
+        return row === undefined ? [] : [row.entry];
+      }),
+    }));
+    const { walk, choices } = kept;
+    this.tell({ type: 'start', pane, walk, choices });
+    this.tell({
+      type: 'files',
+      pane,
+      walk,
+      batch: ++kept.sent,
+      folders,
+      freed: [],
+    });
   }
 
   private answered(answer: FromFlatWorker): void {

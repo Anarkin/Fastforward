@@ -76,7 +76,9 @@ function flat() {
           told.push(message);
           sorter.receive(message);
         },
-        addEventListener: (_type, listener) => listeners.push(listener),
+        onAnswer: (listener) => listeners.push(listener),
+        onError: () => undefined,
+        terminate: () => undefined,
       }),
       timing: { now: () => clock.now, later: (run) => run() },
     },

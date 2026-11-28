@@ -50,7 +50,9 @@ function lists() {
       told.push(message);
       sorter.receive(message);
     },
-    addEventListener: (_type, listener) => listeners.push(listener),
+    onAnswer: (listener) => listeners.push(listener),
+    onError: () => undefined,
+    terminate: () => undefined,
   };
   const clock = { now: 1000 };
   const timers: { at: number; run: () => void }[] = [];
@@ -114,7 +116,9 @@ suite('The rows of flat views', () => {
       [];
     const worker: FlatWorker = {
       postMessage: () => undefined,
-      addEventListener: (_type, listener) => listeners.push(listener),
+      onAnswer: (listener) => listeners.push(listener),
+      onError: () => undefined,
+      terminate: () => undefined,
     };
     const flat = new FlatLists(
       () => worker,
