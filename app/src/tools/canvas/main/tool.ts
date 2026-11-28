@@ -154,11 +154,13 @@ export class CanvasTool implements Tool<'canvas'> {
       const text = (await this.access.readFile(file)).toString();
       const read = boardOf(text);
       switch (read.kind) {
-        case 'board':
+        case 'board': {
+          const board = new EditedBoard(text);
           return {
-            held: { file, board: new EditedBoard(text), made: false },
+            held: { file, board, made: false, written: board.text() },
             skipped: read.skipped,
           };
+        }
         case 'notJson':
           return { error: strings.canvas.notJson(file) };
         case 'notBoard':
@@ -235,7 +237,10 @@ export class CanvasTool implements Tool<'canvas'> {
     this.watching.get(tab)?.stop();
     this.watching.set(tab, {
       file,
-      stop: watch(file, () => void this.changedOutside(tab, file)),
+      stop: watch(
+        file,
+        () => void this.inTurn(tab, () => this.changedOutside(tab, file)),
+      ),
     });
   }
 

@@ -39,6 +39,7 @@ const link = (id: string, url: string) => ({
 interface Gates {
   saving?: Promise<void> | undefined;
   reading?: Promise<void> | undefined;
+  readBack?: Promise<void> | undefined;
   saves: number;
   refused?: boolean;
 }
@@ -101,6 +102,7 @@ function canvas(
     readFile: async (name) => {
       await gates.reading;
       const text = files[name];
+      await gates.readBack;
       if (text === undefined) {
         throw Object.assign(new Error('gone'), { code: 'ENOENT' });
       }
@@ -585,6 +587,31 @@ suite('Canvas tool', () => {
       [file, written(36)],
     ]);
     assert.strictEqual(tool.unsaved(tab), false);
+  });
+
+  test('keeps the board it saved when the file read as it changed outside was read before the save wrote it, as the board read from before the save replaced the one saved', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const gates: Gates = { saves: 0 };
+    const { tool, page, changed, notices } = canvas(files, {}, [], gates);
+    await tool.show(page, tab);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, y: 18 }] },
+    });
+    const back = gate();
+    gates.readBack = back.closed;
+    await changed(file);
+    const saving = tool.receive(page, { type: 'save', tab: '7' });
+    await tick();
+    gates.readBack = undefined;
+    back.open();
+    await saving;
+    await tick();
+
+    assert.deepStrictEqual(board(page).board?.nodes, [{ ...node, y: 18 }]);
+    assert.strictEqual(tool.unsaved(tab), false);
+    assert.deepStrictEqual(notices, []);
   });
 
   test('keeps an edit made to a canvas while its file is read again as its tab shows again, rather than the board read over it', async () => {
