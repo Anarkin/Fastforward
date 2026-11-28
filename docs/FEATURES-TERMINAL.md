@@ -16,7 +16,7 @@
 
 | Feature | What it does | Sequence | Tier | Fastforward | Notes |
 | --- | --- | --- | --- | --- | --- |
-| Default shell | Start the user's shell | — | Core | ✅ Yes | PowerShell 7 when it is on the PATH, else Windows PowerShell; on macOS `$SHELL` as a login shell, else zsh; on Linux `$SHELL`, else `/bin/sh` |
+| Default shell | Start the user's shell | — | Core | ✅ Yes | PowerShell 7 when it is on the PATH, else Windows PowerShell from the System32 folder of Windows; on macOS `$SHELL` as a login shell, else zsh; on Linux `$SHELL`, else `/bin/sh` |
 | Choose the shell | Run another shell, with its arguments | — | Core | ✅ Yes | `tools.terminal.shell` and `tools.terminal.shellArgs` in the settings, the same for every tab |
 | Profiles | Keep several shells, each with its own settings, in a menu | — | Common | ❌ No | One shell for every tab |
 | WSL | List the WSL distributions as shells | — | Advanced | ❌ No | `wsl.exe` as the shell runs the default one |

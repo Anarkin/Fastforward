@@ -170,7 +170,7 @@
 | Fetch | Fetch every remote | `git fetch --all` | Core | ✅ Yes | Brings the tags of the commits it fetches |
 | Fetch one remote | Fetch a chosen remote | `git fetch <remote>` | Common | ❌ No |  |
 | Prune | Drop the branches deleted on the remote | `git fetch --prune` | Common | ✅ Yes | Only for remotes whose fetch writes into `refs/remotes`, unless the config says otherwise |
-| Fetch in the background | Fetch every few minutes | — | Common | ✅ Yes | Every minute by default, every open repository; the pin beside Fetch disabled while `tools.git.autoFetchMinutes` is 0 |
+| Fetch in the background | Fetch every few minutes | — | Common | ✅ Yes | Every minute by default, every open repository, never running a command a remote of the ext protocol names, whatever its config says; the pin beside Fetch disabled while `tools.git.autoFetchMinutes` is 0 |
 | Fetch status | Show when the last fetch ran, and whether it failed | — | Advanced | ✅ Yes |  |
 | Pull by fast-forward | Fetch, then fast-forward to the upstream | `git pull --ff-only` | Core | ✅ Yes | `git fetch --all`, then `git merge --ff-only`; fetches the upstream's remote alone when that fails; says why when ahead or diverged |
 | Pull by merging | Fetch, then merge the upstream | `git pull --no-rebase` | Core | ❌ No |  |
