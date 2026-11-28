@@ -12,7 +12,6 @@ const outdir =
   process.argv
     .find((arg) => arg.startsWith('--outdir='))
     ?.slice('--outdir='.length) ?? 'dist';
-const electron: string = createRequire(import.meta.url)('electron');
 
 let webviewBuild = Promise.withResolvers<void>();
 const trackWebview: esbuild.Plugin = {
@@ -44,6 +43,7 @@ const restartApp: esbuild.Plugin = {
         await quitApp(app);
       }
       await webviewBuild.promise;
+      const electron: string = createRequire(import.meta.url)('electron');
       app = spawn(electron, ['.'], {
         stdio: ['inherit', 'inherit', 'inherit', 'ipc'],
         env: { ...process.env, FASTFORWARD_DEV: '1' },
