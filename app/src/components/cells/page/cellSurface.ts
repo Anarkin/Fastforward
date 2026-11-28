@@ -4,6 +4,7 @@ import { GlyphAtlas } from './glyphAtlas';
 import { GlyphTiles, type CellMetrics } from './glyphTiles';
 import { bufferUsage, isGpuContext, shaderStage } from './gpuDevice';
 import { ShapeLayer, type Shape } from './shapeLayer';
+import { scissorOf } from './scissor';
 
 const placed = `
   var out: Placed;
@@ -404,11 +405,10 @@ export class CellSurface {
       );
       pass.draw(under.rectCount * cornersOfEach);
     }
-    const left = clip > 0 && clip < canvas.width ? clip : 0;
-    const top = clipTop > 0 ? Math.min(clipTop, canvas.height) : 0;
-    const cut = left > 0 || top > 0;
+    const scissor = scissorOf(clip, clipTop, canvas.width, canvas.height);
+    const cut = scissor !== undefined;
     if (cut) {
-      pass.setScissorRect(left, top, canvas.width - left, canvas.height - top);
+      pass.setScissorRect(scissor.x, scissor.y, scissor.width, scissor.height);
     }
     if (frame.rectCount > 0) {
       pass.setPipeline(drawing.rects);
