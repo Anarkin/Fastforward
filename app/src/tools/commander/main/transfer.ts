@@ -1,4 +1,4 @@
-import { codeOf } from '../../../lib/shared/errors';
+import { codeOf, hasCode } from '../../../lib/shared/errors';
 import { randomBytes } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
 import type { Dirent, FileHandle, Stats } from '../../../lib/main/files';
@@ -63,8 +63,19 @@ async function statsOf(file: string): Promise<Stats | undefined> {
   }
 }
 
+async function targetStatsOf(file: string): Promise<Stats | undefined> {
+  try {
+    return await fs.promises.lstat(file);
+  } catch (error) {
+    if (hasCode(error, 'ENOENT', 'ENOTDIR')) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 async function renamedUnlessThere(from: string, to: string): Promise<void> {
-  if ((await statsOf(to)) !== undefined) {
+  if ((await targetStatsOf(to)) !== undefined) {
     throw Object.assign(new Error(`EEXIST: file already exists, ${to}`), {
       code: 'EEXIST',
     });
@@ -134,7 +145,7 @@ async function freeName(file: string, folder: boolean): Promise<string> {
       dir,
       folder ? `${base} (${number})` : `${name} (${number})${ext}`,
     );
-    if ((await statsOf(candidate)) === undefined) {
+    if ((await targetStatsOf(candidate)) === undefined) {
       return candidate;
     }
   }
@@ -242,7 +253,8 @@ class Transfer {
     for (const source of this.plan.sources) {
       this.stopIfAsked();
       const target = this.targetOf(source);
-      if ((await statsOf(target)) !== undefined) {
+      const there = await targetStatsOf(target).catch(() => 'unknown');
+      if (there !== undefined) {
         left.push(source);
         continue;
       }
@@ -355,7 +367,13 @@ class Transfer {
       this.events.failed(name, strings.commander.mountedFolder);
       return;
     }
-    const there = await statsOf(target);
+    let there: Stats | undefined;
+    try {
+      there = await targetStatsOf(target);
+    } catch (error) {
+      this.failed(name, error);
+      return;
+    }
     let into = target;
     let overwrite = false;
     let unlocked: Stats | undefined;

@@ -551,6 +551,32 @@ suite('Transfer', () => {
     },
   );
 
+  test('fails a move whose target it cannot tell is there, rather than taking it for absent and moving over what is there, as a transient error of a share did', async () => {
+    write(path.join(source, 'a.txt'), 'mine');
+    write(path.join(target, 'a.txt'), 'theirs');
+    const there = path.join(target, 'a.txt');
+    const lstat = fs.promises.lstat.bind(fs.promises);
+    vi.spyOn(fs.promises, 'lstat').mockImplementation((file, options) =>
+      typeof file === 'string' && path.resolve(file) === path.resolve(there)
+        ? Promise.reject(Object.assign(new Error('EIO'), { code: 'EIO' }))
+        : lstat(file, options),
+    );
+
+    const moved = await run({
+      sources: [path.join(source, 'a.txt')],
+      target,
+      move: true,
+    });
+
+    vi.restoreAllMocks();
+    assert.strictEqual(moved.failures.length, 1);
+    assert.strictEqual(fs.readFileSync(there, 'utf8'), 'theirs');
+    assert.strictEqual(
+      fs.readFileSync(path.join(source, 'a.txt'), 'utf8'),
+      'mine',
+    );
+  });
+
   test.skipIf(process.platform !== 'win32')(
     'keeps a large file copied in pieces to a drive that takes no Mark of the Web or mode, as one of FAT or a share, rather than deleting it once every byte was copied',
     async () => {
