@@ -397,7 +397,8 @@ suite('Lessons from past mistakes', () => {
     ].join('\n');
     const said = (name: string) =>
       new RegExp(String.raw`(?<![\w-])${name}(?![\w-])`).test(named) ||
-      named.includes(`${name.slice(0, name.lastIndexOf('-') + 1)}\${`);
+      (name.includes('-') &&
+        named.includes(`${name.slice(0, name.lastIndexOf('-') + 1)}\${`));
     const styled = folders.flatMap((folder) =>
       stylesIn(folder).flatMap((file) =>
         [
