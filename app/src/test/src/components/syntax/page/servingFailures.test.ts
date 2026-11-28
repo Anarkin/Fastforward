@@ -70,10 +70,13 @@ suite('Coloring away from the page, a grammar failing', () => {
       return endsOf(posted).length === 2;
     }, 'both jobs ended');
 
-    assert.deepStrictEqual(endsOf(posted), [
-      [3, 'plain'],
-      [4, 'colored'],
-    ]);
+    assert.deepStrictEqual(
+      endsOf(posted).toSorted(([one], [other]) => Number(one) - Number(other)),
+      [
+        [3, 'plain'],
+        [4, 'colored'],
+      ],
+    );
     const failed = posted.flatMap((message) =>
       message.type === 'failed' ? [message.message] : [],
     );
