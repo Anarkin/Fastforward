@@ -241,6 +241,7 @@ export class ArchiveListing {
     }
     const file = path.join(shown.pane.folder, name);
     const { pane } = shown;
+    const from = pane.folder;
     const opening = await this.openFor(
       page,
       shown.tab,
@@ -258,6 +259,11 @@ export class ArchiveListing {
         page,
         strings.commander.notArchive(file, opening.reason),
       );
+      return;
+    }
+    if (
+      this.sides.namingPane(page, shown.tab, shown.side, from) === undefined
+    ) {
       return;
     }
     await this.host.list(page, shown.tab, shown.side, file, 'visit');

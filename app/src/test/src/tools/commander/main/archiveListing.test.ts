@@ -355,6 +355,41 @@ suite('Commander tool in archives', () => {
     assert.strictEqual(lastFolder(page, '1', 'right'), at('a.zip'));
   });
 
+  test('leaves a side that moved on while an archive was read where it went, rather than pulling it into the archive once the read ends', async () => {
+    const { tool, page, send, archived, opensHeld, settled } = commander({
+      [root]: [file('a.zip'), folder('docs')],
+      [at('docs')]: [],
+    });
+    archived.set(at('a.zip'), zipped);
+    await tool.show(page, tab);
+    const { promise: held, resolve: release } = Promise.withResolvers();
+    opensHeld.until = held;
+
+    const entering = send({
+      type: 'enterArchive',
+      tab: '1',
+      side: 'right',
+      name: 'a.zip',
+    });
+    await waitFor(
+      () => page.of('reading').length === 1,
+      'the archive to be read',
+    );
+    await send({
+      type: 'goTo',
+      tab: '1',
+      side: 'right',
+      folder: root,
+      to: at('docs'),
+    });
+    assert.strictEqual(lastFolder(page, '1', 'right'), at('docs'));
+    release(undefined);
+    await entering;
+    await settled();
+
+    assert.strictEqual(lastFolder(page, '1', 'right'), at('docs'));
+  });
+
   test('tells the page a side is reading an archive once that has lasted half a second, and that it is done once stopped on Esc, staying where it was', async () => {
     const { tool, page, send, archived, opensHeld, notices } = commander({
       [root]: [file('a.zip')],
