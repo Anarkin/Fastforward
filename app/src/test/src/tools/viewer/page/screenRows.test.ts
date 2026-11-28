@@ -193,6 +193,21 @@ suite('Rows of a file viewed as the screen shows them', () => {
     );
   });
 
+  test('hangs the rows a line wraps onto as far in as its tabs are drawn by the tab size of the file, as the editor and the diff hang them, rather than by the tab size of the settings', () => {
+    const tabsOfEight: TextWidths = { char: 1, of: () => 1, tabSize: 8 };
+    const rows = screenRows(
+      [{ start: 0, end: 30, text: '\tone two three four five' }],
+      20,
+      'utf-8',
+      tabsOfEight,
+    );
+    assert.deepStrictEqual(
+      rows.map(({ indent }) => indent),
+      rows.map((_, index) => (index === 0 ? 0 : 8)),
+    );
+    assert.ok(rows.length > 1);
+  });
+
   test('finds the first row on screen of a row read, and the one that holds a character or a byte of it, never one of the next row read', () => {
     const rows = screenRows(
       [

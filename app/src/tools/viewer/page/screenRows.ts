@@ -24,7 +24,7 @@ const wrappingWays = onceAText(
     widths: TextWidths | undefined,
     cut: boolean,
   ): Wrapping => {
-    const indent = continued ? 0 : wrapIndent(text, columns);
+    const indent = continued ? 0 : wrapIndent(text, columns, widths);
     const starts = wrapStarts(text, columns, indent, widths);
     return {
       indent,
