@@ -154,6 +154,7 @@ export function editing(
   };
   return {
     edits,
+    access,
     saved,
     saving,
     notices,

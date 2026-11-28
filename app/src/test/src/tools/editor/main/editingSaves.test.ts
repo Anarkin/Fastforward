@@ -1,7 +1,9 @@
 import * as assert from 'node:assert';
 import { ChangeSet } from '@codemirror/state';
 import { suite, test } from 'vitest';
-import { EditorPage, editing, editFrom } from './editingFixtures';
+import { plainOf } from '../../../../../lib/shared/sentences';
+import { strings } from '../../../../../lib/shared/strings';
+import { EditorPage, editing, editFrom, settled } from './editingFixtures';
 
 const typed = (version: number, insert: string, length: number) => ({
   type: 'editText' as const,
@@ -36,6 +38,47 @@ suite('Saving a file edited', () => {
       'BAone\n',
     );
     assert.strictEqual(edits.unsaved('1'), false);
+  });
+
+  test('reads the file again only once a save running has written it, as a reload read the bytes from before the save and showed them over the text saved, taking them for what is on disk', async () => {
+    const files = { 'a.txt': 'one\n' };
+    const { edits, saving, showing } = editing(files);
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    const held = Promise.withResolvers<void>();
+    saving.until = held.promise;
+
+    await edits.receive(page, typed(0, 'A', 4));
+    const saved = edits.save(page, '1');
+    const reloaded = edits.receive(page, { type: 'reloadEdited', tab: '1' });
+    await settled();
+    held.resolve();
+    await Promise.all([saved, reloaded]);
+
+    assert.strictEqual(page.last('editedText')?.shown.text, 'Aone\n');
+    assert.strictEqual(edits.unsaved('1'), false);
+  });
+
+  test('follows the file on disk again after a save that failed once the file was written, as a save that threw there kept the file taken for saving and no change on disk was seen again', async () => {
+    const files: Record<string, string | Uint8Array> = { 'a.txt': 'one\n' };
+    const { edits, showing, access, changeOnDisk, notices } = editing(files);
+    const page = new EditorPage();
+    showing.push(page);
+    await edits.show(page, '1', 'a.txt');
+    await edits.receive(page, { type: 'readEdited', tab: '1' });
+    Object.assign(access, {
+      codePage: () => Promise.reject(new Error('The code page is gone.')),
+    });
+
+    await edits.receive(page, typed(0, 'A', 4));
+    await assert.rejects(edits.save(page, '1'));
+    await changeOnDisk('a.txt', 'theirs\n');
+
+    assert.deepStrictEqual(notices, [
+      plainOf(strings.editor.changedOutside('a.txt')),
+    ]);
   });
 
   test('takes a change another program makes right after a save for a change on disk, reading it again, rather than for its own save', async () => {

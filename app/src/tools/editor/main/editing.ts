@@ -247,7 +247,7 @@ export class Editing {
       if (this.opening.get(tab)?.loading === loading) {
         this.opened.get(tab)?.stop();
         opened.stop = this.access.watch(file, () => {
-          void this.changedOnDisk(tab, opened);
+          void this.inTurn(tab, () => this.changedOnDisk(tab, opened));
         });
         this.opened.set(tab, opened);
       }
@@ -444,14 +444,19 @@ export class Editing {
         });
         return;
       case 'reloadEdited':
-        await this.readAgain(message.tab, opened);
+        await this.inTurn(message.tab, () =>
+          this.readAgain(message.tab, opened),
+        );
         return;
       case 'saveIn':
         this.saveIn(page, message.tab, opened, text, message);
         return;
       case 'reopenIn':
         if (message.encoding === 'auto' || isTextEncoding(message.encoding)) {
-          await this.readAgain(message.tab, opened, message.encoding);
+          const { encoding } = message;
+          await this.inTurn(message.tab, () =>
+            this.readAgain(message.tab, opened, encoding),
+          );
         }
         return;
       case 'editSource':
@@ -585,8 +590,12 @@ export class Editing {
     tab: string,
     overwriting: Overwriting = {},
   ): Promise<boolean> {
+    return this.inTurn(tab, () => this.savedNow(page, tab, overwriting));
+  }
+
+  private inTurn<T>(tab: string, work: () => Promise<T>): Promise<T> {
     const before = this.saves.get(tab) ?? Promise.resolve();
-    const turn = before.then(() => this.savedNow(page, tab, overwriting));
+    const turn = before.then(work);
     const ended = turn.catch(() => undefined);
     this.saves.set(tab, ended);
     void ended.then(() => {
@@ -664,26 +673,29 @@ export class Editing {
       return false;
     }
     text.saved(checkpoint);
-    const target = text.target().encoding;
-    const codePage = await this.access.codePage();
-    const found = foundIn(
-      Buffer.from(
-        written.bytes.buffer,
-        written.bytes.byteOffset,
-        written.bytes.byteLength,
-      ),
-      codePage,
-    );
-    if (opened.chosen !== undefined || found.encoding !== target) {
-      opened.chosen = target;
+    try {
+      const target = text.target().encoding;
+      const codePage = await this.access.codePage();
+      const found = foundIn(
+        Buffer.from(
+          written.bytes.buffer,
+          written.bytes.byteOffset,
+          written.bytes.byteLength,
+        ),
+        codePage,
+      );
+      if (opened.chosen !== undefined || found.encoding !== target) {
+        opened.chosen = target;
+      }
+      opened.read = {
+        ...opened.read,
+        made: false,
+        stamp: bytesVersion(written.bytes),
+        encodings: sourcesOf(found, opened.chosen, codePage),
+      };
+    } finally {
+      opened.saving = false;
     }
-    opened.read = {
-      ...opened.read,
-      made: false,
-      stamp: bytesVersion(written.bytes),
-      encodings: sourcesOf(found, opened.chosen, codePage),
-    };
-    opened.saving = false;
     opened.outside = false;
     this.changedTo(page, tab, opened, text.changed());
     for (const shownIn of this.shell.pagesShowing(tab)) {
