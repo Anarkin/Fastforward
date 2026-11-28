@@ -3,11 +3,7 @@ import { strings } from '../../../lib/shared/strings';
 import { withoutCredentials } from './credentials';
 import { monitorArgs } from './fsMonitor';
 import { gitProcessOptions, userCodeEnv } from './gitCommand';
-import {
-  gitCommand,
-  gitEnv,
-  unnamedBareRefused,
-} from '../../../lib/main/gitCommand';
+import { gitCommand, gitEnv, gitGuards } from '../../../lib/main/gitCommand';
 import {
   keptRunning,
   stopEveryGit,
@@ -121,7 +117,7 @@ export async function startGit(
   return keptRunning(
     spawnGit(
       started.command,
-      [...unnamedBareRefused, ...gitConfigArgs, ...monitor, ...args],
+      [...gitGuards, ...gitConfigArgs, ...monitor, ...args],
       {
         cwd,
         env: { ...gitEnv(), ...started.env, GIT_FLUSH: '1' },
@@ -177,7 +173,7 @@ function runGitOnce(
       spawnGit(
         started.command,
         [
-          ...unnamedBareRefused,
+          ...gitGuards,
           ...(runsUserCode ? [] : gitConfigArgs),
           ...monitor,
           ...args,

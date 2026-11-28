@@ -1,7 +1,12 @@
 import { win32 } from 'node:path';
 import { fs } from './files';
 
-export const unnamedBareRefused = ['-c', 'safe.bareRepository=explicit'];
+export const gitGuards = [
+  '-c',
+  'safe.bareRepository=explicit',
+  '-c',
+  'protocol.ext.allow=never',
+];
 
 const elsewhere = [
   'GIT_DIR',

@@ -1,9 +1,5 @@
 import { gitProcessOptions } from './gitCommand';
-import {
-  gitCommand,
-  gitEnv,
-  unnamedBareRefused,
-} from '../../../lib/main/gitCommand';
+import { gitCommand, gitEnv, gitGuards } from '../../../lib/main/gitCommand';
 import { spawnGit, type GitChild } from './spawnedGit';
 
 const monitors = new Map<string, Promise<string[]>>();
@@ -18,13 +14,7 @@ export function monitorArgs(gitPath: string, cwd: string): Promise<string[]> {
   const read = answerOf(
     spawnGit(
       command,
-      [
-        ...unnamedBareRefused,
-        'config',
-        '--type=bool',
-        '--get',
-        'core.fsmonitor',
-      ],
+      [...gitGuards, 'config', '--type=bool', '--get', 'core.fsmonitor'],
       {
         cwd,
         env: { ...gitEnv(), ...env },

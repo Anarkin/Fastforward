@@ -134,6 +134,24 @@ suite('Git repository', () => {
     }
   }, 120_000);
 
+  test('runs no command a remote of the ext protocol names, though the repository lets the protocol through, as a repository merely opened is fetched in the background', async () => {
+    const folder = tempFolder('ext-remote');
+    try {
+      const local = await tempRepository(path.join(folder, 'local'));
+      const marker = path.join(folder, 'ran').replaceAll('\\', '/');
+      const command = path.join(folder, 'command.sh').replaceAll('\\', '/');
+      fs.writeFileSync(command, `#!/bin/sh\ntouch '${marker}'\nexit 1\n`, {
+        mode: 0o755,
+      });
+      await local.git('config', 'protocol.ext.allow', 'always');
+      await local.git('remote', 'add', 'origin', `ext::sh ${command}`);
+      await fetchAllRemotes(gitPath, local.root).catch(() => undefined);
+      assert.strictEqual(fs.existsSync(marker), false);
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('says why a fetch failed without the progress git printed before it, keeping the lines ssh ends with a carriage return', async () => {
     const folder = tempFolder('failing-remote');
     try {
