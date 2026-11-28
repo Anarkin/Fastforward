@@ -85,6 +85,13 @@ function startPosition(
     return undefined;
   }
   const hint = history.selectedIndex;
+  if (
+    hint === undefined &&
+    history.keysFrom === undefined &&
+    history.holdsAll()
+  ) {
+    return history.positionOf(selected);
+  }
   return (
     history.positionOf(selected) ??
     (hint !== undefined && history.at(hint) === undefined

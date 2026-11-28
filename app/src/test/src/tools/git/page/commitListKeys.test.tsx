@@ -177,6 +177,19 @@ suite('Commit list keys', () => {
     assert.strictEqual(press('End', moved, 'c', true), undefined);
   });
 
+  test('starts from the top of a list it holds whole, as the commits a filter found, once the selected commit is not in it, as the keys did nothing while the step buttons went to the first found', () => {
+    const found = new CommitHistory(3);
+    found.add(0, [commitInfo('a'), commitInfo('b'), commitInfo('c')]);
+    assert.deepStrictEqual(
+      [
+        press('ArrowDown', found, 'elsewhere', false),
+        press('Home', found, 'elsewhere', false),
+        press('End', found, 'elsewhere', false),
+      ],
+      [0, 0, 2],
+    );
+  });
+
   test('goes on from the merge the selected commit is hidden in', () => {
     const history = new CommitHistory(3, [], undefined, 0, undefined, 0);
     history.add(0, [commitInfo('m'), commitInfo('n'), commitInfo('o')]);

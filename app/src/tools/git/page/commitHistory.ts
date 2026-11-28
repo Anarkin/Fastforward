@@ -127,6 +127,10 @@ export class CommitHistory {
 
   readonly getVersion = (): number => this.version;
 
+  holdsAll(): boolean {
+    return this.rows.size === this.total;
+  }
+
   add(
     start: number,
     commits: readonly CommitInfo[],
