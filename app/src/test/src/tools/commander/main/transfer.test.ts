@@ -552,6 +552,40 @@ suite('Transfer', () => {
   );
 
   test.skipIf(process.platform !== 'win32')(
+    'keeps a large file copied in pieces to a drive that takes no Mark of the Web or mode, as one of FAT or a share, rather than deleting it once every byte was copied',
+    async () => {
+      const big = path.join(source, 'setup.exe');
+      fs.writeFileSync(big, Buffer.alloc(10_000, 7));
+      fs.writeFileSync(
+        `${big}:Zone.Identifier`,
+        '[ZoneTransfer]\r\nZoneId=3\r\n',
+      );
+      const writeFile = fs.promises.writeFile.bind(fs.promises);
+      vi.spyOn(fs.promises, 'writeFile').mockImplementation((file, data) =>
+        typeof file === 'string' && file.endsWith(':Zone.Identifier')
+          ? Promise.reject(
+              Object.assign(new Error('EINVAL'), { code: 'EINVAL' }),
+            )
+          : writeFile(file, data),
+      );
+      vi.spyOn(fs.promises, 'chmod').mockRejectedValue(
+        Object.assign(new Error('EPERM'), { code: 'EPERM' }),
+      );
+
+      const copied = await run(
+        { sources: [big], target, move: false },
+        { piecesFrom: 4000, pieceBytes: 1000, cloning: false },
+      );
+
+      assert.deepStrictEqual(copied.failures, []);
+      assert.strictEqual(
+        fs.statSync(path.join(target, 'setup.exe')).size,
+        10_000,
+      );
+    },
+  );
+
+  test.skipIf(process.platform !== 'win32')(
     'keeps the Mark of the Web of a large read-only file copied in pieces on Windows, and keeps it read-only, as the target was made read-only before its mark was written, which Windows refused',
     async () => {
       const big = path.join(source, 'setup.iso');

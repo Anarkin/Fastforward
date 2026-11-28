@@ -104,7 +104,9 @@ async function keptMark(source: string, target: string): Promise<void> {
     .readFile(`${source}${markOfTheWeb}`)
     .catch(() => undefined);
   if (mark !== undefined) {
-    await fs.promises.writeFile(`${target}${markOfTheWeb}`, mark);
+    await fs.promises
+      .writeFile(`${target}${markOfTheWeb}`, mark)
+      .catch(() => undefined);
   }
 }
 
@@ -652,7 +654,7 @@ class Transfer {
       await output.close();
       output = undefined;
       await keptMark(source, target);
-      await fs.promises.chmod(target, stats.mode & 0o7777);
+      await fs.promises.chmod(target, stats.mode & 0o7777).catch(ignored);
     } catch (error) {
       await output?.close().catch(ignored);
       output = undefined;
