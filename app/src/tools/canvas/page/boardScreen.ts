@@ -107,6 +107,25 @@ const onBorder = (box: Box, column: number, row: number): boolean =>
   column === box.column ||
   column === box.column + box.columns - 1;
 
+function seenOf(
+  painter: Painter,
+  box: Box,
+): {
+  readonly top: number;
+  readonly bottom: number;
+  readonly left: number;
+  readonly right: number;
+} {
+  const { screen } = painter;
+  return {
+    top: Math.max(box.row, screen.row),
+    bottom: Math.min(box.row + box.rows, screen.row + screen.rows) - 1,
+    left: Math.max(box.column, screen.column),
+    right:
+      Math.min(box.column + box.columns, screen.column + screen.columns) - 1,
+  };
+}
+
 function border(painter: Painter, box: Box, kind: string | undefined): void {
   const right = box.column + box.columns - 1;
   const bottom = box.row + box.rows - 1;
@@ -114,14 +133,15 @@ function border(painter: Painter, box: Box, kind: string | undefined): void {
     painter.glyph(box.column, box.row, tinyNode, 1, kind ?? lineKind);
     return;
   }
-  for (let column = box.column; column <= right; column++) {
+  const seen = seenOf(painter, box);
+  for (let column = seen.left; column <= seen.right; column++) {
     const bits =
       (column > box.column ? wayBits.left : 0) |
       (column < right ? wayBits.right : 0);
     painter.line(column, box.row, bits, kind);
     painter.line(column, bottom, bits, kind);
   }
-  for (let row = box.row; row <= bottom; row++) {
+  for (let row = seen.top; row <= seen.bottom; row++) {
     const bits =
       (row > box.row ? wayBits.up : 0) | (row < bottom ? wayBits.down : 0);
     painter.line(box.column, row, bits, kind);
@@ -205,10 +225,13 @@ function paintNode(
   const right = box.column + box.columns - 1;
   const typed = typing?.id === node.id ? typing : undefined;
   if (node.type === 'group') {
-    for (let row = box.row; row < box.row + box.rows; row++) {
-      for (let column = box.column; column <= right; column++) {
-        if (selected && onBorder(box, column, row)) {
-          painter.choose(column, row, true);
+    if (selected) {
+      const seen = seenOf(painter, box);
+      for (let row = seen.top; row <= seen.bottom; row++) {
+        for (let column = seen.left; column <= seen.right; column++) {
+          if (onBorder(box, column, row)) {
+            painter.choose(column, row, true);
+          }
         }
       }
     }

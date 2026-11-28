@@ -232,6 +232,30 @@ suite('Canvas screen', () => {
     );
   });
 
+  test('draws only the part of a node and a group as large as a canvas may hold in the view, selected too, as walking every cell of their borders and area held the window', () => {
+    const farthest = 1_000_000;
+    assert.deepStrictEqual(
+      screenText(
+        {
+          nodes: [
+            {
+              id: 'g',
+              type: 'group',
+              x: 0,
+              y: 0,
+              width: farthest,
+              height: farthest,
+            },
+            text('wide', 2, 1, farthest / unit.width, 3, 'Wide'),
+          ],
+        },
+        { column: 0, row: 0, columns: 6, rows: 4 },
+        ['g', 'wide'],
+      ),
+      ['┌─────', '│ ┌───', '│ │ Wi', '│ └───'],
+    );
+  });
+
   test('writes the label of a group in its top border, keeps what lies inside it, and draws a node over a group listed before it', () => {
     assert.deepStrictEqual(
       screenText(

@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { isObject } from '../../../lib/main/json';
-import { edgeEnds, nodeSides, whichEnds } from '../shared/board';
+import { edgeEnds, farthestPlace, nodeSides, whichEnds } from '../shared/board';
 import {
   addedKinds,
   isBoardColor,
@@ -15,8 +15,6 @@ const mostItems = 100_000;
 
 const mostId = 256;
 
-const farthest = 1_000_000_000;
-
 const longestText = 50_000_000;
 
 const longestUrl = 8192;
@@ -27,7 +25,7 @@ const isId = (value: unknown): value is string =>
 const isPlace = (value: unknown): value is number =>
   typeof value === 'number' &&
   Number.isSafeInteger(value) &&
-  Math.abs(value) <= farthest;
+  Math.abs(value) <= farthestPlace;
 
 const isSize = (value: unknown): value is number =>
   isPlace(value) && value >= 1;

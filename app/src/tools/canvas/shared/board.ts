@@ -1,3 +1,5 @@
+export const farthestPlace = 1_000_000;
+
 export const nodeSides = ['top', 'right', 'bottom', 'left'] as const;
 
 export type NodeSide = (typeof nodeSides)[number];

@@ -4,6 +4,13 @@ import { boardOf } from '../../../../../tools/canvas/main/reading';
 
 const placed = { x: 0, y: 0, width: 250, height: 60 };
 
+const far = (more: Record<string, number>) => ({
+  type: 'text',
+  text: 'far',
+  ...placed,
+  ...more,
+});
+
 suite('Canvas reading', () => {
   test('reads the nodes of each kind and the edges of JSON Canvas, what each holds and in the order of the file, the first drawn lowest', () => {
     const json = JSON.stringify({
@@ -216,6 +223,29 @@ suite('Canvas reading', () => {
       },
       skipped: 10,
     });
+  });
+
+  test('skips a node placed or sized past a million pixels from the start of the board, as the page draws a canvas no farther, counting it, and an edge to it, as one such number in a file held the window at every start', () => {
+    const read = boardOf(
+      JSON.stringify({
+        nodes: [
+          { id: 'edge', ...far({ x: -1_000_000, width: 1_000_000 }) },
+          { id: 'x', ...far({ x: 1e15 }) },
+          { id: 'y', ...far({ y: -1_000_001 }) },
+          { id: 'w', ...far({ width: 1e15 }) },
+          { id: 'h', ...far({ height: 2_000_000 }) },
+        ],
+        edges: [
+          { id: 'kept', fromNode: 'edge', toNode: 'edge' },
+          { id: 'gone', fromNode: 'edge', toNode: 'w' },
+        ],
+      }),
+    );
+    assert.deepStrictEqual(read.kind === 'board' && read.board, {
+      nodes: [{ id: 'edge', ...far({ x: -1_000_000, width: 1_000_000 }) }],
+      edges: [{ id: 'kept', fromNode: 'edge', toNode: 'edge' }],
+    });
+    assert.strictEqual(read.kind === 'board' && read.skipped, 5);
   });
 
   test('leaves out a side or an end JSON Canvas lacks, and a color or a label that is no text, keeping the node or the edge', () => {

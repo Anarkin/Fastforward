@@ -7,6 +7,7 @@ import {
   type Board,
   type BoardEdge,
   type BoardNode,
+  farthestPlace,
 } from '../shared/board';
 
 export type BoardRead =
@@ -27,6 +28,9 @@ function parsed(text: string): { readonly value: unknown } | undefined {
 const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+const isPlace = (value: unknown): value is number =>
+  isNumber(value) && Math.abs(value) <= farthestPlace;
+
 function oneOf<const T extends string>(
   choices: readonly T[],
   value: unknown,
@@ -37,10 +41,10 @@ function oneOf<const T extends string>(
 function placedOf(value: Json) {
   const { id, x, y, width, height, color } = value;
   return typeof id === 'string' &&
-    isNumber(x) &&
-    isNumber(y) &&
-    isNumber(width) &&
-    isNumber(height)
+    isPlace(x) &&
+    isPlace(y) &&
+    isPlace(width) &&
+    isPlace(height)
     ? { id, x, y, width, height, ...(typeof color === 'string' && { color }) }
     : undefined;
 }
