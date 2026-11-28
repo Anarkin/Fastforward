@@ -22,6 +22,7 @@ import {
   stubMethod,
   tabOf,
   gitState,
+  everyTabFetchedByHand,
 } from '../../../../helpers/harness';
 import { lockedRepository } from '../../../../helpers/gitFixtures';
 import { FakeHost } from '../../../../helpers/fakeHost';
@@ -162,6 +163,7 @@ suite('Git tool fetching', () => {
       workingTreeReads = 0;
       await opened.connection.receive({ type: 'fetch', root: repository.root });
       assert.deepStrictEqual(refreshed, [], 'asked for, bringing nothing');
+      await everyTabFetchedByHand(opened.store);
       await opened.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 1, 'the round to end');
       assert.deepStrictEqual(refreshed, [], 'in the background, nothing');
@@ -203,6 +205,7 @@ suite('Git tool fetching', () => {
     try {
       await opened.connection.receive({ type: 'browseRepositories' });
       await remote.git('branch', 'brought-bare', 'main');
+      await everyTabFetchedByHand(opened.store);
       await opened.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 1, 'the round to end');
       await waitFor(
@@ -372,6 +375,7 @@ suite('Git tool fetching', () => {
     });
     try {
       await withNotices(opened.page, 'error', async (messages) => {
+        await everyTabFetchedByHand(opened.store);
         await opened.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => rounds.length === 1, 'the first round');
         assert.strictEqual(messages.length, 1);
@@ -429,6 +433,7 @@ suite('Git tool fetching', () => {
       },
     );
     try {
+      await everyTabFetchedByHand(opened.store);
       await opened.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 1, 'the round to end');
       await opened.connection.receive({ type: 'fetch', root: locked.root });
@@ -470,6 +475,7 @@ suite('Git tool fetching', () => {
     });
     try {
       await withNotices(opened.page, 'error', async (messages) => {
+        await everyTabFetchedByHand(opened.store);
         await opened.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => rounds.length === 1, 'the round to end');
         await manual;
@@ -564,6 +570,7 @@ suite('Git tool fetching', () => {
     );
     try {
       await withNotices(opened.page, 'error', async (messages) => {
+        await everyTabFetchedByHand(opened.store);
         await opened.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => requests === 1, 'the fetch to reach the remote');
         opened.view.quit();

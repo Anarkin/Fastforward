@@ -17,6 +17,7 @@ import {
   withView,
   tabOf,
   gitState,
+  everyTabFetchedByHand,
 } from '../../../../helpers/harness';
 import { worktreeRepositories, worktreeRoot } from './toolWorktreesFixtures';
 import { removeFolder } from '../../../../helpers/tempFolders';
@@ -93,6 +94,7 @@ suite('Git tool fetching worktrees', () => {
       });
       await fetched.git('worktree', 'remove', '--force', linked);
       const head = await brought('b');
+      await everyTabFetchedByHand(opened.store);
       await opened.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 1, 'the round to end');
       assert.deepStrictEqual(await fetched.resolve('origin/main'), [head]);
@@ -112,6 +114,7 @@ suite('Git tool fetching worktrees', () => {
       });
       await started.connection.receive({ type: 'ready' });
       const head = await brought('c');
+      await everyTabFetchedByHand(started.store);
       await started.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 2, 'the next round to end');
       assert.deepStrictEqual(await fetched.resolve('origin/main'), [head]);

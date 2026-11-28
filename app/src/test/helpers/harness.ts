@@ -1,3 +1,4 @@
+import { isObject } from '../../lib/main/json';
 import { strings } from '../../lib/shared/strings';
 import * as assert from 'node:assert';
 import * as fs from 'node:fs';
@@ -527,4 +528,17 @@ export function savedBookmarks(
 
 export function gitState(store: Store): Store {
   return toolState(store, 'git');
+}
+
+export async function everyTabFetchedByHand(store: FakeStore): Promise<void> {
+  const storage = new GitStorage(
+    new UserSettings(defaultSettings()),
+    gitState(store),
+  );
+  const tabs: unknown = store.get(tabsKey);
+  for (const tab of Array.isArray(tabs) ? tabs : []) {
+    if (isObject(tab) && typeof tab.root === 'string') {
+      await storage.markFetchedByHand(tab.root);
+    }
+  }
 }

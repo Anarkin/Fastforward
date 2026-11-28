@@ -88,6 +88,9 @@ export class Fetches {
     interactive = true,
   ): Promise<Fetched> {
     const { repository } = at;
+    if (interactive) {
+      this.access.core.save(this.access.storage.markFetchedByHand(repository));
+    }
     const { fetches } = this.access.remoteWork;
     const running = fetches.get(repository);
     const joined =
@@ -165,6 +168,7 @@ export class Fetches {
     if (
       !session ||
       !this.access.core.hasRepository(repository) ||
+      !this.access.storage.fetchedByHand(repository) ||
       !(await isFolder(root))
     ) {
       return;

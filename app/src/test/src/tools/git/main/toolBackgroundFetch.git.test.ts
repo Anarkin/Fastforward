@@ -13,6 +13,7 @@ import {
 } from '../../../../helpers/stub';
 import {
   closeViews,
+  everyTabFetchedByHand,
   gate,
   idleOnlyOnceOpened,
   openView,
@@ -99,6 +100,46 @@ suite('Git tool fetching in the background', () => {
     }
   });
 
+  test('fetches in the background only a repository fetched by hand before, remembered with the repository, as a fetch runs what the config of the repository names, as its uploadpack, and opening one ran it unasked', async () => {
+    const untrusted = await tempRepository(path.join(folder, 'untrusted'));
+    await untrusted.git('pull', remote.root, 'main');
+    await untrusted.git('remote', 'add', 'origin', remote.root);
+    const before = await untrusted
+      .git('rev-parse', '--verify', '-q', 'origin/main')
+      .catch(() => '');
+    const rounds: (() => void)[] = [];
+    const view = await openView(
+      log,
+      [untrusted.root],
+      true,
+      undefined,
+      (run) => {
+        rounds.push(run);
+        return () => undefined;
+      },
+    );
+    try {
+      await push('new before any fetch by hand');
+      await view.connection.receive({ type: 'setAutoFetch', on: true });
+      await waitFor(() => rounds.length === 1, 'the first round');
+      assert.strictEqual(
+        await untrusted
+          .git('rev-parse', '--verify', '-q', 'origin/main')
+          .catch(() => ''),
+        before,
+      );
+
+      await view.connection.receive({ type: 'fetch', root: untrusted.root });
+      await view.view.idle();
+      const pushed = await push('new after a fetch by hand');
+      rounds[0]();
+      await waitFor(() => rounds.length === 2, 'the second round');
+      assert.deepStrictEqual(await untrusted.resolve('origin/main'), [pushed]);
+    } finally {
+      view.connection.dispose();
+    }
+  });
+
   test('fetches every open repository while pinned, telling of a failure once until one succeeds', async () => {
     const broken = await tempRepository(path.join(folder, 'broken'));
     await broken.commit('a');
@@ -119,6 +160,7 @@ suite('Git tool fetching in the background', () => {
     );
     try {
       await withNotices(view.page, 'error', async (messages) => {
+        await everyTabFetchedByHand(view.store);
         await view.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => rounds.length === 1, 'the first round');
         assert.deepStrictEqual(await first.resolve('origin/main'), [head]);
@@ -189,6 +231,7 @@ suite('Git tool fetching in the background', () => {
       assert.ok(shown.last('diff')?.patch.includes('+kept'));
       const before = shown.last('commits')?.total ?? 0;
       shown.clear();
+      await everyTabFetchedByHand(view.store);
       await open.receive({ type: 'setAutoFetch', on: true });
       await waitFor(
         () =>
@@ -244,6 +287,7 @@ suite('Git tool fetching in the background', () => {
       return original(...args);
     });
     try {
+      await everyTabFetchedByHand(opened.store);
       await opened.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 1, 'the round to end');
       await waitFor(
@@ -285,6 +329,7 @@ suite('Git tool fetching in the background', () => {
       return original(...args);
     });
     try {
+      await everyTabFetchedByHand(opened.store);
       await opened.connection.receive({ type: 'setAutoFetch', on: true });
       await waitFor(() => rounds.length === 1, 'the round to end');
       assert.deepStrictEqual(await repository.resolve('origin/main'), [before]);
@@ -320,6 +365,7 @@ suite('Git tool fetching in the background', () => {
     });
     try {
       await withNotices(opened.page, 'error', async (messages) => {
+        await everyTabFetchedByHand(opened.store);
         await opened.connection.receive({ type: 'setAutoFetch', on: true });
         await waitFor(() => rounds.length === 1, 'the round to end');
         assert.deepStrictEqual(messages, []);

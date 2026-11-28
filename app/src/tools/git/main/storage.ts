@@ -23,6 +23,7 @@ export const bookmarksKey = 'bookmarks';
 export const worktreesKey = 'activeWorktrees';
 export const cloneFolderKey = 'cloneFolder';
 export const selectionsKey = 'selections';
+const fetchedByHandKey = 'fetchedByHand';
 
 export interface SavedSelection {
   readonly hash: string;
@@ -167,7 +168,22 @@ export class GitStorage {
       withoutRoots(this.state, worktreesKey, [repository]),
       withoutRoots(this.state, soloKey, worktreesToo),
       withoutRoots(this.state, selectionsKey, worktreesToo),
+      withoutRoots(this.state, fetchedByHandKey, [repository]),
     ]);
+  }
+
+  fetchedByHand(repository: string): boolean {
+    const all = recordOf(this.state.get(fetchedByHandKey));
+    return all[keyOf(all, repository)] === true;
+  }
+
+  async markFetchedByHand(repository: string): Promise<void> {
+    if (this.fetchedByHand(repository)) {
+      return;
+    }
+    const all = { ...recordOf(this.state.get(fetchedByHandKey)) };
+    all[keyOf(all, repository)] = true;
+    await this.state.update(fetchedByHandKey, all);
   }
 
   get soloDefault(): boolean {

@@ -268,6 +268,7 @@ export function buildParts(
     {
       post: (message) => sessions.cloneSession()?.post(message),
       open: async (target) => {
+        await storage.markFetchedByHand(target);
         const session = sessions.cloneSession();
         if (session !== undefined) {
           await runs.runNow(strings.log.openingFailed(target), session, () =>
