@@ -299,6 +299,75 @@ suite('Transfer', () => {
     });
   });
 
+  test.skipIf(process.platform === 'win32')(
+    'copies a file only its owner may read without letting anyone else read the part copied so far, giving it the mode of its source once whole',
+    async () => {
+      const secret = write(path.join(source, 'secret.bin'), 's'.repeat(10_000));
+      fs.chmodSync(secret, 0o600);
+      const seen: number[] = [];
+
+      await run(
+        { sources: [secret], target, move: false },
+        {
+          piecesFrom: 4000,
+          pieceBytes: 1000,
+          cloning: false,
+          stopped: () => {
+            for (const name of fs.readdirSync(target)) {
+              seen.push(fs.statSync(path.join(target, name)).mode & 0o777);
+            }
+            return false;
+          },
+        },
+      );
+
+      assert.ok(seen.length > 0);
+      assert.deepStrictEqual(
+        seen.filter((mode) => (mode & 0o077) !== 0),
+        [],
+      );
+      assert.strictEqual(
+        fs.statSync(path.join(target, 'secret.bin')).mode & 0o777,
+        0o600,
+      );
+    },
+  );
+
+  test('copies a file whole though the system writes a piece of it short, writing the rest of the piece rather than leaving a hole of zeros', async () => {
+    const text = Array.from({ length: 10_000 }, (_, at) =>
+      String.fromCharCode(97 + (at % 26)),
+    ).join('');
+    write(path.join(source, 'big.bin'), text);
+    const open = fs.promises.open.bind(fs.promises);
+    vi.spyOn(fs.promises, 'open').mockImplementation(
+      async (file, flags, mode) => {
+        const handle = await open(file, flags, mode);
+        if (flags !== 'wx') {
+          return handle;
+        }
+        const whole = handle.write.bind(handle);
+        return Object.assign(handle, {
+          write: (
+            buffer: Buffer,
+            offset: number,
+            length: number,
+            position: number,
+          ) => whole(buffer, offset, Math.min(length, 300), position),
+        });
+      },
+    );
+
+    await run(
+      { sources: [path.join(source, 'big.bin')], target, move: false },
+      { piecesFrom: 4000, pieceBytes: 1000, cloning: false },
+    );
+
+    assert.strictEqual(
+      fs.readFileSync(path.join(target, 'big.bin'), 'utf8'),
+      text,
+    );
+  });
+
   test('keeps a read-only file it was told to overwrite read-only when its copy is stopped, as it is left as it was', async () => {
     write(path.join(source, 'big.bin'), 'n'.repeat(10_000));
     const kept = path.join(target, 'big.bin');

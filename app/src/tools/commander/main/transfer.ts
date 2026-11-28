@@ -606,7 +606,7 @@ class Transfer {
     let output: FileHandle | undefined;
     let made = false;
     try {
-      output = await fs.promises.open(target, 'wx', 0o666);
+      output = await fs.promises.open(target, 'wx', 0o600);
       made = true;
       const piece = Buffer.allocUnsafe(pieceBytes);
       for (let position = 0; ;) {
@@ -615,7 +615,15 @@ class Transfer {
         if (bytesRead === 0) {
           break;
         }
-        await output.write(piece, 0, bytesRead, position);
+        for (let written = 0; written < bytesRead;) {
+          const { bytesWritten } = await output.write(
+            piece,
+            written,
+            bytesRead - written,
+            position + written,
+          );
+          written += bytesWritten;
+        }
         position += bytesRead;
         this.bytes += bytesRead;
         this.report();
