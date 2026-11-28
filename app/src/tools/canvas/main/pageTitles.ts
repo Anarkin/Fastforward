@@ -9,6 +9,7 @@ export type PageFetch = (url: string, signal: AbortSignal) => Promise<Fetched>;
 export interface Reach {
   readonly fetchPage: PageFetch;
   readonly lookup: (host: string) => Promise<readonly string[]>;
+  readonly wait?: number;
 }
 
 const mostBytes = 256 * 1024;
@@ -130,11 +131,16 @@ function decoded(bytes: Buffer, charset: string): string {
   }
 }
 
-async function headOf(body: ReadableStream<Uint8Array>): Promise<Buffer> {
+async function headOf(
+  body: ReadableStream<Uint8Array>,
+  signal: AbortSignal,
+): Promise<Buffer> {
   const reader = body.getReader();
   const chunks: Buffer[] = [];
   let size = 0;
   let tail = '';
+  const ended = () => void reader.cancel().catch(() => undefined);
+  signal.addEventListener('abort', ended, { once: true });
   try {
     while (size < mostBytes) {
       const { done, value } = await reader.read();
@@ -151,26 +157,31 @@ async function headOf(body: ReadableStream<Uint8Array>): Promise<Buffer> {
       tail = seen.slice(-titleEndLength);
     }
   } finally {
+    signal.removeEventListener('abort', ended);
     await reader.cancel().catch(() => undefined);
   }
+  signal.throwIfAborted();
   return Buffer.concat(chunks).subarray(0, mostBytes);
 }
 
-async function titleOfPage(response: Response): Promise<string | undefined> {
+async function titleOfPage(
+  response: Response,
+  signal: AbortSignal,
+): Promise<string | undefined> {
   const type = response.headers.get('content-type') ?? '';
   if (!response.ok || response.body === null || !htmlTypes.test(type)) {
     await response.body?.cancel();
     return undefined;
   }
-  const head = await headOf(response.body);
+  const head = await headOf(response.body, signal);
   return titleIn(decoded(head, charsetOf(type, head)));
 }
 
 export async function readTitle(
   url: string,
-  { fetchPage, lookup }: Reach,
+  { fetchPage, lookup, wait = waitMilliseconds }: Reach,
 ): Promise<string | undefined> {
-  const signal = AbortSignal.timeout(waitMilliseconds);
+  const signal = AbortSignal.timeout(wait);
   try {
     let at = url;
     for (let moves = 0; moves <= mostMoves; moves++) {
@@ -179,7 +190,7 @@ export async function readTitle(
       }
       const fetched = await fetchPage(at, signal);
       if (!('moved' in fetched)) {
-        return await titleOfPage(fetched);
+        return await titleOfPage(fetched, signal);
       }
       at = new URL(fetched.moved, at).href;
     }

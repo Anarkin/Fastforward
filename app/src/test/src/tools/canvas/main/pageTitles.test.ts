@@ -30,6 +30,32 @@ const reach = (
 });
 
 suite('Page titles', () => {
+  test('gives up a page that stalls after its headers once its time is up, letting go of the connection, as only its headers were bound by the time and a stalled page held the socket and the title for good', async () => {
+    let cancelled = false;
+    const stalled: PageFetch = () =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start: (controller) =>
+              controller.enqueue(new TextEncoder().encode('<html><head>')),
+            cancel: () => {
+              cancelled = true;
+            },
+          }),
+          { headers: { 'content-type': 'text/html' } },
+        ),
+      );
+
+    assert.strictEqual(
+      await readTitle('https://example.com/', {
+        ...reach(stalled),
+        wait: 50,
+      }),
+      undefined,
+    );
+    assert.strictEqual(cancelled, true);
+  });
+
   test('reads the title of a page, its entities decoded and its whitespace folded into single spaces', () => {
     assert.strictEqual(
       titleIn(
