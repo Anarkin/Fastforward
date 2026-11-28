@@ -94,7 +94,7 @@ export class Comparisons {
         ],
         () => {
           if (this.shown.get(page) === comparing) {
-            void this.send(page);
+            void this.refresh(page);
           }
         },
         (error) => {
@@ -131,6 +131,14 @@ export class Comparisons {
         const { file: _file, ...versions } = listed;
         post(page, { type: 'versions', tab: comparing.tab, side, ...versions });
       }
+    }
+  }
+
+  async refresh(page: Page): Promise<void> {
+    await this.send(page);
+    const comparing = this.shown.get(page);
+    if (comparing !== undefined) {
+      await this.listVersions(page, comparing);
     }
   }
 

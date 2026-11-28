@@ -132,7 +132,7 @@ export class DiffTool implements Tool<'diff'> {
         await this.comparisons.sendTexts(page, message.requests);
         return;
       case 'refresh':
-        await this.comparisons.send(page);
+        await this.comparisons.refresh(page);
         return;
       case 'setShowEntireFile':
         this.save(this.setting('showEntireFile', message.show));

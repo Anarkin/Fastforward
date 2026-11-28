@@ -192,6 +192,32 @@ suite('Diff tool comparing two files', () => {
     assert.strictEqual(lastCompare()?.newVersion, undefined);
   });
 
+  test('lists the versions of each side again on F2 or Ctrl+R, as a commit that landed left the header naming a commit the side no longer showed', async () => {
+    const refreshed = path.join(repository.root, 'refreshed.txt');
+    await repository.commit('one', { 'refreshed.txt': 'one\n' });
+    const compare = { old: refreshed, new: refreshed };
+    await opened.store.update(tabsKey, [
+      { id: '1', tool: 'git', root: repository.root },
+      { id: '14', tool: 'diff', compare },
+    ]);
+    await opened.connection.receive({ type: 'selectTab', tab: '14' });
+    await repository.commit('two', { 'refreshed.txt': 'two\n' });
+    const [one, two] = await repository.resolve('HEAD~1', 'HEAD');
+
+    await toDiff({ type: 'refresh' });
+
+    assert.deepStrictEqual(
+      diffSent(opened.page)
+        .flatMap((message) =>
+          message.type === 'versions' && message.tab === '14'
+            ? [message.versions.map((each) => each.rev)]
+            : [],
+        )
+        .at(-1),
+      [two, one],
+    );
+  });
+
   test('lists the versions of each side of a compare tab once it shows, and switches a side to a version listed, the new side moving the old to the version below it, saved with the tab', async () => {
     const tale = path.join(repository.root, 'tale.txt');
     await repository.commit('a', { 'tale.txt': 'a\n' });
