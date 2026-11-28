@@ -1,6 +1,9 @@
+import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import koffi from 'koffi';
 import type { TestContext } from 'vitest';
+import { textOf } from '../../lib/main/nativeCalls';
 import { removeFolder, tempFolder } from './tempFolders';
 
 export function createsAnewThroughJunctions(): boolean {
@@ -39,4 +42,23 @@ export function symlinkOrSkip(
     }
     context.skip();
   }
+}
+
+export function junctionByVolumeName(target: string, link: string): void {
+  const kernel32 = koffi.load('kernel32.dll');
+  const volumePath = kernel32.func(
+    'bool GetVolumePathNameW(const char16_t *name, _Out_ char16_t *path, uint32_t length)',
+  );
+  const volumeName = kernel32.func(
+    'bool GetVolumeNameForVolumeMountPointW(const char16_t *mount, _Out_ char16_t *name, uint32_t length)',
+  );
+  const mount = Buffer.alloc(1024);
+  assert.ok(volumePath(target, mount, 512));
+  const name = Buffer.alloc(1024);
+  assert.ok(volumeName(textOf(mount), name, 512));
+  fs.symlinkSync(
+    path.join(textOf(name), path.relative(textOf(mount), target)),
+    link,
+    'junction',
+  );
 }

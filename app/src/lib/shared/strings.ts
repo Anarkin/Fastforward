@@ -1109,6 +1109,8 @@ export const strings = {
       'It changed while it was copied, so it is kept where it was, beside its copy.',
     notCopied:
       'It is a pipe, a socket or a device rather than a file, which has no content to copy.',
+    mountedFolder:
+      'A volume is mounted in this folder, so it is left as it is rather than copied with every file of that volume.',
     layout: 'Layout',
     layouts: { details: 'Details', thumbnails: 'Thumbnails' },
     groupByColor: 'Group by Color',

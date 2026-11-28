@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { TransferProgress } from '../shared/transfers';
 import { reasonOf } from '../../../lib/main/reasons';
 import type { TransferEnd } from './transfer';
+import { linkFolderTest, type LinkFolder } from './linkFolders';
 
 export interface DeletionEvents {
   readonly progress: (progress: TransferProgress) => void;
@@ -14,6 +15,7 @@ export interface DeletionOptions {
   readonly stopped: () => boolean;
   readonly now?: () => number;
   readonly progressEvery?: number;
+  readonly linkFolder?: LinkFolder;
 }
 
 interface Item {
@@ -22,15 +24,21 @@ interface Item {
   readonly bytes: number;
 }
 
-async function itemsUnder(item: string, found: Item[]): Promise<void> {
+async function itemsUnder(
+  item: string,
+  found: Item[],
+  linkFolder: LinkFolder,
+): Promise<void> {
   const stats = await fs.promises.lstat(item).catch(() => undefined);
   if (stats === undefined) {
     return;
   }
   if (stats.isDirectory()) {
-    const names = await fs.promises.readdir(item).catch(() => []);
-    for (const name of names) {
-      await itemsUnder(path.join(item, name), found);
+    if (!(await linkFolder(item))) {
+      const names = await fs.promises.readdir(item).catch(() => []);
+      for (const name of names) {
+        await itemsUnder(path.join(item, name), found, linkFolder);
+      }
     }
     found.push({ item, folder: true, bytes: 0 });
     return;
@@ -68,14 +76,19 @@ export async function unlinked(item: string): Promise<void> {
 export async function runDeletion(
   sources: readonly string[],
   events: DeletionEvents,
-  { stopped, now = Date.now, progressEvery = 100 }: DeletionOptions,
+  {
+    stopped,
+    now = Date.now,
+    progressEvery = 100,
+    linkFolder = linkFolderTest(),
+  }: DeletionOptions,
 ): Promise<TransferEnd> {
   const items: Item[] = [];
   for (const source of sources) {
     if (stopped()) {
       return 'stopped';
     }
-    await itemsUnder(source, items);
+    await itemsUnder(source, items, linkFolder);
   }
   const files = items.filter((each) => !each.folder);
   const totalFiles = files.length;

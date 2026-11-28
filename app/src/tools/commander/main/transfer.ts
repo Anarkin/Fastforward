@@ -11,6 +11,7 @@ import type {
 } from '../shared/transfers';
 import { strings } from '../../../lib/shared/strings';
 import { fileIdOf } from './fileIds';
+import { linkFolderTest, type LinkFolder } from './linkFolders';
 import { reasonOf } from '../../../lib/main/reasons';
 
 export interface TransferPlan {
@@ -40,6 +41,7 @@ export interface TransferOptions {
   readonly pieceBytes?: number;
   readonly now?: () => number;
   readonly progressEvery?: number;
+  readonly linkFolder?: LinkFolder;
 }
 
 export type TransferEnd = 'done' | 'stopped';
@@ -157,6 +159,7 @@ class Transfer {
   private readonly made = new Set<string>();
   private readonly rename: (from: string, to: string) => Promise<void>;
   private readonly now: () => number;
+  private readonly linkFolder: LinkFolder;
 
   constructor(
     private readonly plan: TransferPlan,
@@ -165,6 +168,7 @@ class Transfer {
   ) {
     this.rename = options.rename ?? fs.promises.rename;
     this.now = options.now ?? Date.now;
+    this.linkFolder = options.linkFolder ?? linkFolderTest();
   }
 
   async run(): Promise<TransferEnd> {
@@ -262,6 +266,9 @@ class Transfer {
     if (!stats.isDirectory()) {
       return { files: 1, bytes: stats.isFile() ? stats.size : 0 };
     }
+    if (await this.linkFolder(source)) {
+      return none;
+    }
     let names: string[];
     try {
       names = await fs.promises.readdir(source);
@@ -331,6 +338,10 @@ class Transfer {
       from = await fs.promises.lstat(source);
     } catch (error) {
       this.failed(name, error);
+      return;
+    }
+    if (from.isDirectory() && (await this.linkFolder(source))) {
+      this.events.failed(name, strings.commander.mountedFolder);
       return;
     }
     const there = await statsOf(target);

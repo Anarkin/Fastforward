@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
 import { runDeletion } from '../../../../../tools/commander/main/deletion';
 import type { TransferProgress } from '../../../../../tools/commander/shared/transfers';
+import { junctionByVolumeName } from '../../../../helpers/links';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 let folder: string;
@@ -86,4 +87,29 @@ suite('Deleting permanently', () => {
     assert.strictEqual(texts().length, 2);
     assert.ok(left().includes('docs'));
   });
+
+  test.skipIf(process.platform !== 'win32')(
+    'removes a folder that mounts a volume, or a junction by the name of a volume, without deleting what is on that volume, as Node takes it for a plain folder',
+    async () => {
+      const kept = write(at('volume', 'data.txt'), 'on the volume');
+      fs.mkdirSync(at('docs'));
+      junctionByVolumeName(at('volume'), at('docs', 'mounted'));
+      assert.ok(fs.lstatSync(at('docs', 'mounted')).isDirectory());
+      const failures: string[] = [];
+
+      const end = await runDeletion(
+        [at('docs')],
+        {
+          progress: () => undefined,
+          failed: (name, reason) => failures.push(`${name}: ${reason}`),
+        },
+        { stopped: () => false, progressEvery: 0 },
+      );
+
+      assert.strictEqual(end, 'done');
+      assert.deepStrictEqual(failures, []);
+      assert.strictEqual(fs.readFileSync(kept, 'utf8'), 'on the volume');
+      assert.deepStrictEqual(left(), ['volume', 'volume/data.txt']);
+    },
+  );
 });

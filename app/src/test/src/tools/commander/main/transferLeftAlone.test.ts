@@ -5,7 +5,9 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test, vi } from 'vitest';
 import { runTransfer } from '../../../../../tools/commander/main/transfer';
 import { strings } from '../../../../../lib/shared/strings';
+import { junctionByVolumeName } from '../../../../helpers/links';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { crossingDrives } from './transferFixtures';
 
 let folder: string;
 let source: string;
@@ -26,11 +28,17 @@ afterEach(() => {
 
 async function run(
   sources: readonly string[],
-  options: { piecesFrom?: number; pieceBytes?: number; cloning?: boolean } = {},
+  options: {
+    piecesFrom?: number;
+    pieceBytes?: number;
+    cloning?: boolean;
+    rename?: (from: string, to: string) => Promise<void>;
+  } = {},
+  move = false,
 ) {
   const failures: string[] = [];
   await runTransfer(
-    { sources, target, move: false },
+    { sources, target, move },
     {
       progress: () => undefined,
       clash: () => Promise.resolve({ answer: 'stop', all: false }),
@@ -42,6 +50,33 @@ async function run(
 }
 
 suite('Transfer, leaving alone what it cannot copy', () => {
+  test.skipIf(process.platform !== 'win32')(
+    'refuses a folder a volume is mounted in, or a junction by the name of a volume, rather than copying every file of that volume, and keeps it and what is on the volume when moved to another drive',
+    async () => {
+      const onVolume = path.join(folder, 'volume', 'data.txt');
+      fs.mkdirSync(path.dirname(onVolume));
+      fs.writeFileSync(onVolume, 'on the volume');
+      const docs = path.join(source, 'docs');
+      fs.mkdirSync(docs);
+      fs.writeFileSync(path.join(docs, 'a.txt'), 'aaa');
+      junctionByVolumeName(path.dirname(onVolume), path.join(docs, 'mounted'));
+      const refused = `${path.join('docs', 'mounted')}: ${strings.commander.mountedFolder}`;
+
+      assert.deepStrictEqual((await run([docs])).failures, [refused]);
+      assert.deepStrictEqual(fs.readdirSync(path.join(target, 'docs')), [
+        'a.txt',
+      ]);
+      fs.rmSync(path.join(target, 'docs'), { recursive: true });
+
+      assert.deepStrictEqual(
+        (await run([docs], { rename: crossingDrives }, true)).failures,
+        [refused],
+      );
+      assert.deepStrictEqual(fs.readdirSync(docs), ['mounted']);
+      assert.strictEqual(fs.readFileSync(onVolume, 'utf8'), 'on the volume');
+    },
+  );
+
   test.skipIf(process.platform === 'win32')(
     'refuses a named pipe rather than waiting for ever for what it is to hold, copying the rest',
     async () => {
