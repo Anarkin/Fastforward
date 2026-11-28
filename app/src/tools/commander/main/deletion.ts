@@ -28,16 +28,24 @@ async function itemsUnder(
   item: string,
   found: Item[],
   linkFolder: LinkFolder,
+  listedAsLink?: boolean,
 ): Promise<void> {
   const stats = await fs.promises.lstat(item).catch(() => undefined);
   if (stats === undefined) {
     return;
   }
   if (stats.isDirectory()) {
-    if (!(await linkFolder(item))) {
-      const names = await fs.promises.readdir(item).catch(() => []);
-      for (const name of names) {
-        await itemsUnder(path.join(item, name), found, linkFolder);
+    if (!(await linkFolder(item, listedAsLink))) {
+      const entries = await fs.promises
+        .readdir(item, { withFileTypes: true })
+        .catch(() => []);
+      for (const entry of entries) {
+        await itemsUnder(
+          path.join(item, entry.name),
+          found,
+          linkFolder,
+          entry.isSymbolicLink(),
+        );
       }
     }
     found.push({ item, folder: true, bytes: 0 });

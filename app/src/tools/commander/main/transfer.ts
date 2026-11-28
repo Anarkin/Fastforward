@@ -1,7 +1,7 @@
 import { codeOf } from '../../../lib/shared/errors';
 import { randomBytes } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
-import type { FileHandle, Stats } from '../../../lib/main/files';
+import type { Dirent, FileHandle, Stats } from '../../../lib/main/files';
 import * as path from 'node:path';
 import type {
   Clash,
@@ -262,27 +262,35 @@ class Transfer {
     return stats === undefined ? none : this.countWith(source, stats);
   }
 
-  private async countWith(source: string, stats: Stats): Promise<Count> {
+  private async countWith(
+    source: string,
+    stats: Stats,
+    listedAsLink?: boolean,
+  ): Promise<Count> {
     if (!stats.isDirectory()) {
       return { files: 1, bytes: stats.isFile() ? stats.size : 0 };
     }
-    if (await this.linkFolder(source)) {
+    if (await this.linkFolder(source, listedAsLink)) {
       return none;
     }
-    let names: string[];
+    let entries: Dirent[];
     try {
-      names = await fs.promises.readdir(source);
+      entries = await fs.promises.readdir(source, { withFileTypes: true });
     } catch {
       return none;
     }
-    const children = names.map((name) => path.join(source, name));
+    const children = entries.map((entry) => path.join(source, entry.name));
     const found = await Promise.all(children.map(statsOf));
     let files = 0;
     let bytes = 0;
     for (const [index, child] of children.entries()) {
       const each = found[index];
       if (each !== undefined) {
-        const count = await this.countWith(child, each);
+        const count = await this.countWith(
+          child,
+          each,
+          entries[index]?.isSymbolicLink(),
+        );
         files += count.files;
         bytes += count.bytes;
       }
@@ -330,6 +338,7 @@ class Transfer {
     source: string,
     target: string,
     renaming: boolean,
+    listedAsLink?: boolean,
   ): Promise<void> {
     this.stopIfAsked();
     const name = this.nameOf(target);
@@ -340,7 +349,7 @@ class Transfer {
       this.failed(name, error);
       return;
     }
-    if (from.isDirectory() && (await this.linkFolder(source))) {
+    if (from.isDirectory() && (await this.linkFolder(source, listedAsLink))) {
       this.events.failed(name, strings.commander.mountedFolder);
       return;
     }
@@ -446,18 +455,19 @@ class Transfer {
     target: string,
     renaming: boolean,
   ): Promise<void> {
-    let names: string[];
+    let entries: Dirent[];
     try {
-      names = await fs.promises.readdir(source);
+      entries = await fs.promises.readdir(source, { withFileTypes: true });
     } catch (error) {
       this.failed(this.nameOf(target), error);
       return;
     }
-    for (const name of names) {
+    for (const entry of entries) {
       await this.item(
-        path.join(source, name),
-        path.join(target, name),
+        path.join(source, entry.name),
+        path.join(target, entry.name),
         renaming,
+        entry.isSymbolicLink(),
       );
     }
     if (this.plan.move) {
