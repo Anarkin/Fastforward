@@ -73,7 +73,6 @@ export function scrollProxy(
   let long = 0;
   let room: number | undefined;
   let placed = 0;
-  let pointed = false;
   const scrolled = () =>
     axis === 'vertical' ? element.scrollTop : element.scrollLeft;
   const roomNow = () =>
@@ -91,9 +90,6 @@ export function scrollProxy(
       room = undefined;
     }
     room ??= roomNow();
-    if (pointed) {
-      return;
-    }
     const wanted = proxyScroll(shown, room);
     if (axis === 'vertical') {
       element.scrollTop = wanted;
@@ -136,25 +132,9 @@ export function scrollProxy(
     }
   };
   const link = axis === 'vertical' ? setRowScroller : setColumnScroller;
-  const scrollTo = (native: number) => {
-    if (axis === 'vertical') {
-      element.scrollTop = native;
-    } else {
-      element.scrollLeft = native;
-    }
-    placed = scrolled();
-  };
   link(element, {
-    dragTo: (native) => {
-      pointed = true;
-      scrollTo(native);
-      dragTo(native);
-    },
-    dragEnd: () => {
-      pointed = false;
-      letGo();
-      place();
-    },
+    dragTo,
+    dragEnd: letGo,
     stepBy: (steps) => {
       held.onStep(steps);
       return true;
