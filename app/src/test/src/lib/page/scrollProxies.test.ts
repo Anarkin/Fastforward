@@ -7,7 +7,11 @@ import {
   proxyShare,
   scrollProxy,
 } from '../../../../lib/page/scrollProxies';
-import { setWheeled, wheeledAround } from '../../../../lib/page/scrollbarLinks';
+import {
+  rowScrollerOf,
+  setWheeled,
+  wheeledAround,
+} from '../../../../lib/page/scrollbarLinks';
 
 function standIn(height: number) {
   const dom = new JSDOM(
@@ -151,6 +155,28 @@ suite('A scrollbar standing in for a view that scrolls by itself', () => {
         [letGo, element.scrollTop],
         [[1, 2], (3 * room) / 4],
       );
+    } finally {
+      close();
+    }
+  });
+
+  test('keeps its thumb under the pointer dragging it, wherever the view says it is meanwhile, and goes where the view is once let go, as a file viewed put the thumb back at the start of its top row at every step of a drag and it hopped from row to row', () => {
+    const { proxy, element, drags, letGo, close } = standIn(600);
+    try {
+      proxy.show({ at: 0.25, length: 0.25 });
+      const room = element.scrollHeight - element.clientHeight;
+      const held = rowScrollerOf(element);
+      assert.ok(held !== undefined);
+
+      held.dragTo(room / 2 + 7);
+      proxy.show({ at: 0.5, length: 0.25 });
+      assert.deepStrictEqual(
+        [drags, element.scrollTop],
+        [[(room / 2 + 7) / room], room / 2 + 7],
+      );
+
+      held.dragEnd();
+      assert.deepStrictEqual([letGo, element.scrollTop], [[1], room / 2]);
     } finally {
       close();
     }
