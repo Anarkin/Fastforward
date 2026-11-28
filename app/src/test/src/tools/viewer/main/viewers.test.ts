@@ -6,6 +6,7 @@ import type { Tab } from '../../../../../shell/main/toolContract';
 import {
   maxBytesAsked,
   maxBytesCopied,
+  maxLineIndexBytes,
   maxTextCopied,
 } from '../../../../../tools/viewer/shared/protocol';
 import { maxColoredBytes } from '../../../../../components/syntax/shared/colorLimit';
@@ -382,6 +383,47 @@ suite('Viewer tool viewing a file', () => {
       tab: '6',
       request: 6,
       text: undefined,
+    });
+  });
+
+  test('sends where every line of a file viewed starts, in the encoding asked for, with the size it found them in, only up to the size whose lines it finds, and nothing for a tab not shown', async () => {
+    const small = path.join(opened, 'lines.txt');
+    const large = path.join(opened, 'huge.log');
+    fs.writeFileSync(small, 'one\r\ntwo\nthree');
+    fs.writeFileSync(large, '');
+    fs.truncateSync(large, maxLineIndexBytes + 1);
+    const { tool, page, send } = viewer();
+
+    await tool.show(page, { id: '3', tool: 'viewer', root: small });
+    await send({
+      type: 'readLineStarts',
+      tab: '3',
+      encoding: 'utf-8',
+      request: 4,
+    });
+    await send({
+      type: 'readLineStarts',
+      tab: '5',
+      encoding: 'utf-8',
+      request: 5,
+    });
+    assert.deepStrictEqual(page.of('lineStarts'), [
+      { type: 'lineStarts', tab: '3', request: 4, size: 14, starts: [0, 5, 9] },
+    ]);
+
+    await tool.show(page, { id: '6', tool: 'viewer', root: large });
+    await send({
+      type: 'readLineStarts',
+      tab: '6',
+      encoding: 'utf-8',
+      request: 6,
+    });
+    assert.deepStrictEqual(page.of('lineStarts').at(-1), {
+      type: 'lineStarts',
+      tab: '6',
+      request: 6,
+      size: maxLineIndexBytes + 1,
+      starts: undefined,
     });
   });
 

@@ -5,6 +5,7 @@ import { strings } from '../../../lib/shared/strings';
 import type { Page } from '../../../shell/main/toolContract';
 import {
   maxBytesAsked,
+  maxLineIndexBytes,
   maxRowsAsked,
   type ViewerToHost,
 } from '../shared/protocol';
@@ -15,7 +16,13 @@ import {
 } from '../../../components/encodings/shared/textEncodings';
 import type { WatchFolder } from '../../../lib/main/watch';
 import { sampledVersion } from '../../../lib/main/fileVersions';
-import { readBudgetBytes, rowsBefore, rowsFrom, rowStartAt } from './textRows';
+import {
+  lineStartsIn,
+  readBudgetBytes,
+  rowsBefore,
+  rowsFrom,
+  rowStartAt,
+} from './textRows';
 import { codingOf } from '../../../components/encodings/main/textCodings';
 import {
   firstBytes,
@@ -216,6 +223,36 @@ export class Viewers {
             )
             .catch(() => undefined);
     post(page, { type: 'text', tab, request, text });
+  }
+
+  async readLineStarts(
+    page: Page,
+    {
+      tab,
+      request,
+      encoding,
+    }: Extract<ViewerToHost, { type: 'readLineStarts' }>,
+  ): Promise<void> {
+    const viewing = this.pages.shown.get(page)?.viewing;
+    if (
+      viewing === undefined ||
+      viewing.tab !== tab ||
+      !Number.isSafeInteger(request) ||
+      !isTextEncoding(encoding)
+    ) {
+      return;
+    }
+    const bytes =
+      viewing.size > maxLineIndexBytes
+        ? undefined
+        : await fs.promises.readFile(viewing.file).catch(() => undefined);
+    post(page, {
+      type: 'lineStarts',
+      tab,
+      request,
+      size: bytes?.length ?? viewing.size,
+      starts: bytes && lineStartsIn(bytes, codingOf(encoding)),
+    });
   }
 
   async readRows(

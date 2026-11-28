@@ -17,16 +17,18 @@ export interface Viewing {
 }
 
 export type ToViewer = ViewerToWebviewOf<
-  'rows' | 'text' | 'bytes' | 'found' | 'pdfPlace'
+  'rows' | 'text' | 'bytes' | 'found' | 'pdfPlace' | 'lineStarts'
 >;
 
 export type ViewerRequest = Extract<
   ViewerToHost,
-  { readonly type: 'readText' | 'readRows' | 'readBytes' }
+  {
+    readonly type: 'readText' | 'readRows' | 'readBytes' | 'readLineStarts';
+  }
 >;
 
 const streams: ReadonlySet<ViewerToWebview['type']> = new Set<ToViewer['type']>(
-  ['rows', 'text', 'bytes', 'found', 'pdfPlace'],
+  ['rows', 'text', 'bytes', 'found', 'pdfPlace', 'lineStarts'],
 );
 
 export function isViewerStream(message: ViewerToWebview): message is ToViewer {

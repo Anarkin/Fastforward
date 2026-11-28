@@ -26,11 +26,15 @@ export const maxFindLength = 1000;
 
 export const wholeLineBytes = 64 * 1024;
 
+export const rowBytes = 4096;
+
 export const maxPreviewBytes = 1024 * 1024;
 
 export const maxBytesAsked = 64 * 1024;
 
 export const maxTextCopied = 50 * 1024 * 1024;
+
+export const maxLineIndexBytes = 50 * 1024 * 1024;
 
 export const maxBytesCopied = 16 * 1024 * 1024;
 
@@ -81,6 +85,12 @@ export type ViewerToHost =
   | {
       readonly type: 'stopFind';
       readonly tab: string;
+      readonly request: number;
+    }
+  | {
+      readonly type: 'readLineStarts';
+      readonly tab: string;
+      readonly encoding: TextEncoding;
       readonly request: number;
     }
   | {
@@ -166,6 +176,13 @@ export type ViewerToWebview =
       readonly matches: readonly ByteRange[];
       readonly capped: boolean;
       readonly done: boolean;
+    }
+  | {
+      readonly type: 'lineStarts';
+      readonly tab: string;
+      readonly request: number;
+      readonly size: number;
+      readonly starts: readonly number[] | undefined;
     }
   | {
       readonly type: 'rows';

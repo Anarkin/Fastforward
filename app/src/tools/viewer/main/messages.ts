@@ -48,6 +48,8 @@ export class ViewerMessages {
         return this.viewers.readRows(page, message);
       case 'readText':
         return this.viewers.readText(page, message);
+      case 'readLineStarts':
+        return this.viewers.readLineStarts(page, message);
       case 'readBytes':
         return this.viewers.readBytes(page, message);
       case 'findText':

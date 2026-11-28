@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { beforeAll, suite, test } from 'vitest';
 import { imageType, maxImageSize } from '../../../lib/shared/images';
 import { maxMatches } from '../../../lib/shared/textMatches';
-import { rowBytes } from '../../../tools/viewer/main/textRows';
+import { rowBytes } from '../../../tools/viewer/shared/protocol';
 import { decodedText } from '../../../tools/editor/main/textCodec';
 import {
   encodingMenu,

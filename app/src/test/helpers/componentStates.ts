@@ -153,6 +153,8 @@ export const componentStates: Readonly<Record<string, string>> = {
     'a measure: the bytes per row estimated from the rows shown, taken anew as they are read',
   'tools/viewer/page/textRows.ts lastScreen':
     'a measure: the rows of the last screen, asked anew of the main process once mounted',
+  'tools/viewer/page/textRows.ts lineStarts':
+    'a measure: where every line of the file starts, asked anew of the main process once mounted',
   'tools/viewer/page/textSideways.ts wide':
     'a measure: the widest line seen, grown anew from the rows and the whole text kept once mounted',
   'tools/commander/page/tool.tsx store':

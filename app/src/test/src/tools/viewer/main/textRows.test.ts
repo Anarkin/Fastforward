@@ -1,14 +1,17 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
-  rowBytes,
+  lineStartsIn,
   rowStartAt,
   rowsBefore,
   rowsFrom,
 } from '../../../../../tools/viewer/main/textRows';
 import { codingOf } from '../../../../../components/encodings/main/textCodings';
 import { blockBytes, type ReadBytes } from '../../../../../lib/main/fileBlocks';
-import { wholeLineBytes } from '../../../../../tools/viewer/shared/protocol';
+import {
+  rowBytes,
+  wholeLineBytes,
+} from '../../../../../tools/viewer/shared/protocol';
 
 function inMemory(text: string | Buffer): {
   readonly read: ReadBytes;
@@ -388,5 +391,42 @@ next`);
 
     assert.ok(row !== undefined && !row.text.includes('\n'));
     assert.strictEqual(row.end, long.length + 1);
+  });
+
+  test('finds where every line of a file starts, at a line feed, a carriage return and a line feed, or a carriage return alone, after its byte order mark, and none after a last line break, as the rows read start their lines', () => {
+    const utf8 = codingOf('utf-8');
+    assert.deepStrictEqual(
+      lineStartsIn(Buffer.from('a\r\nbb\ncc\rd'), utf8),
+      [0, 3, 6, 9],
+    );
+    assert.deepStrictEqual(lineStartsIn(Buffer.from('a\n'), utf8), [0]);
+    assert.deepStrictEqual(lineStartsIn(Buffer.from('a\r'), utf8), [0]);
+    assert.deepStrictEqual(lineStartsIn(Buffer.from(''), utf8), [0]);
+    assert.deepStrictEqual(lineStartsIn(Buffer.from('﻿a\nb'), utf8), [3, 5]);
+    const little = Buffer.from('one\r\n਀two\né\n', 'utf16le');
+    assert.deepStrictEqual(
+      lineStartsIn(little, codingOf('utf-16le')),
+      [0, 10, 20],
+    );
+    assert.deepStrictEqual(
+      lineStartsIn(Buffer.from(little).swap16(), codingOf('utf-16be')),
+      [0, 10, 20],
+    );
+  });
+
+  test('finds the same line starts as the rows read from the start of the file, every line of up to 64 KiB a row of its own', async () => {
+    const lines = Array.from({ length: 400 }, (_, index) =>
+      'x'.repeat((index * 37) % 120),
+    );
+    const endings = ['\n', '\r\n', '\r'];
+    const text = lines
+      .map((line, index) => line + (endings[index % 3] ?? ''))
+      .join('');
+    const { read, size } = inMemory(text);
+    const rows = await rowsFrom(read, size, 0, 1000);
+    assert.deepStrictEqual(
+      lineStartsIn(Buffer.from(text), codingOf('utf-8')),
+      rows.map((row) => row.start),
+    );
   });
 });

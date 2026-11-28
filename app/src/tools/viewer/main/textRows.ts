@@ -2,7 +2,7 @@ import {
   markBytesOf,
   startsWithMark,
 } from '../../../components/encodings/shared/byteOrderMarks';
-import { wholeLineBytes, type TextRow } from '../shared/protocol';
+import { rowBytes, wholeLineBytes, type TextRow } from '../shared/protocol';
 import { blockBytes, type ReadBytes } from '../../../lib/main/fileBlocks';
 import {
   utf8,
@@ -11,8 +11,6 @@ import {
 import { strings } from '../../../lib/shared/strings';
 
 const lineFeedSign = strings.symbols.lineFeed;
-
-export const rowBytes = 4096;
 
 export const readBudgetBytes = 512 * 1024;
 
@@ -416,6 +414,22 @@ async function textStartOf(
   return coding === utf8 && startsWithMark(await read(0, mark.length), 'utf-8')
     ? mark.length
     : 0;
+}
+
+export function lineStartsIn(bytes: Buffer, coding: TextCoding): number[] {
+  const mark = markBytesOf('utf-8') ?? [];
+  const first =
+    coding === utf8 && startsWithMark(bytes, 'utf-8') ? mark.length : 0;
+  const starts = [first];
+  const breaks = breaksIn(bytes, true, coding);
+  for (
+    let found = breaks(first);
+    found !== undefined && found.end < bytes.length;
+    found = breaks(found.end)
+  ) {
+    starts.push(found.end);
+  }
+  return starts;
 }
 
 export async function rowStartAt(

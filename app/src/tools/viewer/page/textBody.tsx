@@ -90,7 +90,7 @@ export function TextBody({
       ? columns
       : undefined;
   const least = wrapAt === undefined ? screen * 3 : 1;
-  const { rows, loaded, move, jump, perRow, lastTop } = useTextRows({
+  const { rows, loaded, move, jump, perRow, lastTop, scale } = useTextRows({
     post,
     listen,
     viewing,
@@ -193,7 +193,7 @@ export function TextBody({
       matches={find?.matches}
       currentMatch={find?.current}
       size={size}
-      thumb={textThumb(loaded, screen, size ?? 0, perRow, lastTop)}
+      thumb={textThumb(loaded, screen, size ?? 0, perRow, lastTop, scale)}
       ends={textEnds(loaded, screen, size ?? 0)}
       lead={loaded.top}
       onScreen={setMeasured}

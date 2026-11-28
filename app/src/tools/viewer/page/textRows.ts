@@ -25,9 +25,10 @@ import {
   topWithin,
   scrolled,
   jumpedWithin,
+  draggedTo,
   bytesPerRow,
-  lastScreenStart,
 } from './textScroll';
+import { lineScaleOf, rowsOfLine } from './lineScale';
 import type { ViewerFind } from './find';
 import { useViewer, useViewerActions } from './store';
 
@@ -152,6 +153,61 @@ export function useTextRows({
     const ending = screenRows(lastRows, wrapAt, encoding, counting);
     return ending[Math.max(0, ending.length - screen)]?.start ?? 0;
   }, [lastRows, wrapAt, encoding, screen, counting]);
+  const [lineStarts, setLineStarts] = useState<{
+    readonly encoding: TextEncoding;
+    readonly version: string | undefined;
+    readonly size: number;
+    readonly starts: readonly number[] | undefined;
+  }>();
+  const linesAsked = useRef<{
+    readonly request: number;
+    readonly encoding: TextEncoding;
+    readonly version: string | undefined;
+  }>(undefined);
+  useEffect(() => {
+    if (size === undefined) {
+      return;
+    }
+    const request = (linesAsked.current?.request ?? 0) + 1;
+    linesAsked.current = { request, encoding, version };
+    post({ type: 'readLineStarts', tab, encoding, request });
+  }, [post, tab, encoding, size, version]);
+  useEffect(
+    () =>
+      listen((message) => {
+        const asked = linesAsked.current;
+        if (
+          message.type === 'lineStarts' &&
+          message.tab === tab &&
+          message.request === asked?.request
+        ) {
+          setLineStarts({
+            encoding: asked.encoding,
+            version: asked.version,
+            size: message.size,
+            starts: message.starts,
+          });
+        }
+      }),
+    [listen, tab],
+  );
+  const knownStarts =
+    lineStarts?.encoding === encoding &&
+    lineStarts.version === version &&
+    lineStarts.size === size
+      ? lineStarts.starts
+      : undefined;
+  const scale = useMemo(
+    () =>
+      knownStarts === undefined || size === undefined
+        ? undefined
+        : lineScaleOf(
+            knownStarts,
+            size,
+            rowsOfLine(wrapAt, encoding.startsWith('utf-16') ? 2 : 1),
+          ),
+    [knownStarts, size, wrapAt, encoding],
+  );
   const ends = useMemo(
     () =>
       new RowRequests<{ readonly version: string | undefined }>((request) =>
@@ -342,9 +398,13 @@ export function useTextRows({
 
   const jump = useCallback(
     (share: number, part?: (fraction: number) => void) => {
-      const anchor = Math.round(
-        share *
-          lastScreenStart(size ?? 0, screen, estimate?.perRow ?? 1, lastTop),
+      const anchor = draggedTo(
+        share,
+        screen,
+        size ?? 0,
+        estimate?.perRow ?? 1,
+        lastTop,
+        scale,
       );
       const shown = current.current;
       const within = jumpedWithin(shown, anchor, screen, size ?? 0);
@@ -374,7 +434,16 @@ export function useTextRows({
         },
       });
     },
-    [requests, askPlace, placeWithin, screen, size, estimate?.perRow, lastTop],
+    [
+      requests,
+      askPlace,
+      placeWithin,
+      screen,
+      size,
+      estimate?.perRow,
+      lastTop,
+      scale,
+    ],
   );
 
   useEffect(() => {
@@ -439,5 +508,6 @@ export function useTextRows({
     jump,
     perRow: estimate?.perRow,
     lastTop,
+    scale,
   };
 }

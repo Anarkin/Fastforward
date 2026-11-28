@@ -2,12 +2,27 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import {
   bytesPerRow,
+  draggedTo,
   jumpedWithin,
   scrolled,
   textEnds,
   textThumb,
   topWithin,
 } from '../../../../../tools/viewer/page/textScroll';
+import {
+  lineScaleOf,
+  rowsOfLine,
+} from '../../../../../tools/viewer/page/lineScale';
+
+function unevenLines(): { readonly starts: number[]; readonly size: number } {
+  const starts: number[] = [];
+  let at = 0;
+  for (let index = 0; index < 100; index++) {
+    starts.push(at);
+    at += index % 2 === 0 ? 1 : 99;
+  }
+  return { starts, size: at };
+}
 
 const rows = (count: number, length = 10) =>
   Array.from({ length: count }, (_, index) => ({
@@ -132,6 +147,49 @@ suite('Commander viewer', () => {
     assert.strictEqual(
       textThumb({ rows: short, top: 0 }, 10, size, 20, undefined)?.start,
       5000 / (size - 10 * 20),
+    );
+  });
+
+  test('places and sizes the thumb of a file whose lines it knows by the rows above the top row among the rows above the last screen, however few of its rows are read, so a file of long lines and blank ones scrolls as evenly as the editor scrolls it', () => {
+    const { starts, size } = unevenLines();
+    const scale = lineScaleOf(starts, size, rowsOfLine(undefined, 1));
+    const read = Array.from({ length: 20 }, (_, index) => ({
+      start: starts[40 + index] ?? 0,
+      end: starts[41 + index] ?? size,
+    }));
+    const lastTop = starts[90];
+    assert.deepStrictEqual(
+      textThumb({ rows: read, top: 5 }, 10, size, 50, lastTop, scale),
+      { start: 0.5, length: 0.1 },
+    );
+    assert.deepStrictEqual(
+      textThumb({ rows: read, top: 5 }, 10, size, 50, undefined, scale),
+      { start: 0.5, length: 0.1 },
+    );
+    assert.deepStrictEqual(
+      textThumb({ rows: read, top: 5 }, 10, size + 1, 50, lastTop, scale)
+        ?.start,
+      (starts[45] ?? 0) / (lastTop ?? 0),
+    );
+  });
+
+  test('lands a drag of the thumb of a file whose lines it knows on the byte as far through its rows as the thumb is through its track, and that of a file it knows no lines of on the byte as far through its bytes', () => {
+    const { starts, size } = unevenLines();
+    const scale = lineScaleOf(starts, size, rowsOfLine(undefined, 1));
+    const lastTop = starts[90];
+    assert.strictEqual(
+      draggedTo(0.5, 10, size, 50, lastTop, scale),
+      starts[45],
+    );
+    const between = draggedTo(0.505, 10, size, 50, lastTop, scale);
+    assert.ok(
+      between > (starts[45] ?? 0) && between < (starts[46] ?? 0),
+      String(between),
+    );
+    assert.strictEqual(draggedTo(1, 10, size, 50, lastTop, scale), lastTop);
+    assert.strictEqual(
+      draggedTo(0.5, 10, size, 50, lastTop, undefined),
+      Math.round((lastTop ?? 0) / 2),
     );
   });
 

@@ -1,4 +1,5 @@
 import { type Ends, type Thumb } from './scrollThumbs';
+import { byteAtRows, rowsAt, type LineScale } from './lineScale';
 
 interface Span {
   readonly start: number;
@@ -96,7 +97,7 @@ export function bytesPerRow(rows: readonly Span[]): number | undefined {
     : Math.max(1, (last.end - first.start) / rows.length);
 }
 
-export function lastScreenStart(
+function lastScreenStart(
   size: number,
   screen: number,
   perRow: number,
@@ -123,11 +124,19 @@ export function textThumb(
   size: number,
   perRow: number | undefined,
   lastTop: number | undefined,
+  scale?: LineScale,
 ): Thumb | undefined {
   const first = loaded.rows[loaded.top];
   const ends = textEnds(loaded, screen, size);
   if (first === undefined || size <= 0 || (ends.atStart && ends.atEnd)) {
     return undefined;
+  }
+  if (scale?.size === size) {
+    const last = lastRowsOf(scale, lastTop, screen);
+    return {
+      start: last > 0 ? Math.min(1, rowsAt(scale, first.start) / last) : 0,
+      length: Math.min(1, screen / (last + screen)),
+    };
   }
   const bytes = perRow ?? bytesPerRow(loaded.rows) ?? 1;
   const end = lastScreenStart(size, screen, bytes, lastTop);
@@ -135,4 +144,30 @@ export function textThumb(
     start: end > 0 && !opensText(first) ? Math.min(1, first.start / end) : 0,
     length: Math.min(1, screen / (size / bytes)),
   };
+}
+
+function lastRowsOf(
+  scale: LineScale,
+  lastTop: number | undefined,
+  screen: number,
+): number {
+  return lastTop === undefined
+    ? Math.max(0, (scale.above.at(-1) ?? 0) - screen)
+    : rowsAt(scale, lastTop);
+}
+
+export function draggedTo(
+  share: number,
+  screen: number,
+  size: number,
+  perRow: number,
+  lastTop: number | undefined,
+  scale: LineScale | undefined,
+): number {
+  if (scale?.size === size) {
+    return Math.round(
+      byteAtRows(scale, share * lastRowsOf(scale, lastTop, screen)),
+    );
+  }
+  return Math.round(share * lastScreenStart(size, screen, perRow, lastTop));
 }
