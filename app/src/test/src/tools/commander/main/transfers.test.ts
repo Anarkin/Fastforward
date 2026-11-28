@@ -146,6 +146,19 @@ suite('Transfers', () => {
     ]);
   });
 
+  test('says only that a transfer whose dialog was closed failed for some items once some failed, rather than that it was done too', () => {
+    const { coordinator, tell, notices } = transfers();
+    coordinator.start(ask(['a.txt', 'b.txt']));
+    coordinator.hide(1);
+    tell(0, { type: 'failed', name: 'b.txt', reason: 'It is locked.' });
+    tell(0, { type: 'done', stopped: false });
+
+    assert.deepStrictEqual(
+      notices.map(({ level }) => level),
+      ['error'],
+    );
+  });
+
   test('shows a pack as packing into its archive, saying once done that it packed when its dialog was closed, what it packed without, and why it packed nothing', () => {
     const { coordinator, tell, last, notices } = transfers();
     const archive = path.join(target, 'photos.zip');

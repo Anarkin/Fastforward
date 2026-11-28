@@ -340,7 +340,7 @@ export class Transfers {
               ? strings.commander.movingStopped(target)
               : strings.commander.copyingStopped(target),
       });
-    } else if (how === 'done' && running.hidden) {
+    } else if (how === 'done' && running.hidden && failed === undefined) {
       const what = whatOf(running.ask);
       this.host.notice({
         level: 'info',
