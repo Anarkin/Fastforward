@@ -81,7 +81,7 @@ suite('Shell with no tab open', () => {
     );
   });
 
-  test('leaves alone what the page sends that is no object with a kind, as handling it failed and so did saying so, its failure escaping unhandled', async () => {
+  test('leaves alone what the page sends that is no object with a kind, a message for a tool too, as handling it failed and so did saying so, its failure escaping unhandled', async () => {
     await withView(
       log,
       [],
@@ -97,6 +97,19 @@ suite('Shell with no tab open', () => {
             '"ready"',
             '[]',
             '{ "type": 5 }',
+            ...[
+              'viewer',
+              'commander',
+              'terminal',
+              'editor',
+              'canvas',
+              'git',
+            ].flatMap((tool) =>
+              ['null', '5', '"ready"', '{ "type": 5 }'].map(
+                (inner) =>
+                  `{ "type": "tool", "tool": "${tool}", "message": ${inner} }`,
+              ),
+            ),
           ]) {
             await connection.receive(JSON.parse(message));
           }

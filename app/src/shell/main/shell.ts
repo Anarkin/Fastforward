@@ -565,7 +565,7 @@ export class Shell {
         await this.choosing.openIn(page);
         return;
       case 'tool':
-        if (isTool(message.tool)) {
+        if (isTool(message.tool) && isMessage(message.message)) {
           await receiveIn(this.tools, message.tool, page, message.message);
         }
         return;
