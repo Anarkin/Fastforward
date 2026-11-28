@@ -54,7 +54,7 @@ import { drawTexts } from './drawnTexts';
 import { cornerRects } from './gridDots';
 import { originOf, type CellSize, type Origin } from './pan';
 import type { Cell } from './routes';
-import type { Screen } from './screen';
+import { armKindOf, type Screen } from './screen';
 import { chosenRows, screenRows } from './seenScreen';
 
 interface SeenBoard {
@@ -310,7 +310,7 @@ export class BoardSurface {
     const kinds = new Map(look.kinds);
     for (const kind of [
       ...screen.kinds,
-      ...screen.lineKinds,
+      ...screen.armKinds,
       ...screen.texts.map((block) => block.kind),
     ]) {
       if (kind?.startsWith('#') === true && !kinds.has(kind)) {
@@ -609,13 +609,16 @@ function drawLines(
         width: advance,
         height: rowHeight,
       };
-      const color = colorOf(screen.lineKinds[at]);
-      const rects =
-        way === undefined
-          ? lineRects(area, bits, stroke)
-          : arrowRects(area, way, stroke);
-      for (const each of rects) {
-        cells.frame.rect(each.x, each.y, each.width, each.height, color);
+      if (way !== undefined) {
+        const color = colorOf(armKindOf(screen, at, way));
+        for (const each of arrowRects(area, way, stroke)) {
+          cells.frame.rect(each.x, each.y, each.width, each.height, color);
+        }
+        continue;
+      }
+      for (const arm of lineRects(area, bits, stroke)) {
+        const color = colorOf(armKindOf(screen, at, arm.way));
+        cells.frame.rect(arm.x, arm.y, arm.width, arm.height, color);
       }
     }
   }

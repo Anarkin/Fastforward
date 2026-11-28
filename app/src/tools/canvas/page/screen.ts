@@ -12,9 +12,16 @@ export const wayBits: Readonly<Record<Way, number>> = {
   left: 8,
 };
 
-export const doubleShift = 4;
-
 export const lightBits = 0x0f;
+
+const ways: readonly Way[] = ['up', 'right', 'down', 'left'];
+
+const armIndex: Readonly<Record<Way, number>> = {
+  up: 0,
+  right: 1,
+  down: 2,
+  left: 3,
+};
 
 export interface TextBlock {
   readonly owner: number;
@@ -50,7 +57,7 @@ export interface Screen {
   readonly glyphs: (string | undefined)[];
   readonly kinds: (string | undefined)[];
   readonly lines: Uint8Array;
-  readonly lineKinds: (string | undefined)[];
+  readonly armKinds: (string | undefined)[];
   readonly arrows: (Way | undefined)[];
   readonly covered: Uint8Array;
   readonly outside: Uint8Array;
@@ -84,7 +91,7 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     glyphs: unset<string | undefined>(cells),
     kinds: unset<string | undefined>(cells),
     lines: new Uint8Array(cells),
-    lineKinds: unset<string | undefined>(cells),
+    armKinds: unset<string | undefined>(cells * ways.length),
     arrows: unset<Way | undefined>(cells),
     covered: new Uint8Array(cells),
     outside: new Uint8Array(cells),
@@ -97,6 +104,12 @@ export function emptyScreen({ column, row, columns, rows }: Box): Screen {
     see: undefined,
   };
 }
+
+export const armKindOf = (
+  screen: Screen,
+  at: number,
+  way: Way,
+): string | undefined => screen.armKinds[at * ways.length + armIndex[way]];
 
 export class Painter {
   private owned = 0;
@@ -158,7 +171,7 @@ export class Painter {
     screen.glyphs[at] = undefined;
     screen.kinds[at] = undefined;
     screen.lines[at] = 0;
-    screen.lineKinds[at] = undefined;
+    screen.armKinds.fill(undefined, at * ways.length, (at + 1) * ways.length);
     screen.arrows[at] = undefined;
     screen.edges[at] = undefined;
     screen.owners[at] = -1;
@@ -198,7 +211,11 @@ export class Painter {
     screen.glyphs[at] = undefined;
     screen.kinds[at] = undefined;
     screen.lines[at] = (screen.lines[at] ?? 0) | bits;
-    screen.lineKinds[at] = kind;
+    for (const way of ways) {
+      if ((bits & wayBits[way]) !== 0) {
+        screen.armKinds[at * ways.length + armIndex[way]] = kind;
+      }
+    }
   }
 
   glyph(
@@ -223,7 +240,7 @@ export class Painter {
     const at = this.indexOf(column, row);
     if (at !== undefined) {
       this.screen.arrows[at] = way;
-      this.screen.lineKinds[at] = kind;
+      this.screen.armKinds[at * ways.length + armIndex[way]] = kind;
     }
   }
 }

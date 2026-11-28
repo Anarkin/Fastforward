@@ -6,7 +6,7 @@ import {
   strokeOf,
   type Rect,
 } from '../../../../../tools/canvas/page/lineRects';
-import { doubleShift, wayBits } from '../../../../../tools/canvas/page/screen';
+import { wayBits } from '../../../../../tools/canvas/page/screen';
 
 const cell = { x: 0, y: 0, width: 7, height: 9 };
 
@@ -65,33 +65,38 @@ suite('Canvas lines', () => {
     ]);
   });
 
-  test('draws double lines a stroke apart, their corners nested and their joints open where a line comes in', () => {
+  test('draws each arm of a cell as a rect of its own, telling the way it goes, so two lines crossing in a cell keep a color each', () => {
+    const arms = lineRects(cell, up | right | down | left, 1);
     assert.deepStrictEqual(
-      pixels(lineRects(cell, (right | down) << doubleShift, 1)),
+      arms.map((arm) => arm.way),
+      ['up', 'down', 'left', 'right'],
+    );
+    assert.deepStrictEqual(
+      pixels(arms.filter((arm) => arm.way === 'left' || arm.way === 'right')),
       [
         '.......',
         '.......',
         '.......',
-        '..#####',
-        '..#....',
-        '..#.###',
-        '..#.#..',
-        '..#.#..',
-        '..#.#..',
+        '.......',
+        '#######',
+        '.......',
+        '.......',
+        '.......',
+        '.......',
       ],
     );
     assert.deepStrictEqual(
-      pixels(lineRects(cell, ((up | down) << doubleShift) | right, 1)),
+      pixels(arms.filter((arm) => arm.way === 'up' || arm.way === 'down')),
       [
-        '..#.#..',
-        '..#.#..',
-        '..#.#..',
-        '..#.#..',
-        '..#.###',
-        '..#.#..',
-        '..#.#..',
-        '..#.#..',
-        '..#.#..',
+        '...#...',
+        '...#...',
+        '...#...',
+        '...#...',
+        '...#...',
+        '...#...',
+        '...#...',
+        '...#...',
+        '...#...',
       ],
     );
   });

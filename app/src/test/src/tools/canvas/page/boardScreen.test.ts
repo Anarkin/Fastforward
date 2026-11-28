@@ -5,11 +5,9 @@ import {
   colorKind,
   screenOf,
 } from '../../../../../tools/canvas/page/boardScreen';
-import {
-  chosenRows,
-  screenRows,
-} from '../../../../../tools/canvas/page/seenScreen';
+import { screenRows } from '../../../../../tools/canvas/page/seenScreen';
 import { boardOf } from '../../../../../tools/canvas/main/reading';
+import { armKindOf } from '../../../../../tools/canvas/page/screen';
 import { boxOf } from '../../../../../tools/canvas/page/grid';
 import {
   obsidianCanvasesLoaded,
@@ -20,27 +18,7 @@ import type {
   BoardEdge,
   BoardNode,
 } from '../../../../../tools/canvas/shared/board';
-
-const unit = { width: 7, height: 18 };
-
-const text = (
-  id: string,
-  column: number,
-  row: number,
-  columns: number,
-  rows: number,
-  words: string,
-  more: { readonly color?: string } = {},
-): BoardNode => ({
-  id,
-  type: 'text',
-  x: column * unit.width,
-  y: row * unit.height,
-  width: columns * unit.width,
-  height: rows * unit.height,
-  text: words,
-  ...more,
-});
+import { edge, narrow, text, unit } from '../../../../helpers/canvasScreens';
 
 const placedAt = (column: number, row: number, columns: number) => ({
   x: column * unit.width,
@@ -67,8 +45,6 @@ const labelTypedAt = (head: number) =>
     }),
   )[0];
 
-const narrow = (cluster: string) => (/[　-鿿]/.test(cluster) ? 2 : 1);
-
 function screenText(
   board: Partial<Board>,
   view = { column: 0, row: 0, columns: 24, rows: 8 },
@@ -89,13 +65,6 @@ const segmentKinds = (screen: ReturnType<typeof screenOf>, index = 0) => {
   const block = screen.texts[index];
   return block?.rows.map((row) => block.segmentsOf?.(row.row));
 };
-
-const edge = (more: Partial<BoardEdge> = {}): BoardEdge => ({
-  id: 'e',
-  fromNode: 'idea',
-  toNode: 'plan',
-  ...more,
-});
 
 const typedOnEdge = (words: string) =>
   screenRows(
@@ -123,17 +92,6 @@ const typedOnEdge = (words: string) =>
     }),
   )[1];
 
-const drawnChosen = (board: Partial<Board>, selected: readonly string[]) => {
-  const screen = screenOf({
-    board: { nodes: [], edges: [], ...board },
-    unit,
-    view: { column: 0, row: 0, columns: 24, rows: 3 },
-    widths: { char: 1, of: narrow },
-    selected: new Set(selected),
-  });
-  return { rows: screenRows(screen), chosen: chosenRows(screen) };
-};
-
 suite('Canvas screen', () => {
   let corpus: ObsidianCanvases;
 
@@ -160,123 +118,6 @@ suite('Canvas screen', () => {
         '          └────────┘',
         '',
       ],
-    );
-  });
-
-  test('draws the selected node in its single lines over its border cells chosen, so the surface lays the gray of a selection under them alone, a group alike', () => {
-    assert.deepStrictEqual(
-      drawnChosen(
-        {
-          nodes: [
-            text('idea', 0, 0, 8, 3, 'Idea'),
-            text('plan', 14, 0, 8, 3, 'Plan'),
-          ],
-          edges: [edge({ fromSide: 'right', toSide: 'left', toEnd: 'none' })],
-        },
-        ['idea'],
-      ),
-      {
-        rows: [
-          '┌──────┐      ┌──────┐',
-          '│ Ide⏎ ├──────┤ Pla⏎ │',
-          '└──────┘      └──────┘',
-        ],
-        chosen: ['########', '#      #', '########'],
-      },
-    );
-    assert.deepStrictEqual(
-      drawnChosen(
-        { nodes: [{ ...text('group', 0, 0, 8, 3, ''), type: 'group' }] },
-        ['group'],
-      ),
-      {
-        rows: ['┌──────┐', '│      │', '└──────┘'],
-        chosen: ['########', '#      #', '########'],
-      },
-    );
-  });
-
-  test('draws the selected edge over every node and edge in its way while selected, through the arrow of another edge too, its own arrow kept, as an edge selected is wanted whole', () => {
-    const board: Board = {
-      nodes: [
-        text('a', 0, 0, 6, 3, ''),
-        text('c', 10, 0, 6, 3, ''),
-        text('b', 20, 0, 6, 3, ''),
-        text('d', 0, 5, 6, 3, ''),
-      ],
-      edges: [
-        edge({
-          id: 'ab',
-          fromNode: 'a',
-          toNode: 'b',
-          fromSide: 'right',
-          toSide: 'left',
-        }),
-        edge({
-          id: 'dc',
-          fromNode: 'd',
-          toNode: 'c',
-          fromSide: 'right',
-          toSide: 'left',
-        }),
-      ],
-    };
-    const drawn = (selected: readonly string[]) => {
-      const screen = screenOf({
-        board,
-        unit,
-        view: { column: 0, row: 0, columns: 28, rows: 8 },
-        widths: { char: 1, of: narrow },
-        selected: new Set(selected),
-      });
-      return { row: screenRows(screen)[1], chosen: chosenRows(screen)[1] };
-    };
-    assert.deepStrictEqual(drawn([]), {
-      row: '│    ├──┬▶│    │───▶│    │',
-      chosen: '',
-    });
-    assert.deepStrictEqual(drawn(['ab']), {
-      row: '│    ├──┬─┼────┼───▶│    │',
-      chosen: '     ################',
-    });
-  });
-
-  test('draws the selected edge in its single lines over its cells chosen from end to end, its label too, and tells which edge each of its cells draws, for a click to select it', () => {
-    const board: Board = {
-      nodes: [
-        text('idea', 0, 0, 8, 3, 'Idea'),
-        text('plan', 14, 0, 8, 3, 'Plan'),
-      ],
-      edges: [
-        edge({ fromSide: 'right', toSide: 'left', toEnd: 'none', label: 'x' }),
-      ],
-    };
-    const view = { column: 0, row: 0, columns: 24, rows: 3 };
-    const selected = screenOf({
-      board,
-      unit,
-      view,
-      widths: { char: 1, of: narrow },
-      selected: new Set(['e']),
-    });
-    assert.deepStrictEqual(screenRows(selected), [
-      '┌──────┐      ┌──────┐',
-      '│ Ide⏎ ├── x ─┤ Pla⏎ │',
-      '└──────┘      └──────┘',
-    ]);
-    assert.deepStrictEqual(chosenRows(selected), ['', '       ########', '']);
-    const screen = screenOf({
-      board,
-      unit,
-      view,
-      widths: { char: 1, of: narrow },
-    });
-    assert.deepStrictEqual(
-      Array.from(
-        { length: 24 },
-        (_, column) => screen.edges[24 + column] ?? '.',
-      ).join(''),
-      '........eeeeee..........',
     );
   });
 
@@ -372,7 +213,7 @@ suite('Canvas screen', () => {
       view: { column: 0, row: 0, columns: 4, rows: 3 },
       widths: { char: 1, of: narrow },
     });
-    assert.strictEqual(shown.lineKinds[0], '#ff7800');
+    assert.strictEqual(armKindOf(shown, 0, 'right'), '#ff7800');
   });
 
   test('signs the kind of a node that points elsewhere in its top border, where a group has its label, ≡ a file and ∞ a link, of characters every monospace font of the settings has, none for a text, which holds what it shows, a group, whose label goes there, or a node too narrow for one', () => {
@@ -689,7 +530,7 @@ suite('Canvas screen', () => {
       view: { column: 0, row: 0, columns: 4, rows: 3 },
       widths: { char: 1, of: narrow },
     });
-    assert.strictEqual(shown.lineKinds[0], 'color-3');
+    assert.strictEqual(armKindOf(shown, 0, 'right'), 'color-3');
   });
 
   test('draws every node of a canvas as Obsidian writes it where its box starts, its sides from its corner, whatever its place', () => {

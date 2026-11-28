@@ -1,8 +1,6 @@
-import { doubleShift, lightBits, type Screen, type Way } from './screen';
+import { lightBits, type Screen, type Way } from './screen';
 
 const light = ' ╵╶└╷│┌├╴┘─┴┐┤┬┼';
-
-const heavy = ' ║═╚║║╔╠═╝═╩╗╣╦╬';
 
 const arrows: Readonly<Record<Way, string>> = {
   up: '▲',
@@ -22,15 +20,12 @@ export function screenRows(screen: Screen): string[] {
       const glyph = screen.seen[at] ?? screen.glyphs[at];
       const arrow = screen.arrows[at];
       const bits = screen.lines[at] ?? 0;
-      const double = (bits >> doubleShift) & lightBits;
       if (glyph !== undefined) {
         line += glyph;
       } else if (arrow !== undefined) {
         line += arrows[arrow];
-      } else if (double === 0) {
-        line += light.charAt(bits & lightBits);
       } else {
-        line += heavy.charAt(double | (bits & lightBits));
+        line += light.charAt(bits & lightBits);
       }
     }
     return line.trimEnd();

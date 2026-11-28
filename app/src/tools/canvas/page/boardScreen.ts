@@ -370,9 +370,7 @@ function paintEnd(
   painter.line(stub.column, stub.row, wayBits[way], kind);
   painter.edge(stub.column, stub.row, id);
   if (painter.linesAt(joint.column, joint.row) !== 0) {
-    const at = painter.indexOf(joint.column, joint.row);
-    const kept = at === undefined ? undefined : painter.screen.lineKinds[at];
-    painter.line(joint.column, joint.row, bitOf(joint, stub), kept);
+    painter.line(joint.column, joint.row, bitOf(joint, stub), kind);
   }
 }
 

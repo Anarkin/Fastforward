@@ -1,4 +1,4 @@
-import { doubleShift, lightBits, wayBits, type Way } from './screen';
+import { wayBits, type Way } from './screen';
 
 export interface Rect {
   readonly x: number;
@@ -25,93 +25,28 @@ const rect = (x: number, y: number, right: number, bottom: number): Rect => ({
   height: bottom - y,
 });
 
+export interface ArmRect extends Rect {
+  readonly way: Way;
+}
+
 export function lineRects(
   { x, y, width, height }: CellArea,
   bits: number,
   stroke: number,
-): Rect[] {
-  const light = bits & lightBits;
-  const double = (bits >> doubleShift) & lightBits;
-  const any = light | double;
-  const has = (way: Way) => (any & wayBits[way]) !== 0;
-  const isLight = (way: Way) => (light & wayBits[way]) !== 0;
-  const isDouble = (way: Way) => (double & wayBits[way]) !== 0;
+): ArmRect[] {
   const right = x + width;
   const bottom = y + height;
   const cx = x + Math.floor((width - stroke) / 2);
   const cy = y + Math.floor((height - stroke) / 2);
-  const xa = cx - stroke;
-  const xb = cx + stroke;
-  const ya = cy - stroke;
-  const yb = cy + stroke;
-  const doubledAcross = isDouble('left') || isDouble('right');
-  const doubledDown = isDouble('up') || isDouble('down');
-  const rects: Rect[] = [];
-  if (isLight('up')) {
-    rects.push(
-      rect(cx, y, cx + stroke, doubledAcross ? ya + stroke : cy + stroke),
-    );
-  }
-  if (isLight('down')) {
-    rects.push(rect(cx, doubledAcross ? yb : cy, cx + stroke, bottom));
-  }
-  if (isLight('left')) {
-    rects.push(
-      rect(x, cy, doubledDown ? xa + stroke : cx + stroke, cy + stroke),
-    );
-  }
-  if (isLight('right')) {
-    rects.push(rect(doubledDown ? xb : cx, cy, right, cy + stroke));
-  }
-  if (isDouble('up')) {
-    const leftEnd = has('left')
-      ? ya + stroke
-      : has('down')
-        ? bottom
-        : yb + stroke;
-    const rightEnd = has('right')
-      ? ya + stroke
-      : has('down')
-        ? bottom
-        : yb + stroke;
-    rects.push(
-      rect(xa, y, xa + stroke, leftEnd),
-      rect(xb, y, xb + stroke, rightEnd),
-    );
-  }
-  if (isDouble('down')) {
-    const leftStart = has('left') ? yb : has('up') ? y : ya;
-    const rightStart = has('right') ? yb : has('up') ? y : ya;
-    rects.push(
-      rect(xa, leftStart, xa + stroke, bottom),
-      rect(xb, rightStart, xb + stroke, bottom),
-    );
-  }
-  if (isDouble('left')) {
-    const upperEnd = has('up')
-      ? xa + stroke
-      : has('right')
-        ? right
-        : xb + stroke;
-    const lowerEnd = has('down')
-      ? xa + stroke
-      : has('right')
-        ? right
-        : xb + stroke;
-    rects.push(
-      rect(x, ya, upperEnd, ya + stroke),
-      rect(x, yb, lowerEnd, yb + stroke),
-    );
-  }
-  if (isDouble('right')) {
-    const upperStart = has('up') ? xb : has('left') ? x : xa;
-    const lowerStart = has('down') ? xb : has('left') ? x : xa;
-    rects.push(
-      rect(upperStart, ya, right, ya + stroke),
-      rect(lowerStart, yb, right, yb + stroke),
-    );
-  }
-  return rects.filter((each) => each.width > 0 && each.height > 0);
+  const arms: Readonly<Record<Way, Rect>> = {
+    up: rect(cx, y, cx + stroke, cy + stroke),
+    down: rect(cx, cy, cx + stroke, bottom),
+    left: rect(x, cy, cx + stroke, cy + stroke),
+    right: rect(cx, cy, right, cy + stroke),
+  };
+  return (['up', 'down', 'left', 'right'] as const).flatMap((way) =>
+    (bits & wayBits[way]) === 0 ? [] : [{ ...arms[way], way }],
+  );
 }
 
 export function arrowRects(
