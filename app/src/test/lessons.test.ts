@@ -59,7 +59,7 @@ const timesIn = (folder: string, pattern: RegExp) =>
     0,
   );
 
-const fixedSleeps = 22;
+const fixedSleeps = 29;
 
 const geometry =
   /getBoundingClientRect|offset(?:Width|Height|Top|Left)|client(?:Width|Height)|scroll(?:Width|Height|Top|Left)/;
@@ -224,12 +224,32 @@ suite('Lessons from past mistakes', () => {
     );
   });
 
-  test('sleeps for a time of its own choosing in no more places of the end-to-end tests than before, as a time long enough here was too short on a slower machine of CI and a wait for what the page shows needs none; lower the count as a sleep goes', () => {
+  test('sleeps for a time of its own choosing in no more places of the end-to-end tests than before, a helper that sleeps for the time it is given counted at each time it is given, as a time long enough here was too short on a slower machine of CI and a wait for what the page shows needs none; lower the count as a sleep goes', () => {
+    const helpers = [
+      ...new Set(
+        filesIn('test/e2e').flatMap((file) =>
+          [
+            ...textOf(file).matchAll(
+              /\bconst\s+(\w+)\s*=\s*\(\s*\w+(?::\s*number)?\s*\)\s*=>\s*new Promise\(\s*\(?\s*resolve\s*\)?\s*=>\s*setTimeout\(\s*resolve,\s*\w+\s*\)\s*\)/g,
+            ),
+          ].map(([, name = '']) => name),
+        ),
+      ),
+    ];
     assert.strictEqual(
       timesIn(
         'test/e2e',
         /waitForTimeout\(|setTimeout\(\s*resolve,\s*[\d_]+\s*\)/g,
-      ),
+      ) +
+        helpers.reduce(
+          (sleeps, name) =>
+            sleeps +
+            timesIn(
+              'test/e2e',
+              new RegExp(String.raw`\b${name}\(\s*[\d_]+\s*\)`, 'g'),
+            ),
+          0,
+        ),
       fixedSleeps,
     );
   });
