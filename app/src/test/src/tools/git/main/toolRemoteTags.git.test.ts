@@ -145,7 +145,7 @@ suite('Git tool remote tags', () => {
       takeErrorsLogged(
         logged,
         /^Fetching every remote failed$/,
-        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false -c remote\.gone\.prune=true -c remote\.gone\.pruneTags=false fetch --progress --no-auto-maintenance --all --porcelain failed: .*could not fetch gone/s,
+        /^git -c remote\.origin\.prune=true -c remote\.origin\.pruneTags=false -c remote\.gone\.prune=true -c remote\.gone\.pruneTags=false fetch --progress --no-auto-maintenance (?:--no-write-fetch-head )?--all --porcelain failed: .*could not fetch gone/s,
       );
     } finally {
       await repository.git('remote', 'remove', 'gone');

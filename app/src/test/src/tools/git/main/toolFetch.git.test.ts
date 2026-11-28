@@ -52,7 +52,7 @@ suite('Git tool fetching', () => {
       logged,
       /^Fetching every remote failed$/,
       new RegExp(
-        `^git ${pruning}fetch --progress --no-auto-maintenance --all --porcelain failed: fatal: ${reason.source}`,
+        `^git ${pruning}fetch --progress --no-auto-maintenance (?:--no-write-fetch-head )?--all --porcelain failed: fatal: ${reason.source}`,
       ),
     );
   }

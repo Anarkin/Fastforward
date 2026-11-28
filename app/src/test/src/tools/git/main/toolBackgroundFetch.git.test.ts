@@ -41,7 +41,7 @@ suite('Git tool fetching in the background', () => {
       logged,
       /^Fetching every remote failed$/,
       new RegExp(
-        `^git -c remote\\.origin\\.prune=true -c remote\\.origin\\.pruneTags=false fetch --progress --no-auto-maintenance --all --porcelain failed: fatal: ${reason.source}`,
+        `^git -c remote\\.origin\\.prune=true -c remote\\.origin\\.pruneTags=false fetch --progress --no-auto-maintenance (?:--no-write-fetch-head )?--all --porcelain failed: fatal: ${reason.source}`,
       ),
     );
   }

@@ -134,6 +134,31 @@ suite('Git repository', () => {
     }
   }, 120_000);
 
+  test('leaves FETCH_HEAD as it was when fetching in the background, as a fetch typed in a terminal left it for a reset that the next background fetch pointed at the upstream, and writes it for a fetch asked for, as git does', async () => {
+    const folder = tempFolder('fetch-head');
+    try {
+      const remote = await tempRepository(path.join(folder, 'remote'));
+      await remote.commit('one');
+      const local = await tempRepository(path.join(folder, 'local'));
+      await local.git('remote', 'add', 'origin', remote.root);
+      const fetchHead = path.join(local.root, '.git', 'FETCH_HEAD');
+      fs.writeFileSync(fetchHead, 'typed in a terminal\n');
+
+      await fetchAllRemotes(gitPath, local.root, { interactive: false });
+      assert.strictEqual(
+        fs.readFileSync(fetchHead, 'utf8'),
+        'typed in a terminal\n',
+      );
+      await fetchAllRemotes(gitPath, local.root);
+      assert.notStrictEqual(
+        fs.readFileSync(fetchHead, 'utf8'),
+        'typed in a terminal\n',
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
   test('runs no command a remote of the ext protocol names, though the repository lets the protocol through, as a repository merely opened is fetched in the background', async () => {
     const folder = tempFolder('ext-remote');
     try {

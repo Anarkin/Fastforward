@@ -121,7 +121,14 @@ async function fetchWith(
     const output = await runGit(
       gitPath,
       root,
-      [...pruning, 'fetch', '--progress', '--no-auto-maintenance', ...fetching],
+      [
+        ...pruning,
+        'fetch',
+        '--progress',
+        '--no-auto-maintenance',
+        ...(interactive ? [] : ['--no-write-fetch-head']),
+        ...fetching,
+      ],
       {
         signal,
         env: interactive
