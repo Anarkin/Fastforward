@@ -771,6 +771,8 @@ export const strings = {
     sevenZipEnded: (code: number | null) =>
       code === null ? '7-Zip was stopped.' : `7-Zip ended with code ${code}.`,
     noSevenZip: 'The app has no 7-Zip to open archives with.',
+    dotEntries: (archive: string) =>
+      sentence`7-Zip can't change the entries of ${namedFile(archive)} whose names start with ./, so nothing was changed.`,
     notAFile: 'It is not a file.',
     deleteAsAdministrator:
       "Items can't be deleted yet in a folder read as administrator.",

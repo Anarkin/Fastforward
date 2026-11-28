@@ -5,6 +5,7 @@ import { afterEach, beforeEach, suite, test } from 'vitest';
 import { waitFor } from '../../../../helpers/fixtures';
 import { item, notPacked, readerOf } from './archivesFixtures';
 import { Archives } from '../../../../../tools/commander/main/archives';
+import { strings } from '../../../../../lib/shared/strings';
 import type {
   ArchiveListing,
   ArchiveReader,
@@ -34,6 +35,33 @@ suite('Archives', () => {
       .readdirSync(folder)
       .filter((name) => name.startsWith('work-'))
       .toSorted();
+
+  test('refuses to delete or rename an entry whose name goes through a folder of a dot, as a tar made of ./ keeps, saying why, as 7-Zip matches no such name, changes nothing and says it succeeded', async () => {
+    const tar = path.join(folder, 'dots.tar');
+    fs.writeFileSync(tar, 'tar');
+    const { reader } = readerOf({
+      'dots.tar': {
+        kind: 'listed',
+        items: [item('./a.txt'), item('b.txt')],
+      },
+    });
+    const archives = new Archives(reader, 'linux', workFolder);
+    const opened = await archives.open(tar);
+    assert.ok(opened.kind === 'opened');
+    const refused = {
+      kind: 'refused',
+      reason: strings.commander.dotEntries(tar),
+    };
+
+    assert.deepStrictEqual(
+      await archives.remove(opened.archive, ['./a.txt', 'b.txt']),
+      refused,
+    );
+    assert.deepStrictEqual(
+      await archives.rename(opened.archive, './a.txt', './c.txt'),
+      refused,
+    );
+  });
 
   test('opens a file the reader lists, keeping it opened while the file is unchanged, and opens it again once it changes', async () => {
     const zip = path.join(folder, 'a.zip');

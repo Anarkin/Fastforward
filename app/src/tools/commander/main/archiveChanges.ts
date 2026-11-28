@@ -86,6 +86,14 @@ async function restored(
   }
 }
 
+const throughDot = (entry: string) =>
+  entry.split(/[\\/]/).some((part) => part === '.' || part === '..');
+
+const dotsRefused = (archive: OpenedArchive): Packing => ({
+  kind: 'refused',
+  reason: strings.commander.dotEntries(archive.file),
+});
+
 export class ArchiveChanges {
   private readonly changing = new Map<string, Promise<unknown>>();
   private placing: Promise<void> = Promise.resolve();
@@ -133,6 +141,9 @@ export class ArchiveChanges {
     paths: readonly string[],
     options: PackOptions = {},
   ): Promise<Packing> {
+    if (paths.some(throughDot)) {
+      return Promise.resolve(dotsRefused(archive));
+    }
     return this.updating(archive, (reader, password) =>
       this.listedIn((listIn) =>
         reader.remove(archive.file, paths, { ...options, ...password, listIn }),
@@ -155,6 +166,9 @@ export class ArchiveChanges {
     to: string,
     options: PackOptions = {},
   ): Promise<Packing> {
+    if (throughDot(from)) {
+      return Promise.resolve(dotsRefused(archive));
+    }
     return this.updating(archive, (reader, password) =>
       this.listedIn((listIn) =>
         reader.rename(archive.file, from, to, {
