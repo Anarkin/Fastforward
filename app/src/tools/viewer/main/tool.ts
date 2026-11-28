@@ -1,3 +1,4 @@
+import { inThread, type PatternSearch } from '../../../lib/main/patternSearch';
 import type { FileTabSize } from '../../../lib/shared/tabSize';
 import { viewVersion } from '../shared/protocol';
 import * as path from 'node:path';
@@ -54,6 +55,7 @@ export interface ViewerAccess {
     file: string,
     rev: string | undefined,
   ) => Promise<void>;
+  readonly patterns?: PatternSearch;
 }
 
 export class ViewerTool implements Tool<'viewer'> {
@@ -81,7 +83,12 @@ export class ViewerTool implements Tool<'viewer'> {
     this.messages = new ViewerMessages(
       this.pages,
       this.viewers,
-      new ViewerFind(this.pages),
+      new ViewerFind(this.pages, access.patterns ?? inThread, (page) =>
+        this.shell.notice(page, {
+          level: 'error',
+          message: strings.find.tooSlow,
+        }),
+      ),
       pdfPlaces,
       (page, tab, at) => this.editViewed(page, tab, at),
       (page, tab) => this.editTabSizeSource(page, tab),

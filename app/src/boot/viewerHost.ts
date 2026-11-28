@@ -8,6 +8,7 @@ import type { PdfPlaces } from '../tools/viewer/main/pdfPlaces';
 import { ViewerTool } from '../tools/viewer/main/tool';
 import type { GitTool } from '../tools/git/main/tool';
 import type { DiffTool } from '../tools/diff/main/tool';
+import type { PatternSearch } from '../lib/main/patternSearch';
 
 export interface ViewerHostDeps {
   readonly pdfPlaces: PdfPlaces;
@@ -15,6 +16,7 @@ export interface ViewerHostDeps {
   readonly editorTool: EditorTool;
   readonly gitTool: Pick<GitTool, 'versionCopy' | 'fileHistory'>;
   readonly diffTool: Pick<DiffTool, 'openHistory'>;
+  readonly patterns: PatternSearch;
 }
 
 export function viewerToolOf({
@@ -23,6 +25,7 @@ export function viewerToolOf({
   editorTool,
   gitTool,
   diffTool,
+  patterns,
 }: ViewerHostDeps): ViewerTool {
   return new ViewerTool({
     copy: (text) => {
@@ -38,5 +41,6 @@ export function viewerToolOf({
     versionCopy: (file, rev) => gitTool.versionCopy(file, rev),
     fileHistory: (file) => gitTool.fileHistory(file),
     compareHistory: (page, file, rev) => diffTool.openHistory(page, file, rev),
+    patterns,
   });
 }

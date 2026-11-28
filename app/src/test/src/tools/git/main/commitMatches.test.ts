@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { plainFilter } from '../../../../helpers/filters';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
+import { inThread } from '../../../../../lib/main/patternSearch';
 import {
   matchesCommit,
   parseSearchedCommit,
@@ -103,5 +104,51 @@ suite('Commit search stream', () => {
       found: ['aaa'],
       capped: false,
     });
+  });
+
+  test('checks the commits by a regular expression through the pattern search it is given, a batch at a time in the order git gives them, settling at the limit, and as too slow once a batch takes the pattern too long', async () => {
+    const regex = { caseSensitive: false, wholeWord: false, regex: true };
+    const asked: (readonly string[])[][] = [];
+    const matches = new SearchMatches('a.a', regex, 2, new Set(['eee']), {
+      ...inThread,
+      matching: (fields, query, options, signal) => {
+        asked.push(fields.map((each) => [...each]));
+        return inThread.matching(fields, query, options, signal);
+      },
+    });
+
+    assert.strictEqual(
+      await matches.addAll([
+        'aaa\0Ada\0a@x\0B\0b@x\0One',
+        'bbb\0B\0b@x\0B\0b@x\0Nothing',
+        'eee\0Ada\0a@x\0B\0b@x\0Hidden',
+      ]),
+      undefined,
+    );
+    assert.deepStrictEqual(
+      await matches.addAll([
+        'ccc\0B\0b@x\0B\0b@x\0About ada',
+        'ddd\0ADA\0a@x\0B\0b@x\0',
+      ]),
+      { found: ['aaa', 'ccc'], capped: true },
+    );
+    assert.deepStrictEqual(asked, [
+      [
+        ['Ada <a@x>', 'B <b@x>', 'One'],
+        ['B <b@x>', 'B <b@x>', 'Nothing'],
+      ],
+      [
+        ['B <b@x>', 'B <b@x>', 'About ada'],
+        ['ADA <a@x>', 'B <b@x>', ''],
+      ],
+    ]);
+    const slow = new SearchMatches('a.a', regex, 2, new Set(), {
+      ...inThread,
+      matching: () => Promise.resolve('slow'),
+    });
+    assert.strictEqual(
+      await slow.addAll(['aaa\0Ada\0a@x\0B\0b@x\0One']),
+      'slow',
+    );
   });
 });

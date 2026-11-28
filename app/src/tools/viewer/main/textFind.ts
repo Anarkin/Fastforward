@@ -15,6 +15,7 @@ import {
   type FindRange,
 } from '../../../lib/shared/textMatches';
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
+import { inThread, type PatternSearch } from '../../../lib/main/patternSearch';
 
 const defaultChunk = 1024 * 1024;
 const widestCharacter = 4;
@@ -121,30 +122,36 @@ function lineEndAfter(
 
 const lineBreaks = /\r\n|[\n\r]/g;
 
-function rangesIn(
+async function rangesIn(
   text: string,
   query: string,
   options: SearchOptions,
-): FindRange[] {
+  patterns: PatternSearch,
+  signal: AbortSignal | undefined,
+): Promise<FindRange[] | 'slow' | 'stopped'> {
   if (!options.regex) {
     return matchesIn(text, query, options);
   }
-  const ranges: FindRange[] = [];
+  const starts: number[] = [];
+  const lines: string[] = [];
   let at = 0;
   for (const { index } of [
     ...text.matchAll(lineBreaks),
     { index: text.length },
   ]) {
-    for (const { start, end } of matchesIn(
-      text.slice(at, index),
-      query,
-      options,
-    )) {
-      ranges.push({ start: at + start, end: at + end });
-    }
+    starts.push(at);
+    lines.push(text.slice(at, index));
     at = index + (text.startsWith('\r\n', index) ? 2 : 1);
   }
-  return ranges;
+  const found = await patterns.ranges(lines, query, options, signal);
+  return typeof found === 'string'
+    ? found
+    : found.flatMap((ranges, line) =>
+        ranges.map(({ start, end }) => ({
+          start: (starts[line] ?? 0) + start,
+          end: (starts[line] ?? 0) + end,
+        })),
+      );
 }
 
 export async function findInFile(
@@ -158,14 +165,21 @@ export async function findInFile(
     limit = maxMatches,
     signal,
     onChunk,
+    patterns = inThread,
   }: {
     readonly chunk?: number;
     readonly limit?: number;
     readonly signal?: AbortSignal;
     readonly onChunk?: (matches: readonly FindRange[]) => void;
+    readonly patterns?: PatternSearch;
   } = {},
 ): Promise<
-  { readonly matches: FindRange[]; readonly capped: boolean } | undefined
+  | {
+      readonly matches: FindRange[];
+      readonly capped: boolean;
+      readonly slow?: true;
+    }
+  | undefined
 > {
   const matches: FindRange[] = [];
   if (query === '') {
@@ -200,7 +214,14 @@ export async function findInFile(
     const decoded = bytes.subarray(0, end);
     const text = coding.decode(decoded);
     const offset = byteOffsets(text, decoded, encoding);
-    for (const range of rangesIn(text, query, options)) {
+    const ranges = await rangesIn(text, query, options, patterns, signal);
+    if (ranges === 'stopped' || signal?.aborted) {
+      return undefined;
+    }
+    if (ranges === 'slow') {
+      return { matches, capped: false, slow: true };
+    }
+    for (const range of ranges) {
       const start = offset(range.start);
       if (start < lead) {
         continue;

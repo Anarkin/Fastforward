@@ -7,6 +7,7 @@ import { toolState } from '../shell/main/storage';
 import { GitStorage } from '../tools/git/main/storage';
 import { GitTool } from '../tools/git/main/tool';
 import type { GitLocator } from '../tools/git/main/gitLocator';
+import type { PatternSearch } from '../lib/main/patternSearch';
 
 export interface GitHostDeps {
   readonly log: Log;
@@ -17,6 +18,7 @@ export interface GitHostDeps {
   readonly chooseFolders: (
     options: Electron.OpenDialogOptions,
   ) => Promise<Electron.OpenDialogReturnValue>;
+  readonly patterns: PatternSearch;
 }
 
 export function gitToolOf({
@@ -26,6 +28,7 @@ export function gitToolOf({
   state,
   viewedFiles,
   chooseFolders,
+  patterns,
 }: GitHostDeps): GitTool {
   return new GitTool(
     log,
@@ -58,6 +61,7 @@ export function gitToolOf({
         return chosen.canceled ? undefined : chosen.filePaths[0];
       },
       clipboardText: () => clipboard.readText(),
+      patterns,
     },
   );
 }

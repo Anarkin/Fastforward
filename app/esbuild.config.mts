@@ -20,6 +20,7 @@ export function mainOptions(production: boolean): BuildOptions {
       commitReader: 'src/tools/git/main/commitReaderWorker.ts',
       sizeWorker: 'src/tools/commander/main/sizeWorker.ts',
       hashWorker: 'src/tools/commander/main/hashWorker.ts',
+      patternWorker: 'src/boot/patternWorker.ts',
     },
     format: 'cjs',
     platform: 'node',

@@ -6,6 +6,8 @@ import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import { plainOf } from '../../../../../lib/shared/sentences';
 import { viewer, forged } from './viewerFixtures';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
+import { inThread } from '../../../../../lib/main/patternSearch';
+import { strings } from '../../../../../lib/shared/strings';
 
 suite('Viewer tool finding in a file viewed', () => {
   let opened: string;
@@ -15,6 +17,36 @@ suite('Viewer tool finding in a file viewed', () => {
   });
 
   afterEach(() => removeFolder(opened));
+
+  test('searches by a regular expression through the pattern search it is given, ending the search with the matches found so far and a notice once a line takes the pattern too long', async () => {
+    const notes = path.join(opened, 'find.txt');
+    fs.writeFileSync(notes, 'ab\nab\n');
+    const { tool, page, send, notices } = viewer({
+      patterns: { ...inThread, ranges: () => Promise.resolve('slow') },
+    });
+    await tool.show(page, { id: '3', tool: 'viewer', root: notes });
+
+    await send({
+      type: 'findText',
+      tab: '3',
+      encoding: 'utf-8',
+      query: 'a.',
+      options: { caseSensitive: false, wholeWord: false, regex: true },
+      request: 4,
+    });
+
+    assert.deepStrictEqual(page.of('found').at(-1), {
+      type: 'found',
+      tab: '3',
+      request: 4,
+      matches: [],
+      capped: false,
+      done: true,
+    });
+    assert.deepStrictEqual(notices, [
+      { level: 'error', message: strings.find.tooSlow },
+    ]);
+  });
 
   test('finds text in a file viewed in the encoding and with the options asked for, answering with the bytes of each match, and checks what the page asks, its options included', async () => {
     const notes = path.join(opened, 'find.txt');

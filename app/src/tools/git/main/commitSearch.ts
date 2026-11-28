@@ -6,6 +6,8 @@ import type {
   CommitSearch as CommitSearchResult,
 } from '../shared/protocol';
 import type { GitStorage } from './storage';
+import type { PatternSearch } from '../../../lib/main/patternSearch';
+import { strings } from '../../../lib/shared/strings';
 import type { Session, Context, GitCore } from './tabContext';
 
 export class CommitSearch {
@@ -15,6 +17,7 @@ export class CommitSearch {
   constructor(
     private readonly storage: GitStorage,
     private readonly core: GitCore,
+    private readonly patterns: PatternSearch,
   ) {}
 
   async searchCommits(
@@ -54,13 +57,17 @@ export class CommitSearch {
         throw error;
       });
       if (!search.signal.aborted) {
+        const { slow, ...found } = result;
         context.post({
           type: 'commitSearch',
           query,
           options,
           ...(limit !== undefined && { limit }),
-          result,
+          result: found,
         });
+        if (slow === true) {
+          this.core.notify(context)('error', strings.find.tooSlow);
+        }
       }
     } catch (error) {
       if (!search.signal.aborted) {
@@ -79,7 +86,7 @@ export class CommitSearch {
     options: SearchOptions,
     signal: AbortSignal,
     limit?: number,
-  ): Promise<CommitSearchResult> {
+  ): Promise<CommitSearchResult & { readonly slow?: true }> {
     return searchCommits(
       context.gitPath,
       context.root,
@@ -89,6 +96,7 @@ export class CommitSearch {
       [...context.tab.stashes.keys()],
       signal,
       limit,
+      this.patterns,
     );
   }
 

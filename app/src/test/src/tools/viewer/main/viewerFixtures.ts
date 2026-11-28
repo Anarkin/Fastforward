@@ -11,6 +11,7 @@ import type {
 import type { TextEncoding } from '../../../../../components/encodings/shared/textEncodings';
 import type { FileHistoryListed } from '../../../../../components/versions/shared/versions';
 import { fakeShell } from '../../commander/main/fakeShell';
+import type { PatternSearch } from '../../../../../lib/main/patternSearch';
 
 export class ViewerPage implements Page {
   readonly messages: ViewerToWebview[] = [];
@@ -32,7 +33,7 @@ export class ViewerPage implements Page {
   }
 }
 
-export function viewer() {
+export function viewer({ patterns }: { patterns?: PatternSearch } = {}) {
   const watching: { file: string; changed: () => void }[] = [];
   const places = new Map<string, { place: PdfPlace; file: string }>();
   const edited: {
@@ -89,6 +90,7 @@ export function viewer() {
         copy === undefined ? { kind: 'missing' } : { kind: 'file', file: copy },
       );
     },
+    ...(patterns !== undefined && { patterns }),
   });
   const page = new ViewerPage();
   const { shell, pages, tabs, notices, versionsSet, tabsOpened } =

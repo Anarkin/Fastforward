@@ -1,3 +1,4 @@
+import type { PatternSearch } from '../../../lib/main/patternSearch';
 import { viewVersion } from '../shared/protocol';
 import type { AutoFetch } from './autoFetch';
 import { runningGits } from './run';
@@ -73,6 +74,7 @@ export interface GitHost {
     from?: string,
   ): Promise<string | undefined>;
   clipboardText(): Promise<string>;
+  readonly patterns?: PatternSearch;
 }
 
 export class GitTool implements Tool<'git'> {

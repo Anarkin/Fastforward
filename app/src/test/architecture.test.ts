@@ -610,6 +610,7 @@ suite('Architecture', () => {
     const finds = [
       ...matchers,
       'components/diff/page/find.ts',
+      'lib/main/patternSearch.ts',
       'tools/editor/page/find.ts',
       'tools/viewer/main/textFind.ts',
       'tools/viewer/page/markdownFind.ts',
@@ -749,6 +750,7 @@ suite('Architecture', () => {
           /\b(?:caseSensitive|wholeWord|regex)\b/.test(read(file)),
       ),
       [
+        'lib/main/patternSearch.ts',
         'lib/page/searchBar.tsx',
         'lib/shared/filter.ts',
         'lib/shared/searchOptions.ts',

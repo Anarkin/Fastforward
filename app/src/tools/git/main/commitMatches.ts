@@ -9,6 +9,7 @@ import {
 import type { SearchOptions } from '../../../lib/shared/searchOptions';
 import type { CommitSearch } from '../shared/protocol';
 import { runGit, runGitBytes } from './run';
+import { inThread, type PatternSearch } from '../../../lib/main/patternSearch';
 
 const searchLimit = 50;
 
@@ -67,6 +68,7 @@ export function matchesCommit(commit: SearchedCommit, filter: Filter): boolean {
 interface FoundHashes {
   readonly found: string[];
   readonly capped: boolean;
+  readonly slow?: true;
 }
 
 export class SearchMatches {
@@ -74,12 +76,48 @@ export class SearchMatches {
   private readonly filter: Filter;
 
   constructor(
-    query: string,
-    options: SearchOptions,
+    private readonly query: string,
+    private readonly options: SearchOptions,
     private readonly limit = searchLimit,
     private readonly hidden: ReadonlySet<string> = new Set(),
+    private readonly patterns: PatternSearch = inThread,
   ) {
     this.filter = searchFilter(query, options);
+  }
+
+  async addAll(
+    records: readonly string[],
+    signal?: AbortSignal,
+  ): Promise<FoundHashes | 'slow' | undefined> {
+    const commits = records
+      .map(parseSearchedCommit)
+      .filter((commit) => !this.hidden.has(commit.hash));
+    const matched = await this.patterns.matching(
+      commits.map((commit) => [
+        commit.author,
+        commit.committer,
+        commit.message,
+      ]),
+      this.query,
+      this.options,
+      signal,
+    );
+    if (matched === 'slow') {
+      return 'slow';
+    }
+    if (matched === 'stopped') {
+      return { found: this.found, capped: false };
+    }
+    for (const [index, commit] of commits.entries()) {
+      if (!matched[index]) {
+        continue;
+      }
+      if (this.found.length === this.limit) {
+        return { found: this.found, capped: true };
+      }
+      this.found.push(commit.hash);
+    }
+    return undefined;
   }
 
   add(record: string): FoundHashes | undefined {
@@ -113,16 +151,26 @@ function streamMatches(
   { solo, stashes, hidden }: Searched,
   limit: number | undefined,
   signal: AbortSignal | undefined,
+  patterns: PatternSearch,
 ): Promise<FoundHashes> {
-  const matches = new SearchMatches(query, options, limit, hidden);
+  const matches = new SearchMatches(query, options, limit, hidden, patterns);
   const stopping = new AbortController();
   const capped = Promise.withResolvers<FoundHashes>();
-  const add = (record: string) => {
-    const result = stopping.signal.aborted ? undefined : matches.add(record);
-    if (result !== undefined) {
+  let checked: Promise<void> = Promise.resolve();
+  const settle = (result: FoundHashes | 'slow' | undefined) => {
+    if (result !== undefined && !stopping.signal.aborted) {
       stopping.abort();
-      capped.resolve(result);
+      capped.resolve(
+        result === 'slow' ? { ...matches.end(), slow: true } : result,
+      );
     }
+  };
+  const addAll = (records: readonly string[]) => {
+    checked = checked.then(async () => {
+      if (!stopping.signal.aborted && records.length > 0) {
+        settle(await matches.addAll(records, signal));
+      }
+    });
   };
   const decoder = new StringDecoder('utf8');
   let pending = '';
@@ -146,12 +194,14 @@ function streamMatches(
       onOutput: (chunk) => {
         const { records, rest } = takeRecords(pending + decoder.write(chunk));
         pending = rest;
-        records.forEach(add);
+        addAll(records);
       },
     },
-  ).then(() => {
+  ).then(async () => {
     const last = pending + decoder.end();
-    return (last.length > 0 ? matches.add(last) : undefined) ?? matches.end();
+    addAll(last.length > 0 ? [last] : []);
+    await checked;
+    return matches.end();
   });
   return Promise.race([searching, capped.promise]);
 }
@@ -165,9 +215,10 @@ export async function searchCommits(
   stashes: readonly string[] = [],
   signal?: AbortSignal,
   limit?: number,
-): Promise<CommitSearch> {
+  patterns: PatternSearch = inThread,
+): Promise<CommitSearch & { readonly slow?: true }> {
   const searched = solo ? [] : stashes;
-  const { found, capped } = await streamMatches(
+  const { found, capped, slow } = await streamMatches(
     gitPath,
     cwd,
     query,
@@ -179,8 +230,13 @@ export async function searchCommits(
     },
     limit,
     signal,
+    patterns,
   );
-  return { commits: await logCommits(gitPath, cwd, found), capped };
+  return {
+    commits: await logCommits(gitPath, cwd, found),
+    capped,
+    ...(slow === true && { slow }),
+  };
 }
 
 async function stashedParents(

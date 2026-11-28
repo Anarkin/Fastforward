@@ -61,6 +61,7 @@ import type { DiffTool } from '../tools/diff/main/tool';
 import { terminalToolOf } from './terminalHost';
 import { commanderToolOf } from './commanderHost';
 import { viewerToolOf } from './viewerHost';
+import { patternWorker } from '../lib/main/patternSearch';
 import { editorToolOf } from './editorHost';
 import type { EditorTool } from '../tools/editor/main/tool';
 import { canvasToolOf } from './canvasHost';
@@ -306,6 +307,7 @@ async function start(asked: readonly string[]): Promise<void> {
     );
   }
   keepGitRunningWhile(() => userSettings.settings.tools.git.keepGitRunning);
+  const patterns = patternWorker(dist);
   const gitTool = gitToolOf({
     log,
     git,
@@ -313,6 +315,7 @@ async function start(asked: readonly string[]): Promise<void> {
     state,
     viewedFiles,
     chooseFolders,
+    patterns,
   });
   const terminalTool = terminalToolOf({
     log,
@@ -374,6 +377,7 @@ async function start(asked: readonly string[]): Promise<void> {
     editorTool,
     gitTool,
     diffTool,
+    patterns,
   });
   const view = new Shell(log, storage, shellHost, {
     terminal: terminalTool,

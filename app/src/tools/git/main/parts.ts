@@ -1,3 +1,4 @@
+import { inThread } from '../../../lib/main/patternSearch';
 import { join } from 'node:path';
 import { AutoFetch, fetchOrder } from './autoFetch';
 import { Clones } from './clones';
@@ -171,7 +172,11 @@ export function buildParts(
     historyPages,
     core,
   );
-  const commitSearch = new CommitSearch(storage, core);
+  const commitSearch = new CommitSearch(
+    storage,
+    core,
+    host.patterns ?? inThread,
+  );
   const remote = {
     log,
     gitPath,

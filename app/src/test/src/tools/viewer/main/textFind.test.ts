@@ -3,6 +3,8 @@ import { suite, test } from 'vitest';
 import { findInFile } from '../../../../../tools/viewer/main/textFind';
 import { plainSearch } from '../../../../../lib/shared/searchOptions';
 import type { ReadBytes } from '../../../../../lib/main/fileBlocks';
+import type { PatternSearch } from '../../../../../lib/main/patternSearch';
+import { inThread } from '../../../../../lib/main/patternSearch';
 
 function inMemory(bytes: Buffer): { read: ReadBytes; size: number } {
   return {
@@ -14,7 +16,46 @@ function inMemory(bytes: Buffer): { read: ReadBytes; size: number } {
   };
 }
 
+const regexSearch = { caseSensitive: false, wholeWord: false, regex: true };
+
 suite('Finding text in a file viewed', () => {
+  test('searches by a regular expression through the search it is given, a line at a time, and ends saying so once a line takes the pattern too long, as a pattern that backtracks held every window for minutes', async () => {
+    const { read, size } = inMemory(
+      Buffer.from(['ab', 'xab ab', 'long line'].join('\n'), 'utf8'),
+    );
+    const asked: string[][] = [];
+    const tooSlowOnLong: PatternSearch = {
+      ...inThread,
+      ranges: (texts, query, options, signal) => {
+        asked.push([...texts]);
+        return texts.includes('long line')
+          ? Promise.resolve('slow')
+          : inThread.ranges(texts, query, options, signal);
+      },
+    };
+
+    assert.deepStrictEqual(
+      await findInFile(read, size, 'ab', regexSearch, 'utf-8', {
+        patterns: inThread,
+      }),
+      {
+        matches: [
+          { start: 0, end: 2 },
+          { start: 4, end: 6 },
+          { start: 7, end: 9 },
+        ],
+        capped: false,
+      },
+    );
+    assert.deepStrictEqual(
+      await findInFile(read, size, 'ab', regexSearch, 'utf-8', {
+        patterns: tooSlowOnLong,
+      }),
+      { matches: [], capped: false, slow: true },
+    );
+    assert.deepStrictEqual(asked, [['ab', 'xab ab', 'long line']]);
+  });
+
   test('finds every match ignoring case, as the diff does, giving the bytes each takes in UTF-8', async () => {
     const { read, size } = inMemory(Buffer.from('Árvíz ÁRVÍZ árvíz', 'utf8'));
 

@@ -8,11 +8,16 @@ import { isSearchOptions } from '../../../lib/shared/searchOptions';
 import { reasonOf } from '../../../lib/main/reasons';
 import type { ViewerPages } from './pages';
 import { post } from './post';
+import type { PatternSearch } from '../../../lib/main/patternSearch';
 
 const findProgressEvery = 150;
 
 export class ViewerFind {
-  constructor(private readonly pages: ViewerPages) {}
+  constructor(
+    private readonly pages: ViewerPages,
+    private readonly patterns: PatternSearch,
+    private readonly tooSlow: (page: Page) => void,
+  ) {}
 
   async findText(
     page: Page,
@@ -47,6 +52,7 @@ export class ViewerFind {
     const found = await readingFile(viewing.file, (read) =>
       findInFile(read, viewing.size, query, options, encoding, {
         signal: finding.signal,
+        patterns: this.patterns,
         onChunk: (matches) => {
           if (Date.now() - told >= findProgressEvery) {
             told = Date.now();
@@ -92,6 +98,9 @@ export class ViewerFind {
       capped: found.capped,
       done: true,
     });
+    if (found.slow === true) {
+      this.tooSlow(page);
+    }
   }
 
   stopFind(
