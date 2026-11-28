@@ -45,7 +45,7 @@ export function seededFromStore(text: string): string[] {
   );
   const selected = [
     ...text.matchAll(
-      /\bconst\s+(\w+)\s*(?::[^=]*)?=\s*use(?:Shell|Git|Commander|Viewer|Editor|Diff|Terminal|Store)\b/g,
+      /\bconst\s+(\w+)\s*(?::[^=]*)?=\s*use(?:Shell|Git|Commander|Viewer|Editor|Diff|Terminal|Canvas|Store)\b/g,
     ),
   ].map(([, name = '']) => name);
   const reads = new RegExp(

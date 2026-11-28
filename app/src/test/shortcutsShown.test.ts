@@ -6,6 +6,7 @@ import { diffKeymap } from '../components/diff/page/keymap';
 import { keymap } from '../lib/page/keymap';
 import type { Binding } from '../lib/shared/keymap';
 import { shellKeymap } from '../shell/shared/keymap';
+import { canvasKeymap } from '../tools/canvas/page/keymap';
 import { commanderKeymap } from '../tools/commander/page/keymap';
 import { compareKeymap } from '../tools/diff/page/keymap';
 import { editorKeymap } from '../tools/editor/page/keymap';
@@ -44,6 +45,7 @@ const keymaps: Readonly<
   gitKeymap,
   commanderKeymap,
   terminalKeymap,
+  canvasKeymap,
 };
 
 const named = Object.entries(keymaps).flatMap(([map, bindings]) =>
@@ -59,6 +61,41 @@ const ownerOf = (binding: Binding<unknown>) =>
 const owned = [...new Set(named.map(({ binding }) => ownerOf(binding)))];
 
 const keysAlone: readonly string[] = [
+  'canvasKeymap.connect',
+  'canvasKeymap.cursorCharacter',
+  'canvasKeymap.cursorRow',
+  'canvasKeymap.cursorTextEnd',
+  'canvasKeymap.cursorWord',
+  'canvasKeymap.delete',
+  'canvasKeymap.deleteCharacter',
+  'canvasKeymap.deleteWord',
+  'canvasKeymap.home',
+  'canvasKeymap.leave',
+  'canvasKeymap.move',
+  'canvasKeymap.newLine',
+  'canvasKeymap.pan',
+  'canvasKeymap.panAcross',
+  'canvasKeymap.panHeld',
+  'canvasKeymap.panHeldDrag',
+  'canvasKeymap.paste',
+  'canvasKeymap.placeCaret',
+  'canvasKeymap.placeGroup',
+  'canvasKeymap.placeText',
+  'canvasKeymap.point',
+  'canvasKeymap.redo',
+  'canvasKeymap.resetZoom',
+  'canvasKeymap.resize',
+  'canvasKeymap.rowEnd',
+  'canvasKeymap.rowStart',
+  'canvasKeymap.save',
+  'canvasKeymap.select',
+  'canvasKeymap.selectAll',
+  'canvasKeymap.selectAllText',
+  'canvasKeymap.selectArea',
+  'canvasKeymap.stopTyping',
+  'canvasKeymap.typeIn',
+  'canvasKeymap.undo',
+  'canvasKeymap.zoom',
   'commanderKeymap.compare',
   'commanderKeymap.copyPaths',
   'commanderKeymap.edit',
