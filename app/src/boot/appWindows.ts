@@ -317,8 +317,10 @@ export class AppWindows {
       if (this.opened.get(id) !== entry) {
         return;
       }
-      const closing = quitGuard.closing(this.opened.size === 1, () =>
-        app.quit(),
+      const closing = quitGuard.closing(
+        this.opened.size === 1,
+        () => app.quit(),
+        entry.closing,
       );
       if (closing === 'held') {
         event.preventDefault();

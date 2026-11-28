@@ -68,6 +68,25 @@ suite('Quit guard', () => {
     );
   });
 
+  test('lets the last window close without asking again once closing it was confirmed, as a window told to close after its own question became the last one as another closed, and asked about quitting what it was told to close', () => {
+    const { guard, done } = guarded();
+    assert.strictEqual(
+      guard.closing(true, () => done.push('quit'), true),
+      'quits',
+    );
+    assert.strictEqual(done.length, 0);
+    assert.strictEqual(
+      guard.closing(false, () => done.push('quit'), true),
+      'alone',
+    );
+    guard.reset();
+    assert.strictEqual(
+      guard.closing(true, () => done.push('quit')),
+      'held',
+    );
+    assert.deepStrictEqual(done, ['asked']);
+  });
+
   test('goes on with the last quit held, as Restart to Update rather than quitting', () => {
     const { guard, done } = guarded();
     guard.holds(() => done.push('quit'));

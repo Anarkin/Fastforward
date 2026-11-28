@@ -47,9 +47,13 @@ export class QuitGuard {
     this.quitting = true;
   }
 
-  closing(last: boolean, then: () => void): Closing {
+  closing(last: boolean, then: () => void, confirmed = false): Closing {
     if (!this.quitting && !last) {
       return 'alone';
+    }
+    if (confirmed && !this.quitting) {
+      this.allowed = true;
+      return 'quits';
     }
     if (this.quitting && this.held) {
       return 'held';
