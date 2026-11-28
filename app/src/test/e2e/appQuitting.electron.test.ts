@@ -94,7 +94,16 @@ suite('App quitting', () => {
     fs.mkdirSync(profile, { recursive: true });
     fs.writeFileSync(
       path.join(profile, 'state.json'),
-      JSON.stringify(savedTabs(roots, roots[0])),
+      JSON.stringify({
+        ...savedTabs(roots, roots[0]),
+        tools: {
+          git: {
+            fetchedByHand: Object.fromEntries(
+              roots.map((root) => [root, true]),
+            ),
+          },
+        },
+      }),
     );
     fs.writeFileSync(
       path.join(profile, 'settings.user.json'),
