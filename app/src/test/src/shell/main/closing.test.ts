@@ -6,6 +6,7 @@ import { ChangeSet } from '@codemirror/state';
 import { afterAll, suite, test } from 'vitest';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
 import {
+  attach,
   closeViews,
   recoveryOf,
   shellOf,
@@ -51,7 +52,7 @@ suite('Quitting and closing windows', () => {
     );
   });
 
-  test('asks the page before quitting while a tab of a tool that confirms closing is open, as closing a Terminal ends its shell, leaving quitting to the app once the page confirms', async () => {
+  test('asks the page before quitting while a tab of a tool that confirms closing is open, as closing a Terminal ends its shell, leaving quitting to the app once the page confirms, and asks nothing once only the page of the spare window, which shows no question, is left', async () => {
     const host = new FakeHost();
     await withView(
       log,
@@ -67,8 +68,11 @@ suite('Quitting and closing windows', () => {
         });
         await view.connection.receive({ type: 'quit' });
         assert.deepStrictEqual(host.opened, ['quit']);
+        const spare = attach(view.view, 's1');
+        await spare.connection.receive({ type: 'ready' });
         view.connection.dispose();
         assert.strictEqual(shell.asksBeforeQuit(), false);
+        spare.connection.dispose();
       },
       true,
       host,

@@ -20,7 +20,7 @@ export class Closing {
 
   asksBeforeQuit(): boolean {
     return (
-      this.pages.all().length > 0 &&
+      this.pages.shown() !== undefined &&
       (this.storage.savedTabs.some((tab) => confirmsClose[tab.tool]) ||
         this.unsavedOf(this.storage.savedTabs).length > 0 ||
         quitNoteOf(this.tools) !== undefined)
