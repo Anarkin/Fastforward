@@ -108,11 +108,16 @@ async function writeAll(handle: FileHandle, bytes: Uint8Array) {
   }
 }
 
-const savingName = (target: string) =>
-  path.join(
+const longestName = 255;
+
+function savingName(target: string): string {
+  const tag = `.saving-${randomBytes(6).toString('hex')}`;
+  const named = `.${path.basename(target)}${tag}`;
+  return path.join(
     path.dirname(target),
-    `.${path.basename(target)}.saving-${randomBytes(6).toString('hex')}`,
+    named.length <= longestName ? named : tag,
   );
+}
 
 async function writtenBeside(
   target: string,

@@ -49,6 +49,14 @@ suite('Saving a file', () => {
     assert.deepStrictEqual(fs.readdirSync(folder), ['notes.txt']);
   });
 
+  test('saves a file whose name is as long as a name may be, through a file of its own of a short name, as the name of its own file passed the longest name the system takes and no save could succeed', async () => {
+    const long = path.join(folder, `${'n'.repeat(240)}.txt`);
+    fs.writeFileSync(long, 'old');
+    assert.strictEqual(await saveFile(long, bytes('new')), 'replaced');
+    assert.strictEqual(fs.readFileSync(long, 'utf8'), 'new');
+    assert.deepStrictEqual(fs.readdirSync(folder), [path.basename(long)]);
+  });
+
   test('makes a file that is not there yet', async () => {
     assert.strictEqual(await saveFile(file, bytes('made')), 'created');
     assert.strictEqual(fs.readFileSync(file, 'utf8'), 'made');
