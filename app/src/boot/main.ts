@@ -48,7 +48,7 @@ import { reloadOnRebuild } from './rebuild';
 import { commandPlaceOf } from './terminalCommand';
 import { Updates } from './updates';
 import { runsAsAppImage, updateMode } from './installation';
-import { removeUnviewedCopies } from './viewedFiles';
+import { removeUnviewedCopies, viewedRootsOf } from './viewedFiles';
 import { workFolders } from '../tools/commander/main/workFolders';
 import type { CommanderTool } from '../tools/commander/main/tool';
 import type { ViewerTool } from '../tools/viewer/main/tool';
@@ -288,11 +288,7 @@ async function start(asked: readonly string[]): Promise<void> {
     os.homedir(),
     process.env,
   );
-  const viewedRoots = storage.savedTabs.flatMap((tab) =>
-    (tab.tool === 'viewer' || tab.tool === 'editor') && tab.root !== undefined
-      ? [tab.root]
-      : [],
-  );
+  const viewedRoots = viewedRootsOf(storage.savedTabs);
   if (state.readable) {
     for (const copies of new Set([
       viewedFiles,
@@ -364,7 +360,14 @@ async function start(asked: readonly string[]): Promise<void> {
     gitTool,
     editRefusal: (file) => editorTool.refusal(file),
   });
-  const diffTool = diffToolOf({ log, userSettings, git, gitTool, viewedFiles });
+  const diffTool = diffToolOf({
+    log,
+    userSettings,
+    git,
+    gitTool,
+    viewedFiles,
+    closed: (file) => commanderTool.viewClosed(file),
+  });
   const viewerTool = viewerToolOf({
     pdfPlaces,
     commanderTool,

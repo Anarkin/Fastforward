@@ -13,6 +13,7 @@ export interface DiffHostDeps {
   readonly git: GitLocator;
   readonly gitTool: Pick<GitTool, 'versionCopy' | 'fileHistory'>;
   readonly viewedFiles: string;
+  readonly closed?: (file: string) => void;
 }
 
 export function diffToolOf({
@@ -21,6 +22,7 @@ export function diffToolOf({
   git,
   gitTool,
   viewedFiles,
+  closed,
 }: DiffHostDeps): DiffTool {
   return new DiffTool({
     log,
@@ -34,5 +36,6 @@ export function diffToolOf({
     fileHistory: (file) => gitTool.fileHistory(file),
     decodedCopies: join(viewedFiles, 'decoded'),
     codePage: () => systemCodePage(process.platform),
+    ...(closed !== undefined && { closed }),
   });
 }

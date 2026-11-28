@@ -180,6 +180,27 @@ export class ArchiveCopies {
     this.removeCopy(before);
   }
 
+  async comparedCopy(
+    page: Page,
+    pane: Pane,
+    name: string,
+  ): Promise<string | undefined> {
+    const { viewedCopies } = this.access;
+    const [copy] =
+      (await this.copiesIn(
+        page,
+        pane,
+        [name],
+        viewedCopies === undefined
+          ? undefined
+          : path.join(viewedCopies, randomUUID()),
+      )) ?? [];
+    if (copy !== undefined) {
+      this.taken(copy, pane.folder, name);
+    }
+    return copy;
+  }
+
   async viewInArchive(
     page: Page,
     shown: ShownPane,

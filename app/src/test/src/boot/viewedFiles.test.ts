@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, beforeEach, suite, test } from 'vitest';
-import { removeUnviewedCopies } from '../../../boot/viewedFiles';
+import { removeUnviewedCopies, viewedRootsOf } from '../../../boot/viewedFiles';
 import { removeFolder, tempFolder } from '../../helpers/tempFolders';
 
 suite('Copies of viewed files', () => {
@@ -53,6 +53,23 @@ suite('Copies of viewed files', () => {
       Reflect.set(fs.promises, 'rm', remove);
     }
     assert.deepStrictEqual(fs.readdirSync(copies), ['aaa']);
+  });
+
+  test('keeps the files a saved viewer or editor tab shows and those a saved diff tab compares, as a diff tab of two files of an archive came back after a restart comparing files no longer there', () => {
+    assert.deepStrictEqual(
+      viewedRootsOf([
+        { id: '1', tool: 'viewer', root: 'viewed/a/a.txt' },
+        { id: '2', tool: 'editor', root: 'viewed/b/b.txt' },
+        {
+          id: '3',
+          tool: 'diff',
+          compare: { old: 'viewed/c/c.txt', new: 'notes.txt' },
+        },
+        { id: '4', tool: 'commander', root: 'folder' },
+        { id: '5', tool: 'diff', root: 'repository' },
+      ]),
+      ['viewed/a/a.txt', 'viewed/b/b.txt', 'viewed/c/c.txt', 'notes.txt'],
+    );
   });
 
   test('removes nothing where no file was ever viewed', async () => {

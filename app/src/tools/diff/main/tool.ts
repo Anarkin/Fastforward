@@ -37,6 +37,7 @@ export interface DiffAccess {
   ) => Promise<FileHistoryListed | undefined>;
   readonly decodedCopies: string;
   readonly codePage: () => Promise<TextEncoding>;
+  readonly closed?: (file: string) => void;
 }
 
 function comparedTabName(compared: Compared): TabName {
@@ -111,6 +112,10 @@ export class DiffTool implements Tool<'diff'> {
 
   closed(page: Page, tab: Tab): void {
     post(page, { type: 'closed', tab: tab.id });
+    if (tab.compare !== undefined) {
+      this.access.closed?.(tab.compare.old);
+      this.access.closed?.(tab.compare.new);
+    }
     for (const [shownIn, comparing] of this.comparisons.shown) {
       if (comparing.tab === tab.id) {
         this.comparisons.stop(shownIn);

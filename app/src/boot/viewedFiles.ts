@@ -1,5 +1,19 @@
 import { fs } from '../lib/main/files';
 import * as path from 'node:path';
+import type { SavedTab } from '../shell/main/savedTabs';
+
+export const viewedRootsOf = (tabs: readonly SavedTab[]): string[] =>
+  tabs.flatMap((tab) => {
+    if (tab.tool === 'diff') {
+      return tab.compare === undefined
+        ? []
+        : [tab.compare.old, tab.compare.new];
+    }
+    return (tab.tool === 'viewer' || tab.tool === 'editor') &&
+      tab.root !== undefined
+      ? [tab.root]
+      : [];
+  });
 
 export async function removeUnviewedCopies(
   copies: string,

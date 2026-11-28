@@ -511,6 +511,12 @@ suite('Commander tool in archives', () => {
         'the top.txt of the archive',
       );
       assert.strictEqual(comparing.new, at('notes.txt'));
+      assert.ok(
+        comparing.old.startsWith(
+          `${path.join(copiesFolder, 'viewed')}${path.sep}`,
+        ),
+        `${comparing.old} is no copy of a file viewed, which the diff tab keeps once the app starts again, as the folders of the work of the archives are cleared as it quits`,
+      );
     });
 
     test('compares a file of an archive a diff tab compares already in that tab, from a copy taken anew so the tab compares the archive as it is now, and another pair in a tab of its own', async () => {

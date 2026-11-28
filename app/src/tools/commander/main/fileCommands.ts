@@ -322,15 +322,12 @@ export class FileCommands {
   ): Promise<void> {
     const paths: string[] = [];
     for (const { pane, name } of named) {
-      const [file] =
+      const file =
         pane.archive === undefined
-          ? [path.join(pane.folder, name)]
-          : ((await this.copies.copiesIn(page, pane, [name])) ?? []);
+          ? path.join(pane.folder, name)
+          : await this.copies.comparedCopy(page, pane, name);
       if (file === undefined) {
         return;
-      }
-      if (pane.archive !== undefined) {
-        this.copies.taken(file, pane.folder, name);
       }
       paths.push(file);
     }
