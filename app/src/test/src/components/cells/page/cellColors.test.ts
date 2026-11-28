@@ -47,6 +47,24 @@ suite('Colors of the cells', () => {
     );
   });
 
+  test('reads the parts of a color the browser writes in a space of its own, not the digits of the name of the space, as the 3 of display-p3 was taken for red', () => {
+    assert.deepStrictEqual(
+      parsedColor('color(display-p3 1 0 0)'),
+      [255, 0, 0, 1],
+    );
+    assert.deepStrictEqual(
+      parsedColor('color(display-p3 0 0.5 1 / 0.25)'),
+      [0, 127.5, 255, 0.25],
+    );
+  });
+
+  test('packs each part of a color as a whole byte, so one out of range stays in its own byte rather than spilling into the next', () => {
+    assert.strictEqual(
+      packedOf([300, -5, 127.6, 1]),
+      packedOf([255, 0, 127, 1]),
+    );
+  });
+
   test('writes a color for a canvas and packs it as the bytes of a pixel, red first', () => {
     assert.strictEqual(cssOf([1, 2, 3, 1]), 'rgb(1 2 3)');
     assert.strictEqual(packedOf([1, 2, 3, 1]), 0xff030201);
