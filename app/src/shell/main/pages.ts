@@ -50,9 +50,7 @@ export class Pages {
   }
 
   focused(): Page | undefined {
-    return this.focusedWindow === undefined
-      ? undefined
-      : this.pages.get(this.focusedWindow);
+    return this.shown();
   }
 
   shown(): Page | undefined {

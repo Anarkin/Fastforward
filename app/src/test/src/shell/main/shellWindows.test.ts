@@ -206,6 +206,19 @@ suite('Shell with several windows', () => {
     ]);
   });
 
+  test('asks about the folders of ff in a window still shown once the one it took for focused is gone, as a torn-off tab put back left it on the window that closed and swallowed the next ff', async () => {
+    const work = tempFolder('work');
+    try {
+      const { first, second } = await twoWindows(log, noGit);
+      first.shell.focus('2');
+      second.connection.dispose();
+      await first.shell.openFolders([work]);
+      assert.deepStrictEqual(first.page.last('chooseTool')?.folders, [work]);
+    } finally {
+      removeFolder(work);
+    }
+  });
+
   test('tells the window kept ready for a tab torn off neither the notices waiting for a window nor the folders asked about, as it shows them only once a tab is torn into it, long after they were answered or gone', async () => {
     const work = tempFolder('work');
     try {
