@@ -89,6 +89,8 @@ async function nodeFileOf(
   }
 }
 
+export const filesReadAtOnce = 16;
+
 export async function nodeFilesOf(
   canvas: string,
   board: Board,
@@ -103,19 +105,31 @@ export async function nodeFilesOf(
   const root = await vaultOf(canvas, access.isFolder);
   const realRoot = await access.realPath(root).catch(() => root);
   const codePage = await access.codePage();
-  const read = await Promise.all(
-    [...named].map(async (file) => {
-      const at = pathIn(root, file);
-      const real =
-        at === undefined
-          ? undefined
-          : await access.realPath(at).catch(() => at);
-      return at === undefined ||
-        real === undefined ||
-        (real !== at && pathIn(realRoot, real) === undefined)
-        ? []
-        : [[file, await nodeFileOf(at, real, access, codePage)] as const];
-    }),
+  const readOne = async (file: string) => {
+    const at = pathIn(root, file);
+    const real =
+      at === undefined ? undefined : await access.realPath(at).catch(() => at);
+    return at === undefined ||
+      real === undefined ||
+      (real !== at && pathIn(realRoot, real) === undefined)
+      ? []
+      : [[file, await nodeFileOf(at, real, access, codePage)] as const];
+  };
+  const waiting = [...named];
+  const read: (readonly [string, NodeFile])[] = [];
+  await Promise.all(
+    Array.from(
+      { length: Math.min(filesReadAtOnce, waiting.length) },
+      async () => {
+        for (
+          let file = waiting.shift();
+          file !== undefined;
+          file = waiting.shift()
+        ) {
+          read.push(...(await readOne(file)));
+        }
+      },
+    ),
   );
-  return Object.fromEntries(read.flat());
+  return Object.fromEntries(read);
 }

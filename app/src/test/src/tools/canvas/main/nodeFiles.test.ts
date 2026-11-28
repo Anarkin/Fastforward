@@ -2,6 +2,7 @@ import * as assert from 'node:assert';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
 import {
+  filesReadAtOnce,
   headBytes,
   nodeFilesOf,
   pathIn,
@@ -118,6 +119,42 @@ suite('Canvas node files', () => {
       shownText(bytes.subarray(0, bytes.length - 1), false, 'windows-1252'),
       'Ünïcödé',
     );
+  });
+
+  test('reads the files of a canvas of many file nodes a few at a time, as each holds a file open and thousands at once ran out of the files the system lets a process hold', async () => {
+    const canvas = path.join(root, 'plan.canvas');
+    const names = Array.from({ length: 200 }, (_, at) => `notes/${at}.md`);
+    const files = access(
+      Object.fromEntries(
+        names.map((name) => [path.join(root, name), `# ${name}`]),
+      ),
+      [],
+    );
+    let reading = 0;
+    let most = 0;
+    const counted: FileAccess = {
+      ...files,
+      readHead: async (file, bytes) => {
+        reading += 1;
+        most = Math.max(most, reading);
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        try {
+          return await files.readHead(file, bytes);
+        } finally {
+          reading -= 1;
+        }
+      },
+    };
+    const read = await nodeFilesOf(
+      canvas,
+      {
+        nodes: names.map((name, at) => fileNode(`${at}`, name)),
+        edges: [],
+      },
+      counted,
+    );
+    assert.strictEqual(Object.keys(read).length, names.length);
+    assert.ok(most <= filesReadAtOnce, String(most));
   });
 
   test('reads no file of a node whose real path leaves the vault, as a link inside it to a file outside', async () => {
