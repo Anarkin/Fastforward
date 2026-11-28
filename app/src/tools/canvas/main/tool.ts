@@ -2,6 +2,7 @@ import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { isObject } from '../../../lib/main/json';
 import type { RecoveryCopies } from '../../../lib/main/recoveryCopies';
+import { realTimer, type Timer } from '../../../lib/main/timer';
 import { hasCode } from '../../../lib/shared/errors';
 import { reasonOf } from '../../../lib/main/reasons';
 import type { Sentence } from '../../../lib/shared/sentences';
@@ -36,7 +37,10 @@ export interface CanvasAccess {
   readonly titleOf?: (url: string) => Promise<string | undefined>;
   readonly files?: FileAccess;
   readonly recovery?: RecoveryCopies;
+  readonly timer?: Timer;
 }
+
+const typedNodesWait = 500;
 
 const recoveryKey = (tab: string) => `canvas ${tab}`;
 
@@ -79,6 +83,7 @@ export class CanvasTool implements Tool<'canvas'> {
   private readonly shown = new Map<Page, string>();
   private readonly toldSkipped = new Set<string>();
   private readonly held = new Map<string, Held>();
+  private readonly typedNodes = new Map<string, () => void>();
   private readonly titles = new Map<string, Promise<string | undefined>>();
   private readonly turns = new Map<string, Promise<unknown>>();
   private readonly watching = new Map<
@@ -215,6 +220,17 @@ export class CanvasTool implements Tool<'canvas'> {
     });
   }
 
+  private postNodesOnceTyped(page: Page, tab: string): void {
+    this.typedNodes.get(tab)?.();
+    this.typedNodes.set(
+      tab,
+      (this.access.timer ?? realTimer)(() => {
+        this.typedNodes.delete(tab);
+        this.postNodes(page, tab);
+      }, typedNodesWait),
+    );
+  }
+
   private postNodes(page: Page, tab: string): void {
     this.postTitles(page, tab);
     void this.postFiles(page, tab);
@@ -344,6 +360,8 @@ export class CanvasTool implements Tool<'canvas'> {
     }
     this.toldSkipped.delete(tab.id);
     this.held.delete(tab.id);
+    this.typedNodes.get(tab.id)?.();
+    this.typedNodes.delete(tab.id);
     this.access.recovery?.drop(recoveryKey(tab.id));
     this.unwatchHidden(tab.id);
   }
@@ -390,12 +408,14 @@ export class CanvasTool implements Tool<'canvas'> {
         if (done !== undefined) {
           this.postBoard(page, tab, done.made);
         }
-        if (
-          done !== undefined &&
-          (edit?.kind === 'link' ||
-            (edit?.kind === 'text' && pointsElsewhere(held, edit.id)))
-        ) {
+        if (done !== undefined && edit?.kind === 'link') {
           this.postNodes(page, tab);
+        } else if (
+          done !== undefined &&
+          edit?.kind === 'text' &&
+          pointsElsewhere(held, edit.id)
+        ) {
+          this.postNodesOnceTyped(page, tab);
         }
         break;
       }

@@ -12,6 +12,8 @@ import type { CanvasToWebview } from '../../../../../tools/canvas/shared/protoco
 import { fakeShell } from '../../commander/main/fakeShell';
 import type { RecoveryCopies } from '../../../../../lib/main/recoveryCopies';
 import { fakeRecovery } from '../../../../helpers/fakeRecovery';
+import { fakeTimer } from '../../../../helpers/fakeTimer';
+import type { Timer } from '../../../../../lib/main/timer';
 
 class CanvasPage implements Page {
   readonly messages: CanvasToWebview[] = [];
@@ -59,6 +61,7 @@ function canvas(
   readOnly: readonly string[] = [],
   gates: Gates = { saves: 0 },
   recovery?: RecoveryCopies,
+  timer?: Timer,
 ) {
   const saved: [string, string][] = [];
   const watched = new Map<string, () => void>();
@@ -112,6 +115,7 @@ function canvas(
       return Buffer.from(text);
     },
     ...(recovery !== undefined && { recovery }),
+    ...(timer !== undefined && { timer }),
   });
   const page = new CanvasPage();
   const shell = fakeShell(page);
@@ -549,6 +553,33 @@ suite('Canvas tool', () => {
       tab: '7',
       files: { 'note.md': { path: note, text: 'Changed\n' } },
     });
+  });
+
+  test('reads the title of the URL typed into a link node once the typing rests, rather than of every URL on the way to it', async () => {
+    const { timer, waiting, fire } = fakeTimer();
+    const { tool, page, titled } = canvas(
+      { [file]: JSON.stringify({ nodes: [link('l', 'https://a.example/')] }) },
+      {},
+      [],
+      { saves: 0 },
+      undefined,
+      timer,
+    );
+    await tool.show(page, tab);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    titled.length = 0;
+    for (const url of ['https://e', 'https://ex', 'https://example.dev/x']) {
+      await tool.receive(page, {
+        type: 'edit',
+        tab: '7',
+        edit: { kind: 'text', id: 'l', text: url, session: 1 },
+      });
+    }
+    assert.deepStrictEqual(titled, []);
+
+    assert.strictEqual(waiting().length, 1);
+    await fire();
+    assert.deepStrictEqual(titled, ['https://example.dev/x']);
   });
 
   test('tells the page the title of the page of a link node placed', async () => {
