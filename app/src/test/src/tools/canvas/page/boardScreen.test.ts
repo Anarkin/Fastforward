@@ -237,7 +237,7 @@ suite('Canvas screen', () => {
     });
     assert.deepStrictEqual(drawn(['ab']), {
       row: '│    ├──┬─┼────┼───▶│    │',
-      chosen: '      ##############',
+      chosen: '     ################',
     });
   });
 
@@ -264,7 +264,7 @@ suite('Canvas screen', () => {
       '│ Ide⏎ ├── x ─┤ Pla⏎ │',
       '└──────┘      └──────┘',
     ]);
-    assert.deepStrictEqual(chosenRows(selected), ['', '        ######', '']);
+    assert.deepStrictEqual(chosenRows(selected), ['', '       ########', '']);
     const screen = screenOf({
       board,
       unit,

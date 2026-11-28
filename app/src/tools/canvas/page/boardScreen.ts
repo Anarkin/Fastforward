@@ -397,8 +397,12 @@ function paintEnds(
     id: edge.id,
   };
   if (selected) {
-    painter.choose(route.from.column, route.from.row, true);
-    painter.choose(route.to.column, route.to.row, true);
+    for (const end of ['from', 'to'] as const) {
+      const stub = route[end];
+      const joint = anchored(stub, inwardOf(route, end));
+      painter.choose(stub.column, stub.row, true);
+      painter.choose(joint.column, joint.row, true);
+    }
   }
   paintEnd(painter, {
     ...shared,

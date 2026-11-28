@@ -337,9 +337,6 @@ export class BoardSurface {
       ...drawing,
       palette: paletteOf({ ...look, kinds, ground: chosen }),
     };
-    drawChosen(cells, screen, shift, advance, rowHeight, packedOf(chosen));
-    drawText(drawing, chosenDrawing, screen, rowHeight, shift.y);
-    drawTexts(screen, drawing, chosenDrawing, rowHeight, shift.y);
     drawDots(cells, screen, shift, {
       advance,
       rowHeight,
@@ -347,6 +344,9 @@ export class BoardSurface {
       kinds,
       ground,
     });
+    drawChosen(cells, screen, shift, { advance, rowHeight }, packedOf(chosen));
+    drawText(drawing, chosenDrawing, screen, rowHeight, shift.y);
+    drawTexts(screen, drawing, chosenDrawing, rowHeight, shift.y);
     drawLines(cells, screen, shift, {
       advance,
       rowHeight,
@@ -463,20 +463,23 @@ function drawChosen(
   cells: CellSurface,
   screen: Screen,
   shift: { readonly x: number; readonly y: number },
-  advance: number,
-  rowHeight: number,
+  {
+    advance,
+    rowHeight,
+  }: { readonly advance: number; readonly rowHeight: number },
   color: number,
 ): void {
   for (let at = 0; at < screen.columns * screen.rows; at++) {
-    if (screen.chosen[at] === 1) {
-      cells.frame.rect(
-        (at % screen.columns) * advance - shift.x,
-        Math.floor(at / screen.columns) * rowHeight - shift.y,
-        advance,
-        rowHeight,
-        color,
-      );
+    if (screen.chosen[at] !== 1) {
+      continue;
     }
+    cells.frame.rect(
+      (at % screen.columns) * advance - shift.x,
+      Math.floor(at / screen.columns) * rowHeight - shift.y,
+      advance,
+      rowHeight,
+      color,
+    );
   }
 }
 
