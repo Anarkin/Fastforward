@@ -1,3 +1,4 @@
+import type { RecoveryCopies } from '../lib/main/recoveryCopies';
 import { lookup } from 'node:dns/promises';
 import { net } from 'electron';
 import { systemCodePage } from '../components/encodings/main/codePages';
@@ -69,8 +70,9 @@ function fetchedOnce(url: string, signal: AbortSignal): Promise<Fetched> {
   });
 }
 
-export function canvasToolOf(): CanvasTool {
+export function canvasToolOf(recovery: RecoveryCopies): CanvasTool {
   return new CanvasTool({
+    recovery,
     sizeOf: async (file) => (await fs.promises.stat(file)).size,
     readFile: (file) => fs.promises.readFile(file),
     saveFile: async (file, bytes) =>

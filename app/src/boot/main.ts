@@ -61,6 +61,7 @@ import type { DiffTool } from '../tools/diff/main/tool';
 import { terminalToolOf } from './terminalHost';
 import { commanderToolOf } from './commanderHost';
 import { viewerToolOf } from './viewerHost';
+import { recoveryCopies } from '../lib/main/recoveryCopies';
 import { patternWorker } from '../lib/main/patternSearch';
 import { editorToolOf } from './editorHost';
 import type { EditorTool } from '../tools/editor/main/tool';
@@ -163,6 +164,7 @@ async function start(asked: readonly string[]): Promise<void> {
   }
   const untoldStateProblems = [...state.problems];
   const pdfPlaces = new PdfPlaces(path.join(profile, 'pdf-places.json'));
+  const recovery = await recoveryCopies(path.join(profile, 'recovery'));
   const views = Promise.withResolvers<{
     shell: Shell;
     git: GitTool;
@@ -194,7 +196,13 @@ async function start(asked: readonly string[]): Promise<void> {
   const quitting = flushBeforeQuit(
     app,
     () => asking?.quit(),
-    () => Promise.all([state.saved(), userSettings.saved(), pdfPlaces.saved()]),
+    () =>
+      Promise.all([
+        state.saved(),
+        userSettings.saved(),
+        pdfPlaces.saved(),
+        recovery.flush(),
+      ]),
     () => Promise.all([stopRunningGit(Infinity), archiveWork.clear()]),
     () => asking?.quitWaits() ?? Promise.resolve(),
   );
@@ -345,6 +353,7 @@ async function start(asked: readonly string[]): Promise<void> {
     commanderTool,
     viewEdited: (page, file, at) => viewerTool.viewEdited(page, file, at),
     compareHistory: (page, file) => diffTool.open(page, [file]),
+    recovery,
   });
   const shellHost = shellHostOf({
     dist,
@@ -385,7 +394,7 @@ async function start(asked: readonly string[]): Promise<void> {
     git: gitTool,
     viewer: viewerTool,
     editor: editorTool,
-    canvas: canvasToolOf(),
+    canvas: canvasToolOf(recovery),
     diff: diffTool,
   });
   git.whenFound((found) => {

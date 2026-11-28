@@ -1,9 +1,25 @@
 import * as assert from 'node:assert';
 import { suite, test } from 'vitest';
 import { strings } from '../../../../lib/shared/strings';
-import { confirmation } from '../../../../shell/page/confirming';
+import { closingOf, confirmation } from '../../../../shell/page/confirming';
 
 suite('Confirmations', () => {
+  test("quits saving every file once asked to, and saying the files are dropped once Don't Save is chosen, so their copies to recover are dropped too, rather than as the crash screen quits, which keeps them", () => {
+    const asked = { kind: 'quit', unsaved: ['/home/me/a.txt'] } as const;
+    assert.deepStrictEqual(
+      [
+        closingOf(asked, true),
+        closingOf(asked, false),
+        closingOf({ kind: 'quit' }, false),
+      ],
+      [
+        { type: 'quit', save: true },
+        { type: 'quit', discard: true },
+        { type: 'quit' },
+      ],
+    );
+  });
+
   test('names the tab to close on a line of its own, by the whole path of its folder when it has one, with no question or label, as the title and the buttons ask it, and asks before closing a window or quitting by its title and buttons alone, with no question', () => {
     assert.deepStrictEqual(
       confirmation({

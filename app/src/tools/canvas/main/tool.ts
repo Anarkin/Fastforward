@@ -1,6 +1,7 @@
 import * as path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { isObject } from '../../../lib/main/json';
+import type { RecoveryCopies } from '../../../lib/main/recoveryCopies';
 import { hasCode } from '../../../lib/shared/errors';
 import { reasonOf } from '../../../lib/main/reasons';
 import type { Sentence } from '../../../lib/shared/sentences';
@@ -34,6 +35,15 @@ export interface CanvasAccess {
   readonly watch?: (file: string, onChange: () => void) => () => void;
   readonly titleOf?: (url: string) => Promise<string | undefined>;
   readonly files?: FileAccess;
+  readonly recovery?: RecoveryCopies;
+}
+
+const recoveryKey = (tab: string) => `canvas ${tab}`;
+
+function recoveredText(copy: unknown, file: string): string | undefined {
+  return isObject(copy) && copy.file === file && typeof copy.text === 'string'
+    ? copy.text
+    : undefined;
 }
 
 export const maxBoardBytes = 50 * 1024 * 1024;
@@ -124,9 +134,23 @@ export class CanvasTool implements Tool<'canvas'> {
       post(page, { type: 'board', tab: tab.id, file, error: read.error });
       return;
     }
+    const recovered = recoveredText(
+      this.access.recovery?.take(recoveryKey(tab.id)),
+      file,
+    );
+    const brought =
+      recovered !== undefined && read.held.board.recover(recovered);
     this.held.set(tab.id, read.held);
+    this.remember(tab.id, read.held);
     this.postBoard(page, tab.id);
     this.postNodes(page, tab.id);
+    if (brought) {
+      this.shell.postTabs(page);
+      this.shell.notice(page, {
+        level: 'info',
+        message: strings.editor.recovered(file),
+      });
+    }
     if (read.skipped > 0 && !this.toldSkipped.has(tab.id)) {
       this.toldSkipped.add(tab.id);
       this.shell.notice(page, {
@@ -320,7 +344,25 @@ export class CanvasTool implements Tool<'canvas'> {
     }
     this.toldSkipped.delete(tab.id);
     this.held.delete(tab.id);
+    this.access.recovery?.drop(recoveryKey(tab.id));
     this.unwatchHidden(tab.id);
+  }
+
+  discardUnsaved(): void {
+    for (const tab of this.held.keys()) {
+      this.access.recovery?.drop(recoveryKey(tab));
+    }
+  }
+
+  private remember(tab: string, held: Held): void {
+    if (held.board.changed()) {
+      this.access.recovery?.keep(recoveryKey(tab), () => ({
+        file: held.file,
+        text: held.board.text(),
+      }));
+    } else {
+      this.access.recovery?.drop(recoveryKey(tab));
+    }
   }
 
   async receive(page: Page, message: CanvasToHost): Promise<void> {
@@ -378,6 +420,7 @@ export class CanvasTool implements Tool<'canvas'> {
       default:
         return;
     }
+    this.remember(tab, held);
     if (held.board.changed() !== wasChanged) {
       this.shell.postTabs(page);
     }
@@ -437,6 +480,7 @@ export class CanvasTool implements Tool<'canvas'> {
     }
     this.postBoard(page, drop.tab, done.made);
     this.postNodes(page, drop.tab);
+    this.remember(drop.tab, held);
     if (held.board.changed() !== wasChanged) {
       this.shell.postTabs(page);
     }
@@ -486,6 +530,7 @@ export class CanvasTool implements Tool<'canvas'> {
     held.written = checkpoint.text;
     held.board.saved(checkpoint);
     held.made = false;
+    this.remember(tab, held);
     this.postBoard(page, tab);
     this.shell.postTabs(page);
     return true;

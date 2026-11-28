@@ -180,6 +180,10 @@ export class EditorTool implements Tool<'editor'> {
     return this.editing.unsaved(tab.id);
   }
 
+  discardUnsaved(): void {
+    this.editing.discardUnsaved();
+  }
+
   saveUnsaved(page: Page, tab: Tab): Promise<boolean> {
     return this.editing.save(page, tab.id);
   }

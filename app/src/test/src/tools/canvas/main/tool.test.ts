@@ -10,6 +10,8 @@ import {
 } from '../../../../../tools/canvas/main/tool';
 import type { CanvasToWebview } from '../../../../../tools/canvas/shared/protocol';
 import { fakeShell } from '../../commander/main/fakeShell';
+import type { RecoveryCopies } from '../../../../../lib/main/recoveryCopies';
+import { fakeRecovery } from '../../../../helpers/fakeRecovery';
 
 class CanvasPage implements Page {
   readonly messages: CanvasToWebview[] = [];
@@ -56,6 +58,7 @@ function canvas(
   sizes: Record<string, number> = {},
   readOnly: readonly string[] = [],
   gates: Gates = { saves: 0 },
+  recovery?: RecoveryCopies,
 ) {
   const saved: [string, string][] = [];
   const watched = new Map<string, () => void>();
@@ -108,6 +111,7 @@ function canvas(
       }
       return Buffer.from(text);
     },
+    ...(recovery !== undefined && { recovery }),
   });
   const page = new CanvasPage();
   const shell = fakeShell(page);
@@ -276,6 +280,72 @@ suite('Canvas tool', () => {
     await tool.receive(page, { type: 'undo', tab: '7' });
     await tool.show(page, tab);
     assert.strictEqual(board(page).board?.nodes[0]?.x, 700);
+  });
+
+  test('keeps a copy of a canvas while it has changes not saved, as they lived in memory alone and a shutdown or a crash lost them, and drops it once saved, undone to what was saved or closed', async () => {
+    const { recovery, copies } = fakeRecovery();
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page } = canvas(files, {}, [], { saves: 0 }, recovery);
+    await tool.show(page, tab);
+    const moved = () =>
+      tool.receive(page, {
+        type: 'edit',
+        tab: '7',
+        edit: { kind: 'place', boxes: [{ ...node, x: 14 }] },
+      });
+
+    await moved();
+    assert.deepStrictEqual(Object.keys(copies()), ['canvas 7']);
+    await tool.receive(page, { type: 'undo', tab: '7' });
+    assert.deepStrictEqual(copies(), {});
+    await tool.receive(page, { type: 'redo', tab: '7' });
+    await tool.receive(page, { type: 'save', tab: '7' });
+    assert.deepStrictEqual(copies(), {});
+    await moved();
+    tool.closed(page, tab);
+    assert.deepStrictEqual(copies(), {});
+  });
+
+  test('shows the copy a run left of a canvas of its file as its changes not saved, undone back to the file, telling so once, but leaves alone a copy of another file', async () => {
+    const recovered = JSON.stringify({ nodes: [{ ...node, x: 700 }] });
+    const { recovery } = fakeRecovery({
+      'canvas 7': { file, text: recovered },
+      'canvas 8': { file: '/boards/other.canvas', text: recovered },
+    });
+    const files = {
+      [file]: JSON.stringify({ nodes: [node] }),
+      '/boards/b.canvas': JSON.stringify({ nodes: [node] }),
+    };
+    const { tool, page, notices } = canvas(
+      files,
+      {},
+      [],
+      { saves: 0 },
+      recovery,
+    );
+
+    await tool.show(page, {
+      id: '8',
+      tool: 'canvas',
+      root: '/boards/b.canvas',
+    });
+    assert.strictEqual(
+      tool.unsaved({ id: '8', tool: 'canvas', root: '/boards/b.canvas' }),
+      false,
+    );
+    await tool.show(page, tab);
+    assert.strictEqual(board(page).board?.nodes[0]?.x, 700);
+    assert.strictEqual(tool.unsaved(tab), true);
+    assert.deepStrictEqual(
+      notices.map(({ message }) => message),
+      [strings.editor.recovered(file)],
+    );
+    await tool.show(page, tab);
+    assert.strictEqual(notices.length, 1);
+
+    await tool.receive(page, { type: 'undo', tab: '7' });
+    assert.strictEqual(board(page).board?.nodes[0]?.x, node.x);
+    assert.strictEqual(tool.unsaved(tab), false);
   });
 
   test('says once that saving writes over the change of a file changed while its tab was away with edits not saved, as it said so only of a change while the tab showed', async () => {

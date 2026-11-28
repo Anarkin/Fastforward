@@ -43,6 +43,7 @@ export function editing(
   files: Record<string, string | Uint8Array> = {},
   textDefaults?: EditingAccess['textDefaults'],
   endingSources?: EditingAccess['endingSources'],
+  recovery?: EditingAccess['recovery'],
 ) {
   const saved: { file: string; bytes: string; overwrite: boolean }[] = [];
   const notices: string[] = [];
@@ -129,6 +130,7 @@ export function editing(
     readOnly: (file) => file.endsWith('.defaults.json'),
     ...(textDefaults !== undefined && { textDefaults }),
     ...(endingSources !== undefined && { endingSources }),
+    ...(recovery !== undefined && { recovery }),
   };
   const edits = new Editing(access, {
     post: (page, message) =>

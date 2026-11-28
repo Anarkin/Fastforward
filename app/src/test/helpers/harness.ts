@@ -18,6 +18,7 @@ import { CommanderTool } from '../../tools/commander/main/tool';
 import { ViewerTool } from '../../tools/viewer/main/tool';
 import { EditorTool } from '../../tools/editor/main/tool';
 import { CanvasTool } from '../../tools/canvas/main/tool';
+import { fakeRecovery } from './fakeRecovery';
 import { diffToolOf } from '../../boot/diffHost';
 import type { DiffTool } from '../../tools/diff/main/tool';
 import { TerminalTool } from '../../tools/terminal/main/tool';
@@ -129,6 +130,14 @@ export async function saveTabs(
 }
 
 const shells = new WeakMap<GitTool, Shell>();
+const recoveries = new WeakMap<GitTool, ReturnType<typeof fakeRecovery>>();
+
+export function recoveryOf(view: GitTool): ReturnType<typeof fakeRecovery> {
+  const recovered = recoveries.get(view);
+  assert.ok(recovered);
+  return recovered;
+}
+
 const diffTools = new WeakMap<GitTool, DiffTool>();
 
 export function diffOf(view: GitTool): DiffTool {
@@ -157,6 +166,7 @@ export function newView(
   delays = quickerRefreshDelays,
 ): GitTool {
   const locator = locatorOf(git);
+  const recovered = fakeRecovery();
   const view = new GitTool(
     log,
     locator,
@@ -175,6 +185,7 @@ export function newView(
     viewedFiles: host.viewedFiles,
   });
   diffTools.set(view, diff);
+  recoveries.set(view, recovered);
   shells.set(
     view,
     new Shell(log, new Storage(settings, store), host, {
@@ -246,11 +257,13 @@ export function newView(
         copySaved: () => undefined,
         viewEdited: () => Promise.resolve(),
         compareHistory: (page, file) => diff.open(page, [file]),
+        recovery: recovered.recovery,
       }),
       canvas: new CanvasTool({
         sizeOf: async (file) => (await fs.promises.stat(file)).size,
         readFile: (file) => fs.promises.readFile(file),
         saveFile: (file, bytes) => fs.promises.writeFile(file, bytes),
+        recovery: recovered.recovery,
       }),
     }),
   );

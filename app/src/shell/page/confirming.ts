@@ -30,7 +30,8 @@ export function closingOf(confirming: Confirming, save: boolean): ToHost {
     case 'quit':
       return {
         type: 'quit',
-        ...(save && confirming.unsaved !== undefined && { save: true }),
+        ...(confirming.unsaved !== undefined &&
+          (save ? { save: true } : { discard: true })),
       };
     default:
       return confirming satisfies never;

@@ -1,3 +1,4 @@
+import type { RecoveryCopies } from '../lib/main/recoveryCopies';
 import { fs } from '../lib/main/files';
 import * as path from 'node:path';
 import type { UserSettings } from '../shell/main/userSettings';
@@ -22,6 +23,7 @@ export interface EditorHostDeps {
   readonly commanderTool: CommanderTool;
   readonly viewEdited: EditorAccess['viewEdited'];
   readonly compareHistory: EditorAccess['compareHistory'];
+  readonly recovery: RecoveryCopies;
 }
 
 export function editorToolOf({
@@ -31,6 +33,7 @@ export function editorToolOf({
   commanderTool,
   viewEdited,
   compareHistory,
+  recovery,
 }: EditorHostDeps): EditorTool {
   const sources = (): TextDefaultSources => ({
     settings: userSettings.settings.tools.editor,
@@ -64,5 +67,6 @@ export function editorToolOf({
     copySaved: (file) => commanderTool.copySaved(file),
     viewEdited,
     compareHistory,
+    recovery,
   });
 }

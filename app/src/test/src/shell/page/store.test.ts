@@ -277,7 +277,7 @@ suite('Shell store', () => {
       { type: 'closeTab', tab: '3', save: true },
       { type: 'closeTab', tab: '3' },
       { type: 'closeWindow', save: true },
-      { type: 'quit' },
+      { type: 'quit', discard: true },
       { type: 'quit', save: true },
     ]);
   });

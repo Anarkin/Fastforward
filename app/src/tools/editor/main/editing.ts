@@ -14,7 +14,8 @@ import {
   isTextEncoding,
   type TextEncoding,
 } from '../../../components/encodings/shared/textEncodings';
-import { EditedText } from './editedText';
+import { EditedText, recoveredText } from './editedText';
+import type { RecoveryCopies } from '../../../lib/main/recoveryCopies';
 import {
   KeptBeside,
   NoRoomToSave,
@@ -59,7 +60,10 @@ export interface EditingAccess {
     asksGit: boolean,
   ) => Promise<TextDefaults>;
   readonly endingSources?: (file: string) => Promise<readonly EndingSource[]>;
+  readonly recovery?: RecoveryCopies;
 }
+
+const recoveryKey = (tab: string) => `editor ${tab}`;
 
 export interface EditingShell {
   post(page: Page, message: EditorToWebview): void;
@@ -121,6 +125,7 @@ interface Opened {
   untold: boolean;
   saving: boolean;
   kept?: { readonly version: number; readonly state: string };
+  recovered?: boolean;
   stop: () => void;
 }
 
@@ -169,6 +174,14 @@ export class Editing {
     this.postEditing(page, tab, opened);
     if (opened.untold) {
       this.tellChanged(page, opened);
+    }
+    if (opened.recovered === true) {
+      opened.recovered = false;
+      this.shell.namesChanged(page);
+      this.shell.notice(page, {
+        level: 'info',
+        message: strings.editor.recovered(opened.file),
+      });
     }
     void this.findSources(tab, opened);
   }
@@ -229,17 +242,21 @@ export class Editing {
     const start = this.starts.get(file);
     this.starts.delete(file);
     const loading = this.load(file, 0, start?.encoding, start?.byte).then(
-      (read): Opened => ({
-        file,
-        readOnly: this.access.readOnly(file),
-        read,
-        ...(start?.encoding !== undefined && { chosen: start.encoding }),
-        changed: false,
-        outside: false,
-        untold: false,
-        saving: false,
-        stop: noWatching,
-      }),
+      (read): Opened => {
+        const recovered = this.recoveredOf(tab, file, read.text);
+        return {
+          file,
+          readOnly: this.access.readOnly(file),
+          read: recovered === undefined ? read : { ...read, text: recovered },
+          ...(start?.encoding !== undefined && { chosen: start.encoding }),
+          changed: recovered !== undefined,
+          outside: false,
+          untold: false,
+          saving: false,
+          stop: noWatching,
+          ...(recovered !== undefined && { recovered: true }),
+        };
+      },
     );
     this.opening.set(tab, { file, loading });
     try {
@@ -250,6 +267,9 @@ export class Editing {
           void this.inTurn(tab, () => this.changedOnDisk(tab, opened));
         });
         this.opened.set(tab, opened);
+        if (opened.changed && opened.read.text !== undefined) {
+          this.keepCopy(tab, opened.file, opened.read.text);
+        }
       }
       return opened;
     } finally {
@@ -555,12 +575,41 @@ export class Editing {
     this.changedTo(page, tab, opened, text.changed());
   }
 
+  private recoveredOf(
+    tab: string,
+    file: string,
+    onDisk: EditedText | undefined,
+  ): EditedText | undefined {
+    const copy = this.access.recovery?.take(recoveryKey(tab));
+    const decoded =
+      onDisk === undefined ? undefined : recoveredText(copy, file);
+    if (onDisk === undefined || decoded === undefined) {
+      return undefined;
+    }
+    const recovered = new EditedText(decoded, decoded.ending, onDisk.version);
+    recovered.saved(onDisk.checkpoint());
+    return recovered.changed() ? recovered : undefined;
+  }
+
+  private keepCopy(tab: string, file: string, text: EditedText): void {
+    this.access.recovery?.keep(recoveryKey(tab), () => ({
+      file,
+      ...text.shown(),
+    }));
+  }
+
   private changedTo(
     page: Page,
     tab: string,
     opened: Opened,
     changed: boolean,
   ): void {
+    const { text } = opened.read;
+    if (changed && text !== undefined) {
+      this.keepCopy(tab, opened.file, text);
+    } else {
+      this.access.recovery?.drop(recoveryKey(tab));
+    }
     if (opened.changed === changed) {
       return;
     }
@@ -731,7 +780,14 @@ export class Editing {
     };
   }
 
+  discardUnsaved(): void {
+    for (const tab of this.opened.keys()) {
+      this.access.recovery?.drop(recoveryKey(tab));
+    }
+  }
+
   closed(tab: string): void {
+    this.access.recovery?.drop(recoveryKey(tab));
     this.opened.get(tab)?.stop();
     this.opened.delete(tab);
     this.opening.delete(tab);

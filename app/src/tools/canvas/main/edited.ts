@@ -344,6 +344,25 @@ export class EditedBoard {
     return this.at !== this.savedAt;
   }
 
+  recover(text: string): boolean {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(withoutMark(text));
+    } catch {
+      return false;
+    }
+    if (!isObject(parsed) || written(parsed, this.layout) === this.text()) {
+      return false;
+    }
+    this.undone.push(this.raw);
+    this.redone.length = 0;
+    this.raw = parsed;
+    this.typing = undefined;
+    this.at++;
+    this.revision++;
+    return true;
+  }
+
   text(): string {
     return written(this.raw, this.layout);
   }

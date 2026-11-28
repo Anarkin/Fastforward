@@ -86,6 +86,7 @@ export interface Tool<K extends ToolId> {
   quitWaits?(): Promise<void>;
   unsaved?(tab: Tab): boolean;
   saveUnsaved?(page: Page, tab: Tab): Promise<boolean>;
+  discardUnsaved?(): void;
   quit(): void;
 }
 

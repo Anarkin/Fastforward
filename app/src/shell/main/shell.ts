@@ -432,6 +432,11 @@ export class Shell {
         ) {
           return;
         }
+        if (message.discard === true) {
+          for (const tool of Object.values(this.tools)) {
+            tool.discardUnsaved?.();
+          }
+        }
         await this.quitWaits();
         host.quit();
         return;

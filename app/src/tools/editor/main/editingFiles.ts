@@ -1,3 +1,4 @@
+import type { RecoveryCopies } from '../../../lib/main/recoveryCopies';
 import { codeOf } from '../../../lib/shared/errors';
 import { randomUUID } from 'node:crypto';
 import { fs } from '../../../lib/main/files';
@@ -27,6 +28,7 @@ export interface EditingFilesAccess {
   readonly editorSources?: (file: string) => Promise<readonly EndingSource[]>;
   readonly readOnlyCopy: (file: string) => boolean;
   readonly copySaved: (file: string) => void;
+  readonly recovery?: RecoveryCopies;
 }
 
 export function editingFiles(access: EditingFilesAccess): EditingAccess {
@@ -77,5 +79,6 @@ export function editingFiles(access: EditingFilesAccess): EditingAccess {
     ...(access.editorDefaults !== undefined && {
       textDefaults: access.editorDefaults,
     }),
+    ...(access.recovery !== undefined && { recovery: access.recovery }),
   };
 }

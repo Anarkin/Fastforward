@@ -1225,6 +1225,8 @@ export const strings = {
       sentence`Couldn't read ${namedFile(file)}. ${reason}`,
   },
   editor: {
+    recovered: (file: string) =>
+      sentence`The changes to ${namedFile(file)} that were not saved when the app last ended were brought back.`,
     tooLarge: (file: string) =>
       sentence`${namedFile(file)} is over 50 MB, too large to edit.`,
     binary: (file: string) =>

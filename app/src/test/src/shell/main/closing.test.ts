@@ -5,7 +5,12 @@ import * as path from 'node:path';
 import { ChangeSet } from '@codemirror/state';
 import { afterAll, suite, test } from 'vitest';
 import { recordingLog, failOnErrorsLogged } from '../../../helpers/stub';
-import { closeViews, shellOf, withView } from '../../../helpers/harness';
+import {
+  closeViews,
+  recoveryOf,
+  shellOf,
+  withView,
+} from '../../../helpers/harness';
 import { quitNoteOf } from '../../../../shell/main/closing';
 import { saying, twoWindows } from './shellFixtures';
 import { FakeHost } from '../../../helpers/fakeHost';
@@ -124,6 +129,61 @@ suite('Quitting and closing windows', () => {
           assert.strictEqual(fs.readFileSync(file, 'utf8'), 'xone\n');
           assert.deepStrictEqual(host.opened, ['quit']);
           assert.strictEqual(shell.asksBeforeQuit(), false);
+        },
+        true,
+        host,
+        noGit,
+      );
+    } finally {
+      removeFolder(folder);
+    }
+  });
+
+  test("keeps the copies to recover of the files not saved as the app quits unasked, as the crash screen quits, and drops them once Don't Save is chosen", async () => {
+    const host = new FakeHost();
+    const folder = tempFolder('unsaved');
+    const file = path.join(folder, 'notes.txt');
+    fs.writeFileSync(file, 'one\n');
+    host.userSettingsFile = () => Promise.resolve(file);
+    try {
+      await withView(
+        log,
+        [],
+        async (view) => {
+          const shell = shellOf(view.view);
+          await view.connection.receive({ type: 'openSettings' });
+          const tab =
+            view.page.tabs?.tabs.find((each) => each.root === file)?.id ?? '';
+          await view.connection.receive({
+            type: 'tool',
+            tool: 'editor',
+            message: { type: 'readEdited', tab },
+          });
+          assert.strictEqual(shell.asksBeforeQuit(), false);
+          await view.connection.receive({
+            type: 'tool',
+            tool: 'editor',
+            message: {
+              type: 'editText',
+              tab,
+              update: {
+                version: 0,
+                changes: ChangeSet.of({ from: 0, insert: 'x' }, 4).toJSON(),
+              },
+            },
+          });
+          assert.strictEqual(
+            view.page.tabs?.tabs.find((each) => each.id === tab)?.unsaved,
+            true,
+          );
+          assert.strictEqual(shell.asksBeforeQuit(), true);
+          assert.strictEqual(shell.asksBeforeClosing('1'), true);
+          await view.connection.receive({ type: 'quit' });
+          assert.deepStrictEqual(Object.keys(recoveryOf(view.view).copies()), [
+            `editor ${tab}`,
+          ]);
+          await view.connection.receive({ type: 'quit', discard: true });
+          assert.deepStrictEqual(recoveryOf(view.view).copies(), {});
         },
         true,
         host,

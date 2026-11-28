@@ -136,7 +136,7 @@ export type ToHost =
   | { readonly type: 'openDefaultSettings' }
   | { readonly type: 'checkForUpdates' }
   | { readonly type: 'installUpdate' }
-  | { readonly type: 'quit'; readonly save?: true }
+  | { readonly type: 'quit'; readonly save?: true; readonly discard?: true }
   | { readonly type: 'installTerminalCommand' }
   | { readonly type: 'gpu'; readonly drawing: boolean }
   | {

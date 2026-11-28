@@ -1,6 +1,9 @@
 import { ChangeSet, RangeSet, Text } from '@codemirror/state';
 import type { TextShown } from '../shared/protocol';
-import type { TextEncoding } from '../../../components/encodings/shared/textEncodings';
+import {
+  isTextEncoding,
+  type TextEncoding,
+} from '../../../components/encodings/shared/textEncodings';
 import {
   isLineEnding,
   keptMarks,
@@ -87,6 +90,36 @@ function keptBytesOf(value: unknown): KeptBytes[] | undefined {
 }
 
 const bytesKey = (bytes: readonly number[]) => bytes.join(',');
+
+export function recoveredText(
+  copy: unknown,
+  file: string,
+): DecodedText | undefined {
+  if (typeof copy !== 'object' || copy === null) {
+    return undefined;
+  }
+  const text: unknown = Reflect.get(copy, 'text');
+  const encoding: unknown = Reflect.get(copy, 'encoding');
+  const bom: unknown = Reflect.get(copy, 'bom');
+  const endings = endingsOf(copy);
+  const keptBytes = keptBytesOf(Reflect.get(copy, 'keptBytes'));
+  return Reflect.get(copy, 'file') === file &&
+    typeof text === 'string' &&
+    isTextEncoding(encoding) &&
+    typeof bom === 'boolean' &&
+    endings !== undefined &&
+    keptBytes !== undefined
+    ? {
+        text,
+        encoding,
+        bom,
+        ending: endings.ending,
+        endings: { lf: 0, crlf: 0, cr: 0 },
+        strayEndings: endings.strayEndings,
+        keptBytes,
+      }
+    : undefined;
+}
 
 function changesOf(value: unknown, length: number): ChangeSet | undefined {
   try {
