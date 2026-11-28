@@ -77,7 +77,8 @@ export function foundIn(doc: Text, query: FindQuery): Omit<Finding, 'query'> {
 }
 
 export function replacedText(
-  matched: string,
+  line: string,
+  at: number,
   query: FindQuery,
   replacement: string,
 ): string {
@@ -85,12 +86,32 @@ export function replacedText(
     return replacement;
   }
   const pattern = searchPattern(query.text, query.options);
-  return pattern === undefined
-    ? replacement
-    : matched.replace(
-        new RegExp(pattern.source, pattern.flags.replace('g', '')),
-        replacement,
-      );
+  if (pattern === undefined) {
+    return replacement;
+  }
+  const sticky = new RegExp(
+    pattern.source,
+    `${pattern.flags.replace('g', '')}y`,
+  );
+  sticky.lastIndex = at;
+  const matched = sticky.exec(line);
+  if (matched === null) {
+    return replacement;
+  }
+  sticky.lastIndex = at;
+  const end = at + matched[0].length;
+  const replaced = line.replace(sticky, replacement);
+  return replaced.slice(at, replaced.length - (line.length - end));
+}
+
+function replacedAt(
+  state: EditorState,
+  from: number,
+  query: FindQuery,
+  replacement: string,
+): string {
+  const line = state.doc.lineAt(from);
+  return replacedText(line.text, from - line.from, query, replacement);
 }
 
 export const setFind = StateEffect.define<FindQuery | undefined>();
@@ -217,11 +238,7 @@ export function replace(view: EditorSurface, replacement: string): void {
     step(view, 1);
     return;
   }
-  const inserted = replacedText(
-    state.sliceDoc(current.from, current.to),
-    query,
-    replacement,
-  );
+  const inserted = replacedAt(state, current.from, query, replacement);
   view.dispatch({
     changes: { from: current.from, to: current.to, insert: inserted },
     selection: EditorSelection.cursor(current.from + inserted.length),
@@ -246,7 +263,7 @@ export function replaceAll(view: EditorSurface, replacement: string): number {
     changes: every.map(({ from, to }) => ({
       from,
       to,
-      insert: replacedText(state.sliceDoc(from, to), query, replacement),
+      insert: replacedAt(state, from, query, replacement),
     })),
     userEvent: 'input.replace.all',
   });

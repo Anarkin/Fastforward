@@ -97,14 +97,36 @@ suite('Finding in the editor', () => {
     );
   });
 
-  test('replaces a match with the text typed, and with the groups of a regular expression put in', () => {
+  test('replaces a match with the text typed, and with the groups of a regular expression put in, matched where it was found in its line, so a lookahead, a lookbehind or a word boundary at its edge holds, as matching the found text alone put it back unchanged', () => {
     assert.strictEqual(
-      replacedText('let', query('let'), '$1 const'),
+      replacedText('let', 0, query('let'), '$1 const'),
       '$1 const',
     );
     assert.strictEqual(
-      replacedText('a+b', query('(\\w)\\+(\\w)', { regex: true }), '$2-$1'),
+      replacedText(
+        'x a+b',
+        2,
+        query(String.raw`(\w)\+(\w)`, { regex: true }),
+        '$2-$1',
+      ),
       'b-a',
+    );
+    assert.strictEqual(
+      replacedText('foobar', 0, query('foo(?=bar)', { regex: true }), 'baz'),
+      'baz',
+    );
+    assert.strictEqual(
+      replacedText('xfoo', 1, query('(?<=x)foo', { regex: true }), 'baz'),
+      'baz',
+    );
+    assert.strictEqual(
+      replacedText(
+        'a foo b',
+        2,
+        query(String.raw`\bfoo\b`, { regex: true }),
+        '[$&]',
+      ),
+      '[foo]',
     );
   });
 });
