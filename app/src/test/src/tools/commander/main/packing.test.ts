@@ -9,6 +9,7 @@ import type {
 } from '../../../../../tools/commander/main/archiveReader';
 import { packInto } from '../../../../../tools/commander/main/packing';
 import { strings } from '../../../../../lib/shared/strings';
+import { sentence } from '../../../../../lib/shared/sentences';
 import { removeFolder, tempFolder } from '../../../../helpers/tempFolders';
 
 suite('packInto', () => {
@@ -68,6 +69,28 @@ suite('packInto', () => {
     assert.deepStrictEqual(packed, { kind: 'packed' });
     assert.ok(seen[0]?.includes('photos.zip old'));
     assert.strictEqual(seen[0]?.length, 2);
+    assert.deepStrictEqual(listed(), ['photos.zip new']);
+  });
+
+  test('keeps the archive there once 7-Zip warned it packed without some items, rather than putting the new one in its place, as the old one may hold the only packed copy of a file locked meanwhile, and puts a warned archive where none was', async () => {
+    fs.writeFileSync(at('photos.zip'), 'old');
+    const warning = sentence`locked.txt was skipped`;
+    const warned = writing([''], () =>
+      Promise.resolve({ kind: 'packed', warning }),
+    );
+
+    const kept = await packInto(warned, plan());
+    assert.deepStrictEqual(kept, {
+      kind: 'refused',
+      reason: strings.commander.packWarnedKept(at('photos.zip'), warning),
+    });
+    assert.deepStrictEqual(listed(), ['photos.zip old']);
+
+    fs.rmSync(at('photos.zip'));
+    assert.deepStrictEqual(await packInto(warned, plan()), {
+      kind: 'packed',
+      warning,
+    });
     assert.deepStrictEqual(listed(), ['photos.zip new']);
   });
 

@@ -1044,6 +1044,8 @@ export const strings = {
     noPasswordGiven: 'No password was given.',
     testAsAdministrator:
       "Archives can't be tested yet in a folder read as administrator.",
+    packWarnedKept: (archive: string, warning: Sentence) =>
+      sentence`7-Zip packed without some items, so ${namedFile(archive)} was kept as it was: ${warning}`,
     archiveTestFailed: (reason: Sentence) =>
       sentence`The archive packed failed its test, so nothing was put in place: ${reason}`,
     archiveInVolumes: (item: string) =>

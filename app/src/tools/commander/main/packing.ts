@@ -118,6 +118,12 @@ async function leftBefore(archive: string): Promise<void> {
   );
 }
 
+const isThere = (file: string) =>
+  fs.promises.lstat(file).then(
+    () => true,
+    () => false,
+  );
+
 export async function packInto(
   reader: ArchiveReader,
   plan: PackPlan,
@@ -133,6 +139,13 @@ export async function packInto(
     if (packed.kind === 'refused') {
       await leftovers();
       return packed;
+    }
+    if (packed.warning !== undefined && (await isThere(plan.archive))) {
+      await leftovers();
+      return {
+        kind: 'refused',
+        reason: strings.commander.packWarnedKept(plan.archive, packed.warning),
+      };
     }
     if (plan.test === true) {
       options.onTesting?.();
