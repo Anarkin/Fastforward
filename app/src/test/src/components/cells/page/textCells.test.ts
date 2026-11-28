@@ -130,6 +130,20 @@ suite('Cells of a text', () => {
     );
   });
 
+  test('draws a space and the mark joined to it on one cell, as the cursor, the pointer and the wrap count them, as a Thai or Devanagari vowel sign shown alone after a space pushed the rest of the line a column right', () => {
+    const { frame, painter, end } = drawn([{ text: 'a ́b' }]);
+
+    assert.deepStrictEqual(
+      shownAt(frame, painter).map(({ shown, column }) => [shown, column]),
+      [
+        ['a', 0],
+        [' ́', 1],
+        ['b', 2],
+      ],
+    );
+    assert.strictEqual(end, 3);
+  });
+
   test('goes on at the next tab stop after a tab, signing it in its first cell only while whitespace is shown', () => {
     const plain = drawn([{ text: 'a\tb' }]);
     const signed = drawn([{ text: 'a\tb' }], { blanks: true });

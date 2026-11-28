@@ -365,7 +365,7 @@ function drawText(
   let clusters: Units | undefined;
   for (let at = 0; at < text.length;) {
     const code = text.charCodeAt(at);
-    if (code === spaceCode) {
+    if (code === spaceCode && !joins(text.charCodeAt(at + 1))) {
       if (blanks && column <= limit) {
         drawDot(drawing, column, y, under, mark, selected);
       }
