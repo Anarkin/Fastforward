@@ -15,6 +15,7 @@
         var(--app-icon-padding)
     );
   --button-background: var(--color-background);
+  --tab-list-gap: 4px;
   background: var(--color-background);
   -webkit-app-region: drag;
 }
@@ -41,10 +42,6 @@
 
 .tab-strip.overflowing {
   overflow-x: hidden;
-  padding-right: calc(2 * var(--radius));
-  padding-bottom: 1px;
-  padding-left: calc(2 * var(--radius));
-  margin-bottom: -1px;
 }
 
 [data-maximized] .tab-strip.overflowing {
@@ -118,10 +115,11 @@
   --sheet: var(--repository-background);
   position: relative;
   box-sizing: border-box;
-  width: 256px;
+  width: 200px;
+  height: calc(max(1lh, 20px) + 8px);
   flex-shrink: 1;
-  min-width: calc(16px + 2ch + 3 * 4px + 20px + 8px + 4px + 2 * 1px);
-  padding: 3px 4px 3px 8px;
+  min-width: calc(16px + 2ch + 3 * 4px + 20px + 5px + 3px + 2 * 1px);
+  padding: 3px 3px 3px 5px;
   border-radius: var(--radius);
   transition: transform 0.15s ease-out;
 }
@@ -177,7 +175,7 @@
 .tabs .tab-divider {
   position: absolute;
   top: 50%;
-  right: -5px;
+  right: -4px;
   width: round(2px, var(--device-pixel, 1px));
   height: 16px;
   border-radius: var(--radius);
@@ -193,11 +191,11 @@
   visibility: hidden;
 }
 
-.tabs .tab:not(.active) {
+.tabs .tab {
   margin-bottom: 4px;
 }
 
-.tabs .tab:not(.active)::after {
+.tabs .tab::after {
   content: '';
   position: absolute;
   top: 100%;
@@ -288,7 +286,7 @@
   overflow: hidden;
 }
 
-[data-maximized] .tabs .tab:not(.active)::before {
+[data-maximized] .tabs .tab::before {
   content: '';
   position: absolute;
   bottom: 100%;
@@ -316,35 +314,7 @@
 }
 
 .tabs .tab.active {
-  position: relative;
-  margin-bottom: -1px;
-  padding-bottom: 8px;
   background: var(--sheet);
-  border-radius: var(--radius) var(--radius) 0 0;
-}
-
-.tabs .tab.active::before,
-.tabs .tab.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  width: calc(2 * var(--radius));
-  height: calc(2 * var(--radius));
-  pointer-events: none;
-}
-
-.tabs .tab.active::before {
-  right: calc(100% + 1px);
-  border-bottom-right-radius: var(--radius);
-  box-shadow: var(--radius) var(--radius) 0 0 var(--sheet);
-  clip-path: inset(var(--radius) -1px -1px var(--radius));
-}
-
-.tabs .tab.active::after {
-  left: calc(100% + 1px);
-  border-bottom-left-radius: var(--radius);
-  box-shadow: calc(-1 * var(--radius)) var(--radius) 0 0 var(--sheet);
-  clip-path: inset(var(--radius) var(--radius) -1px -1px);
 }
 
 .tab-folder {

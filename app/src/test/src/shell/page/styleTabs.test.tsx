@@ -178,7 +178,7 @@ suite('Style', () => {
     }
   });
 
-  test('makes every repository tab as wide as a tab in Chrome, however short or long its name, with its close button at its right edge, sharing the room out alike once they no longer fit, so a short name is not cut down sooner than a long one', () => {
+  test('makes every repository tab 200 pixels wide, however short or long its name, with its close button at its right edge, sharing the room out alike once they no longer fit, so a short name is not cut down sooner than a long one', () => {
     for (const tab of allWithClass(rendered(<TabBarShown />), 'tab')) {
       looks(tab, {
         flex: undefined,
@@ -186,20 +186,40 @@ suite('Style', () => {
         'flex-basis': undefined,
         'flex-shrink': '1',
         'box-sizing': 'border-box',
-        width: '256px',
+        width: '200px',
         'max-width': undefined,
       });
       looks(withClass(tab, 'tab-close'), { 'margin-left': 'auto' });
     }
   });
 
+  test('makes every repository tab as tall as the menu button of the app beside them, as a height of its own rather than its content, padding and border added up, as Chromium draws a border of a pixel on whole device pixels and the tab came out half a device pixel short at 125% and a whole one at 150%', () => {
+    const shownBar = rendered(<TabBarShown />);
+    const button = cascaded(withClass(shownBar, 'menu-button'), 'height');
+    assert.strictEqual(button, 'calc(max(1lh, 20px) + 8px)');
+    for (const tab of allWithClass(shownBar, 'tab')) {
+      looks(tab, { height: button, 'box-sizing': 'border-box' });
+    }
+  });
+
+  test('pads a repository tab as far from its icon at its left as above and below it, and its close button as far from its right edge as from its top, so the space around each is even', () => {
+    const [tab] = allWithClass(rendered(<TabBarShown />), 'tab');
+    assert.ok(tab);
+    const { top, right, bottom, left } = paddingOf(tab);
+    const room = 20;
+    const icon = parseFloat(
+      cascaded(withClass(tab, 'tool-icon'), 'width') ?? '',
+    );
+    assert.strictEqual(top, bottom);
+    assert.strictEqual(parseFloat(left), parseFloat(top) + (room - icon) / 2);
+    assert.strictEqual(right, top);
+  });
+
   test("rounds the repository tabs by the one radius of the app, as the sheet's corners and the worktree chips, which is none for now, every corner square", () => {
     assert.strictEqual(bodyVariable('radius'), '0px');
-    const [active, other] = allWithClass(rendered(<TabBarShown />), 'tab');
-    looks(other, { 'border-radius': 'var(--radius)' });
-    looks(active, {
-      'border-radius': 'var(--radius) var(--radius) 0 0',
-    });
+    for (const tab of allWithClass(rendered(<TabBarShown />), 'tab')) {
+      looks(tab, { 'border-radius': 'var(--radius)' });
+    }
   });
 
   test('gives up the close button of a tab not open, as Chrome does, only once its name is down to its first letters, then wholly, as flexbox shrinks items whose factors add up to less than one only partly', () => {
@@ -244,25 +264,20 @@ suite('Style', () => {
     }
   });
 
-  test('scrolls the repository tabs sideways without a scrollbar once even their narrowest is too wide, as Chrome does, scrolled by the wheel alone so it gets no overlay scrollbar over the tabs, leaving room inside its edges for the open tab to curve out, join its sheet and, in a maximized window, for a tab to reach up, so none of that is cut off, nor slides under the logo or the button beside', () => {
-    const [active, other] = allWithClass(
-      rendered(<TabBarIn maximized />),
-      'tab',
-    );
-    const curve = cascaded(active, 'width', { pseudoElement: '::before' });
+  test('scrolls the repository tabs sideways without a scrollbar once even their narrowest is too wide, as Chrome does, scrolled by the wheel alone so it gets no overlay scrollbar over the tabs, leaving room above them in a maximized window for a tab to reach up, so that is not cut off, every tab a box of its own within the strip', () => {
+    const [, other] = allWithClass(rendered(<TabBarIn maximized />), 'tab');
     const reach = cascaded(other, 'height', { pseudoElement: '::before' });
-    const join = cascaded(active, 'margin-bottom');
     for (const maximized of [false, true]) {
       looks(tabStrip(maximized, true), {
         'overflow-x': 'hidden',
-        'padding-left': curve,
-        'padding-right': curve,
+        'padding-left': undefined,
+        'padding-right': undefined,
         'margin-left': undefined,
         'margin-right': undefined,
         'padding-top': maximized ? reach : undefined,
         'margin-top': maximized ? `calc(-1 * ${reach})` : undefined,
-        'padding-bottom': join?.replace(/^-/, ''),
-        'margin-bottom': join,
+        'padding-bottom': undefined,
+        'margin-bottom': undefined,
       });
     }
   });
@@ -306,17 +321,20 @@ suite('Style', () => {
     );
   });
 
-  test('joins the active repository tab to the white sheet under it, which holds the worktrees and the columns', () => {
-    const tab = withClass(rendered(<TabBarShown />), 'tab', 'active');
+  test('draws the active repository tab as a box of its own in the color of the sheet under it, which holds the worktrees and the columns, as the box of a tab the pointer is on, apart from the sheet by the gap under every tab rather than joined to it', () => {
+    const [tab, other] = allWithClass(rendered(<TabBarShown />), 'tab');
+    assert.ok(tab.classes.includes('active'));
     looks(tab, {
       '--sheet': 'var(--repository-background)',
       background: 'var(--sheet)',
-      'border-radius': 'var(--radius) var(--radius) 0 0',
+      'border-radius': 'var(--radius)',
+      'margin-bottom': cascaded(other, 'margin-bottom'),
+      'border-bottom-color': undefined,
     });
     for (const pseudoElement of ['::before', '::after']) {
-      assert.match(
-        cascaded(tab, 'box-shadow', { pseudoElement }) ?? '',
-        /var\(--sheet\)$/,
+      assert.strictEqual(
+        cascaded(tab, 'box-shadow', { pseudoElement }),
+        undefined,
       );
     }
     assert.strictEqual(
@@ -328,63 +346,13 @@ suite('Style', () => {
     });
   });
 
-  test('curves the active repository tab out into its sheet, white on white without an outline', () => {
-    const tab = withClass(rendered(<TabBarShown />), 'tab', 'active');
-    assert.match(cascaded(tab, 'border') ?? '', /^\S+ solid transparent$/);
-    const [border] = (cascaded(tab, 'border') ?? '').split(' ');
-    looks(tab, {
-      'border-bottom-color': undefined,
-      'margin-bottom': `-${border}`,
-    });
-    const size = 'calc(2 * var(--radius))';
-    const corner = 'var(--radius)';
-    looks(
-      tab,
-      {
-        right: `calc(100% + ${border})`,
-        bottom: '0',
-        width: size,
-        height: size,
-        'border-right': undefined,
-        'border-bottom': undefined,
-        'border-bottom-right-radius': corner,
-        'box-shadow': `${corner} ${corner} 0 0 var(--sheet)`,
-        'clip-path': `inset(${corner} -${border} -${border} ${corner})`,
-      },
-      { pseudoElement: '::before' },
-    );
-    looks(
-      tab,
-      {
-        left: `calc(100% + ${border})`,
-        bottom: '0',
-        width: size,
-        height: size,
-        'border-left': undefined,
-        'border-bottom': undefined,
-        'border-bottom-left-radius': corner,
-        'box-shadow': `calc(-1 * ${corner}) ${corner} 0 0 var(--sheet)`,
-        'clip-path': `inset(${corner} ${corner} -${border} -${border})`,
-      },
-      { pseudoElement: '::after' },
-    );
-    looks(withClass(rendered(<div className="repository" />), 'repository'), {
-      border: undefined,
-    });
-    assert.strictEqual(bodyVariable('sheet-border'), undefined);
-  });
-
-  test('keeps the name of a repository tab where it was once the tab is opened, though the tab reaches a pixel further down into its sheet', () => {
+  test('keeps the name of a repository tab where it was once the tab is opened, the open tab padded and spaced from the sheet as every other', () => {
     const [active, other] = allWithClass(rendered(<TabBarShown />), 'tab');
     assert.ok(active.classes.includes('active'));
-    const reach = -parseFloat(cascaded(active, 'margin-bottom') ?? '0');
-    assert.strictEqual(reach, 1);
-    assert.strictEqual(paddingOf(active).top, paddingOf(other).top);
+    assert.deepStrictEqual(paddingOf(active), paddingOf(other));
     assert.strictEqual(
-      parseFloat(
-        cascaded(active, 'padding-bottom') ?? paddingOf(active).bottom,
-      ) - parseFloat(paddingOf(other).bottom),
-      reach + parseFloat(cascaded(other, 'margin-bottom') ?? '0'),
+      cascaded(active, 'margin-bottom'),
+      cascaded(other, 'margin-bottom'),
     );
   });
 
@@ -425,7 +393,13 @@ suite('Style', () => {
       /[\d.]+px/.exec(cascaded(divider(a), 'width') ?? '')?.[0] ?? '',
     );
     const [border] = (cascaded(a, 'border') ?? '').split(' ');
-    const gap = parseFloat(bodyVariable('tab-list-gap') ?? '');
+    const gap = parseFloat(
+      cascaded(
+        withClass(rendered(<TabRow count={3} active="/b" />), 'tabs'),
+        '--tab-list-gap',
+      ) ?? '',
+    );
+    assert.strictEqual(gap, 4);
     looks(divider(a), {
       position: 'absolute',
       top: '50%',
@@ -537,29 +511,25 @@ suite('Style', () => {
     );
   });
 
-  test('reaches each tab not open up to the top of a maximized window, so the pointer flung there highlights and picks it, but not while the window is smaller', () => {
+  test('reaches each tab up to the top of a maximized window, the open one too, so the pointer flung there highlights and picks it, but not while the window is smaller', () => {
     const before = { pseudoElement: '::before' };
-    const [active, other] = allWithClass(
-      rendered(<TabBarIn maximized />),
-      'tab',
-    );
-    const [border] = (cascaded(other, 'border') ?? '').split(' ');
-    const reach = `calc(var(--tabs-top) + ${border})`;
-    looks(
-      other,
-      {
-        content: "''",
-        position: 'absolute',
-        bottom: '100%',
-        left: `-${border}`,
-        right: `-${border}`,
-        height: reach,
-        '-webkit-app-region': 'no-drag',
-      },
-      before,
-    );
-    looks(other, { position: 'relative' });
-    assert.notStrictEqual(cascaded(active, 'height', before), reach);
+    for (const tab of allWithClass(rendered(<TabBarIn maximized />), 'tab')) {
+      const [border] = (cascaded(tab, 'border') ?? '').split(' ');
+      looks(
+        tab,
+        {
+          content: "''",
+          position: 'absolute',
+          bottom: '100%',
+          left: `-${border}`,
+          right: `-${border}`,
+          height: `calc(var(--tabs-top) + ${border})`,
+          '-webkit-app-region': 'no-drag',
+        },
+        before,
+      );
+      looks(tab, { position: 'relative' });
+    }
     const [, small] = allWithClass(
       rendered(<TabBarIn maximized={false} />),
       'tab',
