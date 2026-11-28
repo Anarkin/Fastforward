@@ -239,6 +239,31 @@ suite('Shell store', () => {
     ]);
   });
 
+  test('asks whether to save the changes of a tab the main process says is unsaved, which the page did not know yet, saying the changes are dropped once told not to save them', () => {
+    const { posted, store } = posting();
+    const edited = {
+      id: '3',
+      tool: 'commander',
+      name: 'notes.txt',
+      edit: true,
+      unsaved: true,
+    } as const;
+    store
+      .getState()
+      .receive({ type: 'tabs', tabs: [terminal, git, edited], active: '3' });
+    store.getState().receive({ type: 'confirmCloseTab', tab: '3' });
+    assert.deepStrictEqual(store.getState().confirming, {
+      kind: 'unsavedTab',
+      tab: edited,
+    });
+    store.getState().dontSave();
+    store.getState().receive({ type: 'confirmCloseTab', tab: '9' });
+    assert.strictEqual(store.getState().confirming, undefined);
+    assert.deepStrictEqual(posted, [
+      { type: 'closeTab', tab: '3', discard: true },
+    ]);
+  });
+
   test('asks whether to save the changes of a tab before closing it, closing it once told to save them or not, and asks the same of a window or the app holding files with unsaved changes', () => {
     const { posted, store } = posting();
     const edited = {
@@ -275,7 +300,7 @@ suite('Shell store', () => {
     store.getState().confirm();
     assert.deepStrictEqual(posted, [
       { type: 'closeTab', tab: '3', save: true },
-      { type: 'closeTab', tab: '3' },
+      { type: 'closeTab', tab: '3', discard: true },
       { type: 'closeWindow', save: true },
       { type: 'quit', discard: true },
       { type: 'quit', save: true },

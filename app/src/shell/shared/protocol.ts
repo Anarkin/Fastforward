@@ -82,7 +82,12 @@ export type UpdateStatus =
 export type ToHost =
   | { readonly type: 'ready' }
   | { readonly type: 'selectTab'; readonly tab: string }
-  | { readonly type: 'closeTab'; readonly tab: string; readonly save?: true }
+  | {
+      readonly type: 'closeTab';
+      readonly tab: string;
+      readonly save?: true;
+      readonly discard?: true;
+    }
   | { readonly type: 'moveTab'; readonly tab: string; readonly index: number }
   | {
       readonly type: 'tearTab';
@@ -191,6 +196,7 @@ export type ToWebview =
       readonly type: 'confirmCloseWindow';
       readonly unsaved?: readonly string[];
     }
+  | { readonly type: 'confirmCloseTab'; readonly tab: string }
   | {
       readonly type: 'chooseTool';
       readonly folders: readonly string[];

@@ -20,7 +20,7 @@ export function closingOf(confirming: Confirming, save: boolean): ToHost {
       return {
         type: 'closeTab',
         tab: confirming.tab.id,
-        ...(save && { save: true }),
+        ...(save ? { save: true } : { discard: true }),
       };
     case 'window':
       return {

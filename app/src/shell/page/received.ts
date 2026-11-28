@@ -66,6 +66,15 @@ export function received(
       return { about: message };
     case 'terminalCommand':
       return { installsCommand: message.installable };
+    case 'confirmCloseTab': {
+      const tab = state.tabs?.find((each) => each.id === message.tab);
+      return tab === undefined
+        ? {}
+        : {
+            confirming: { kind: 'unsavedTab', tab },
+            popups: withPopup(state.popups, 'confirm', true),
+          };
+    }
     case 'confirmCloseWindow':
       return {
         confirming: {

@@ -522,6 +522,15 @@ export class Shell {
           .windowOf(page)
           .tabs.filter((tab) => tab.id === message.tab);
         if (
+          message.save !== true &&
+          message.discard !== true &&
+          closing.some((tab) => this.tools[tab.tool].unsaved?.(tab) === true)
+        ) {
+          this.pages.postTabs(page);
+          page.post({ type: 'confirmCloseTab', tab: message.tab });
+          return;
+        }
+        if (
           message.save === true &&
           !(await this.closing.savedAll(page, closing))
         ) {

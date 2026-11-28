@@ -194,7 +194,7 @@ suite('Quitting and closing windows', () => {
     }
   });
 
-  test('closes a tab of unsaved changes only once told to save them or not, saving them first when told to', async () => {
+  test('closes a tab of unsaved changes only once told to save them or not, saving them first when told to, and asks the page again when it closes one it did not know was unsaved, as a close sent right after the first edit dropped the text', async () => {
     const host = new FakeHost();
     const folder = tempFolder('unsaved');
     const file = path.join(folder, 'notes.txt');
@@ -240,9 +240,17 @@ suite('Quitting and closing windows', () => {
           assert.strictEqual(editedTab(), undefined);
           await view.connection.receive({ type: 'openSettings' });
           await edit(editedTab() ?? '', 0);
+          const unsaved = editedTab() ?? '';
+          await view.connection.receive({ type: 'closeTab', tab: unsaved });
+          assert.strictEqual(editedTab(), unsaved);
+          assert.deepStrictEqual(view.page.last('confirmCloseTab'), {
+            type: 'confirmCloseTab',
+            tab: unsaved,
+          });
           await view.connection.receive({
             type: 'closeTab',
-            tab: editedTab() ?? '',
+            tab: unsaved,
+            discard: true,
           });
           assert.strictEqual(fs.readFileSync(file, 'utf8'), '>one\n');
           assert.strictEqual(editedTab(), undefined);
