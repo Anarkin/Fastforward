@@ -33,6 +33,13 @@ const stylesIn = (folder: string) =>
     .map((file) => path.join(folder, file).split(path.sep).join('/'))
     .toSorted();
 
+const themedKeysOf = (value: unknown): string[] =>
+  typeof value === 'object' && value !== null
+    ? Object.values(value).flatMap((theme: unknown) =>
+        typeof theme === 'object' && theme !== null ? Object.keys(theme) : [],
+      )
+    : [];
+
 const stylesWith = (folder: string, pattern: RegExp) =>
   stylesIn(folder).filter((file) => pattern.test(textOf(file)));
 
@@ -415,6 +422,46 @@ suite('Lessons from past mistakes', () => {
           styled
             .filter(({ name }) => !fromLibraries.has(name) && !said(name))
             .map(({ file, name }) => `${file} .${name}`),
+        ),
+      ],
+      [],
+    );
+  });
+
+  test('uses no variable in a stylesheet that nothing sets, unless it names one to fall back on, as the unsaved mark of the editor took the color of its parent from a --foreground the theme never wrote; the theme writes --color- and the name of each color of the settings, of a tool after its name too, and the icons --name-icon and --hidden-name-icon', () => {
+    const folders = ['boot', 'components', 'lib', 'shell', 'tools'];
+    const defaults: unknown = JSON.parse(textOf('shell/main/settings.json'));
+    const settings = Object(defaults);
+    const themed = [
+      ...themedKeysOf(settings.colors).map((name) => `color-${name}`),
+      ...Object.entries(Object(settings.tools)).flatMap(([tool, value]) =>
+        themedKeysOf(Object(value).colors).map(
+          (name) => `color-${tool}-${name}`,
+        ),
+      ),
+    ];
+    const icons = [
+      ...textOf('shell/page/genericIcons.ts').matchAll(/^ {2}'?([\w-]+)'?: /gm),
+    ].flatMap(([, name]) => [`${name}-icon`, `hidden-${name}-icon`]);
+    const written = [...folders.flatMap(filesIn), ...folders.flatMap(stylesIn)]
+      .map(textOf)
+      .join('\n')
+      .replaceAll(/var\(\s*--[\w-]+/g, '');
+    const set = (name: string) =>
+      themed.includes(name) ||
+      icons.includes(name) ||
+      new RegExp(String.raw`--${name}(?![\w-])`).test(written);
+    const used = folders
+      .flatMap(stylesIn)
+      .flatMap((file) =>
+        [...textOf(file).matchAll(/var\(\s*--([\w-]+)\s*\)/g)].map(
+          ([, name]) => `${file} --${name ?? ''}`,
+        ),
+      );
+    assert.deepStrictEqual(
+      [
+        ...new Set(
+          used.filter((each) => !set(each.slice(each.indexOf(' --') + 3))),
         ),
       ],
       [],
