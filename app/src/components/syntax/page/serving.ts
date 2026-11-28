@@ -81,18 +81,33 @@ export function serveColoring(
   const inBackground = (run: () => void) =>
     later(() => (foregroundSlices > 0 ? inBackground(run) : run()));
   const edited = new Map<number, EditedColoring>();
-  return (message) => {
+  const stop = (job: number) => {
+    jobs.get(job)?.();
+    jobs.delete(job);
+    edited.delete(job);
+  };
+  const failed = (job: number, error: unknown) => {
+    stop(job);
+    post({ type: 'failed', message: errorText(error) });
+    post({ type: 'code', job, part: undefined });
+  };
+  const guarded =
+    (job: number, schedule: (run: () => void) => void) => (run: () => void) =>
+      schedule(() => {
+        try {
+          run();
+        } catch (error) {
+          failed(job, error);
+        }
+      });
+  const start = (message: Exclude<ToSyntax, { type: 'stop' }>) => {
     const { job } = message;
-    if (message.type === 'stop') {
-      jobs.get(job)?.();
-      jobs.delete(job);
-      edited.delete(job);
-    } else if (message.type === 'openLines') {
+    if (message.type === 'openLines') {
       const session = colorEdited(
         message.language,
         message.lines,
         (part) => post({ type: 'code', job, part }),
-        inForeground,
+        guarded(job, inForeground),
       );
       edited.set(job, session);
       jobs.set(job, () => session.stop());
@@ -121,7 +136,7 @@ export function serveColoring(
           sources,
           ranges,
           publish,
-          message.background ? inBackground : inForeground,
+          guarded(job, message.background ? inBackground : inForeground),
           (source, lines) =>
             post({
               type: 'entire',
@@ -134,7 +149,7 @@ export function serveColoring(
       );
     } else {
       let finished = false;
-      const stop = colorCode(
+      const stopCoding = colorCode(
         message.language,
         message.code,
         (part) => {
@@ -144,11 +159,22 @@ export function serveColoring(
           }
           post({ type: 'code', job, part });
         },
-        inForeground,
+        guarded(job, inForeground),
       );
       if (!finished) {
-        jobs.set(job, stop);
+        jobs.set(job, stopCoding);
       }
+    }
+  };
+  return (message) => {
+    if (message.type === 'stop') {
+      stop(message.job);
+      return;
+    }
+    try {
+      start(message);
+    } catch (error) {
+      failed(message.job, error);
     }
   };
 }
