@@ -2,7 +2,7 @@ import * as assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { suite, test } from 'vitest';
-import { blobSizes } from '../../../../../tools/git/main/objects';
+import { blobSizes, readObjects } from '../../../../../tools/git/main/objects';
 import {
   maxFileSize,
   readBlobs,
@@ -74,6 +74,43 @@ suite('Repository files', () => {
     } finally {
       keepGitRunningWhile(() => false);
       runningGits.stopAll();
+      removeFolder(folder);
+    }
+  });
+
+  test('reads many objects a few at a time, in the order asked, so no git started for them passes the most output a git may give, as a commit of hundreds of images showed an error rather than its diff', async () => {
+    const folder = tempFolder('objects-at-once');
+    try {
+      const repository = await tempRepository(folder);
+      const files = Object.fromEntries(
+        Array.from({ length: 5 }, (_, index) => [`f${index}.bin`, `${index}`]),
+      );
+      await repository.commit('many', files);
+      const ids = await repository.resolve(
+        ...Object.keys(files).map((file) => `HEAD:${file}`),
+      );
+
+      await gitsStarted(() =>
+        readObjects(
+          repository.gitPath,
+          repository.root,
+          ids.slice(0, 2),
+          maxFileSize,
+          2,
+        ),
+      );
+      const read = await gitsStarted(() =>
+        readObjects(repository.gitPath, repository.root, ids, maxFileSize, 2),
+      );
+
+      assert.deepStrictEqual(
+        read.result.map((each) =>
+          each.kind === 'object' ? each.content.toString() : each.kind,
+        ),
+        ['0', '1', '2', '3', '4'],
+      );
+      assert.strictEqual(read.gits, 3);
+    } finally {
       removeFolder(folder);
     }
   });

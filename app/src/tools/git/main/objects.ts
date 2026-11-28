@@ -238,7 +238,30 @@ export type ObjectRead =
   | { readonly kind: 'tooLarge' }
   | { readonly kind: 'missing' };
 
+const mostReadAtOnce = 128 * 1024 * 1024;
+
 export async function readObjects(
+  gitPath: string,
+  cwd: string,
+  names: readonly string[],
+  limit: number,
+  atOnce = Math.max(1, Math.floor(mostReadAtOnce / (limit + 1))),
+): Promise<ObjectRead[]> {
+  const read: ObjectRead[] = [];
+  for (let from = 0; from < names.length; from += atOnce) {
+    read.push(
+      ...(await objectsRead(
+        gitPath,
+        cwd,
+        names.slice(from, from + atOnce),
+        limit,
+      )),
+    );
+  }
+  return read;
+}
+
+async function objectsRead(
   gitPath: string,
   cwd: string,
   names: readonly string[],
