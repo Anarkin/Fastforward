@@ -60,6 +60,15 @@ export interface AppWindowsDeps {
   readonly asking: () => Shell | undefined;
 }
 
+function shownToAsk(window: BrowserWindow): void {
+  if (window.isMinimized()) {
+    window.restore();
+  }
+  if (!window.isVisible()) {
+    window.show();
+  }
+}
+
 export class AppWindows {
   private readonly opened = new Map<string, OpenedWindow>();
   private focused: string | undefined;
@@ -324,6 +333,7 @@ export class AppWindows {
       );
       if (closing === 'held') {
         event.preventDefault();
+        shownToAsk(window);
         return;
       }
       if (closing === 'quits') {
@@ -337,6 +347,7 @@ export class AppWindows {
         asking.askToCloseWindow(id)
       ) {
         event.preventDefault();
+        shownToAsk(window);
         return;
       }
       asking?.closeWindow(id);

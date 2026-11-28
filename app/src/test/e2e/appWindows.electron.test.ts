@@ -133,6 +133,23 @@ suite('App with several windows', () => {
     await asked.waitFor();
     assert.strictEqual((await visiblePages(launched())).length, 2);
     await asked
+      .locator('.confirm-button:not(.default)')
+      .last()
+      .evaluate((button: HTMLElement) => button.click());
+    await asked.waitFor({ state: 'detached' });
+    const window = await launched().browserWindow(second);
+    await window.evaluate((shown) => shown.minimize());
+    await waitFor(
+      () => window.evaluate((shown) => shown.isMinimized()),
+      'the window to be minimized',
+    );
+    await window.evaluate((shown) => shown.close());
+    await asked.waitFor();
+    await waitFor(
+      () => window.evaluate((shown) => !shown.isMinimized()),
+      'the window asking to be shown again, as a question in a minimized window showed nothing',
+    );
+    await asked
       .locator('.confirm-button.default')
       .evaluate((button: HTMLElement) => button.click())
       .catch(() => undefined);
