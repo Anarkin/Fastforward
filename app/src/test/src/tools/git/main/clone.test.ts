@@ -108,4 +108,22 @@ suite('Putting a clone in place', () => {
       removeFolder(folder);
     }
   });
+
+  test('leaves the clone where it was made once a file took its place meanwhile, as Windows renames a folder over a file and deleted it', async () => {
+    const folder = tempFolder('placing-clone-file');
+    try {
+      const target = path.join(folder, 'app');
+      fs.writeFileSync(target, 'a file of that name');
+      const cloned = cloningFolder(target);
+      fs.mkdirSync(path.join(cloned, '.git'), { recursive: true });
+      assert.strictEqual(await placeClone(cloned, target), false);
+      assert.strictEqual(
+        fs.readFileSync(target, 'utf8'),
+        'a file of that name',
+      );
+      assert.deepStrictEqual(fs.readdirSync(cloned), ['.git']);
+    } finally {
+      removeFolder(folder);
+    }
+  });
 });

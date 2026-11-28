@@ -82,16 +82,20 @@ export async function placeClone(
   target: string,
 ): Promise<boolean> {
   await fs.rmdir(target).catch(() => undefined);
+  const taken = () =>
+    fs.lstat(target).then(
+      () => true,
+      () => false,
+    );
   for (let attempt = 1; ; attempt += 1) {
+    if (await taken()) {
+      return false;
+    }
     try {
       await fs.rename(cloned, target);
       return true;
     } catch {
-      const taken = await fs.lstat(target).then(
-        () => true,
-        () => false,
-      );
-      if (taken || attempt === placeAttempts) {
+      if (attempt === placeAttempts) {
         return false;
       }
       await new Promise((resolve) => setTimeout(resolve, placeRetryDelay));
