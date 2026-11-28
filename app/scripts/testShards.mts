@@ -75,20 +75,31 @@ export function readDurations(file = durationsFile): Durations {
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
 }
 
-export function shuffledBy<T>(items: readonly T[], seed: number): T[] {
-  const shuffled = [...items];
-  let state = seed >>> 0;
-  const next = () => {
-    state = (state + 0x6d_2b_79_f5) >>> 0;
-    let mixed = Math.imul(state ^ (state >>> 15), state | 1);
-    mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
-    return ((mixed ^ (mixed >>> 14)) >>> 0) / 4_294_967_296;
-  };
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const other = Math.floor(next() * (index + 1));
-    [shuffled[index], shuffled[other]] = [shuffled[other], shuffled[index]];
+function seeded(seed: number, key: string): number {
+  let state = (seed ^ 0x81_1c_9d_c5) >>> 0;
+  for (let index = 0; index < key.length; index += 1) {
+    state = Math.imul(state ^ key.charCodeAt(index), 0x01_00_01_93) >>> 0;
   }
-  return shuffled;
+  state = (state + 0x6d_2b_79_f5) >>> 0;
+  let mixed = Math.imul(state ^ (state >>> 15), state | 1);
+  mixed ^= mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61);
+  return (mixed ^ (mixed >>> 14)) >>> 0;
+}
+
+export function shuffledBy<T>(
+  items: readonly T[],
+  seed: number,
+  keyOf: (item: T) => string = String,
+): T[] {
+  return items
+    .map((item) => ({ item, key: keyOf(item) }))
+    .map((each) => ({ ...each, rank: seeded(seed, each.key) }))
+    .toSorted(
+      (one, other) =>
+        one.rank - other.rank ||
+        (one.key < other.key ? -1 : one.key > other.key ? 1 : 0),
+    )
+    .map(({ item }) => item);
 }
 
 const sharing = (specification: TestSpecification): boolean =>
@@ -109,7 +120,11 @@ export class ShardsByDuration extends BaseSequencer {
       `The test files that share their workers run in the order of seed ${seed}; run them in it again with --sequence.seed=${seed}`,
     );
     return [
-      ...shuffledBy(shared, seed),
+      ...shuffledBy(shared, seed, (specification) =>
+        path
+          .relative(this.ctx.config.root, specification.moduleId)
+          .replaceAll('\\', '/'),
+      ),
       ...sorted.filter((specification) => !sharing(specification)),
     ];
   }

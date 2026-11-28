@@ -20,7 +20,11 @@ interface TestShards {
     count: number,
   ) => string[][];
   readonly projectsRunAFileAtATime: readonly string[];
-  readonly shuffledBy: <T>(items: readonly T[], seed: number) => T[];
+  readonly shuffledBy: <T>(
+    items: readonly T[],
+    seed: number,
+    keyOf?: (item: T) => string,
+  ) => T[];
   readonly ShardsByDuration: new (context: {
     readonly config: {
       readonly root: string;
@@ -81,6 +85,27 @@ suite('Shards balanced by how long their files take', () => {
     assert.deepStrictEqual(shuffled.toSorted(), files.toSorted());
     assert.notDeepStrictEqual(shuffled, files);
     assert.notDeepStrictEqual(shuffledBy(files, 43), shuffled);
+  });
+
+  test('orders the files of a seed alike whatever order they come in and whichever of them are run, so the seed a run printed gives its order again for the files named, as the order vitest gave them first depended on its cache of the last run', async () => {
+    const { shuffledBy } = await loadTestShards();
+    const files = Array.from({ length: 20 }, (_, index) => `file${index}`);
+    const shuffled = shuffledBy(files, 42);
+    const some = files.filter((_, index) => index % 3 === 0);
+
+    assert.deepStrictEqual(shuffledBy(files.toReversed(), 42), shuffled);
+    assert.deepStrictEqual(
+      shuffledBy(some.toReversed(), 42),
+      shuffled.filter((file) => some.includes(file)),
+    );
+    assert.deepStrictEqual(
+      shuffledBy(
+        files.map((file) => ({ file })),
+        42,
+        ({ file }) => file,
+      ).map(({ file }) => file),
+      shuffled,
+    );
   });
 
   test('takes for run a file at a time the very projects the tests are set up to run so, told by their names, which every machine reads alike, where the workers a machine has for a project follow its processors', async () => {
