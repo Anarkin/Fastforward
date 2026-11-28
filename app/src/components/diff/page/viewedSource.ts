@@ -14,13 +14,14 @@ export function viewedSource(
   { hash, area }: ImageOrigin,
   file: DiffFile,
 ): ViewedSource | undefined {
-  const side: Side = file.blobs?.new === undefined ? 'old' : 'new';
+  const side: Side =
+    file.blobs !== undefined && file.blobs.new === undefined ? 'old' : 'new';
   const path = sidePath(file, side);
   if (area !== 'staged' && side === workingTreeSide(hash)) {
     return { path };
   }
   const blob = file.blobs?.[side];
-  return blob === undefined ? undefined : { path, blob };
+  return blob === undefined ? { path } : { path, blob };
 }
 
 export function wholeViewedSource(

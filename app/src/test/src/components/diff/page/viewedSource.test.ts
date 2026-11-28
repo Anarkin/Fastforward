@@ -49,6 +49,24 @@ const textFile = (index: string) =>
 suite('Files to view', () => {
   const none = '0'.repeat(40);
 
+  test('views a file whose diff names no blob, as one changed in its whitespace alone or a large file not loaded yet, by its path, which the tool finds the version of, as F3 did nothing', () => {
+    const [bare] = parsePatch(
+      [
+        'diff --git a/docs/a.md b/docs/a.md',
+        'old mode 100644',
+        'new mode 100755',
+      ].join('\n'),
+    );
+    assert.ok(bare !== undefined);
+    assert.deepStrictEqual(viewedSource(at(commit), bare), {
+      path: 'docs/a.md',
+    });
+    assert.deepStrictEqual(
+      viewedSource(at(workingTreeHash, 'unstaged'), bare),
+      { path: 'docs/a.md' },
+    );
+  });
+
   test('views the new side of a file, from the working tree where it is on disk, and from a commit or the index by its blob', () => {
     const changed = textFile(`${oldId}..${newId}`);
     assert.deepStrictEqual(viewedSource(at(commit), changed), {
@@ -82,7 +100,7 @@ suite('Files to view', () => {
     );
   });
 
-  test('views a file shown entire by its blob, or where it is in the working tree, and nothing it can not tell where to read from', () => {
+  test('views a file shown entire by its blob, or where it is in the working tree, and nothing it can not tell where to read from, but a file of the diff without its blobs by its path', () => {
     const whole = { path: 'a.md', content: '', binary: false, id: newId };
     assert.deepStrictEqual(wholeViewedSource(at(commit), whole), {
       path: 'a.md',
@@ -95,12 +113,12 @@ suite('Files to view', () => {
       wholeViewedSource(at(commit), { ...whole, id: undefined }),
       undefined,
     );
-    assert.strictEqual(
+    assert.deepStrictEqual(
       viewedSource(at(commit), {
         ...textFile(`${oldId}..${newId}`),
         blobs: undefined,
       }),
-      undefined,
+      { path: 'docs/a.md' },
     );
   });
 });
