@@ -1463,6 +1463,14 @@ export const strings = {
       sentence`Couldn't watch ${namedFolder(root)}, so changes made outside ${brand} won't show until it is opened again`,
     couldNotCheckOut: (name: string, reason: Sentence) =>
       sentence`Couldn't check out ${named(name)}. ${reason}`,
+    branchTracksAnother: (
+      local: string,
+      remote: string,
+      upstream: string | undefined,
+    ) =>
+      upstream === undefined
+        ? sentence`Didn't check out ${named(remote)}, as the branch ${named(local)} of its name tracks no remote branch`
+        : sentence`Didn't check out ${named(remote)}, as the branch ${named(local)} of its name tracks ${named(upstream)}`,
     branchAlikeButCase: (local: string, remote: string, alike: string) =>
       sentence`Made no branch ${named(local)} of ${named(remote)}, as the branch ${named(alike)} differs from it only by case, which this repository can't tell apart`,
     noRefToCheckOut: (name: string) =>

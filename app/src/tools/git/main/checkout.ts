@@ -30,6 +30,17 @@ export async function checkout(
       const { refs } = await readRefs(gitPath, root);
       const local = localBranchOf(refs, target.name);
       if (hasRef(refs, { kind: 'branch', name: local })) {
+        const upstream = refs.find(
+          (ref) => ref.kind === 'branch' && ref.name === local,
+        )?.tracking?.upstream;
+        if (upstream !== target.name) {
+          say(
+            log,
+            notify,
+            strings.messages.branchTracksAnother(local, target.name, upstream),
+          );
+          return false;
+        }
         await switchToBranch(gitPath, root, local);
         log.info(strings.log.checkedOut.branch(local));
         await catchUp(log, notify, at, local, target.name);

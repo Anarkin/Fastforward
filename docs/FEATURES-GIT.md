@@ -132,7 +132,7 @@
 | Local branches | List the local branches | `git branch` | Core | ✅ Yes | In the menu of Mod+D, in a submenu of folders by `/` |
 | Remote branches | List the remote branches | `git branch -r` | Core | ✅ Yes |  |
 | Switch | Check out a branch | `git switch` | Core | ✅ Yes | Never overwrites ignored files |
-| Check out a remote branch | Make a local branch that tracks it | `git switch -c <name> --track <remote>/<name>` | Core | ✅ Yes | Switches to the local branch instead when there is one, and fast-forwards it |
+| Check out a remote branch | Make a local branch that tracks it | `git switch -c <name> --track <remote>/<name>` | Core | ✅ Yes | Switches to the local branch instead when there is one that tracks it, and fast-forwards it, refusing, saying so, while one of its name tracks another or none |
 | Check out a commit | Detach HEAD at a commit or tag | `git switch --detach` | Common | ✅ Yes | Remote tags too; names the commits a detached HEAD leaves on no branch or tag |
 | Carry changes | Keep the local changes when switching | `git switch --merge` | Common | ❌ No | Says why git refused |
 | Create | Make a branch | `git branch`, `git switch -c` | Core | ❌ No |  |

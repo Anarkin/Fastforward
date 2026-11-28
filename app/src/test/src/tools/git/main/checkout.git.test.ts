@@ -119,6 +119,7 @@ suite.concurrent('Operations checking out', () => {
     await repository.git('branch', 'kept', 'main');
     await repository.git('update-ref', 'refs/remotes/origin/kept', 'main');
     await repository.git('update-ref', 'refs/remotes/origin/made', 'main');
+    await repository.git('branch', '--set-upstream-to=origin/kept', 'kept');
     const logged = async (target: CheckoutTarget) =>
       (await checkOut(repository, target)).logged;
     assert.deepStrictEqual(await logged({ kind: 'tag', name: 'v1' }), [
@@ -213,6 +214,7 @@ suite.concurrent('Operations checking out', () => {
     const repository = await copied();
     await repository.git('branch', 'behind', 'main~1');
     await repository.git('update-ref', 'refs/remotes/origin/behind', 'main');
+    await repository.git('branch', '--set-upstream-to=origin/behind', 'behind');
     await checkedOutQuietly(repository, {
       kind: 'remote',
       name: 'origin/behind',
@@ -221,11 +223,60 @@ suite.concurrent('Operations checking out', () => {
     assert.deepStrictEqual(await repository.resolve('behind'), [c]);
   });
 
+  test('leaves a local branch of the name of a remote branch alone when it tracks another remote branch or none, saying which, as checking out fork/main moved a main that tracks origin/main onto the commits of the fork', async () => {
+    const repository = await copied();
+    await repository.git('update-ref', 'refs/remotes/origin/shared', a);
+    await repository.git('update-ref', 'refs/remotes/fork/shared', 'main');
+    await repository.git('branch', 'shared', a);
+    await repository.git('branch', '--set-upstream-to=origin/shared', 'shared');
+    await repository.git('update-ref', 'refs/remotes/fork/alone', 'main');
+    await repository.git('branch', 'alone', a);
+
+    const tracksOther = await checkOut(repository, {
+      kind: 'remote',
+      name: 'fork/shared',
+    });
+    const tracksNone = await checkOut(repository, {
+      kind: 'remote',
+      name: 'fork/alone',
+    });
+
+    assert.deepStrictEqual(
+      [tracksOther, tracksNone].map(({ checkedOut, notices }) => ({
+        checkedOut,
+        notices,
+      })),
+      [
+        {
+          checkedOut: false,
+          notices: [
+            [
+              'info',
+              'Didn\'t check out "fork/shared", as the branch "shared" of its name tracks "origin/shared"',
+            ],
+          ],
+        },
+        {
+          checkedOut: false,
+          notices: [
+            [
+              'info',
+              'Didn\'t check out "fork/alone", as the branch "alone" of its name tracks no remote branch',
+            ],
+          ],
+        },
+      ],
+    );
+    assert.strictEqual(await head(repository), 'main');
+    assert.deepStrictEqual(await repository.resolve('shared', 'alone'), [a, a]);
+  });
+
   test('fast-forwards no branch but the one it checked out when HEAD moves on meanwhile', async () => {
     const repository = await copied();
     await repository.git('branch', 'behind', 'main~1');
     await repository.git('branch', 'aside', 'main~1');
     await repository.git('update-ref', 'refs/remotes/origin/behind', 'main');
+    await repository.git('branch', '--set-upstream-to=origin/behind', 'behind');
     postCheckout(repository, 'git symbolic-ref HEAD refs/heads/aside\n');
     await checkedOutQuietly(repository, {
       kind: 'remote',
@@ -244,6 +295,11 @@ suite.concurrent('Operations checking out', () => {
     await repository.importCommits('refs/remotes/origin/blocked', 'main~1', [
       { message: 'adds clash', files: { clash: 'theirs' } },
     ]);
+    await repository.git(
+      'branch',
+      '--set-upstream-to=origin/blocked',
+      'blocked',
+    );
     const clash = path.join(repository.root, 'clash');
     fs.writeFileSync(clash, 'mine');
     const { checkedOut, notices, errors } = await checkOut(repository, {
@@ -275,6 +331,7 @@ suite.concurrent('Operations checking out', () => {
     const repository = await copied();
     await repository.git('branch', 'even', 'main');
     await repository.git('update-ref', 'refs/remotes/origin/even', 'main');
+    await repository.git('branch', '--set-upstream-to=origin/even', 'even');
     await checkedOutQuietly(repository, {
       kind: 'remote',
       name: 'origin/even',
@@ -288,6 +345,7 @@ suite.concurrent('Operations checking out', () => {
       { message: 'apart only' },
     ]);
     await repository.git('update-ref', 'refs/remotes/origin/apart', 'main');
+    await repository.git('branch', '--set-upstream-to=origin/apart', 'apart');
     const { checkedOut, notices, errors } = await checkOut(repository, {
       kind: 'remote',
       name: 'origin/apart',
@@ -369,6 +427,7 @@ suite.concurrent('Operations checking out', () => {
     const repository = await copied();
     await repository.git('branch', 'behind', 'main~1');
     await repository.git('update-ref', 'refs/remotes/origin/behind', 'main');
+    await repository.git('branch', '--set-upstream-to=origin/behind', 'behind');
     postCheckout(repository, "printf 'ref: refs/heads/a..b\\n' > .git/HEAD\n");
     const { checkedOut, notices, errors } = await checkOut(repository, {
       kind: 'remote',
@@ -391,6 +450,7 @@ suite.concurrent('Operations checking out', () => {
     const repository = await copied();
     await repository.git('branch', 'unread', 'main~1');
     await repository.git('update-ref', 'refs/remotes/origin/unread', 'main');
+    await repository.git('branch', '--set-upstream-to=origin/unread', 'unread');
     postCheckout(
       repository,
       `printf '${'a'.repeat(40)}\\n' > .git/refs/remotes/origin/unread\n`,
