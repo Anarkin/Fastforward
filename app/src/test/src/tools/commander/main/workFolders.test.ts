@@ -52,7 +52,7 @@ suite('The work folders of archives', () => {
     const copyIn = async (work: string, text: string) => {
       const copy = path.join(work, 'notes.txt');
       fs.writeFileSync(copy, text);
-      await markCopy(copy, path.join(folder, 'a.zip'), 'docs/notes.txt');
+      await markCopy(work, copy, path.join(folder, 'a.zip'), 'docs/notes.txt');
       return copy;
     };
     await copyIn(same, 'as taken out');
@@ -80,5 +80,27 @@ suite('The work folders of archives', () => {
     );
     assert.deepStrictEqual(await next.clearEnded(), []);
     assert.ok(fs.existsSync(edited));
+  });
+
+  test('keeps the copy of a file from a subfolder of an archive, taken out with its folders, as it keeps one from the root, as its mark beside it was never read and the copy was deleted at quit', async () => {
+    const root = path.join(folder, 'archives');
+    const alive = new Set<number>([200]);
+    const ours = workFolders(root, 200, (pid) => alive.has(pid));
+    const work = await ours.next();
+    fs.mkdirSync(path.join(work, 'docs'));
+    const copy = path.join(work, 'docs', 'notes.txt');
+    fs.writeFileSync(copy, 'as taken out');
+    await markCopy(work, copy, path.join(folder, 'a.zip'), 'docs/notes.txt');
+
+    await ours.clear();
+    assert.ok(fs.existsSync(copy));
+    fs.writeFileSync(copy, 'saved after the app quit, a longer text');
+    alive.delete(200);
+
+    assert.deepStrictEqual(
+      await workFolders(root, 300, (pid) => alive.has(pid)).clearEnded(),
+      [{ copy, archive: path.join(folder, 'a.zip'), name: 'docs/notes.txt' }],
+    );
+    assert.ok(fs.existsSync(copy));
   });
 });

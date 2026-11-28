@@ -151,7 +151,10 @@ suite('Commander tool in archives', () => {
       assert.deepStrictEqual(
         JSON.parse(
           fs.readFileSync(
-            path.join(path.dirname(copy), '.fastforward-copy.json'),
+            path.join(
+              path.dirname(path.dirname(copy)),
+              '.fastforward-copy.json',
+            ),
             'utf8',
           ),
         ).name,
@@ -211,7 +214,10 @@ suite('Commander tool in archives', () => {
       ]);
 
       const markOfCopy = () =>
-        fs.readFileSync(path.join(holding, '.fastforward-copy.json'), 'utf8');
+        fs.readFileSync(
+          path.join(path.dirname(holding), '.fastforward-copy.json'),
+          'utf8',
+        );
       const putBackMark = markOfCopy();
       await saved('Changed once put back.');
       await waitFor(() => asked().length === 2, 'the update to be asked again');

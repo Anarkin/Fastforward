@@ -34,6 +34,7 @@ export interface ArchiveCopiesHost {
 }
 
 export class ArchiveCopies {
+  private readonly workFolderOf = new Map<string, string>();
   private updateAsks = 0;
   readonly updatesAsked = new Map<
     number,
@@ -131,7 +132,14 @@ export class ArchiveCopies {
         withoutFolders,
       });
       if (extracted.kind === 'extracted') {
-        return itemsAt(extracted.folder, withoutFolders ? 0 : inner.length);
+        const items = await itemsAt(
+          extracted.folder,
+          withoutFolders ? 0 : inner.length,
+        );
+        for (const item of items) {
+          this.workFolderOf.set(item, extracted.folder);
+        }
+        return items;
       }
       if (extracted.needsPassword !== true) {
         this.host.refuse(
@@ -391,7 +399,12 @@ export class ArchiveCopies {
       );
     const name = [...inner, path.basename(copy)].join(path.sep);
     const marked = () =>
-      markCopy(copy, archive.file, [...inner, path.basename(copy)].join('/'));
+      markCopy(
+        this.workFolderOf.get(copy) ?? path.dirname(copy),
+        copy,
+        archive.file,
+        [...inner, path.basename(copy)].join('/'),
+      );
     await marked();
     let stamp = await stampNow();
     let busy = false;

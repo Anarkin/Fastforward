@@ -67,11 +67,12 @@ async function writeMark(work: string, mark: Mark): Promise<void> {
 }
 
 export async function markCopy(
+  work: string,
   copy: string,
   archive: string,
   name: string,
 ): Promise<void> {
-  await writeMark(path.dirname(copy), {
+  await writeMark(work, {
     copy,
     archive,
     name,
