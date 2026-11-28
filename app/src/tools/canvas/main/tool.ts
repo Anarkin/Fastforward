@@ -52,6 +52,7 @@ interface Held {
   readonly board: EditedBoard;
   made: boolean;
   written?: string;
+  toldChange?: string;
 }
 
 const newBoard = '{}';
@@ -105,6 +106,7 @@ export class CanvasTool implements Tool<'canvas'> {
     if (kept?.file === file && kept.board.changed()) {
       this.postBoard(page, tab.id);
       this.postNodes(page, tab.id);
+      await this.inTurn(tab.id, () => this.changedOutside(tab.id, file));
       return;
     }
     const read = await this.read(file);
@@ -272,6 +274,10 @@ export class CanvasTool implements Tool<'canvas'> {
       return;
     }
     if (held.board.changed()) {
+      if (held.toldChange === onDisk) {
+        return;
+      }
+      held.toldChange = onDisk;
       for (const page of pages) {
         this.shell.notice(page, {
           level: 'info',

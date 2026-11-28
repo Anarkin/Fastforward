@@ -278,6 +278,31 @@ suite('Canvas tool', () => {
     assert.strictEqual(board(page).board?.nodes[0]?.x, 700);
   });
 
+  test('says once that saving writes over the change of a file changed while its tab was away with edits not saved, as it said so only of a change while the tab showed', async () => {
+    const files = { [file]: JSON.stringify({ nodes: [node] }) };
+    const { tool, page, notices } = canvas(files);
+    await tool.show(page, tab);
+    await tool.receive(page, {
+      type: 'edit',
+      tab: '7',
+      edit: { kind: 'place', boxes: [{ ...node, x: 14 }] },
+    });
+    tool.hide(page);
+    await tool.show(page, tab);
+    assert.deepStrictEqual(notices, []);
+
+    tool.hide(page);
+    files[file] = JSON.stringify({ nodes: [{ ...node, x: 700 }] });
+    await tool.show(page, tab);
+    await tool.show(page, tab);
+
+    assert.strictEqual(board(page).board?.nodes[0]?.x, 14);
+    assert.deepStrictEqual(
+      notices.map(({ message }) => message),
+      [strings.editor.changedOutside(file)],
+    );
+  });
+
   test('reads its file anew once it changes while its tab shows and nothing of it is unsaved, as the editor follows its file, and takes no change for its own save', async () => {
     const files = { [file]: JSON.stringify({ nodes: [node] }) };
     const { tool, page, changed } = canvas(files);
